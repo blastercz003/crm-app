@@ -896,8 +896,8 @@ export default async function DashboardPage() {
       <div className="px-6 py-6 md:px-10 md:py-10">
         <div className="mx-auto max-w-7xl space-y-6">
           <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-6 p-6 md:p-7 lg:flex-row lg:items-start lg:justify-between lg:p-8">
-              <div className="lg:pt-1">
+            <div className="flex flex-col gap-3 p-4 md:p-5 lg:flex-row lg:items-start lg:justify-between lg:p-5">
+              <div className="self-start">
                 <Link href="/dashboard" className="inline-flex flex-col items-start">
                   <Image
                     src="/logo.png"
@@ -913,9 +913,9 @@ export default async function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="w-full max-w-[360px] rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1.5 text-xs text-zinc-500">
+              <div className="w-full max-w-[320px] rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1 text-[11px] text-zinc-500">
                     <div>
                       Uživatel:{' '}
                       <span className="font-medium text-zinc-900">
@@ -930,16 +930,16 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 flex-col gap-2">
+                  <div className="flex shrink-0 flex-col gap-1.5">
                     <Link
                       href="/settings/password"
-                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-100 hover:text-zinc-950"
+                      className="inline-flex min-h-[34px] items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-[11px] font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-100 hover:text-zinc-950"
                     >
                       ZMĚNIT HESLO
                     </Link>
 
                     <form action="/auth/signout" method="post" className="shrink-0">
-                      <button className="inline-flex min-h-[40px] w-full items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-xs font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800">
+                      <button className="inline-flex min-h-[34px] w-full items-center justify-center rounded-xl bg-zinc-900 px-3 py-1.5 text-[11px] font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800">
                         ODHLÁSIT SE
                       </button>
                     </form>
