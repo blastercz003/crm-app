@@ -27,6 +27,10 @@ type MeetingRow = {
     | null
 }
 
+type ProfileRow = {
+  role: string | null
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return 'Bez termínu'
 
@@ -195,6 +199,18 @@ export default async function MeetingsPage() {
     throw new Error('Uživatel není přihlášen.')
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single<ProfileRow>()
+
+  if (profileError) {
+    throw new Error(`Nepodařilo se načíst profil uživatele: ${profileError.message}`)
+  }
+
+  const isAdmin = profile?.role === 'admin'
+
   const meetingSelect = `
     id,
     company_name,
@@ -214,19 +230,27 @@ export default async function MeetingsPage() {
     )
   `
 
-  const plannedResponse = await supabase
+  let plannedQuery = supabase
     .from('meetings')
     .select(meetingSelect)
-    .eq('assigned_user_id', user.id)
     .eq('status', 'planned')
     .order('meeting_datetime', { ascending: true })
 
-  const completedResponse = await supabase
+  let completedQuery = supabase
     .from('meetings')
     .select(meetingSelect)
-    .eq('assigned_user_id', user.id)
     .eq('status', 'completed')
     .order('meeting_datetime', { ascending: false })
+
+  if (!isAdmin) {
+    plannedQuery = plannedQuery.eq('assigned_user_id', user.id)
+    completedQuery = completedQuery.eq('assigned_user_id', user.id)
+  }
+
+  const [plannedResponse, completedResponse] = await Promise.all([
+    plannedQuery,
+    completedQuery,
+  ])
 
   if (plannedResponse.error) {
     throw new Error(
@@ -297,7 +321,9 @@ export default async function MeetingsPage() {
                 Schůzky
               </h1>
               <p className="mt-2 text-sm text-zinc-500">
-                Přehled plánovaných a proběhlých schůzek.
+                {isAdmin
+                  ? 'Přehled plánovaných a proběhlých schůzek všech uživatelů.'
+                  : 'Přehled vašich plánovaných a proběhlých schůzek.'}
               </p>
             </div>
 
