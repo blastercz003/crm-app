@@ -45,7 +45,7 @@ export default async function TasksPage() {
               </div>
 
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-                Úkoly
+                Moje úkoly
               </h1>
 
               <p className="mt-2 max-w-xl text-sm text-zinc-500">
