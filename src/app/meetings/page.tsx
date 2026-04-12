@@ -484,13 +484,13 @@ export default async function MeetingsPage({
               </div>
 
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-                Schůzky
+                Moje schůzky
               </h1>
 
               <p className="mt-2 text-sm text-zinc-500">
                 {isAdminTeamView
                   ? 'Přehled plánovaných i proběhlých schůzek celého týmu.'
-                  : 'Přehled vašich plánovaných i proběhlých schůzek.'}
+                  : 'Přehled plánovaných i proběhlých schůzek.'}
               </p>
             </div>
 
