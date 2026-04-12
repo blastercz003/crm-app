@@ -908,11 +908,20 @@ export default async function DashboardPage() {
                   </div>
                 </div>
 
-                <form action="/auth/signout" method="post" className="shrink-0">
-                  <button className="inline-flex items-center rounded-xl bg-zinc-900 px-3.5 py-2 text-xs font-medium tracking-wide text-white transition hover:bg-zinc-800">
-                    ODHLÁSIT SE
-                  </button>
-                </form>
+                <div className="flex shrink-0 flex-col gap-2">
+                  <Link
+                    href="/settings/password"
+                    className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-xs font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+                  >
+                    ZMĚNIT HESLO
+                  </Link>
+
+                  <form action="/auth/signout" method="post" className="shrink-0">
+                    <button className="inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-3.5 py-2 text-xs font-medium tracking-wide text-white transition hover:bg-zinc-800">
+                      ODHLÁSIT SE
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
