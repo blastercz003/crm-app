@@ -254,7 +254,7 @@ function DashboardStatCard({
   return (
     <div
       className={[
-        'rounded-2xl px-4 py-3 shadow-sm',
+        'rounded-2xl px-4 py-3.5 shadow-sm transition',
         highlighted
           ? 'border border-[#2980B9] bg-[#2980B9]'
           : 'border border-zinc-200 bg-zinc-50',
@@ -266,8 +266,8 @@ function DashboardStatCard({
       <div
         className={
           highlighted
-            ? 'mt-1 text-xl font-semibold text-white'
-            : 'mt-1 text-xl font-semibold text-zinc-950'
+            ? 'mt-1.5 text-xl font-semibold text-white'
+            : 'mt-1.5 text-xl font-semibold text-zinc-950'
         }
       >
         {value}
@@ -276,9 +276,31 @@ function DashboardStatCard({
   )
 }
 
+function DashboardSectionHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+}) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+        {eyebrow}
+      </div>
+      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+        {title}
+      </h2>
+      <p className="mt-1.5 text-sm text-zinc-500">{description}</p>
+    </div>
+  )
+}
+
 function DashboardTaskItem({ task }: { task: DashboardTask }) {
   return (
-    <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md">
+    <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md">
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-sm font-semibold text-zinc-900">{task.title}</div>
         <TaskStatusBadge status={task.status} />
@@ -334,7 +356,7 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
   return (
     <Link
       href={`/meetings/${meeting.id}`}
-      className="block rounded-2xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
+      className="block rounded-2xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md"
     >
       <div className="flex items-start gap-3">
         <div className="flex w-[64px] shrink-0 flex-col items-center rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-2 text-center">
@@ -393,21 +415,15 @@ function DashboardMiniCalendar({
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-            Kalendář
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            {monthLabel}
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Přehled schůzek v aktuálním měsíci.
-          </p>
-        </div>
+        <DashboardSectionHeader
+          eyebrow="Kalendář"
+          title={monthLabel}
+          description="Přehled schůzek v aktuálním měsíci."
+        />
 
         <Link
           href="/calendar"
-          className="hidden items-center rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800 md:inline-flex"
+          className="hidden min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800 md:inline-flex"
         >
           OTEVŘÍT KALENDÁŘ
         </Link>
@@ -434,12 +450,14 @@ function DashboardMiniCalendar({
             <div key={day.isoKey} className="group relative">
               <div
                 className={[
-                  'min-h-[82px] rounded-2xl border p-2 transition',
+                  'min-h-[82px] rounded-2xl border p-2 transition duration-200',
                   day.isCurrentMonth
                     ? 'border-zinc-200 bg-white'
                     : 'border-zinc-100 bg-zinc-50/70 text-zinc-400',
                   day.isToday ? 'ring-2 ring-zinc-900/10' : '',
-                  hasMeetings ? 'border-zinc-300 bg-zinc-50 hover:border-[#2980B9]/60' : '',
+                  hasMeetings
+                    ? 'border-zinc-300 bg-zinc-50 hover:border-[#2980B9]/60'
+                    : '',
                 ].join(' ')}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -476,7 +494,7 @@ function DashboardMiniCalendar({
                         <Link
                           key={meeting.id}
                           href={`/meetings/${meeting.id}`}
-                          className="block rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition hover:border-zinc-300 hover:bg-white"
+                          className="block rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition duration-200 hover:border-zinc-300 hover:bg-white"
                         >
                           <div className="text-[11px] font-semibold text-[#2980B9]">
                             {formatMeetingTime(meeting.meeting_datetime)}
@@ -518,7 +536,7 @@ function DashboardMiniCalendar({
       <div className="mt-5 md:hidden">
         <Link
           href="/calendar"
-          className="inline-flex items-center rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800"
+          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
         >
           OTEVŘÍT KALENDÁŘ
         </Link>
@@ -531,23 +549,30 @@ function ClientsCard() {
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-5">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-          Sekce
-        </div>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-          Klienti
-        </h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Rychlý vstup do klientské databáze a firemních kontaktů.
-        </p>
+        <DashboardSectionHeader
+          eyebrow="Sekce"
+          title="Klienti"
+          description="Rychlý vstup do klientské databáze a firemních kontaktů."
+        />
       </div>
 
-      <Link
-        href="/clients"
-        className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800"
-      >
-        OTEVŘÍT KLIENTY
-      </Link>
+      <div className="mb-5 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4">
+        <div className="text-sm font-medium text-zinc-900">
+          Firemní kontakty a detail klienta na jednom místě.
+        </div>
+        <div className="mt-1 text-sm text-zinc-500">
+          Otevři seznam klientů, vyhledej konkrétní firmu a přejdi rovnou na její detail.
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/clients"
+          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+        >
+          OTEVŘÍT KLIENTY
+        </Link>
+      </div>
     </section>
   )
 }
@@ -560,15 +585,11 @@ function LatestCommentsCard({
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-5">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-          Teamwork
-        </div>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-          Nejnovější komentáře
-        </h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Poslední komentáře z úkolů a schůzek, ke kterým máš přístup.
-        </p>
+        <DashboardSectionHeader
+          eyebrow="Teamwork"
+          title="Nejnovější komentáře"
+          description="Poslední komentáře z úkolů a schůzek, ke kterým máš přístup."
+        />
       </div>
 
       {comments.length === 0 ? (
@@ -581,7 +602,7 @@ function LatestCommentsCard({
             <Link
               key={comment.id}
               href={getCommentHref(comment)}
-              className="block rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
+              className="block rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
@@ -871,186 +892,183 @@ export default async function DashboardPage() {
   const weeklyMeetingsCount = weeklyMeetingsCountResponse.count ?? 0
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-6 text-zinc-900 md:px-10 md:py-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-6 p-6 md:p-7 lg:flex-row lg:items-center lg:justify-between lg:p-8">
-            <div>
-              <Link href="/dashboard" className="inline-flex flex-col items-start">
-                <Image
-                  src="/logo.png"
-                  alt="B-ENERGY"
-                  width={150}
-                  height={42}
-                  priority
-                  className="h-7 w-auto transition hover:opacity-80"
-                />
-                <div className="mt-2 w-[150px] whitespace-nowrap text-center text-sm font-semibold uppercase tracking-[0.26em] text-zinc-900">
-                  MY MINI CRM. #nebo ne?
+    <main className="min-h-screen bg-zinc-100 text-zinc-900">
+      <div className="px-6 py-6 md:px-10 md:py-10">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-6 p-6 md:p-7 lg:flex-row lg:items-start lg:justify-between lg:p-8">
+              <div className="lg:pt-1">
+                <Link href="/dashboard" className="inline-flex flex-col items-start">
+                  <Image
+                    src="/logo.png"
+                    alt="B-ENERGY"
+                    width={150}
+                    height={42}
+                    priority
+                    className="h-7 w-auto transition hover:opacity-80"
+                  />
+                  <div className="mt-1.5 text-left text-[13px] font-semibold uppercase tracking-[0.18em] text-zinc-800">
+                    MY MINI CRM. #nebo ne?
+                  </div>
+                </Link>
+              </div>
+
+              <div className="w-full max-w-[360px] rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1.5 text-xs text-zinc-500">
+                    <div>
+                      Uživatel:{' '}
+                      <span className="font-medium text-zinc-900">
+                        {profile?.name ?? user.email}
+                      </span>
+                    </div>
+                    <div>
+                      Role:{' '}
+                      <span className="font-medium uppercase text-zinc-900">
+                        {profile?.role ?? 'neuvedeno'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 flex-col gap-2">
+                    <Link
+                      href="/settings/password"
+                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-100 hover:text-zinc-950"
+                    >
+                      ZMĚNIT HESLO
+                    </Link>
+
+                    <form action="/auth/signout" method="post" className="shrink-0">
+                      <button className="inline-flex min-h-[40px] w-full items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-xs font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800">
+                        ODHLÁSIT SE
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              </Link>
+              </div>
             </div>
+          </section>
 
-            <div className="w-full max-w-[340px] rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1 text-xs text-zinc-500">
-                  <div>
-                    Uživatel:{' '}
-                    <span className="font-medium text-zinc-900">
-                      {profile?.name ?? user.email}
-                    </span>
-                  </div>
-                  <div>
-                    Role:{' '}
-                    <span className="font-medium uppercase text-zinc-900">
-                      {profile?.role ?? 'neuvedeno'}
-                    </span>
-                  </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <div className="space-y-6">
+              <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+                <div className="mb-5">
+                  <DashboardSectionHeader
+                    eyebrow="Úkoly"
+                    title="Moje úkoly"
+                    description="Nejbližší aktivní úkoly, které jsou aktuálně přiřazené tobě."
+                  />
                 </div>
 
-                <div className="flex shrink-0 flex-col gap-2">
+                <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                  <DashboardStatCard
+                    label="Aktivní úkoly"
+                    value={activeTasksCount}
+                    highlighted
+                  />
+                  <DashboardStatCard
+                    label="Úkoly po termínu"
+                    value={overdueTasksCount}
+                  />
+                </div>
+
+                {tasks.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                    Nemáš žádné aktivní úkoly.
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {tasks.map((task) => (
+                      <DashboardTaskItem key={task.id} task={task} />
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-3">
                   <Link
-                    href="/settings/password"
-                    className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-xs font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+                    href="/tasks"
+                    className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
                   >
-                    ZMĚNIT HESLO
+                    VŠECHNY ÚKOLY
                   </Link>
 
-                  <form action="/auth/signout" method="post" className="shrink-0">
-                    <button className="inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-3.5 py-2 text-xs font-medium tracking-wide text-white transition hover:bg-zinc-800">
-                      ODHLÁSIT SE
-                    </button>
-                  </form>
+                  <Link
+                    href="/tasks/new"
+                    className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-50 hover:text-zinc-950"
+                  >
+                    NOVÝ ÚKOL
+                  </Link>
                 </div>
-              </div>
+              </section>
+
+              <DashboardMiniCalendar meetings={monthMeetings} />
             </div>
-          </div>
-        </section>
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div className="space-y-6">
-            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-              <div className="mb-5 flex items-end justify-between gap-4">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                    Přehled
+            <div className="space-y-6">
+              <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+                <div className="mb-5">
+                  <DashboardSectionHeader
+                    eyebrow="Schůzky"
+                    title="Moje nejbližší schůzky"
+                    description="Pět nejbližších plánovaných schůzek."
+                  />
+                </div>
+
+                <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                  <DashboardStatCard
+                    label="Schůzky dnes"
+                    value={todayMeetingsCount}
+                    highlighted
+                  />
+                  <DashboardStatCard
+                    label="Schůzky tento týden"
+                    value={weeklyMeetingsCount}
+                  />
+                </div>
+
+                {meetings.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                    Nemáš žádné nadcházející schůzky.
                   </div>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                    Moje úkoly
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Nejbližší aktivní úkoly, které jsou aktuálně přiřazené tobě.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                <DashboardStatCard
-                  label="Aktivní úkoly"
-                  value={activeTasksCount}
-                  highlighted
-                />
-                <DashboardStatCard
-                  label="Úkoly po termínu"
-                  value={overdueTasksCount}
-                />
-              </div>
-
-              {tasks.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-                  Nemáš žádné aktivní úkoly.
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {tasks.map((task) => (
-                    <DashboardTaskItem key={task.id} task={task} />
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="/tasks"
-                  className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800"
-                >
-                  VŠECHNY ÚKOLY
-                </Link>
-
-                <Link
-                  href="/tasks/new"
-                  className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-                >
-                  NOVÝ ÚKOL
-                </Link>
-              </div>
-            </section>
-
-            <DashboardMiniCalendar meetings={monthMeetings} />
-          </div>
-
-          <div className="space-y-6">
-            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-              <div className="mb-5 flex items-end justify-between gap-4">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                    Schůzky
+                ) : (
+                  <div className="grid gap-2.5">
+                    {meetings.map((meeting) => (
+                      <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                    ))}
                   </div>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                    Moje nejbližší schůzky
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Pět nejbližších plánovaných schůzek.
-                  </p>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href="/meetings"
+                    className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                  >
+                    VŠECHNY SCHŮZKY
+                  </Link>
+
+                  <Link
+                    href="/meetings/new"
+                    className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-50 hover:text-zinc-950"
+                  >
+                    NOVÁ SCHŮZKA
+                  </Link>
                 </div>
-              </div>
+              </section>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                <DashboardStatCard
-                  label="Schůzky dnes"
-                  value={todayMeetingsCount}
-                  highlighted
-                />
-                <DashboardStatCard
-                  label="Schůzky tento týden"
-                  value={weeklyMeetingsCount}
-                />
-              </div>
+              <ClientsCard />
 
-              {meetings.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-                  Nemáš žádné nadcházející schůzky.
-                </div>
-              ) : (
-                <div className="grid gap-2.5">
-                  {meetings.map((meeting) => (
-                    <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="/meetings"
-                  className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800"
-                >
-                  VŠECHNY SCHŮZKY
-                </Link>
-
-                <Link
-                  href="/meetings/new"
-                  className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-                >
-                  NOVÁ SCHŮZKA
-                </Link>
-              </div>
-            </section>
-
-            <ClientsCard />
-
-            <LatestCommentsCard comments={recentComments} />
+              <LatestCommentsCard comments={recentComments} />
+            </div>
           </div>
         </div>
       </div>
+
+      <footer className="border-t border-white/10 bg-zinc-950 px-6 py-5 md:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
+          <div>B-ENERGY CRM — coding by blaster</div>
+          <div>v1.0.0</div>
+        </div>
+      </footer>
     </main>
   )
 }

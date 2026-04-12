@@ -105,7 +105,7 @@ export default function TaskCard({ task }: TaskCardProps) {
   const { isToday, isOverdue } = getDueDateState(task.due_date, task.status)
 
   const cardClassName = [
-    'rounded-2xl border bg-white p-5 shadow-sm transition',
+    'rounded-2xl border bg-white px-4 py-4 shadow-sm transition',
     isOverdue
       ? 'border-red-300 bg-red-50/40'
       : isToday
@@ -114,7 +114,7 @@ export default function TaskCard({ task }: TaskCardProps) {
   ].join(' ')
 
   const dueBadgeClassName = [
-    'inline-flex items-center rounded-full px-3 py-1 text-xs font-medium',
+    'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
     isOverdue
       ? 'bg-red-100 text-red-700'
       : isToday
@@ -127,100 +127,113 @@ export default function TaskCard({ task }: TaskCardProps) {
 
   return (
     <div className={cardClassName}>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-semibold text-zinc-950">{task.title}</h3>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-semibold leading-tight text-zinc-950 md:text-lg">
+                {task.title}
+              </h3>
 
-            <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
-              💬 {task.comment_count}
-            </span>
+              <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+                💬 {task.comment_count}
+              </span>
+            </div>
+
+            <div className="mt-2 grid gap-x-4 gap-y-1 text-sm text-zinc-500 sm:grid-cols-2">
+              <p>
+                <span className="text-zinc-400">Klient:</span> {clientName}
+              </p>
+              <p>
+                <span className="text-zinc-400">Přiřazeno:</span> {assigneeName}
+              </p>
+              <p>
+                <span className="text-zinc-400">Zadal:</span> {creatorName}
+              </p>
+              {task.contact_person ? (
+                <p>
+                  <span className="text-zinc-400">Kontakt:</span> {task.contact_person}
+                </p>
+              ) : null}
+            </div>
           </div>
 
-          <div className="mt-2 space-y-1 text-sm text-zinc-500">
-            <p>Klient: {clientName}</p>
-            <p>Zadal: {creatorName}</p>
-            <p>Přiřazeno: {assigneeName}</p>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
+            >
+              {getStatusLabel(task.status)}
+            </span>
 
-            {task.contact_person ? (
-              <p>Kontaktní osoba: {task.contact_person}</p>
-            ) : null}
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
+            >
+              Priorita: {getPriorityLabel(task.priority)}
+            </span>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
-          >
-            {getStatusLabel(task.status)}
-          </span>
-
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
-          >
-            Priorita: {getPriorityLabel(task.priority)}
-          </span>
-        </div>
-      </div>
-
-      {task.note ? (
-        <p className="mb-4 whitespace-pre-wrap text-sm leading-6 text-zinc-700">
-          {task.note}
-        </p>
-      ) : null}
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className={dueBadgeClassName}>
-          Termín: {formatDueDate(task.due_date)}
-        </span>
-
-        {isOverdue ? (
-          <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
-            Po termínu
-          </span>
+        {task.note ? (
+          <div className="rounded-xl bg-zinc-50 px-3 py-2.5">
+            <p className="whitespace-pre-wrap text-sm leading-5 text-zinc-700">
+              {task.note}
+            </p>
+          </div>
         ) : null}
 
-        {isToday ? (
-          <span className="inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700">
-            Dnes
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={dueBadgeClassName}>
+            Termín: {formatDueDate(task.due_date)}
           </span>
-        ) : null}
-      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/tasks/${task.id}`}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-          >
-            Detail
-          </Link>
-
-          <Link
-            href={`/tasks/${task.id}/edit`}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-          >
-            Upravit
-          </Link>
-
-          {task.status !== 'done' ? (
-            <form action={completeTaskAction}>
-              <button className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800">
-                Dokončit
-              </button>
-            </form>
-          ) : (
-            <span className="inline-flex items-center rounded-lg bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">
-              Vyřešeno
+          {isOverdue ? (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
+              Po termínu
             </span>
-          )}
+          ) : null}
+
+          {isToday ? (
+            <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
+              Dnes
+            </span>
+          ) : null}
         </div>
 
-        <form action={deleteTaskAction}>
-          <button className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
-            Smazat
-          </button>
-        </form>
+        <div className="flex flex-col gap-2 border-t border-zinc-200/80 pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/tasks/${task.id}`}
+              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
+            >
+              Detail
+            </Link>
+
+            <Link
+              href={`/tasks/${task.id}/edit`}
+              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
+            >
+              Upravit
+            </Link>
+
+            {task.status !== 'done' ? (
+              <form action={completeTaskAction}>
+                <button className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800">
+                  Dokončit
+                </button>
+              </form>
+            ) : (
+              <span className="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                Vyřešeno
+              </span>
+            )}
+          </div>
+
+          <form action={deleteTaskAction}>
+            <button className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
+              Smazat
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )
