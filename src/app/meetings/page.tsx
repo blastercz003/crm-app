@@ -5,7 +5,14 @@ import {
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
 
-type MeetingRow = {
+type SearchParams = {
+  view?: string
+  scope?: string
+  owner?: string
+  search?: string
+}
+
+type MeetingRowBase = {
   id: string
   company_name: string | null
   contact_person: string | null
@@ -18,7 +25,7 @@ type MeetingRow = {
   result_note: string | null
   follow_up_task: string | null
   status: 'planned' | 'completed'
-  comment_count: number
+  assigned_user_id: string | null
   client:
     | {
         id: string
@@ -27,7 +34,14 @@ type MeetingRow = {
     | null
 }
 
+type MeetingRow = MeetingRowBase & {
+  comment_count: number
+  assigned_user_name: string | null
+}
+
 type ProfileRow = {
+  id: string
+  name: string | null
   role: string | null
 }
 
@@ -66,8 +80,9 @@ function trimText(text: string, max = 120) {
 }
 
 function attachCommentCounts(
-  meetings: Omit<MeetingRow, 'comment_count'>[],
-  commentEntityIds: string[]
+  meetings: MeetingRowBase[],
+  commentEntityIds: string[],
+  profileNameById: Map<string, string>
 ): MeetingRow[] {
   const commentCountByMeetingId = new Map<string, number>()
 
@@ -81,10 +96,100 @@ function attachCommentCounts(
   return meetings.map((meeting) => ({
     ...meeting,
     comment_count: commentCountByMeetingId.get(meeting.id) ?? 0,
+    assigned_user_name: meeting.assigned_user_id
+      ? (profileNameById.get(meeting.assigned_user_id) ?? null)
+      : null,
   }))
 }
 
-function MeetingListItem({ meeting }: { meeting: MeetingRow }) {
+function getTabHref(
+  currentParams: SearchParams,
+  updates: Partial<SearchParams>
+) {
+  const params = new URLSearchParams()
+
+  const next: SearchParams = {
+    view: currentParams.view,
+    scope: currentParams.scope,
+    owner: currentParams.owner,
+    search: currentParams.search,
+    ...updates,
+  }
+
+  if (next.view && next.view !== 'all') {
+    params.set('view', next.view)
+  }
+
+  if (next.scope && next.scope !== 'mine') {
+    params.set('scope', next.scope)
+  }
+
+  if (next.owner) {
+    params.set('owner', next.owner)
+  }
+
+  if (next.search?.trim()) {
+    params.set('search', next.search.trim())
+  }
+
+  const query = params.toString()
+  return query ? `/meetings?${query}` : '/meetings'
+}
+
+function isTabActive(
+  currentValue: string | undefined,
+  expectedValue: string,
+  defaultValue: string
+) {
+  return (currentValue ?? defaultValue) === expectedValue
+}
+
+function FilterTab({
+  href,
+  label,
+  active,
+}: {
+  href: string
+  label: string
+  active: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={[
+        'inline-flex items-center rounded-2xl px-4 py-2 text-sm font-medium transition',
+        active
+          ? 'bg-zinc-900 text-white shadow-sm'
+          : 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900',
+      ].join(' ')}
+    >
+      {label}
+    </Link>
+  )
+}
+
+function StatCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-zinc-900">{value}</div>
+    </div>
+  )
+}
+
+function MeetingListItem({
+  meeting,
+  isAdminView,
+}: {
+  meeting: MeetingRow
+  isAdminView: boolean
+}) {
   const preview = trimText(getPreviewText(meeting))
   const hasTask = Boolean(meeting.follow_up_task?.trim())
 
@@ -141,6 +246,12 @@ function MeetingListItem({ meeting }: { meeting: MeetingRow }) {
                 <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
                   💬 {meeting.comment_count}
                 </span>
+
+                {isAdminView && meeting.assigned_user_name ? (
+                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-600">
+                    👤 {meeting.assigned_user_name}
+                  </span>
+                ) : null}
               </div>
 
               <div className="mt-1 text-sm text-zinc-600">
@@ -157,8 +268,10 @@ function MeetingListItem({ meeting }: { meeting: MeetingRow }) {
               </div>
 
               <div className="mt-3 text-xs text-zinc-400">
-                {meeting.status === 'planned' ? 'Nadcházející schůzka' : 'Uzavřená schůzka'} ·{' '}
-                {formatDateTime(meeting.meeting_datetime)}
+                {meeting.status === 'planned'
+                  ? 'Nadcházející schůzka'
+                  : 'Uzavřená schůzka'}{' '}
+                · {formatDateTime(meeting.meeting_datetime)}
               </div>
             </div>
 
@@ -173,22 +286,23 @@ function MeetingListItem({ meeting }: { meeting: MeetingRow }) {
   )
 }
 
-function StatCard({
-  label,
-  value,
+export default async function MeetingsPage({
+  searchParams,
 }: {
-  label: string
-  value: number
+  searchParams?: Promise<SearchParams>
 }) {
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-zinc-900">{value}</div>
-    </div>
-  )
-}
+  const params = (await searchParams) ?? {}
 
-export default async function MeetingsPage() {
+  const rawView = params.view
+  const rawScope = params.scope
+  const rawOwner = params.owner
+  const rawSearch = params.search?.trim() ?? ''
+
+  const view: 'all' | 'planned' | 'completed' =
+    rawView === 'planned' || rawView === 'completed' ? rawView : 'all'
+
+  const requestedScope: 'mine' | 'team' = rawScope === 'team' ? 'team' : 'mine'
+
   const supabase = await createClient()
 
   const {
@@ -201,7 +315,7 @@ export default async function MeetingsPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role')
+    .select('id, name, role')
     .eq('id', user.id)
     .single<ProfileRow>()
 
@@ -210,6 +324,22 @@ export default async function MeetingsPage() {
   }
 
   const isAdmin = profile?.role === 'admin'
+  const scope: 'mine' | 'team' = isAdmin ? requestedScope : 'mine'
+  const isAdminTeamView = isAdmin && scope === 'team'
+
+  const { data: allProfiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, name, role')
+    .order('name', { ascending: true })
+
+  if (profilesError) {
+    throw new Error(`Nepodařilo se načíst seznam uživatelů: ${profilesError.message}`)
+  }
+
+  const profileRows = (allProfiles ?? []) as ProfileRow[]
+  const profileNameById = new Map(
+    profileRows.map((item) => [item.id, item.name ?? 'Bez jména'])
+  )
 
   const meetingSelect = `
     id,
@@ -224,6 +354,7 @@ export default async function MeetingsPage() {
     result_note,
     follow_up_task,
     status,
+    assigned_user_id,
     client:clients (
       id,
       name
@@ -242,9 +373,32 @@ export default async function MeetingsPage() {
     .eq('status', 'completed')
     .order('meeting_datetime', { ascending: false })
 
-  if (!isAdmin) {
+  if (scope === 'mine') {
     plannedQuery = plannedQuery.eq('assigned_user_id', user.id)
     completedQuery = completedQuery.eq('assigned_user_id', user.id)
+  }
+
+  if (isAdminTeamView && rawOwner) {
+    plannedQuery = plannedQuery.eq('assigned_user_id', rawOwner)
+    completedQuery = completedQuery.eq('assigned_user_id', rawOwner)
+  }
+
+  if (rawSearch) {
+    const escaped = rawSearch.replaceAll(',', ' ').trim()
+    const searchFilter = [
+      `company_name.ilike.%${escaped}%`,
+      `contact_person.ilike.%${escaped}%`,
+      `contact_phone.ilike.%${escaped}%`,
+      `contact_email.ilike.%${escaped}%`,
+      `title.ilike.%${escaped}%`,
+      `address.ilike.%${escaped}%`,
+      `pre_meeting_note.ilike.%${escaped}%`,
+      `result_note.ilike.%${escaped}%`,
+      `follow_up_task.ilike.%${escaped}%`,
+    ].join(',')
+
+    plannedQuery = plannedQuery.or(searchFilter)
+    completedQuery = completedQuery.or(searchFilter)
   }
 
   const [plannedResponse, completedResponse] = await Promise.all([
@@ -264,14 +418,8 @@ export default async function MeetingsPage() {
     )
   }
 
-  const plannedMeetingsBase = (plannedResponse.data ?? []) as Omit<
-    MeetingRow,
-    'comment_count'
-  >[]
-  const completedMeetingsBase = (completedResponse.data ?? []) as Omit<
-    MeetingRow,
-    'comment_count'
-  >[]
+  const plannedMeetingsBase = (plannedResponse.data ?? []) as MeetingRowBase[]
+  const completedMeetingsBase = (completedResponse.data ?? []) as MeetingRowBase[]
 
   const allMeetingIds = [
     ...plannedMeetingsBase.map((meeting) => meeting.id),
@@ -296,17 +444,34 @@ export default async function MeetingsPage() {
 
   const plannedMeetings = attachCommentCounts(
     plannedMeetingsBase,
-    commentEntityIds
-  )
-  const completedMeetings = attachCommentCounts(
-    completedMeetingsBase,
-    commentEntityIds
+    commentEntityIds,
+    profileNameById
   )
 
-  const totalCount = plannedMeetings.length + completedMeetings.length
+  const completedMeetings = attachCommentCounts(
+    completedMeetingsBase,
+    commentEntityIds,
+    profileNameById
+  )
+
+  const visiblePlannedMeetings =
+    view === 'all' || view === 'planned' ? plannedMeetings : []
+
+  const visibleCompletedMeetings =
+    view === 'all' || view === 'completed' ? completedMeetings : []
+
+  const totalCount = visiblePlannedMeetings.length + visibleCompletedMeetings.length
+
   const taskCount =
-    plannedMeetings.filter((m) => m.follow_up_task?.trim()).length +
-    completedMeetings.filter((m) => m.follow_up_task?.trim()).length
+    visiblePlannedMeetings.filter((m) => m.follow_up_task?.trim()).length +
+    visibleCompletedMeetings.filter((m) => m.follow_up_task?.trim()).length
+
+  const ownerOptions = profileRows.filter((item) => item.role !== 'admin' || item.id === user.id)
+
+  const ownerLabel =
+    rawOwner && profileNameById.get(rawOwner)
+      ? profileNameById.get(rawOwner)
+      : 'Všichni'
 
   return (
     <main className="min-h-screen bg-zinc-100 px-6 py-6 text-zinc-900 md:px-10 md:py-10">
@@ -317,13 +482,15 @@ export default async function MeetingsPage() {
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Agenda
               </div>
+
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
                 Schůzky
               </h1>
+
               <p className="mt-2 text-sm text-zinc-500">
-                {isAdmin
-                  ? 'Přehled plánovaných a proběhlých schůzek všech uživatelů.'
-                  : 'Přehled vašich plánovaných a proběhlých schůzek.'}
+                {isAdminTeamView
+                  ? 'Přehled plánovaných i proběhlých schůzek celého týmu.'
+                  : 'Přehled vašich plánovaných i proběhlých schůzek.'}
               </p>
             </div>
 
@@ -345,70 +512,223 @@ export default async function MeetingsPage() {
           </div>
         </section>
 
+        <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div className="space-y-3">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                    Zobrazení
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                    Přehled schůzek
+                  </h2>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <FilterTab
+                    href={getTabHref(params, { view: 'all' })}
+                    label="Vše"
+                    active={isTabActive(params.view, 'all', 'all')}
+                  />
+                  <FilterTab
+                    href={getTabHref(params, { view: 'planned' })}
+                    label="Plánované"
+                    active={isTabActive(params.view, 'planned', 'all')}
+                  />
+                  <FilterTab
+                    href={getTabHref(params, { view: 'completed' })}
+                    label="Proběhlé"
+                    active={isTabActive(params.view, 'completed', 'all')}
+                  />
+                </div>
+
+                {isAdmin ? (
+                  <div className="flex flex-wrap gap-2">
+                    <FilterTab
+                      href={getTabHref(params, {
+                        scope: 'mine',
+                        owner: '',
+                      })}
+                      label="Moje schůzky"
+                      active={isTabActive(params.scope, 'mine', 'mine')}
+                    />
+                    <FilterTab
+                      href={getTabHref(params, { scope: 'team' })}
+                      label="Všechny schůzky"
+                      active={isTabActive(params.scope, 'team', 'mine')}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <form method="get" className="grid gap-3 sm:grid-cols-2 xl:w-[620px]">
+                <input type="hidden" name="view" value={view} />
+                <input type="hidden" name="scope" value={scope} />
+
+                <div className="sm:col-span-2">
+                  <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
+                    Hledat
+                  </label>
+                  <input
+                    type="text"
+                    name="search"
+                    defaultValue={rawSearch}
+                    placeholder="Firma, osoba, telefon, e-mail, poznámka..."
+                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
+                  />
+                </div>
+
+                {isAdminTeamView ? (
+                  <div>
+                    <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
+                      Obchodník
+                    </label>
+                    <select
+                      name="owner"
+                      defaultValue={rawOwner ?? ''}
+                      className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
+                    >
+                      <option value="">Všichni</option>
+                      {ownerOptions.map((profileItem) => (
+                        <option key={profileItem.id} value={profileItem.id}>
+                          {profileItem.name ?? 'Bez jména'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                <div className={isAdminTeamView ? '' : 'sm:col-span-2'}>
+                  <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
+                    Akce
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-zinc-800"
+                    >
+                      Filtrovat
+                    </button>
+
+                    <Link
+                      href={
+                        isAdminTeamView
+                          ? getTabHref(
+                              { view, scope: 'team' },
+                              { search: '', owner: '' }
+                            )
+                          : getTabHref({ view, scope }, { search: '' })
+                      }
+                      className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
+                    >
+                      Reset
+                    </Link>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
+              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1">
+                Pohled: {view === 'all' ? 'Vše' : view === 'planned' ? 'Plánované' : 'Proběhlé'}
+              </span>
+
+              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1">
+                Rozsah: {scope === 'team' ? 'Všechny schůzky' : 'Moje schůzky'}
+              </span>
+
+              {isAdminTeamView ? (
+                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1">
+                  Uživatel: {ownerLabel}
+                </span>
+              ) : null}
+
+              {rawSearch ? (
+                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1">
+                  Hledání: {rawSearch}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
         <section className="flex flex-wrap gap-3">
-          <StatCard label="Celkem schůzek" value={totalCount} />
-          <StatCard label="Plánované" value={plannedMeetings.length} />
-          <StatCard label="Proběhlé" value={completedMeetings.length} />
+          <StatCard label="Celkem zobrazeno" value={totalCount} />
+          <StatCard label="Plánované" value={visiblePlannedMeetings.length} />
+          <StatCard label="Proběhlé" value={visibleCompletedMeetings.length} />
           <StatCard label="S úkolem" value={taskCount} />
         </section>
 
-        <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Aktuální agenda
+        {(view === 'all' || view === 'planned') && (
+          <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                  Aktuální agenda
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                  Plánované
+                </h2>
               </div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                Plánované
-              </h2>
+
+              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-sm text-zinc-500">
+                {visiblePlannedMeetings.length}
+              </span>
             </div>
 
-            <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-sm text-zinc-500">
-              {plannedMeetings.length}
-            </span>
-          </div>
-
-          {plannedMeetings.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-              Zatím tu není žádná plánovaná schůzka.
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {plannedMeetings.map((meeting) => (
-                <MeetingListItem key={meeting.id} meeting={meeting} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Historie
+            {visiblePlannedMeetings.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                Pro zadaný filtr tu není žádná plánovaná schůzka.
               </div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                Proběhlé
-              </h2>
+            ) : (
+              <div className="grid gap-3">
+                {visiblePlannedMeetings.map((meeting) => (
+                  <MeetingListItem
+                    key={meeting.id}
+                    meeting={meeting}
+                    isAdminView={isAdminTeamView}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {(view === 'all' || view === 'completed') && (
+          <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                  Historie
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                  Proběhlé
+                </h2>
+              </div>
+
+              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-sm text-zinc-500">
+                {visibleCompletedMeetings.length}
+              </span>
             </div>
 
-            <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-sm text-zinc-500">
-              {completedMeetings.length}
-            </span>
-          </div>
-
-          {completedMeetings.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-              Zatím tu není žádná proběhlá schůzka.
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {completedMeetings.map((meeting) => (
-                <MeetingListItem key={meeting.id} meeting={meeting} />
-              ))}
-            </div>
-          )}
-        </section>
+            {visibleCompletedMeetings.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                Pro zadaný filtr tu není žádná proběhlá schůzka.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {visibleCompletedMeetings.map((meeting) => (
+                  <MeetingListItem
+                    key={meeting.id}
+                    meeting={meeting}
+                    isAdminView={isAdminTeamView}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </main>
   )
