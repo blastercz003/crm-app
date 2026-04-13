@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import CalendarClient, { type CalendarEvent } from './calendar-client'
 
+const PRAGUE_TIME_ZONE = 'Europe/Prague'
+
 type CalendarMeetingRow = {
   id: string
   company_name: string | null
@@ -23,6 +25,40 @@ function buildEventTitle(meeting: CalendarMeetingRow) {
   if (company) return company
   if (person) return person
   return title || 'Schůzka'
+}
+
+function convertUtcMeetingDateToPragueCalendarStart(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Schůzka má neplatný formát data.')
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: PRAGUE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+
+  const parts = formatter.formatToParts(date)
+
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  const hour = parts.find((part) => part.type === 'hour')?.value
+  const minute = parts.find((part) => part.type === 'minute')?.value
+  const second = parts.find((part) => part.type === 'second')?.value
+
+  if (!year || !month || !day || !hour || !minute || !second) {
+    throw new Error('Nepodařilo se převést datum schůzky pro kalendář.')
+  }
+
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}`
 }
 
 export default async function CalendarPage() {
@@ -66,7 +102,9 @@ export default async function CalendarPage() {
       return {
         id: meeting.id,
         title: buildEventTitle(meeting),
-        start: meeting.meeting_datetime as string,
+        start: convertUtcMeetingDateToPragueCalendarStart(
+          meeting.meeting_datetime as string
+        ),
         editable: !isCompleted,
         classNames: [isCompleted ? 'fc-event-completed' : 'fc-event-planned'],
         extendedProps: {
