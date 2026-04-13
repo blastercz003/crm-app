@@ -15,7 +15,16 @@ function normalizeStatus(value: FormDataEntryValue | null) {
 
 function normalizeDateTime(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
-  return text.length > 0 ? new Date(text).toISOString() : null
+
+  if (text.length === 0) return null
+
+  const date = new Date(text)
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Datum a čas schůzky má neplatný formát.')
+  }
+
+  return text
 }
 
 function normalizeClientId(value: FormDataEntryValue | null) {
@@ -169,7 +178,9 @@ async function syncMeetingFollowUpTask(params: {
         .eq('id', existingTask.id)
 
       if (error) {
-        throw new Error(`Nepodařilo se aktualizovat task ze schůzky: ${error.message}`)
+        throw new Error(
+          `Nepodařilo se aktualizovat task ze schůzky: ${error.message}`
+        )
       }
     } else {
       const { error } = await supabase.from('tasks').insert({
@@ -188,10 +199,7 @@ async function syncMeetingFollowUpTask(params: {
       }
     }
   } else if (existingTask?.id) {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', existingTask.id)
+    const { error } = await supabase.from('tasks').delete().eq('id', existingTask.id)
 
     if (error) {
       throw new Error(`Nepodařilo se odstranit task ze schůzky: ${error.message}`)
@@ -260,7 +268,9 @@ export async function createMeeting(formData: FormData) {
     .single()
 
   if (error || !data) {
-    throw new Error(`Nepodařilo se vytvořit schůzku: ${error?.message ?? 'Neznámá chyba'}`)
+    throw new Error(
+      `Nepodařilo se vytvořit schůzku: ${error?.message ?? 'Neznámá chyba'}`
+    )
   }
 
   await syncMeetingFollowUpTask({
@@ -360,7 +370,9 @@ export async function updateMeeting(formData: FormData) {
     .single()
 
   if (error || !data) {
-    throw new Error(`Nepodařilo se uložit schůzku: ${error?.message ?? 'Neznámá chyba'}`)
+    throw new Error(
+      `Nepodařilo se uložit schůzku: ${error?.message ?? 'Neznámá chyba'}`
+    )
   }
 
   await syncMeetingFollowUpTask({
@@ -417,13 +429,12 @@ export async function deleteMeeting(formData: FormData) {
     .eq('source', 'meeting')
 
   if (taskDeleteError) {
-    throw new Error(`Nepodařilo se odstranit navázaný task: ${taskDeleteError.message}`)
+    throw new Error(
+      `Nepodařilo se odstranit navázaný task: ${taskDeleteError.message}`
+    )
   }
 
-  const { error } = await supabase
-    .from('meetings')
-    .delete()
-    .eq('id', id)
+  const { error } = await supabase.from('meetings').delete().eq('id', id)
 
   if (error) {
     throw new Error(`Nepodařilo se smazat schůzku: ${error.message}`)

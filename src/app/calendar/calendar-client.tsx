@@ -96,6 +96,7 @@ export default function CalendarClient({ events }: CalendarClientProps) {
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
           locale={csLocale}
+          timeZone="local"
           firstDay={1}
           weekends
           nowIndicator
