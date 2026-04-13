@@ -980,7 +980,7 @@ export default async function DashboardPage() {
         follow_up_task,
         status
       `)
-      .eq('status', 'planned')
+      .in('status', ['planned', 'completed'])
       .eq('assigned_user_id', user.id)
       .gte('meeting_datetime', monthStart)
       .lt('meeting_datetime', monthEnd)
@@ -1293,7 +1293,7 @@ export default async function DashboardPage() {
       <footer className="border-t border-white/10 bg-zinc-950 px-6 py-5 md:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY CRM — coding by blaster</div>
-          <div>v1.0.0</div>
+          <div>v1.0.1</div>
         </div>
       </footer>
     </main>
