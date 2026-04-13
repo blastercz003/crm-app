@@ -13,6 +13,8 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+const PRAGUE_TIME_ZONE = 'Europe/Prague'
+
 type ProfileRef = {
   id: string
   name: string | null
@@ -64,29 +66,214 @@ type CalendarDay = {
   meetings: DashboardMeeting[]
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) return 'Bez termínu'
+type PragueDateParts = {
+  year: number
+  month: number
+  day: number
+}
+
+function parseDate(value: string | null) {
+  if (!value) return null
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return date
+}
+
+function getPragueOffsetMinutes(dateUtc: Date) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: PRAGUE_TIME_ZONE,
+    timeZoneName: 'shortOffset',
+  })
+
+  const parts = formatter.formatToParts(dateUtc)
+  const timeZoneName = parts.find((part) => part.type === 'timeZoneName')?.value
+
+  if (!timeZoneName) {
+    throw new Error('Nepodařilo se určit časové pásmo Europe/Prague.')
+  }
+
+  if (timeZoneName === 'GMT' || timeZoneName === 'UTC') {
+    return 0
+  }
+
+  const match = timeZoneName.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/)
+
+  if (!match) {
+    throw new Error('Nepodařilo se zpracovat offset časového pásma Europe/Prague.')
+  }
+
+  const sign = match[1] === '-' ? -1 : 1
+  const hours = Number(match[2])
+  const minutes = Number(match[3] ?? '0')
+
+  return sign * (hours * 60 + minutes)
+}
+
+function convertPragueLocalPartsToUtcIsoString(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0
+) {
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second))
+
+  if (Number.isNaN(utcGuess.getTime())) {
+    throw new Error('Nepodařilo se vytvořit datum pro Europe/Prague.')
+  }
+
+  const offsetMinutes = getPragueOffsetMinutes(utcGuess)
+
+  const correctedUtcDate = new Date(
+    Date.UTC(year, month - 1, day, hour, minute, second) - offsetMinutes * 60_000
+  )
+
+  if (Number.isNaN(correctedUtcDate.getTime())) {
+    throw new Error('Nepodařilo se vytvořit datum pro Europe/Prague.')
+  }
+
+  return correctedUtcDate.toISOString()
+}
+
+function getPragueDateParts(date: Date): PragueDateParts {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: PRAGUE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+
+  const parts = formatter.formatToParts(date)
+
+  const year = Number(parts.find((part) => part.type === 'year')?.value)
+  const month = Number(parts.find((part) => part.type === 'month')?.value)
+  const day = Number(parts.find((part) => part.type === 'day')?.value)
+
+  return { year, month, day }
+}
+
+function getPragueWeekday(date: Date) {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: PRAGUE_TIME_ZONE,
+    weekday: 'short',
+  }).format(date)
+
+  const map: Record<string, number> = {
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+    Sun: 7,
+  }
+
+  return map[weekday] ?? 1
+}
+
+function createDateCarrier(year: number, month: number, day: number) {
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+}
+
+function addDaysToCarrier(date: Date, days: number) {
+  const next = new Date(date)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
+}
+
+function toCarrierKey(date: Date) {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function isSameCarrierDay(a: Date, b: Date) {
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate()
+  )
+}
+
+function formatInPrague(
+  value: string | null,
+  options: Intl.DateTimeFormatOptions,
+  fallback = 'Bez termínu'
+) {
+  const date = parseDate(value)
+
+  if (!date) return fallback
 
   return new Intl.DateTimeFormat('cs-CZ', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+    ...options,
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+}
+
+function formatDateTime(value: string | null) {
+  return formatInPrague(
+    value,
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    },
+    'Bez termínu'
+  )
 }
 
 function formatShortDateTime(value: string) {
-  return new Intl.DateTimeFormat('cs-CZ', {
+  return formatInPrague(value, {
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(value))
+  })
 }
 
 function formatMeetingTime(value: string | null) {
-  if (!value) return 'Bez času'
+  return formatInPrague(
+    value,
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+    },
+    'Bez času'
+  )
+}
 
-  return new Intl.DateTimeFormat('cs-CZ', {
+function getMeetingDateParts(value: string | null) {
+  const date = parseDate(value)
+
+  if (!date) {
+    return {
+      day: '--',
+      month: 'bez data',
+      time: 'Bez času',
+    }
+  }
+
+  const day = new Intl.DateTimeFormat('cs-CZ', {
+    day: '2-digit',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+
+  const month = new Intl.DateTimeFormat('cs-CZ', {
+    month: 'short',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+
+  const time = new Intl.DateTimeFormat('cs-CZ', {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value))
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+
+  return { day, month, time }
 }
 
 function truncateText(value: string | null, maxLength = 140) {
@@ -116,96 +303,145 @@ function getCommentHref(comment: DashboardComment) {
 
 function getCurrentWeekRange() {
   const now = new Date()
-  const currentDay = now.getDay()
-  const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay
+  const todayParts = getPragueDateParts(now)
+  const weekday = getPragueWeekday(now)
 
-  const start = new Date(now)
-  start.setHours(0, 0, 0, 0)
-  start.setDate(now.getDate() + diffToMonday)
+  const todayCarrier = createDateCarrier(
+    todayParts.year,
+    todayParts.month,
+    todayParts.day
+  )
 
-  const end = new Date(start)
-  end.setDate(start.getDate() + 7)
+  const mondayCarrier = addDaysToCarrier(todayCarrier, -(weekday - 1))
+  const nextMondayCarrier = addDaysToCarrier(mondayCarrier, 7)
 
   return {
-    start: start.toISOString(),
-    end: end.toISOString(),
+    start: convertPragueLocalPartsToUtcIsoString(
+      mondayCarrier.getUTCFullYear(),
+      mondayCarrier.getUTCMonth() + 1,
+      mondayCarrier.getUTCDate(),
+      0,
+      0,
+      0
+    ),
+    end: convertPragueLocalPartsToUtcIsoString(
+      nextMondayCarrier.getUTCFullYear(),
+      nextMondayCarrier.getUTCMonth() + 1,
+      nextMondayCarrier.getUTCDate(),
+      0,
+      0,
+      0
+    ),
   }
 }
 
 function getTodayRange() {
   const now = new Date()
-
-  const start = new Date(now)
-  start.setHours(0, 0, 0, 0)
-
-  const end = new Date(start)
-  end.setDate(start.getDate() + 1)
+  const todayParts = getPragueDateParts(now)
+  const todayCarrier = createDateCarrier(
+    todayParts.year,
+    todayParts.month,
+    todayParts.day
+  )
+  const tomorrowCarrier = addDaysToCarrier(todayCarrier, 1)
 
   return {
-    start: start.toISOString(),
-    end: end.toISOString(),
+    start: convertPragueLocalPartsToUtcIsoString(
+      todayCarrier.getUTCFullYear(),
+      todayCarrier.getUTCMonth() + 1,
+      todayCarrier.getUTCDate(),
+      0,
+      0,
+      0
+    ),
+    end: convertPragueLocalPartsToUtcIsoString(
+      tomorrowCarrier.getUTCFullYear(),
+      tomorrowCarrier.getUTCMonth() + 1,
+      tomorrowCarrier.getUTCDate(),
+      0,
+      0,
+      0
+    ),
   }
 }
 
 function getMonthRange() {
   const now = new Date()
+  const { year, month } = getPragueDateParts(now)
 
-  const start = new Date(now.getFullYear(), now.getMonth(), 1)
-  start.setHours(0, 0, 0, 0)
-
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  end.setHours(0, 0, 0, 0)
+  const nextMonthYear = month === 12 ? year + 1 : year
+  const nextMonth = month === 12 ? 1 : month + 1
 
   return {
-    start: start.toISOString(),
-    end: end.toISOString(),
+    start: convertPragueLocalPartsToUtcIsoString(year, month, 1, 0, 0, 0),
+    end: convertPragueLocalPartsToUtcIsoString(
+      nextMonthYear,
+      nextMonth,
+      1,
+      0,
+      0,
+      0
+    ),
   }
-}
-
-function toDateKey(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
 }
 
 function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
   const now = new Date()
-  const today = new Date(now)
-  today.setHours(0, 0, 0, 0)
+  const todayParts = getPragueDateParts(now)
+  const todayCarrier = createDateCarrier(
+    todayParts.year,
+    todayParts.month,
+    todayParts.day
+  )
 
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const monthStartCarrier = createDateCarrier(todayParts.year, todayParts.month, 1)
+  const nextMonthCarrier = createDateCarrier(
+    todayParts.month === 12 ? todayParts.year + 1 : todayParts.year,
+    todayParts.month === 12 ? 1 : todayParts.month + 1,
+    1
+  )
+  const monthEndCarrier = addDaysToCarrier(nextMonthCarrier, -1)
 
-  const startDay = monthStart.getDay()
-  const diffToMonday = startDay === 0 ? 6 : startDay - 1
+  const startWeekday = getPragueWeekday(
+    new Date(
+      convertPragueLocalPartsToUtcIsoString(
+        monthStartCarrier.getUTCFullYear(),
+        monthStartCarrier.getUTCMonth() + 1,
+        monthStartCarrier.getUTCDate(),
+        12,
+        0,
+        0
+      )
+    )
+  )
 
-  const calendarStart = new Date(monthStart)
-  calendarStart.setDate(monthStart.getDate() - diffToMonday)
-  calendarStart.setHours(0, 0, 0, 0)
+  const calendarStart = addDaysToCarrier(monthStartCarrier, -(startWeekday - 1))
 
-  const endDay = monthEnd.getDay()
-  const diffToSunday = endDay === 0 ? 0 : 7 - endDay
+  const endWeekday = getPragueWeekday(
+    new Date(
+      convertPragueLocalPartsToUtcIsoString(
+        monthEndCarrier.getUTCFullYear(),
+        monthEndCarrier.getUTCMonth() + 1,
+        monthEndCarrier.getUTCDate(),
+        12,
+        0,
+        0
+      )
+    )
+  )
 
-  const calendarEnd = new Date(monthEnd)
-  calendarEnd.setDate(monthEnd.getDate() + diffToSunday)
-  calendarEnd.setHours(0, 0, 0, 0)
+  const calendarEnd = addDaysToCarrier(monthEndCarrier, 7 - endWeekday)
 
   const meetingsByDay = new Map<string, DashboardMeeting[]>()
 
   for (const meeting of meetings) {
-    if (!meeting.meeting_datetime) continue
+    const meetingDate = parseDate(meeting.meeting_datetime)
+    if (!meetingDate) continue
 
-    const meetingDate = new Date(meeting.meeting_datetime)
-    const key = toDateKey(meetingDate)
+    const meetingParts = getPragueDateParts(meetingDate)
+    const key = toCarrierKey(
+      createDateCarrier(meetingParts.year, meetingParts.month, meetingParts.day)
+    )
 
     const existing = meetingsByDay.get(key) ?? []
     existing.push(meeting)
@@ -216,29 +452,33 @@ function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
     meetingsByDay.set(
       key,
       [...dayMeetings].sort((a, b) => {
-        const aTime = a.meeting_datetime ? new Date(a.meeting_datetime).getTime() : 0
-        const bTime = b.meeting_datetime ? new Date(b.meeting_datetime).getTime() : 0
+        const aTime = a.meeting_datetime
+          ? new Date(a.meeting_datetime).getTime()
+          : 0
+        const bTime = b.meeting_datetime
+          ? new Date(b.meeting_datetime).getTime()
+          : 0
         return aTime - bTime
       })
     )
   }
 
   const days: CalendarDay[] = []
-  const cursor = new Date(calendarStart)
+  let cursor = new Date(calendarStart)
 
-  while (cursor <= calendarEnd) {
-    const key = toDateKey(cursor)
+  while (cursor.getTime() <= calendarEnd.getTime()) {
+    const key = toCarrierKey(cursor)
 
     days.push({
       date: new Date(cursor),
       isoKey: key,
-      dayNumber: cursor.getDate(),
-      isCurrentMonth: cursor.getMonth() === now.getMonth(),
-      isToday: isSameDay(cursor, today),
+      dayNumber: cursor.getUTCDate(),
+      isCurrentMonth: cursor.getUTCMonth() === monthStartCarrier.getUTCMonth(),
+      isToday: isSameCarrierDay(cursor, todayCarrier),
       meetings: meetingsByDay.get(key) ?? [],
     })
 
-    cursor.setDate(cursor.getDate() + 1)
+    cursor = addDaysToCarrier(cursor, 1)
   }
 
   return days
@@ -335,25 +575,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
 function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
   const hasTask = Boolean(meeting.follow_up_task?.trim())
-
-  const meetingDate = meeting.meeting_datetime
-    ? new Date(meeting.meeting_datetime)
-    : null
-
-  const day = meetingDate
-    ? new Intl.DateTimeFormat('cs-CZ', { day: '2-digit' }).format(meetingDate)
-    : '--'
-
-  const month = meetingDate
-    ? new Intl.DateTimeFormat('cs-CZ', { month: 'short' }).format(meetingDate)
-    : 'bez data'
-
-  const time = meetingDate
-    ? new Intl.DateTimeFormat('cs-CZ', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(meetingDate)
-    : 'Bez času'
+  const { day, month, time } = getMeetingDateParts(meeting.meeting_datetime)
 
   return (
     <Link
@@ -407,6 +629,7 @@ function DashboardMiniCalendar({
 }) {
   const now = new Date()
   const monthLabel = new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: PRAGUE_TIME_ZONE,
     month: 'long',
     year: 'numeric',
   }).format(now)

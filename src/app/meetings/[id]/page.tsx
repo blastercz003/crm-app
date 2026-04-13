@@ -8,6 +8,8 @@ import {
 } from '@/components/meetings/meeting-status-badge'
 import CommentSection from '@/components/comments/comment-section'
 
+const PRAGUE_TIME_ZONE = 'Europe/Prague'
+
 type MeetingDetail = {
   id: string
   company_name: string | null
@@ -30,10 +32,17 @@ type MeetingDetail = {
 function formatDateTime(value: string | null) {
   if (!value) return 'Bez termínu'
 
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Bez termínu'
+  }
+
   return new Intl.DateTimeFormat('cs-CZ', {
     dateStyle: 'full',
     timeStyle: 'short',
-  }).format(new Date(value))
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
 }
 
 function DetailBlock({

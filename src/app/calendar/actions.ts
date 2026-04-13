@@ -8,6 +8,82 @@ type UpdateCalendarMeetingDateInput = {
   start: string
 }
 
+function getPragueOffsetMinutes(dateUtc: Date) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Prague',
+    timeZoneName: 'shortOffset',
+  })
+
+  const parts = formatter.formatToParts(dateUtc)
+  const timeZoneName = parts.find((part) => part.type === 'timeZoneName')?.value
+
+  if (!timeZoneName) {
+    throw new Error('Nepodařilo se určit časové pásmo Europe/Prague.')
+  }
+
+  if (timeZoneName === 'GMT' || timeZoneName === 'UTC') {
+    return 0
+  }
+
+  const match = timeZoneName.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/)
+
+  if (!match) {
+    throw new Error('Nepodařilo se zpracovat offset časového pásma Europe/Prague.')
+  }
+
+  const sign = match[1] === '-' ? -1 : 1
+  const hours = Number(match[2])
+  const minutes = Number(match[3] ?? '0')
+
+  return sign * (hours * 60 + minutes)
+}
+
+function convertPragueLocalDateTimeToUtcIsoString(localDateTime: string) {
+  const match = localDateTime.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
+  )
+
+  if (!match) {
+    throw new Error('Datum a čas schůzky má neplatný formát.')
+  }
+
+  const [, yearStr, monthStr, dayStr, hourStr, minuteStr] = match
+
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+  const hour = Number(hourStr)
+  const minute = Number(minuteStr)
+
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0))
+
+  if (Number.isNaN(utcGuess.getTime())) {
+    throw new Error('Datum a čas schůzky má neplatný formát.')
+  }
+
+  const offsetMinutes = getPragueOffsetMinutes(utcGuess)
+
+  const correctedUtcDate = new Date(
+    Date.UTC(year, month - 1, day, hour, minute, 0) - offsetMinutes * 60_000
+  )
+
+  if (Number.isNaN(correctedUtcDate.getTime())) {
+    throw new Error('Datum a čas schůzky má neplatný formát.')
+  }
+
+  return correctedUtcDate.toISOString()
+}
+
+function normalizeCalendarMeetingDateTime(value: string) {
+  const text = value.trim()
+
+  if (!text) {
+    throw new Error('Chybí nový termín schůzky.')
+  }
+
+  return convertPragueLocalDateTimeToUtcIsoString(text)
+}
+
 export async function updateCalendarMeetingDate({
   meetingId,
   start,
@@ -66,10 +142,23 @@ export async function updateCalendarMeetingDate({
     }
   }
 
+  let normalizedStart: string
+
+  try {
+    normalizedStart = normalizeCalendarMeetingDateTime(start)
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nový termín schůzky má neplatný formát.',
+    }
+  }
+
   const { error: updateError } = await supabase
     .from('meetings')
     .update({
-      meeting_datetime: start,
+      meeting_datetime: normalizedStart,
     })
     .eq('id', meetingId)
 
@@ -83,6 +172,7 @@ export async function updateCalendarMeetingDate({
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
   revalidatePath(`/meetings/${meetingId}`)
+  revalidatePath(`/meetings/${meetingId}/edit`)
 
   return {
     success: true,

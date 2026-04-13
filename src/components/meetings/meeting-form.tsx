@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
 
 type ClientOption = {
   id: string
@@ -43,25 +42,27 @@ function formatDateTimeLocalInput(value?: string | null) {
 
   if (Number.isNaN(date.getTime())) return ''
 
-  const year = date.getFullYear()
-  const month = pad(date.getMonth() + 1)
-  const day = pad(date.getDate())
-  const hours = pad(date.getHours())
-  const minutes = pad(date.getMinutes())
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
 
-  return `${year}-${month}-${day}T${hours}:${minutes}`
-}
+  const parts = formatter.formatToParts(date)
 
-function convertLocalInputToUtcIso(value: string) {
-  const text = value.trim()
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  const hour = parts.find((part) => part.type === 'hour')?.value
+  const minute = parts.find((part) => part.type === 'minute')?.value
 
-  if (!text) return ''
+  if (!year || !month || !day || !hour || !minute) return ''
 
-  const date = new Date(text)
-
-  if (Number.isNaN(date.getTime())) return ''
-
-  return date.toISOString()
+  return `${year}-${month}-${day}T${hour}:${minute}`
 }
 
 export function MeetingForm({
@@ -71,22 +72,11 @@ export function MeetingForm({
   initialValues,
   clients,
 }: MeetingFormProps) {
-  const [meetingDateTimeLocal, setMeetingDateTimeLocal] = useState(
-    formatDateTimeLocalInput(initialValues?.meeting_datetime)
-  )
-
-  const meetingDateTimeUtc = useMemo(
-    () => convertLocalInputToUtcIso(meetingDateTimeLocal),
-    [meetingDateTimeLocal]
-  )
-
   return (
     <form action={action} className="space-y-6">
       {initialValues?.id ? (
         <input type="hidden" name="id" value={initialValues.id} />
       ) : null}
-
-      <input type="hidden" name="meeting_datetime" value={meetingDateTimeUtc} />
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
@@ -219,17 +209,16 @@ export function MeetingForm({
 
         <div className="space-y-2">
           <label
-            htmlFor="meeting_datetime_local"
+            htmlFor="meeting_datetime"
             className="text-sm font-medium text-gray-900"
           >
             Datum a čas
           </label>
           <input
-            id="meeting_datetime_local"
-            name="meeting_datetime_local"
+            id="meeting_datetime"
+            name="meeting_datetime"
             type="datetime-local"
-            value={meetingDateTimeLocal}
-            onChange={(event) => setMeetingDateTimeLocal(event.target.value)}
+            defaultValue={formatDateTimeLocalInput(initialValues?.meeting_datetime)}
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
           />
         </div>

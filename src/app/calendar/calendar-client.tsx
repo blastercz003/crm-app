@@ -10,6 +10,8 @@ import csLocale from '@fullcalendar/core/locales/cs'
 import type { EventClickArg, EventDropArg } from '@fullcalendar/core'
 import { updateCalendarMeetingDate } from './actions'
 
+const PRAGUE_TIME_ZONE = 'Europe/Prague'
+
 export type CalendarEvent = {
   id: string
   title: string
@@ -25,6 +27,36 @@ export type CalendarEvent = {
 
 type CalendarClientProps = {
   events: CalendarEvent[]
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+function formatDateToPragueLocalInput(date: Date) {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: PRAGUE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+
+  const parts = formatter.formatToParts(date)
+
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  const hour = parts.find((part) => part.type === 'hour')?.value
+  const minute = parts.find((part) => part.type === 'minute')?.value
+
+  if (!year || !month || !day || !hour || !minute) {
+    throw new Error('Nepodařilo se převést datum schůzky pro Europe/Prague.')
+  }
+
+  return `${year}-${month}-${day}T${hour}:${minute}`
 }
 
 export default function CalendarClient({ events }: CalendarClientProps) {
@@ -52,7 +84,7 @@ export default function CalendarClient({ events }: CalendarClientProps) {
     startTransition(async () => {
       const result = await updateCalendarMeetingDate({
         meetingId: info.event.id,
-        start: start.toISOString(),
+        start: formatDateToPragueLocalInput(start),
       })
 
       if (result?.error) {
@@ -96,7 +128,7 @@ export default function CalendarClient({ events }: CalendarClientProps) {
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
           locale={csLocale}
-          timeZone="local"
+          timeZone={PRAGUE_TIME_ZONE}
           firstDay={1}
           weekends
           nowIndicator

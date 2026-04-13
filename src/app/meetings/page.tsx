@@ -45,25 +45,92 @@ type ProfileRow = {
   role: string | null
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) return 'Bez termínu'
+const PRAGUE_TIME_ZONE = 'Europe/Prague'
+
+function parseMeetingDate(value: string | null) {
+  if (!value) return null
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return date
+}
+
+function formatInPrague(
+  value: string | null,
+  options: Intl.DateTimeFormatOptions,
+  fallback = 'Bez termínu'
+) {
+  const date = parseMeetingDate(value)
+
+  if (!date) return fallback
 
   return new Intl.DateTimeFormat('cs-CZ', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+    ...options,
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+}
+
+function formatDateTime(value: string | null) {
+  return formatInPrague(
+    value,
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    },
+    'Bez termínu'
+  )
 }
 
 function formatCompactDateTime(value: string | null) {
-  if (!value) return 'Bez termínu'
+  return formatInPrague(
+    value,
+    {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    },
+    'Bez termínu'
+  )
+}
 
-  return new Intl.DateTimeFormat('cs-CZ', {
+function getDateParts(value: string | null) {
+  const date = parseMeetingDate(value)
+
+  if (!date) {
+    return {
+      day: '--',
+      month: 'bez data',
+      time: 'Bez času',
+    }
+  }
+
+  const day = new Intl.DateTimeFormat('cs-CZ', {
     day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+
+  const month = new Intl.DateTimeFormat('cs-CZ', {
+    month: 'short',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+
+  const time = new Intl.DateTimeFormat('cs-CZ', {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value))
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+
+  return {
+    day,
+    month,
+    time,
+  }
 }
 
 function getPreviewText(meeting: MeetingRow) {
@@ -217,24 +284,7 @@ function MeetingListItem({
   const preview = trimText(getPreviewText(meeting))
   const hasTask = Boolean(meeting.follow_up_task?.trim())
 
-  const meetingDate = meeting.meeting_datetime
-    ? new Date(meeting.meeting_datetime)
-    : null
-
-  const day = meetingDate
-    ? new Intl.DateTimeFormat('cs-CZ', { day: '2-digit' }).format(meetingDate)
-    : '--'
-
-  const month = meetingDate
-    ? new Intl.DateTimeFormat('cs-CZ', { month: 'short' }).format(meetingDate)
-    : 'bez data'
-
-  const time = meetingDate
-    ? new Intl.DateTimeFormat('cs-CZ', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(meetingDate)
-    : 'Bez času'
+  const { day, month, time } = getDateParts(meeting.meeting_datetime)
 
   const companyLabel =
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
