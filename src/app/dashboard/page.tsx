@@ -11,6 +11,8 @@ import {
   TaskStatusBadge,
 } from '@/components/tasks/task-status-badge'
 
+export const dynamic = 'force-dynamic'
+
 type ProfileRef = {
   id: string
   name: string | null
@@ -722,13 +724,14 @@ export default async function DashboardPage() {
       `)
       .eq('status', 'planned')
       .eq('assigned_user_id', user.id)
-      .gte('meeting_datetime', new Date().toISOString())
+      .not('meeting_datetime', 'is', null)
       .order('meeting_datetime', { ascending: true })
       .limit(5),
 
     supabase
       .from('meetings')
       .select('id', { count: 'exact', head: true })
+      .eq('status', 'planned')
       .eq('assigned_user_id', user.id)
       .gte('meeting_datetime', todayStart)
       .lt('meeting_datetime', todayEnd),
@@ -736,6 +739,7 @@ export default async function DashboardPage() {
     supabase
       .from('meetings')
       .select('id', { count: 'exact', head: true })
+      .eq('status', 'planned')
       .eq('assigned_user_id', user.id)
       .gte('meeting_datetime', start)
       .lt('meeting_datetime', end),
