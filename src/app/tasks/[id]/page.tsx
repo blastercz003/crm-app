@@ -172,9 +172,14 @@ export default async function TaskDetailPage({
             <div>
               <Link
                 href="/tasks"
-                className="text-sm text-zinc-500 transition hover:text-zinc-900"
+                className="inline-flex items-center rounded-2xl border px-5 py-3 text-sm font-medium tracking-wide transition hover:opacity-90"
+                style={{
+                  borderColor: '#BFD9EC',
+                  backgroundColor: '#EAF4FB',
+                  color: '#2980B9',
+                }}
               >
-                ← Zpět na úkoly
+                ZPĚT NA ÚKOLY
               </Link>
 
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950">

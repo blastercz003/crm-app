@@ -132,33 +132,33 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-4 text-zinc-900 md:px-6 md:py-6 xl:px-8">
       <div className="mx-auto max-w-7xl space-y-4">
-        <section className="rounded-[26px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 p-5 md:p-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
+        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-5 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between">
+            <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Agenda
               </div>
 
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
                 Moje úkoly
               </h1>
 
-              <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+              <p className="mt-2 text-sm text-zinc-500">
                 Přehled úkolů, které máš splnit, i těch, které jsi zadal dál.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium uppercase tracking-[0.08em] text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
+                className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
               >
                 ZPĚT NA DASHBOARD
               </Link>
 
               <Link
                 href="/tasks/new"
-                className="inline-flex items-center rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
+                className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
               >
                 NOVÝ ÚKOL
               </Link>

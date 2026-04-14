@@ -158,9 +158,14 @@ export default async function MeetingDetailPage({
             <div>
               <Link
                 href="/meetings"
-                className="text-sm text-zinc-500 transition hover:text-zinc-900"
+                className="inline-flex items-center rounded-2xl border px-5 py-3 text-sm font-medium tracking-wide transition hover:opacity-90"
+                style={{
+                  borderColor: '#BFD9EC',
+                  backgroundColor: '#EAF4FB',
+                  color: '#2980B9',
+                }}
               >
-                ← Zpět na schůzky
+                ZPĚT NA SCHŮZKY
               </Link>
 
               <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
