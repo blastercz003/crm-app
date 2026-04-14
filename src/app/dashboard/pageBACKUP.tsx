@@ -26,7 +26,6 @@ type DashboardProfile = {
   role: string | null
   last_seen_dashboard_at: string | null
   last_seen_updates_at: string | null
-  can_view_jobs: boolean | null
 }
 
 type DashboardTask = {
@@ -966,29 +965,6 @@ function ClientsCard() {
   )
 }
 
-function JobsCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5">
-        <DashboardSectionHeader
-          eyebrow="Sekce"
-          title="Zakázky"
-          description="Vstup do evidence zakázek a obchodů."
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Link
-          href="/jobs"
-          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          OTEVŘÍT ZAKÁZKY
-        </Link>
-      </div>
-    </section>
-  )
-}
-
 function LatestCommentsCard({
   comments,
   currentUserId,
@@ -1081,10 +1057,10 @@ export default async function DashboardPage() {
   }
 
   const { data: profile } = await supabase
-  .from('profiles')
-  .select('name, role, last_seen_dashboard_at, last_seen_updates_at, can_view_jobs')
-  .eq('id', user.id)
-  .single<DashboardProfile>()
+    .from('profiles')
+    .select('name, role, last_seen_dashboard_at, last_seen_updates_at')
+    .eq('id', user.id)
+    .single<DashboardProfile>()
 
   const profilesResponse = await supabase.from('profiles').select('id, name')
 
@@ -1556,9 +1532,7 @@ export default async function DashboardPage() {
 
               <ClientsCard />
 
-{profile?.can_view_jobs ? <JobsCard /> : null}
-
-<LatestCommentsCard comments={recentComments} currentUserId={user.id} />
+              <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
             </div>
           </div>
         </div>
