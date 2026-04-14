@@ -29,10 +29,6 @@ type CalendarClientProps = {
   events: CalendarEvent[]
 }
 
-function pad(value: number) {
-  return String(value).padStart(2, '0')
-}
-
 function formatDateToPragueLocalInput(date: Date) {
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: PRAGUE_TIME_ZONE,
@@ -99,18 +95,6 @@ export default function CalendarClient({ events }: CalendarClientProps) {
 
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5 flex flex-col gap-2">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-          Kalendář
-        </div>
-        <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-          Moje schůzky
-        </h2>
-        <p className="text-sm text-zinc-500">
-          Přepínej měsíc a týden. Plánované schůzky můžeš přesouvat tažením.
-        </p>
-      </div>
-
       {error ? (
         <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -137,9 +121,13 @@ export default function CalendarClient({ events }: CalendarClientProps) {
           eventStartEditable
           eventDurationEditable={false}
           allDaySlot={false}
-          slotMinTime="06:00:00"
-          slotMaxTime="22:00:00"
+          slotMinTime="07:00:00"
+          slotMaxTime="19:00:00"
+          slotDuration="00:30:00"
+          slotLabelInterval="01:00:00"
+          expandRows
           height="auto"
+          dayMaxEventRows={4}
           events={calendarEvents}
           eventClick={handleEventClick}
           eventDrop={handleEventDrop}
@@ -156,6 +144,7 @@ export default function CalendarClient({ events }: CalendarClientProps) {
           views={{
             dayGridMonth: {
               dayHeaderFormat: { weekday: 'short' },
+              fixedWeekCount: false,
             },
             timeGridWeek: {
               dayHeaderFormat: {
