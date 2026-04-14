@@ -10,6 +10,7 @@ import {
   TaskSourceBadge,
   TaskStatusBadge,
 } from '@/components/tasks/task-status-badge'
+import { DashboardWelcomeOverlay } from '@/components/dashboard/dashboard-welcome-overlay'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,13 @@ const PRAGUE_TIME_ZONE = 'Europe/Prague'
 type ProfileRef = {
   id: string
   name: string | null
+}
+
+type DashboardProfile = {
+  name: string | null
+  role: string | null
+  last_seen_dashboard_at: string | null
+  last_seen_updates_at: string | null
 }
 
 type DashboardTask = {
@@ -70,6 +78,12 @@ type PragueDateParts = {
   year: number
   month: number
   day: number
+}
+
+type OverlaySummaryItem = {
+  label: string
+  value: string
+  tone?: 'default' | 'highlight' | 'warning'
 }
 
 function parseDate(value: string | null) {
@@ -202,6 +216,21 @@ function isSameCarrierDay(a: Date, b: Date) {
   )
 }
 
+function isSamePragueDay(a: string | null, b: Date) {
+  const parsed = parseDate(a)
+
+  if (!parsed) return false
+
+  const aParts = getPragueDateParts(parsed)
+  const bParts = getPragueDateParts(b)
+
+  return (
+    aParts.year === bParts.year &&
+    aParts.month === bParts.month &&
+    aParts.day === bParts.day
+  )
+}
+
 function formatInPrague(
   value: string | null,
   options: Intl.DateTimeFormatOptions,
@@ -299,6 +328,34 @@ function getCommentHref(comment: DashboardComment) {
   }
 
   return '/dashboard'
+}
+
+function getRelativeTimeLabel(value: string) {
+  const now = Date.now()
+  const date = new Date(value).getTime()
+
+  if (Number.isNaN(date)) {
+    return formatShortDateTime(value)
+  }
+
+  const diffInSeconds = Math.floor((now - date) / 1000)
+
+  if (diffInSeconds < 10) return 'právě teď'
+  if (diffInSeconds < 60) return `před ${diffInSeconds} s`
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60)
+  if (diffInMinutes === 1) return 'před 1 min'
+  if (diffInMinutes < 60) return `před ${diffInMinutes} min`
+
+  const diffInHours = Math.floor(diffInMinutes / 60)
+  if (diffInHours === 1) return 'před 1 h'
+  if (diffInHours < 24) return `před ${diffInHours} h`
+
+  const diffInDays = Math.floor(diffInHours / 24)
+  if (diffInDays === 1) return 'včera'
+  if (diffInDays < 5) return `před ${diffInDays} dny`
+
+  return formatShortDateTime(value)
 }
 
 function getCurrentWeekRange() {
@@ -484,6 +541,108 @@ function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
   return days
 }
 
+function getDayGreeting() {
+  const now = new Date()
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: PRAGUE_TIME_ZONE,
+      hour: '2-digit',
+      hour12: false,
+    }).format(now)
+  )
+
+  if (hour < 12) return 'Dobré ráno'
+  if (hour < 18) return 'Vítej zpět'
+  return 'Dobrý večer'
+}
+
+function getOverlayHeadline(hasNewUpdates: boolean) {
+  if (hasNewUpdates) return 'Máme pro Tebe novinky'
+  return getDayGreeting()
+}
+
+function getOverlayDescription(
+  hasNewUpdates: boolean,
+  newTasksCount: number,
+  newCommentsCount: number,
+  todayMeetingsCount: number,
+  overdueTasksCount: number
+) {
+  if (hasNewUpdates) {
+    return 'V aplikaci se objevilo něco nového, co se týká právě Tebe.'
+  }
+
+  if (todayMeetingsCount > 0 || overdueTasksCount > 0) {
+    return 'Tady je rychlý přehled, ať hned víš, co je dnes důležité.'
+  }
+
+  if (newTasksCount === 0 && newCommentsCount === 0) {
+    return 'Dnes je zatím klid. Přesto máš přehled o tom nejdůležitějším.'
+  }
+
+  return 'Tady je rychlé shrnutí po přihlášení.'
+}
+
+function buildOverlaySummaryItems(args: {
+  newTasksCount: number
+  newCommentsCount: number
+  todayMeetingsCount: number
+  overdueTasksCount: number
+}): OverlaySummaryItem[] {
+  const items: OverlaySummaryItem[] = []
+
+  if (args.newTasksCount > 0) {
+    items.push({
+      label: 'Nové úkoly',
+      value:
+        args.newTasksCount === 1
+          ? 'Byl Ti přiřazen 1 nový úkol'
+          : `Byly Ti přiřazeny ${args.newTasksCount} nové úkoly`,
+      tone: 'highlight',
+    })
+  }
+
+  if (args.newCommentsCount > 0) {
+    items.push({
+      label: 'Nové komentáře',
+      value:
+        args.newCommentsCount === 1
+          ? 'Přibyl 1 nový komentář'
+          : `Přibyly ${args.newCommentsCount} nové komentáře`,
+      tone: 'default',
+    })
+  }
+
+  if (args.todayMeetingsCount > 0) {
+    items.push({
+      label: 'Dnešní schůzky',
+      value:
+        args.todayMeetingsCount === 1
+          ? 'Dnes máš 1 schůzku'
+          : `Dnes máš ${args.todayMeetingsCount} schůzky`,
+      tone: 'default',
+    })
+  } else {
+    items.push({
+      label: 'Dnešní schůzky',
+      value: 'Dnes zatím nemáš žádnou schůzku',
+      tone: 'default',
+    })
+  }
+
+  if (args.overdueTasksCount > 0) {
+    items.push({
+      label: 'Po termínu',
+      value:
+        args.overdueTasksCount === 1
+          ? '1 úkol je po termínu'
+          : `${args.overdueTasksCount} úkoly jsou po termínu`,
+      tone: 'warning',
+    })
+  }
+
+  return items
+}
 function DashboardStatCard({
   label,
   value,
@@ -536,6 +695,19 @@ function DashboardSectionHeader({
         {title}
       </h2>
       <p className="mt-1.5 text-sm text-zinc-500">{description}</p>
+    </div>
+  )
+}
+
+function HeaderNewsBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+
+  return (
+    <div className="mt-3 inline-flex items-center gap-2 self-start rounded-full border border-[#2980B9]/20 bg-[#2980B9]/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1f6d9d]">
+      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#2980B9] px-1.5 text-[10px] text-white">
+        {count}
+      </span>
+      Novinky
     </div>
   )
 }
@@ -781,15 +953,6 @@ function ClientsCard() {
         />
       </div>
 
-      <div className="mb-5 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4">
-        <div className="text-sm font-medium text-zinc-900">
-          Firemní kontakty a detail klienta na jednom místě.
-        </div>
-        <div className="mt-1 text-sm text-zinc-500">
-          Otevři seznam klientů, vyhledej konkrétní firmu a přejdi rovnou na její detail.
-        </div>
-      </div>
-
       <div className="flex flex-wrap gap-3">
         <Link
           href="/clients"
@@ -804,15 +967,17 @@ function ClientsCard() {
 
 function LatestCommentsCard({
   comments,
+  currentUserId,
 }: {
   comments: DashboardComment[]
+  currentUserId: string
 }) {
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-5">
         <DashboardSectionHeader
-          eyebrow="Teamwork"
-          title="Nejnovější komentáře"
+          eyebrow="TEAMWORK"
+          title="Nejnovější aktivita"
           description="Poslední komentáře z úkolů a schůzek, ke kterým máš přístup."
         />
       </div>
@@ -823,37 +988,63 @@ function LatestCommentsCard({
         </div>
       ) : (
         <div className="grid gap-3">
-          {comments.map((comment) => (
-            <Link
-              key={comment.id}
-              href={getCommentHref(comment)}
-              className="block rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
-                  {getCommentEntityLabel(comment.entity_type)}
-                </span>
+          {comments.map((comment) => {
+            const isOwnComment = comment.user_id === currentUserId
 
-                <span className="text-xs text-zinc-500">
-                  {formatShortDateTime(comment.created_at)}
-                </span>
-              </div>
+            return (
+              <Link
+                key={comment.id}
+                href={getCommentHref(comment)}
+                className={[
+                  'block rounded-2xl border px-5 py-4 shadow-sm transition duration-200 hover:shadow-md',
+                  isOwnComment
+                    ? 'border-blue-200 bg-blue-50/60 hover:border-blue-300'
+                    : 'border-zinc-200/80 bg-white hover:border-zinc-300',
+                ].join(' ')}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+                    {getCommentEntityLabel(comment.entity_type)}
+                  </span>
 
-              <p className="mt-3 text-sm leading-6 text-zinc-800">
-                {truncateText(comment.content)}
-              </p>
+                  {isOwnComment ? (
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
+                      Ty
+                    </span>
+                  ) : null}
 
-              <div className="mt-3 text-xs text-zinc-500">
-                Autor: {comment.created_by_profile?.name?.trim() || '—'}
-              </div>
-            </Link>
-          ))}
+                  <span
+                    title={formatShortDateTime(comment.created_at)}
+                    className="text-xs text-zinc-500"
+                  >
+                    {getRelativeTimeLabel(comment.created_at)}
+                  </span>
+                </div>
+
+                <p className="mt-3 text-sm leading-6 text-zinc-800">
+                  {truncateText(comment.content)}
+                </p>
+
+                <div className="mt-3 text-xs text-zinc-500">
+                  Autor: {comment.created_by_profile?.name?.trim() || '—'}
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link
+          href="/activity"
+          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+        >
+          OTEVŘÍT AKTIVITU
+        </Link>
+      </div>
     </section>
   )
 }
-
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -867,9 +1058,9 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, role')
+    .select('name, role, last_seen_dashboard_at, last_seen_updates_at')
     .eq('id', user.id)
-    .single()
+    .single<DashboardProfile>()
 
   const profilesResponse = await supabase.from('profiles').select('id, name')
 
@@ -885,6 +1076,10 @@ export default async function DashboardPage() {
   const { start: todayStart, end: todayEnd } = getTodayRange()
   const { start: monthStart, end: monthEnd } = getMonthRange()
 
+  const lastSeenUpdatesAt = profile?.last_seen_updates_at ?? null
+  const today = new Date()
+  const isFirstVisitToday = !isSamePragueDay(profile?.last_seen_dashboard_at ?? null, today)
+
   const [
     tasksResponse,
     activeTasksCountResponse,
@@ -897,6 +1092,7 @@ export default async function DashboardPage() {
     createdTasksIdsResponse,
     meetingIdsResponse,
     commentsResponse,
+    newTasksCountResponse,
   ] = await Promise.all([
     supabase
       .from('tasks')
@@ -1014,6 +1210,15 @@ export default async function DashboardPage() {
       .in('entity_type', ['task', 'meeting'])
       .order('created_at', { ascending: false })
       .limit(50),
+
+    lastSeenUpdatesAt
+      ? supabase
+          .from('tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'todo')
+          .eq('assigned_user_id', user.id)
+          .gt('created_at', lastSeenUpdatesAt)
+      : Promise.resolve({ count: 0, error: null } as { count: number | null; error: null }),
   ])
 
   if (tasksResponse.error) {
@@ -1074,6 +1279,12 @@ export default async function DashboardPage() {
     throw new Error(`Nepodařilo se načíst komentáře: ${commentsResponse.error.message}`)
   }
 
+  if (newTasksCountResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst počet nových úkolů: ${newTasksCountResponse.error.message}`
+    )
+  }
+
   const tasks = ((tasksResponse.data ?? []) as DashboardTask[]).map((task) => ({
     ...task,
     created_by_profile: task.created_by_user_id
@@ -1093,7 +1304,7 @@ export default async function DashboardPage() {
     (meetingIdsResponse.data ?? []).map((row) => row.id as string)
   )
 
-  const recentComments = ((commentsResponse.data ?? []) as DashboardComment[])
+  const allVisibleComments = ((commentsResponse.data ?? []) as DashboardComment[])
     .filter((comment) => {
       if (comment.entity_type === 'task') {
         return visibleTaskIds.has(comment.entity_id)
@@ -1105,7 +1316,6 @@ export default async function DashboardPage() {
 
       return false
     })
-    .slice(0, 5)
     .map((comment) => ({
       ...comment,
       created_by_profile: comment.user_id
@@ -1113,13 +1323,49 @@ export default async function DashboardPage() {
         : null,
     }))
 
+  const recentComments = allVisibleComments.slice(0, 5)
+
+  const newCommentsCount = lastSeenUpdatesAt
+    ? allVisibleComments.filter((comment) => comment.created_at > lastSeenUpdatesAt).length
+    : 0
+
   const activeTasksCount = activeTasksCountResponse.count ?? 0
   const overdueTasksCount = overdueTasksCountResponse.count ?? 0
   const todayMeetingsCount = todayMeetingsCountResponse.count ?? 0
   const weeklyMeetingsCount = weeklyMeetingsCountResponse.count ?? 0
+  const newTasksCount = newTasksCountResponse.count ?? 0
+  const headerNewsCount = newTasksCount + newCommentsCount
+  const hasNewUpdates = headerNewsCount > 0
+  const shouldShowOverlay = isFirstVisitToday || hasNewUpdates
+
+  const overlayHeadline = getOverlayHeadline(hasNewUpdates)
+  const overlayDescription = getOverlayDescription(
+    hasNewUpdates,
+    newTasksCount,
+    newCommentsCount,
+    todayMeetingsCount,
+    overdueTasksCount
+  )
+  const overlaySummaryItems = buildOverlaySummaryItems({
+    newTasksCount,
+    newCommentsCount,
+    todayMeetingsCount,
+    overdueTasksCount,
+  })
 
   return (
     <main className="min-h-screen bg-zinc-100 text-zinc-900">
+      {shouldShowOverlay ? (
+        <DashboardWelcomeOverlay
+  shouldShow={shouldShowOverlay}
+  profileName={profile?.name ?? ''}
+  newTasksCount={newTasksCount}
+  newCommentsCount={newCommentsCount}
+  todayMeetingsCount={todayMeetingsCount}
+  overdueTasksCount={overdueTasksCount}
+/>
+      ) : null}
+
       <div className="px-6 py-6 md:px-10 md:py-10">
         <div className="mx-auto max-w-7xl space-y-6">
           <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
@@ -1138,6 +1384,8 @@ export default async function DashboardPage() {
                     MY MINI CRM. #nebo ne?
                   </div>
                 </Link>
+
+                <HeaderNewsBadge count={headerNewsCount} />
               </div>
 
               <div className="w-full max-w-[320px] rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 shadow-sm">
@@ -1284,7 +1532,7 @@ export default async function DashboardPage() {
 
               <ClientsCard />
 
-              <LatestCommentsCard comments={recentComments} />
+              <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
             </div>
           </div>
         </div>
@@ -1293,7 +1541,7 @@ export default async function DashboardPage() {
       <footer className="border-t border-white/10 bg-zinc-950 px-6 py-5 md:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY CRM — coding by blaster</div>
-          <div>v1.0.1</div>
+          <div>v1.0.2</div>
         </div>
       </footer>
     </main>
