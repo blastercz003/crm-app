@@ -33,6 +33,11 @@ export type UpdateJobInlineFieldActionState = {
   error: string | null
 }
 
+export type UpdateJobSalesOwnerActionState = {
+  success: boolean
+  error: string | null
+}
+
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
 }
@@ -545,6 +550,64 @@ export async function updateJobInvoiceStatusAction(
     return {
       success: false,
       error: 'Stav fakturace se nepodařilo uložit.',
+    }
+  }
+
+  revalidateJobPaths(normalizedJobId)
+
+  return {
+    success: true,
+    error: null,
+  }
+}
+
+export async function updateJobSalesOwnerAction(
+  jobId: string,
+  _prevState: UpdateJobSalesOwnerActionState,
+  formData: FormData
+): Promise<UpdateJobSalesOwnerActionState> {
+  const { supabase, user, error: accessError } = await requireJobsAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+    }
+  }
+
+  const normalizedJobId = String(jobId ?? '').trim()
+
+  if (!normalizedJobId) {
+    return {
+      success: false,
+      error: 'Chybí ID zakázky.',
+    }
+  }
+
+  const salesOwnerRaw = String(formData.get('sales_owner') ?? '').trim()
+
+  if (
+    !SALES_OWNER_VALUES.includes(
+      salesOwnerRaw as (typeof SALES_OWNER_VALUES)[number]
+    )
+  ) {
+    return {
+      success: false,
+      error: 'Neplatný obchodník.',
+    }
+  }
+
+  const { error } = await supabase
+    .from('jobs')
+    .update({
+      sales_owner: salesOwnerRaw,
+    })
+    .eq('id', normalizedJobId)
+
+  if (error) {
+    return {
+      success: false,
+      error: 'Obchodníka se nepodařilo uložit.',
     }
   }
 

@@ -6,6 +6,7 @@ import {
   updateJobInfoAction,
   updateJobInlineFieldAction,
   updateJobInvoiceStatusAction,
+  updateJobSalesOwnerAction,
   updateJobStatusAction,
 } from './actions'
 
@@ -21,12 +22,14 @@ type InvoiceStatus =
   | 'k_fakturaci'
   | 'vyfakturovano'
 
+type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+
 type JobRow = {
   id: string
   job_number: string
   company_name: string
   contact_person: string | null
-  sales_owner: string
+  sales_owner: SalesOwner
   start_at: string
   end_at: string
   site_address: string | null
@@ -54,31 +57,35 @@ type JobsInteractiveTableProps = {
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
+const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
+const STATUS_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
+const INVOICE_BUTTON_WIDTH_CLASS = 'min-w-[122px]'
+const SALES_OWNER_BUTTON_WIDTH_CLASS = 'min-w-[96px]'
 
 export function JobsInteractiveTable({ jobs }: JobsInteractiveTableProps) {
   return (
     <>
-      <section className="hidden overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm lg:block">
-        <table className="w-full table-fixed divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr className="text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-              <th className="w-[74px] px-1.5 py-3">Zakázka</th>
-              <th className="w-[112px] px-1.5 py-3">Firma</th>
-              <th className="w-[88px] px-1.5 py-3">Osoba</th>
-              <th className="w-[122px] px-1.5 py-3">Začátek</th>
-              <th className="w-[122px] px-1.5 py-3">Konec</th>
-              <th className="w-[138px] px-1.5 py-3">Adresa</th>
-              <th className="w-[70px] px-1.5 py-3">Prodejna</th>
-              <th className="w-[92px] px-1.5 py-3">Technik</th>
-              <th className="w-[92px] px-1.5 py-3">Agregát</th>
-              <th className="w-[76px] px-1.5 py-3 text-center">Info</th>
-              <th className="w-[98px] px-1.5 py-3 text-center">Stav</th>
-              <th className="w-[108px] px-1.5 py-3 text-center">Fakturace</th>
-              <th className="w-[78px] px-1.5 py-3">Obchodník</th>
+      <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
+        <table className="w-full table-fixed border-separate border-spacing-y-2">
+          <thead>
+            <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+              <th className="w-[76px] px-2 py-2">Zakázka</th>
+              <th className="w-[120px] px-2 py-2">Firma</th>
+              <th className="w-[94px] px-2 py-2">Osoba</th>
+              <th className="w-[126px] px-2 py-2">Začátek</th>
+              <th className="w-[126px] px-2 py-2">Konec</th>
+              <th className="w-[144px] px-2 py-2">Adresa</th>
+              <th className="w-[74px] px-2 py-2">Prodejna</th>
+              <th className="w-[96px] px-2 py-2">Technik</th>
+              <th className="w-[96px] px-2 py-2">Agregát</th>
+              <th className="w-[86px] px-2 py-2 text-center">Info</th>
+              <th className="w-[112px] px-2 py-2 text-center">Stav</th>
+              <th className="w-[124px] px-2 py-2 text-center">Fakturace</th>
+              <th className="w-[106px] px-2 py-2 text-center">Obchodník</th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {jobs.map((job) => (
               <DesktopRow key={job.id} job={job} />
             ))}
@@ -99,11 +106,11 @@ function DesktopRow({ job }: { job: JobRow }) {
   const detailHref = `/jobs/${job.id}`
 
   return (
-    <tr className="transition hover:bg-gray-50">
-      <td className="px-1.5 py-2 align-middle">
+    <tr className="group">
+      <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <Link
           href={detailHref}
-          className="block rounded-md px-1 py-1 text-[11px] font-semibold text-gray-900 transition hover:bg-black/[0.03]"
+          className="block rounded-lg px-1 py-1 text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
         >
           <span className="block truncate">{job.job_number}</span>
         </Link>
@@ -140,20 +147,20 @@ function DesktopRow({ job }: { job: JobRow }) {
         value={job.generator_name}
       />
 
-      <td className="px-1.5 py-2 align-middle text-center">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <InfoNoteButton job={job} compact />
       </td>
 
-      <td className="px-1.5 py-2 align-middle text-center">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <JobStatusButton job={job} />
       </td>
 
-      <td className="px-1.5 py-2 align-middle text-center">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <InvoiceStatusButton job={job} />
       </td>
 
-      <td className="px-1.5 py-2 align-middle text-[11px] text-gray-600">
-        <div className="truncate">{job.sales_owner}</div>
+      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+        <SalesOwnerButton job={job} compact />
       </td>
     </tr>
   )
@@ -161,8 +168,6 @@ function DesktopRow({ job }: { job: JobRow }) {
 
 function MobileCard({ job }: { job: JobRow }) {
   const detailHref = `/jobs/${job.id}`
-  const jobStatusMeta = getJobStatusMeta(job.job_status)
-  const invoiceStatusMeta = getInvoiceStatusMeta(job.invoice_status)
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
@@ -170,64 +175,53 @@ function MobileCard({ job }: { job: JobRow }) {
         <div className="min-w-0">
           <Link
             href={detailHref}
-            className="text-sm font-semibold text-gray-900 hover:underline"
+            className="text-sm font-semibold leading-tight text-gray-900 hover:underline"
           >
             {job.job_number}
           </Link>
-          <p className="mt-0.5 truncate text-xs font-medium text-gray-700">
+          <p className="mt-0.5 truncate text-sm text-gray-700">
             {job.company_name}
           </p>
         </div>
 
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+        <span className="rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[10px] font-medium text-gray-700">
           {job.sales_owner}
         </span>
       </div>
 
-      <div className="mt-3 grid gap-2 text-xs text-gray-600">
-        <div>
-          <span className="font-medium text-gray-900">Osoba:</span>{' '}
-          {job.contact_person || '—'}
-        </div>
-        <div>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
+        <div className="min-w-0">
           <span className="font-medium text-gray-900">Začátek:</span>{' '}
-          {formatDateTime(job.start_at)}
+          <span className="break-words">{formatDateTime(job.start_at)}</span>
         </div>
-        <div>
+
+        <div className="min-w-0">
           <span className="font-medium text-gray-900">Konec:</span>{' '}
-          {formatDateTime(job.end_at)}
+          <span className="break-words">{formatDateTime(job.end_at)}</span>
         </div>
-        <div>
+
+        <div className="col-span-2 min-w-0">
           <span className="font-medium text-gray-900">Adresa:</span>{' '}
-          {job.site_address || '—'}
+          <span className="break-words">{job.site_address || '—'}</span>
         </div>
-        <div>
+
+        <div className="min-w-0">
           <span className="font-medium text-gray-900">Technik:</span>{' '}
-          {job.technician_name || '—'}
+          <span className="break-words">{job.technician_name || '—'}</span>
         </div>
-        <div>
+
+        <div className="min-w-0">
           <span className="font-medium text-gray-900">Agregát:</span>{' '}
-          {job.generator_name || '—'}
+          <span className="break-words">{job.generator_name || '—'}</span>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-medium ${jobStatusMeta.className}`}
-        >
-          {jobStatusMeta.label}
-        </span>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <InfoNoteButton job={job} />
+          <JobStatusButton job={job} />
+        </div>
 
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-medium ${invoiceStatusMeta.className}`}
-        >
-          {invoiceStatusMeta.label}
-        </span>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <InfoNoteButton job={job} />
-        <JobStatusButton job={job} />
         <InvoiceStatusButton job={job} />
       </div>
     </div>
@@ -304,7 +298,7 @@ function EditableCell({
 
   if (isEditing) {
     return (
-      <td className="px-1.5 py-1 align-middle">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-1.5 align-middle">
         <input
           ref={inputRef}
           type={type === 'datetime' ? 'datetime-local' : 'text'}
@@ -323,18 +317,18 @@ function EditableCell({
               cancelEditing()
             }
           }}
-          className="h-8 w-full rounded-lg border border-gray-300 bg-white px-2 text-[11px] text-gray-900 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+          className="h-8 w-full rounded-lg border border-gray-300 bg-white px-2 text-[12px] text-gray-900 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
         />
       </td>
     )
   }
 
   return (
-    <td className="px-1.5 py-2 align-middle">
+    <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="block w-full rounded-md px-1 py-1 text-left text-[11px] text-gray-600 transition hover:bg-black/[0.03] hover:text-gray-900"
+        className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900"
         title="Klikni pro úpravu"
       >
         <span className="block truncate">
@@ -385,13 +379,13 @@ function InfoNoteButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex h-7 items-center justify-center rounded-lg ${
-          compact ? 'min-w-[68px]' : 'px-3'
-        } border ${
+        className={`inline-flex h-8 items-center justify-center rounded-xl ${
+          compact ? 'min-w-[78px]' : 'min-w-[78px]'
+        } border px-3 text-[11px] font-medium tracking-wide transition ${
           job.info_note
             ? 'border-gray-900 bg-gray-900 text-white hover:bg-gray-800'
             : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-        } px-2 text-[10px] font-medium transition`}
+        }`}
       >
         {job.info_note ? 'ZOBRAZIT' : 'PŘIDAT'}
       </button>
@@ -405,8 +399,8 @@ function InfoNoteButton({
           <textarea
             value={draftValue}
             onChange={(event) => setDraftValue(event.target.value)}
-            rows={6}
-            className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+            rows={5}
+            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
             placeholder="Doplň interní poznámku k zakázce"
           />
 
@@ -472,7 +466,7 @@ function JobStatusButton({ job }: { job: JobRow }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex max-w-full items-center rounded-full px-2 py-1 text-[10px] font-medium transition hover:opacity-90 ${meta.className}`}
+        className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
@@ -494,7 +488,7 @@ function JobStatusButton({ job }: { job: JobRow }) {
               >
                 <span className="font-medium text-gray-900">{option.label}</span>
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-medium ${option.className}`}
+                  className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
                 >
                   {option.label}
                 </span>
@@ -547,7 +541,7 @@ function InvoiceStatusButton({ job }: { job: JobRow }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex max-w-full items-center rounded-full px-2 py-1 text-[10px] font-medium transition hover:opacity-90 ${meta.className}`}
+        className={`inline-flex h-8 ${INVOICE_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
@@ -569,9 +563,79 @@ function InvoiceStatusButton({ job }: { job: JobRow }) {
               >
                 <span className="font-medium text-gray-900">{option.label}</span>
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-medium ${option.className}`}
+                  className={`inline-flex h-8 ${INVOICE_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
                 >
                   {option.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </ModalShell>
+      ) : null}
+    </>
+  )
+}
+
+function SalesOwnerButton({
+  job,
+  compact = false,
+}: {
+  job: JobRow
+  compact?: boolean
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  function saveSalesOwner(nextSalesOwner: SalesOwner) {
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.set('sales_owner', nextSalesOwner)
+
+      const result = await updateJobSalesOwnerAction(
+        job.id,
+        { success: false, error: null },
+        formData
+      )
+
+      if (!result.success) {
+        alert(result.error ?? 'Obchodníka se nepodařilo uložit.')
+        return
+      }
+
+      setIsOpen(false)
+    })
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className={`inline-flex h-8 items-center justify-center rounded-xl border border-gray-200 bg-white ${
+          compact ? SALES_OWNER_BUTTON_WIDTH_CLASS : SALES_OWNER_BUTTON_WIDTH_CLASS
+        } px-3 text-[11px] font-medium text-gray-900 transition hover:bg-gray-50`}
+      >
+        <span className="truncate">{job.sales_owner}</span>
+      </button>
+
+      {isOpen ? (
+        <ModalShell
+          title="Změnit obchodníka"
+          description={`Zakázka ${job.job_number}`}
+          onClose={() => setIsOpen(false)}
+        >
+          <div className="space-y-2">
+            {SALES_OWNER_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                disabled={isPending}
+                onClick={() => saveSalesOwner(option)}
+                className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="font-medium text-gray-900">{option}</span>
+                <span className="inline-flex h-8 min-w-[96px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-medium text-gray-900">
+                  {option}
                 </span>
               </button>
             ))}
@@ -593,9 +657,18 @@ function ModalShell({
   onClose: () => void
   children: React.ReactNode
 }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
   return (
     <div
-      className="fixed inset-0 z-50 bg-gray-900/40 p-3 sm:p-4"
+      className="fixed inset-0 z-50 bg-gray-900/45 p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -605,8 +678,8 @@ function ModalShell({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="w-full max-w-[30vw] min-w-[360px] rounded-3xl border border-gray-200 bg-white p-5 shadow-2xl">
-          <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-5 shadow-2xl">
+          <div className="mb-4 flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-gray-900">
                 {title}
@@ -638,34 +711,36 @@ function getJobStatusMeta(status: JobStatus) {
     case 'nova':
       return {
         value: 'nova' as JobStatus,
-        label: 'Nová',
-        className: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200',
+        label: 'NOVÁ',
+        className:
+          'border border-blue-300 bg-blue-100 text-blue-800 shadow-sm',
       }
     case 'k_reseni':
       return {
         value: 'k_reseni' as JobStatus,
-        label: 'K řešení',
+        label: 'K ŘEŠENÍ',
         className:
-          'bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200',
+          'border border-amber-300 bg-amber-100 text-amber-800 shadow-sm',
       }
     case 'realizace':
       return {
         value: 'realizace' as JobStatus,
-        label: 'Realizace',
+        label: 'REALIZACE',
         className:
-          'bg-green-50 text-green-700 ring-1 ring-inset ring-green-200',
+          'border border-emerald-300 bg-emerald-100 text-emerald-800 shadow-sm',
       }
     case 'ukoncena':
       return {
         value: 'ukoncena' as JobStatus,
-        label: 'Ukončená',
-        className: 'bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200',
+        label: 'UKONČENÁ',
+        className:
+          'border border-slate-300 bg-slate-100 text-slate-700 shadow-sm',
       }
     case 'storno':
       return {
         value: 'storno' as JobStatus,
-        label: 'Storno',
-        className: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
+        label: 'STORNO',
+        className: 'border border-red-300 bg-red-100 text-red-800 shadow-sm',
       }
   }
 }
@@ -675,23 +750,23 @@ function getInvoiceStatusMeta(status: InvoiceStatus) {
     case 'bez_faktury':
       return {
         value: 'bez_faktury' as InvoiceStatus,
-        label: 'Bez faktury',
+        label: 'BEZ FAKTURY',
         className:
-          'bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200',
+          'border border-yellow-300 bg-yellow-100 text-yellow-800 shadow-sm',
       }
     case 'k_fakturaci':
       return {
         value: 'k_fakturaci' as InvoiceStatus,
-        label: 'K fakturaci',
+        label: 'K FAKTURACI',
         className:
-          'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200',
+          'border border-orange-300 bg-orange-100 text-orange-800 shadow-sm',
       }
     case 'vyfakturovano':
       return {
         value: 'vyfakturovano' as InvoiceStatus,
-        label: 'Vyfakturováno',
+        label: 'FAKTURA',
         className:
-          'bg-green-50 text-green-700 ring-1 ring-inset ring-green-200',
+          'border border-green-300 bg-green-100 text-green-800 shadow-sm',
       }
   }
 }

@@ -115,6 +115,89 @@ function getViewLabel(view: ViewMode) {
   return view === 'active' ? 'Pouze aktivní' : 'Všechny'
 }
 
+function getPragueTodayParts() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+
+  const parts = formatter.formatToParts(new Date())
+
+  const year = Number(parts.find((part) => part.type === 'year')?.value ?? '')
+  const month = Number(parts.find((part) => part.type === 'month')?.value ?? '')
+  const day = Number(parts.find((part) => part.type === 'day')?.value ?? '')
+
+  return { year, month, day }
+}
+
+function toDateOnly(value: Date) {
+  const year = value.getUTCFullYear()
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(value.getUTCDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function addDaysUtc(value: Date, days: number) {
+  const next = new Date(value)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
+}
+
+function getWeekRange(offsetWeeks = 0) {
+  const today = getPragueTodayParts()
+  const pragueDateAsUtc = new Date(
+    Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0)
+  )
+
+  const day = pragueDateAsUtc.getUTCDay()
+  const mondayOffset = day === 0 ? -6 : 1 - day
+  const monday = addDaysUtc(pragueDateAsUtc, mondayOffset + offsetWeeks * 7)
+  const sunday = addDaysUtc(monday, 6)
+
+  return {
+    from: toDateOnly(monday),
+    to: toDateOnly(sunday),
+  }
+}
+
+function buildWeekFilterHref({
+  query,
+  salesOwner,
+  jobStatus,
+  invoiceStatus,
+  view,
+  sort,
+  dateFrom,
+  dateTo,
+}: {
+  query: string
+  salesOwner: string
+  jobStatus: string
+  invoiceStatus: string
+  view: ViewMode
+  sort: SortMode
+  dateFrom: string
+  dateTo: string
+}) {
+  const params = new URLSearchParams()
+
+  if (query) params.set('q', query)
+  if (salesOwner) params.set('sales', salesOwner)
+  if (jobStatus) params.set('status', jobStatus)
+  if (invoiceStatus) params.set('invoice', invoiceStatus)
+  if (view) params.set('view', view)
+  if (sort) params.set('sort', sort)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+
+  const search = params.toString()
+
+  return search ? `/jobs?${search}` : '/jobs'
+}
+
 export default async function JobsPage({
   searchParams,
 }: {
@@ -130,6 +213,36 @@ export default async function JobsPage({
   const sort = isSortMode(params?.sort) ? params?.sort : 'job_number_desc'
   const dateFrom = params?.date_from?.trim() ?? ''
   const dateTo = params?.date_to?.trim() ?? ''
+
+  const thisWeekRange = getWeekRange(0)
+  const nextWeekRange = getWeekRange(1)
+
+  const isThisWeekActive =
+    dateFrom === thisWeekRange.from && dateTo === thisWeekRange.to
+  const isNextWeekActive =
+    dateFrom === nextWeekRange.from && dateTo === nextWeekRange.to
+
+  const thisWeekHref = buildWeekFilterHref({
+    query,
+    salesOwner,
+    jobStatus,
+    invoiceStatus,
+    view,
+    sort,
+    dateFrom: thisWeekRange.from,
+    dateTo: thisWeekRange.to,
+  })
+
+  const nextWeekHref = buildWeekFilterHref({
+    query,
+    salesOwner,
+    jobStatus,
+    invoiceStatus,
+    view,
+    sort,
+    dateFrom: nextWeekRange.from,
+    dateTo: nextWeekRange.to,
+  })
 
   const supabase = await createClient()
 
@@ -296,7 +409,7 @@ export default async function JobsPage({
               <div>
                 <label
                   htmlFor="sales"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                 >
                   Obchodník
                 </label>
@@ -304,7 +417,7 @@ export default async function JobsPage({
                   id="sales"
                   name="sales"
                   defaultValue={salesOwner}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                 >
                   <option value="">Všichni</option>
                   {SALES_OWNER_OPTIONS.map((owner) => (
@@ -318,7 +431,7 @@ export default async function JobsPage({
               <div>
                 <label
                   htmlFor="status"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                 >
                   Stav zakázky
                 </label>
@@ -326,7 +439,7 @@ export default async function JobsPage({
                   id="status"
                   name="status"
                   defaultValue={jobStatus}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                 >
                   <option value="">Všechny</option>
                   <option value="nova">Nová</option>
@@ -340,7 +453,7 @@ export default async function JobsPage({
               <div>
                 <label
                   htmlFor="invoice"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                 >
                   Fakturace
                 </label>
@@ -348,7 +461,7 @@ export default async function JobsPage({
                   id="invoice"
                   name="invoice"
                   defaultValue={invoiceStatus}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                 >
                   <option value="">Všechny</option>
                   <option value="bez_faktury">Bez faktury</option>
@@ -360,7 +473,7 @@ export default async function JobsPage({
               <div>
                 <label
                   htmlFor="view"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                 >
                   Zobrazení
                 </label>
@@ -368,7 +481,7 @@ export default async function JobsPage({
                   id="view"
                   name="view"
                   defaultValue={view}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                 >
                   <option value="all">Vše</option>
                   <option value="active">Aktivní</option>
@@ -378,7 +491,7 @@ export default async function JobsPage({
               <div>
                 <label
                   htmlFor="sort"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                 >
                   Řazení
                 </label>
@@ -386,7 +499,7 @@ export default async function JobsPage({
                   id="sort"
                   name="sort"
                   defaultValue={sort}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                 >
                   <option value="job_number_desc">Dle čísla zakázky</option>
                   <option value="start_nearest">Dle data od (nejbližší)</option>
@@ -396,7 +509,7 @@ export default async function JobsPage({
               <div>
                 <label
                   htmlFor="date_from"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                 >
                   Od dne
                 </label>
@@ -405,14 +518,14 @@ export default async function JobsPage({
                   name="date_from"
                   type="date"
                   defaultValue={dateFrom}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="date_to"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                 >
                   Do dne
                 </label>
@@ -421,50 +534,74 @@ export default async function JobsPage({
                   name="date_to"
                   type="date"
                   defaultValue={dateTo}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                <span>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
                   Řazení:{' '}
-                  <span className="font-medium text-gray-900">
+                  <span className="ml-1 font-medium text-gray-900">
                     {getSortLabel(sort)}
                   </span>
                 </span>
 
-                <span>
+                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
                   Zobrazení:{' '}
-                  <span className="font-medium text-gray-900">
+                  <span className="ml-1 font-medium text-gray-900">
                     {getViewLabel(view)}
                   </span>
                 </span>
 
                 {query ? (
-                  <span>
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
                     Hledání:{' '}
-                    <span className="font-medium text-gray-900">{query}</span>
+                    <span className="ml-1 font-medium text-gray-900">{query}</span>
                   </span>
                 ) : null}
 
                 {dateFrom ? (
-                  <span>
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
                     Od:{' '}
-                    <span className="font-medium text-gray-900">{dateFrom}</span>
+                    <span className="ml-1 font-medium text-gray-900">
+                      {dateFrom}
+                    </span>
                   </span>
                 ) : null}
 
                 {dateTo ? (
-                  <span>
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
                     Do:{' '}
-                    <span className="font-medium text-gray-900">{dateTo}</span>
+                    <span className="ml-1 font-medium text-gray-900">{dateTo}</span>
                   </span>
                 ) : null}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={thisWeekHref}
+                  className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
+                    isThisWeekActive
+                      ? 'bg-[#236f9f] shadow-sm'
+                      : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                  }`}
+                >
+                  TENTO TÝDEN
+                </Link>
+
+                <Link
+                  href={nextWeekHref}
+                  className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
+                    isNextWeekActive
+                      ? 'bg-[#236f9f] shadow-sm'
+                      : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                  }`}
+                >
+                  PŘÍŠTÍ TÝDEN
+                </Link>
+
                 <button
                   type="submit"
                   className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800"
