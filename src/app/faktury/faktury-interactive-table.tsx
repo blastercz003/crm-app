@@ -17,7 +17,7 @@ type FakturyInteractiveTableProps = {
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const EDITABLE_CELL_BASE_CLASS =
-  'block h-8 w-full rounded-lg px-2 py-1.5 text-[12px] transition'
+  'block h-8 w-full rounded-lg px-0 py-1.5 text-[12px] transition'
 
 export function FakturyInteractiveTable({
   rows,
@@ -25,23 +25,23 @@ export function FakturyInteractiveTable({
   return (
     <>
       <section className="hidden rounded-3xl border border-gray-200 bg-white shadow-sm lg:block">
-        <div className="overflow-x-hidden px-2 py-2">
+        <div className="overflow-x-auto px-1 py-2">
           <table className="w-full table-fixed border-separate border-spacing-y-2">
             <thead>
               <tr className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                <th className="w-[64px] px-2 py-2 text-center">Zakázka</th>
-                <th className="w-[82px] px-2 py-2 text-left">Obchodník</th>
-                <th className="w-[170px] px-2 py-2 text-left">Firma</th>
-                <th className="w-[118px] px-2 py-2 text-left">Osoba</th>
-                <th className="w-[126px] px-2 py-2 text-left">Začátek</th>
-                <th className="w-[126px] px-2 py-2 text-left">Konec</th>
-                <th className="w-[180px] px-2 py-2 text-left">Adresa</th>
-                <th className="w-[68px] px-2 py-2 text-center">Prodejna</th>
-                <th className="w-[150px] px-2 py-2 text-center">Info</th>
-                <th className="w-[92px] px-2 py-2 text-center">Faktura</th>
-                <th className="w-[98px] px-2 py-2 text-center">Prodej</th>
-                <th className="w-[98px] px-2 py-2 text-center">Náklad</th>
-                <th className="w-[98px] px-2 py-2 text-center">Zisk</th>
+                <th className="w-[60px] px-1.5 py-2 text-center">Zakázka</th>
+                <th className="w-[72px] px-1.5 py-2 text-left">Obchodník</th>
+                <th className="w-[150px] px-1.5 py-2 text-left">Firma</th>
+                <th className="w-[96px] px-1.5 py-2 text-left">Osoba</th>
+                <th className="w-[108px] px-1.5 py-2 text-left">Začátek</th>
+                <th className="w-[108px] px-1.5 py-2 text-left">Konec</th>
+                <th className="w-[148px] px-1.5 py-2 text-left">Adresa</th>
+                <th className="w-[56px] px-1.5 py-2 text-center">Prodejna</th>
+                <th className="w-[112px] px-1.5 py-2 text-center">Info</th>
+                <th className="w-[88px] px-1.5 py-2 text-center">Faktura</th>
+                <th className="w-[88px] px-1.5 py-2 text-center">Prodej</th>
+                <th className="w-[88px] px-1.5 py-2 text-center">Náklad</th>
+                <th className="w-[88px] px-1.5 py-2 text-center">Zisk</th>
               </tr>
             </thead>
 
@@ -68,7 +68,7 @@ function DesktopRow({ row }: { row: FakturaRow }) {
 
   return (
     <tr className="group">
-      <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <Link
           href={detailHref}
           className="block h-8 rounded-lg px-1 py-1 text-center text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
@@ -80,7 +80,7 @@ function DesktopRow({ row }: { row: FakturaRow }) {
         </Link>
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <SalesOwnerText salesOwner={row.sales_owner} />
       </td>
 
@@ -101,7 +101,7 @@ function DesktopRow({ row }: { row: FakturaRow }) {
         align="center"
       />
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <FinanceEditableCell
           financeId={row.id}
           field="info_note"
@@ -115,7 +115,7 @@ function DesktopRow({ row }: { row: FakturaRow }) {
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <FinanceEditableCell
           financeId={row.id}
           field="invoice_number"
@@ -130,7 +130,7 @@ function DesktopRow({ row }: { row: FakturaRow }) {
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <FinanceEditableCell
           financeId={row.id}
           field="sale_amount"
@@ -151,7 +151,7 @@ function DesktopRow({ row }: { row: FakturaRow }) {
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <FinanceEditableCell
           financeId={row.id}
           field="cost_amount"
@@ -172,7 +172,7 @@ function DesktopRow({ row }: { row: FakturaRow }) {
         />
       </td>
 
-      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-1.5 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <ProfitText saleAmount={row.sale_amount} costAmount={row.cost_amount} />
       </td>
     </tr>
@@ -330,7 +330,7 @@ function ReadOnlyCell({
   const alignClass = align === 'center' ? 'text-center' : 'text-left'
 
   return (
-    <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+    <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
       <span
         className={`block h-8 truncate px-1 py-1 text-[12px] leading-6 text-gray-700 ${alignClass}`}
         title={title ?? value ?? '—'}
@@ -467,7 +467,7 @@ function FinanceEditableCell({
         } text-gray-400 hover:bg-black/[0.025]`}
         title={title}
       >
-        <span className={`block w-full truncate leading-5 ${textAlignClass}`}>
+        <span className={`block w-full truncate px-2 leading-5 ${textAlignClass}`}>
           {emptyLabel}
         </span>
       </button>
@@ -479,10 +479,12 @@ function FinanceEditableCell({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className={`${EDITABLE_CELL_BASE_CLASS} ${compact ? 'text-sm' : ''}`}
+        className={`${EDITABLE_CELL_BASE_CLASS} ${textAlignClass} ${
+          compact ? 'text-sm' : ''
+        }`}
         title={title}
       >
-        <span className="inline-flex h-full w-full items-center justify-center rounded-lg border border-[#2980B9]/30 bg-[#2980B9]/10 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2980B9] transition hover:border-[#2980B9]/40 hover:bg-[#2980B9]/15">
+        <span className="flex h-full w-full items-center justify-center rounded-lg border border-[#2980B9]/30 bg-[#2980B9]/10 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2980B9] transition hover:border-[#2980B9]/40 hover:bg-[#2980B9]/15">
           {emptyLabel}
         </span>
       </button>
@@ -513,7 +515,7 @@ function FinanceEditableCell({
       title={title}
     >
       <span
-        className={`block w-full truncate leading-5 ${filledTextClassName} ${
+        className={`block w-full truncate px-2 leading-5 ${filledTextClassName} ${
           align === 'right'
             ? 'text-right'
             : align === 'center'
