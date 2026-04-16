@@ -16,6 +16,8 @@ export type InvoiceStatus =
   | 'k_fakturaci'
   | 'vyfakturovano'
 
+export type EvidenceStatus = 'nove' | 'zapsano'
+
 export type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
 export type ViewMode = 'all' | 'active'
 export type SortMode = 'job_number_desc' | 'start_nearest'
@@ -32,10 +34,10 @@ export type JobRow = {
   store_number: string | null
   technician_name: string | null
   generator_name: string | null
-  power_and_cables_note: string | null
   info_note: string | null
   job_status: JobStatus
   invoice_status: InvoiceStatus
+  evidence_status: EvidenceStatus
   created_at: string
   updated_at: string
 }
@@ -50,27 +52,19 @@ type ProfilePermissionRow = {
 
 type JobsSearchParams = {
   q?: string
-  sales?: string
   status?: string
-  invoice?: string
   view?: string
   sort?: string
   date_from?: string
   date_to?: string
 }
 
-const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
 const JOB_STATUS_OPTIONS: JobStatus[] = [
   'nova',
   'k_reseni',
   'realizace',
   'ukoncena',
   'storno',
-]
-const INVOICE_STATUS_OPTIONS: InvoiceStatus[] = [
-  'bez_faktury',
-  'k_fakturaci',
-  'vyfakturovano',
 ]
 
 function buildSearchFilter(search: string) {
@@ -87,16 +81,8 @@ function buildSearchFilter(search: string) {
   ].join(',')
 }
 
-function isSalesOwner(value: string | undefined): value is SalesOwner {
-  return SALES_OWNER_OPTIONS.includes(value as SalesOwner)
-}
-
 function isJobStatus(value: string | undefined): value is JobStatus {
   return JOB_STATUS_OPTIONS.includes(value as JobStatus)
-}
-
-function isInvoiceStatus(value: string | undefined): value is InvoiceStatus {
-  return INVOICE_STATUS_OPTIONS.includes(value as InvoiceStatus)
 }
 
 function isViewMode(value: string | undefined): value is ViewMode {
@@ -165,18 +151,14 @@ function getWeekRange(offsetWeeks = 0) {
 
 function buildWeekFilterHref({
   query,
-  salesOwner,
   jobStatus,
-  invoiceStatus,
   view,
   sort,
   dateFrom,
   dateTo,
 }: {
   query: string
-  salesOwner: string
   jobStatus: string
-  invoiceStatus: string
   view: ViewMode
   sort: SortMode
   dateFrom: string
@@ -185,9 +167,7 @@ function buildWeekFilterHref({
   const params = new URLSearchParams()
 
   if (query) params.set('q', query)
-  if (salesOwner) params.set('sales', salesOwner)
   if (jobStatus) params.set('status', jobStatus)
-  if (invoiceStatus) params.set('invoice', invoiceStatus)
   if (view) params.set('view', view)
   if (sort) params.set('sort', sort)
   if (dateFrom) params.set('date_from', dateFrom)
@@ -206,9 +186,7 @@ export default async function JobsPage({
   const params = searchParams ? await searchParams : undefined
 
   const query = params?.q?.trim() ?? ''
-  const salesOwner = isSalesOwner(params?.sales) ? params?.sales : ''
   const jobStatus = isJobStatus(params?.status) ? params?.status : ''
-  const invoiceStatus = isInvoiceStatus(params?.invoice) ? params?.invoice : ''
   const view = isViewMode(params?.view) ? params?.view : 'all'
   const sort = isSortMode(params?.sort) ? params?.sort : 'job_number_desc'
   const dateFrom = params?.date_from?.trim() ?? ''
@@ -224,9 +202,7 @@ export default async function JobsPage({
 
   const thisWeekHref = buildWeekFilterHref({
     query,
-    salesOwner,
     jobStatus,
-    invoiceStatus,
     view,
     sort,
     dateFrom: thisWeekRange.from,
@@ -235,9 +211,7 @@ export default async function JobsPage({
 
   const nextWeekHref = buildWeekFilterHref({
     query,
-    salesOwner,
     jobStatus,
-    invoiceStatus,
     view,
     sort,
     dateFrom: nextWeekRange.from,
@@ -276,16 +250,8 @@ export default async function JobsPage({
     request = request.or(buildSearchFilter(query))
   }
 
-  if (salesOwner) {
-    request = request.eq('sales_owner', salesOwner)
-  }
-
   if (jobStatus) {
     request = request.eq('job_status', jobStatus)
-  }
-
-  if (invoiceStatus) {
-    request = request.eq('invoice_status', invoiceStatus)
   }
 
   if (view === 'active') {
@@ -333,13 +299,7 @@ export default async function JobsPage({
   )
 
   const hasActiveFilters = Boolean(
-    query ||
-      salesOwner ||
-      jobStatus ||
-      invoiceStatus ||
-      view !== 'all' ||
-      dateFrom ||
-      dateTo
+    query || jobStatus || view !== 'all' || dateFrom || dateTo
   )
 
   return (
@@ -352,7 +312,7 @@ export default async function JobsPage({
                 Zakázky
               </h1>
               <p className="text-sm text-gray-500">
-                Přehled všech realizací, jejich průběhu a stavu fakturace.
+                Přehled všech realizací, jejich průběhu a interní evidence.
               </p>
             </div>
 
@@ -362,9 +322,7 @@ export default async function JobsPage({
                 method="get"
                 className="flex w-full gap-3 sm:w-auto"
               >
-                <input type="hidden" name="sales" value={salesOwner} />
                 <input type="hidden" name="status" value={jobStatus} />
-                <input type="hidden" name="invoice" value={invoiceStatus} />
                 <input type="hidden" name="view" value={view} />
                 <input type="hidden" name="sort" value={sort} />
                 <input type="hidden" name="date_from" value={dateFrom} />
@@ -405,29 +363,7 @@ export default async function JobsPage({
           <form action="/jobs" method="get" className="space-y-3">
             <input type="hidden" name="q" value={query} />
 
-            <div className="grid gap-2 xl:grid-cols-7">
-              <div>
-                <label
-                  htmlFor="sales"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
-                >
-                  Obchodník
-                </label>
-                <select
-                  id="sales"
-                  name="sales"
-                  defaultValue={salesOwner}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                >
-                  <option value="">Všichni</option>
-                  {SALES_OWNER_OPTIONS.map((owner) => (
-                    <option key={owner} value={owner}>
-                      {owner}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+            <div className="grid gap-2 xl:grid-cols-5">
               <div>
                 <label
                   htmlFor="status"
@@ -447,26 +383,6 @@ export default async function JobsPage({
                   <option value="realizace">Realizace</option>
                   <option value="ukoncena">Ukončená</option>
                   <option value="storno">Storno</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="invoice"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
-                >
-                  Fakturace
-                </label>
-                <select
-                  id="invoice"
-                  name="invoice"
-                  defaultValue={invoiceStatus}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                >
-                  <option value="">Všechny</option>
-                  <option value="bez_faktury">Bez faktury</option>
-                  <option value="k_fakturaci">K fakturaci</option>
-                  <option value="vyfakturovano">Vyfakturováno</option>
                 </select>
               </div>
 

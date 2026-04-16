@@ -38,6 +38,11 @@ export type UpdateJobSalesOwnerActionState = {
   error: string | null
 }
 
+export type UpdateJobEvidenceStatusActionState = {
+  success: boolean
+  error: string | null
+}
+
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
 }
@@ -55,6 +60,7 @@ const INVOICE_STATUS_VALUES = [
   'k_fakturaci',
   'vyfakturovano',
 ] as const
+const EVIDENCE_STATUS_VALUES = ['nove', 'zapsano'] as const
 
 const INLINE_EDITABLE_FIELDS = [
   'company_name',
@@ -104,6 +110,16 @@ function normalizeInvoiceStatus(value: FormDataEntryValue | null) {
   )
     ? text
     : 'bez_faktury'
+}
+
+function normalizeEvidenceStatus(value: FormDataEntryValue | null) {
+  const text = String(value ?? '').trim()
+
+  return EVIDENCE_STATUS_VALUES.includes(
+    text as (typeof EVIDENCE_STATUS_VALUES)[number]
+  )
+    ? text
+    : 'nove'
 }
 
 function isInlineEditableField(value: string): value is InlineEditableField {
@@ -237,9 +253,9 @@ async function requireJobsAccess() {
   }
 }
 
-function revalidateJobPaths(jobId: string) {
+function revalidateAllRelatedPaths() {
   revalidatePath('/jobs')
-  revalidatePath(`/jobs/${jobId}`)
+  revalidatePath('/faktury')
 }
 
 function getJobPayload(formData: FormData) {
@@ -252,9 +268,6 @@ function getJobPayload(formData: FormData) {
   const storeNumber = normalizeText(formData.get('store_number'))
   const technicianName = normalizeText(formData.get('technician_name'))
   const generatorName = normalizeText(formData.get('generator_name'))
-  const powerAndCablesNote = normalizeText(
-    formData.get('power_and_cables_note')
-  )
   const infoNote = normalizeText(formData.get('info_note'))
   const jobStatus = normalizeJobStatus(formData.get('job_status'))
   const invoiceStatus = normalizeInvoiceStatus(formData.get('invoice_status'))
@@ -299,7 +312,6 @@ function getJobPayload(formData: FormData) {
       store_number: storeNumber,
       technician_name: technicianName,
       generator_name: generatorName,
-      power_and_cables_note: powerAndCablesNote,
       info_note: infoNote,
       job_status: jobStatus,
       invoice_status: invoiceStatus,
@@ -329,16 +341,41 @@ export async function createJobAction(
     }
   }
 
-  const { error } = await supabase.from('jobs').insert(payload)
+  const { data: createdJob, error: createJobError } = await supabase
+    .from('jobs')
+    .insert({
+      ...payload,
+      evidence_status: 'nove',
+    })
+    .select('id')
+    .single()
 
-  if (error) {
+  if (createJobError || !createdJob?.id) {
     return {
       success: false,
       error: 'Zakázku se nepodařilo uložit.',
     }
   }
 
-  revalidatePath('/jobs')
+  const createdJobId = String(createdJob.id)
+
+  const { error: createFinanceError } = await supabase
+    .from('job_finances')
+    .insert({
+      job_id: createdJobId,
+    })
+
+  if (createFinanceError) {
+    await supabase.from('jobs').delete().eq('id', createdJobId)
+
+    return {
+      success: false,
+      error:
+        'Zakázka byla vytvořena, ale nepodařilo se založit finanční záznam. Založení bylo vráceno zpět.',
+    }
+  }
+
+  revalidateAllRelatedPaths()
 
   return {
     success: true,
@@ -390,7 +427,7 @@ export async function updateJobAction(
     }
   }
 
-  revalidateJobPaths(normalizedJobId)
+  revalidateAllRelatedPaths()
 
   return {
     success: true,
@@ -437,7 +474,7 @@ export async function updateJobInfoAction(
     }
   }
 
-  revalidateJobPaths(normalizedJobId)
+  revalidateAllRelatedPaths()
 
   return {
     success: true,
@@ -495,7 +532,7 @@ export async function updateJobStatusAction(
     }
   }
 
-  revalidateJobPaths(normalizedJobId)
+  revalidateAllRelatedPaths()
 
   return {
     success: true,
@@ -553,7 +590,7 @@ export async function updateJobInvoiceStatusAction(
     }
   }
 
-  revalidateJobPaths(normalizedJobId)
+  revalidateAllRelatedPaths()
 
   return {
     success: true,
@@ -611,7 +648,67 @@ export async function updateJobSalesOwnerAction(
     }
   }
 
-  revalidateJobPaths(normalizedJobId)
+  revalidateAllRelatedPaths()
+
+  return {
+    success: true,
+    error: null,
+  }
+}
+
+export async function updateJobEvidenceStatusAction(
+  jobId: string,
+  _prevState: UpdateJobEvidenceStatusActionState,
+  formData: FormData
+): Promise<UpdateJobEvidenceStatusActionState> {
+  const { supabase, user, error: accessError } = await requireJobsAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+    }
+  }
+
+  const normalizedJobId = String(jobId ?? '').trim()
+
+  if (!normalizedJobId) {
+    return {
+      success: false,
+      error: 'Chybí ID zakázky.',
+    }
+  }
+
+  const evidenceStatusRaw = normalizeEvidenceStatus(
+    formData.get('evidence_status')
+  )
+
+  if (
+    !EVIDENCE_STATUS_VALUES.includes(
+      evidenceStatusRaw as (typeof EVIDENCE_STATUS_VALUES)[number]
+    )
+  ) {
+    return {
+      success: false,
+      error: 'Neplatný stav evidence.',
+    }
+  }
+
+  const { error } = await supabase
+    .from('jobs')
+    .update({
+      evidence_status: evidenceStatusRaw,
+    })
+    .eq('id', normalizedJobId)
+
+  if (error) {
+    return {
+      success: false,
+      error: 'Stav evidence se nepodařilo uložit.',
+    }
+  }
+
+  revalidateAllRelatedPaths()
 
   return {
     success: true,
@@ -676,7 +773,7 @@ export async function updateJobInlineFieldAction(
       }
     }
 
-    revalidateJobPaths(normalizedJobId)
+    revalidateAllRelatedPaths()
 
     return {
       success: true,
@@ -746,7 +843,7 @@ export async function updateJobInlineFieldAction(
       }
     }
 
-    revalidateJobPaths(normalizedJobId)
+    revalidateAllRelatedPaths()
 
     return {
       success: true,
@@ -770,7 +867,7 @@ export async function updateJobInlineFieldAction(
     }
   }
 
-  revalidateJobPaths(normalizedJobId)
+  revalidateAllRelatedPaths()
 
   return {
     success: true,

@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import Link from 'next/link'
 import {
+  updateJobEvidenceStatusAction,
   updateJobInfoAction,
   updateJobInlineFieldAction,
-  updateJobInvoiceStatusAction,
-  updateJobSalesOwnerAction,
   updateJobStatusAction,
 } from './actions'
+import { EditJobButton } from './edit-job-button'
 
 type JobStatus =
   | 'nova'
@@ -17,11 +16,7 @@ type JobStatus =
   | 'ukoncena'
   | 'storno'
 
-type InvoiceStatus =
-  | 'bez_faktury'
-  | 'k_fakturaci'
-  | 'vyfakturovano'
-
+type EvidenceStatus = 'nove' | 'zapsano'
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
 
 type JobRow = {
@@ -38,7 +33,8 @@ type JobRow = {
   generator_name: string | null
   info_note: string | null
   job_status: JobStatus
-  invoice_status: InvoiceStatus
+  evidence_status: EvidenceStatus
+  invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
 }
 
 type InlineEditableField =
@@ -57,12 +53,13 @@ type JobsInteractiveTableProps = {
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
-const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
 const STATUS_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
-const INVOICE_BUTTON_WIDTH_CLASS = 'min-w-[122px]'
-const SALES_OWNER_BUTTON_WIDTH_CLASS = 'min-w-[96px]'
+const EVIDENCE_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
 
-export function JobsInteractiveTable({ jobs }: JobsInteractiveTableProps) {
+export function JobsInteractiveTable({
+  jobs,
+  clientSuggestions,
+}: JobsInteractiveTableProps) {
   return (
     <>
       <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
@@ -70,6 +67,7 @@ export function JobsInteractiveTable({ jobs }: JobsInteractiveTableProps) {
           <thead>
             <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
               <th className="w-[76px] px-2 py-2">Zakázka</th>
+              <th className="w-[112px] px-2 py-2 text-center">Evidence</th>
               <th className="w-[120px] px-2 py-2">Firma</th>
               <th className="w-[94px] px-2 py-2">Osoba</th>
               <th className="w-[126px] px-2 py-2">Začátek</th>
@@ -80,14 +78,16 @@ export function JobsInteractiveTable({ jobs }: JobsInteractiveTableProps) {
               <th className="w-[96px] px-2 py-2">Agregát</th>
               <th className="w-[86px] px-2 py-2 text-center">Info</th>
               <th className="w-[112px] px-2 py-2 text-center">Stav</th>
-              <th className="w-[124px] px-2 py-2 text-center">Fakturace</th>
-              <th className="w-[106px] px-2 py-2 text-center">Obchodník</th>
             </tr>
           </thead>
 
           <tbody>
             {jobs.map((job) => (
-              <DesktopRow key={job.id} job={job} />
+              <DesktopRow
+                key={job.id}
+                job={job}
+                clientSuggestions={clientSuggestions}
+              />
             ))}
           </tbody>
         </table>
@@ -95,25 +95,34 @@ export function JobsInteractiveTable({ jobs }: JobsInteractiveTableProps) {
 
       <section className="grid gap-3 lg:hidden">
         {jobs.map((job) => (
-          <MobileCard key={job.id} job={job} />
+          <MobileCard
+            key={job.id}
+            job={job}
+            clientSuggestions={clientSuggestions}
+          />
         ))}
       </section>
     </>
   )
 }
 
-function DesktopRow({ job }: { job: JobRow }) {
-  const detailHref = `/jobs/${job.id}`
-
+function DesktopRow({
+  job,
+  clientSuggestions,
+}: {
+  job: JobRow
+  clientSuggestions: string[]
+}) {
   return (
     <tr className="group">
       <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-        <Link
-          href={detailHref}
-          className="block rounded-lg px-1 py-1 text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
-        >
+        <EditJobButton job={job} clientSuggestions={clientSuggestions}>
           <span className="block truncate">{job.job_number}</span>
-        </Link>
+        </EditJobButton>
+      </td>
+
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+        <EvidenceStatusButton job={job} />
       </td>
 
       <EditableCell job={job} field="company_name" value={job.company_name} />
@@ -151,42 +160,37 @@ function DesktopRow({ job }: { job: JobRow }) {
         <InfoNoteButton job={job} compact />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-        <JobStatusButton job={job} />
-      </td>
-
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-        <InvoiceStatusButton job={job} />
-      </td>
-
       <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-        <SalesOwnerButton job={job} compact />
+        <JobStatusButton job={job} />
       </td>
     </tr>
   )
 }
 
-function MobileCard({ job }: { job: JobRow }) {
-  const detailHref = `/jobs/${job.id}`
-
+function MobileCard({
+  job,
+  clientSuggestions,
+}: {
+  job: JobRow
+  clientSuggestions: string[]
+}) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <Link
-            href={detailHref}
+          <EditJobButton
+            job={job}
+            clientSuggestions={clientSuggestions}
             className="text-sm font-semibold leading-tight text-gray-900 hover:underline"
           >
             {job.job_number}
-          </Link>
+          </EditJobButton>
           <p className="mt-0.5 truncate text-sm text-gray-700">
             {job.company_name}
           </p>
         </div>
 
-        <span className="rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[10px] font-medium text-gray-700">
-          {job.sales_owner}
-        </span>
+        <EvidenceStatusButton job={job} compact />
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
@@ -221,8 +225,6 @@ function MobileCard({ job }: { job: JobRow }) {
           <InfoNoteButton job={job} />
           <JobStatusButton job={job} />
         </div>
-
-        <InvoiceStatusButton job={job} />
       </div>
     </div>
   )
@@ -501,34 +503,36 @@ function JobStatusButton({ job }: { job: JobRow }) {
   )
 }
 
-function InvoiceStatusButton({ job }: { job: JobRow }) {
+function EvidenceStatusButton({
+  job,
+  compact = false,
+}: {
+  job: JobRow
+  compact?: boolean
+}) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const meta = getInvoiceStatusMeta(job.invoice_status)
+  const meta = getEvidenceStatusMeta(job.evidence_status)
 
   const options: {
-    value: InvoiceStatus
+    value: EvidenceStatus
     label: string
     className: string
-  }[] = [
-    getInvoiceStatusMeta('bez_faktury'),
-    getInvoiceStatusMeta('k_fakturaci'),
-    getInvoiceStatusMeta('vyfakturovano'),
-  ]
+  }[] = [getEvidenceStatusMeta('nove'), getEvidenceStatusMeta('zapsano')]
 
-  function saveInvoiceStatus(nextStatus: InvoiceStatus) {
+  function saveEvidenceStatus(nextStatus: EvidenceStatus) {
     startTransition(async () => {
       const formData = new FormData()
-      formData.set('invoice_status', nextStatus)
+      formData.set('evidence_status', nextStatus)
 
-      const result = await updateJobInvoiceStatusAction(
+      const result = await updateJobEvidenceStatusAction(
         job.id,
         { success: false, error: null },
         formData
       )
 
       if (!result.success) {
-        alert(result.error ?? 'Stav fakturace se nepodařilo uložit.')
+        alert(result.error ?? 'Stav evidence se nepodařilo uložit.')
         return
       }
 
@@ -541,14 +545,16 @@ function InvoiceStatusButton({ job }: { job: JobRow }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 ${INVOICE_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 ${meta.className}`}
+        className={`inline-flex h-8 ${
+          compact ? 'min-w-[96px]' : EVIDENCE_BUTTON_WIDTH_CLASS
+        } max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
 
       {isOpen ? (
         <ModalShell
-          title="Změnit stav fakturace"
+          title="Změnit stav evidence"
           description={`Zakázka ${job.job_number}`}
           onClose={() => setIsOpen(false)}
         >
@@ -558,84 +564,14 @@ function InvoiceStatusButton({ job }: { job: JobRow }) {
                 key={option.value}
                 type="button"
                 disabled={isPending}
-                onClick={() => saveInvoiceStatus(option.value)}
+                onClick={() => saveEvidenceStatus(option.value)}
                 className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="font-medium text-gray-900">{option.label}</span>
                 <span
-                  className={`inline-flex h-8 ${INVOICE_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+                  className={`inline-flex h-8 ${EVIDENCE_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
                 >
                   {option.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </ModalShell>
-      ) : null}
-    </>
-  )
-}
-
-function SalesOwnerButton({
-  job,
-  compact = false,
-}: {
-  job: JobRow
-  compact?: boolean
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
-
-  function saveSalesOwner(nextSalesOwner: SalesOwner) {
-    startTransition(async () => {
-      const formData = new FormData()
-      formData.set('sales_owner', nextSalesOwner)
-
-      const result = await updateJobSalesOwnerAction(
-        job.id,
-        { success: false, error: null },
-        formData
-      )
-
-      if (!result.success) {
-        alert(result.error ?? 'Obchodníka se nepodařilo uložit.')
-        return
-      }
-
-      setIsOpen(false)
-    })
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 items-center justify-center rounded-xl border border-gray-200 bg-white ${
-          compact ? SALES_OWNER_BUTTON_WIDTH_CLASS : SALES_OWNER_BUTTON_WIDTH_CLASS
-        } px-3 text-[11px] font-medium text-gray-900 transition hover:bg-gray-50`}
-      >
-        <span className="truncate">{job.sales_owner}</span>
-      </button>
-
-      {isOpen ? (
-        <ModalShell
-          title="Změnit obchodníka"
-          description={`Zakázka ${job.job_number}`}
-          onClose={() => setIsOpen(false)}
-        >
-          <div className="space-y-2">
-            {SALES_OWNER_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                disabled={isPending}
-                onClick={() => saveSalesOwner(option)}
-                className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="font-medium text-gray-900">{option}</span>
-                <span className="inline-flex h-8 min-w-[96px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-medium text-gray-900">
-                  {option}
                 </span>
               </button>
             ))}
@@ -745,28 +681,21 @@ function getJobStatusMeta(status: JobStatus) {
   }
 }
 
-function getInvoiceStatusMeta(status: InvoiceStatus) {
+function getEvidenceStatusMeta(status: EvidenceStatus) {
   switch (status) {
-    case 'bez_faktury':
+    case 'nove':
       return {
-        value: 'bez_faktury' as InvoiceStatus,
-        label: 'BEZ FAKTURY',
+        value: 'nove' as EvidenceStatus,
+        label: 'NOVÉ',
         className:
-          'border border-yellow-300 bg-yellow-100 text-yellow-800 shadow-sm',
+          'border border-blue-300 bg-blue-100 text-blue-800 shadow-sm',
       }
-    case 'k_fakturaci':
+    case 'zapsano':
       return {
-        value: 'k_fakturaci' as InvoiceStatus,
-        label: 'K FAKTURACI',
+        value: 'zapsano' as EvidenceStatus,
+        label: 'ZAPSÁNO',
         className:
-          'border border-orange-300 bg-orange-100 text-orange-800 shadow-sm',
-      }
-    case 'vyfakturovano':
-      return {
-        value: 'vyfakturovano' as InvoiceStatus,
-        label: 'FAKTURA',
-        className:
-          'border border-green-300 bg-green-100 text-green-800 shadow-sm',
+          'border border-emerald-300 bg-emerald-100 text-emerald-800 shadow-sm',
       }
   }
 }
