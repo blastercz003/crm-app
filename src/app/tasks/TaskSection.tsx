@@ -34,11 +34,19 @@ export default function TaskSection({
             </h2>
 
             {description ? (
-              <p className="mt-1 text-sm text-zinc-500">{description}</p>
+              <p className="mt-1 text-sm leading-6 text-zinc-500">
+                {description}
+              </p>
             ) : null}
           </div>
 
-          <span className="inline-flex shrink-0 items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 ring-1 ring-zinc-200">
+          <span
+            className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-2.5 text-xs font-semibold ${
+              muted
+                ? 'bg-white text-zinc-500 ring-1 ring-zinc-200'
+                : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
+            }`}
+          >
             {tasks.length}
           </span>
         </div>
@@ -46,7 +54,7 @@ export default function TaskSection({
 
       <div className="p-4 md:p-5">
         {tasks.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/80 px-4 py-5 text-sm text-zinc-500">
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/80 px-4 py-5 text-sm leading-6 text-zinc-500">
             V této sekci zatím nejsou žádné úkoly.
           </div>
         ) : (

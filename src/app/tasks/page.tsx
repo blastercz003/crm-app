@@ -27,26 +27,6 @@ function StatCard({
   )
 }
 
-function FilterPill({
-  label,
-  active = false,
-}: {
-  label: string
-  active?: boolean
-}) {
-  return (
-    <div
-      className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition ${
-        active
-          ? 'bg-zinc-900 text-white shadow-sm'
-          : 'border border-zinc-200 bg-white text-zinc-600'
-      }`}
-    >
-      {label}
-    </div>
-  )
-}
-
 function InfoChip({ label }: { label: string }) {
   return (
     <div className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-500">
@@ -112,6 +92,10 @@ function filterTasks(tasks: TaskRow[], search: string) {
   })
 }
 
+function getProfileId(profile: { id?: string | null } | null | undefined) {
+  return profile?.id ?? null
+}
+
 export default async function TasksPage({ searchParams }: TasksPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const search = resolvedSearchParams?.search?.trim() ?? ''
@@ -120,14 +104,23 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     await getTasksForCurrentUser()
 
   const isAdmin = profile.role === 'admin'
+  const profileId = getProfileId(profile)
 
   const filteredAssignedToMe = filterTasks(assignedToMe, search)
   const filteredCreatedByMe = filterTasks(createdByMe, search)
   const filteredAllTasks = filterTasks(allTasks, search)
 
+  const createdForOthers = profileId
+    ? filteredCreatedByMe.filter((task) => task.assigned_to !== profileId)
+    : filteredCreatedByMe
+
   const assigned = splitTasks(filteredAssignedToMe)
-  const created = splitTasks(filteredCreatedByMe)
+  const delegated = splitTasks(createdForOthers)
   const adminAll = splitTasks(filteredAllTasks)
+
+  const hasResolvedAssigned = assigned.resolved.length > 0
+  const hasResolvedDelegated = delegated.resolved.length > 0
+  const hasAnyResolved = hasResolvedAssigned || hasResolvedDelegated
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-4 text-zinc-900 md:px-6 md:py-6 xl:px-8">
@@ -170,60 +163,38 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
             <div className="min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Zobrazení
+                Přehled
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                <FilterPill label="Vše" active />
-                <FilterPill label="Přidělené mně" />
-                <FilterPill label="Zadané mnou" />
-                <FilterPill label="Aktivní" active />
-                <FilterPill label="Vyřešené" />
-                {isAdmin ? <FilterPill label="Administrace" /> : null}
-              </div>
+              <h2 className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">
+                Hlavní pracovní agenda
+              </h2>
+
+              <p className="mt-2 text-sm text-zinc-500">
+                Nahoře vidíš své aktivní úkoly a zvlášť úkoly delegované ostatním.
+                
+              </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <InfoChip label="Pohled: Vše" />
-                <InfoChip label={search ? `Hledání: ${search}` : 'Hledání: Bez filtru'} />
-                <InfoChip label={isAdmin ? 'Role: Admin' : 'Role: Uživatel'} />
+                <InfoChip label="MOJE ÚKOLY" />
+                <InfoChip label="BEZ DUPLICIT" />
+                {search ? <InfoChip label={`HLEDÁNÍ: ${search}`} /> : null}
+                {isAdmin ? <InfoChip label="ADMIN" /> : null}
               </div>
             </div>
 
             <div className="space-y-3">
-              <div
-                className={`grid gap-2 ${
-                  isAdmin ? 'grid-cols-2 xl:grid-cols-3' : 'grid-cols-2'
-                }`}
-              >
+              <div className="grid grid-cols-2 gap-2">
+                <StatCard label="Aktivní mně" value={assigned.active.length} />
+                <StatCard label="Vyřešené mně" value={assigned.resolved.length} />
                 <StatCard
-                  label="Aktivní mně"
-                  value={assigned.active.length}
+                  label="Aktivní ostatním"
+                  value={delegated.active.length}
                 />
                 <StatCard
-                  label="Vyřešené mně"
-                  value={assigned.resolved.length}
+                  label="Vyřešené ostatním"
+                  value={delegated.resolved.length}
                 />
-                <StatCard
-                  label="Aktivní mnou"
-                  value={created.active.length}
-                />
-                <StatCard
-                  label="Vyřešené mnou"
-                  value={created.resolved.length}
-                />
-
-                {isAdmin ? (
-                  <>
-                    <StatCard
-                      label="Všechny aktivní"
-                      value={adminAll.active.length}
-                    />
-                    <StatCard
-                      label="Všechny hotové"
-                      value={adminAll.resolved.length}
-                    />
-                  </>
-                ) : null}
               </div>
 
               <form action="/tasks" className="space-y-2.5">
@@ -248,14 +219,14 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                       type="submit"
                       className="inline-flex h-11 items-center justify-center rounded-2xl bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
                     >
-                      Filtrovat
+                      FILTROVAT
                     </button>
 
                     <Link
                       href="/tasks"
-                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-950"
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-950"
                     >
-                      Reset
+                      RESET
                     </Link>
                   </div>
                 </div>
@@ -268,33 +239,70 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           <div className="space-y-4">
             <TaskSection
               title="Úkoly přidělené mně"
-              description="Aktuálně otevřené úkoly."
+              description="Aktuálně otevřené úkoly, které mám splnit."
               tasks={assigned.active}
-            />
-
-            <TaskSection
-              title="Vyřešené přidělené mně"
-              description="Dokončené položky."
-              tasks={assigned.resolved}
-              muted
             />
           </div>
 
           <div className="space-y-4">
             <TaskSection
-              title="Úkoly, které jsem zadal"
+              title="Úkoly, které jsem zadal ostatním"
               description="Aktivní delegované úkoly."
-              tasks={created.active}
-            />
-
-            <TaskSection
-              title="Vyřešené zadané mnou"
-              description="Dokončené delegované úkoly."
-              tasks={created.resolved}
-              muted
+              tasks={delegated.active}
             />
           </div>
         </section>
+
+        {hasAnyResolved ? (
+          <section className="space-y-4">
+            <div className="px-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                Archiv
+              </div>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-950">
+                Vyřešené úkoly
+              </h2>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              {hasResolvedAssigned ? (
+                <TaskSection
+                  title="Vyřešené přidělené mně"
+                  description="Dokončené položky, které jsem měl splnit."
+                  tasks={assigned.resolved}
+                  muted
+                />
+              ) : (
+                <div className="rounded-[26px] border border-zinc-200 bg-white p-6 shadow-sm">
+                  <div className="text-sm font-medium text-zinc-950">
+                    Vyřešené přidělené mně
+                  </div>
+                  <p className="mt-2 text-sm text-zinc-500">
+                    Zatím tu nejsou žádné dokončené položky.
+                  </p>
+                </div>
+              )}
+
+              {hasResolvedDelegated ? (
+                <TaskSection
+                  title="Vyřešené zadané ostatním"
+                  description="Dokončené delegované úkoly bez vlastních duplicit."
+                  tasks={delegated.resolved}
+                  muted
+                />
+              ) : (
+                <div className="rounded-[26px] border border-zinc-200 bg-white p-6 shadow-sm">
+                  <div className="text-sm font-medium text-zinc-950">
+                    Vyřešené zadané ostatním
+                  </div>
+                  <p className="mt-2 text-sm text-zinc-500">
+                    Zatím tu nejsou žádné dokončené delegované úkoly.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
 
         {isAdmin ? (
           <section className="space-y-4">
@@ -305,6 +313,9 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
               <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-950">
                 Přehled všech úkolů
               </h2>
+              <p className="mt-2 text-sm text-zinc-500">
+                Rozšířený administrátorský pohled na celý systém.
+              </p>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">

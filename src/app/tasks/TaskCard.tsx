@@ -12,15 +12,6 @@ type TaskCardProps = {
   task: TaskRow
 }
 
-function resolvePersonName(
-  person: { name: string | null } | { name: string | null }[] | null,
-  fallback: string
-) {
-  if (!person) return fallback
-  if (Array.isArray(person)) return person[0]?.name ?? fallback
-  return person.name ?? fallback
-}
-
 function resolveClientName(
   client:
     | {
@@ -95,8 +86,6 @@ function formatDueDate(value: string | null) {
 }
 
 export default function TaskCard({ task }: TaskCardProps) {
-  const creatorName = resolvePersonName(task.creator, 'Neznámý uživatel')
-  const assigneeName = resolvePersonName(task.assignee, 'Nepřiřazeno')
   const clientName = resolveClientName(
     task.client,
     task.company_name ?? 'Bez klienta'
@@ -129,7 +118,7 @@ export default function TaskCard({ task }: TaskCardProps) {
     <div className={cardClassName}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold leading-tight text-zinc-950 md:text-lg">
                 {task.title}
@@ -140,63 +129,65 @@ export default function TaskCard({ task }: TaskCardProps) {
               </span>
             </div>
 
-            <div className="mt-2 grid gap-x-4 gap-y-1 text-sm text-zinc-500 sm:grid-cols-2">
-              <p>
-                <span className="text-zinc-400">Klient:</span> {clientName}
-              </p>
-              <p>
-                <span className="text-zinc-400">Přiřazeno:</span> {assigneeName}
-              </p>
-              <p>
-                <span className="text-zinc-400">Zadal:</span> {creatorName}
-              </p>
-              {task.contact_person ? (
-                <p>
-                  <span className="text-zinc-400">Kontakt:</span> {task.contact_person}
+            <div className="mt-2 text-sm text-zinc-500">
+              <span className="text-zinc-400">Klient:</span> {clientName}
+            </div>
+
+            {task.note ? (
+              <div className="mt-3 rounded-xl bg-zinc-50 px-3 py-2.5">
+                <p className="whitespace-pre-wrap text-sm leading-5 text-zinc-700">
+                  {task.note}
                 </p>
-              ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-2 md:w-[190px]">
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Stav vyřízení
+              </div>
+              <span
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
+              >
+                {getStatusLabel(task.status)}
+              </span>
+            </div>
+
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Priorita
+              </div>
+              <span
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
+              >
+                {getPriorityLabel(task.priority)}
+              </span>
+            </div>
+
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Termín
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className={dueBadgeClassName}>
+                  {formatDueDate(task.due_date)}
+                </span>
+
+                {isOverdue ? (
+                  <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
+                    Po termínu
+                  </span>
+                ) : null}
+
+                {isToday ? (
+                  <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
+                    Dnes
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
-
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
-            >
-              {getStatusLabel(task.status)}
-            </span>
-
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
-            >
-              Priorita: {getPriorityLabel(task.priority)}
-            </span>
-          </div>
-        </div>
-
-        {task.note ? (
-          <div className="rounded-xl bg-zinc-50 px-3 py-2.5">
-            <p className="whitespace-pre-wrap text-sm leading-5 text-zinc-700">
-              {task.note}
-            </p>
-          </div>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={dueBadgeClassName}>
-            Termín: {formatDueDate(task.due_date)}
-          </span>
-
-          {isOverdue ? (
-            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
-              Po termínu
-            </span>
-          ) : null}
-
-          {isToday ? (
-            <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
-              Dnes
-            </span>
-          ) : null}
         </div>
 
         <div className="flex flex-col gap-2 border-t border-zinc-200/80 pt-3 sm:flex-row sm:items-center sm:justify-between">
