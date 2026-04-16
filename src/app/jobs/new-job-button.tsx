@@ -123,7 +123,7 @@ function JobFormShell({
 
   const title = 'Nová zakázka'
   const description = 'Vyplň základní údaje k nové realizaci.'
-  const submitLabel = 'Uložit zakázku'
+  const submitLabel = 'ULOŽIT ZAKÁZKU'
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -399,9 +399,9 @@ function JobFormShell({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
               >
-                Zrušit
+                ZRUŠIT
               </button>
 
               <SubmitButton label={submitLabel} />
@@ -420,9 +420,9 @@ function SubmitButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? 'Ukládám…' : label}
+      {pending ? 'UKLÁDÁM…' : label}
     </button>
   )
 }

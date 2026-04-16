@@ -43,6 +43,11 @@ export type UpdateJobEvidenceStatusActionState = {
   error: string | null
 }
 
+export type DeleteJobActionState = {
+  success: boolean
+  error: string | null
+}
+
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
 }
@@ -864,6 +869,59 @@ export async function updateJobInlineFieldAction(
     return {
       success: false,
       error: 'Změnu se nepodařilo uložit.',
+    }
+  }
+
+  revalidateAllRelatedPaths()
+
+  return {
+    success: true,
+    error: null,
+  }
+}
+
+export async function deleteJobAction(
+  jobId: string
+): Promise<DeleteJobActionState> {
+  const { supabase, user, error: accessError } = await requireJobsAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+    }
+  }
+
+  const normalizedJobId = String(jobId ?? '').trim()
+
+  if (!normalizedJobId) {
+    return {
+      success: false,
+      error: 'Chybí ID zakázky.',
+    }
+  }
+
+  const { error: deleteFinancesError } = await supabase
+    .from('job_finances')
+    .delete()
+    .eq('job_id', normalizedJobId)
+
+  if (deleteFinancesError) {
+    return {
+      success: false,
+      error: 'Nepodařilo se smazat navázaná finanční data zakázky.',
+    }
+  }
+
+  const { error: deleteJobError } = await supabase
+    .from('jobs')
+    .delete()
+    .eq('id', normalizedJobId)
+
+  if (deleteJobError) {
+    return {
+      success: false,
+      error: 'Zakázku se nepodařilo smazat.',
     }
   }
 

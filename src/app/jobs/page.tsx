@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NewJobButton } from './new-job-button'
 import { JobsInteractiveTable } from './jobs-interactive-table'
+import { PrintJobsButton } from './print-jobs-button'
 
 export type JobStatus =
   | 'nova'
@@ -303,262 +304,321 @@ export default async function JobsPage({
   )
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-                Zakázky
-              </h1>
-              <p className="text-sm text-gray-500">
-                Přehled všech realizací, jejich průběhu a interní evidence.
-              </p>
-            </div>
+    <>
+      <style>
+        {`
+          @media print {
+            @page {
+              size: A4 landscape;
+              margin: 10mm;
+            }
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-              <form
-                action="/jobs"
-                method="get"
-                className="flex w-full gap-3 sm:w-auto"
-              >
-                <input type="hidden" name="status" value={jobStatus} />
-                <input type="hidden" name="view" value={view} />
-                <input type="hidden" name="sort" value={sort} />
-                <input type="hidden" name="date_from" value={dateFrom} />
-                <input type="hidden" name="date_to" value={dateTo} />
+            html,
+            body {
+              background: #ffffff !important;
+            }
 
-                <input
-                  type="text"
-                  name="q"
-                  defaultValue={query}
-                  placeholder="Hledat adresu, technika, firmu"
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
-                />
+            .print-hidden {
+              display: none !important;
+            }
 
-                <button
-                  type="submit"
-                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  Hledat
-                </button>
-              </form>
+            .print-shell {
+              max-width: 100% !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              gap: 10px !important;
+            }
 
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                ZPĚT NA DASHBOARD
-              </Link>
+            .print-header {
+              border: 1px solid #d1d5db !important;
+              box-shadow: none !important;
+              padding: 12px !important;
+              border-radius: 14px !important;
+            }
 
-              <NewJobButton
-                clientSuggestions={clientSuggestions}
-                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
-              />
-            </div>
-          </div>
-        </section>
+            .print-filters-summary {
+              display: flex !important;
+              flex-wrap: wrap !important;
+              gap: 6px !important;
+            }
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
-          <form action="/jobs" method="get" className="space-y-3">
-            <input type="hidden" name="q" value={query} />
+            .print-table-section {
+              display: block !important;
+              border: 1px solid #d1d5db !important;
+              box-shadow: none !important;
+              border-radius: 14px !important;
+              padding: 6px !important;
+              overflow: visible !important;
+            }
+          }
+        `}
+      </style>
 
-            <div className="grid gap-2 xl:grid-cols-5">
-              <div>
-                <label
-                  htmlFor="status"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
-                >
-                  Stav zakázky
-                </label>
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue={jobStatus}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                >
-                  <option value="">Všechny</option>
-                  <option value="nova">Nová</option>
-                  <option value="k_reseni">K řešení</option>
-                  <option value="realizace">Realizace</option>
-                  <option value="ukoncena">Ukončená</option>
-                  <option value="storno">Storno</option>
-                </select>
+      <main className="min-h-screen bg-gray-50">
+        <div className="print-shell mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+          <section className="print-header rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+                  Zakázky
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Přehled všech realizací, jejich průběhu a interní evidence.
+                </p>
               </div>
 
-              <div>
-                <label
-                  htmlFor="view"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+              <div className="print-hidden flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <form
+                  action="/jobs"
+                  method="get"
+                  className="flex w-full gap-3 sm:w-auto"
                 >
-                  Zobrazení
-                </label>
-                <select
-                  id="view"
-                  name="view"
-                  defaultValue={view}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                >
-                  <option value="all">Vše</option>
-                  <option value="active">Aktivní</option>
-                </select>
-              </div>
+                  <input type="hidden" name="status" value={jobStatus} />
+                  <input type="hidden" name="view" value={view} />
+                  <input type="hidden" name="sort" value={sort} />
+                  <input type="hidden" name="date_from" value={dateFrom} />
+                  <input type="hidden" name="date_to" value={dateTo} />
 
-              <div>
-                <label
-                  htmlFor="sort"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
-                >
-                  Řazení
-                </label>
-                <select
-                  id="sort"
-                  name="sort"
-                  defaultValue={sort}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                >
-                  <option value="job_number_desc">Dle čísla zakázky</option>
-                  <option value="start_nearest">Dle data od (nejbližší)</option>
-                </select>
-              </div>
+                  <input
+                    type="text"
+                    name="q"
+                    defaultValue={query}
+                    placeholder="Hledat adresu, technika, firmu"
+                    className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
+                  />
 
-              <div>
-                <label
-                  htmlFor="date_from"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
-                >
-                  Od dne
-                </label>
-                <input
-                  id="date_from"
-                  name="date_from"
-                  type="date"
-                  defaultValue={dateFrom}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="date_to"
-                  className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
-                >
-                  Do dne
-                </label>
-                <input
-                  id="date_to"
-                  name="date_to"
-                  type="date"
-                  defaultValue={dateTo}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                  Řazení:{' '}
-                  <span className="ml-1 font-medium text-gray-900">
-                    {getSortLabel(sort)}
-                  </span>
-                </span>
-
-                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                  Zobrazení:{' '}
-                  <span className="ml-1 font-medium text-gray-900">
-                    {getViewLabel(view)}
-                  </span>
-                </span>
-
-                {query ? (
-                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                    Hledání:{' '}
-                    <span className="ml-1 font-medium text-gray-900">{query}</span>
-                  </span>
-                ) : null}
-
-                {dateFrom ? (
-                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                    Od:{' '}
-                    <span className="ml-1 font-medium text-gray-900">
-                      {dateFrom}
-                    </span>
-                  </span>
-                ) : null}
-
-                {dateTo ? (
-                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                    Do:{' '}
-                    <span className="ml-1 font-medium text-gray-900">{dateTo}</span>
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={thisWeekHref}
-                  className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
-                    isThisWeekActive
-                      ? 'bg-[#236f9f] shadow-sm'
-                      : 'bg-[#2980B9] hover:bg-[#236f9f]'
-                  }`}
-                >
-                  TENTO TÝDEN
-                </Link>
+                  <button
+                    type="submit"
+                    className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                  >
+                    HLEDAT
+                  </button>
+                </form>
 
                 <Link
-                  href={nextWeekHref}
-                  className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
-                    isNextWeekActive
-                      ? 'bg-[#236f9f] shadow-sm'
-                      : 'bg-[#2980B9] hover:bg-[#236f9f]'
-                  }`}
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                 >
-                  PŘÍŠTÍ TÝDEN
+                  ZPĚT NA DASHBOARD
                 </Link>
 
-                <button
-                  type="submit"
-                  className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800"
-                >
-                  Použít filtry
-                </button>
-
-                <Link
-                  href="/jobs"
-                  className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  Reset
-                </Link>
+                <NewJobButton
+                  clientSuggestions={clientSuggestions}
+                  className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
+                />
               </div>
-            </div>
-          </form>
-        </section>
-
-        {typedJobs.length === 0 ? (
-          <section className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
-            <div className="mx-auto max-w-xl space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {hasActiveFilters
-                  ? 'Žádná zakázka neodpovídá aktuálním filtrům.'
-                  : 'Zatím tu nejsou žádné zakázky.'}
-              </h2>
-
-              <p className="text-sm leading-6 text-gray-500">
-                {hasActiveFilters
-                  ? 'Zkus upravit hledání nebo změnit aktivní filtry a řazení.'
-                  : 'Jakmile přidáš první zakázku, zobrazí se zde přehled všech realizací.'}
-              </p>
             </div>
           </section>
-        ) : (
-          <JobsInteractiveTable
-            jobs={typedJobs}
-            clientSuggestions={clientSuggestions}
-          />
-        )}
-      </div>
-    </main>
+
+          <section className="print-header rounded-3xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+            <form action="/jobs" method="get" className="space-y-3">
+              <input type="hidden" name="q" value={query} />
+
+              <div className="print-hidden grid gap-2 xl:grid-cols-5">
+                <div>
+                  <label
+                    htmlFor="status"
+                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                  >
+                    Stav zakázky
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    defaultValue={jobStatus}
+                    className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  >
+                    <option value="">Všechny</option>
+                    <option value="nova">Nová</option>
+                    <option value="k_reseni">K řešení</option>
+                    <option value="realizace">Realizace</option>
+                    <option value="ukoncena">Ukončená</option>
+                    <option value="storno">Storno</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="view"
+                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                  >
+                    Zobrazení
+                  </label>
+                  <select
+                    id="view"
+                    name="view"
+                    defaultValue={view}
+                    className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  >
+                    <option value="all">Vše</option>
+                    <option value="active">Aktivní</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="sort"
+                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                  >
+                    Řazení
+                  </label>
+                  <select
+                    id="sort"
+                    name="sort"
+                    defaultValue={sort}
+                    className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  >
+                    <option value="job_number_desc">Dle čísla zakázky</option>
+                    <option value="start_nearest">Dle data od (nejbližší)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="date_from"
+                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                  >
+                    Od dne
+                  </label>
+                  <input
+                    id="date_from"
+                    name="date_from"
+                    type="date"
+                    defaultValue={dateFrom}
+                    className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="date_to"
+                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                  >
+                    Do dne
+                  </label>
+                  <input
+                    id="date_to"
+                    name="date_to"
+                    type="date"
+                    defaultValue={dateTo}
+                    className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="print-filters-summary flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                    Řazení:{' '}
+                    <span className="ml-1 font-medium text-gray-900">
+                      {getSortLabel(sort)}
+                    </span>
+                  </span>
+
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                    Zobrazení:{' '}
+                    <span className="ml-1 font-medium text-gray-900">
+                      {getViewLabel(view)}
+                    </span>
+                  </span>
+
+                  {query ? (
+                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                      Hledání:{' '}
+                      <span className="ml-1 font-medium text-gray-900">
+                        {query}
+                      </span>
+                    </span>
+                  ) : null}
+
+                  {dateFrom ? (
+                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                      Od:{' '}
+                      <span className="ml-1 font-medium text-gray-900">
+                        {dateFrom}
+                      </span>
+                    </span>
+                  ) : null}
+
+                  {dateTo ? (
+                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                      Do:{' '}
+                      <span className="ml-1 font-medium text-gray-900">
+                        {dateTo}
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="print-hidden flex flex-wrap items-center gap-2">
+                  <PrintJobsButton />
+
+                  <Link
+                    href={thisWeekHref}
+                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
+                      isThisWeekActive
+                        ? 'bg-[#236f9f] shadow-sm'
+                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                    }`}
+                  >
+                    TENTO TÝDEN
+                  </Link>
+
+                  <Link
+                    href={nextWeekHref}
+                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
+                      isNextWeekActive
+                        ? 'bg-[#236f9f] shadow-sm'
+                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                    }`}
+                  >
+                    PŘÍŠTÍ TÝDEN
+                  </Link>
+
+                  <button
+                    type="submit"
+                    className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800"
+                  >
+                    POUŽÍT FILTRY
+                  </button>
+
+                  <Link
+                    href="/jobs"
+                    className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
+                  >
+                    RESET
+                  </Link>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          {typedJobs.length === 0 ? (
+            <section className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
+              <div className="mx-auto max-w-xl space-y-3">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {hasActiveFilters
+                    ? 'Žádná zakázka neodpovídá aktuálním filtrům.'
+                    : 'Zatím tu nejsou žádné zakázky.'}
+                </h2>
+
+                <p className="text-sm leading-6 text-gray-500">
+                  {hasActiveFilters
+                    ? 'Zkus upravit hledání nebo změnit aktivní filtry a řazení.'
+                    : 'Jakmile přidáš první zakázku, zobrazí se zde přehled všech realizací.'}
+                </p>
+              </div>
+            </section>
+          ) : (
+            <div className="print-table-section">
+              <JobsInteractiveTable
+                jobs={typedJobs}
+                clientSuggestions={clientSuggestions}
+              />
+            </div>
+          )}
+        </div>
+      </main>
+    </>
   )
 }

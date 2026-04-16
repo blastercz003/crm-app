@@ -62,22 +62,42 @@ export function JobsInteractiveTable({
 }: JobsInteractiveTableProps) {
   return (
     <>
-      <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
-        <table className="w-full table-fixed border-separate border-spacing-y-2">
+      <section className="print:block hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
+        <table className="w-full table-fixed border-separate border-spacing-y-2 print:border-collapse print:border-spacing-y-0">
           <thead>
-            <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-              <th className="w-[76px] px-2 py-2">Zakázka</th>
-              <th className="w-[112px] px-2 py-2 text-center">Evidence</th>
-              <th className="w-[120px] px-2 py-2">Firma</th>
-              <th className="w-[94px] px-2 py-2">Osoba</th>
-              <th className="w-[126px] px-2 py-2">Začátek</th>
-              <th className="w-[126px] px-2 py-2">Konec</th>
-              <th className="w-[144px] px-2 py-2">Adresa</th>
-              <th className="w-[74px] px-2 py-2">Prodejna</th>
-              <th className="w-[96px] px-2 py-2">Technik</th>
-              <th className="w-[96px] px-2 py-2">Agregát</th>
-              <th className="w-[86px] px-2 py-2 text-center">Info</th>
-              <th className="w-[112px] px-2 py-2 text-center">Stav</th>
+            <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500 print:text-[9px]">
+              <th className="w-[76px] px-2 py-2 print:w-[70px] print:px-1.5 print:py-1.5">
+                Zakázka
+              </th>
+              <th className="w-[112px] px-2 py-2 text-center print:hidden">
+                Evidence
+              </th>
+              <th className="w-[120px] px-2 py-2 print:w-[130px] print:px-1.5 print:py-1.5">
+                Firma
+              </th>
+              <th className="w-[94px] px-2 py-2 print:hidden">Osoba</th>
+              <th className="w-[126px] px-2 py-2 print:w-[118px] print:px-1.5 print:py-1.5">
+                Začátek
+              </th>
+              <th className="w-[126px] px-2 py-2 print:w-[118px] print:px-1.5 print:py-1.5">
+                Konec
+              </th>
+              <th className="w-[144px] px-2 py-2 print:w-[150px] print:px-1.5 print:py-1.5">
+                Adresa
+              </th>
+              <th className="w-[74px] px-2 py-2 print:hidden">Prodejna</th>
+              <th className="w-[96px] px-2 py-2 print:w-[88px] print:px-1.5 print:py-1.5">
+                Technik
+              </th>
+              <th className="w-[96px] px-2 py-2 print:w-[88px] print:px-1.5 print:py-1.5">
+                Agregát
+              </th>
+              <th className="w-[86px] px-2 py-2 text-center print:hidden">
+                Info
+              </th>
+              <th className="w-[112px] px-2 py-2 text-center print:w-[108px] print:px-1.5 print:py-1.5">
+                Stav
+              </th>
             </tr>
           </thead>
 
@@ -93,7 +113,7 @@ export function JobsInteractiveTable({
         </table>
       </section>
 
-      <section className="grid gap-3 lg:hidden">
+      <section className="grid gap-3 print:hidden lg:hidden">
         {jobs.map((job) => (
           <MobileCard
             key={job.id}
@@ -115,13 +135,15 @@ function DesktopRow({
 }) {
   return (
     <tr className="group">
-      <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:rounded-none print:border print:px-1.5 print:py-1.5">
         <EditJobButton job={job} clientSuggestions={clientSuggestions}>
-          <span className="block truncate">{job.job_number}</span>
+          <span className="block truncate print:text-[11px]">
+            {job.job_number}
+          </span>
         </EditJobButton>
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:hidden">
         <EvidenceStatusButton job={job} />
       </td>
 
@@ -130,6 +152,7 @@ function DesktopRow({
         job={job}
         field="contact_person"
         value={job.contact_person}
+        printHidden
       />
       <EditableCell
         job={job}
@@ -144,7 +167,12 @@ function DesktopRow({
         type="datetime"
       />
       <EditableCell job={job} field="site_address" value={job.site_address} />
-      <EditableCell job={job} field="store_number" value={job.store_number} />
+      <EditableCell
+        job={job}
+        field="store_number"
+        value={job.store_number}
+        printHidden
+      />
       <EditableCell
         job={job}
         field="technician_name"
@@ -156,11 +184,11 @@ function DesktopRow({
         value={job.generator_name}
       />
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:hidden">
         <InfoNoteButton job={job} compact />
       </td>
 
-      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:rounded-none print:border print:px-1.5 print:py-1.5">
         <JobStatusButton job={job} />
       </td>
     </tr>
@@ -235,11 +263,13 @@ function EditableCell({
   field,
   value,
   type = 'text',
+  printHidden = false,
 }: {
   job: JobRow
   field: InlineEditableField
   value: string | null
   type?: 'text' | 'datetime'
+  printHidden?: boolean
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState(
@@ -298,9 +328,17 @@ function EditableCell({
     })
   }
 
+  const cellClassName = `border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:border print:px-1.5 print:py-1.5 ${
+    printHidden ? 'print:hidden' : ''
+  }`
+
   if (isEditing) {
     return (
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-1.5 align-middle">
+      <td
+        className={`border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-1.5 align-middle ${
+          printHidden ? 'print:hidden' : 'print:border print:px-1.5 print:py-1.5'
+        }`}
+      >
         <input
           ref={inputRef}
           type={type === 'datetime' ? 'datetime-local' : 'text'}
@@ -326,11 +364,11 @@ function EditableCell({
   }
 
   return (
-    <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+    <td className={cellClassName}>
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900"
+        className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title="Klikni pro úpravu"
       >
         <span className="block truncate">
@@ -468,7 +506,7 @@ function JobStatusButton({ job }: { job: JobRow }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 ${meta.className}`}
+        className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 print:min-w-0 print:px-2 print:text-[10px] ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
@@ -604,7 +642,7 @@ function ModalShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-gray-900/45 p-3 sm:p-4"
+      className="fixed inset-0 z-50 bg-gray-900/45 p-3 sm:p-4 print:hidden"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {

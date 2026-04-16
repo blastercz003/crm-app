@@ -1,8 +1,18 @@
 'use client'
 
-import { useActionState, useEffect, useMemo, useState } from 'react'
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from 'react'
 import { useFormStatus } from 'react-dom'
-import { updateJobAction, type UpdateJobActionState } from './actions'
+import {
+  deleteJobAction,
+  updateJobAction,
+  type UpdateJobActionState,
+} from './actions'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
 type JobStatus = 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
@@ -96,12 +106,32 @@ function EditJobModal({
     updateJobAction.bind(null, job.id),
     initialUpdateState
   )
+  const [isDeleting, startDeleteTransition] = useTransition()
 
   useEffect(() => {
     if (state.success) {
       onClose()
     }
   }, [onClose, state.success])
+
+  function handleDeleteClick() {
+    const isConfirmed = window.confirm(
+      `Opravdu chceš smazat zakázku ${job.job_number}? Tato akce nejde vrátit zpět.`
+    )
+
+    if (!isConfirmed) return
+
+    startDeleteTransition(async () => {
+      const result = await deleteJobAction(job.id)
+
+      if (!result.success) {
+        alert(result.error ?? 'Zakázku se nepodařilo smazat.')
+        return
+      }
+
+      onClose()
+    })
+  }
 
   return (
     <JobFormShell
@@ -111,6 +141,8 @@ function EditJobModal({
       error={state.error}
       formAction={formAction}
       job={job}
+      onDelete={handleDeleteClick}
+      isDeleting={isDeleting}
     />
   )
 }
@@ -122,6 +154,8 @@ function JobFormShell({
   error,
   formAction,
   job,
+  onDelete,
+  isDeleting,
 }: {
   mode: 'edit'
   clientSuggestions: string[]
@@ -129,6 +163,8 @@ function JobFormShell({
   error: string | null
   formAction: (payload: FormData) => void
   job: JobFormValues
+  onDelete: () => void
+  isDeleting: boolean
 }) {
   const companySuggestions = useMemo(() => {
     const items = [...clientSuggestions]
@@ -142,7 +178,7 @@ function JobFormShell({
 
   const title = `Upravit zakázku ${job.job_number}`
   const description = 'Uprav základní údaje k realizaci.'
-  const submitLabel = 'Uložit změny'
+  const submitLabel = 'ULOŽIT ZMĚNY'
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -421,16 +457,30 @@ function JobFormShell({
               ) : null}
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 px-4 py-3 sm:px-5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                Zrušit
-              </button>
+            <div className="flex shrink-0 flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:px-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex shrink-0">
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={isDeleting}
+                  className="inline-flex h-10 min-w-[170px] shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-red-600 bg-red-600 px-4 text-sm font-medium uppercase text-white shadow-sm transition hover:bg-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isDeleting ? 'MAŽU ZAKÁZKU…' : 'SMAZAT ZAKÁZKU'}
+                </button>
+              </div>
 
-              <SubmitButton label={submitLabel} />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isDeleting}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  ZRUŠIT
+                </button>
+
+                <SubmitButton label={submitLabel} disabled={isDeleting} />
+              </div>
             </div>
           </form>
         </div>
@@ -439,16 +489,23 @@ function JobFormShell({
   )
 }
 
-function SubmitButton({ label }: { label: string }) {
+function SubmitButton({
+  label,
+  disabled = false,
+}: {
+  label: string
+  disabled?: boolean
+}) {
   const { pending } = useFormStatus()
+  const isDisabled = pending || disabled
 
   return (
     <button
       type="submit"
-      disabled={pending}
-      className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={isDisabled}
+      className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? 'Ukládám…' : label}
+      {pending ? 'UKLÁDÁM…' : label}
     </button>
   )
 }
