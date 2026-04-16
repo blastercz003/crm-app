@@ -699,7 +699,7 @@ export default async function MeetingsPage({
     <main className="min-h-screen bg-zinc-100 px-6 py-6 text-zinc-900 md:px-10 md:py-8">
       <div className="mx-auto max-w-7xl space-y-4">
         <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-5 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-4 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Agenda
@@ -716,20 +716,62 @@ export default async function MeetingsPage({
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-              >
-                ZPĚT NA DASHBOARD
-              </Link>
+            <div className="flex justify-end lg:min-w-[520px]">
+              <div className="grid grid-cols-[220px_220px] gap-x-3 gap-y-2">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-transparent bg-[#2980B9] px-5 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:opacity-90"
+                >
+                  ZPĚT NA DASHBOARD
+                </Link>
 
-              <Link
-                href="/meetings/new"
-                className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
-              >
-                NOVÁ SCHŮZKA
-              </Link>
+                <Link
+                  href="/meetings/new"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-zinc-900 px-5 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
+                >
+                  NOVÁ SCHŮZKA
+                </Link>
+
+                <form method="get" className="contents">
+                  <input type="hidden" name="view" value={view} />
+                  <input type="hidden" name="scope" value={scope} />
+                  {isAdminTeamView ? (
+                    <input type="hidden" name="owner" value={rawOwner ?? ''} />
+                  ) : null}
+
+                  <input
+                    id="meeting-search"
+                    type="text"
+                    name="search"
+                    defaultValue={rawSearch}
+                    placeholder="Firma, osoba, telefon, e-mail..."
+                    className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="submit"
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-900 transition hover:bg-zinc-50"
+                    >
+                      HLEDAT
+                    </button>
+
+                    <Link
+                      href={
+                        isAdminTeamView
+                          ? getTabHref(
+                              { view, scope: 'team', owner: rawOwner },
+                              { search: '' }
+                            )
+                          : getTabHref({ view, scope }, { search: '' })
+                      }
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-900 transition hover:bg-zinc-50"
+                    >
+                      RESET
+                    </Link>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </section>
@@ -811,27 +853,12 @@ export default async function MeetingsPage({
                 <StatCard label="S úkolem" value={taskCount} />
               </div>
 
-              <form method="get" className="space-y-2.5">
-                <input type="hidden" name="view" value={view} />
-                <input type="hidden" name="scope" value={scope} />
+              {isAdminTeamView ? (
+                <form method="get" className="space-y-2.5">
+                  <input type="hidden" name="view" value={view} />
+                  <input type="hidden" name="scope" value={scope} />
+                  <input type="hidden" name="search" value={rawSearch} />
 
-                <label
-                  htmlFor="meeting-search"
-                  className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400"
-                >
-                  Hledat
-                </label>
-
-                <input
-                  id="meeting-search"
-                  type="text"
-                  name="search"
-                  defaultValue={rawSearch}
-                  placeholder="Firma, osoba, telefon, e-mail, poznámka..."
-                  className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
-                />
-
-                {isAdminTeamView ? (
                   <div>
                     <label
                       htmlFor="meeting-owner"
@@ -853,31 +880,15 @@ export default async function MeetingsPage({
                       ))}
                     </select>
                   </div>
-                ) : null}
 
-                <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="inline-flex h-11 items-center justify-center rounded-2xl bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
+                    className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-900 transition hover:bg-zinc-50"
                   >
-                    Filtrovat
+                    POUŽÍT FILTR
                   </button>
-
-                  <Link
-                    href={
-                      isAdminTeamView
-                        ? getTabHref(
-                            { view, scope: 'team' },
-                            { search: '', owner: '' }
-                          )
-                        : getTabHref({ view, scope }, { search: '' })
-                    }
-                    className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-950"
-                  >
-                    Reset
-                  </Link>
-                </div>
-              </form>
+                </form>
+              ) : null}
             </div>
           </div>
         </section>
