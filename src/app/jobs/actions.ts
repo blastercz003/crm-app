@@ -50,6 +50,7 @@ export type DeleteJobActionState = {
 
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
+  role: string | null
 }
 
 const SALES_OWNER_VALUES = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME'] as const
@@ -74,6 +75,11 @@ const INLINE_EDITABLE_FIELDS = [
   'end_at',
   'site_address',
   'store_number',
+  'technician_name',
+  'generator_name',
+] as const
+
+const NON_ADMIN_ALLOWED_INLINE_FIELDS = [
   'technician_name',
   'generator_name',
 ] as const
@@ -129,6 +135,14 @@ function normalizeEvidenceStatus(value: FormDataEntryValue | null) {
 
 function isInlineEditableField(value: string): value is InlineEditableField {
   return INLINE_EDITABLE_FIELDS.includes(value as InlineEditableField)
+}
+
+function canNonAdminEditInlineField(
+  field: InlineEditableField
+): field is (typeof NON_ADMIN_ALLOWED_INLINE_FIELDS)[number] {
+  return NON_ADMIN_ALLOWED_INLINE_FIELDS.includes(
+    field as (typeof NON_ADMIN_ALLOWED_INLINE_FIELDS)[number]
+  )
 }
 
 function parseDateTimeLocalAsPrague(value: FormDataEntryValue | null) {
@@ -224,12 +238,13 @@ async function requireJobsAccess() {
       supabase,
       user: null,
       error,
+      isAdmin: false,
     }
   }
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('can_view_jobs')
+    .select('can_view_jobs, role')
     .eq('id', user.id)
     .single()
 
@@ -238,6 +253,7 @@ async function requireJobsAccess() {
       supabase,
       user: null,
       error: 'Nepodařilo se ověřit oprávnění uživatele.',
+      isAdmin: false,
     }
   }
 
@@ -248,6 +264,7 @@ async function requireJobsAccess() {
       supabase,
       user: null,
       error: 'Nemáš oprávnění pro práci se zakázkami.',
+      isAdmin: false,
     }
   }
 
@@ -255,6 +272,7 @@ async function requireJobsAccess() {
     supabase,
     user,
     error: null,
+    isAdmin: typedProfile?.role === 'admin',
   }
 }
 
@@ -328,12 +346,24 @@ export async function createJobAction(
   _prevState: CreateJobActionState,
   formData: FormData
 ): Promise<CreateJobActionState> {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const {
+    supabase,
+    user,
+    error: accessError,
+    isAdmin,
+  } = await requireJobsAccess()
 
   if (!user) {
     return {
       success: false,
       error: accessError,
+    }
+  }
+
+  if (!isAdmin) {
+    return {
+      success: false,
+      error: 'Zakázky může vytvářet pouze admin.',
     }
   }
 
@@ -393,12 +423,24 @@ export async function updateJobAction(
   _prevState: UpdateJobActionState,
   formData: FormData
 ): Promise<UpdateJobActionState> {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const {
+    supabase,
+    user,
+    error: accessError,
+    isAdmin,
+  } = await requireJobsAccess()
 
   if (!user) {
     return {
       success: false,
       error: accessError,
+    }
+  }
+
+  if (!isAdmin) {
+    return {
+      success: false,
+      error: 'Celou zakázku může upravovat pouze admin.',
     }
   }
 
@@ -550,12 +592,24 @@ export async function updateJobInvoiceStatusAction(
   _prevState: UpdateJobInvoiceStatusActionState,
   formData: FormData
 ): Promise<UpdateJobInvoiceStatusActionState> {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const {
+    supabase,
+    user,
+    error: accessError,
+    isAdmin,
+  } = await requireJobsAccess()
 
   if (!user) {
     return {
       success: false,
       error: accessError,
+    }
+  }
+
+  if (!isAdmin) {
+    return {
+      success: false,
+      error: 'Fakturaci může měnit pouze admin.',
     }
   }
 
@@ -608,12 +662,24 @@ export async function updateJobSalesOwnerAction(
   _prevState: UpdateJobSalesOwnerActionState,
   formData: FormData
 ): Promise<UpdateJobSalesOwnerActionState> {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const {
+    supabase,
+    user,
+    error: accessError,
+    isAdmin,
+  } = await requireJobsAccess()
 
   if (!user) {
     return {
       success: false,
       error: accessError,
+    }
+  }
+
+  if (!isAdmin) {
+    return {
+      success: false,
+      error: 'Obchodníka může měnit pouze admin.',
     }
   }
 
@@ -726,7 +792,12 @@ export async function updateJobInlineFieldAction(
   _prevState: UpdateJobInlineFieldActionState,
   formData: FormData
 ): Promise<UpdateJobInlineFieldActionState> {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const {
+    supabase,
+    user,
+    error: accessError,
+    isAdmin,
+  } = await requireJobsAccess()
 
   if (!user) {
     return {
@@ -751,6 +822,13 @@ export async function updateJobInlineFieldAction(
     return {
       success: false,
       error: 'Neplatné pole pro editaci.',
+    }
+  }
+
+  if (!isAdmin && !canNonAdminEditInlineField(field)) {
+    return {
+      success: false,
+      error: 'Toto pole může upravovat pouze admin.',
     }
   }
 
@@ -883,12 +961,24 @@ export async function updateJobInlineFieldAction(
 export async function deleteJobAction(
   jobId: string
 ): Promise<DeleteJobActionState> {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const {
+    supabase,
+    user,
+    error: accessError,
+    isAdmin,
+  } = await requireJobsAccess()
 
   if (!user) {
     return {
       success: false,
       error: accessError,
+    }
+  }
+
+  if (!isAdmin) {
+    return {
+      success: false,
+      error: 'Zakázku může smazat pouze admin.',
     }
   }
 

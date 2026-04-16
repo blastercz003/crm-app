@@ -49,6 +49,7 @@ type ClientSuggestionRow = {
 
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
+  role: string | null
 }
 
 type JobsSearchParams = {
@@ -231,7 +232,7 @@ export default async function JobsPage({
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('can_view_jobs')
+    .select('can_view_jobs, role')
     .eq('id', user.id)
     .single()
 
@@ -244,6 +245,8 @@ export default async function JobsPage({
   if (!typedProfile?.can_view_jobs) {
     redirect('/dashboard')
   }
+
+  const isAdmin = typedProfile?.role === 'admin'
 
   let request = supabase.from('jobs').select('*')
 
@@ -403,9 +406,10 @@ export default async function JobsPage({
                 </Link>
 
                 <NewJobButton
-                  clientSuggestions={clientSuggestions}
-                  className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
-                />
+  clientSuggestions={clientSuggestions}
+  isAdmin={isAdmin}
+  className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
+/>
               </div>
             </div>
           </section>
@@ -614,6 +618,7 @@ export default async function JobsPage({
               <JobsInteractiveTable
                 jobs={typedJobs}
                 clientSuggestions={clientSuggestions}
+                isAdmin={isAdmin}
               />
             </div>
           )}

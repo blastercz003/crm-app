@@ -170,6 +170,51 @@ function compareByJobNumberDesc(a: FakturaRow, b: FakturaRow) {
   return String(b.job_number).localeCompare(String(a.job_number), 'cs')
 }
 
+function buildExportHref({
+  query,
+  salesOwner,
+  sort,
+  dateFrom,
+  dateTo,
+  invoiced,
+}: {
+  query: string
+  salesOwner: string
+  sort: SortMode
+  dateFrom: string
+  dateTo: string
+  invoiced: string
+}) {
+  const params = new URLSearchParams()
+
+  if (query) {
+    params.set('q', query)
+  }
+
+  if (salesOwner) {
+    params.set('sales', salesOwner)
+  }
+
+  if (sort) {
+    params.set('sort', sort)
+  }
+
+  if (dateFrom) {
+    params.set('date_from', dateFrom)
+  }
+
+  if (dateTo) {
+    params.set('date_to', dateTo)
+  }
+
+  if (invoiced) {
+    params.set('invoiced', invoiced)
+  }
+
+  const search = params.toString()
+  return search ? `/faktury/export?${search}` : '/faktury/export'
+}
+
 export default async function FakturyPage({
   searchParams,
 }: {
@@ -394,6 +439,15 @@ export default async function FakturyPage({
     query || salesOwner || dateFrom || dateTo || invoiced
   )
 
+  const exportHref = buildExportHref({
+    query,
+    salesOwner,
+    sort,
+    dateFrom,
+    dateTo,
+    invoiced,
+  })
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
@@ -559,6 +613,13 @@ export default async function FakturyPage({
                 >
                   UPDATE
                 </Link>
+
+                <Link
+                  href={exportHref}
+                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f]"
+                >
+                  EXPORT
+                </Link>
               </div>
 
               <div className="border-t border-gray-100 pt-3">
@@ -664,7 +725,9 @@ function StatCard({
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
           {label}
         </div>
-        <div className={`mt-2 text-lg font-semibold tracking-tight ${valueClassName}`}>
+        <div
+          className={`mt-2 text-lg font-semibold tracking-tight ${valueClassName}`}
+        >
           <span className={valueClassName}>{value}</span>
         </div>
       </div>

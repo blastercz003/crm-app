@@ -43,6 +43,7 @@ type EditJobButtonProps = {
   clientSuggestions: string[]
   className?: string
   children?: React.ReactNode
+  isAdmin?: boolean
 }
 
 const initialUpdateState: UpdateJobActionState = {
@@ -55,12 +56,12 @@ export function EditJobButton({
   clientSuggestions,
   className,
   children,
+  isAdmin = true,
 }: EditJobButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [formKey, setFormKey] = useState(0)
 
   function openModal() {
-    setFormKey((current) => current + 1)
+    if (!isAdmin) return
     setIsOpen(true)
   }
 
@@ -68,22 +69,30 @@ export function EditJobButton({
     setIsOpen(false)
   }
 
+  const resolvedClassName =
+    className ??
+    'inline-flex items-center justify-center rounded-lg px-1 py-1 text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]'
+
+  if (!isAdmin) {
+    return (
+      <>
+        <span className={resolvedClassName}>{children ?? job.job_number}</span>
+      </>
+    )
+  }
+
   return (
     <>
       <button
         type="button"
         onClick={openModal}
-        className={
-          className ??
-          'inline-flex items-center justify-center rounded-lg px-1 py-1 text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]'
-        }
+        className={resolvedClassName}
       >
         {children ?? job.job_number}
       </button>
 
       {isOpen ? (
         <EditJobModal
-          key={`${job.id}-${formKey}`}
           job={job}
           clientSuggestions={clientSuggestions}
           onClose={closeModal}

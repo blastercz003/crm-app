@@ -23,6 +23,7 @@ type JobFormValues = {
 type NewJobButtonProps = {
   clientSuggestions: string[]
   className?: string
+  isAdmin?: boolean
 }
 
 const initialCreateState: CreateJobActionState = {
@@ -33,11 +34,13 @@ const initialCreateState: CreateJobActionState = {
 export function NewJobButton({
   clientSuggestions,
   className,
+  isAdmin = true,
 }: NewJobButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
 
   function openModal() {
+    if (!isAdmin) return
     setFormKey((current) => current + 1)
     setIsOpen(true)
   }
@@ -46,15 +49,17 @@ export function NewJobButton({
     setIsOpen(false)
   }
 
+  const resolvedClassName =
+    className ??
+    'inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800'
+
   return (
     <>
       <button
         type="button"
         onClick={openModal}
-        className={
-          className ??
-          'inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800'
-        }
+        aria-disabled={!isAdmin}
+        className={`${resolvedClassName} ${!isAdmin ? 'cursor-not-allowed' : ''}`}
       >
         NOVÁ ZAKÁZKA
       </button>

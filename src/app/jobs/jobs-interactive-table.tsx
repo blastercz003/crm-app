@@ -50,6 +50,7 @@ type InlineEditableField =
 type JobsInteractiveTableProps = {
   jobs: JobRow[]
   clientSuggestions: string[]
+  isAdmin: boolean
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
@@ -59,6 +60,7 @@ const EVIDENCE_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
 export function JobsInteractiveTable({
   jobs,
   clientSuggestions,
+  isAdmin,
 }: JobsInteractiveTableProps) {
   return (
     <>
@@ -107,6 +109,7 @@ export function JobsInteractiveTable({
                 key={job.id}
                 job={job}
                 clientSuggestions={clientSuggestions}
+                isAdmin={isAdmin}
               />
             ))}
           </tbody>
@@ -119,6 +122,7 @@ export function JobsInteractiveTable({
             key={job.id}
             job={job}
             clientSuggestions={clientSuggestions}
+            isAdmin={isAdmin}
           />
         ))}
       </section>
@@ -129,14 +133,20 @@ export function JobsInteractiveTable({
 function DesktopRow({
   job,
   clientSuggestions,
+  isAdmin,
 }: {
   job: JobRow
   clientSuggestions: string[]
+  isAdmin: boolean
 }) {
   return (
     <tr className="group">
       <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:rounded-none print:border print:px-1.5 print:py-1.5">
-        <EditJobButton job={job} clientSuggestions={clientSuggestions}>
+        <EditJobButton
+          job={job}
+          clientSuggestions={clientSuggestions}
+          isAdmin={isAdmin}
+        >
           <span className="block truncate print:text-[11px]">
             {job.job_number}
           </span>
@@ -144,52 +154,68 @@ function DesktopRow({
       </td>
 
       <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:hidden">
-        <EvidenceStatusButton job={job} />
+        <EvidenceStatusButton job={job} canEdit />
       </td>
 
-      <EditableCell job={job} field="company_name" value={job.company_name} />
+      <EditableCell
+        job={job}
+        field="company_name"
+        value={job.company_name}
+        canEdit={isAdmin}
+      />
       <EditableCell
         job={job}
         field="contact_person"
         value={job.contact_person}
         printHidden
+        canEdit={isAdmin}
       />
       <EditableCell
         job={job}
         field="start_at"
         value={job.start_at}
         type="datetime"
+        canEdit={isAdmin}
       />
       <EditableCell
         job={job}
         field="end_at"
         value={job.end_at}
         type="datetime"
+        canEdit={isAdmin}
       />
-      <EditableCell job={job} field="site_address" value={job.site_address} />
+      <EditableCell
+        job={job}
+        field="site_address"
+        value={job.site_address}
+        canEdit={isAdmin}
+      />
       <EditableCell
         job={job}
         field="store_number"
         value={job.store_number}
         printHidden
+        canEdit={isAdmin}
       />
       <EditableCell
         job={job}
         field="technician_name"
         value={job.technician_name}
+        canEdit
       />
       <EditableCell
         job={job}
         field="generator_name"
         value={job.generator_name}
+        canEdit
       />
 
       <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:hidden">
-        <InfoNoteButton job={job} compact />
+        <InfoNoteButton job={job} compact canEdit />
       </td>
 
       <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:rounded-none print:border print:px-1.5 print:py-1.5">
-        <JobStatusButton job={job} />
+        <JobStatusButton job={job} canEdit />
       </td>
     </tr>
   )
@@ -198,9 +224,11 @@ function DesktopRow({
 function MobileCard({
   job,
   clientSuggestions,
+  isAdmin,
 }: {
   job: JobRow
   clientSuggestions: string[]
+  isAdmin: boolean
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
@@ -210,6 +238,7 @@ function MobileCard({
             job={job}
             clientSuggestions={clientSuggestions}
             className="text-sm font-semibold leading-tight text-gray-900 hover:underline"
+            isAdmin={isAdmin}
           >
             {job.job_number}
           </EditJobButton>
@@ -218,7 +247,7 @@ function MobileCard({
           </p>
         </div>
 
-        <EvidenceStatusButton job={job} compact />
+        <EvidenceStatusButton job={job} compact canEdit />
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
@@ -250,8 +279,8 @@ function MobileCard({
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <InfoNoteButton job={job} />
-          <JobStatusButton job={job} />
+          <InfoNoteButton job={job} canEdit />
+          <JobStatusButton job={job} canEdit />
         </div>
       </div>
     </div>
@@ -264,12 +293,14 @@ function EditableCell({
   value,
   type = 'text',
   printHidden = false,
+  canEdit,
 }: {
   job: JobRow
   field: InlineEditableField
   value: string | null
   type?: 'text' | 'datetime'
   printHidden?: boolean
+  canEdit: boolean
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState(
@@ -285,11 +316,11 @@ function EditableCell({
   }, [type, value])
 
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing && canEdit) {
       inputRef.current?.focus()
       inputRef.current?.select()
     }
-  }, [isEditing])
+  }, [isEditing, canEdit])
 
   function cancelEditing() {
     setDraftValue(
@@ -332,7 +363,7 @@ function EditableCell({
     printHidden ? 'print:hidden' : ''
   }`
 
-  if (isEditing) {
+  if (isEditing && canEdit) {
     return (
       <td
         className={`border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-1.5 align-middle ${
@@ -363,6 +394,18 @@ function EditableCell({
     )
   }
 
+  if (!canEdit) {
+    return (
+      <td className={cellClassName}>
+        <div className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]">
+          <span className="block truncate">
+            {type === 'datetime' ? formatDateTime(value) : value || '—'}
+          </span>
+        </div>
+      </td>
+    )
+  }
+
   return (
     <td className={cellClassName}>
       <button
@@ -382,9 +425,11 @@ function EditableCell({
 function InfoNoteButton({
   job,
   compact = false,
+  canEdit,
 }: {
   job: JobRow
   compact?: boolean
+  canEdit: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [draftValue, setDraftValue] = useState(job.info_note ?? '')
@@ -395,6 +440,8 @@ function InfoNoteButton({
   }, [job.info_note])
 
   function saveInfo() {
+    if (!canEdit) return
+
     startTransition(async () => {
       const formData = new FormData()
       formData.set('info_note', draftValue)
@@ -427,7 +474,7 @@ function InfoNoteButton({
             : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
         }`}
       >
-        {job.info_note ? 'ZOBRAZIT' : 'PŘIDAT'}
+        {job.info_note ? 'ZOBRAZIT' : canEdit ? 'PŘIDAT' : 'INFO'}
       </button>
 
       {isOpen ? (
@@ -436,39 +483,65 @@ function InfoNoteButton({
           description={`Zakázka ${job.job_number}`}
           onClose={() => setIsOpen(false)}
         >
-          <textarea
-            value={draftValue}
-            onChange={(event) => setDraftValue(event.target.value)}
-            rows={5}
-            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-            placeholder="Doplň interní poznámku k zakázce"
-          />
+          {canEdit ? (
+            <>
+              <textarea
+                value={draftValue}
+                onChange={(event) => setDraftValue(event.target.value)}
+                rows={5}
+                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                placeholder="Doplň interní poznámku k zakázce"
+              />
 
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-            >
-              Zrušit
-            </button>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                  Zrušit
+                </button>
 
-            <button
-              type="button"
-              onClick={saveInfo}
-              disabled={isPending}
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isPending ? 'Ukládám…' : 'Uložit'}
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={saveInfo}
+                  disabled={isPending}
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPending ? 'Ukládám…' : 'Uložit'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm leading-6 text-gray-700">
+                {job.info_note?.trim() ? job.info_note : 'Bez interní poznámky.'}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                  Zavřít
+                </button>
+              </div>
+            </div>
+          )}
         </ModalShell>
       ) : null}
     </>
   )
 }
 
-function JobStatusButton({ job }: { job: JobRow }) {
+function JobStatusButton({
+  job,
+  canEdit,
+}: {
+  job: JobRow
+  canEdit: boolean
+}) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const meta = getJobStatusMeta(job.job_status)
@@ -482,6 +555,8 @@ function JobStatusButton({ job }: { job: JobRow }) {
   ]
 
   function saveStatus(nextStatus: JobStatus) {
+    if (!canEdit) return
+
     startTransition(async () => {
       const formData = new FormData()
       formData.set('job_status', nextStatus)
@@ -513,28 +588,49 @@ function JobStatusButton({ job }: { job: JobRow }) {
 
       {isOpen ? (
         <ModalShell
-          title="Změnit stav zakázky"
+          title={canEdit ? 'Změnit stav zakázky' : 'Stav zakázky'}
           description={`Zakázka ${job.job_number}`}
           onClose={() => setIsOpen(false)}
         >
-          <div className="space-y-2">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                disabled={isPending}
-                onClick={() => saveStatus(option.value)}
-                className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="font-medium text-gray-900">{option.label}</span>
-                <span
-                  className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+          {canEdit ? (
+            <div className="space-y-2">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => saveStatus(option.value)}
+                  className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {option.label}
-                </span>
-              </button>
-            ))}
-          </div>
+                  <span className="font-medium text-gray-900">
+                    {option.label}
+                  </span>
+                  <span
+                    className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+                  >
+                    {option.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
+                Aktuální stav:{' '}
+                <span className="font-semibold text-gray-900">{meta.label}</span>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                  Zavřít
+                </button>
+              </div>
+            </div>
+          )}
         </ModalShell>
       ) : null}
     </>
@@ -544,9 +640,11 @@ function JobStatusButton({ job }: { job: JobRow }) {
 function EvidenceStatusButton({
   job,
   compact = false,
+  canEdit,
 }: {
   job: JobRow
   compact?: boolean
+  canEdit: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -559,6 +657,8 @@ function EvidenceStatusButton({
   }[] = [getEvidenceStatusMeta('nove'), getEvidenceStatusMeta('zapsano')]
 
   function saveEvidenceStatus(nextStatus: EvidenceStatus) {
+    if (!canEdit) return
+
     startTransition(async () => {
       const formData = new FormData()
       formData.set('evidence_status', nextStatus)
@@ -592,28 +692,49 @@ function EvidenceStatusButton({
 
       {isOpen ? (
         <ModalShell
-          title="Změnit stav evidence"
+          title={canEdit ? 'Změnit stav evidence' : 'Stav evidence'}
           description={`Zakázka ${job.job_number}`}
           onClose={() => setIsOpen(false)}
         >
-          <div className="space-y-2">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                disabled={isPending}
-                onClick={() => saveEvidenceStatus(option.value)}
-                className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="font-medium text-gray-900">{option.label}</span>
-                <span
-                  className={`inline-flex h-8 ${EVIDENCE_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+          {canEdit ? (
+            <div className="space-y-2">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => saveEvidenceStatus(option.value)}
+                  className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {option.label}
-                </span>
-              </button>
-            ))}
-          </div>
+                  <span className="font-medium text-gray-900">
+                    {option.label}
+                  </span>
+                  <span
+                    className={`inline-flex h-8 ${EVIDENCE_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+                  >
+                    {option.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
+                Aktuální stav evidence:{' '}
+                <span className="font-semibold text-gray-900">{meta.label}</span>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                  Zavřít
+                </button>
+              </div>
+            </div>
+          )}
         </ModalShell>
       ) : null}
     </>
@@ -724,16 +845,16 @@ function getEvidenceStatusMeta(status: EvidenceStatus) {
     case 'nove':
       return {
         value: 'nove' as EvidenceStatus,
-        label: 'NOVÉ',
+        label: 'ZAPSAT',
         className:
-          'border border-blue-300 bg-blue-100 text-blue-800 shadow-sm',
+          'border border-[#2980B9] bg-[#2980B9] text-white shadow-sm hover:bg-[#2471A3]',
       }
     case 'zapsano':
       return {
         value: 'zapsano' as EvidenceStatus,
         label: 'ZAPSÁNO',
         className:
-          'border border-emerald-300 bg-emerald-100 text-emerald-800 shadow-sm',
+          'border border-gray-300 bg-white text-gray-900 shadow-sm hover:bg-gray-50',
       }
   }
 }
