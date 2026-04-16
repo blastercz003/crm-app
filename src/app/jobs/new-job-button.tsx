@@ -141,7 +141,7 @@ function JobFormShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-gray-900/45 p-3 sm:p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/45 p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -150,8 +150,8 @@ function JobFormShell({
         }
       }}
     >
-      <div className="flex h-full items-center justify-center overflow-hidden">
-        <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
+      <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
+        <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
@@ -170,8 +170,8 @@ function JobFormShell({
             </button>
           </div>
 
-          <form action={formAction} className="flex flex-col">
-            <div className="px-4 py-3 sm:px-5 sm:py-4">
+          <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
                 <section className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
                   <div className="mb-3">
