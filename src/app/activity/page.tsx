@@ -347,12 +347,12 @@ function StatCard({
 
   return (
     <div
-      className={`min-w-[84px] rounded-2xl border px-3 py-2.5 shadow-sm ${toneClasses}`}
+      className={`rounded-2xl border px-4 py-3 shadow-sm ${toneClasses}`}
     >
       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
         {label}
       </div>
-      <div className="mt-1 text-2xl font-semibold leading-none tracking-tight text-zinc-950">
+      <div className="mt-1 text-lg font-semibold leading-none tracking-tight text-zinc-950">
         {value}
       </div>
     </div>
@@ -364,49 +364,6 @@ function InfoChip({ label }: { label: string }) {
     <div className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-500">
       {label}
     </div>
-  )
-}
-
-function SearchInput({
-  defaultValue,
-  typeFilter,
-  scopeFilter,
-}: {
-  defaultValue: string
-  typeFilter: 'all' | CommentEntityType
-  scopeFilter: 'all' | 'mine'
-}) {
-  return (
-    <form method="get" className="w-full">
-      <input type="hidden" name="type" value={typeFilter} />
-      <input type="hidden" name="scope" value={scopeFilter} />
-
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="text"
-          name="q"
-          defaultValue={defaultValue}
-          placeholder="Hledat podle firmy, osoby, autora nebo textu komentáře…"
-          className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
-        />
-
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-zinc-900 px-5 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
-          >
-            Hledat
-          </button>
-
-          <Link
-            href={buildFilterHref(typeFilter, scopeFilter, '')}
-            className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-300 bg-white px-5 text-sm font-medium uppercase tracking-[0.08em] text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-          >
-            Vyčistit
-          </Link>
-        </div>
-      </div>
-    </form>
   )
 }
 
@@ -696,42 +653,104 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
   ).length
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-6 text-zinc-900 md:px-10 md:py-8">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-6 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Teamwork
-              </div>
-
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-end">
+              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
                 Aktivita týmu
               </h1>
-
-              <p className="mt-2 text-sm text-zinc-500">
-                Přehled posledních komentářů ze schůzek, klientů a úkolů na jednom místě.
-              </p>
             </div>
 
-            <div className="flex w-full max-w-full flex-col gap-3 lg:w-auto lg:items-end">
-              <div className="flex flex-wrap gap-3 lg:justify-end">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-                >
-                  ZPĚT NA DASHBOARD
-                </Link>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+              <form method="get" className="flex w-full gap-3 sm:w-auto">
+                <input type="hidden" name="type" value={typeFilter} />
+                <input type="hidden" name="scope" value={scopeFilter} />
 
-                <Link
-                  href="/activity"
-                  className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
+                <input
+                  type="text"
+                  name="q"
+                  defaultValue={searchQuery}
+                  placeholder="Firma, osoba, autor nebo text komentáře..."
+                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
                 >
-                  OBNOVIT AKTIVITU
-                </Link>
+                  HLEDAT
+                </button>
+              </form>
+
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                ZPĚT NA DASHBOARD
+              </Link>
+
+              <Link
+                href="/activity"
+                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
+              >
+                OBNOVIT AKTIVITU
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[26px] border border-zinc-200 bg-white shadow-sm">
+          <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                Zobrazení
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:justify-end">
+              <div className="mt-3 flex flex-wrap gap-2">
+                <FilterTab
+                  href={buildFilterHref('all', scopeFilter, searchQuery)}
+                  label="Vše"
+                  active={typeFilter === 'all'}
+                />
+                <FilterTab
+                  href={buildFilterHref('meeting', scopeFilter, searchQuery)}
+                  label="Schůzky"
+                  active={typeFilter === 'meeting'}
+                />
+                <FilterTab
+                  href={buildFilterHref('client', scopeFilter, searchQuery)}
+                  label="Klienti"
+                  active={typeFilter === 'client'}
+                />
+                <FilterTab
+                  href={buildFilterHref('task', scopeFilter, searchQuery)}
+                  label="Úkoly"
+                  active={typeFilter === 'task'}
+                />
+                <FilterTab
+                  href={buildFilterHref(typeFilter, 'all', searchQuery)}
+                  label="Všichni"
+                  active={scopeFilter === 'all'}
+                />
+                <FilterTab
+                  href={buildFilterHref(typeFilter, 'mine', searchQuery)}
+                  label="Moje"
+                  active={scopeFilter === 'mine'}
+                />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <InfoChip label={`Typ: ${typeFilterLabel}`} />
+                <InfoChip label={`Rozsah: ${scopeFilterLabel}`} />
+                <InfoChip label={`Uživatel: ${profile?.name ?? user.email}`} />
+                {searchQuery ? <InfoChip label={`Hledání: ${searchQuery}`} /> : null}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
                 <StatCard label="Celkem" value={visibleComments.length} />
                 <StatCard label="Moje" value={myVisibleCount} tone="blue" />
                 <StatCard label="Dnes" value={todayVisibleCount} tone="emerald" />
@@ -739,73 +758,6 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
                 <StatCard label="Klienti" value={clientVisibleCount} tone="emerald" />
                 <StatCard label="Úkoly" value={taskVisibleCount} tone="amber" />
               </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[26px] border border-zinc-200 bg-white shadow-sm">
-          <div className="p-4 md:p-5">
-            <div className="space-y-4">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                  Typ aktivity
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <FilterTab
-                    href={buildFilterHref('all', scopeFilter, searchQuery)}
-                    label="Vše"
-                    active={typeFilter === 'all'}
-                  />
-                  <FilterTab
-                    href={buildFilterHref('meeting', scopeFilter, searchQuery)}
-                    label="Schůzky"
-                    active={typeFilter === 'meeting'}
-                  />
-                  <FilterTab
-                    href={buildFilterHref('client', scopeFilter, searchQuery)}
-                    label="Klienti"
-                    active={typeFilter === 'client'}
-                  />
-                  <FilterTab
-                    href={buildFilterHref('task', scopeFilter, searchQuery)}
-                    label="Úkoly"
-                    active={typeFilter === 'task'}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                  Rozsah
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <FilterTab
-                    href={buildFilterHref(typeFilter, 'all', searchQuery)}
-                    label="Všichni"
-                    active={scopeFilter === 'all'}
-                  />
-                  <FilterTab
-                    href={buildFilterHref(typeFilter, 'mine', searchQuery)}
-                    label="Moje"
-                    active={scopeFilter === 'mine'}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <InfoChip label={`Typ: ${typeFilterLabel}`} />
-                <InfoChip label={`Rozsah: ${scopeFilterLabel}`} />
-                <InfoChip label={`Uživatel: ${profile?.name ?? user.email}`} />
-                {searchQuery ? <InfoChip label={`Hledání: ${searchQuery}`} /> : null}
-              </div>
-
-              <SearchInput
-                defaultValue={searchQuery}
-                typeFilter={typeFilter}
-                scopeFilter={scopeFilter}
-              />
             </div>
           </div>
         </section>

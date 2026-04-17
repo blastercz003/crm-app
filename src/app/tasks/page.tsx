@@ -123,35 +123,48 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const hasAnyResolved = hasResolvedAssigned || hasResolvedDelegated
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-4 text-zinc-900 md:px-6 md:py-6 xl:px-8">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-5 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Agenda
-              </div>
-
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-end">
+              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
                 Moje úkoly
               </h1>
-
-              <p className="mt-2 text-sm text-zinc-500">
-                Přehled úkolů, které máš splnit, i těch, které jsi zadal dál.
-              </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+              <form
+                action="/tasks"
+                method="get"
+                className="flex w-full gap-3 sm:w-auto"
+              >
+                <input
+                  id="task-search"
+                  name="search"
+                  defaultValue={search}
+                  placeholder="Název úkolu, klient, osoba, poznámka..."
+                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                >
+                  HLEDAT
+                </button>
+              </form>
+
               <Link
                 href="/dashboard"
-                className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
+                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               >
                 ZPĚT NA DASHBOARD
               </Link>
 
               <Link
                 href="/tasks/new"
-                className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
+                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
               >
                 NOVÝ ÚKOL
               </Link>
@@ -172,7 +185,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <p className="mt-2 text-sm text-zinc-500">
                 Nahoře vidíš své aktivní úkoly a zvlášť úkoly delegované ostatním.
-                
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
@@ -196,41 +208,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   value={delegated.resolved.length}
                 />
               </div>
-
-              <form action="/tasks" className="space-y-2.5">
-                <label
-                  htmlFor="task-search"
-                  className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400"
-                >
-                  Hledat
-                </label>
-
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <input
-                    id="task-search"
-                    name="search"
-                    defaultValue={search}
-                    placeholder="Název úkolu, klient, osoba, poznámka..."
-                    className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
-                  />
-
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="inline-flex h-11 items-center justify-center rounded-2xl bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
-                    >
-                      FILTROVAT
-                    </button>
-
-                    <Link
-                      href="/tasks"
-                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-950"
-                    >
-                      RESET
-                    </Link>
-                  </div>
-                </div>
-              </form>
             </div>
           </div>
         </section>

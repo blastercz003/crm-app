@@ -26,6 +26,7 @@ type DashboardProfile = {
   role: string | null
   last_seen_dashboard_at: string | null
   last_seen_updates_at: string | null
+  can_view_jobs: boolean | null
 }
 
 type DashboardTask = {
@@ -643,6 +644,7 @@ function buildOverlaySummaryItems(args: {
 
   return items
 }
+
 function DashboardStatCard({
   label,
   value,
@@ -965,6 +967,52 @@ function ClientsCard() {
   )
 }
 
+function JobsCard() {
+  return (
+    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="mb-5">
+        <DashboardSectionHeader
+          eyebrow="Sekce"
+          title="Zakázky"
+          description="Vstup do evidence zakázek a obchodů."
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/jobs"
+          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+        >
+          OTEVŘÍT ZAKÁZKY
+        </Link>
+      </div>
+    </section>
+  )
+}
+
+function FinanceCard() {
+  return (
+    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="mb-5">
+        <DashboardSectionHeader
+          eyebrow="Sekce"
+          title="Finance"
+          description="Vstup do financial core."
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/faktury"
+          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+        >
+          OTEVŘÍT FINANCE
+        </Link>
+      </div>
+    </section>
+  )
+}
+
 function LatestCommentsCard({
   comments,
   currentUserId,
@@ -1045,6 +1093,7 @@ function LatestCommentsCard({
     </section>
   )
 }
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -1058,7 +1107,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, role, last_seen_dashboard_at, last_seen_updates_at')
+    .select('name, role, last_seen_dashboard_at, last_seen_updates_at, can_view_jobs')
     .eq('id', user.id)
     .single<DashboardProfile>()
 
@@ -1337,6 +1386,7 @@ export default async function DashboardPage() {
   const headerNewsCount = newTasksCount + newCommentsCount
   const hasNewUpdates = headerNewsCount > 0
   const shouldShowOverlay = isFirstVisitToday || hasNewUpdates
+  const isAdmin = profile?.role === 'admin'
 
   const overlayHeadline = getOverlayHeadline(hasNewUpdates)
   const overlayDescription = getOverlayDescription(
@@ -1357,13 +1407,13 @@ export default async function DashboardPage() {
     <main className="min-h-screen bg-zinc-100 text-zinc-900">
       {shouldShowOverlay ? (
         <DashboardWelcomeOverlay
-  shouldShow={shouldShowOverlay}
-  profileName={profile?.name ?? ''}
-  newTasksCount={newTasksCount}
-  newCommentsCount={newCommentsCount}
-  todayMeetingsCount={todayMeetingsCount}
-  overdueTasksCount={overdueTasksCount}
-/>
+          shouldShow={shouldShowOverlay}
+          profileName={profile?.name ?? ''}
+          newTasksCount={newTasksCount}
+          newCommentsCount={newCommentsCount}
+          todayMeetingsCount={todayMeetingsCount}
+          overdueTasksCount={overdueTasksCount}
+        />
       ) : null}
 
       <div className="px-6 py-6 md:px-10 md:py-10">
@@ -1532,6 +1582,10 @@ export default async function DashboardPage() {
 
               <ClientsCard />
 
+              {profile?.can_view_jobs ? <JobsCard /> : null}
+
+              {isAdmin ? <FinanceCard /> : null}
+
               <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
             </div>
           </div>
@@ -1541,7 +1595,7 @@ export default async function DashboardPage() {
       <footer className="border-t border-white/10 bg-zinc-950 px-6 py-5 md:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY CRM — coding by blaster</div>
-          <div>v1.0.2</div>
+          <div>v1.0.5</div>
         </div>
       </footer>
     </main>

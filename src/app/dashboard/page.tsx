@@ -701,19 +701,6 @@ function DashboardSectionHeader({
   )
 }
 
-function HeaderNewsBadge({ count }: { count: number }) {
-  if (count <= 0) return null
-
-  return (
-    <div className="mt-3 inline-flex items-center gap-2 self-start rounded-full border border-[#2980B9]/20 bg-[#2980B9]/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1f6d9d]">
-      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#2980B9] px-1.5 text-[10px] text-white">
-        {count}
-      </span>
-      Novinky
-    </div>
-  )
-}
-
 function DashboardTaskItem({ task }: { task: DashboardTask }) {
   return (
     <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md">
@@ -1383,8 +1370,7 @@ export default async function DashboardPage() {
   const todayMeetingsCount = todayMeetingsCountResponse.count ?? 0
   const weeklyMeetingsCount = weeklyMeetingsCountResponse.count ?? 0
   const newTasksCount = newTasksCountResponse.count ?? 0
-  const headerNewsCount = newTasksCount + newCommentsCount
-  const hasNewUpdates = headerNewsCount > 0
+  const hasNewUpdates = newTasksCount + newCommentsCount > 0
   const shouldShowOverlay = isFirstVisitToday || hasNewUpdates
   const isAdmin = profile?.role === 'admin'
 
@@ -1404,7 +1390,7 @@ export default async function DashboardPage() {
   })
 
   return (
-    <main className="min-h-screen bg-zinc-100 text-zinc-900">
+    <main className="min-h-screen bg-gray-50 text-zinc-900">
       {shouldShowOverlay ? (
         <DashboardWelcomeOverlay
           shouldShow={shouldShowOverlay}
@@ -1413,189 +1399,185 @@ export default async function DashboardPage() {
           newCommentsCount={newCommentsCount}
           todayMeetingsCount={todayMeetingsCount}
           overdueTasksCount={overdueTasksCount}
+          headline={overlayHeadline}
+          description={overlayDescription}
+          summaryItems={overlaySummaryItems}
         />
       ) : null}
 
-      <div className="px-6 py-6 md:px-10 md:py-10">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-3 p-4 md:p-5 lg:flex-row lg:items-start lg:justify-between lg:p-5">
-              <div className="self-start">
-                <Link href="/dashboard" className="inline-flex flex-col items-start">
-                  <Image
-                    src="/logo.png"
-                    alt="B-ENERGY"
-                    width={150}
-                    height={42}
-                    priority
-                    className="h-7 w-auto transition hover:opacity-80"
-                  />
-                  <div className="mt-1.5 text-left text-[13px] font-semibold uppercase tracking-[0.18em] text-zinc-800">
-                    MY MINI CRM. #nebo ne?
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center">
+              <Link href="/dashboard" className="inline-flex items-center">
+                <Image
+                  src="/logo2.png"
+                  alt="B-ENERGY"
+                  width={150}
+                  height={42}
+                  priority
+                  className="h-6 w-auto transition hover:opacity-80"
+                />
+              </Link>
+            </div>
+
+            <div className="w-full lg:w-auto">
+              <div className="flex w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:min-w-[390px]">
+                <div className="min-w-0 text-[10px] leading-4 text-zinc-500">
+                  <div className="truncate">
+                    Uživatel:{' '}
+                    <span className="font-medium text-zinc-900">
+                      {profile?.name ?? user.email}
+                    </span>
                   </div>
+                  <div>
+                    Role:{' '}
+                    <span className="font-medium uppercase text-zinc-900">
+                      {profile?.role ?? 'neuvedeno'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Link
+                    href="/settings/password"
+                    className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+                  >
+                    HESLO
+                  </Link>
+
+                  <form action="/auth/signout" method="post" className="shrink-0">
+                    <button className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-800 sm:w-auto">
+                      ODHLÁSIT
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <div className="space-y-6">
+            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+              <div className="mb-5">
+                <DashboardSectionHeader
+                  eyebrow="Úkoly"
+                  title="Moje úkoly"
+                  description="Nejbližší aktivní úkoly, které jsou aktuálně přiřazené tobě."
+                />
+              </div>
+
+              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                <DashboardStatCard
+                  label="Aktivní úkoly"
+                  value={activeTasksCount}
+                  highlighted
+                />
+                <DashboardStatCard
+                  label="Úkoly po termínu"
+                  value={overdueTasksCount}
+                />
+              </div>
+
+              {tasks.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                  Nemáš žádné aktivní úkoly.
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {tasks.map((task) => (
+                    <DashboardTaskItem key={task.id} task={task} />
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/tasks"
+                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                >
+                  VŠECHNY ÚKOLY
                 </Link>
 
-                <HeaderNewsBadge count={headerNewsCount} />
+                <Link
+                  href="/tasks/new"
+                  className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-50 hover:text-zinc-950"
+                >
+                  NOVÝ ÚKOL
+                </Link>
+              </div>
+            </section>
+
+            <DashboardMiniCalendar meetings={monthMeetings} />
+          </div>
+
+          <div className="space-y-6">
+            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+              <div className="mb-5">
+                <DashboardSectionHeader
+                  eyebrow="Schůzky"
+                  title="Moje nejbližší schůzky"
+                  description="Pět nejbližších plánovaných schůzek."
+                />
               </div>
 
-              <div className="w-full max-w-[320px] rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="space-y-1 text-[11px] text-zinc-500">
-                    <div>
-                      Uživatel:{' '}
-                      <span className="font-medium text-zinc-900">
-                        {profile?.name ?? user.email}
-                      </span>
-                    </div>
-                    <div>
-                      Role:{' '}
-                      <span className="font-medium uppercase text-zinc-900">
-                        {profile?.role ?? 'neuvedeno'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 flex-col gap-1.5">
-                    <Link
-                      href="/settings/password"
-                      className="inline-flex min-h-[34px] items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-[11px] font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-100 hover:text-zinc-950"
-                    >
-                      ZMĚNIT HESLO
-                    </Link>
-
-                    <form action="/auth/signout" method="post" className="shrink-0">
-                      <button className="inline-flex min-h-[34px] w-full items-center justify-center rounded-xl bg-zinc-900 px-3 py-1.5 text-[11px] font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800">
-                        ODHLÁSIT SE
-                      </button>
-                    </form>
-                  </div>
-                </div>
+              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                <DashboardStatCard
+                  label="Schůzky dnes"
+                  value={todayMeetingsCount}
+                  highlighted
+                />
+                <DashboardStatCard
+                  label="Schůzky tento týden"
+                  value={weeklyMeetingsCount}
+                />
               </div>
-            </div>
-          </section>
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            <div className="space-y-6">
-              <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-                <div className="mb-5">
-                  <DashboardSectionHeader
-                    eyebrow="Úkoly"
-                    title="Moje úkoly"
-                    description="Nejbližší aktivní úkoly, které jsou aktuálně přiřazené tobě."
-                  />
+              {meetings.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                  Nemáš žádné nadcházející schůzky.
                 </div>
-
-                <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                  <DashboardStatCard
-                    label="Aktivní úkoly"
-                    value={activeTasksCount}
-                    highlighted
-                  />
-                  <DashboardStatCard
-                    label="Úkoly po termínu"
-                    value={overdueTasksCount}
-                  />
+              ) : (
+                <div className="grid gap-2.5">
+                  {meetings.map((meeting) => (
+                    <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                  ))}
                 </div>
+              )}
 
-                {tasks.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-                    Nemáš žádné aktivní úkoly.
-                  </div>
-                ) : (
-                  <div className="grid gap-3">
-                    {tasks.map((task) => (
-                      <DashboardTaskItem key={task.id} task={task} />
-                    ))}
-                  </div>
-                )}
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/meetings"
+                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                >
+                  VŠECHNY SCHŮZKY
+                </Link>
 
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Link
-                    href="/tasks"
-                    className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-                  >
-                    VŠECHNY ÚKOLY
-                  </Link>
+                <Link
+                  href="/meetings/new"
+                  className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-50 hover:text-zinc-950"
+                >
+                  NOVÁ SCHŮZKA
+                </Link>
+              </div>
+            </section>
 
-                  <Link
-                    href="/tasks/new"
-                    className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-50 hover:text-zinc-950"
-                  >
-                    NOVÝ ÚKOL
-                  </Link>
-                </div>
-              </section>
+            <ClientsCard />
 
-              <DashboardMiniCalendar meetings={monthMeetings} />
-            </div>
+            {profile?.can_view_jobs ? <JobsCard /> : null}
 
-            <div className="space-y-6">
-              <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-                <div className="mb-5">
-                  <DashboardSectionHeader
-                    eyebrow="Schůzky"
-                    title="Moje nejbližší schůzky"
-                    description="Pět nejbližších plánovaných schůzek."
-                  />
-                </div>
+            {isAdmin ? <FinanceCard /> : null}
 
-                <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                  <DashboardStatCard
-                    label="Schůzky dnes"
-                    value={todayMeetingsCount}
-                    highlighted
-                  />
-                  <DashboardStatCard
-                    label="Schůzky tento týden"
-                    value={weeklyMeetingsCount}
-                  />
-                </div>
-
-                {meetings.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-                    Nemáš žádné nadcházející schůzky.
-                  </div>
-                ) : (
-                  <div className="grid gap-2.5">
-                    {meetings.map((meeting) => (
-                      <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Link
-                    href="/meetings"
-                    className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-                  >
-                    VŠECHNY SCHŮZKY
-                  </Link>
-
-                  <Link
-                    href="/meetings/new"
-                    className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-[0.04em] text-zinc-700 transition duration-200 hover:bg-zinc-50 hover:text-zinc-950"
-                  >
-                    NOVÁ SCHŮZKA
-                  </Link>
-                </div>
-              </section>
-
-              <ClientsCard />
-
-              {profile?.can_view_jobs ? <JobsCard /> : null}
-
-              {isAdmin ? <FinanceCard /> : null}
-
-              <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
-            </div>
+            <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
           </div>
         </div>
       </div>
 
-      <footer className="border-t border-white/10 bg-zinc-950 px-6 py-5 md:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
+      <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY CRM — coding by blaster</div>
-          <div>v1.0.5</div>
+          <div>v1.1.0</div>
         </div>
       </footer>
     </main>

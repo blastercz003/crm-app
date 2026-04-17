@@ -81,7 +81,9 @@ function getPragueOffsetMinutes(dateUtc: Date) {
   const match = timeZoneName.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/)
 
   if (!match) {
-    throw new Error('Nepodařilo se zpracovat offset časového pásma Europe/Prague.')
+    throw new Error(
+      'Nepodařilo se zpracovat offset časového pásma Europe/Prague.'
+    )
   }
 
   const sign = match[1] === '-' ? -1 : 1
@@ -99,7 +101,9 @@ function convertPragueLocalPartsToUtcIsoString(
   minute = 0,
   second = 0
 ) {
-  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second))
+  const utcGuess = new Date(
+    Date.UTC(year, month - 1, day, hour, minute, second)
+  )
 
   if (Number.isNaN(utcGuess.getTime())) {
     throw new Error('Nepodařilo se vytvořit datum pro Europe/Prague.')
@@ -108,7 +112,8 @@ function convertPragueLocalPartsToUtcIsoString(
   const offsetMinutes = getPragueOffsetMinutes(utcGuess)
 
   const correctedUtcDate = new Date(
-    Date.UTC(year, month - 1, day, hour, minute, second) - offsetMinutes * 60_000
+    Date.UTC(year, month - 1, day, hour, minute, second) -
+      offsetMinutes * 60_000
   )
 
   if (Number.isNaN(correctedUtcDate.getTime())) {
@@ -240,30 +245,45 @@ function HeaderStatCard({
   return (
     <div
       className={[
-        'flex min-h-[46px] items-center justify-between rounded-2xl px-4 shadow-sm',
+        'inline-flex items-center justify-between rounded-2xl px-4 py-2.5 text-sm shadow-sm',
         highlighted
           ? 'border border-[#2980B9] bg-[#2980B9]'
-          : 'border border-zinc-200 bg-zinc-50',
+          : 'border border-gray-200 bg-white',
       ].join(' ')}
     >
-      <div
+      <span
         className={
           highlighted
             ? 'text-[11px] font-medium text-white/80'
-            : 'text-[11px] font-medium text-zinc-500'
+            : 'text-[11px] font-medium text-gray-500'
         }
       >
         {label}
-      </div>
-      <div
+      </span>
+      <span
         className={
           highlighted
-            ? 'text-base font-semibold text-white'
-            : 'text-base font-semibold text-zinc-950'
+            ? 'ml-3 text-sm font-semibold text-white'
+            : 'ml-3 text-sm font-semibold text-gray-900'
         }
       >
         {value}
-      </div>
+      </span>
+    </div>
+  )
+}
+
+function LegendCard({
+  label,
+  dotClassName,
+}: {
+  label: string
+  dotClassName: string
+}) {
+  return (
+    <div className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 shadow-sm">
+      <span className={`h-3 w-3 rounded-full ${dotClassName}`} />
+      <span className="text-xs font-medium">{label}</span>
     </div>
   )
 }
@@ -378,70 +398,56 @@ export default async function CalendarPage() {
   const totalPlannedCount = totalPlannedCountResponse.count ?? 0
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-6 md:px-10 md:py-8">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-5 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Agenda
-              </div>
-
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:relative lg:min-h-[42px] lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-end">
+              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
                 Kalendář
               </h1>
-
-              <p className="mt-2 text-sm text-zinc-500">
-                Přehled všech tvých schůzek na jednom místě.
-                <br />
-                Kliknutím otevřeš detail, v týdenním view můžeš plánované schůzky
-                přesouvat tažením.
-              </p>
             </div>
 
-            <div className="w-full lg:w-[420px]">
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-                >
-                  ZPĚT NA DASHBOARD
-                </Link>
-
-                <Link
-                  href="/meetings/new"
-                  className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
-                >
-                  NOVÁ SCHŮZKA
-                </Link>
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3 lg:absolute lg:left-1/2 lg:top-1/2 lg:w-[760px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-4">
+              <div className="flex flex-wrap items-center justify-end gap-3">
                 <HeaderStatCard
                   label="Dnes"
                   value={todayMeetingsCount}
                   highlighted
                 />
-                <HeaderStatCard
-                  label="Týden"
-                  value={weeklyMeetingsCount}
-                />
-                <HeaderStatCard
-                  label="Celkem"
-                  value={totalPlannedCount}
-                />
+                <HeaderStatCard label="Týden" value={weeklyMeetingsCount} />
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-500">
-                <div className="inline-flex min-h-[46px] flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2">
-                  <span className="h-3 w-3 rounded-full bg-[#2980B9]" />
-                  Plánovaná
-                </div>
-                <div className="inline-flex min-h-[46px] flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2">
-                  <span className="h-3 w-3 rounded-full bg-zinc-300" />
-                  Proběhlá
-                </div>
+              <div className="flex items-center justify-center">
+                <HeaderStatCard label="Celkem" value={totalPlannedCount} />
               </div>
+
+              <div className="flex flex-wrap items-center justify-start gap-3">
+                <LegendCard
+                  label="Plánovaná"
+                  dotClassName="bg-[#2980B9]"
+                />
+                <LegendCard
+                  label="Proběhlá"
+                  dotClassName="bg-zinc-300"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition-opacity duration-200 hover:opacity-85"
+              >
+                ZPĚT NA DASHBOARD
+              </Link>
+
+              <Link
+                href="/meetings/new"
+                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
+              >
+                NOVÁ SCHŮZKA
+              </Link>
             </div>
           </div>
         </section>

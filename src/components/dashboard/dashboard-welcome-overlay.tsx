@@ -4,6 +4,12 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { markDashboardOverlaySeen } from '@/app/dashboard/actions'
 
+type OverlaySummaryItem = {
+  label: string
+  value: string
+  tone?: 'default' | 'highlight' | 'warning'
+}
+
 type DashboardWelcomeOverlayProps = {
   shouldShow: boolean
   profileName: string
@@ -11,6 +17,9 @@ type DashboardWelcomeOverlayProps = {
   newCommentsCount: number
   todayMeetingsCount: number
   overdueTasksCount: number
+  headline?: string
+  description?: string
+  summaryItems?: OverlaySummaryItem[]
 }
 
 function pluralize(
@@ -31,6 +40,9 @@ export function DashboardWelcomeOverlay({
   newCommentsCount,
   todayMeetingsCount,
   overdueTasksCount,
+  headline,
+  description,
+  summaryItems,
 }: DashboardWelcomeOverlayProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(shouldShow)
@@ -56,11 +68,13 @@ export function DashboardWelcomeOverlay({
 
   const hasUpdates = newTasksCount > 0 || newCommentsCount > 0
 
-  const title = hasUpdates ? 'Máme pro Tebe novinky' : 'Vítej zpět'
+  const title = headline ?? (hasUpdates ? 'Máme pro Tebe novinky' : 'Vítej zpět')
 
-  const subtitle = hasUpdates
-    ? 'Na Dashboardu se objevilo něco nového, co stojí za pozornost.'
-    : 'Tady je rychlý přehled dne, ať víš, co je právě důležité.'
+  const subtitle =
+    description ??
+    (hasUpdates
+      ? 'Na Dashboardu se objevilo něco nového, co stojí za pozornost.'
+      : 'Tady je rychlý přehled dne, ať víš, co je právě důležité.')
 
   async function closeOverlay(targetHref?: string) {
     setErrorMessage(null)
@@ -116,98 +130,134 @@ export function DashboardWelcomeOverlay({
 
         <div className="px-6 py-6 md:px-8">
           <div className="grid gap-3">
-            {newTasksCount > 0 && (
-              <div className="rounded-2xl border border-[#2980B9]/20 bg-[#2980B9]/5 px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2980B9]">
-                  Nové úkoly
-                </div>
-                <div className="mt-1 text-sm text-zinc-800">
-                  Byly Ti přiřazeny{' '}
-                  <span className="font-semibold text-zinc-950">
-                    {newTasksCount} nové{' '}
-                    {pluralize(newTasksCount, 'úkol', 'úkoly', 'úkolů')}
-                  </span>
-                  .
-                </div>
-              </div>
-            )}
+            {summaryItems?.length ? (
+              summaryItems.map((item) => {
+                const toneClasses =
+                  item.tone === 'highlight'
+                    ? {
+                        card: 'border-[#2980B9]/20 bg-[#2980B9]/5',
+                        label: 'text-[#2980B9]',
+                      }
+                    : item.tone === 'warning'
+                      ? {
+                          card: 'border-amber-200 bg-amber-50',
+                          label: 'text-amber-700',
+                        }
+                      : {
+                          card: 'border-zinc-200 bg-zinc-50',
+                          label: 'text-zinc-500',
+                        }
 
-            {newCommentsCount > 0 && (
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                  Nové komentáře
-                </div>
-                <div className="mt-1 text-sm text-zinc-800">
-                  Přibyly{' '}
-                  <span className="font-semibold text-zinc-950">
-                    {newCommentsCount} nové{' '}
-                    {pluralize(
-                      newCommentsCount,
-                      'komentář',
-                      'komentáře',
-                      'komentářů'
-                    )}
-                  </span>
-                  .
-                </div>
-              </div>
-            )}
+                return (
+                  <div
+                    key={`${item.label}-${item.value}`}
+                    className={`rounded-2xl border px-4 py-3 ${toneClasses.card}`}
+                  >
+                    <div
+                      className={`text-xs font-semibold uppercase tracking-[0.14em] ${toneClasses.label}`}
+                    >
+                      {item.label}
+                    </div>
+                    <div className="mt-1 text-sm text-zinc-800">{item.value}</div>
+                  </div>
+                )
+              })
+            ) : (
+              <>
+                {newTasksCount > 0 && (
+                  <div className="rounded-2xl border border-[#2980B9]/20 bg-[#2980B9]/5 px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2980B9]">
+                      Nové úkoly
+                    </div>
+                    <div className="mt-1 text-sm text-zinc-800">
+                      Byly Ti přiřazeny{' '}
+                      <span className="font-semibold text-zinc-950">
+                        {newTasksCount} nové{' '}
+                        {pluralize(newTasksCount, 'úkol', 'úkoly', 'úkolů')}
+                      </span>
+                      .
+                    </div>
+                  </div>
+                )}
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                Dnešek
-              </div>
-              <div className="mt-1 text-sm text-zinc-800">
-                Dnes máš{' '}
-                <span className="font-semibold text-zinc-950">
-                  {todayMeetingsCount}{' '}
-                  {pluralize(
-                    todayMeetingsCount,
-                    'schůzku',
-                    'schůzky',
-                    'schůzek'
-                  )}
-                </span>
-                .
-              </div>
-            </div>
+                {newCommentsCount > 0 && (
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                      Nové komentáře
+                    </div>
+                    <div className="mt-1 text-sm text-zinc-800">
+                      Přibyly{' '}
+                      <span className="font-semibold text-zinc-950">
+                        {newCommentsCount} nové{' '}
+                        {pluralize(
+                          newCommentsCount,
+                          'komentář',
+                          'komentáře',
+                          'komentářů'
+                        )}
+                      </span>
+                      .
+                    </div>
+                  </div>
+                )}
 
-            <div
-              className={[
-                'rounded-2xl border px-4 py-3',
-                overdueTasksCount > 0
-                  ? 'border-amber-200 bg-amber-50'
-                  : 'border-zinc-200 bg-zinc-50',
-              ].join(' ')}
-            >
-              <div
-                className={[
-                  'text-xs font-semibold uppercase tracking-[0.14em]',
-                  overdueTasksCount > 0 ? 'text-amber-700' : 'text-zinc-500',
-                ].join(' ')}
-              >
-                Priorita
-              </div>
-              <div className="mt-1 text-sm text-zinc-800">
-                {overdueTasksCount > 0 ? (
-                  <>
-                    Máš{' '}
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                    Dnešek
+                  </div>
+                  <div className="mt-1 text-sm text-zinc-800">
+                    Dnes máš{' '}
                     <span className="font-semibold text-zinc-950">
-                      {overdueTasksCount}{' '}
+                      {todayMeetingsCount}{' '}
                       {pluralize(
-                        overdueTasksCount,
-                        'úkol po termínu',
-                        'úkoly po termínu',
-                        'úkolů po termínu'
+                        todayMeetingsCount,
+                        'schůzku',
+                        'schůzky',
+                        'schůzek'
                       )}
                     </span>
                     .
-                  </>
-                ) : (
-                  <>Nemáš žádné úkoly po termínu.</>
-                )}
-              </div>
-            </div>
+                  </div>
+                </div>
+
+                <div
+                  className={[
+                    'rounded-2xl border px-4 py-3',
+                    overdueTasksCount > 0
+                      ? 'border-amber-200 bg-amber-50'
+                      : 'border-zinc-200 bg-zinc-50',
+                  ].join(' ')}
+                >
+                  <div
+                    className={[
+                      'text-xs font-semibold uppercase tracking-[0.14em]',
+                      overdueTasksCount > 0 ? 'text-amber-700' : 'text-zinc-500',
+                    ].join(' ')}
+                  >
+                    Priorita
+                  </div>
+                  <div className="mt-1 text-sm text-zinc-800">
+                    {overdueTasksCount > 0 ? (
+                      <>
+                        Máš{' '}
+                        <span className="font-semibold text-zinc-950">
+                          {overdueTasksCount}{' '}
+                          {pluralize(
+                            overdueTasksCount,
+                            'úkol po termínu',
+                            'úkoly po termínu',
+                            'úkolů po termínu'
+                          )}
+                        </span>
+                        .
+                      </>
+                    ) : (
+                      <>Nemáš žádné úkoly po termínu.</>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {errorMessage && (

@@ -521,7 +521,7 @@ export default async function MeetingsPage({
   const view: 'all' | 'planned' | 'completed' =
     rawView === 'planned' || rawView === 'completed' ? rawView : 'all'
 
-  const requestedScope: 'mine' | 'team' = rawScope === 'team' ? 'team' : 'mine'
+  const requestedScope: 'mine' | 'team' = rawScope === 'team' ? rawScope : 'mine'
 
   const supabase = await createClient()
 
@@ -540,7 +540,9 @@ export default async function MeetingsPage({
     .single<ProfileRow>()
 
   if (profileError) {
-    throw new Error(`Nepodařilo se načíst profil uživatele: ${profileError.message}`)
+    throw new Error(
+      `Nepodařilo se načíst profil uživatele: ${profileError.message}`
+    )
   }
 
   const isAdmin = profile?.role === 'admin'
@@ -553,7 +555,9 @@ export default async function MeetingsPage({
     .order('name', { ascending: true })
 
   if (profilesError) {
-    throw new Error(`Nepodařilo se načíst seznam uživatelů: ${profilesError.message}`)
+    throw new Error(
+      `Nepodařilo se načíst seznam uživatelů: ${profilesError.message}`
+    )
   }
 
   const profileRows = (allProfiles ?? []) as ProfileRow[]
@@ -696,82 +700,58 @@ export default async function MeetingsPage({
       : 'Všichni'
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-6 text-zinc-900 md:px-10 md:py-8">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Agenda
-              </div>
-
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-end">
+              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
                 Moje schůzky
               </h1>
-
-              <p className="mt-2 text-sm text-zinc-500">
-                {isAdminTeamView
-                  ? 'Přehled plánovaných i proběhlých schůzek celého týmu.'
-                  : 'Přehled plánovaných i proběhlých schůzek.'}
-              </p>
             </div>
 
-            <div className="flex justify-end lg:min-w-[520px]">
-              <div className="grid grid-cols-[220px_220px] gap-x-3 gap-y-2">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-transparent bg-[#2980B9] px-5 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:opacity-90"
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+              <form
+                action="/meetings"
+                method="get"
+                className="flex w-full gap-3 sm:w-auto"
+              >
+                <input type="hidden" name="view" value={view} />
+                <input type="hidden" name="scope" value={scope} />
+                {isAdminTeamView ? (
+                  <input type="hidden" name="owner" value={rawOwner ?? ''} />
+                ) : null}
+
+                <input
+                  id="meeting-search"
+                  type="text"
+                  name="search"
+                  defaultValue={rawSearch}
+                  placeholder="Firma, osoba, telefon, e-mail..."
+                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
                 >
-                  ZPĚT NA DASHBOARD
-                </Link>
+                  HLEDAT
+                </button>
+              </form>
 
-                <Link
-                  href="/meetings/new"
-                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-zinc-900 px-5 text-sm font-medium uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800"
-                >
-                  NOVÁ SCHŮZKA
-                </Link>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                ZPĚT NA DASHBOARD
+              </Link>
 
-                <form method="get" className="contents">
-                  <input type="hidden" name="view" value={view} />
-                  <input type="hidden" name="scope" value={scope} />
-                  {isAdminTeamView ? (
-                    <input type="hidden" name="owner" value={rawOwner ?? ''} />
-                  ) : null}
-
-                  <input
-                    id="meeting-search"
-                    type="text"
-                    name="search"
-                    defaultValue={rawSearch}
-                    placeholder="Firma, osoba, telefon, e-mail..."
-                    className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
-                  />
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="submit"
-                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-900 transition hover:bg-zinc-50"
-                    >
-                      HLEDAT
-                    </button>
-
-                    <Link
-                      href={
-                        isAdminTeamView
-                          ? getTabHref(
-                              { view, scope: 'team', owner: rawOwner },
-                              { search: '' }
-                            )
-                          : getTabHref({ view, scope }, { search: '' })
-                      }
-                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-900 transition hover:bg-zinc-50"
-                    >
-                      RESET
-                    </Link>
-                  </div>
-                </form>
-              </div>
+              <Link
+                href="/meetings/new"
+                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
+              >
+                NOVÁ SCHŮZKA
+              </Link>
             </div>
           </div>
         </section>

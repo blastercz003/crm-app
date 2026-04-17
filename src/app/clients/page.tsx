@@ -85,26 +85,16 @@ export default async function ClientsPage({
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
         <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-                Klienti
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-end">
+              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
+                Databáze klientů
               </h1>
-              <p className="text-sm text-gray-500">
-                Přehled firem a jejich hlavních kontaktů.
-              </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                ZPĚT NA DASHBOARD
-              </Link>
-
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
               <form
                 action="/clients"
                 method="get"
@@ -115,21 +105,29 @@ export default async function ClientsPage({
                   name="q"
                   defaultValue={query}
                   placeholder="Hledat firmu, IČO, osobu nebo e-mail"
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-80 lg:w-96"
+                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
                 />
+
                 <button
                   type="submit"
-                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
                 >
-                  Hledat
+                  HLEDAT
                 </button>
               </form>
 
               <Link
-                href="/clients/new"
-                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               >
-                Nový klient
+                ZPĚT NA DASHBOARD
+              </Link>
+
+              <Link
+                href="/clients/new"
+                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
+              >
+                NOVÝ KLIENT
               </Link>
             </div>
           </div>
@@ -139,7 +137,9 @@ export default async function ClientsPage({
           <section className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
             <div className="mx-auto max-w-xl space-y-3">
               <h2 className="text-lg font-semibold text-gray-900">
-                {query ? 'Žádný klient neodpovídá hledání.' : 'Zatím tu nejsou žádní klienti.'}
+                {query
+                  ? 'Žádný klient neodpovídá hledání.'
+                  : 'Zatím tu nejsou žádní klienti.'}
               </h2>
               <p className="text-sm leading-6 text-gray-500">
                 {query
@@ -203,7 +203,8 @@ export default async function ClientsPage({
 
                   <tbody className="divide-y divide-gray-100">
                     {typedClients.map((client) => {
-                      const commentCount = commentCountByClientId.get(client.id) ?? 0
+                      const commentCount =
+                        commentCountByClientId.get(client.id) ?? 0
 
                       return (
                         <tr
