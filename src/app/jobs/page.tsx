@@ -45,6 +45,12 @@ export type JobRow = {
 }
 
 type ClientSuggestionRow = {
+  id: string
+  name: string | null
+}
+
+type ClientOption = {
+  id: string
   name: string
 }
 
@@ -278,7 +284,10 @@ export default async function JobsPage({
     { data: clientSuggestionsData, error: clientsError },
   ] = await Promise.all([
     request,
-    supabase.from('clients').select('name').order('name', { ascending: true }),
+    supabase
+      .from('clients')
+      .select('id, name')
+      .order('name', { ascending: true }),
   ])
 
   if (error) {
@@ -291,13 +300,22 @@ export default async function JobsPage({
 
   const typedJobs = (jobs ?? []) as JobRow[]
 
-  const clientSuggestions = Array.from(
-    new Set(
+  const clientOptions = Array.from(
+    new Map(
       ((clientSuggestionsData ?? []) as ClientSuggestionRow[])
-        .map((item) => item.name?.trim())
-        .filter((item): item is string => Boolean(item))
-    )
+        .map((item) => ({
+          id: String(item.id ?? '').trim(),
+          name: item.name?.trim() ?? '',
+        }))
+        .filter(
+          (item): item is ClientOption =>
+            Boolean(item.id) && Boolean(item.name)
+        )
+        .map((item) => [item.id, item])
+    ).values()
   )
+
+  const clientSuggestions = clientOptions.map((item) => item.name)
 
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo
@@ -405,7 +423,7 @@ export default async function JobsPage({
                 </Link>
 
                 <NewJobButton
-                  clientSuggestions={clientSuggestions}
+                  clientSuggestions={clientOptions}
                   isAdmin={isAdmin}
                   className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
                 />
@@ -616,7 +634,7 @@ export default async function JobsPage({
             <div className="print-table-section">
               <JobsInteractiveTable
                 jobs={typedJobs}
-                clientSuggestions={clientSuggestions}
+                clientSuggestions={clientOptions}
                 isAdmin={isAdmin}
               />
             </div>

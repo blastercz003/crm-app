@@ -53,6 +53,11 @@ type ProfilePermissionRow = {
   role: string | null
 }
 
+type ClientRow = {
+  id: string
+  name: string | null
+}
+
 const SALES_OWNER_VALUES = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME'] as const
 const JOB_STATUS_VALUES = [
   'nova',
@@ -93,6 +98,17 @@ function normalizeText(value: FormDataEntryValue | null) {
 
 function normalizeRequiredText(value: FormDataEntryValue | null) {
   return String(value ?? '').trim()
+}
+
+function normalizeUuid(value: FormDataEntryValue | null) {
+  const text = String(value ?? '').trim()
+
+  if (!text) return null
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+  return uuidPattern.test(text) ? text : null
 }
 
 function normalizeSalesOwner(value: FormDataEntryValue | null) {
@@ -281,8 +297,67 @@ function revalidateAllRelatedPaths() {
   revalidatePath('/faktury')
 }
 
-function getJobPayload(formData: FormData) {
-  const companyName = normalizeRequiredText(formData.get('company_name'))
+async function resolveClientSelection(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  formData: FormData
+) {
+  const clientId = normalizeUuid(formData.get('client_id'))
+
+  if (!clientId) {
+    return {
+      error: 'Vyber firmu ze seznamu klientů.',
+      client: null,
+    }
+  }
+
+  const { data: client, error } = await supabase
+    .from('clients')
+    .select('id, name')
+    .eq('id', clientId)
+    .single()
+
+  if (error || !client) {
+    return {
+      error: 'Vybranou firmu se nepodařilo ověřit.',
+      client: null,
+    }
+  }
+
+  const typedClient = client as ClientRow
+  const clientName = typedClient.name?.trim() ?? ''
+
+  if (!clientName) {
+    return {
+      error: 'Vybraný klient nemá platný název firmy.',
+      client: null,
+    }
+  }
+
+  return {
+    error: null,
+    client: {
+      id: String(typedClient.id),
+      name: clientName,
+    },
+  }
+}
+
+async function getJobPayload(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  formData: FormData
+) {
+  const { error: clientError, client } = await resolveClientSelection(
+    supabase,
+    formData
+  )
+
+  if (clientError || !client) {
+    return {
+      error: clientError ?? 'Vyber platnou firmu.',
+      payload: null,
+    }
+  }
+
   const contactPerson = normalizeText(formData.get('contact_person'))
   const salesOwner = normalizeSalesOwner(formData.get('sales_owner'))
   const startAt = parseDateTimeLocalAsPrague(formData.get('start_at'))
@@ -294,13 +369,6 @@ function getJobPayload(formData: FormData) {
   const infoNote = normalizeText(formData.get('info_note'))
   const jobStatus = normalizeJobStatus(formData.get('job_status'))
   const invoiceStatus = normalizeInvoiceStatus(formData.get('invoice_status'))
-
-  if (!companyName) {
-    return {
-      error: 'Vyplň firmu.',
-      payload: null,
-    }
-  }
 
   if (!startAt) {
     return {
@@ -326,7 +394,8 @@ function getJobPayload(formData: FormData) {
   return {
     error: null,
     payload: {
-      company_name: companyName,
+      client_id: client.id,
+      company_name: client.name,
       contact_person: contactPerson,
       sales_owner: salesOwner,
       start_at: startAt,
@@ -367,7 +436,10 @@ export async function createJobAction(
     }
   }
 
-  const { error: validationError, payload } = getJobPayload(formData)
+  const { error: validationError, payload } = await getJobPayload(
+    supabase,
+    formData
+  )
 
   if (validationError || !payload) {
     return {
@@ -453,7 +525,10 @@ export async function updateJobAction(
     }
   }
 
-  const { error: validationError, payload } = getJobPayload(formData)
+  const { error: validationError, payload } = await getJobPayload(
+    supabase,
+    formData
+  )
 
   if (validationError || !payload) {
     return {
@@ -833,34 +908,9 @@ export async function updateJobInlineFieldAction(
   }
 
   if (field === 'company_name') {
-    const companyName = normalizeRequiredText(value)
-
-    if (!companyName) {
-      return {
-        success: false,
-        error: 'Firma nesmí být prázdná.',
-      }
-    }
-
-    const { error } = await supabase
-      .from('jobs')
-      .update({
-        company_name: companyName,
-      })
-      .eq('id', normalizedJobId)
-
-    if (error) {
-      return {
-        success: false,
-        error: 'Firmu se nepodařilo uložit.',
-      }
-    }
-
-    revalidateAllRelatedPaths()
-
     return {
-      success: true,
-      error: null,
+      success: false,
+      error: 'Firmu už není možné měnit ručně. Vyberuje se z klientů.',
     }
   }
 

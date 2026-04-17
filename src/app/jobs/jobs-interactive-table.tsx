@@ -19,10 +19,16 @@ type JobStatus =
 type EvidenceStatus = 'nove' | 'zapsano'
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
 
+type ClientOption = {
+  id: string
+  name: string
+}
+
 type JobRow = {
   id: string
   job_number: string
   company_name: string
+  client_id?: string | null
   contact_person: string | null
   sales_owner: SalesOwner
   start_at: string
@@ -49,7 +55,7 @@ type InlineEditableField =
 
 type JobsInteractiveTableProps = {
   jobs: JobRow[]
-  clientSuggestions: string[]
+  clientSuggestions: ClientOption[]
   isAdmin: boolean
 }
 
@@ -136,7 +142,7 @@ function DesktopRow({
   isAdmin,
 }: {
   job: JobRow
-  clientSuggestions: string[]
+  clientSuggestions: ClientOption[]
   isAdmin: boolean
 }) {
   return (
@@ -161,7 +167,7 @@ function DesktopRow({
         job={job}
         field="company_name"
         value={job.company_name}
-        canEdit={isAdmin}
+        canEdit={false}
       />
       <EditableCell
         job={job}
@@ -227,7 +233,7 @@ function MobileCard({
   isAdmin,
 }: {
   job: JobRow
-  clientSuggestions: string[]
+  clientSuggestions: ClientOption[]
   isAdmin: boolean
 }) {
   return (

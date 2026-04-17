@@ -21,10 +21,16 @@ type InvoiceStatus =
   | 'k_fakturaci'
   | 'vyfakturovano'
 
+type ClientOption = {
+  id: string
+  name: string
+}
+
 type JobFormValues = {
   id: string
   job_number: string
   company_name: string
+  client_id?: string | null
   contact_person: string | null
   sales_owner: SalesOwner
   start_at: string
@@ -40,7 +46,7 @@ type JobFormValues = {
 
 type EditJobButtonProps = {
   job: JobFormValues
-  clientSuggestions: string[]
+  clientSuggestions: ClientOption[]
   className?: string
   children?: React.ReactNode
   isAdmin?: boolean
@@ -108,7 +114,7 @@ function EditJobModal({
   onClose,
 }: {
   job: JobFormValues
-  clientSuggestions: string[]
+  clientSuggestions: ClientOption[]
   onClose: () => void
 }) {
   const [state, formAction] = useActionState(
@@ -167,7 +173,7 @@ function JobFormShell({
   isDeleting,
 }: {
   mode: 'edit'
-  clientSuggestions: string[]
+  clientSuggestions: ClientOption[]
   onClose: () => void
   error: string | null
   formAction: (payload: FormData) => void
@@ -175,15 +181,45 @@ function JobFormShell({
   onDelete: () => void
   isDeleting: boolean
 }) {
-  const companySuggestions = useMemo(() => {
-    const items = [...clientSuggestions]
+  const companyOptions = useMemo(() => {
+    const map = new Map<string, ClientOption>()
 
-    if (job.company_name && !items.includes(job.company_name)) {
-      items.unshift(job.company_name)
+    clientSuggestions.forEach((client) => {
+      const name = client.name.trim()
+      if (!name) return
+
+      map.set(client.id, {
+        id: client.id,
+        name,
+      })
+    })
+
+    if (job.client_id && job.company_name?.trim()) {
+      map.set(job.client_id, {
+        id: job.client_id,
+        name: job.company_name.trim(),
+      })
     }
 
-    return items
-  }, [clientSuggestions, job.company_name])
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, 'cs', { sensitivity: 'base' })
+    )
+  }, [clientSuggestions, job.client_id, job.company_name])
+
+  const [companyName, setCompanyName] = useState(job.company_name ?? '')
+  const [selectedClientId, setSelectedClientId] = useState(job.client_id ?? '')
+  const [companyTouched, setCompanyTouched] = useState(false)
+
+  const selectedClient = useMemo(() => {
+    return companyOptions.find((client) => client.id === selectedClientId) ?? null
+  }, [companyOptions, selectedClientId])
+
+  const companySelectionIsValid =
+    Boolean(selectedClientId) &&
+    Boolean(selectedClient) &&
+    companyName.trim() === (selectedClient?.name ?? '')
+
+  const showCompanyError = companyTouched && !companySelectionIsValid
 
   const title = `Upravit zakázku ${job.job_number}`
   const description = 'Uprav základní údaje k realizaci.'
@@ -236,6 +272,12 @@ function JobFormShell({
               name="invoice_status"
               value={job.invoice_status}
             />
+            <input type="hidden" name="client_id" value={selectedClientId} />
+            <input
+              type="hidden"
+              name="company_name"
+              value={companySelectionIsValid ? companyName.trim() : ''}
+            />
 
             <div className="px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
@@ -252,26 +294,55 @@ function JobFormShell({
                   <div className="grid gap-3">
                     <div>
                       <label
-                        htmlFor={`${mode}-company_name`}
+                        htmlFor={`${mode}-client_id`}
                         className="mb-1 block text-sm font-medium text-gray-700"
                       >
                         Firma *
                       </label>
-                      <input
-                        id={`${mode}-company_name`}
-                        name="company_name"
-                        type="text"
-                        list={`${mode}-job-company-suggestions`}
+
+                      <select
+                        id={`${mode}-client_id`}
+                        value={selectedClientId}
                         required
-                        defaultValue={job.company_name}
-                        placeholder="Začni psát název firmy"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-                      />
-                      <datalist id={`${mode}-job-company-suggestions`}>
-                        {companySuggestions.map((companyName) => (
-                          <option key={companyName} value={companyName} />
+                        onChange={(event) => {
+                          const nextClientId = event.target.value
+                          const nextClient =
+                            companyOptions.find((client) => client.id === nextClientId) ??
+                            null
+
+                          setSelectedClientId(nextClientId)
+                          setCompanyName(nextClient?.name ?? '')
+                          setCompanyTouched(true)
+                        }}
+                        onBlur={() => setCompanyTouched(true)}
+                        className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                          showCompanyError
+                            ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
+                            : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+                        }`}
+                      >
+                        <option value="">Vyber firmu ze seznamu klientů</option>
+                        {companyOptions.map((client) => (
+                          <option key={client.id} value={client.id}>
+                            {client.name}
+                          </option>
                         ))}
-                      </datalist>
+                      </select>
+
+                      <div className="mt-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                          Vybraná firma
+                        </div>
+                        <div className="mt-1 text-sm text-gray-900">
+                          {companyName.trim() || 'Žádná firma není vybraná'}
+                        </div>
+                      </div>
+
+                      {showCompanyError ? (
+                        <p className="mt-2 text-sm text-red-600">
+                          Pro uložení změn musíš vybrat firmu z existujícího seznamu klientů.
+                        </p>
+                      ) : null}
                     </div>
 
                     <div>
@@ -488,7 +559,10 @@ function JobFormShell({
                   ZRUŠIT
                 </button>
 
-                <SubmitButton label={submitLabel} disabled={isDeleting} />
+                <SubmitButton
+                  label={submitLabel}
+                  disabled={isDeleting || !companySelectionIsValid}
+                />
               </div>
             </div>
           </form>
