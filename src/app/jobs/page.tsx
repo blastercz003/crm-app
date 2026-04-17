@@ -476,7 +476,7 @@ export default async function JobsPage({
                   >
                     <option value="">Všechny</option>
                     <option value="nova">Nová</option>
-                    <option value="k_reseni">K řešení</option>
+                    <option value="k_reseni">V řešení</option>
                     <option value="realizace">Realizace</option>
                     <option value="ukoncena">Ukončená</option>
                     <option value="storno">Storno</option>

@@ -819,7 +819,7 @@ function getJobStatusMeta(status: JobStatus) {
     case 'k_reseni':
       return {
         value: 'k_reseni' as JobStatus,
-        label: 'K ŘEŠENÍ',
+        label: 'V ŘEŠENÍ',
         className:
           'border border-amber-300 bg-amber-100 text-amber-800 shadow-sm',
       }
