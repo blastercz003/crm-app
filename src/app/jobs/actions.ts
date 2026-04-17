@@ -910,7 +910,7 @@ export async function updateJobInlineFieldAction(
   if (field === 'company_name') {
     return {
       success: false,
-      error: 'Firmu už není možné měnit ručně. Vyberuje se z klientů.',
+      error: 'Firmu už není možné měnit ručně. Vybírá se z klientů.',
     }
   }
 

@@ -4,8 +4,10 @@ import {
   useActionState,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
+  type KeyboardEvent,
 } from 'react'
 import { useFormStatus } from 'react-dom'
 import {
@@ -57,6 +59,8 @@ const initialUpdateState: UpdateJobActionState = {
   error: null,
 }
 
+const MAX_VISIBLE_CLIENTS = 8
+
 export function EditJobButton({
   job,
   clientSuggestions,
@@ -80,20 +84,12 @@ export function EditJobButton({
     'inline-flex items-center justify-center rounded-lg px-1 py-1 text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]'
 
   if (!isAdmin) {
-    return (
-      <>
-        <span className={resolvedClassName}>{children ?? job.job_number}</span>
-      </>
-    )
+    return <span className={resolvedClassName}>{children ?? job.job_number}</span>
   }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openModal}
-        className={resolvedClassName}
-      >
+      <button type="button" onClick={openModal} className={resolvedClassName}>
         {children ?? job.job_number}
       </button>
 
@@ -185,11 +181,13 @@ function JobFormShell({
     const map = new Map<string, ClientOption>()
 
     clientSuggestions.forEach((client) => {
+      const id = client.id.trim()
       const name = client.name.trim()
-      if (!name) return
+
+      if (!id || !name) return
 
       map.set(client.id, {
-        id: client.id,
+        id,
         name,
       })
     })
@@ -209,6 +207,36 @@ function JobFormShell({
   const [companyName, setCompanyName] = useState(job.company_name ?? '')
   const [selectedClientId, setSelectedClientId] = useState(job.client_id ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(0)
+
+  const companyFieldRef = useRef<HTMLDivElement>(null)
+  const companyInputRef = useRef<HTMLInputElement>(null)
+
+  const normalizedCompanySearch = normalizeSearchText(companyName)
+
+  const filteredCompanyOptions = useMemo(() => {
+    if (!normalizedCompanySearch) {
+      return companyOptions.slice(0, MAX_VISIBLE_CLIENTS)
+    }
+
+    const startsWithMatches = companyOptions.filter((client) =>
+      normalizeSearchText(client.name).startsWith(normalizedCompanySearch)
+    )
+
+    const includesMatches = companyOptions.filter((client) => {
+      const normalizedName = normalizeSearchText(client.name)
+      return (
+        !normalizedName.startsWith(normalizedCompanySearch) &&
+        normalizedName.includes(normalizedCompanySearch)
+      )
+    })
+
+    return [...startsWithMatches, ...includesMatches].slice(
+      0,
+      MAX_VISIBLE_CLIENTS
+    )
+  }, [companyOptions, normalizedCompanySearch])
 
   const selectedClient = useMemo(() => {
     return companyOptions.find((client) => client.id === selectedClientId) ?? null
@@ -233,6 +261,95 @@ function JobFormShell({
       document.body.style.overflow = previousOverflow
     }
   }, [])
+
+  useEffect(() => {
+    setHighlightedIndex(0)
+  }, [companyName])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!companyFieldRef.current) return
+      if (!companyFieldRef.current.contains(event.target as Node)) {
+        setIsSuggestionOpen(false)
+        setCompanyTouched(true)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  function handleCompanyInputChange(nextValue: string) {
+    setCompanyName(nextValue)
+    setCompanyTouched(true)
+    setIsSuggestionOpen(true)
+
+    if (selectedClient && nextValue.trim() !== selectedClient.name) {
+      setSelectedClientId('')
+    }
+  }
+
+  function selectClient(client: ClientOption) {
+    setSelectedClientId(client.id)
+    setCompanyName(client.name)
+    setCompanyTouched(true)
+    setIsSuggestionOpen(false)
+    setHighlightedIndex(0)
+  }
+
+  function handleCompanyInputFocus() {
+    setIsSuggestionOpen(true)
+  }
+
+  function handleCompanyInputBlur() {
+    setCompanyTouched(true)
+  }
+
+  function handleCompanyInputKeyDown(
+    event: KeyboardEvent<HTMLInputElement>
+  ) {
+    if (!filteredCompanyOptions.length) {
+      if (event.key === 'Escape') {
+        setIsSuggestionOpen(false)
+      }
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setIsSuggestionOpen(true)
+      setHighlightedIndex((current) =>
+        current >= filteredCompanyOptions.length - 1 ? 0 : current + 1
+      )
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setIsSuggestionOpen(true)
+      setHighlightedIndex((current) =>
+        current <= 0 ? filteredCompanyOptions.length - 1 : current - 1
+      )
+      return
+    }
+
+    if (event.key === 'Enter' && isSuggestionOpen) {
+      event.preventDefault()
+      const highlightedClient = filteredCompanyOptions[highlightedIndex]
+      if (highlightedClient) {
+        selectClient(highlightedClient)
+      }
+      return
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setIsSuggestionOpen(false)
+    }
+  }
 
   return (
     <div
@@ -292,49 +409,86 @@ function JobFormShell({
                   </div>
 
                   <div className="grid gap-3">
-                    <div>
+                    <div ref={companyFieldRef} className="relative">
                       <label
-                        htmlFor={`${mode}-client_id`}
+                        htmlFor={`${mode}-client-search`}
                         className="mb-1 block text-sm font-medium text-gray-700"
                       >
                         Firma *
                       </label>
 
-                      <select
-                        id={`${mode}-client_id`}
-                        value={selectedClientId}
-                        required
-                        onChange={(event) => {
-                          const nextClientId = event.target.value
-                          const nextClient =
-                            companyOptions.find((client) => client.id === nextClientId) ??
-                            null
-
-                          setSelectedClientId(nextClientId)
-                          setCompanyName(nextClient?.name ?? '')
-                          setCompanyTouched(true)
-                        }}
-                        onBlur={() => setCompanyTouched(true)}
+                      <input
+                        ref={companyInputRef}
+                        id={`${mode}-client-search`}
+                        type="text"
+                        value={companyName}
+                        autoComplete="off"
+                        placeholder="Začni psát název firmy"
+                        onChange={(event) =>
+                          handleCompanyInputChange(event.target.value)
+                        }
+                        onFocus={handleCompanyInputFocus}
+                        onBlur={handleCompanyInputBlur}
+                        onKeyDown={handleCompanyInputKeyDown}
                         className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition focus:ring-2 ${
                           showCompanyError
                             ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
                             : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
                         }`}
-                      >
-                        <option value="">Vyber firmu ze seznamu klientů</option>
-                        {companyOptions.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
+
+                      {isSuggestionOpen && filteredCompanyOptions.length > 0 ? (
+                        <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-20 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                          <div className="max-h-72 overflow-y-auto py-1">
+                            {filteredCompanyOptions.map((client, index) => {
+                              const isHighlighted = index === highlightedIndex
+                              const isSelected = client.id === selectedClientId
+
+                              return (
+                                <button
+                                  key={client.id}
+                                  type="button"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault()
+                                    selectClient(client)
+                                  }}
+                                  className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition ${
+                                    isHighlighted
+                                      ? 'bg-gray-100'
+                                      : 'bg-white hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <span className="truncate text-gray-900">
+                                    {client.name}
+                                  </span>
+                                  {isSelected ? (
+                                    <span className="ml-3 shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2980B9]">
+                                      Vybráno
+                                    </span>
+                                  ) : null}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {isSuggestionOpen &&
+                      companyName.trim() &&
+                      filteredCompanyOptions.length === 0 ? (
+                        <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-20 rounded-2xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-500 shadow-xl">
+                          Žádný existující klient neodpovídá zadanému názvu.
+                        </div>
+                      ) : null}
 
                       <div className="mt-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                           Vybraná firma
                         </div>
                         <div className="mt-1 text-sm text-gray-900">
-                          {companyName.trim() || 'Žádná firma není vybraná'}
+                          {companySelectionIsValid
+                            ? companyName.trim()
+                            : 'Žádná firma není vybraná'}
                         </div>
                       </div>
 
@@ -619,4 +773,12 @@ function toDateTimeLocalValue(value: string | null | undefined) {
   if (!year || !month || !day || !hour || !minute) return ''
 
   return `${year}-${month}-${day}T${hour}:${minute}`
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('cs')
 }
