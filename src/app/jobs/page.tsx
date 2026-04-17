@@ -156,14 +156,12 @@ function buildWeekFilterHref({
   query,
   jobStatus,
   view,
-  sort,
   dateFrom,
   dateTo,
 }: {
   query: string
   jobStatus: string
   view: ViewMode
-  sort: SortMode
   dateFrom: string
   dateTo: string
 }) {
@@ -172,7 +170,7 @@ function buildWeekFilterHref({
   if (query) params.set('q', query)
   if (jobStatus) params.set('status', jobStatus)
   if (view) params.set('view', view)
-  if (sort) params.set('sort', sort)
+  params.set('sort', 'start_nearest')
   if (dateFrom) params.set('date_from', dateFrom)
   if (dateTo) params.set('date_to', dateTo)
 
@@ -207,7 +205,6 @@ export default async function JobsPage({
     query,
     jobStatus,
     view,
-    sort,
     dateFrom: thisWeekRange.from,
     dateTo: thisWeekRange.to,
   })
@@ -216,7 +213,6 @@ export default async function JobsPage({
     query,
     jobStatus,
     view,
-    sort,
     dateFrom: nextWeekRange.from,
     dateTo: nextWeekRange.to,
   })
