@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  useActionState,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from 'react'
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { createJobAction, type CreateJobActionState } from './actions'
 
@@ -43,8 +36,6 @@ const initialCreateState: CreateJobActionState = {
   success: false,
   error: null,
 }
-
-const MAX_VISIBLE_CLIENTS = 8
 
 export function NewJobButton({
   clientSuggestions,
@@ -158,39 +149,12 @@ function JobFormShell({
     )
   }, [clientSuggestions, job?.client_id, job?.company_name])
 
+  const companyInputRef = useRef<HTMLInputElement>(null)
+
   const [companyName, setCompanyName] = useState(job?.company_name ?? '')
   const [selectedClientId, setSelectedClientId] = useState(job?.client_id ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
-  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(0)
-
-  const companyFieldRef = useRef<HTMLDivElement>(null)
-  const companyInputRef = useRef<HTMLInputElement>(null)
-
-  const normalizedCompanySearch = normalizeSearchText(companyName)
-
-  const filteredCompanyOptions = useMemo(() => {
-    if (!normalizedCompanySearch) {
-      return companyOptions.slice(0, MAX_VISIBLE_CLIENTS)
-    }
-
-    const startsWithMatches = companyOptions.filter((client) =>
-      normalizeSearchText(client.name).startsWith(normalizedCompanySearch)
-    )
-
-    const includesMatches = companyOptions.filter((client) => {
-      const normalizedName = normalizeSearchText(client.name)
-      return (
-        !normalizedName.startsWith(normalizedCompanySearch) &&
-        normalizedName.includes(normalizedCompanySearch)
-      )
-    })
-
-    return [...startsWithMatches, ...includesMatches].slice(
-      0,
-      MAX_VISIBLE_CLIENTS
-    )
-  }, [companyOptions, normalizedCompanySearch])
+  const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
   const selectedClient = useMemo(() => {
     return companyOptions.find((client) => client.id === selectedClientId) ?? null
@@ -204,8 +168,7 @@ function JobFormShell({
   const showCompanyError = companyTouched && !companySelectionIsValid
 
   const title = 'Nová zakázka'
-  const description =
-    'Vyber existující firmu a vyplň základní údaje k nové realizaci.'
+  const description = 'Vyber existující firmu a vyplň základní údaje k nové realizaci.'
   const submitLabel = 'ULOŽIT ZAKÁZKU'
 
   useEffect(() => {
@@ -217,94 +180,106 @@ function JobFormShell({
     }
   }, [])
 
-  useEffect(() => {
-    setHighlightedIndex(0)
-  }, [companyName])
+  function setAutocompleteSelection(start: number, end: number) {
+    requestAnimationFrame(() => {
+      companyInputRef.current?.focus()
+      companyInputRef.current?.setSelectionRange(start, end)
+    })
+  }
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (!companyFieldRef.current) return
-      if (!companyFieldRef.current.contains(event.target as Node)) {
-        setIsSuggestionOpen(false)
-        setCompanyTouched(true)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
-
-  function handleCompanyInputChange(nextValue: string) {
-    setCompanyName(nextValue)
+  function handleCompanyChange(nextRawValue: string) {
     setCompanyTouched(true)
-    setIsSuggestionOpen(true)
 
-    if (selectedClient && nextValue.trim() !== selectedClient.name) {
+    const trimmedValue = nextRawValue.trim()
+    const normalizedValue = normalizeSearchText(trimmedValue)
+
+    if (!trimmedValue) {
+      setCompanyName('')
       setSelectedClientId('')
+      return
     }
+
+    const exactMatch =
+      companyOptions.find(
+        (client) => normalizeSearchText(client.name) === normalizedValue
+      ) ?? null
+
+    if (exactMatch) {
+      setCompanyName(exactMatch.name)
+      setSelectedClientId(exactMatch.id)
+      return
+    }
+
+    const prefixMatches = companyOptions.filter((client) =>
+      normalizeSearchText(client.name).startsWith(normalizedValue)
+    )
+
+    if (prefixMatches.length === 1) {
+      const matchedClient = prefixMatches[0]
+      const completedName = matchedClient.name
+
+      setCompanyName(completedName)
+      setSelectedClientId(matchedClient.id)
+
+      setAutocompleteSelection(nextRawValue.length, completedName.length)
+      return
+    }
+
+    setCompanyName(nextRawValue)
+    setSelectedClientId('')
   }
 
-  function selectClient(client: ClientOption) {
-    setSelectedClientId(client.id)
-    setCompanyName(client.name)
+  function handleCompanyFocus() {
+    setCompanyHasFocus(true)
+  }
+
+  function handleCompanyBlur() {
+    setCompanyHasFocus(false)
     setCompanyTouched(true)
-    setIsSuggestionOpen(false)
-    setHighlightedIndex(0)
-  }
 
-  function handleCompanyInputFocus() {
-    setIsSuggestionOpen(true)
-  }
+    const trimmedValue = companyName.trim()
+    const normalizedValue = normalizeSearchText(trimmedValue)
 
-  function handleCompanyInputBlur() {
-    setCompanyTouched(true)
-  }
-
-  function handleCompanyInputKeyDown(
-    event: KeyboardEvent<HTMLInputElement>
-  ) {
-    if (!filteredCompanyOptions.length) {
-      if (event.key === 'Escape') {
-        setIsSuggestionOpen(false)
-      }
+    if (!trimmedValue) {
+      setCompanyName('')
+      setSelectedClientId('')
       return
     }
 
-    if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      setIsSuggestionOpen(true)
-      setHighlightedIndex((current) =>
-        current >= filteredCompanyOptions.length - 1 ? 0 : current + 1
-      )
+    const exactMatch =
+      companyOptions.find(
+        (client) => normalizeSearchText(client.name) === normalizedValue
+      ) ?? null
+
+    if (exactMatch) {
+      setCompanyName(exactMatch.name)
+      setSelectedClientId(exactMatch.id)
       return
     }
 
-    if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      setIsSuggestionOpen(true)
-      setHighlightedIndex((current) =>
-        current <= 0 ? filteredCompanyOptions.length - 1 : current - 1
-      )
-      return
-    }
-
-    if (event.key === 'Enter' && isSuggestionOpen) {
-      event.preventDefault()
-      const highlightedClient = filteredCompanyOptions[highlightedIndex]
-      if (highlightedClient) {
-        selectClient(highlightedClient)
-      }
-      return
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      setIsSuggestionOpen(false)
-    }
+    setSelectedClientId('')
   }
+
+  const companyStatusText = (() => {
+    const trimmedValue = companyName.trim()
+
+    if (!trimmedValue) {
+      return 'Začni psát název firmy ze seznamu klientů.'
+    }
+
+    if (companySelectionIsValid) {
+      return 'Klient nalezen v seznamu.'
+    }
+
+    return 'Firma neexistuje v seznamu klientů.'
+  })()
+
+  const companyStatusClassName =
+    companySelectionIsValid
+      ? 'text-emerald-700'
+      : companyName.trim()
+        ? 'text-red-600'
+        : 'text-gray-500'
 
   return (
     <div
@@ -358,7 +333,7 @@ function JobFormShell({
                   </div>
 
                   <div className="grid gap-3">
-                    <div ref={companyFieldRef} className="relative">
+                    <div>
                       <label
                         htmlFor={`${mode}-client-search`}
                         className="mb-1 block text-sm font-medium text-gray-700"
@@ -373,62 +348,17 @@ function JobFormShell({
                         value={companyName}
                         autoComplete="off"
                         placeholder="Začni psát název firmy"
-                        onChange={(event) =>
-                          handleCompanyInputChange(event.target.value)
-                        }
-                        onFocus={handleCompanyInputFocus}
-                        onBlur={handleCompanyInputBlur}
-                        onKeyDown={handleCompanyInputKeyDown}
+                        onChange={(event) => handleCompanyChange(event.target.value)}
+                        onFocus={handleCompanyFocus}
+                        onBlur={handleCompanyBlur}
                         className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition focus:ring-2 ${
                           showCompanyError
                             ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                            : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+                            : companySelectionIsValid && !companyHasFocus
+                              ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
+                              : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
                         }`}
                       />
-
-                      {isSuggestionOpen && filteredCompanyOptions.length > 0 ? (
-                        <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-20 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
-                          <div className="max-h-72 overflow-y-auto py-1">
-                            {filteredCompanyOptions.map((client, index) => {
-                              const isHighlighted = index === highlightedIndex
-                              const isSelected = client.id === selectedClientId
-
-                              return (
-                                <button
-                                  key={client.id}
-                                  type="button"
-                                  onMouseDown={(event) => {
-                                    event.preventDefault()
-                                    selectClient(client)
-                                  }}
-                                  className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition ${
-                                    isHighlighted
-                                      ? 'bg-gray-100'
-                                      : 'bg-white hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <span className="truncate text-gray-900">
-                                    {client.name}
-                                  </span>
-                                  {isSelected ? (
-                                    <span className="ml-3 shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2980B9]">
-                                      Vybráno
-                                    </span>
-                                  ) : null}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {isSuggestionOpen &&
-                      companyName.trim() &&
-                      filteredCompanyOptions.length === 0 ? (
-                        <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-20 rounded-2xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-500 shadow-xl">
-                          Žádný existující klient neodpovídá zadanému názvu.
-                        </div>
-                      ) : null}
 
                       <div className="mt-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
@@ -441,9 +371,13 @@ function JobFormShell({
                         </div>
                       </div>
 
+                      <p className={`mt-2 text-sm ${companyStatusClassName}`}>
+                        {companyStatusText}
+                      </p>
+
                       {showCompanyError ? (
                         <p className="mt-2 text-sm text-red-600">
-                          Pro založení zakázky musíš vybrat firmu z existujícího seznamu klientů.
+                          Pro založení zakázky musíš zadat existující firmu ze seznamu klientů.
                         </p>
                       ) : null}
                     </div>
