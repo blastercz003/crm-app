@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -360,14 +361,16 @@ export default async function JobsPage({
       <main className="min-h-screen bg-gray-50">
         <div className="print-shell mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
           <section className="print-header rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-                  Zakázky
-                </h1>
-                <p className="text-sm text-gray-500">
-                  Přehled všech realizací, jejich průběhu a interní evidence.
-                </p>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center">
+                <Image
+                  src="/logo2.png"
+                  alt="B-ENERGY"
+                  width={150}
+                  height={42}
+                  className="h-6 w-auto"
+                  priority
+                />
               </div>
 
               <div className="print-hidden flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -406,10 +409,10 @@ export default async function JobsPage({
                 </Link>
 
                 <NewJobButton
-  clientSuggestions={clientSuggestions}
-  isAdmin={isAdmin}
-  className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
-/>
+                  clientSuggestions={clientSuggestions}
+                  isAdmin={isAdmin}
+                  className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
+                />
               </div>
             </div>
           </section>
