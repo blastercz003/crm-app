@@ -141,6 +141,20 @@ function addDaysUtc(value: Date, days: number) {
   return next
 }
 
+function getTodayRange() {
+  const today = getPragueTodayParts()
+  const pragueDateAsUtc = new Date(
+    Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0)
+  )
+
+  const date = toDateOnly(pragueDateAsUtc)
+
+  return {
+    from: date,
+    to: date,
+  }
+}
+
 function getWeekRange(offsetWeeks = 0) {
   const today = getPragueTodayParts()
   const pragueDateAsUtc = new Date(
@@ -199,13 +213,24 @@ export default async function JobsPage({
   const dateFrom = params?.date_from?.trim() ?? ''
   const dateTo = params?.date_to?.trim() ?? ''
 
+  const todayRange = getTodayRange()
   const thisWeekRange = getWeekRange(0)
   const nextWeekRange = getWeekRange(1)
 
+  const isTodayActive =
+    dateFrom === todayRange.from && dateTo === todayRange.to
   const isThisWeekActive =
     dateFrom === thisWeekRange.from && dateTo === thisWeekRange.to
   const isNextWeekActive =
     dateFrom === nextWeekRange.from && dateTo === nextWeekRange.to
+
+  const todayHref = buildWeekFilterHref({
+    query,
+    jobStatus,
+    view,
+    dateFrom: todayRange.from,
+    dateTo: todayRange.to,
+  })
 
   const thisWeekHref = buildWeekFilterHref({
     query,
@@ -573,6 +598,17 @@ export default async function JobsPage({
 
                 <div className="print-hidden flex flex-wrap items-center gap-2">
                   <PrintJobsButton />
+
+                  <Link
+                    href={todayHref}
+                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
+                      isTodayActive
+                        ? 'bg-[#236f9f] shadow-sm'
+                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                    }`}
+                  >
+                    DNES
+                  </Link>
 
                   <Link
                     href={thisWeekHref}
