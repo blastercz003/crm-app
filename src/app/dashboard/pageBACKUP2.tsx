@@ -800,16 +800,18 @@ function DashboardMiniCalendar({
 
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5 flex items-end justify-between gap-4">
-        <DashboardSectionHeader
-          eyebrow="Kalendář"
-          title={monthLabel}
-          description="Přehled schůzek v aktuálním měsíci."
-        />
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <DashboardSectionHeader
+            eyebrow="Kalendář"
+            title={monthLabel}
+            description="Přehled schůzek v aktuálním měsíci."
+          />
+        </div>
 
         <Link
           href="/calendar"
-          className="hidden min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800 md:inline-flex"
+          className="hidden shrink-0 items-center self-start rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800 md:inline-flex"
         >
           KALENDÁŘ
         </Link>
@@ -1072,7 +1074,7 @@ function LatestCommentsCard({
         </div>
       )}
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-5 flex justify-end">
         <Link
           href="/activity"
           className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
@@ -1461,114 +1463,114 @@ export default async function DashboardPage() {
         </section>
 
         <div className="grid gap-6 xl:grid-cols-3">
-  <div className="space-y-6">
-    <ClientsCard />
+          <div className="space-y-6">
+            <ClientsCard />
 
-    {profile?.can_view_jobs ? <JobsCard /> : null}
+            {profile?.can_view_jobs ? <JobsCard /> : null}
 
-    {isAdmin ? <FinanceCard /> : null}
-  </div>
+            {isAdmin ? <FinanceCard /> : null}
 
-  <div className="space-y-6">
-    <DashboardMiniCalendar meetings={monthMeetings} />
+            <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
+          </div>
 
-    <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
-  </div>
+          <div className="space-y-6">
+            <DashboardMiniCalendar meetings={monthMeetings} />
+          </div>
 
-  <div className="space-y-6">
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5">
-        <DashboardSectionHeader
-          eyebrow="Úkoly"
-          title="Moje úkoly"
-          description="Nejbližší aktivní úkoly, které jsou aktuálně přiřazené tobě."
-        />
-      </div>
+          <div className="space-y-6">
+            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+              <div className="mb-5">
+                <DashboardSectionHeader
+                  eyebrow="Úkoly"
+                  title="Moje úkoly"
+                  description="Nejbližší aktivní úkoly, které jsou aktuálně přiřazené tobě."
+                />
+              </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2">
-        <DashboardStatCard
-          label="Aktivní úkoly"
-          value={activeTasksCount}
-          highlighted
-        />
-        <DashboardStatCard
-          label="Úkoly po termínu"
-          value={overdueTasksCount}
-        />
-      </div>
+              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                <DashboardStatCard
+                  label="Aktivní úkoly"
+                  value={activeTasksCount}
+                  highlighted
+                />
+                <DashboardStatCard
+                  label="Úkoly po termínu"
+                  value={overdueTasksCount}
+                />
+              </div>
 
-      {tasks.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-          Nemáš žádné aktivní úkoly.
+              {tasks.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                  Nemáš žádné aktivní úkoly.
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {tasks.map((task) => (
+                    <DashboardTaskItem key={task.id} task={task} />
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/tasks"
+                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                >
+                  VŠECHNY ÚKOLY
+                </Link>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+              <div className="mb-5">
+                <DashboardSectionHeader
+                  eyebrow="Schůzky"
+                  title="Moje nejbližší schůzky"
+                  description="Pět nejbližších plánovaných schůzek."
+                />
+              </div>
+
+              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                <DashboardStatCard
+                  label="Schůzky dnes"
+                  value={todayMeetingsCount}
+                  highlighted
+                />
+                <DashboardStatCard
+                  label="Schůzky tento týden"
+                  value={weeklyMeetingsCount}
+                />
+              </div>
+
+              {meetings.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                  Nemáš žádné nadcházející schůzky.
+                </div>
+              ) : (
+                <div className="grid gap-2.5">
+                  {meetings.map((meeting) => (
+                    <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/meetings"
+                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                >
+                  VŠECHNY SCHŮZKY
+                </Link>
+              </div>
+            </section>
+          </div>
         </div>
-      ) : (
-        <div className="grid gap-3">
-          {tasks.map((task) => (
-            <DashboardTaskItem key={task.id} task={task} />
-          ))}
-        </div>
-      )}
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href="/tasks"
-          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          VŠECHNY ÚKOLY
-        </Link>
-      </div>
-    </section>
-
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5">
-        <DashboardSectionHeader
-          eyebrow="Schůzky"
-          title="Moje nejbližší schůzky"
-          description="Pět nejbližších plánovaných schůzek."
-        />
-      </div>
-
-      <div className="mb-5 grid gap-3 sm:grid-cols-2">
-        <DashboardStatCard
-          label="Schůzky dnes"
-          value={todayMeetingsCount}
-          highlighted
-        />
-        <DashboardStatCard
-          label="Schůzky tento týden"
-          value={weeklyMeetingsCount}
-        />
-      </div>
-
-      {meetings.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-          Nemáš žádné nadcházející schůzky.
-        </div>
-      ) : (
-        <div className="grid gap-2.5">
-          {meetings.map((meeting) => (
-            <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-          ))}
-        </div>
-      )}
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href="/meetings"
-          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          VŠECHNY SCHŮZKY
-        </Link>
-      </div>
-    </section>
-  </div>
-</div>
       </div>
 
       <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY CRM — coding by blaster</div>
-          <div>v1.1.0</div>
+          <div>v1.5.1</div>
         </div>
       </footer>
     </main>

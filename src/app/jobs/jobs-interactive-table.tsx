@@ -505,7 +505,7 @@ function InfoNoteButton({
                   onClick={() => setIsOpen(false)}
                   className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                 >
-                  Zrušit
+                  ZRUŠIT
                 </button>
 
                 <button
@@ -514,7 +514,7 @@ function InfoNoteButton({
                   disabled={isPending}
                   className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isPending ? 'Ukládám…' : 'Uložit'}
+                  {isPending ? 'UKLÁDÁM…' : 'ULOŽIT'}
                 </button>
               </div>
             </>

@@ -27,6 +27,7 @@ type DashboardProfile = {
   last_seen_dashboard_at: string | null
   last_seen_updates_at: string | null
   can_view_jobs: boolean | null
+  can_view_jobs_portal: boolean | null
 }
 
 type DashboardTask = {
@@ -981,6 +982,30 @@ function JobsCard() {
   )
 }
 
+function JobsPortalCard() {
+  return (
+    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+            Sekce
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+            Portál zakázek
+          </h2>
+        </div>
+
+        <Link
+          href="/jobs-portal"
+          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+        >
+          OTEVŘÍT PORTÁL
+        </Link>
+      </div>
+    </section>
+  )
+}
+
 function FinanceCard() {
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
@@ -1099,7 +1124,9 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, role, last_seen_dashboard_at, last_seen_updates_at, can_view_jobs')
+    .select(
+      'name, role, last_seen_dashboard_at, last_seen_updates_at, can_view_jobs, can_view_jobs_portal'
+    )
     .eq('id', user.id)
     .single<DashboardProfile>()
 
@@ -1467,6 +1494,8 @@ export default async function DashboardPage() {
             <ClientsCard />
 
             {profile?.can_view_jobs ? <JobsCard /> : null}
+
+            {profile?.can_view_jobs_portal ? <JobsPortalCard /> : null}
 
             {isAdmin ? <FinanceCard /> : null}
 
