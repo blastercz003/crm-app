@@ -37,7 +37,12 @@ export function NavigationOverlay() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  const routeKey = `${pathname}?${searchParams.toString()}`
+
   const [visible, setVisible] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
+
+  const previousRouteKeyRef = useRef(routeKey)
   const hideTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -48,6 +53,7 @@ export function NavigationOverlay() {
       }
 
       setVisible(true)
+      setIsNavigating(true)
     }
 
     function handleDocumentClick(event: MouseEvent) {
@@ -56,11 +62,9 @@ export function NavigationOverlay() {
       if (event.button !== 0) return
 
       const target = event.target
-
       if (!(target instanceof Element)) return
 
       const anchor = target.closest('a')
-
       if (!(anchor instanceof HTMLAnchorElement)) return
 
       const currentUrl = new URL(window.location.href)
@@ -78,12 +82,22 @@ export function NavigationOverlay() {
   }, [])
 
   useEffect(() => {
-    if (!visible) return
+    const previousRouteKey = previousRouteKeyRef.current
+    const routeChanged = routeKey !== previousRouteKey
 
-    hideTimeoutRef.current = window.setTimeout(() => {
-      setVisible(false)
-      hideTimeoutRef.current = null
-    }, 250)
+    if (routeChanged && isNavigating) {
+      if (hideTimeoutRef.current) {
+        window.clearTimeout(hideTimeoutRef.current)
+      }
+
+      hideTimeoutRef.current = window.setTimeout(() => {
+        setVisible(false)
+        setIsNavigating(false)
+        hideTimeoutRef.current = null
+      }, 180)
+    }
+
+    previousRouteKeyRef.current = routeKey
 
     return () => {
       if (hideTimeoutRef.current) {
@@ -91,25 +105,30 @@ export function NavigationOverlay() {
         hideTimeoutRef.current = null
       }
     }
-  }, [pathname, searchParams, visible])
+  }, [routeKey, isNavigating])
 
   return (
     <div
       aria-hidden="true"
       className={[
-        'fixed inset-0 z-[999] transition-all duration-200',
+        'fixed inset-0 z-[999] transition-opacity duration-200',
         visible
           ? 'pointer-events-auto opacity-100'
           : 'pointer-events-none opacity-0',
       ].join(' ')}
     >
-      <div className="absolute inset-0 bg-white/12 backdrop-blur-[3px]" />
+      <div className="absolute inset-0 bg-white/18 backdrop-blur-[6px]" />
 
       <div className="relative flex min-h-full items-center justify-center">
-        <div className="flex items-center gap-3 rounded-full px-5 py-4">
+        <div
+          className={[
+            'flex items-center gap-3 rounded-full px-6 py-5 transition-all duration-200',
+            visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
+          ].join(' ')}
+        >
           <LoadingDot delay="0ms" />
-          <LoadingDot delay="160ms" />
-          <LoadingDot delay="320ms" />
+          <LoadingDot delay="140ms" />
+          <LoadingDot delay="280ms" />
         </div>
       </div>
     </div>
@@ -119,10 +138,10 @@ export function NavigationOverlay() {
 function LoadingDot({ delay }: { delay: string }) {
   return (
     <span
-      className="h-4 w-4 rounded-full bg-[#2980B9]"
+      className="h-4 w-4 rounded-full bg-[#2980B9] shadow-[0_0_18px_rgba(41,128,185,0.35)]"
       style={{
         animationName: 'navigation-overlay-pulse',
-        animationDuration: '1s',
+        animationDuration: '0.95s',
         animationTimingFunction: 'ease-in-out',
         animationIterationCount: 'infinite',
         animationDelay: delay,
