@@ -1,12 +1,23 @@
 import Link from 'next/link'
 import { getTasksForCurrentUser, TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
+import { createClient } from '@/lib/supabase/server'
+import { getAssignableUsers } from '@/lib/users/getAssignableUsers'
+import NewTaskButton from './new-task-button'
 import TaskSection from './TaskSection'
 
 type TasksPageProps = {
   searchParams?: Promise<{
     search?: string
+    view?: string
   }>
 }
+
+type ClientOption = {
+  id: string
+  name: string
+}
+
+type TaskView = 'all' | 'active' | 'resolved'
 
 function StatCard({
   label,
@@ -33,6 +44,51 @@ function InfoChip({ label }: { label: string }) {
       {label}
     </div>
   )
+}
+
+function FilterTab({
+  href,
+  label,
+  active,
+}: {
+  href: string
+  label: string
+  active: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={[
+        'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition',
+        active
+          ? 'bg-zinc-900 text-white shadow-sm'
+          : 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900',
+      ].join(' ')}
+    >
+      {label}
+    </Link>
+  )
+}
+
+function getTabHref({
+  search,
+  view,
+}: {
+  search: string
+  view: TaskView
+}) {
+  const params = new URLSearchParams()
+
+  if (search) {
+    params.set('search', search)
+  }
+
+  if (view !== 'all') {
+    params.set('view', view)
+  }
+
+  const query = params.toString()
+  return query ? `/tasks?${query}` : '/tasks'
 }
 
 function splitTasks(tasks: TaskRow[]) {
@@ -100,6 +156,24 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const search = resolvedSearchParams?.search?.trim() ?? ''
 
+  const rawView = resolvedSearchParams?.view
+  const view: TaskView =
+    rawView === 'active' || rawView === 'resolved' ? rawView : 'all'
+
+  const supabase = await createClient()
+  const users = await getAssignableUsers()
+
+  const { data: clients, error: clientsError } = await supabase
+    .from('clients')
+    .select('id, name')
+    .order('name', { ascending: true })
+
+  if (clientsError) {
+    throw new Error('Nepodařilo se načíst klienty.')
+  }
+
+  const clientOptions = (clients ?? []) as ClientOption[]
+
   const { profile, assignedToMe, createdByMe, allTasks } =
     await getTasksForCurrentUser()
 
@@ -118,9 +192,18 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const delegated = splitTasks(createdForOthers)
   const adminAll = splitTasks(filteredAllTasks)
 
-  const hasResolvedAssigned = assigned.resolved.length > 0
-  const hasResolvedDelegated = delegated.resolved.length > 0
-  const hasAnyResolved = hasResolvedAssigned || hasResolvedDelegated
+  const visibleAssignedActive = view === 'resolved' ? [] : assigned.active
+  const visibleDelegatedActive = view === 'resolved' ? [] : delegated.active
+  const visibleAssignedResolved = view === 'active' ? [] : assigned.resolved
+  const visibleDelegatedResolved = view === 'active' ? [] : delegated.resolved
+  const visibleAdminActive = view === 'resolved' ? [] : adminAll.active
+  const visibleAdminResolved = view === 'active' ? [] : adminAll.resolved
+
+  const totalVisibleCount =
+    visibleAssignedActive.length +
+    visibleDelegatedActive.length +
+    visibleAssignedResolved.length +
+    visibleDelegatedResolved.length
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -147,9 +230,11 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
                 />
 
+                <input type="hidden" name="view" value={view} />
+
                 <button
                   type="submit"
-                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                 >
                   HLEDAT
                 </button>
@@ -157,17 +242,12 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <Link
-                href="/tasks/new"
-                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
-              >
-                NOVÝ ÚKOL
-              </Link>
+              <NewTaskButton users={users} clients={clientOptions} />
             </div>
           </div>
         </section>
@@ -176,61 +256,86 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
             <div className="min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Přehled
+                Zobrazení
               </div>
 
-              <h2 className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">
-                Hlavní pracovní agenda
-              </h2>
-
-              <p className="mt-2 text-sm text-zinc-500">
-                Nahoře vidíš své aktivní úkoly a zvlášť úkoly delegované ostatním.
-              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <FilterTab
+                  href={getTabHref({ search, view: 'all' })}
+                  label="Vše"
+                  active={view === 'all'}
+                />
+                <FilterTab
+                  href={getTabHref({ search, view: 'active' })}
+                  label="Aktivní"
+                  active={view === 'active'}
+                />
+                <FilterTab
+                  href={getTabHref({ search, view: 'resolved' })}
+                  label="Vyřešené"
+                  active={view === 'resolved'}
+                />
+              </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <InfoChip label="MOJE ÚKOLY" />
-                <InfoChip label="BEZ DUPLICIT" />
-                {search ? <InfoChip label={`HLEDÁNÍ: ${search}`} /> : null}
-                {isAdmin ? <InfoChip label="ADMIN" /> : null}
+                <InfoChip
+                  label={
+                    view === 'all'
+                      ? 'Pohled: Vše'
+                      : view === 'active'
+                        ? 'Pohled: Aktivní'
+                        : 'Pohled: Vyřešené'
+                  }
+                />
+                {search ? <InfoChip label={`Hledání: ${search}`} /> : null}
+                {isAdmin ? <InfoChip label="Admin" /> : null}
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
-                <StatCard label="Aktivní mně" value={assigned.active.length} />
-                <StatCard label="Vyřešené mně" value={assigned.resolved.length} />
+                <StatCard label="Celkem" value={totalVisibleCount} />
+                <StatCard label="Aktivní mně" value={visibleAssignedActive.length} />
                 <StatCard
                   label="Aktivní ostatním"
-                  value={delegated.active.length}
+                  value={visibleDelegatedActive.length}
                 />
                 <StatCard
-                  label="Vyřešené ostatním"
-                  value={delegated.resolved.length}
+                  label="Vyřešené"
+                  value={
+                    visibleAssignedResolved.length + visibleDelegatedResolved.length
+                  }
                 />
               </div>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-2">
-          <div className="space-y-4">
-            <TaskSection
-              title="Úkoly přidělené mně"
-              description="Aktuálně otevřené úkoly, které mám splnit."
-              tasks={assigned.active}
-            />
-          </div>
+        {view !== 'resolved' ? (
+          <section className="grid gap-4 xl:grid-cols-2">
+            <div className="space-y-4">
+              <TaskSection
+                title="Úkoly přidělené mně"
+                description="Aktuálně otevřené úkoly, které mám splnit."
+                tasks={visibleAssignedActive}
+                users={users}
+                clients={clientOptions}
+              />
+            </div>
 
-          <div className="space-y-4">
-            <TaskSection
-              title="Úkoly, které jsem zadal ostatním"
-              description="Aktivní delegované úkoly."
-              tasks={delegated.active}
-            />
-          </div>
-        </section>
+            <div className="space-y-4">
+              <TaskSection
+                title="Úkoly, které jsem zadal ostatním"
+                description="Aktivní delegované úkoly."
+                tasks={visibleDelegatedActive}
+                users={users}
+                clients={clientOptions}
+              />
+            </div>
+          </section>
+        ) : null}
 
-        {hasAnyResolved ? (
+        {view !== 'active' ? (
           <section className="space-y-4">
             <div className="px-1">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
@@ -242,41 +347,23 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
-              {hasResolvedAssigned ? (
-                <TaskSection
-                  title="Vyřešené přidělené mně"
-                  description="Dokončené položky, které jsem měl splnit."
-                  tasks={assigned.resolved}
-                  muted
-                />
-              ) : (
-                <div className="rounded-[26px] border border-zinc-200 bg-white p-6 shadow-sm">
-                  <div className="text-sm font-medium text-zinc-950">
-                    Vyřešené přidělené mně
-                  </div>
-                  <p className="mt-2 text-sm text-zinc-500">
-                    Zatím tu nejsou žádné dokončené položky.
-                  </p>
-                </div>
-              )}
+              <TaskSection
+                title="Vyřešené přidělené mně"
+                description="Dokončené položky, které jsem měl splnit."
+                tasks={visibleAssignedResolved}
+                users={users}
+                clients={clientOptions}
+                muted
+              />
 
-              {hasResolvedDelegated ? (
-                <TaskSection
-                  title="Vyřešené zadané ostatním"
-                  description="Dokončené delegované úkoly bez vlastních duplicit."
-                  tasks={delegated.resolved}
-                  muted
-                />
-              ) : (
-                <div className="rounded-[26px] border border-zinc-200 bg-white p-6 shadow-sm">
-                  <div className="text-sm font-medium text-zinc-950">
-                    Vyřešené zadané ostatním
-                  </div>
-                  <p className="mt-2 text-sm text-zinc-500">
-                    Zatím tu nejsou žádné dokončené delegované úkoly.
-                  </p>
-                </div>
-              )}
+              <TaskSection
+                title="Vyřešené zadané ostatním"
+                description="Dokončené delegované úkoly bez vlastních duplicit."
+                tasks={visibleDelegatedResolved}
+                users={users}
+                clients={clientOptions}
+                muted
+              />
             </div>
           </section>
         ) : null}
@@ -296,18 +383,26 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
-              <TaskSection
-                title="Všechny aktivní úkoly"
-                description="Všechny otevřené úkoly v systému."
-                tasks={adminAll.active}
-              />
+              {view !== 'resolved' ? (
+                <TaskSection
+                  title="Všechny aktivní úkoly"
+                  description="Všechny otevřené úkoly v systému."
+                  tasks={visibleAdminActive}
+                  users={users}
+                  clients={clientOptions}
+                />
+              ) : null}
 
-              <TaskSection
-                title="Všechny vyřešené úkoly"
-                description="Všechny dokončené úkoly v systému."
-                tasks={adminAll.resolved}
-                muted
-              />
+              {view !== 'active' ? (
+                <TaskSection
+                  title="Všechny vyřešené úkoly"
+                  description="Všechny dokončené úkoly v systému."
+                  tasks={visibleAdminResolved}
+                  users={users}
+                  clients={clientOptions}
+                  muted
+                />
+              ) : null}
             </div>
           </section>
         ) : null}

@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useRef, useState } from 'react'
 
 type UserOption = {
   id: string
@@ -28,8 +31,11 @@ type TaskFormProps = {
   clients: ClientOption[]
   submitLabel: string
   cancelHref?: string
+  onCancel?: () => void
+  cancelLabel?: string
   action: (formData: FormData) => void | Promise<void>
   initialValues?: TaskFormValues
+  error?: string | null
 }
 
 const inputClassName =
@@ -37,16 +43,150 @@ const inputClassName =
 
 const labelClassName = 'mb-2 block text-sm font-medium text-gray-700'
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
 export default function TaskForm({
   users,
   clients,
   submitLabel,
   cancelHref = '/tasks',
+  onCancel,
+  cancelLabel = 'ZRUŠIT',
   action,
   initialValues,
+  error,
 }: TaskFormProps) {
+  const companyInputRef = useRef<HTMLInputElement>(null)
+
+  const initialCompanyName = initialValues?.company_name ?? ''
+  const initialClientId = initialValues?.client_id ?? ''
+
+  const [companyName, setCompanyName] = useState(initialCompanyName)
+  const [selectedClientId, setSelectedClientId] = useState(initialClientId)
+  const [companyTouched, setCompanyTouched] = useState(false)
+  const [companyHasFocus, setCompanyHasFocus] = useState(false)
+
+  const selectedClient =
+    clients.find((client) => client.id === selectedClientId) ?? null
+
+  const companySelectionIsValid =
+    Boolean(selectedClientId) &&
+    Boolean(selectedClient) &&
+    companyName.trim() === (selectedClient?.name ?? '')
+
+  const showCompanyError = companyTouched && !companySelectionIsValid
+
+  function setAutocompleteSelection(start: number, end: number) {
+    requestAnimationFrame(() => {
+      companyInputRef.current?.focus()
+      companyInputRef.current?.setSelectionRange(start, end)
+    })
+  }
+
+  function handleCompanyChange(nextRawValue: string) {
+    setCompanyTouched(true)
+
+    const trimmedValue = nextRawValue.trim()
+    const normalizedValue = normalizeSearchText(trimmedValue)
+
+    if (!trimmedValue) {
+      setCompanyName('')
+      setSelectedClientId('')
+      return
+    }
+
+    const exactMatch =
+      clients.find(
+        (client) => normalizeSearchText(client.name) === normalizedValue
+      ) ?? null
+
+    if (exactMatch) {
+      setCompanyName(exactMatch.name)
+      setSelectedClientId(exactMatch.id)
+      return
+    }
+
+    const prefixMatches = clients.filter((client) =>
+      normalizeSearchText(client.name).startsWith(normalizedValue)
+    )
+
+    if (prefixMatches.length === 1) {
+      const matchedClient = prefixMatches[0]
+      const completedName = matchedClient.name
+
+      setCompanyName(completedName)
+      setSelectedClientId(matchedClient.id)
+
+      setAutocompleteSelection(nextRawValue.length, completedName.length)
+      return
+    }
+
+    setCompanyName(nextRawValue)
+    setSelectedClientId('')
+  }
+
+  function handleCompanyFocus() {
+    setCompanyHasFocus(true)
+  }
+
+  function handleCompanyBlur() {
+    setCompanyHasFocus(false)
+    setCompanyTouched(true)
+
+    const trimmedValue = companyName.trim()
+    const normalizedValue = normalizeSearchText(trimmedValue)
+
+    if (!trimmedValue) {
+      setCompanyName('')
+      setSelectedClientId('')
+      return
+    }
+
+    const exactMatch =
+      clients.find(
+        (client) => normalizeSearchText(client.name) === normalizedValue
+      ) ?? null
+
+    if (exactMatch) {
+      setCompanyName(exactMatch.name)
+      setSelectedClientId(exactMatch.id)
+      return
+    }
+
+    setSelectedClientId('')
+  }
+
+  const companyStatusText = (() => {
+    const trimmedValue = companyName.trim()
+
+    if (!trimmedValue) {
+      return 'Začni psát název firmy.'
+    }
+
+    if (companySelectionIsValid) {
+      return 'Klient nalezen v databázi.'
+    }
+
+    return 'Firma není napojená na klienta z databáze.'
+  })()
+
+  const companyStatusClassName =
+    companySelectionIsValid
+      ? 'text-emerald-700'
+      : companyName.trim()
+        ? 'text-amber-700'
+        : 'text-gray-500'
+
   return (
     <form action={action} className="space-y-6">
+      <input type="hidden" name="client_id" value={selectedClientId} />
+
       <div className="grid gap-5 md:grid-cols-2">
         <div className="md:col-span-2">
           <label htmlFor="title" className={labelClassName}>
@@ -64,39 +204,47 @@ export default function TaskForm({
         </div>
 
         <div className="md:col-span-2">
-          <label htmlFor="client_id" className={labelClassName}>
-            Klient z databáze
-          </label>
-          <select
-            id="client_id"
-            name="client_id"
-            defaultValue={initialValues?.client_id ?? ''}
-            className={inputClassName}
-          >
-            <option value="">Bez napojení na klienta</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-          <p className="mt-2 text-xs text-gray-500">
-            Klient je volitelný. Úkol může fungovat i jako běžný interní úkol mezi uživateli.
-          </p>
-        </div>
-
-        <div>
           <label htmlFor="company_name" className={labelClassName}>
             Firma
           </label>
           <input
+            ref={companyInputRef}
             id="company_name"
             name="company_name"
             type="text"
-            defaultValue={initialValues?.company_name ?? ''}
-            className={inputClassName}
-            placeholder="Např. ABC Stavby s.r.o."
+            value={companyName}
+            autoComplete="off"
+            placeholder="Začni psát název firmy"
+            onChange={(event) => handleCompanyChange(event.target.value)}
+            onFocus={handleCompanyFocus}
+            onBlur={handleCompanyBlur}
+            className={`w-full rounded-lg border bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 outline-none transition focus:ring-2 ${
+              showCompanyError
+                ? 'border-amber-300 focus:border-amber-300 focus:ring-amber-100'
+                : companySelectionIsValid && !companyHasFocus
+                  ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
+                  : 'border-gray-300 focus:border-gray-400 focus:ring-gray-200'
+            }`}
           />
+
+          <div className="mt-3 rounded-2xl border border-gray-200 bg-white px-4 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+              Napojení na klienta
+            </div>
+            <div className="mt-1 text-sm text-gray-900">
+              {companySelectionIsValid
+                ? selectedClient?.name
+                : 'Žádný klient není vybraný'}
+            </div>
+          </div>
+
+          <p className={`mt-2 text-sm ${companyStatusClassName}`}>
+            {companyStatusText}
+          </p>
+
+          <p className="mt-2 text-xs text-gray-500">
+            Klient je volitelný. Úkol může fungovat i jako běžný interní úkol mezi uživateli.
+          </p>
         </div>
 
         <div>
@@ -193,6 +341,12 @@ export default function TaskForm({
         </div>
       </div>
 
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-3">
         <button
           type="submit"
@@ -201,12 +355,22 @@ export default function TaskForm({
           {submitLabel}
         </button>
 
-        <Link
-          href={cancelHref}
-          className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-        >
-          Zrušit
-        </Link>
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            {cancelLabel}
+          </button>
+        ) : (
+          <Link
+            href={cancelHref}
+            className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            {cancelLabel}
+          </Link>
+        )}
       </div>
     </form>
   )

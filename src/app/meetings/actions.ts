@@ -4,6 +4,14 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
+export type MeetingFormActionState = {
+  success: boolean
+  error: string | null
+}
+
+export type CreateMeetingActionState = MeetingFormActionState
+export type UpdateMeetingActionState = MeetingFormActionState
+
 function normalizeText(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
   return text.length > 0 ? text : null
@@ -267,7 +275,7 @@ async function syncMeetingFollowUpTask(params: {
   }
 }
 
-export async function createMeeting(formData: FormData) {
+async function createMeetingRecord(formData: FormData) {
   const { supabase, user } = await getCurrentUserWithRole()
 
   const clientId = normalizeClientId(formData.get('client_id'))
@@ -351,10 +359,10 @@ export async function createMeeting(formData: FormData) {
     revalidatePath(`/clients/${clientId}`)
   }
 
-  redirect(`/meetings/${data.id}`)
+  return { id: data.id }
 }
 
-export async function updateMeeting(formData: FormData) {
+async function updateMeetingRecord(formData: FormData) {
   const { supabase, user, role } = await getCurrentUserWithRole()
 
   const id = normalizeText(formData.get('id'))
@@ -459,7 +467,61 @@ export async function updateMeeting(formData: FormData) {
     revalidatePath(`/clients/${meeting.client_id}`)
   }
 
+  return { id }
+}
+
+export async function createMeeting(formData: FormData) {
+  const { id } = await createMeetingRecord(formData)
   redirect(`/meetings/${id}`)
+}
+
+export async function createMeetingModalAction(
+  _prevState: CreateMeetingActionState,
+  formData: FormData
+): Promise<CreateMeetingActionState> {
+  try {
+    await createMeetingRecord(formData)
+
+    return {
+      success: true,
+      error: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se vytvořit schůzku.',
+    }
+  }
+}
+
+export async function updateMeeting(formData: FormData) {
+  const { id } = await updateMeetingRecord(formData)
+  redirect(`/meetings/${id}`)
+}
+
+export async function updateMeetingModalAction(
+  _prevState: UpdateMeetingActionState,
+  formData: FormData
+): Promise<UpdateMeetingActionState> {
+  try {
+    await updateMeetingRecord(formData)
+
+    return {
+      success: true,
+      error: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se uložit schůzku.',
+    }
+  }
 }
 
 export async function deleteMeeting(formData: FormData) {

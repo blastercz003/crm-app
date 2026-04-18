@@ -384,3 +384,25 @@ body {
     height: 2.1rem;
   }
 }
+
+@keyframes navigation-overlay-pulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.28;
+  }
+
+  30% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  60% {
+    transform: scale(0.82);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(0.72);
+    opacity: 0.28;
+  }
+}

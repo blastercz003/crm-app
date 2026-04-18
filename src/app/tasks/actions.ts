@@ -5,6 +5,14 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
 
+export type TaskFormActionState = {
+  success: boolean
+  error: string | null
+}
+
+export type CreateTaskActionState = TaskFormActionState
+export type UpdateTaskActionState = TaskFormActionState
+
 function normalizeStatus(value: FormDataEntryValue | null): string {
   const allowed = ['todo', 'in_progress', 'done']
   const str = String(value ?? 'todo')
@@ -65,7 +73,7 @@ async function resolveTaskClientFields(params: {
   }
 }
 
-export async function createTask(formData: FormData) {
+async function createTaskRecord(formData: FormData) {
   const supabase = await createClient()
   const currentProfile = await getCurrentProfile()
 
@@ -113,11 +121,9 @@ export async function createTask(formData: FormData) {
   if (clientId) {
     revalidatePath(`/clients/${clientId}`)
   }
-
-  redirect('/tasks')
 }
 
-export async function updateTask(taskId: string, formData: FormData) {
+async function updateTaskRecord(taskId: string, formData: FormData) {
   const supabase = await createClient()
   const currentProfile = await getCurrentProfile()
 
@@ -193,8 +199,57 @@ export async function updateTask(taskId: string, formData: FormData) {
   if (existingTask.client_id && existingTask.client_id !== clientId) {
     revalidatePath(`/clients/${existingTask.client_id}`)
   }
+}
 
+export async function createTask(formData: FormData) {
+  await createTaskRecord(formData)
   redirect('/tasks')
+}
+
+export async function createTaskModalAction(
+  _prevState: CreateTaskActionState,
+  formData: FormData
+): Promise<CreateTaskActionState> {
+  try {
+    await createTaskRecord(formData)
+
+    return {
+      success: true,
+      error: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Nepodařilo se vytvořit úkol.',
+    }
+  }
+}
+
+export async function updateTask(taskId: string, formData: FormData) {
+  await updateTaskRecord(taskId, formData)
+  redirect('/tasks')
+}
+
+export async function updateTaskModalAction(
+  taskId: string,
+  _prevState: UpdateTaskActionState,
+  formData: FormData
+): Promise<UpdateTaskActionState> {
+  try {
+    await updateTaskRecord(taskId, formData)
+
+    return {
+      success: true,
+      error: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Nepodařilo se upravit úkol.',
+    }
+  }
 }
 
 export async function updateTaskStatus(taskId: string, status: string) {

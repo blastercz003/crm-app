@@ -4,14 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export type ClientFormActionState = {
-  success: boolean
-  error: string | null
-}
-
-export type CreateClientActionState = ClientFormActionState
-export type UpdateClientActionState = ClientFormActionState
-
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
   return typeof value === 'string' ? value.trim() : ''
@@ -31,7 +23,7 @@ async function requireUser() {
   return { supabase, user }
 }
 
-async function insertClientRecord(formData: FormData) {
+export async function createClientRecord(formData: FormData) {
   const { supabase, user } = await requireUser()
 
   const name = getString(formData, 'name')
@@ -62,9 +54,10 @@ async function insertClientRecord(formData: FormData) {
   }
 
   revalidatePath('/clients')
+  redirect('/clients')
 }
 
-async function updateClientValues(formData: FormData) {
+export async function updateClientRecord(formData: FormData) {
   const { supabase, user } = await requireUser()
 
   const id = getString(formData, 'id')
@@ -104,62 +97,7 @@ async function updateClientValues(formData: FormData) {
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${id}`)
-
-  return { id }
-}
-
-export async function createClientRecord(formData: FormData) {
-  await insertClientRecord(formData)
-  redirect('/clients')
-}
-
-export async function createClientModalAction(
-  _prevState: CreateClientActionState,
-  formData: FormData
-): Promise<CreateClientActionState> {
-  try {
-    await insertClientRecord(formData)
-
-    return {
-      success: true,
-      error: null,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Nepodařilo se vytvořit klienta.',
-    }
-  }
-}
-
-export async function updateClientRecord(formData: FormData) {
-  const { id } = await updateClientValues(formData)
   redirect(`/clients/${id}`)
-}
-
-export async function updateClientModalAction(
-  _prevState: UpdateClientActionState,
-  formData: FormData
-): Promise<UpdateClientActionState> {
-  try {
-    await updateClientValues(formData)
-
-    return {
-      success: true,
-      error: null,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Nepodařilo se upravit klienta.',
-    }
-  }
 }
 
 export async function deleteClientRecord(formData: FormData) {

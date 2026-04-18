@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EditMeetingButton } from './edit-meeting-button'
+import { NewMeetingButton } from './new-meeting-button'
 import {
   MeetingStatusBadge,
   MeetingTaskBadge,
@@ -43,6 +45,11 @@ type ProfileRow = {
   id: string
   name: string | null
   role: string | null
+}
+
+type ClientOption = {
+  id: string
+  name: string
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
@@ -277,9 +284,11 @@ function InfoChip({ label }: { label: string }) {
 function MeetingListItem({
   meeting,
   isAdminView,
+  clients,
 }: {
   meeting: MeetingRow
   isAdminView: boolean
+  clients: ClientOption[]
 }) {
   const preview = trimText(getPreviewText(meeting))
   const hasTask = Boolean(meeting.follow_up_task?.trim())
@@ -290,10 +299,7 @@ function MeetingListItem({
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
 
   return (
-    <Link
-      href={`/meetings/${meeting.id}`}
-      className="block rounded-2xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
-    >
+    <div className="rounded-2xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm transition hover:border-zinc-300 hover:shadow-md">
       <div className="flex items-start gap-3">
         <div className="flex w-[72px] shrink-0 flex-col items-center rounded-2xl border border-zinc-200 bg-zinc-50 px-2.5 py-2.5 text-center">
           <div className="text-xl font-semibold leading-none text-zinc-950">
@@ -352,47 +358,70 @@ function MeetingListItem({
               {hasTask ? <MeetingTaskBadge /> : null}
             </div>
           </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={`/meetings/${meeting.id}`}
+              className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+            >
+              DETAIL
+            </Link>
+
+            <EditMeetingButton clients={clients} meeting={meeting} />
+          </div>
         </div>
       </div>
-    </Link>
+    </div>
   )
 }
 
 function CompactCompletedMeetingListItem({
   meeting,
   isAdminView,
+  clients,
 }: {
   meeting: MeetingRow
   isAdminView: boolean
+  clients: ClientOption[]
 }) {
   const companyLabel =
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
 
   return (
-    <Link
-      href={`/meetings/${meeting.id}`}
-      className="block rounded-2xl border border-zinc-200 bg-white px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50"
-    >
-      <div className="flex items-center gap-3 text-sm">
-        <div className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
-          {formatCompactDateTime(meeting.meeting_datetime)}
-        </div>
-
-        <div className="min-w-0 flex-1 truncate font-medium text-zinc-900">
-          {companyLabel}
-        </div>
-
-        <div className="min-w-0 flex-1 truncate text-zinc-600">
-          {meeting.contact_person ?? meeting.title ?? 'Bez kontaktní osoby'}
-        </div>
-
-        {isAdminView && meeting.assigned_user_name ? (
-          <div className="hidden max-w-[140px] truncate rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-600 xl:block">
-            {meeting.assigned_user_name}
+    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-3 text-sm">
+          <div className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
+            {formatCompactDateTime(meeting.meeting_datetime)}
           </div>
-        ) : null}
+
+          <div className="min-w-0 flex-1 truncate font-medium text-zinc-900">
+            {companyLabel}
+          </div>
+
+          <div className="min-w-0 flex-1 truncate text-zinc-600">
+            {meeting.contact_person ?? meeting.title ?? 'Bez kontaktní osoby'}
+          </div>
+
+          {isAdminView && meeting.assigned_user_name ? (
+            <div className="hidden max-w-[140px] truncate rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-600 xl:block">
+              {meeting.assigned_user_name}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap gap-2 xl:justify-end">
+          <Link
+            href={`/meetings/${meeting.id}`}
+            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+          >
+            DETAIL
+          </Link>
+
+          <EditMeetingButton clients={clients} meeting={meeting} />
+        </div>
       </div>
-    </Link>
+    </div>
   )
 }
 
@@ -403,6 +432,7 @@ function MeetingSection({
   meetings,
   emptyText,
   isAdminView,
+  clients,
   scrollClassName,
 }: {
   eyebrow: string
@@ -411,6 +441,7 @@ function MeetingSection({
   meetings: MeetingRow[]
   emptyText: string
   isAdminView: boolean
+  clients: ClientOption[]
   scrollClassName?: string
 }) {
   return (
@@ -442,6 +473,7 @@ function MeetingSection({
                 key={meeting.id}
                 meeting={meeting}
                 isAdminView={isAdminView}
+                clients={clients}
               />
             ))}
           </div>
@@ -458,6 +490,7 @@ function CompactCompletedSection({
   meetings,
   emptyText,
   isAdminView,
+  clients,
   scrollClassName,
 }: {
   eyebrow: string
@@ -466,6 +499,7 @@ function CompactCompletedSection({
   meetings: MeetingRow[]
   emptyText: string
   isAdminView: boolean
+  clients: ClientOption[]
   scrollClassName?: string
 }) {
   return (
@@ -497,6 +531,7 @@ function CompactCompletedSection({
                 key={meeting.id}
                 meeting={meeting}
                 isAdminView={isAdminView}
+                clients={clients}
               />
             ))}
           </div>
@@ -559,6 +594,17 @@ export default async function MeetingsPage({
       `Nepodařilo se načíst seznam uživatelů: ${profilesError.message}`
     )
   }
+
+  const { data: clients, error: clientsError } = await supabase
+    .from('clients')
+    .select('id, name')
+    .order('name', { ascending: true })
+
+  if (clientsError) {
+    throw new Error('Nepodařilo se načíst klienty.')
+  }
+
+  const clientOptions = (clients ?? []) as ClientOption[]
 
   const profileRows = (allProfiles ?? []) as ProfileRow[]
   const profileNameById = new Map(
@@ -733,7 +779,7 @@ export default async function MeetingsPage({
 
                 <button
                   type="submit"
-                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                 >
                   HLEDAT
                 </button>
@@ -741,17 +787,12 @@ export default async function MeetingsPage({
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <Link
-                href="/meetings/new"
-                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
-              >
-                NOVÁ SCHŮZKA
-              </Link>
+              <NewMeetingButton clients={clientOptions} />
             </div>
           </div>
         </section>
@@ -882,6 +923,7 @@ export default async function MeetingsPage({
               meetings={visiblePlannedMeetings}
               emptyText="Pro zadaný filtr tu není žádná plánovaná schůzka."
               isAdminView={isAdminTeamView}
+              clients={clientOptions}
               scrollClassName="xl:max-h-[960px] xl:overflow-y-auto xl:pr-1"
             />
 
@@ -892,6 +934,7 @@ export default async function MeetingsPage({
               meetings={visibleCompletedMeetings}
               emptyText="Pro zadaný filtr tu není žádná proběhlá schůzka."
               isAdminView={isAdminTeamView}
+              clients={clientOptions}
               scrollClassName="xl:max-h-[960px] xl:overflow-y-auto xl:pr-1"
             />
           </div>
@@ -905,6 +948,7 @@ export default async function MeetingsPage({
             meetings={visiblePlannedMeetings}
             emptyText="Pro zadaný filtr tu není žádná plánovaná schůzka."
             isAdminView={isAdminTeamView}
+            clients={clientOptions}
           />
         ) : null}
 
@@ -916,6 +960,7 @@ export default async function MeetingsPage({
             meetings={visibleCompletedMeetings}
             emptyText="Pro zadaný filtr tu není žádná proběhlá schůzka."
             isAdminView={isAdminTeamView}
+            clients={clientOptions}
           />
         ) : null}
       </div>

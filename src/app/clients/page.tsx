@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { EditClientButton } from './edit-client-button'
+import { NewClientButton } from './new-client-button'
 
 type ClientRow = {
   id: string
@@ -110,7 +112,7 @@ export default async function ClientsPage({
 
                 <button
                   type="submit"
-                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                 >
                   HLEDAT
                 </button>
@@ -118,17 +120,12 @@ export default async function ClientsPage({
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <Link
-                href="/clients/new"
-                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
-              >
-                NOVÝ KLIENT
-              </Link>
+              <NewClientButton />
             </div>
           </div>
         </section>
@@ -147,12 +144,10 @@ export default async function ClientsPage({
                   : 'Začni přidáním prvního klienta a vytvoř si vlastní databázi firem.'}
               </p>
               <div className="pt-2">
-                <Link
-                  href="/clients/new"
+                <NewClientButton
+                  label="Přidat klienta"
                   className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
-                >
-                  Přidat klienta
-                </Link>
+                />
               </div>
             </div>
           </section>
@@ -258,15 +253,10 @@ export default async function ClientsPage({
                                 href={`/clients/${client.id}`}
                                 className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
                               >
-                                Detail
+                                DETAIL
                               </Link>
 
-                              <Link
-                                href={`/clients/${client.id}/edit`}
-                                className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
-                              >
-                                Upravit
-                              </Link>
+                              <EditClientButton client={client} />
                             </div>
                           </td>
                         </tr>
@@ -344,15 +334,10 @@ export default async function ClientsPage({
                         href={`/clients/${client.id}`}
                         className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
                       >
-                        Detail
+                        DETAIL
                       </Link>
 
-                      <Link
-                        href={`/clients/${client.id}/edit`}
-                        className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
-                      >
-                        Upravit
-                      </Link>
+                      <EditClientButton client={client} />
                     </div>
                   </div>
                 )

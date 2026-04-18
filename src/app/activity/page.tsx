@@ -677,19 +677,19 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
                 />
 
                 <button
-                  type="submit"
-                  className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
-                >
-                  HLEDAT
-                </button>
-              </form>
+  type="submit"
+  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+>
+  HLEDAT
+</button>
+</form>
 
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                ZPĚT NA DASHBOARD
-              </Link>
+<Link
+  href="/dashboard"
+  className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+>
+  ZPĚT NA DASHBOARD
+</Link>
 
               <Link
                 href="/activity"

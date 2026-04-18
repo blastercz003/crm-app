@@ -1,10 +1,23 @@
 import { TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
 import TaskCard from './TaskCard'
 
+type UserOption = {
+  id: string
+  name: string | null
+  role: string | null
+}
+
+type ClientOption = {
+  id: string
+  name: string
+}
+
 type TaskSectionProps = {
   title: string
   description?: string
   tasks: TaskRow[]
+  users: UserOption[]
+  clients: ClientOption[]
   muted?: boolean
 }
 
@@ -12,6 +25,8 @@ export default function TaskSection({
   title,
   description,
   tasks,
+  users,
+  clients,
   muted = false,
 }: TaskSectionProps) {
   return (
@@ -60,7 +75,12 @@ export default function TaskSection({
         ) : (
           <div className="grid gap-3">
             {tasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                users={users}
+                clients={clients}
+              />
             ))}
           </div>
         )}

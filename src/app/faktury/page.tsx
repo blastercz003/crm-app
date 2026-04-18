@@ -494,11 +494,11 @@ export default async function FakturyPage({
               </form>
 
               <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
-              >
-                ZPĚT NA DASHBOARD
-              </Link>
+  href="/dashboard"
+  className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+>
+  ZPĚT NA DASHBOARD
+</Link>
             </div>
           </div>
         </section>

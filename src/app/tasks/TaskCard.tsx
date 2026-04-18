@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
 import { deleteTask, updateTaskStatus } from './actions'
+import EditTaskButton from './edit-task-button'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
@@ -8,8 +9,21 @@ import {
   getStatusLabel,
 } from './taskUi'
 
+type UserOption = {
+  id: string
+  name: string | null
+  role: string | null
+}
+
+type ClientOption = {
+  id: string
+  name: string
+}
+
 type TaskCardProps = {
   task: TaskRow
+  users: UserOption[]
+  clients: ClientOption[]
 }
 
 function resolveClientName(
@@ -85,7 +99,11 @@ function formatDueDate(value: string | null) {
   }).format(parsed)
 }
 
-export default function TaskCard({ task }: TaskCardProps) {
+export default function TaskCard({
+  task,
+  users,
+  clients,
+}: TaskCardProps) {
   const clientName = resolveClientName(
     task.client,
     task.company_name ?? 'Bez klienta'
@@ -196,32 +214,43 @@ export default function TaskCard({ task }: TaskCardProps) {
               href={`/tasks/${task.id}`}
               className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
             >
-              Detail
+              DETAIL
             </Link>
 
-            <Link
-              href={`/tasks/${task.id}/edit`}
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-            >
-              Upravit
-            </Link>
+            <EditTaskButton
+              task={{
+                id: task.id,
+                title: task.title,
+                note: task.note,
+                due_date: task.due_date,
+                status: task.status,
+                priority: task.priority,
+                assigned_to: task.assigned_to,
+                client_id: task.client_id,
+                company_name: task.company_name,
+                contact_person: task.contact_person,
+              }}
+              users={users}
+              clients={clients}
+              label="UPRAVIT"
+            />
 
             {task.status !== 'done' ? (
               <form action={completeTaskAction}>
                 <button className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800">
-                  Dokončit
+                  DOKONČIT
                 </button>
               </form>
             ) : (
               <span className="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-                Vyřešeno
+                VYŘEŠENO
               </span>
             )}
           </div>
 
           <form action={deleteTaskAction}>
             <button className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
-              Smazat
+              SMAZAT
             </button>
           </form>
         </div>
