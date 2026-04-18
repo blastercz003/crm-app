@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { NavigationOverlay } from '../components/navigation/navigation-overlay'
@@ -32,7 +33,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <NavigationOverlay />
+        <Suspense fallback={null}>
+          <NavigationOverlay />
+        </Suspense>
       </body>
     </html>
   )
