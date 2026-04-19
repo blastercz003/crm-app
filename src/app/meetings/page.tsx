@@ -2,10 +2,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { EditMeetingButton } from './edit-meeting-button'
 import { NewMeetingButton } from './new-meeting-button'
-import {
-  MeetingStatusBadge,
-  MeetingTaskBadge,
-} from '@/components/meetings/meeting-status-badge'
 
 type SearchParams = {
   view?: string
@@ -37,7 +33,6 @@ type MeetingRowBase = {
 }
 
 type MeetingRow = MeetingRowBase & {
-  comment_count: number
   assigned_user_name: string | null
 }
 
@@ -106,82 +101,37 @@ function formatCompactDateTime(value: string | null) {
   )
 }
 
-function getDateParts(value: string | null) {
-  const date = parseMeetingDate(value)
+function isMeetingOverdue(meeting: MeetingRow) {
+  if (meeting.status !== 'planned') return false
 
-  if (!date) {
-    return {
-      day: '--',
-      month: 'bez data',
-      time: 'Bez času',
-    }
-  }
+  const date = parseMeetingDate(meeting.meeting_datetime)
 
-  const day = new Intl.DateTimeFormat('cs-CZ', {
-    day: '2-digit',
-    timeZone: PRAGUE_TIME_ZONE,
-  }).format(date)
+  if (!date) return false
 
-  const month = new Intl.DateTimeFormat('cs-CZ', {
-    month: 'short',
-    timeZone: PRAGUE_TIME_ZONE,
-  }).format(date)
-
-  const time = new Intl.DateTimeFormat('cs-CZ', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: PRAGUE_TIME_ZONE,
-  }).format(date)
-
-  return {
-    day,
-    month,
-    time,
-  }
+  return date.getTime() < Date.now()
 }
 
-function getPreviewText(meeting: MeetingRow) {
-  if (meeting.status === 'completed' && meeting.result_note) {
-    return meeting.result_note
-  }
+function compareMeetingDateAsc(a: MeetingRow, b: MeetingRow) {
+  const aDate = parseMeetingDate(a.meeting_datetime)
+  const bDate = parseMeetingDate(b.meeting_datetime)
 
-  if (meeting.pre_meeting_note) {
-    return meeting.pre_meeting_note
-  }
+  if (!aDate && !bDate) return 0
+  if (!aDate) return 1
+  if (!bDate) return -1
 
-  if (meeting.contact_email) {
-    return meeting.contact_email
-  }
-
-  if (meeting.address) {
-    return meeting.address
-  }
-
-  return 'Bez doplňujících poznámek'
+  return aDate.getTime() - bDate.getTime()
 }
 
-function trimText(text: string, max = 95) {
-  if (text.length <= max) return text
-  return `${text.slice(0, max).trim()}…`
+function compareMeetingDateDesc(a: MeetingRow, b: MeetingRow) {
+  return compareMeetingDateAsc(b, a)
 }
 
-function attachCommentCounts(
+function attachAssignedUserNames(
   meetings: MeetingRowBase[],
-  commentEntityIds: string[],
   profileNameById: Map<string, string>
 ): MeetingRow[] {
-  const commentCountByMeetingId = new Map<string, number>()
-
-  for (const entityId of commentEntityIds) {
-    commentCountByMeetingId.set(
-      entityId,
-      (commentCountByMeetingId.get(entityId) ?? 0) + 1
-    )
-  }
-
   return meetings.map((meeting) => ({
     ...meeting,
-    comment_count: commentCountByMeetingId.get(meeting.id) ?? 0,
     assigned_user_name: meeting.assigned_user_id
       ? (profileNameById.get(meeting.assigned_user_id) ?? null)
       : null,
@@ -290,130 +240,32 @@ function MeetingListItem({
   isAdminView: boolean
   clients: ClientOption[]
 }) {
-  const preview = trimText(getPreviewText(meeting))
-  const hasTask = Boolean(meeting.follow_up_task?.trim())
-
-  const { day, month, time } = getDateParts(meeting.meeting_datetime)
-
-  const companyLabel =
-    meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
-
-  return (
-    <div className="rounded-2xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm transition hover:border-zinc-300 hover:shadow-md">
-      <div className="flex items-start gap-3">
-        <div className="flex w-[72px] shrink-0 flex-col items-center rounded-2xl border border-zinc-200 bg-zinc-50 px-2.5 py-2.5 text-center">
-          <div className="text-xl font-semibold leading-none text-zinc-950">
-            {day}
-          </div>
-
-          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            {month}
-          </div>
-
-          <div className="mt-2.5 w-full rounded-xl border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700">
-            {time}
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="truncate text-sm font-semibold text-zinc-900">
-                  {companyLabel}
-                </div>
-
-                <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
-                  💬 {meeting.comment_count}
-                </span>
-
-                {isAdminView && meeting.assigned_user_name ? (
-                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-600">
-                    👤 {meeting.assigned_user_name}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-1 text-sm text-zinc-600">
-                {meeting.contact_person ?? meeting.title ?? 'Bez kontaktní osoby'}
-              </div>
-
-              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
-                {meeting.contact_phone ? <span>{meeting.contact_phone}</span> : null}
-                {meeting.contact_email ? <span>{meeting.contact_email}</span> : null}
-              </div>
-
-              <div className="mt-2 text-xs leading-5 text-zinc-500">{preview}</div>
-
-              <div className="mt-2 text-[11px] text-zinc-400">
-                {meeting.status === 'planned'
-                  ? 'Nadcházející schůzka'
-                  : 'Uzavřená schůzka'}{' '}
-                · {formatDateTime(meeting.meeting_datetime)}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <MeetingStatusBadge status={meeting.status} />
-              {hasTask ? <MeetingTaskBadge /> : null}
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link
-              href={`/meetings/${meeting.id}`}
-              className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
-            >
-              DETAIL
-            </Link>
-
-            <EditMeetingButton clients={clients} meeting={meeting} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function CompactCompletedMeetingListItem({
-  meeting,
-  isAdminView,
-  clients,
-}: {
-  meeting: MeetingRow
-  isAdminView: boolean
-  clients: ClientOption[]
-}) {
   const companyLabel =
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-        <div className="flex min-w-0 flex-1 items-center gap-3 text-sm">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 text-sm">
           <div className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
             {formatCompactDateTime(meeting.meeting_datetime)}
           </div>
 
-          <div className="min-w-0 flex-1 truncate font-medium text-zinc-900">
+          <div className="min-w-0 flex-1 break-words font-medium text-zinc-900">
             {companyLabel}
           </div>
 
-          <div className="min-w-0 flex-1 truncate text-zinc-600">
-            {meeting.contact_person ?? meeting.title ?? 'Bez kontaktní osoby'}
-          </div>
-
           {isAdminView && meeting.assigned_user_name ? (
-            <div className="hidden max-w-[140px] truncate rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-600 xl:block">
+            <div className="max-w-full break-words rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-600">
               {meeting.assigned_user_name}
             </div>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2 xl:justify-end">
+        <div className="flex flex-wrap gap-2">
           <Link
             href={`/meetings/${meeting.id}`}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
           >
             DETAIL
           </Link>
@@ -483,64 +335,6 @@ function MeetingSection({
   )
 }
 
-function CompactCompletedSection({
-  eyebrow,
-  title,
-  count,
-  meetings,
-  emptyText,
-  isAdminView,
-  clients,
-  scrollClassName,
-}: {
-  eyebrow: string
-  title: string
-  count: number
-  meetings: MeetingRow[]
-  emptyText: string
-  isAdminView: boolean
-  clients: ClientOption[]
-  scrollClassName?: string
-}) {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-            {eyebrow}
-          </div>
-          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl">
-            {title}
-          </h2>
-        </div>
-
-        <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-600">
-          {count}
-        </span>
-      </div>
-
-      {meetings.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-          {emptyText}
-        </div>
-      ) : (
-        <div className={scrollClassName ?? 'grid gap-2'}>
-          <div className="grid gap-2">
-            {meetings.map((meeting) => (
-              <CompactCompletedMeetingListItem
-                key={meeting.id}
-                meeting={meeting}
-                isAdminView={isAdminView}
-                clients={clients}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
 export default async function MeetingsPage({
   searchParams,
 }: {
@@ -553,8 +347,10 @@ export default async function MeetingsPage({
   const rawOwner = params.owner
   const rawSearch = params.search?.trim() ?? ''
 
-  const view: 'all' | 'planned' | 'completed' =
-    rawView === 'planned' || rawView === 'completed' ? rawView : 'all'
+  const view: 'all' | 'planned' | 'overdue' | 'completed' =
+    rawView === 'planned' || rawView === 'overdue' || rawView === 'completed'
+      ? rawView
+      : 'all'
 
   const requestedScope: 'mine' | 'team' = rawScope === 'team' ? rawScope : 'mine'
 
@@ -691,49 +487,40 @@ export default async function MeetingsPage({
   const plannedMeetingsBase = (plannedResponse.data ?? []) as MeetingRowBase[]
   const completedMeetingsBase = (completedResponse.data ?? []) as MeetingRowBase[]
 
-  const allMeetingIds = [
-    ...plannedMeetingsBase.map((meeting) => meeting.id),
-    ...completedMeetingsBase.map((meeting) => meeting.id),
-  ]
-
-  const uniqueMeetingIds = Array.from(new Set(allMeetingIds))
-
-  const { data: comments, error: commentsError } = uniqueMeetingIds.length
-    ? await supabase
-        .from('comments')
-        .select('entity_id')
-        .eq('entity_type', 'meeting')
-        .in('entity_id', uniqueMeetingIds)
-    : { data: [], error: null }
-
-  if (commentsError) {
-    throw new Error('Nepodařilo se načíst počty komentářů ke schůzkám.')
-  }
-
-  const commentEntityIds = (comments ?? []).map((row) => row.entity_id as string)
-
-  const plannedMeetings = attachCommentCounts(
+  const plannedMeetingPool = attachAssignedUserNames(
     plannedMeetingsBase,
-    commentEntityIds,
+    profileNameById
+  )
+  const completedMeetings = attachAssignedUserNames(
+    completedMeetingsBase,
     profileNameById
   )
 
-  const completedMeetings = attachCommentCounts(
-    completedMeetingsBase,
-    commentEntityIds,
-    profileNameById
-  )
+  const overdueMeetings = plannedMeetingPool
+    .filter((meeting) => isMeetingOverdue(meeting))
+    .sort(compareMeetingDateDesc)
+
+  const plannedMeetings = plannedMeetingPool
+    .filter((meeting) => !isMeetingOverdue(meeting))
+    .sort(compareMeetingDateAsc)
 
   const visiblePlannedMeetings =
     view === 'all' || view === 'planned' ? plannedMeetings : []
 
+  const visibleOverdueMeetings =
+    view === 'all' || view === 'overdue' ? overdueMeetings : []
+
   const visibleCompletedMeetings =
     view === 'all' || view === 'completed' ? completedMeetings : []
 
-  const totalCount = visiblePlannedMeetings.length + visibleCompletedMeetings.length
+  const totalCount =
+    visiblePlannedMeetings.length +
+    visibleOverdueMeetings.length +
+    visibleCompletedMeetings.length
 
   const taskCount =
     visiblePlannedMeetings.filter((m) => m.follow_up_task?.trim()).length +
+    visibleOverdueMeetings.filter((m) => m.follow_up_task?.trim()).length +
     visibleCompletedMeetings.filter((m) => m.follow_up_task?.trim()).length
 
   const ownerOptions = profileRows.filter(
@@ -816,6 +603,11 @@ export default async function MeetingsPage({
                   active={isTabActive(params.view, 'planned', 'all')}
                 />
                 <FilterTab
+                  href={getTabHref(params, { view: 'overdue' })}
+                  label="Po termínu"
+                  active={isTabActive(params.view, 'overdue', 'all')}
+                />
+                <FilterTab
                   href={getTabHref(params, { view: 'completed' })}
                   label="Proběhlé"
                   active={isTabActive(params.view, 'completed', 'all')}
@@ -847,6 +639,8 @@ export default async function MeetingsPage({
                       ? 'Pohled: Vše'
                       : view === 'planned'
                         ? 'Pohled: Plánované'
+                        : view === 'overdue'
+                          ? 'Pohled: Po termínu'
                         : 'Pohled: Proběhlé'
                   }
                 />
@@ -870,6 +664,7 @@ export default async function MeetingsPage({
               <div className="grid grid-cols-2 gap-2">
                 <StatCard label="Celkem" value={totalCount} />
                 <StatCard label="Plánované" value={visiblePlannedMeetings.length} />
+                <StatCard label="Po termínu" value={visibleOverdueMeetings.length} />
                 <StatCard label="Proběhlé" value={visibleCompletedMeetings.length} />
                 <StatCard label="S úkolem" value={taskCount} />
               </div>
@@ -915,7 +710,7 @@ export default async function MeetingsPage({
         </section>
 
         {view === 'all' ? (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+          <div className="grid gap-4 xl:grid-cols-3">
             <MeetingSection
               eyebrow="Aktuální agenda"
               title="Plánované"
@@ -927,7 +722,18 @@ export default async function MeetingsPage({
               scrollClassName="xl:max-h-[960px] xl:overflow-y-auto xl:pr-1"
             />
 
-            <CompactCompletedSection
+            <MeetingSection
+              eyebrow="Potřebuje řešení"
+              title="Po termínu"
+              count={visibleOverdueMeetings.length}
+              meetings={visibleOverdueMeetings}
+              emptyText="Pro zadaný filtr tu není žádná schůzka po termínu."
+              isAdminView={isAdminTeamView}
+              clients={clientOptions}
+              scrollClassName="xl:max-h-[960px] xl:overflow-y-auto xl:pr-1"
+            />
+
+            <MeetingSection
               eyebrow="Historie"
               title="Proběhlé"
               count={visibleCompletedMeetings.length}
@@ -952,8 +758,20 @@ export default async function MeetingsPage({
           />
         ) : null}
 
+        {view === 'overdue' ? (
+          <MeetingSection
+            eyebrow="Potřebuje řešení"
+            title="Po termínu"
+            count={visibleOverdueMeetings.length}
+            meetings={visibleOverdueMeetings}
+            emptyText="Pro zadaný filtr tu není žádná schůzka po termínu."
+            isAdminView={isAdminTeamView}
+            clients={clientOptions}
+          />
+        ) : null}
+
         {view === 'completed' ? (
-          <CompactCompletedSection
+          <MeetingSection
             eyebrow="Historie"
             title="Proběhlé"
             count={visibleCompletedMeetings.length}

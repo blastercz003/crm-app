@@ -6,7 +6,6 @@ import {
   MeetingStatusBadge,
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
-import CommentSection from '@/components/comments/comment-section'
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 
@@ -29,6 +28,24 @@ type MeetingDetail = {
   created_by: string | null
 }
 
+function getMeetingDisplayStatus(meeting: MeetingDetail): 'planned' | 'overdue' | 'completed' {
+  if (meeting.status === 'completed') {
+    return 'completed'
+  }
+
+  if (!meeting.meeting_datetime) {
+    return 'planned'
+  }
+
+  const meetingDate = new Date(meeting.meeting_datetime)
+
+  if (Number.isNaN(meetingDate.getTime())) {
+    return 'planned'
+  }
+
+  return meetingDate.getTime() < Date.now() ? 'overdue' : 'planned'
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return 'Bez termínu'
 
@@ -45,29 +62,22 @@ function formatDateTime(value: string | null) {
   }).format(date)
 }
 
-function DetailBlock({
-  title,
-  value,
-  emptyText,
-}: {
-  title: string
-  value: string | null | undefined
-  emptyText: string
-}) {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-        {title}
-      </h2>
+function formatDate(value: string | null) {
+  if (!value) return '—'
 
-      <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-800">
-        {value?.trim() ? value : <span className="text-zinc-400">{emptyText}</span>}
-      </div>
-    </section>
-  )
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+
+  return new Intl.DateTimeFormat('cs-CZ', {
+    dateStyle: 'medium',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
 }
 
-function InfoItem({
+function InfoCard({
   label,
   value,
 }: {
@@ -75,10 +85,43 @@ function InfoItem({
   value: string
 }) {
   return (
-    <div>
-      <dt className="text-xs text-zinc-500">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-zinc-900">{value}</dd>
+    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-medium text-gray-900">{value}</p>
     </div>
+  )
+}
+
+function ContentSection({
+  title,
+  description,
+  value,
+  emptyText,
+}: {
+  title: string
+  description: string
+  value: string | null | undefined
+  emptyText: string
+}) {
+  return (
+    <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        <p className="mt-1 text-sm text-gray-500">{description}</p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+        {value?.trim() ? (
+          <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+            {value}
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500">{emptyText}</p>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -149,109 +192,142 @@ export default async function MeetingDetailPage({
 
   const canDelete = isAdmin || meeting.created_by === user.id
   const hasTask = Boolean(meeting.follow_up_task?.trim())
+  const displayStatus = getMeetingDisplayStatus(meeting)
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-6 text-zinc-900 md:px-10 md:py-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-6 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between lg:p-10">
-            <div>
-              <Link
-                href="/meetings"
-                className="inline-flex items-center rounded-2xl border px-5 py-3 text-sm font-medium tracking-wide transition hover:opacity-90"
-                style={{
-                  borderColor: '#BFD9EC',
-                  backgroundColor: '#EAF4FB',
-                  color: '#2980B9',
-                }}
-              >
-                ZPĚT NA SCHŮZKY
-              </Link>
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+                  {meeting.title ?? meeting.company_name ?? 'Detail schůzky'}
+                </h1>
 
-              <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Agenda
-              </div>
-
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-                {meeting.title ?? meeting.company_name ?? 'Detail schůzky'}
-              </h1>
-
-              <div className="mt-2 text-sm text-zinc-500">
-                {meeting.company_name ?? 'Bez firmy'} · {formatDateTime(meeting.meeting_datetime)}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <MeetingStatusBadge status={meeting.status} />
+                <MeetingStatusBadge status={displayStatus} />
                 {hasTask ? <MeetingTaskBadge /> : null}
               </div>
+
+              <p className="text-sm text-gray-500">
+                {meeting.company_name ?? 'Bez firmy'} · {formatDateTime(meeting.meeting_datetime)}
+              </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href={`/meetings/${meeting.id}/edit`}
-                className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800"
-              >
-                UPRAVIT SCHŮZKU
-              </Link>
-
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
               {canDelete ? (
                 <form action={deleteMeeting}>
                   <input type="hidden" name="id" value={meeting.id} />
                   <button
                     type="submit"
-                    className="inline-flex items-center rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium tracking-wide text-red-700 transition hover:bg-red-100"
+                    className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-100"
                   >
                     SMAZAT SCHŮZKU
                   </button>
                 </form>
               ) : null}
+
+              <Link
+                href={`/meetings/${meeting.id}/edit`}
+                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
+              >
+                UPRAVIT SCHŮZKU
+              </Link>
+
+              <Link
+                href="/meetings"
+                className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:opacity-90"
+                style={{ backgroundColor: '#2980B9' }}
+              >
+                ZPĚT NA SCHŮZKY
+              </Link>
             </div>
           </div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-              Základní informace
+        <section className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-5">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Základní informace
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Přehled hlavních údajů o schůzce a kontaktních informací.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <InfoCard label="Firma" value={meeting.company_name ?? '—'} />
+                <InfoCard
+                  label="Datum a čas"
+                  value={formatDateTime(meeting.meeting_datetime)}
+                />
+                <InfoCard
+                  label="Kontaktní osoba"
+                  value={meeting.contact_person ?? '—'}
+                />
+                <InfoCard label="Telefon" value={meeting.contact_phone ?? '—'} />
+                <InfoCard label="E-mail" value={meeting.contact_email ?? '—'} />
+                <InfoCard label="Adresa" value={meeting.address ?? '—'} />
+              </div>
             </div>
+          </div>
 
-            <dl className="mt-5 grid gap-4">
-              <InfoItem label="Firma" value={meeting.company_name ?? '—'} />
-              <InfoItem label="Kontaktní osoba" value={meeting.contact_person ?? '—'} />
-              <InfoItem label="Telefon" value={meeting.contact_phone ?? '—'} />
-              <InfoItem label="E-mail" value={meeting.contact_email ?? '—'} />
-              <InfoItem label="Adresa" value={meeting.address ?? '—'} />
-              <InfoItem label="Datum a čas" value={formatDateTime(meeting.meeting_datetime)} />
-              <InfoItem
-                label="Stav"
-                value={meeting.status === 'planned' ? 'Plánováno' : 'Proběhlo'}
-              />
-            </dl>
-          </section>
+          <div className="lg:col-span-1">
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-5">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Shrnutí
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Rychlý přehled stavu a navazujících informací.
+                </p>
+              </div>
 
-          <DetailBlock
-            title="Poznámka před schůzkou"
-            value={meeting.pre_meeting_note}
-            emptyText="Zatím bez poznámky."
-          />
+              <div className="space-y-3">
+                <InfoCard
+                  label="Stav"
+                  value={
+                    displayStatus === 'completed'
+                      ? 'Proběhlo'
+                      : displayStatus === 'overdue'
+                        ? 'Po termínu'
+                        : 'Plánováno'
+                  }
+                />
+                <InfoCard
+                  label="Úkol po schůzce"
+                  value={hasTask ? 'Ano' : 'Ne'}
+                />
+                <InfoCard
+                  label="Vytvořeno"
+                  value={formatDate(meeting.created_at)}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
 
-          <DetailBlock
-            title="Výsledek schůzky"
-            value={meeting.result_note}
-            emptyText="Výsledek zatím nebyl doplněn."
-          />
+        <ContentSection
+          title="Poznámka před schůzkou"
+          description="Příprava, očekávání a interní poznámky před samotnou schůzkou."
+          value={meeting.pre_meeting_note}
+          emptyText="Zatím bez poznámky před schůzkou."
+        />
 
-          <DetailBlock
-            title="Úkol po schůzce"
-            value={meeting.follow_up_task}
-            emptyText="Zatím bez úkolu po schůzce."
-          />
-        </div>
+        <ContentSection
+          title="Výsledek schůzky"
+          description="Shrnutí průběhu, závěrů a navazujících domluv."
+          value={meeting.result_note}
+          emptyText="Výsledek schůzky zatím nebyl doplněn."
+        />
 
-        <CommentSection
-          entityType="meeting"
-          entityId={meeting.id}
-          path={`/meetings/${meeting.id}`}
+        <ContentSection
+          title="Úkol po schůzce"
+          description="Navazující krok nebo úkol, který ze schůzky vyplynul."
+          value={meeting.follow_up_task}
+          emptyText="Zatím bez úkolu po schůzce."
         />
       </div>
     </main>

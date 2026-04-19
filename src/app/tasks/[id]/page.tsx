@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
-import CommentSection from '@/components/comments/comment-section'
+import { updateTaskStatus } from '../actions'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
@@ -103,6 +103,23 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
+function InfoCard({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-medium text-gray-900">{value}</p>
+    </div>
+  )
+}
+
 export default async function TaskDetailPage({
   params,
 }: TaskDetailPageProps) {
@@ -163,53 +180,64 @@ export default async function TaskDetailPage({
     typedTask.client,
     typedTask.company_name ?? 'Bez klienta'
   )
+  const canUpdateStatus =
+    isAdmin ||
+    typedTask.created_by === currentProfile.id ||
+    typedTask.assigned_to === currentProfile.id
+
+  const markTaskDoneAction = updateTaskStatus.bind(null, typedTask.id, 'done')
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-6 text-zinc-900 md:px-10 md:py-10">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-6 p-6 md:p-8 lg:flex-row lg:items-start lg:justify-between lg:p-10">
-            <div>
-              <Link
-                href="/tasks"
-                className="inline-flex items-center rounded-2xl border px-5 py-3 text-sm font-medium tracking-wide transition hover:opacity-90"
-                style={{
-                  borderColor: '#BFD9EC',
-                  backgroundColor: '#EAF4FB',
-                  color: '#2980B9',
-                }}
-              >
-                ZPĚT NA ÚKOLY
-              </Link>
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+                  {typedTask.title}
+                </h1>
 
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950">
-                {typedTask.title}
-              </h1>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(typedTask.status)}`}
+                >
+                  {getStatusLabel(typedTask.status)}
+                </span>
 
-              <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-                Detail úkolu včetně odpovědnosti, vazby na klienta a týmových
-                komentářů.
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(typedTask.priority)}`}
+                >
+                  Priorita: {getPriorityLabel(typedTask.priority)}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-500">
+                Úkol vytvořen {formatDate(typedTask.created_at)}
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <span
-                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(typedTask.status)}`}
-              >
-                {getStatusLabel(typedTask.status)}
-              </span>
-
-              <span
-                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getPriorityBadgeClass(typedTask.priority)}`}
-              >
-                Priorita: {getPriorityLabel(typedTask.priority)}
-              </span>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+              {canUpdateStatus && typedTask.status !== 'done' ? (
+                <form action={markTaskDoneAction}>
+                  <button className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-emerald-700 transition hover:bg-emerald-100">
+                    DOKONČIT
+                  </button>
+                </form>
+              ) : null}
 
               <Link
                 href={`/tasks/${typedTask.id}/edit`}
-                className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800"
+                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
               >
                 UPRAVIT ÚKOL
+              </Link>
+
+              <Link
+                href="/tasks"
+                className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:opacity-90"
+                style={{ backgroundColor: '#2980B9' }}
+              >
+                ZPĚT NA ÚKOLY
               </Link>
             </div>
           </div>
@@ -217,108 +245,99 @@ export default async function TaskDetailPage({
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <div className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm md:p-8">
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-5">
-                <h2 className="text-lg font-semibold text-zinc-950">
+                <h2 className="text-lg font-semibold text-gray-900">
                   Základní informace
                 </h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Přehled hlavních údajů o úkolu.
+                <p className="mt-1 text-sm text-gray-500">
+                  Přehled hlavních údajů o úkolu a jeho odpovědnosti.
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Název úkolu
+                <InfoCard label="Název úkolu" value={typedTask.title} />
+                <InfoCard
+                  label="Termín"
+                  value={typedTask.due_date || 'Bez termínu'}
+                />
+                <InfoCard label="Přiřazeno" value={assigneeName} />
+                <InfoCard label="Zadal" value={creatorName} />
+                <InfoCard label="Klient" value={clientName} />
+                <InfoCard
+                  label="Kontaktní osoba"
+                  value={typedTask.contact_person || '—'}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-5">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Shrnutí
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Rychlý přehled toho nejdůležitějšího.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Stav
                   </p>
-                  <p className="mt-2 text-sm font-medium text-zinc-900">
-                    {typedTask.title}
+                  <p className="mt-2 text-sm font-medium text-gray-900">
+                    {getStatusLabel(typedTask.status)}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Termín
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Priorita
                   </p>
-                  <p className="mt-2 text-sm font-medium text-zinc-900">
-                    {typedTask.due_date || 'Bez termínu'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Přiřazeno
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-zinc-900">
-                    {assigneeName}
+                  <p className="mt-2 text-sm font-medium text-gray-900">
+                    {getPriorityLabel(typedTask.priority)}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Zadal
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-zinc-900">
-                    {creatorName}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Klient
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-zinc-900">
-                    {clientName}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Kontaktní osoba
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-zinc-900">
-                    {typedTask.contact_person || '—'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:col-span-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                     Vytvořeno
                   </p>
-                  <p className="mt-2 text-sm font-medium text-zinc-900">
+                  <p className="mt-2 text-sm font-medium text-gray-900">
                     {formatDate(typedTask.created_at)}
                   </p>
                 </div>
               </div>
             </div>
           </div>
+        </section>
 
-          <div className="lg:col-span-1">
-            <div className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm md:p-8">
-              <div className="mb-5">
-                <h2 className="text-lg font-semibold text-zinc-950">
-                  Poznámka
-                </h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Detailní interní zadání nebo doplnění k úkolu.
-                </p>
-              </div>
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Zadání úkolu
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Detailní popis, kontext a interní doplnění k úkolu.
+            </p>
+          </div>
 
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-700">
-                  {typedTask.note || 'Zatím bez poznámky.'}
-                </p>
-              </div>
-            </div>
+          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+            {typedTask.note?.trim() ? (
+              <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+                {typedTask.note}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Zatím bez doplněného zadání nebo poznámky.
+              </p>
+            )}
           </div>
         </section>
 
-        <CommentSection
-          entityType="task"
-          entityId={typedTask.id}
-          path={`/tasks/${typedTask.id}`}
-        />
       </div>
     </main>
   )

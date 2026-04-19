@@ -25,26 +25,9 @@ export type TaskRow = {
   client_id: string | null
   company_name: string | null
   contact_person: string | null
-  comment_count: number
   creator: TaskPerson | TaskPerson[] | null
   assignee: TaskPerson | TaskPerson[] | null
   client: TaskClient | TaskClient[] | null
-}
-
-function attachCommentCounts(tasks: TaskRow[], commentEntityIds: string[]) {
-  const commentCountByTaskId = new Map<string, number>()
-
-  for (const entityId of commentEntityIds) {
-    commentCountByTaskId.set(
-      entityId,
-      (commentCountByTaskId.get(entityId) ?? 0) + 1
-    )
-  }
-
-  return tasks.map((task) => ({
-    ...task,
-    comment_count: commentCountByTaskId.get(task.id) ?? 0,
-  }))
 }
 
 export async function getTasksForCurrentUser(): Promise<{
@@ -95,37 +78,13 @@ export async function getTasksForCurrentUser(): Promise<{
       throw new Error('Nepodařilo se načíst úkoly.')
     }
 
-    const tasks = ((data ?? []) as Omit<TaskRow, 'comment_count'>[]).map((task) => ({
-      ...task,
-      comment_count: 0,
-    }))
-
-    const taskIds = tasks.map((task) => task.id)
-
-    const { data: comments, error: commentsError } = taskIds.length
-      ? await supabase
-          .from('comments')
-          .select('entity_id')
-          .eq('entity_type', 'task')
-          .in('entity_id', taskIds)
-      : { data: [], error: null }
-
-    if (commentsError) {
-      throw new Error('Nepodařilo se načíst počty komentářů k úkolům.')
-    }
-
-    const commentEntityIds = (comments ?? []).map((row) => row.entity_id as string)
-    const tasksWithComments = attachCommentCounts(tasks, commentEntityIds)
+    const tasks = (data ?? []) as TaskRow[]
 
     return {
       profile,
-      assignedToMe: tasksWithComments.filter(
-        (task) => task.assigned_to === profile.id
-      ),
-      createdByMe: tasksWithComments.filter(
-        (task) => task.created_by === profile.id
-      ),
-      allTasks: tasksWithComments,
+      assignedToMe: tasks.filter((task) => task.assigned_to === profile.id),
+      createdByMe: tasks.filter((task) => task.created_by === profile.id),
+      allTasks: tasks,
     }
   }
 
@@ -149,45 +108,13 @@ export async function getTasksForCurrentUser(): Promise<{
     throw new Error('Nepodařilo se načíst zadané úkoly.')
   }
 
-  const assignedTasks = ((assignedToMe ?? []) as Omit<TaskRow, 'comment_count'>[]).map(
-    (task) => ({
-      ...task,
-      comment_count: 0,
-    })
-  )
-
-  const createdTasks = ((createdByMe ?? []) as Omit<TaskRow, 'comment_count'>[]).map(
-    (task) => ({
-      ...task,
-      comment_count: 0,
-    })
-  )
-
-  const uniqueTaskIds = Array.from(
-    new Set([
-      ...assignedTasks.map((task) => task.id),
-      ...createdTasks.map((task) => task.id),
-    ])
-  )
-
-  const { data: comments, error: commentsError } = uniqueTaskIds.length
-    ? await supabase
-        .from('comments')
-        .select('entity_id')
-        .eq('entity_type', 'task')
-        .in('entity_id', uniqueTaskIds)
-    : { data: [], error: null }
-
-  if (commentsError) {
-    throw new Error('Nepodařilo se načíst počty komentářů k úkolům.')
-  }
-
-  const commentEntityIds = (comments ?? []).map((row) => row.entity_id as string)
+  const assignedTasks = (assignedToMe ?? []) as TaskRow[]
+  const createdTasks = (createdByMe ?? []) as TaskRow[]
 
   return {
     profile,
-    assignedToMe: attachCommentCounts(assignedTasks, commentEntityIds),
-    createdByMe: attachCommentCounts(createdTasks, commentEntityIds),
+    assignedToMe: assignedTasks,
+    createdByMe: createdTasks,
     allTasks: [],
   }
 }

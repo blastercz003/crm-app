@@ -70,6 +70,8 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
     task.created_by === currentProfile.id ||
     task.assigned_to === currentProfile.id
 
+  const taskTitle = task.title ?? 'Upravit úkol'
+
   async function updateTaskAction(formData: FormData) {
     'use server'
     await updateTask(id, formData)
@@ -81,46 +83,65 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mx-auto max-w-5xl space-y-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <Link
-                href={`/tasks/${task.id}`}
-                className="text-sm text-gray-500 transition hover:text-gray-900"
-              >
-                ← Zpět na detail úkolu
-              </Link>
-
-              <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900">
-                Upravit úkol
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+                {taskTitle}
               </h1>
-
-              <p className="mt-2 text-sm text-gray-500">
-                Můžeš změnit stav, prioritu, termín, poznámku, přiřazeného
-                uživatele i vazbu na klienta.
+              <p className="text-sm text-gray-500">
+                Uprav zadání úkolu, prioritu, termín, odpovědnost i vazbu na klienta.
               </p>
             </div>
 
-            {canDelete ? (
-              <form action={deleteTaskAction}>
-                <button
-                  type="submit"
-                  className="inline-flex items-center rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
-                >
-                  Smazat úkol
-                </button>
-              </form>
-            ) : null}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+              {canDelete ? (
+                <form action={deleteTaskAction}>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-100"
+                  >
+                    SMAZAT ÚKOL
+                  </button>
+                </form>
+              ) : null}
+
+              <Link
+                href={`/tasks/${task.id}`}
+                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
+              >
+                DETAIL ÚKOLU
+              </Link>
+
+              <Link
+                href="/tasks"
+                className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:opacity-90"
+                style={{ backgroundColor: '#2980B9' }}
+              >
+                ZPĚT NA ÚKOLY
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Úprava úkolu
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Změň stav, termín, prioritu, přiřazení i obsah zadání.
+            </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <div className="rounded-2xl border border-gray-100 bg-white p-2 sm:p-3">
             <TaskForm
               action={updateTaskAction}
               users={users}
               clients={(clients ?? []) as ClientOption[]}
-              submitLabel="Uložit změny"
+              submitLabel="ULOŽIT ZMĚNY"
               initialValues={{
                 title: task.title,
                 note: task.note,
@@ -132,10 +153,12 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
                 company_name: task.company_name,
                 contact_person: task.contact_person,
               }}
+              cancelHref={`/tasks/${task.id}`}
+              cancelLabel="ZRUŠIT ÚPRAVY"
             />
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   )
 }

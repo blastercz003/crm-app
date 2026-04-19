@@ -6,10 +6,6 @@ import {
   MeetingStatusBadge,
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
-import {
-  TaskSourceBadge,
-  TaskStatusBadge,
-} from '@/components/tasks/task-status-badge'
 import { DashboardWelcomeOverlay } from '@/components/dashboard/dashboard-welcome-overlay'
 
 export const dynamic = 'force-dynamic'
@@ -34,14 +30,14 @@ type DashboardTask = {
   id: string
   title: string
   status: 'todo' | 'done'
-  source: 'manual' | 'meeting'
+  source: 'manual' | 'meeting' | null
   meeting_id: string | null
   company_name: string | null
   contact_person: string | null
-  due_at: string | null
+  due_date: string | null
   created_at: string
-  assigned_user_id: string | null
-  created_by_user_id: string | null
+  assigned_to: string | null
+  created_by: string | null
   created_by_profile?: ProfileRef | null
 }
 
@@ -55,16 +51,6 @@ type DashboardMeeting = {
   meeting_datetime: string | null
   follow_up_task: string | null
   status: 'planned' | 'completed'
-}
-
-type DashboardComment = {
-  id: string
-  entity_type: 'task' | 'meeting' | string
-  entity_id: string
-  content: string | null
-  created_at: string
-  user_id: string | null
-  created_by_profile?: ProfileRef | null
 }
 
 type CalendarDay = {
@@ -248,22 +234,20 @@ function formatInPrague(
   }).format(date)
 }
 
-function formatDateTime(value: string | null) {
-  return formatInPrague(
-    value,
-    {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    },
-    'Bez termínu'
-  )
+function getTodayDateKeyInPrague() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: PRAGUE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 }
 
-function formatShortDateTime(value: string) {
-  return formatInPrague(value, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
+function getTaskPriorityOrder(task: DashboardTask, todayDateKey: string) {
+  if (task.status === 'done') return 3
+  if (task.due_date && task.due_date < todayDateKey) return 0
+  if (task.due_date === todayDateKey) return 1
+  return 2
 }
 
 function formatMeetingTime(value: string | null) {
@@ -305,59 +289,6 @@ function getMeetingDateParts(value: string | null) {
   }).format(date)
 
   return { day, month, time }
-}
-
-function truncateText(value: string | null, maxLength = 140) {
-  if (!value?.trim()) return 'Bez textu komentáře.'
-  const clean = value.trim().replace(/\s+/g, ' ')
-  if (clean.length <= maxLength) return clean
-  return `${clean.slice(0, maxLength).trim()}…`
-}
-
-function getCommentEntityLabel(entityType: string) {
-  if (entityType === 'task') return 'Úkol'
-  if (entityType === 'meeting') return 'Schůzka'
-  return 'Komentář'
-}
-
-function getCommentHref(comment: DashboardComment) {
-  if (comment.entity_type === 'task') {
-    return `/tasks/${comment.entity_id}`
-  }
-
-  if (comment.entity_type === 'meeting') {
-    return `/meetings/${comment.entity_id}`
-  }
-
-  return '/dashboard'
-}
-
-function getRelativeTimeLabel(value: string) {
-  const now = Date.now()
-  const date = new Date(value).getTime()
-
-  if (Number.isNaN(date)) {
-    return formatShortDateTime(value)
-  }
-
-  const diffInSeconds = Math.floor((now - date) / 1000)
-
-  if (diffInSeconds < 10) return 'právě teď'
-  if (diffInSeconds < 60) return `před ${diffInSeconds} s`
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60)
-  if (diffInMinutes === 1) return 'před 1 min'
-  if (diffInMinutes < 60) return `před ${diffInMinutes} min`
-
-  const diffInHours = Math.floor(diffInMinutes / 60)
-  if (diffInHours === 1) return 'před 1 h'
-  if (diffInHours < 24) return `před ${diffInHours} h`
-
-  const diffInDays = Math.floor(diffInHours / 24)
-  if (diffInDays === 1) return 'včera'
-  if (diffInDays < 5) return `před ${diffInDays} dny`
-
-  return formatShortDateTime(value)
 }
 
 function getCurrentWeekRange() {
@@ -566,7 +497,6 @@ function getOverlayHeadline(hasNewUpdates: boolean) {
 function getOverlayDescription(
   hasNewUpdates: boolean,
   newTasksCount: number,
-  newCommentsCount: number,
   todayMeetingsCount: number,
   overdueTasksCount: number
 ) {
@@ -578,7 +508,7 @@ function getOverlayDescription(
     return 'Tady je rychlý přehled, ať hned víš, co je dnes důležité.'
   }
 
-  if (newTasksCount === 0 && newCommentsCount === 0) {
+  if (newTasksCount === 0) {
     return 'Dnes je zatím klid. Přesto máš přehled o tom nejdůležitějším.'
   }
 
@@ -587,7 +517,6 @@ function getOverlayDescription(
 
 function buildOverlaySummaryItems(args: {
   newTasksCount: number
-  newCommentsCount: number
   todayMeetingsCount: number
   overdueTasksCount: number
 }): OverlaySummaryItem[] {
@@ -601,17 +530,6 @@ function buildOverlaySummaryItems(args: {
           ? 'Byl Ti přiřazen 1 nový úkol'
           : `Byly Ti přiřazeny ${args.newTasksCount} nové úkoly`,
       tone: 'highlight',
-    })
-  }
-
-  if (args.newCommentsCount > 0) {
-    items.push({
-      label: 'Nové komentáře',
-      value:
-        args.newCommentsCount === 1
-          ? 'Přibyl 1 nový komentář'
-          : `Přibyly ${args.newCommentsCount} nové komentáře`,
-      tone: 'default',
     })
   }
 
@@ -650,32 +568,35 @@ function DashboardStatCard({
   label,
   value,
   highlighted = false,
+  alert = false,
 }: {
   label: string
   value: number
   highlighted?: boolean
+  alert?: boolean
 }) {
+  const cardClassName = highlighted
+    ? 'border border-[#2980B9] bg-[#2980B9]'
+    : alert
+      ? 'border border-red-600 bg-red-600'
+      : 'border border-zinc-200 bg-zinc-50'
+
+  const labelClassName = highlighted || alert ? 'text-xs text-white/80' : 'text-xs text-zinc-500'
+
+  const valueClassName =
+    highlighted || alert
+      ? 'mt-1.5 text-xl font-semibold text-white'
+      : 'mt-1.5 text-xl font-semibold text-zinc-950'
+
   return (
     <div
       className={[
         'rounded-2xl px-4 py-3.5 shadow-sm transition',
-        highlighted
-          ? 'border border-[#2980B9] bg-[#2980B9]'
-          : 'border border-zinc-200 bg-zinc-50',
+        cardClassName,
       ].join(' ')}
     >
-      <div className={highlighted ? 'text-xs text-white/80' : 'text-xs text-zinc-500'}>
-        {label}
-      </div>
-      <div
-        className={
-          highlighted
-            ? 'mt-1.5 text-xl font-semibold text-white'
-            : 'mt-1.5 text-xl font-semibold text-zinc-950'
-        }
-      >
-        {value}
-      </div>
+      <div className={labelClassName}>{label}</div>
+      <div className={valueClassName}>{value}</div>
     </div>
   )
 }
@@ -703,34 +624,52 @@ function DashboardSectionHeader({
 }
 
 function DashboardTaskItem({ task }: { task: DashboardTask }) {
+  const todayDateKeyInPrague = getTodayDateKeyInPrague()
+  const dueDate = task.due_date
+  const isOverdue =
+    task.status !== 'done' &&
+    dueDate !== null &&
+    dueDate < todayDateKeyInPrague
+
   return (
-    <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="text-sm font-semibold text-zinc-900">{task.title}</div>
-        <TaskStatusBadge status={task.status} />
-        <TaskSourceBadge source={task.source} />
-      </div>
+    <div
+      className={[
+        'relative rounded-2xl border px-4 py-3 shadow-sm transition duration-200 hover:shadow-md',
+        isOverdue
+          ? 'border-red-300 bg-red-50/60 hover:border-red-400'
+          : 'border-zinc-200/80 bg-white hover:border-zinc-300',
+      ].join(' ')}
+    >
+      <Link
+        href={`/tasks/${task.id}`}
+        className="absolute inset-0 rounded-2xl"
+        aria-label={`Otevřít úkol ${task.title}`}
+      />
 
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
-        <span>Firma: {task.company_name ?? '—'}</span>
-        <span>Kontakt: {task.contact_person ?? '—'}</span>
-        <span>Termín: {formatDateTime(task.due_at)}</span>
-      </div>
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="relative z-10 break-words text-sm font-semibold text-zinc-900">
+              {task.title}
+            </div>
+          </div>
 
-      <div className="mt-2 text-xs text-zinc-500">
-        Zadal: {task.created_by_profile?.name?.trim() || '—'}
-      </div>
+          <div className="relative z-10 flex shrink-0 items-center gap-2">
+            {isOverdue ? (
+              <span className="inline-flex items-center rounded-full border border-red-200 bg-red-600 px-2.5 py-1 text-xs font-medium text-white">
+                Po termínu
+              </span>
+            ) : null}
 
-      {task.meeting_id ? (
-        <div className="mt-3">
-          <Link
-            href={`/meetings/${task.meeting_id}`}
-            className="text-xs font-medium text-zinc-700 transition hover:text-zinc-950"
-          >
-            Otevřít schůzku →
-          </Link>
+            <Link
+              href={`/tasks/${task.id}`}
+              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
+            >
+              DETAIL
+            </Link>
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   )
 }
@@ -840,12 +779,17 @@ function DashboardMiniCalendar({
               <div
                 className={[
                   'min-h-[82px] rounded-2xl border p-2 transition duration-200',
-                  day.isCurrentMonth
-                    ? 'border-zinc-200 bg-white'
-                    : 'border-zinc-100 bg-zinc-50/70 text-zinc-400',
-                  day.isToday ? 'ring-2 ring-zinc-900/10' : '',
+                  day.isToday
+                    ? 'border-[#2980B9] text-white'
+                    : day.isCurrentMonth
+                      ? 'border-zinc-200 bg-white'
+                      : 'border-zinc-100 bg-zinc-50/70 text-zinc-400',
                   hasMeetings
-                    ? 'border-zinc-300 bg-zinc-50 hover:border-[#2980B9]/60'
+                    ? day.isToday
+                      ? 'bg-[#2980B9] hover:opacity-95'
+                      : 'border-zinc-300 bg-zinc-50 hover:border-[#2980B9]/60'
+                    : day.isToday
+                      ? 'bg-[#2980B9]'
                     : '',
                 ].join(' ')}
               >
@@ -854,7 +798,7 @@ function DashboardMiniCalendar({
                     className={[
                       'flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold',
                       day.isToday
-                        ? 'bg-zinc-900 text-white'
+                        ? 'bg-black text-white'
                         : day.isCurrentMonth
                           ? 'text-zinc-900'
                           : 'text-zinc-400',
@@ -1030,87 +974,6 @@ function FinanceCard() {
   )
 }
 
-function LatestCommentsCard({
-  comments,
-  currentUserId,
-}: {
-  comments: DashboardComment[]
-  currentUserId: string
-}) {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5">
-        <DashboardSectionHeader
-          eyebrow="TEAMWORK"
-          title="Nejnovější aktivita"
-          description="Poslední komentáře z úkolů a schůzek, ke kterým máš přístup."
-        />
-      </div>
-
-      {comments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-          Zatím tu nejsou žádné nové komentáře.
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {comments.map((comment) => {
-            const isOwnComment = comment.user_id === currentUserId
-
-            return (
-              <Link
-                key={comment.id}
-                href={getCommentHref(comment)}
-                className={[
-                  'block rounded-2xl border px-5 py-4 shadow-sm transition duration-200 hover:shadow-md',
-                  isOwnComment
-                    ? 'border-blue-200 bg-blue-50/60 hover:border-blue-300'
-                    : 'border-zinc-200/80 bg-white hover:border-zinc-300',
-                ].join(' ')}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
-                    {getCommentEntityLabel(comment.entity_type)}
-                  </span>
-
-                  {isOwnComment ? (
-                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
-                      Ty
-                    </span>
-                  ) : null}
-
-                  <span
-                    title={formatShortDateTime(comment.created_at)}
-                    className="text-xs text-zinc-500"
-                  >
-                    {getRelativeTimeLabel(comment.created_at)}
-                  </span>
-                </div>
-
-                <p className="mt-3 text-sm leading-6 text-zinc-800">
-                  {truncateText(comment.content)}
-                </p>
-
-                <div className="mt-3 text-xs text-zinc-500">
-                  Autor: {comment.created_by_profile?.name?.trim() || '—'}
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      <div className="mt-5 flex justify-end">
-        <Link
-          href="/activity"
-          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          OTEVŘÍT AKTIVITU
-        </Link>
-      </div>
-    </section>
-  )
-}
-
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -1146,6 +1009,7 @@ export default async function DashboardPage() {
 
   const lastSeenUpdatesAt = profile?.last_seen_updates_at ?? null
   const today = new Date()
+  const nowIso = today.toISOString()
   const isFirstVisitToday = !isSamePragueDay(profile?.last_seen_dashboard_at ?? null, today)
 
   const [
@@ -1156,10 +1020,6 @@ export default async function DashboardPage() {
     todayMeetingsCountResponse,
     weeklyMeetingsCountResponse,
     monthMeetingsResponse,
-    assignedTasksIdsResponse,
-    createdTasksIdsResponse,
-    meetingIdsResponse,
-    commentsResponse,
     newTasksCountResponse,
   ] = await Promise.all([
     supabase
@@ -1172,29 +1032,37 @@ export default async function DashboardPage() {
         meeting_id,
         company_name,
         contact_person,
-        due_at,
+        due_date,
         created_at,
-        assigned_user_id,
-        created_by_user_id
+        assigned_to,
+        created_by
       `)
-      .eq('status', 'todo')
-      .eq('assigned_user_id', user.id)
-      .order('due_at', { ascending: true, nullsFirst: false })
+      .neq('status', 'done')
+      .eq('assigned_to', user.id)
+      .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(5),
 
     supabase
       .from('tasks')
       .select('id', { count: 'exact', head: true })
-      .eq('status', 'todo')
-      .eq('assigned_user_id', user.id),
+      .neq('status', 'done')
+      .eq('assigned_to', user.id),
 
     supabase
       .from('tasks')
       .select('id', { count: 'exact', head: true })
-      .eq('status', 'todo')
-      .eq('assigned_user_id', user.id)
-      .lt('due_at', new Date().toISOString()),
+      .neq('status', 'done')
+      .eq('assigned_to', user.id)
+      .lt(
+        'due_date',
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: PRAGUE_TIME_ZONE,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(new Date())
+      ),
 
     supabase
       .from('meetings')
@@ -1212,6 +1080,7 @@ export default async function DashboardPage() {
       .eq('status', 'planned')
       .eq('assigned_user_id', user.id)
       .not('meeting_datetime', 'is', null)
+      .gte('meeting_datetime', nowIso)
       .order('meeting_datetime', { ascending: true })
       .limit(5),
 
@@ -1250,41 +1119,12 @@ export default async function DashboardPage() {
       .lt('meeting_datetime', monthEnd)
       .order('meeting_datetime', { ascending: true }),
 
-    supabase
-      .from('tasks')
-      .select('id')
-      .eq('assigned_user_id', user.id),
-
-    supabase
-      .from('tasks')
-      .select('id')
-      .eq('created_by_user_id', user.id),
-
-    supabase
-      .from('meetings')
-      .select('id')
-      .eq('assigned_user_id', user.id),
-
-    supabase
-      .from('comments')
-      .select(`
-        id,
-        entity_type,
-        entity_id,
-        content,
-        created_at,
-        user_id
-      `)
-      .in('entity_type', ['task', 'meeting'])
-      .order('created_at', { ascending: false })
-      .limit(50),
-
     lastSeenUpdatesAt
       ? supabase
           .from('tasks')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'todo')
-          .eq('assigned_user_id', user.id)
+          .neq('status', 'done')
+          .eq('assigned_to', user.id)
           .gt('created_at', lastSeenUpdatesAt)
       : Promise.resolve({ count: 0, error: null } as { count: number | null; error: null }),
   ])
@@ -1327,82 +1167,48 @@ export default async function DashboardPage() {
     )
   }
 
-  if (assignedTasksIdsResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst ID přiřazených úkolů: ${assignedTasksIdsResponse.error.message}`
-    )
-  }
-
-  if (createdTasksIdsResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst ID vytvořených úkolů: ${createdTasksIdsResponse.error.message}`
-    )
-  }
-
-  if (meetingIdsResponse.error) {
-    throw new Error(`Nepodařilo se načíst ID schůzek: ${meetingIdsResponse.error.message}`)
-  }
-
-  if (commentsResponse.error) {
-    throw new Error(`Nepodařilo se načíst komentáře: ${commentsResponse.error.message}`)
-  }
-
   if (newTasksCountResponse.error) {
     throw new Error(
       `Nepodařilo se načíst počet nových úkolů: ${newTasksCountResponse.error.message}`
     )
   }
 
-  const tasks = ((tasksResponse.data ?? []) as DashboardTask[]).map((task) => ({
-    ...task,
-    created_by_profile: task.created_by_user_id
-      ? profileMap.get(task.created_by_user_id) ?? null
-      : null,
-  }))
+  const todayDateKeyInPrague = getTodayDateKeyInPrague()
+
+  const tasks = ((tasksResponse.data ?? []) as DashboardTask[])
+    .map((task) => ({
+      ...task,
+      created_by_profile: task.created_by
+        ? profileMap.get(task.created_by) ?? null
+        : null,
+    }))
+    .sort((a, b) => {
+      const aPriority = getTaskPriorityOrder(a, todayDateKeyInPrague)
+      const bPriority = getTaskPriorityOrder(b, todayDateKeyInPrague)
+
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority
+      }
+
+      if (a.due_date && b.due_date && a.due_date !== b.due_date) {
+        return a.due_date.localeCompare(b.due_date)
+      }
+
+      if (a.due_date && !b.due_date) return -1
+      if (!a.due_date && b.due_date) return 1
+
+      return b.created_at.localeCompare(a.created_at)
+    })
 
   const meetings = (meetingsResponse.data ?? []) as DashboardMeeting[]
   const monthMeetings = (monthMeetingsResponse.data ?? []) as DashboardMeeting[]
-
-  const visibleTaskIds = new Set([
-    ...((assignedTasksIdsResponse.data ?? []).map((row) => row.id as string)),
-    ...((createdTasksIdsResponse.data ?? []).map((row) => row.id as string)),
-  ])
-
-  const visibleMeetingIds = new Set(
-    (meetingIdsResponse.data ?? []).map((row) => row.id as string)
-  )
-
-  const allVisibleComments = ((commentsResponse.data ?? []) as DashboardComment[])
-    .filter((comment) => {
-      if (comment.entity_type === 'task') {
-        return visibleTaskIds.has(comment.entity_id)
-      }
-
-      if (comment.entity_type === 'meeting') {
-        return visibleMeetingIds.has(comment.entity_id)
-      }
-
-      return false
-    })
-    .map((comment) => ({
-      ...comment,
-      created_by_profile: comment.user_id
-        ? profileMap.get(comment.user_id) ?? null
-        : null,
-    }))
-
-  const recentComments = allVisibleComments.slice(0, 5)
-
-  const newCommentsCount = lastSeenUpdatesAt
-    ? allVisibleComments.filter((comment) => comment.created_at > lastSeenUpdatesAt).length
-    : 0
 
   const activeTasksCount = activeTasksCountResponse.count ?? 0
   const overdueTasksCount = overdueTasksCountResponse.count ?? 0
   const todayMeetingsCount = todayMeetingsCountResponse.count ?? 0
   const weeklyMeetingsCount = weeklyMeetingsCountResponse.count ?? 0
   const newTasksCount = newTasksCountResponse.count ?? 0
-  const hasNewUpdates = newTasksCount + newCommentsCount > 0
+  const hasNewUpdates = newTasksCount > 0
   const shouldShowOverlay = isFirstVisitToday || hasNewUpdates
   const isAdmin = profile?.role === 'admin'
 
@@ -1410,13 +1216,11 @@ export default async function DashboardPage() {
   const overlayDescription = getOverlayDescription(
     hasNewUpdates,
     newTasksCount,
-    newCommentsCount,
     todayMeetingsCount,
     overdueTasksCount
   )
   const overlaySummaryItems = buildOverlaySummaryItems({
     newTasksCount,
-    newCommentsCount,
     todayMeetingsCount,
     overdueTasksCount,
   })
@@ -1428,7 +1232,6 @@ export default async function DashboardPage() {
           shouldShow={shouldShowOverlay}
           profileName={profile?.name ?? ''}
           newTasksCount={newTasksCount}
-          newCommentsCount={newCommentsCount}
           todayMeetingsCount={todayMeetingsCount}
           overdueTasksCount={overdueTasksCount}
           headline={overlayHeadline}
@@ -1498,12 +1301,6 @@ export default async function DashboardPage() {
             {profile?.can_view_jobs_portal ? <JobsPortalCard /> : null}
 
             {isAdmin ? <FinanceCard /> : null}
-
-            <LatestCommentsCard comments={recentComments} currentUserId={user.id} />
-          </div>
-
-          <div className="space-y-6">
-            <DashboardMiniCalendar meetings={monthMeetings} />
           </div>
 
           <div className="space-y-6">
@@ -1512,7 +1309,7 @@ export default async function DashboardPage() {
                 <DashboardSectionHeader
                   eyebrow="Úkoly"
                   title="Moje úkoly"
-                  description="Nejbližší aktivní úkoly, které jsou aktuálně přiřazené tobě."
+                  description="Nejbližší aktivní úkoly, které máš aktuálně přiřazené."
                 />
               </div>
 
@@ -1525,6 +1322,7 @@ export default async function DashboardPage() {
                 <DashboardStatCard
                   label="Úkoly po termínu"
                   value={overdueTasksCount}
+                  alert={overdueTasksCount > 0}
                 />
               </div>
 
@@ -1593,13 +1391,17 @@ export default async function DashboardPage() {
               </div>
             </section>
           </div>
+
+          <div className="space-y-6">
+            <DashboardMiniCalendar meetings={monthMeetings} />
+          </div>
         </div>
       </div>
 
       <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
-          <div>B-ENERGY CRM — coding by blaster</div>
-          <div>v1.5.1</div>
+          <div>B-ENERGY APP — coding by blaster</div>
+          <div>v1.6.2</div>
         </div>
       </footer>
     </main>

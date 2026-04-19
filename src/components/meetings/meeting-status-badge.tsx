@@ -1,4 +1,4 @@
-type MeetingStatus = 'planned' | 'completed'
+type MeetingStatus = 'planned' | 'overdue' | 'completed'
 
 type Props = {
   status: MeetingStatus
@@ -9,6 +9,14 @@ export function MeetingStatusBadge({ status }: Props) {
     return (
       <span className="inline-flex items-center rounded-full border border-zinc-300 bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
         Proběhlo
+      </span>
+    )
+  }
+
+  if (status === 'overdue') {
+    return (
+      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+        Po termínu
       </span>
     )
   }

@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import CommentSection from '@/components/comments/comment-section'
 
 type ClientRow = {
   id: string
@@ -78,13 +77,11 @@ function resolveAssigneeName(
 }
 
 function getTaskStatusLabel(status: string | null) {
-  if (status === 'in_progress') return 'Rozpracováno'
   if (status === 'done') return 'Hotovo'
   return 'K vyřízení'
 }
 
 function getTaskStatusClass(status: string | null) {
-  if (status === 'in_progress') return 'bg-amber-100 text-amber-700'
   if (status === 'done') return 'bg-emerald-100 text-emerald-700'
   return 'bg-slate-100 text-slate-700'
 }
@@ -282,12 +279,6 @@ export default async function ClientDetailPage({
             </div>
           </div>
         </section>
-
-        <CommentSection
-          entityType="client"
-          entityId={typedClient.id}
-          path={`/clients/${typedClient.id}`}
-        />
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">

@@ -61,29 +61,6 @@ export default async function ClientsPage({
   }
 
   const typedClients = (clients ?? []) as ClientRow[]
-  const clientIds = typedClients.map((client) => client.id)
-
-  const { data: commentRows, error: commentsError } = clientIds.length
-    ? await supabase
-        .from('comments')
-        .select('entity_id')
-        .eq('entity_type', 'client')
-        .in('entity_id', clientIds)
-    : { data: [], error: null }
-
-  if (commentsError) {
-    throw new Error('Nepodařilo se načíst počty komentářů ke klientům.')
-  }
-
-  const commentCountByClientId = new Map<string, number>()
-
-  for (const row of commentRows ?? []) {
-    const entityId = row.entity_id as string
-    commentCountByClientId.set(
-      entityId,
-      (commentCountByClientId.get(entityId) ?? 0) + 1
-    )
-  }
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -190,7 +167,6 @@ export default async function ClientsPage({
                       <th className="px-5 py-4">Kontaktní osoba</th>
                       <th className="px-5 py-4">Telefon</th>
                       <th className="px-5 py-4">E-mail</th>
-                      <th className="px-5 py-4 text-center">Komentáře</th>
                       <th className="px-5 py-4">Vytvořeno</th>
                       <th className="px-5 py-4 text-right">Akce</th>
                     </tr>
@@ -198,9 +174,6 @@ export default async function ClientsPage({
 
                   <tbody className="divide-y divide-gray-100">
                     {typedClients.map((client) => {
-                      const commentCount =
-                        commentCountByClientId.get(client.id) ?? 0
-
                       return (
                         <tr
                           key={client.id}
@@ -237,12 +210,6 @@ export default async function ClientsPage({
                             </div>
                           </td>
 
-                          <td className="px-5 py-4 text-center">
-                            <span className="inline-flex min-w-10 items-center justify-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
-                              {commentCount}
-                            </span>
-                          </td>
-
                           <td className="px-5 py-4 text-sm text-gray-600">
                             {formatDate(client.created_at)}
                           </td>
@@ -269,8 +236,6 @@ export default async function ClientsPage({
 
             <section className="grid gap-3 lg:hidden">
               {typedClients.map((client) => {
-                const commentCount = commentCountByClientId.get(client.id) ?? 0
-
                 return (
                   <div
                     key={client.id}
@@ -295,9 +260,6 @@ export default async function ClientsPage({
                         </p>
                       </div>
 
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
-                        💬 {commentCount}
-                      </span>
                     </div>
 
                     <div className="mt-4 grid gap-2 text-sm text-gray-600">

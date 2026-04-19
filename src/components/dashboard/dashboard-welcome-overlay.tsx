@@ -14,7 +14,6 @@ type DashboardWelcomeOverlayProps = {
   shouldShow: boolean
   profileName: string
   newTasksCount: number
-  newCommentsCount: number
   todayMeetingsCount: number
   overdueTasksCount: number
   headline?: string
@@ -37,7 +36,6 @@ export function DashboardWelcomeOverlay({
   shouldShow,
   profileName,
   newTasksCount,
-  newCommentsCount,
   todayMeetingsCount,
   overdueTasksCount,
   headline,
@@ -66,7 +64,7 @@ export function DashboardWelcomeOverlay({
 
   if (!isOpen) return null
 
-  const hasUpdates = newTasksCount > 0 || newCommentsCount > 0
+  const hasUpdates = newTasksCount > 0
 
   const title = headline ?? (hasUpdates ? 'Máme pro Tebe novinky' : 'Vítej zpět')
 
@@ -180,27 +178,6 @@ export function DashboardWelcomeOverlay({
                   </div>
                 )}
 
-                {newCommentsCount > 0 && (
-                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                      Nové komentáře
-                    </div>
-                    <div className="mt-1 text-sm text-zinc-800">
-                      Přibyly{' '}
-                      <span className="font-semibold text-zinc-950">
-                        {newCommentsCount} nové{' '}
-                        {pluralize(
-                          newCommentsCount,
-                          'komentář',
-                          'komentáře',
-                          'komentářů'
-                        )}
-                      </span>
-                      .
-                    </div>
-                  </div>
-                )}
-
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                     Dnešek
@@ -274,16 +251,6 @@ export function DashboardWelcomeOverlay({
                 className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium text-white"
               >
                 OTEVŘÍT ÚKOLY
-              </button>
-            )}
-
-            {newCommentsCount > 0 && (
-              <button
-                onClick={() => handleAction('/activity')}
-                disabled={isPending}
-                className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700"
-              >
-                OTEVŘÍT AKTIVITU
               </button>
             )}
 

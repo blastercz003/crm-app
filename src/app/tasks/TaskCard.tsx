@@ -3,8 +3,6 @@ import { TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
 import { deleteTask, updateTaskStatus } from './actions'
 import EditTaskButton from './edit-task-button'
 import {
-  getPriorityBadgeClass,
-  getPriorityLabel,
   getStatusBadgeClass,
   getStatusLabel,
 } from './taskUi'
@@ -131,125 +129,96 @@ export default function TaskCard({
 
   const completeTaskAction = updateTaskStatus.bind(null, task.id, 'done')
   const deleteTaskAction = deleteTask.bind(null, task.id)
+  const actionButtonClassName =
+    'inline-flex h-9 items-center justify-center rounded-xl px-3 text-xs font-medium transition'
 
   return (
     <div className={cardClassName}>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-semibold leading-tight text-zinc-950 md:text-lg">
-                {task.title}
-              </h3>
+            <h3 className="break-words text-sm font-semibold text-zinc-900 md:text-base">
+              {task.title}
+            </h3>
 
-              <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
-                💬 {task.comment_count}
-              </span>
-            </div>
-
-            <div className="mt-2 text-sm text-zinc-500">
-              <span className="text-zinc-400">Klient:</span> {clientName}
+            <div className="mt-1 text-sm text-zinc-600">
+              {clientName}
             </div>
 
             {task.note ? (
-              <div className="mt-3 rounded-xl bg-zinc-50 px-3 py-2.5">
-                <p className="whitespace-pre-wrap text-sm leading-5 text-zinc-700">
-                  {task.note}
-                </p>
+              <div className="mt-1 text-xs text-zinc-500">
+                {task.note}
               </div>
             ) : null}
           </div>
 
-          <div className="flex shrink-0 flex-col gap-2 md:w-[190px]">
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                Stav vyřízení
-              </div>
-              <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
-              >
-                {getStatusLabel(task.status)}
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 text-sm">
+            <div className={dueBadgeClassName}>
+              {formatDueDate(task.due_date)}
+            </div>
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
+              style={task.status === 'todo' ? { backgroundColor: '#2980B9' } : undefined}
+            >
+              {getStatusLabel(task.status)}
+            </span>
+            {isOverdue ? (
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
+                Po termínu
               </span>
-            </div>
-
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                Priorita
-              </div>
-              <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
-              >
-                {getPriorityLabel(task.priority)}
+            ) : null}
+            {isToday ? (
+              <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
+                Dnes
               </span>
-            </div>
-
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                Termín
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className={dueBadgeClassName}>
-                  {formatDueDate(task.due_date)}
-                </span>
-
-                {isOverdue ? (
-                  <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
-                    Po termínu
-                  </span>
-                ) : null}
-
-                {isToday ? (
-                  <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
-                    Dnes
-                  </span>
-                ) : null}
-              </div>
-            </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-zinc-200/80 pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/tasks/${task.id}`}
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
-            >
-              DETAIL
-            </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/tasks/${task.id}`}
+            className={`${actionButtonClassName} border border-gray-200 bg-white text-gray-700 hover:bg-gray-100`}
+          >
+            DETAIL
+          </Link>
 
-            <EditTaskButton
-              task={{
-                id: task.id,
-                title: task.title,
-                note: task.note,
-                due_date: task.due_date,
-                status: task.status,
-                priority: task.priority,
-                assigned_to: task.assigned_to,
-                client_id: task.client_id,
-                company_name: task.company_name,
-                contact_person: task.contact_person,
-              }}
-              users={users}
-              clients={clients}
-              label="UPRAVIT"
-            />
+          <EditTaskButton
+            task={{
+              id: task.id,
+              title: task.title,
+              note: task.note,
+              due_date: task.due_date,
+              status: task.status,
+              priority: task.priority,
+              assigned_to: task.assigned_to,
+              client_id: task.client_id,
+              company_name: task.company_name,
+              contact_person: task.contact_person,
+            }}
+            users={users}
+            clients={clients}
+            className={`${actionButtonClassName} bg-zinc-900 text-white hover:bg-zinc-800`}
+            label="UPRAVIT"
+          />
 
-            {task.status !== 'done' ? (
-              <form action={completeTaskAction}>
-                <button className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800">
-                  DOKONČIT
-                </button>
-              </form>
-            ) : (
-              <span className="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-                VYŘEŠENO
-              </span>
-            )}
-          </div>
+          {task.status !== 'done' ? (
+            <form action={completeTaskAction}>
+              <button
+                className={`${actionButtonClassName} text-white hover:opacity-90`}
+                style={{ backgroundColor: '#2980B9' }}
+              >
+                DOKONČIT
+              </button>
+            </form>
+          ) : (
+            <span className={`${actionButtonClassName} bg-emerald-50 text-emerald-700`}>
+              VYŘEŠENO
+            </span>
+          )}
 
           <form action={deleteTaskAction}>
-            <button className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
+            <button className={`${actionButtonClassName} border border-red-200 bg-white text-red-600 hover:bg-red-50`}>
               SMAZAT
             </button>
           </form>

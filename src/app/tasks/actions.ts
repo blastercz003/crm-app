@@ -14,7 +14,7 @@ export type CreateTaskActionState = TaskFormActionState
 export type UpdateTaskActionState = TaskFormActionState
 
 function normalizeStatus(value: FormDataEntryValue | null): string {
-  const allowed = ['todo', 'in_progress', 'done']
+  const allowed = ['todo', 'done']
   const str = String(value ?? 'todo')
   return allowed.includes(str) ? str : 'todo'
 }
@@ -82,7 +82,7 @@ async function createTaskRecord(formData: FormData) {
   const due_date = normalizeOptionalString(formData.get('due_date'))
   const assigned_to = normalizeOptionalString(formData.get('assigned_to'))
   const status = normalizeStatus(formData.get('status'))
-  const priority = normalizePriority(formData.get('priority'))
+  const priority = 'medium'
 
   const clientId = normalizeClientId(formData.get('client_id'))
   const rawCompanyName = normalizeOptionalString(formData.get('company_name'))
@@ -132,7 +132,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const due_date = normalizeOptionalString(formData.get('due_date'))
   const assigned_to = normalizeOptionalString(formData.get('assigned_to'))
   const status = normalizeStatus(formData.get('status'))
-  const priority = normalizePriority(formData.get('priority'))
+  const submittedPriority = formData.get('priority')
 
   const clientId = normalizeClientId(formData.get('client_id'))
   const rawCompanyName = normalizeOptionalString(formData.get('company_name'))
@@ -144,7 +144,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
-    .select('id, created_by, assigned_to, client_id')
+    .select('id, created_by, assigned_to, client_id, priority')
     .eq('id', taskId)
     .single()
 
@@ -167,6 +167,11 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     companyName: rawCompanyName,
     contactPerson: rawContactPerson,
   })
+
+  const priority =
+    submittedPriority === null
+      ? existingTask.priority ?? 'medium'
+      : normalizePriority(submittedPriority)
 
   const { error } = await supabase
     .from('tasks')
@@ -256,9 +261,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = await createClient()
   const currentProfile = await getCurrentProfile()
 
-  const normalizedStatus = ['todo', 'in_progress', 'done'].includes(status)
-    ? status
-    : 'todo'
+  const normalizedStatus = ['todo', 'done'].includes(status) ? status : 'todo'
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')

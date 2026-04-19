@@ -2,8 +2,6 @@ export function getStatusLabel(status: string | null | undefined) {
   switch (status) {
     case 'todo':
       return 'K vyřízení'
-    case 'in_progress':
-      return 'Rozpracováno'
     case 'done':
       return 'Hotovo'
     default:
@@ -27,9 +25,7 @@ export function getPriorityLabel(priority: string | null | undefined) {
 export function getStatusBadgeClass(status: string | null | undefined) {
   switch (status) {
     case 'todo':
-      return 'bg-gray-100 text-gray-800'
-    case 'in_progress':
-      return 'bg-blue-100 text-blue-800'
+      return 'text-white'
     case 'done':
       return 'bg-green-100 text-green-800'
     default:

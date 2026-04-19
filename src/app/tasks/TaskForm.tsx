@@ -295,22 +295,6 @@ export default function TaskForm({
         </div>
 
         <div>
-          <label htmlFor="priority" className={labelClassName}>
-            Priorita
-          </label>
-          <select
-            id="priority"
-            name="priority"
-            defaultValue={initialValues?.priority ?? 'medium'}
-            className={inputClassName}
-          >
-            <option value="low">Nízká</option>
-            <option value="medium">Střední</option>
-            <option value="high">Vysoká</option>
-          </select>
-        </div>
-
-        <div>
           <label htmlFor="status" className={labelClassName}>
             Stav
           </label>
@@ -321,7 +305,6 @@ export default function TaskForm({
             className={inputClassName}
           >
             <option value="todo">K vyřízení</option>
-            <option value="in_progress">Rozpracováno</option>
             <option value="done">Hotovo</option>
           </select>
         </div>
