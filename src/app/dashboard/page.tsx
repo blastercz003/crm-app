@@ -893,7 +893,7 @@ function ClientsCard() {
 
         <Link
           href="/clients"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+          className="inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-2xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition duration-200 hover:bg-zinc-800 sm:min-h-[46px] sm:px-5 sm:py-3 sm:text-sm sm:tracking-[0.04em]"
         >
           OTEVŘÍT KLIENTY
         </Link>
@@ -917,7 +917,7 @@ function JobsCard() {
 
         <Link
           href="/jobs"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+          className="inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-2xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition duration-200 hover:bg-zinc-800 sm:min-h-[46px] sm:px-5 sm:py-3 sm:text-sm sm:tracking-[0.04em]"
         >
           OTEVŘÍT ZAKÁZKY
         </Link>
@@ -941,7 +941,7 @@ function JobsPortalCard() {
 
         <Link
           href="/jobs-portal"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+          className="inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-2xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition duration-200 hover:bg-zinc-800 sm:min-h-[46px] sm:px-5 sm:py-3 sm:text-sm sm:tracking-[0.04em]"
         >
           OTEVŘÍT PORTÁL
         </Link>
@@ -965,7 +965,7 @@ function FinanceCard() {
 
         <Link
           href="/faktury"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+          className="inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-2xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition duration-200 hover:bg-zinc-800 sm:min-h-[46px] sm:px-5 sm:py-3 sm:text-sm sm:tracking-[0.04em]"
         >
           OTEVŘÍT FINANCE
         </Link>
