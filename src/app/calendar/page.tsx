@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import CalendarClient, { type CalendarEvent } from './calendar-client'
+import { NewMeetingButton } from '@/app/meetings/new-meeting-button'
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 
@@ -14,6 +15,11 @@ type CalendarMeetingRow = {
   status: 'planned' | 'completed'
   assigned_user_id: string | null
   created_by: string | null
+}
+
+type ClientOption = {
+  id: string
+  name: string
 }
 
 function buildEventTitle(meeting: CalendarMeetingRow) {
@@ -307,6 +313,7 @@ export default async function CalendarPage() {
     todayMeetingsCountResponse,
     weeklyMeetingsCountResponse,
     totalPlannedCountResponse,
+    clientsResponse,
   ] = await Promise.all([
     supabase
       .from('meetings')
@@ -346,6 +353,11 @@ export default async function CalendarPage() {
       .eq('assigned_user_id', user.id)
       .eq('status', 'planned')
       .not('meeting_datetime', 'is', null),
+
+    supabase
+      .from('clients')
+      .select('id, name')
+      .order('name', { ascending: true }),
   ])
 
   if (meetingsResponse.error) {
@@ -370,7 +382,12 @@ export default async function CalendarPage() {
     )
   }
 
+  if (clientsResponse.error) {
+    throw new Error('Nepodařilo se načíst klienty.')
+  }
+
   const meetings = (meetingsResponse.data ?? []) as CalendarMeetingRow[]
+  const clientOptions = (clientsResponse.data ?? []) as ClientOption[]
 
   const events: CalendarEvent[] = meetings
     .filter((meeting) => Boolean(meeting.meeting_datetime))
@@ -442,12 +459,7 @@ export default async function CalendarPage() {
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <Link
-                href="/meetings/new"
-                className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f]"
-              >
-                NOVÁ SCHŮZKA
-              </Link>
+              <NewMeetingButton clients={clientOptions} />
             </div>
           </div>
         </section>
