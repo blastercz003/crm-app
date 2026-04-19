@@ -661,7 +661,7 @@ export default async function MeetingsPage({
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <StatCard label="Celkem" value={totalCount} />
                 <StatCard label="Plánované" value={visiblePlannedMeetings.length} />
                 <StatCard label="Po termínu" value={visibleOverdueMeetings.length} />

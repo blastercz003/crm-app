@@ -59,9 +59,10 @@ export default async function EditClientPage({
 
             <Link
               href={`/clients/${typedClient.id}`}
-              className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              style={{ backgroundColor: '#2980B9' }}
             >
-              Zpět na detail
+              ZPĚT NA DETAIL
             </Link>
           </div>
         </section>
@@ -191,14 +192,14 @@ export default async function EditClientPage({
                   href={`/clients/${typedClient.id}`}
                   className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                 >
-                  Zrušit
+                  ZRUŠIT
                 </Link>
 
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
                 >
-                  Uložit změny
+                  ULOŽIT ZMĚNY
                 </button>
               </div>
             </form>
@@ -220,7 +221,7 @@ export default async function EditClientPage({
                     type="submit"
                     className="inline-flex items-center justify-center rounded-2xl border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
                   >
-                    Smazat klienta
+                    SMAZAT KLIENTA
                   </button>
                 </form>
               </div>

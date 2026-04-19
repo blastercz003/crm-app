@@ -175,16 +175,17 @@ export default async function ClientDetailPage({
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/clients"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                style={{ backgroundColor: '#2980B9' }}
               >
-                Zpět na klienty
+                ZPĚT NA KLIENTY
               </Link>
 
               <Link
                 href={`/clients/${typedClient.id}/edit`}
-                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               >
-                Upravit klienta
+                UPRAVIT KLIENTA
               </Link>
             </div>
           </div>

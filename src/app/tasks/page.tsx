@@ -293,8 +293,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <StatCard label="Celkem" value={totalVisibleCount} />
+              <div className="grid grid-cols-4 gap-2">
                 <StatCard label="Aktivní mně" value={visibleAssignedActive.length} />
                 <StatCard
                   label="Aktivní ostatním"
@@ -306,6 +305,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                     visibleAssignedResolved.length + visibleDelegatedResolved.length
                   }
                 />
+                <StatCard label="Celkem" value={totalVisibleCount} />
               </div>
             </div>
           </div>
