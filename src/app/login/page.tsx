@@ -25,12 +25,12 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError('Přihlášení se nepodařilo.')
+      setError(error.message || 'Přihlášení se nepodařilo.')
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
+    router.replace('/dashboard')
     router.refresh()
   }
 
