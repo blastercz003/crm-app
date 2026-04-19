@@ -63,6 +63,20 @@ const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const STATUS_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
 const EVIDENCE_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
 
+function getEffectiveJobStatus(job: JobRow): JobStatus {
+  if (job.job_status !== 'realizace' && job.job_status !== 'ukoncena') {
+    return job.job_status
+  }
+
+  const endAt = new Date(job.end_at)
+
+  if (Number.isNaN(endAt.getTime())) {
+    return job.job_status
+  }
+
+  return endAt.getTime() < Date.now() ? 'ukoncena' : 'realizace'
+}
+
 export function JobsInteractiveTable({
   jobs,
   clientSuggestions,
@@ -401,16 +415,23 @@ function EditableCell({
   }
 
   if (!canEdit) {
+    const displayValue = type === 'datetime' ? formatDateTime(value) : value || '—'
+
     return (
       <td className={cellClassName}>
-        <div className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]">
+        <div
+          className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
+          title={displayValue}
+        >
           <span className="block truncate">
-            {type === 'datetime' ? formatDateTime(value) : value || '—'}
+            {displayValue}
           </span>
         </div>
       </td>
     )
   }
+
+  const displayValue = type === 'datetime' ? formatDateTime(value) : value || '—'
 
   return (
     <td className={cellClassName}>
@@ -418,10 +439,10 @@ function EditableCell({
         type="button"
         onClick={() => setIsEditing(true)}
         className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
-        title="Klikni pro úpravu"
+        title={displayValue}
       >
         <span className="block truncate">
-          {type === 'datetime' ? formatDateTime(value) : value || '—'}
+          {displayValue}
         </span>
       </button>
     </td>
@@ -550,7 +571,7 @@ function JobStatusButton({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const meta = getJobStatusMeta(job.job_status)
+  const meta = getJobStatusMeta(getEffectiveJobStatus(job))
 
   const options: { value: JobStatus; label: string; className: string }[] = [
     getJobStatusMeta('nova'),
