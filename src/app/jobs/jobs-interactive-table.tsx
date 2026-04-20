@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import {
   updateJobEvidenceStatusAction,
   updateJobInfoAction,
@@ -8,6 +8,7 @@ import {
   updateJobStatusAction,
 } from './actions'
 import { EditJobButton } from './edit-job-button'
+import { HandoverProtocolButton } from './handover-protocol-button'
 
 type JobStatus =
   | 'nova'
@@ -77,6 +78,14 @@ function getEffectiveJobStatus(job: JobRow): JobStatus {
   return endAt.getTime() < Date.now() ? 'ukoncena' : 'realizace'
 }
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('cs')
+}
+
 export function JobsInteractiveTable({
   jobs,
   clientSuggestions,
@@ -114,7 +123,7 @@ export function JobsInteractiveTable({
               <th className="w-[96px] px-2 py-2 print:w-[88px] print:px-1.5 print:py-1.5">
                 Agregát
               </th>
-              <th className="w-[86px] px-2 py-2 text-center print:hidden">
+              <th className="w-[128px] px-2 py-2 text-center print:hidden">
                 Info
               </th>
               <th className="w-[112px] px-2 py-2 text-center print:w-[108px] print:px-1.5 print:py-1.5">
@@ -181,7 +190,8 @@ function DesktopRow({
         job={job}
         field="company_name"
         value={job.company_name}
-        canEdit={false}
+        canEdit={isAdmin}
+        clientSuggestions={clientSuggestions}
       />
       <EditableCell
         job={job}
@@ -231,7 +241,10 @@ function DesktopRow({
       />
 
       <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:hidden">
-        <InfoNoteButton job={job} compact canEdit />
+        <div className="flex items-center justify-center gap-2">
+          <HandoverProtocolButton job={job} />
+          <InfoNoteButton job={job} compact canEdit />
+        </div>
       </td>
 
       <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:rounded-none print:border print:px-1.5 print:py-1.5">
@@ -299,6 +312,7 @@ function MobileCard({
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
+          <HandoverProtocolButton job={job} />
           <InfoNoteButton job={job} canEdit />
           <JobStatusButton job={job} canEdit />
         </div>
@@ -314,6 +328,7 @@ function EditableCell({
   type = 'text',
   printHidden = false,
   canEdit,
+  clientSuggestions = [],
 }: {
   job: JobRow
   field: InlineEditableField
@@ -321,7 +336,20 @@ function EditableCell({
   type?: 'text' | 'datetime'
   printHidden?: boolean
   canEdit: boolean
+  clientSuggestions?: ClientOption[]
 }) {
+  if (field === 'company_name') {
+    return (
+      <EditableCompanyCell
+        job={job}
+        value={value}
+        printHidden={printHidden}
+        canEdit={canEdit}
+        clientSuggestions={clientSuggestions}
+      />
+    )
+  }
+
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState(
     type === 'datetime' ? toDateTimeLocalValue(value) : (value ?? '')
@@ -444,6 +472,226 @@ function EditableCell({
         <span className="block truncate">
           {displayValue}
         </span>
+      </button>
+    </td>
+  )
+}
+
+function EditableCompanyCell({
+  job,
+  value,
+  printHidden = false,
+  canEdit,
+  clientSuggestions,
+}: {
+  job: JobRow
+  value: string | null
+  printHidden?: boolean
+  canEdit: boolean
+  clientSuggestions: ClientOption[]
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const companyOptions = useMemo(() => {
+    const map = new Map<string, ClientOption>()
+
+    clientSuggestions.forEach((client) => {
+      const id = client.id.trim()
+      const name = client.name.trim()
+
+      if (!id || !name) return
+
+      map.set(id, { id, name })
+    })
+
+    if (job.client_id && (value ?? '').trim()) {
+      map.set(job.client_id, {
+        id: job.client_id,
+        name: (value ?? '').trim(),
+      })
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, 'cs', { sensitivity: 'base' })
+    )
+  }, [clientSuggestions, job.client_id, value])
+
+  const [companyName, setCompanyName] = useState(value ?? '')
+  const [selectedClientId, setSelectedClientId] = useState(job.client_id ?? '')
+
+  useEffect(() => {
+    setCompanyName(value ?? '')
+    setSelectedClientId(job.client_id ?? '')
+  }, [job.client_id, value])
+
+  useEffect(() => {
+    if (isEditing && canEdit) {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(companyName.length, companyName.length)
+    }
+  }, [canEdit, companyName.length, isEditing])
+
+  const cellClassName = `border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:border print:px-1.5 print:py-1.5 ${
+    printHidden ? 'print:hidden' : ''
+  }`
+
+  const selectedClient =
+    companyOptions.find((client) => client.id === selectedClientId) ?? null
+
+  const companySelectionIsValid =
+    Boolean(selectedClientId) &&
+    Boolean(selectedClient) &&
+    companyName.trim() === (selectedClient?.name ?? '')
+
+  function setAutocompleteSelection(start: number, end: number) {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(start, end)
+    })
+  }
+
+  function handleCompanyChange(nextRawValue: string) {
+    const trimmedValue = nextRawValue.trim()
+    const normalizedValue = normalizeSearchText(trimmedValue)
+
+    if (!trimmedValue) {
+      setCompanyName('')
+      setSelectedClientId('')
+      return
+    }
+
+    const exactMatch =
+      companyOptions.find(
+        (client) => normalizeSearchText(client.name) === normalizedValue
+      ) ?? null
+
+    if (exactMatch) {
+      setCompanyName(exactMatch.name)
+      setSelectedClientId(exactMatch.id)
+      return
+    }
+
+    const prefixMatches = companyOptions.filter((client) =>
+      normalizeSearchText(client.name).startsWith(normalizedValue)
+    )
+
+    if (prefixMatches.length === 1) {
+      const matchedClient = prefixMatches[0]
+      const completedName = matchedClient.name
+
+      setCompanyName(completedName)
+      setSelectedClientId(matchedClient.id)
+      setAutocompleteSelection(nextRawValue.length, completedName.length)
+      return
+    }
+
+    setCompanyName(nextRawValue)
+    setSelectedClientId('')
+  }
+
+  function cancelEditing() {
+    setCompanyName(value ?? '')
+    setSelectedClientId(job.client_id ?? '')
+    setIsEditing(false)
+  }
+
+  function saveValue() {
+    const originalValue = value ?? ''
+    const originalClientId = job.client_id ?? ''
+
+    if (
+      companyName === originalValue &&
+      (selectedClientId ?? '') === originalClientId
+    ) {
+      setIsEditing(false)
+      return
+    }
+
+    if (!companySelectionIsValid) {
+      cancelEditing()
+      return
+    }
+
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.set('field', 'company_name')
+      formData.set('value', companyName.trim())
+      formData.set('client_id', selectedClientId)
+
+      const result = await updateJobInlineFieldAction(
+        job.id,
+        { success: false, error: null },
+        formData
+      )
+
+      if (!result.success) {
+        alert(result.error ?? 'Firmu se nepodařilo uložit.')
+        cancelEditing()
+        return
+      }
+
+      setIsEditing(false)
+    })
+  }
+
+  const displayValue = value || '—'
+
+  if (isEditing && canEdit) {
+    return (
+      <td
+        className={`border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-1.5 align-middle ${
+          printHidden ? 'print:hidden' : 'print:border print:px-1.5 print:py-1.5'
+        }`}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={companyName}
+          disabled={isPending}
+          onChange={(event) => handleCompanyChange(event.target.value)}
+          onBlur={saveValue}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              saveValue()
+            }
+
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              cancelEditing()
+            }
+          }}
+          autoComplete="off"
+          className="h-8 w-full rounded-lg border border-gray-300 bg-white px-2 text-[12px] text-gray-900 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+        />
+      </td>
+    )
+  }
+
+  if (!canEdit) {
+    return (
+      <td className={cellClassName}>
+        <div
+          className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
+          title={displayValue}
+        >
+          <span className="block truncate">{displayValue}</span>
+        </div>
+      </td>
+    )
+  }
+
+  return (
+    <td className={cellClassName}>
+      <button
+        type="button"
+        onClick={() => setIsEditing(true)}
+        className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
+        title={displayValue}
+      >
+        <span className="block truncate">{displayValue}</span>
       </button>
     </td>
   )

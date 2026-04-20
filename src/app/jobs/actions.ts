@@ -892,6 +892,7 @@ export async function updateJobInlineFieldAction(
 
   const field = String(formData.get('field') ?? '').trim()
   const value = formData.get('value')
+  const clientId = normalizeUuid(formData.get('client_id'))
 
   if (!isInlineEditableField(field)) {
     return {
@@ -908,9 +909,46 @@ export async function updateJobInlineFieldAction(
   }
 
   if (field === 'company_name') {
+    if (!clientId) {
+      return {
+        success: false,
+        error: 'Vyber existující firmu ze seznamu klientů.',
+      }
+    }
+
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('id, name')
+      .eq('id', clientId)
+      .single()
+
+    if (clientError || !client) {
+      return {
+        success: false,
+        error: 'Vybranou firmu se nepodařilo najít v seznamu klientů.',
+      }
+    }
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        client_id: client.id,
+        company_name: client.name,
+      })
+      .eq('id', normalizedJobId)
+
+    if (error) {
+      return {
+        success: false,
+        error: 'Firmu se nepodařilo uložit.',
+      }
+    }
+
+    revalidateAllRelatedPaths()
+
     return {
-      success: false,
-      error: 'Firmu už není možné měnit ručně. Vybírá se z klientů.',
+      success: true,
+      error: null,
     }
   }
 
