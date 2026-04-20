@@ -692,7 +692,6 @@ export default async function MeetingsPage({
 
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
-                <StatCard label="Celkem" value={totalCount} variant="neutral" />
                 <StatCard
                   label="Plánované"
                   value={visiblePlannedMeetings.length}
@@ -709,6 +708,7 @@ export default async function MeetingsPage({
                   variant="success"
                 />
                 <StatCard label="S úkolem" value={taskCount} variant="neutral" />
+                <StatCard label="Celkem" value={totalCount} variant="neutral" />
               </div>
 
               {isAdminTeamView ? (
