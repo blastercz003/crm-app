@@ -19,6 +19,7 @@ type TaskSectionProps = {
   users: UserOption[]
   clients: ClientOption[]
   muted?: boolean
+  countVariant?: 'primary' | 'dark' | 'success' | 'neutral'
 }
 
 export default function TaskSection({
@@ -28,7 +29,19 @@ export default function TaskSection({
   users,
   clients,
   muted = false,
+  countVariant = 'neutral',
 }: TaskSectionProps) {
+  const countClassName =
+    countVariant === 'primary'
+      ? 'border-transparent bg-[#2980B9] text-white'
+      : countVariant === 'dark'
+        ? 'border-transparent bg-zinc-800 text-white'
+        : countVariant === 'success'
+          ? 'border-green-100 bg-green-100 text-green-800'
+          : muted
+            ? 'bg-white text-zinc-500 ring-1 ring-zinc-200'
+            : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
+
   return (
     <section
       className={`rounded-[24px] border shadow-sm ${
@@ -56,11 +69,7 @@ export default function TaskSection({
           </div>
 
           <span
-            className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-2.5 text-xs font-semibold ${
-              muted
-                ? 'bg-white text-zinc-500 ring-1 ring-zinc-200'
-                : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
-            }`}
+            className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-2.5 text-xs font-semibold ${countClassName}`}
           >
             {tasks.length}
           </span>

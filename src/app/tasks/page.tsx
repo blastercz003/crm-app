@@ -340,20 +340,20 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             <div className="space-y-4">
               <TaskSection
                 title="Úkoly přidělené mně"
-                description="Aktuálně otevřené úkoly, které mám splnit."
                 tasks={visibleAssignedActive}
                 users={users}
                 clients={clientOptions}
+                countVariant="primary"
               />
             </div>
 
             <div className="space-y-4">
               <TaskSection
                 title="Úkoly, které jsem zadal ostatním"
-                description="Aktivní delegované úkoly."
                 tasks={visibleDelegatedActive}
                 users={users}
                 clients={clientOptions}
+                countVariant="dark"
               />
             </div>
           </section>
@@ -373,20 +373,20 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             <div className="grid gap-4 xl:grid-cols-2">
               <TaskSection
                 title="Vyřešené přidělené mně"
-                description="Dokončené položky, které jsem měl splnit."
                 tasks={visibleAssignedResolved}
                 users={users}
                 clients={clientOptions}
                 muted
+                countVariant="success"
               />
 
               <TaskSection
                 title="Vyřešené zadané ostatním"
-                description="Dokončené delegované úkoly bez vlastních duplicit."
                 tasks={visibleDelegatedResolved}
                 users={users}
                 clients={clientOptions}
                 muted
+                countVariant="success"
               />
             </div>
           </section>
@@ -410,21 +410,21 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
               {view !== 'resolved' ? (
                 <TaskSection
                   title="Všechny aktivní úkoly"
-                  description="Všechny otevřené úkoly v systému."
                   tasks={visibleAdminActive}
                   users={users}
                   clients={clientOptions}
+                  countVariant="dark"
                 />
               ) : null}
 
               {view !== 'active' ? (
                 <TaskSection
                   title="Všechny vyřešené úkoly"
-                  description="Všechny dokončené úkoly v systému."
                   tasks={visibleAdminResolved}
                   users={users}
                   clients={clientOptions}
                   muted
+                  countVariant="success"
                 />
               ) : null}
             </div>

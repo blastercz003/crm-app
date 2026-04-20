@@ -271,10 +271,10 @@ function MeetingListItem({
   const previewCompanyLabel = truncateMeetingCompanyLabel(companyLabel)
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50">
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-100">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2.5 text-sm">
-          <div className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
+          <div className="shrink-0 whitespace-nowrap rounded-xl border border-transparent bg-[#2980B9] px-2.5 py-1 text-[11px] font-medium text-white">
             {formatCompactDateTime(meeting.meeting_datetime)}
           </div>
 
@@ -311,6 +311,7 @@ function MeetingSection({
   eyebrow,
   title,
   count,
+  countVariant = 'neutral',
   meetings,
   emptyText,
   isAdminView,
@@ -320,12 +321,22 @@ function MeetingSection({
   eyebrow: string
   title: string
   count: number
+  countVariant?: 'neutral' | 'primary' | 'dark' | 'success'
   meetings: MeetingRow[]
   emptyText: string
   isAdminView: boolean
   clients: ClientOption[]
   scrollClassName?: string
 }) {
+  const countClassName =
+    countVariant === 'primary'
+      ? 'border-transparent bg-[#2980B9] text-white'
+      : countVariant === 'dark'
+        ? 'border-transparent bg-zinc-800 text-white'
+        : countVariant === 'success'
+          ? 'border-green-200 bg-green-50 text-green-800'
+          : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -338,7 +349,9 @@ function MeetingSection({
           </h2>
         </div>
 
-        <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-600">
+        <span
+          className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm font-semibold ${countClassName}`}
+        >
           {count}
         </span>
       </div>
@@ -757,6 +770,7 @@ export default async function MeetingsPage({
               eyebrow="Aktuální agenda"
               title="Plánované"
               count={visiblePlannedMeetings.length}
+              countVariant="primary"
               meetings={visiblePlannedMeetings}
               emptyText="Pro zadaný filtr tu není žádná plánovaná schůzka."
               isAdminView={isAdminTeamView}
@@ -768,6 +782,7 @@ export default async function MeetingsPage({
               eyebrow="Potřebuje řešení"
               title="Po termínu"
               count={visibleOverdueMeetings.length}
+              countVariant="dark"
               meetings={visibleOverdueMeetings}
               emptyText="Pro zadaný filtr tu není žádná schůzka po termínu."
               isAdminView={isAdminTeamView}
@@ -779,6 +794,7 @@ export default async function MeetingsPage({
               eyebrow="Historie"
               title="Proběhlé"
               count={visibleCompletedMeetings.length}
+              countVariant="success"
               meetings={visibleCompletedMeetings}
               emptyText="Pro zadaný filtr tu není žádná proběhlá schůzka."
               isAdminView={isAdminTeamView}
@@ -793,6 +809,7 @@ export default async function MeetingsPage({
             eyebrow="Aktuální agenda"
             title="Plánované"
             count={visiblePlannedMeetings.length}
+            countVariant="primary"
             meetings={visiblePlannedMeetings}
             emptyText="Pro zadaný filtr tu není žádná plánovaná schůzka."
             isAdminView={isAdminTeamView}
@@ -805,6 +822,7 @@ export default async function MeetingsPage({
             eyebrow="Potřebuje řešení"
             title="Po termínu"
             count={visibleOverdueMeetings.length}
+            countVariant="dark"
             meetings={visibleOverdueMeetings}
             emptyText="Pro zadaný filtr tu není žádná schůzka po termínu."
             isAdminView={isAdminTeamView}
@@ -817,6 +835,7 @@ export default async function MeetingsPage({
             eyebrow="Historie"
             title="Proběhlé"
             count={visibleCompletedMeetings.length}
+            countVariant="success"
             meetings={visibleCompletedMeetings}
             emptyText="Pro zadaný filtr tu není žádná proběhlá schůzka."
             isAdminView={isAdminTeamView}

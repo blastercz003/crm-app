@@ -175,14 +175,13 @@ function EditTaskModal({
               initialValues={task}
               error={state.error}
               extraActions={
-                <form action={deleteTaskAction}>
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-red-200 bg-white px-5 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                  >
-                    SMAZAT
-                  </button>
-                </form>
+                <button
+                  type="submit"
+                  formAction={deleteTaskAction}
+                  className="rounded-lg border border-red-200 bg-white px-5 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                >
+                  SMAZAT
+                </button>
               }
             />
           </div>

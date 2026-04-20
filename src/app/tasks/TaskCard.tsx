@@ -118,12 +118,12 @@ export default function TaskCard({
   const { isToday, isOverdue } = getDueDateState(task.due_date, task.status)
 
   const cardClassName = [
-    'rounded-2xl border bg-white px-4 py-4 shadow-sm transition',
+    'rounded-2xl border px-4 py-4 shadow-sm transition',
     isOverdue
       ? 'border-red-300 bg-red-50/40'
       : isToday
         ? 'border-orange-300 bg-orange-50/40'
-        : 'border-zinc-200',
+        : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-zinc-100',
   ].join(' ')
 
   const dueBadgeClassName = [
