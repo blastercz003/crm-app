@@ -88,14 +88,22 @@ const PAGE_WITHOUT_SIGNATURE_CAPACITY = 12
 
 const logoPath = path.join(process.cwd(), 'public', 'logo.png')
 const logoDataUri = `data:image/png;base64,${readFileSync(logoPath).toString('base64')}`
-const arialRegularPath = '/System/Library/Fonts/Supplemental/Arial.ttf'
-const arialBoldPath = '/System/Library/Fonts/Supplemental/Arial Bold.ttf'
+const geistFontPath = path.join(
+  process.cwd(),
+  'node_modules',
+  'next',
+  'dist',
+  'compiled',
+  '@vercel',
+  'og',
+  'Geist-Regular.ttf'
+)
 
 Font.register({
   family: 'PPArial',
   fonts: [
-    { src: arialRegularPath, fontWeight: 400 },
-    { src: arialBoldPath, fontWeight: 700 },
+    { src: geistFontPath, fontWeight: 400 },
+    { src: geistFontPath, fontWeight: 700 },
   ],
 })
 
