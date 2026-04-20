@@ -576,13 +576,15 @@ export default async function FakturyPage({
                   >
                     Od dne
                   </label>
-                  <input
-                    id="date_from"
-                    name="date_from"
-                    type="date"
-                    defaultValue={dateFrom}
-                    className="block h-10 min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                  />
+                  <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 transition focus-within:border-gray-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-gray-200 sm:overflow-visible sm:border-0 sm:bg-transparent sm:focus-within:border-0 sm:focus-within:bg-transparent sm:focus-within:ring-0">
+                    <input
+                      id="date_from"
+                      name="date_from"
+                      type="date"
+                      defaultValue={dateFrom}
+                      className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-gray-200 sm:bg-gray-50 sm:transition sm:focus:border-gray-300 sm:focus:bg-white sm:focus:ring-2 sm:focus:ring-gray-200"
+                    />
+                  </div>
                 </div>
 
                 <div className="min-w-0">
@@ -592,13 +594,15 @@ export default async function FakturyPage({
                   >
                     Do dne
                   </label>
-                  <input
-                    id="date_to"
-                    name="date_to"
-                    type="date"
-                    defaultValue={dateTo}
-                    className="block h-10 min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                  />
+                  <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 transition focus-within:border-gray-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-gray-200 sm:overflow-visible sm:border-0 sm:bg-transparent sm:focus-within:border-0 sm:focus-within:bg-transparent sm:focus-within:ring-0">
+                    <input
+                      id="date_to"
+                      name="date_to"
+                      type="date"
+                      defaultValue={dateTo}
+                      className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-gray-200 sm:bg-gray-50 sm:transition sm:focus:border-gray-300 sm:focus:bg-white sm:focus:ring-2 sm:focus:ring-gray-200"
+                    />
+                  </div>
                 </div>
               </div>
 
