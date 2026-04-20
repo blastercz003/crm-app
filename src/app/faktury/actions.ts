@@ -8,6 +8,41 @@ export type UpdateFinanceInlineFieldActionState = {
   error: string | null
 }
 
+export type FinanceCostItem = {
+  id: string
+  label: string
+  presetKey: string | null
+  sortOrder: number
+  unitPrice: number
+  quantity: number
+  lineTotal: number
+}
+
+export type FinanceCostItemInput = {
+  label: string
+  presetKey?: string | null
+  sortOrder: number
+  unitPrice: number
+  quantity: number
+}
+
+export type LoadFinanceCostItemsActionState = {
+  success: boolean
+  error: string | null
+  items: FinanceCostItem[]
+}
+
+export type SaveFinanceCostItemsActionState = {
+  success: boolean
+  error: string | null
+  totalCost: number | null
+}
+
+export type DeleteFinanceCostItemsActionState = {
+  success: boolean
+  error: string | null
+}
+
 type ProfileRoleRow = {
   role: string | null
 }
@@ -16,7 +51,6 @@ const FINANCE_EDITABLE_FIELDS = [
   'info_note',
   'invoice_number',
   'sale_amount',
-  'cost_amount',
 ] as const
 
 type FinanceEditableField = (typeof FINANCE_EDITABLE_FIELDS)[number]
@@ -32,6 +66,21 @@ type NormalizeDecimalResult =
       value: null
       error: string
     }
+
+type JobFinanceAccessRow = {
+  id: string
+  job_id: string
+}
+
+type JobFinanceCostItemRow = {
+  id: string
+  label: string
+  preset_key: string | null
+  sort_order: number | null
+  unit_price: number | string | null
+  quantity: number | string | null
+  line_total: number | null
+}
 
 function isFinanceEditableField(value: string): value is FinanceEditableField {
   return FINANCE_EDITABLE_FIELDS.includes(value as FinanceEditableField)
@@ -77,6 +126,48 @@ function normalizeDecimal(value: FormDataEntryValue | null): NormalizeDecimalRes
     success: true,
     value: parsed,
     error: null,
+  }
+}
+
+function normalizeOptionalPresetKey(value: unknown) {
+  const text = String(value ?? '').trim()
+  return text.length > 0 ? text : null
+}
+
+function normalizeFiniteNumber(value: unknown) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().replace(',', '.')
+
+    if (!normalized) {
+      return null
+    }
+
+    const parsed = Number(normalized)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function mapFinanceCostItemRow(row: JobFinanceCostItemRow): FinanceCostItem {
+  return {
+    id: String(row.id),
+    label: String(row.label ?? '').trim(),
+    presetKey: normalizeOptionalPresetKey(row.preset_key),
+    sortOrder:
+      typeof row.sort_order === 'number' && row.sort_order >= 0
+        ? row.sort_order
+        : 0,
+    unitPrice: normalizeFiniteNumber(row.unit_price) ?? 0,
+    quantity: normalizeFiniteNumber(row.quantity) ?? 0,
+    lineTotal:
+      typeof row.line_total === 'number' && Number.isFinite(row.line_total)
+        ? row.line_total
+        : 0,
   }
 }
 
@@ -152,6 +243,317 @@ function revalidateFinancePaths(jobId?: string | null) {
   }
 
   revalidatePath('/jobs')
+}
+
+async function getFinanceAccessRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  financeId: string
+) {
+  const { data: financeRow, error } = await supabase
+    .from('job_finances')
+    .select('id, job_id')
+    .eq('id', financeId)
+    .single()
+
+  if (error || !financeRow) {
+    return {
+      success: false as const,
+      error: 'Nepodařilo se načíst finanční záznam.',
+      financeRow: null,
+    }
+  }
+
+  return {
+    success: true as const,
+    error: null,
+    financeRow: financeRow as JobFinanceAccessRow,
+  }
+}
+
+export async function getFinanceCostItemsAction(
+  financeId: string
+): Promise<LoadFinanceCostItemsActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+      items: [],
+    }
+  }
+
+  const normalizedFinanceId = String(financeId ?? '').trim()
+
+  if (!normalizedFinanceId) {
+    return {
+      success: false,
+      error: 'Chybí ID finančního záznamu.',
+      items: [],
+    }
+  }
+
+  const financeAccess = await getFinanceAccessRow(supabase, normalizedFinanceId)
+
+  if (!financeAccess.success) {
+    return {
+      success: false,
+      error: financeAccess.error,
+      items: [],
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('job_finance_cost_items')
+    .select(
+      'id, label, preset_key, sort_order, unit_price, quantity, line_total'
+    )
+    .eq('job_finance_id', normalizedFinanceId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    return {
+      success: false,
+      error: 'Nepodařilo se načíst nákladové položky.',
+      items: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    items: ((data ?? []) as JobFinanceCostItemRow[]).map(mapFinanceCostItemRow),
+  }
+}
+
+export async function saveFinanceCostItemsAction(
+  financeId: string,
+  items: FinanceCostItemInput[]
+): Promise<SaveFinanceCostItemsActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+      totalCost: null,
+    }
+  }
+
+  const normalizedFinanceId = String(financeId ?? '').trim()
+
+  if (!normalizedFinanceId) {
+    return {
+      success: false,
+      error: 'Chybí ID finančního záznamu.',
+      totalCost: null,
+    }
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return {
+      success: false,
+      error: 'Doplň alespoň základní nákladové řádky.',
+      totalCost: null,
+    }
+  }
+
+  const financeAccess = await getFinanceAccessRow(supabase, normalizedFinanceId)
+
+  if (!financeAccess.success || !financeAccess.financeRow) {
+    return {
+      success: false,
+      error: financeAccess.error,
+      totalCost: null,
+    }
+  }
+
+  const normalizedItems = items.map((item, index) => {
+    const label = String(item.label ?? '').trim()
+    const unitPrice = normalizeFiniteNumber(item.unitPrice)
+    const quantity = normalizeFiniteNumber(item.quantity)
+    const sortOrder =
+      typeof item.sortOrder === 'number' && item.sortOrder >= 0
+        ? Math.floor(item.sortOrder)
+        : index
+
+    if (!label) {
+      return {
+        success: false as const,
+        error: 'Každý nákladový řádek musí mít vyplněný název položky.',
+        item: null,
+      }
+    }
+
+    if (unitPrice === null || unitPrice < 0) {
+      return {
+        success: false as const,
+        error: `Jednotková cena u položky "${label}" není platná.`,
+        item: null,
+      }
+    }
+
+    if (quantity === null || quantity < 0) {
+      return {
+        success: false as const,
+        error: `Množství u položky "${label}" není platné.`,
+        item: null,
+      }
+    }
+
+    const lineTotal = Math.round(unitPrice * quantity)
+
+    return {
+      success: true as const,
+      error: null,
+      item: {
+        job_finance_id: normalizedFinanceId,
+        label,
+        preset_key: normalizeOptionalPresetKey(item.presetKey),
+        sort_order: sortOrder,
+        unit_price: unitPrice,
+        quantity,
+        line_total: lineTotal,
+      },
+    }
+  })
+
+  const validationError = normalizedItems.find((item) => !item.success)
+
+  if (validationError && !validationError.success) {
+    return {
+      success: false,
+      error: validationError.error,
+      totalCost: null,
+    }
+  }
+
+  const rowsToInsert = normalizedItems
+    .filter(
+      (
+        item
+      ): item is Extract<typeof item, { success: true; item: NonNullable<typeof item.item> }> =>
+        item.success && Boolean(item.item)
+    )
+    .map((item) => item.item)
+
+  const totalCost = rowsToInsert.reduce((sum, item) => sum + item.line_total, 0)
+
+  const { error: deleteError } = await supabase
+    .from('job_finance_cost_items')
+    .delete()
+    .eq('job_finance_id', normalizedFinanceId)
+
+  if (deleteError) {
+    return {
+      success: false,
+      error: 'Původní nákladové položky se nepodařilo aktualizovat.',
+      totalCost: null,
+    }
+  }
+
+  const { error: insertError } = await supabase
+    .from('job_finance_cost_items')
+    .insert(rowsToInsert)
+
+  if (insertError) {
+    return {
+      success: false,
+      error: 'Nákladové položky se nepodařilo uložit.',
+      totalCost: null,
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from('job_finances')
+    .update({
+      cost_amount: totalCost,
+    })
+    .eq('id', normalizedFinanceId)
+
+  if (updateError) {
+    return {
+      success: false,
+      error: 'Celkový náklad se nepodařilo přepočítat.',
+      totalCost: null,
+    }
+  }
+
+  revalidateFinancePaths(financeAccess.financeRow.job_id)
+
+  return {
+    success: true,
+    error: null,
+    totalCost,
+  }
+}
+
+export async function deleteFinanceCostItemsAction(
+  financeId: string
+): Promise<DeleteFinanceCostItemsActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+    }
+  }
+
+  const normalizedFinanceId = String(financeId ?? '').trim()
+
+  if (!normalizedFinanceId) {
+    return {
+      success: false,
+      error: 'Chybí ID finančního záznamu.',
+    }
+  }
+
+  const financeAccess = await getFinanceAccessRow(supabase, normalizedFinanceId)
+
+  if (!financeAccess.success || !financeAccess.financeRow) {
+    return {
+      success: false,
+      error: financeAccess.error,
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('job_finance_cost_items')
+    .delete()
+    .eq('job_finance_id', normalizedFinanceId)
+
+  if (deleteError) {
+    return {
+      success: false,
+      error: 'Nákladové položky se nepodařilo smazat.',
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from('job_finances')
+    .update({
+      cost_amount: null,
+    })
+    .eq('id', normalizedFinanceId)
+
+  if (updateError) {
+    return {
+      success: false,
+      error: 'Náklad se nepodařilo vymazat.',
+    }
+  }
+
+  revalidateFinancePaths(financeAccess.financeRow.job_id)
+
+  return {
+    success: true,
+    error: null,
+  }
 }
 
 export async function updateFinanceInlineFieldAction(

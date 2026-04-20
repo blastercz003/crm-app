@@ -569,7 +569,7 @@ export default async function FakturyPage({
                   </select>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label
                     htmlFor="date_from"
                     className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
@@ -581,11 +581,11 @@ export default async function FakturyPage({
                     name="date_from"
                     type="date"
                     defaultValue={dateFrom}
-                    className="h-10 w-full rounded-2xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                    className="block h-10 min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label
                     htmlFor="date_to"
                     className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
@@ -597,7 +597,7 @@ export default async function FakturyPage({
                     name="date_to"
                     type="date"
                     defaultValue={dateTo}
-                    className="h-10 w-full rounded-2xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                    className="block h-10 min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                   />
                 </div>
               </div>
