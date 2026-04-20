@@ -72,15 +72,8 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
 
   const taskTitle = task.title ?? 'Upravit úkol'
 
-  async function updateTaskAction(formData: FormData) {
-    'use server'
-    await updateTask(id, formData)
-  }
-
-  async function deleteTaskAction() {
-    'use server'
-    await deleteTask(id)
-  }
+  const updateTaskAction = updateTask.bind(null, id)
+  const deleteTaskAction = deleteTask.bind(null, id)
 
   return (
     <main className="min-h-screen bg-gray-50">
