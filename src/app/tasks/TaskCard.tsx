@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
-import { deleteTask, updateTaskStatus } from './actions'
 import EditTaskButton from './edit-task-button'
 import {
   getStatusBadgeClass,
@@ -97,6 +96,15 @@ function formatDueDate(value: string | null) {
   }).format(parsed)
 }
 
+function truncatePreviewText(value: string | null, maxLength = 72) {
+  const text = value?.trim() ?? ''
+
+  if (!text) return ''
+  if (text.length <= maxLength) return text
+
+  return `${text.slice(0, maxLength).trimEnd()}...`
+}
+
 export default function TaskCard({
   task,
   users,
@@ -127,8 +135,6 @@ export default function TaskCard({
         : 'bg-zinc-100 text-zinc-700',
   ].join(' ')
 
-  const completeTaskAction = updateTaskStatus.bind(null, task.id, 'done')
-  const deleteTaskAction = deleteTask.bind(null, task.id)
   const actionButtonClassName =
     'inline-flex h-9 items-center justify-center rounded-xl px-3 text-xs font-medium transition'
 
@@ -146,8 +152,8 @@ export default function TaskCard({
             </div>
 
             {task.note ? (
-              <div className="mt-1 text-xs text-zinc-500">
-                {task.note}
+              <div className="mt-1 truncate text-xs text-zinc-500">
+                {truncatePreviewText(task.note)}
               </div>
             ) : null}
           </div>
@@ -201,27 +207,6 @@ export default function TaskCard({
             className={`${actionButtonClassName} bg-zinc-900 text-white hover:bg-zinc-800`}
             label="UPRAVIT"
           />
-
-          {task.status !== 'done' ? (
-            <form action={completeTaskAction}>
-              <button
-                className={`${actionButtonClassName} text-white hover:opacity-90`}
-                style={{ backgroundColor: '#2980B9' }}
-              >
-                DOKONČIT
-              </button>
-            </form>
-          ) : (
-            <span className={`${actionButtonClassName} bg-emerald-50 text-emerald-700`}>
-              VYŘEŠENO
-            </span>
-          )}
-
-          <form action={deleteTaskAction}>
-            <button className={`${actionButtonClassName} border border-red-200 bg-white text-red-600 hover:bg-red-50`}>
-              SMAZAT
-            </button>
-          </form>
         </div>
       </div>
     </div>

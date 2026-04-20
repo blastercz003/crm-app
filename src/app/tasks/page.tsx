@@ -22,16 +22,34 @@ type TaskView = 'all' | 'active' | 'resolved'
 function StatCard({
   label,
   value,
+  variant = 'neutral',
 }: {
   label: string
   value: number
+  variant?: 'primary' | 'dark' | 'success' | 'neutral'
 }) {
+  const className =
+    variant === 'primary'
+      ? 'border-[#2980B9] bg-[#2980B9] text-white'
+      : variant === 'dark'
+        ? 'border-zinc-800 bg-zinc-800 text-white'
+        : variant === 'success'
+          ? 'border-green-100 bg-green-100 text-green-800'
+          : 'border-zinc-200 bg-white text-zinc-950'
+
+  const labelClassName =
+    variant === 'neutral'
+      ? 'text-zinc-950'
+      : variant === 'success'
+        ? 'text-current/80'
+        : 'text-white'
+
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${className}`}>
+      <div className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>
         {label}
       </div>
-      <div className="mt-1 text-lg font-semibold leading-none tracking-tight text-zinc-950">
+      <div className="mt-1 text-lg font-semibold leading-none tracking-tight text-current">
         {value}
       </div>
     </div>
@@ -294,18 +312,24 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
             <div className="space-y-3">
               <div className="grid grid-cols-4 gap-2">
-                <StatCard label="Aktivní mně" value={visibleAssignedActive.length} />
+                <StatCard
+                  label="Aktivní mně"
+                  value={visibleAssignedActive.length}
+                  variant="primary"
+                />
                 <StatCard
                   label="Aktivní ostatním"
                   value={visibleDelegatedActive.length}
+                  variant="dark"
                 />
                 <StatCard
-                  label="Vyřešené"
+                  label="Vyřešené celkem"
                   value={
                     visibleAssignedResolved.length + visibleDelegatedResolved.length
                   }
+                  variant="success"
                 />
-                <StatCard label="Celkem" value={totalVisibleCount} />
+                <StatCard label="Úkolů celkem" value={totalVisibleCount} />
               </div>
             </div>
           </div>

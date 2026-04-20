@@ -101,6 +101,14 @@ function formatCompactDateTime(value: string | null) {
   )
 }
 
+function truncateMeetingCompanyLabel(value: string, maxLength = 23) {
+  if (value.length <= maxLength) {
+    return value
+  }
+
+  return `${value.slice(0, maxLength)}...`
+}
+
 function isMeetingOverdue(meeting: MeetingRow) {
   if (meeting.status !== 'planned') return false
 
@@ -207,16 +215,34 @@ function FilterTab({
 function StatCard({
   label,
   value,
+  variant = 'neutral',
 }: {
   label: string
   value: number
+  variant?: 'neutral' | 'primary' | 'dark' | 'success'
 }) {
+  const cardClassName =
+    variant === 'primary'
+      ? 'border-transparent bg-[#2980B9] text-white'
+      : variant === 'dark'
+        ? 'border-transparent bg-zinc-800 text-white'
+        : variant === 'success'
+          ? 'border-green-200 bg-green-50 text-green-800'
+          : 'border-zinc-200 bg-white text-zinc-950'
+
+  const labelClassName =
+    variant === 'primary' || variant === 'dark'
+      ? 'text-white'
+      : variant === 'neutral'
+        ? 'text-zinc-950'
+        : 'text-current/80'
+
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${cardClassName}`}>
+      <div className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>
         {label}
       </div>
-      <div className="mt-1 text-lg font-semibold leading-none tracking-tight text-zinc-950">
+      <div className="mt-1 text-lg font-semibold leading-none tracking-tight text-current">
         {value}
       </div>
     </div>
@@ -242,6 +268,7 @@ function MeetingListItem({
 }) {
   const companyLabel =
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
+  const previewCompanyLabel = truncateMeetingCompanyLabel(companyLabel)
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50">
@@ -251,8 +278,11 @@ function MeetingListItem({
             {formatCompactDateTime(meeting.meeting_datetime)}
           </div>
 
-          <div className="min-w-0 flex-1 break-words font-medium text-zinc-900">
-            {companyLabel}
+          <div
+            className="min-w-0 flex-1 break-words font-medium text-zinc-900"
+            title={companyLabel}
+          >
+            {previewCompanyLabel}
           </div>
 
           {isAdminView && meeting.assigned_user_name ? (
@@ -662,11 +692,23 @@ export default async function MeetingsPage({
 
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
-                <StatCard label="Celkem" value={totalCount} />
-                <StatCard label="Plánované" value={visiblePlannedMeetings.length} />
-                <StatCard label="Po termínu" value={visibleOverdueMeetings.length} />
-                <StatCard label="Proběhlé" value={visibleCompletedMeetings.length} />
-                <StatCard label="S úkolem" value={taskCount} />
+                <StatCard label="Celkem" value={totalCount} variant="neutral" />
+                <StatCard
+                  label="Plánované"
+                  value={visiblePlannedMeetings.length}
+                  variant="primary"
+                />
+                <StatCard
+                  label="Po termínu"
+                  value={visibleOverdueMeetings.length}
+                  variant="dark"
+                />
+                <StatCard
+                  label="Proběhlé"
+                  value={visibleCompletedMeetings.length}
+                  variant="success"
+                />
+                <StatCard label="S úkolem" value={taskCount} variant="neutral" />
               </div>
 
               {isAdminTeamView ? (

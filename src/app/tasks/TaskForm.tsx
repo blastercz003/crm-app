@@ -36,6 +36,7 @@ type TaskFormProps = {
   action: (formData: FormData) => void | Promise<void>
   initialValues?: TaskFormValues
   error?: string | null
+  extraActions?: React.ReactNode
 }
 
 const inputClassName =
@@ -61,6 +62,7 @@ export default function TaskForm({
   action,
   initialValues,
   error,
+  extraActions,
 }: TaskFormProps) {
   const companyInputRef = useRef<HTMLInputElement>(null)
 
@@ -337,6 +339,8 @@ export default function TaskForm({
         >
           {submitLabel}
         </button>
+
+        {extraActions}
 
         {onCancel ? (
           <button

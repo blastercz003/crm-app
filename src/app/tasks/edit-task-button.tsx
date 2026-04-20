@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from 'react'
 import {
+  deleteTask,
   updateTaskModalAction,
   type UpdateTaskActionState,
 } from './actions'
@@ -112,6 +113,7 @@ function EditTaskModal({
   onClose: () => void
 }) {
   const [state, formAction] = useActionState(action, initialUpdateState)
+  const deleteTaskAction = useMemo(() => deleteTask.bind(null, task.id), [task.id])
 
   useEffect(() => {
     if (state.success) {
@@ -172,6 +174,16 @@ function EditTaskModal({
               cancelLabel="ZRUŠIT"
               initialValues={task}
               error={state.error}
+              extraActions={
+                <form action={deleteTaskAction}>
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-red-200 bg-white px-5 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                  >
+                    SMAZAT
+                  </button>
+                </form>
+              }
             />
           </div>
         </div>
