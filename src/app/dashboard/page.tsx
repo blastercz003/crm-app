@@ -1011,12 +1011,98 @@ export default async function DashboardPage() {
   const today = new Date()
   const nowIso = today.toISOString()
   const isFirstVisitToday = !isSamePragueDay(profile?.last_seen_dashboard_at ?? null, today)
+  const isAdmin = profile?.role === 'admin'
+
+  const nearestMeetingsQuery = supabase
+    .from('meetings')
+    .select(`
+      id,
+      company_name,
+      contact_person,
+      contact_phone,
+      contact_email,
+      title,
+      meeting_datetime,
+      follow_up_task,
+      status
+    `)
+    .eq('status', 'planned')
+    .eq('assigned_user_id', user.id)
+    .not('meeting_datetime', 'is', null)
+    .gte('meeting_datetime', nowIso)
+    .order('meeting_datetime', { ascending: true })
+    .limit(5)
+
+  let dashboardMeetingsCountQuery = supabase
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'planned')
+    .gte('meeting_datetime', todayStart)
+    .lt('meeting_datetime', todayEnd)
+
+  const dashboardWeeklyMeetingsCountQuery = supabase
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'planned')
+    .eq('assigned_user_id', user.id)
+    .gte('meeting_datetime', start)
+    .lt('meeting_datetime', end)
+
+  if (!isAdmin) {
+    dashboardMeetingsCountQuery = dashboardMeetingsCountQuery.eq('assigned_user_id', user.id)
+  }
+
+  let todayMeetingsCountQuery = supabase
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'planned')
+    .gte('meeting_datetime', todayStart)
+    .lt('meeting_datetime', todayEnd)
+
+  if (!isAdmin) {
+    todayMeetingsCountQuery = todayMeetingsCountQuery.eq('assigned_user_id', user.id)
+  }
+
+  let weeklyMeetingsCountQuery = supabase
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'planned')
+    .gte('meeting_datetime', start)
+    .lt('meeting_datetime', end)
+
+  if (!isAdmin) {
+    weeklyMeetingsCountQuery = weeklyMeetingsCountQuery.eq('assigned_user_id', user.id)
+  }
+
+  let monthMeetingsQuery = supabase
+    .from('meetings')
+    .select(`
+      id,
+      company_name,
+      contact_person,
+      contact_phone,
+      contact_email,
+      title,
+      meeting_datetime,
+      follow_up_task,
+      status
+    `)
+    .in('status', ['planned', 'completed'])
+    .gte('meeting_datetime', monthStart)
+    .lt('meeting_datetime', monthEnd)
+    .order('meeting_datetime', { ascending: true })
+
+  if (!isAdmin) {
+    monthMeetingsQuery = monthMeetingsQuery.eq('assigned_user_id', user.id)
+  }
 
   const [
     tasksResponse,
     activeTasksCountResponse,
     overdueTasksCountResponse,
     meetingsResponse,
+    dashboardMeetingsCountResponse,
+    dashboardWeeklyMeetingsCountResponse,
     todayMeetingsCountResponse,
     weeklyMeetingsCountResponse,
     monthMeetingsResponse,
@@ -1064,60 +1150,17 @@ export default async function DashboardPage() {
         }).format(new Date())
       ),
 
-    supabase
-      .from('meetings')
-      .select(`
-        id,
-        company_name,
-        contact_person,
-        contact_phone,
-        contact_email,
-        title,
-        meeting_datetime,
-        follow_up_task,
-        status
-      `)
-      .eq('status', 'planned')
-      .eq('assigned_user_id', user.id)
-      .not('meeting_datetime', 'is', null)
-      .gte('meeting_datetime', nowIso)
-      .order('meeting_datetime', { ascending: true })
-      .limit(5),
+    nearestMeetingsQuery,
 
-    supabase
-      .from('meetings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'planned')
-      .eq('assigned_user_id', user.id)
-      .gte('meeting_datetime', todayStart)
-      .lt('meeting_datetime', todayEnd),
+    dashboardMeetingsCountQuery,
 
-    supabase
-      .from('meetings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'planned')
-      .eq('assigned_user_id', user.id)
-      .gte('meeting_datetime', start)
-      .lt('meeting_datetime', end),
+    dashboardWeeklyMeetingsCountQuery,
 
-    supabase
-      .from('meetings')
-      .select(`
-        id,
-        company_name,
-        contact_person,
-        contact_phone,
-        contact_email,
-        title,
-        meeting_datetime,
-        follow_up_task,
-        status
-      `)
-      .in('status', ['planned', 'completed'])
-      .eq('assigned_user_id', user.id)
-      .gte('meeting_datetime', monthStart)
-      .lt('meeting_datetime', monthEnd)
-      .order('meeting_datetime', { ascending: true }),
+    todayMeetingsCountQuery,
+
+    weeklyMeetingsCountQuery,
+
+    monthMeetingsQuery,
 
     lastSeenUpdatesAt
       ? supabase
@@ -1147,6 +1190,18 @@ export default async function DashboardPage() {
 
   if (meetingsResponse.error) {
     throw new Error(`Nepodařilo se načíst dashboard schůzky: ${meetingsResponse.error.message}`)
+  }
+
+  if (dashboardMeetingsCountResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst dnešní počet schůzek na dashboardu: ${dashboardMeetingsCountResponse.error.message}`
+    )
+  }
+
+  if (dashboardWeeklyMeetingsCountResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst týdenní počet schůzek na dashboardu: ${dashboardWeeklyMeetingsCountResponse.error.message}`
+    )
   }
 
   if (todayMeetingsCountResponse.error) {
@@ -1205,12 +1260,12 @@ export default async function DashboardPage() {
 
   const activeTasksCount = activeTasksCountResponse.count ?? 0
   const overdueTasksCount = overdueTasksCountResponse.count ?? 0
+  const dashboardTodayMeetingsCount = dashboardMeetingsCountResponse.count ?? 0
+  const dashboardWeeklyMeetingsCount = dashboardWeeklyMeetingsCountResponse.count ?? 0
   const todayMeetingsCount = todayMeetingsCountResponse.count ?? 0
-  const weeklyMeetingsCount = weeklyMeetingsCountResponse.count ?? 0
   const newTasksCount = newTasksCountResponse.count ?? 0
   const hasNewUpdates = newTasksCount > 0
   const shouldShowOverlay = isFirstVisitToday || hasNewUpdates
-  const isAdmin = profile?.role === 'admin'
 
   const overlayHeadline = getOverlayHeadline(hasNewUpdates)
   const overlayDescription = getOverlayDescription(
@@ -1360,12 +1415,12 @@ export default async function DashboardPage() {
               <div className="mb-5 grid gap-3 sm:grid-cols-2">
                 <DashboardStatCard
                   label="Schůzky dnes"
-                  value={todayMeetingsCount}
+                  value={dashboardTodayMeetingsCount}
                   highlighted
                 />
                 <DashboardStatCard
                   label="Schůzky tento týden"
-                  value={weeklyMeetingsCount}
+                  value={dashboardWeeklyMeetingsCount}
                 />
               </div>
 

@@ -305,8 +305,66 @@ export default async function CalendarPage() {
     redirect('/login')
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single<{ role: 'admin' | 'member' }>()
+
   const { start: todayStart, end: todayEnd } = getTodayRange()
   const { start: weekStart, end: weekEnd } = getCurrentWeekRange()
+  const isAdmin = profile?.role === 'admin'
+
+  let meetingsQuery = supabase
+    .from('meetings')
+    .select(`
+      id,
+      company_name,
+      contact_person,
+      meeting_datetime,
+      title,
+      status,
+      assigned_user_id,
+      created_by
+    `)
+    .not('meeting_datetime', 'is', null)
+    .order('meeting_datetime', { ascending: true })
+
+  if (!isAdmin) {
+    meetingsQuery = meetingsQuery.eq('assigned_user_id', user.id)
+  }
+
+  let todayMeetingsCountQuery = supabase
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'planned')
+    .gte('meeting_datetime', todayStart)
+    .lt('meeting_datetime', todayEnd)
+
+  if (!isAdmin) {
+    todayMeetingsCountQuery = todayMeetingsCountQuery.eq('assigned_user_id', user.id)
+  }
+
+  let weeklyMeetingsCountQuery = supabase
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'planned')
+    .gte('meeting_datetime', weekStart)
+    .lt('meeting_datetime', weekEnd)
+
+  if (!isAdmin) {
+    weeklyMeetingsCountQuery = weeklyMeetingsCountQuery.eq('assigned_user_id', user.id)
+  }
+
+  let totalPlannedCountQuery = supabase
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'planned')
+    .not('meeting_datetime', 'is', null)
+
+  if (!isAdmin) {
+    totalPlannedCountQuery = totalPlannedCountQuery.eq('assigned_user_id', user.id)
+  }
 
   const [
     meetingsResponse,
@@ -315,44 +373,13 @@ export default async function CalendarPage() {
     totalPlannedCountResponse,
     clientsResponse,
   ] = await Promise.all([
-    supabase
-      .from('meetings')
-      .select(`
-        id,
-        company_name,
-        contact_person,
-        meeting_datetime,
-        title,
-        status,
-        assigned_user_id,
-        created_by
-      `)
-      .eq('assigned_user_id', user.id)
-      .not('meeting_datetime', 'is', null)
-      .order('meeting_datetime', { ascending: true }),
+    meetingsQuery,
 
-    supabase
-      .from('meetings')
-      .select('id', { count: 'exact', head: true })
-      .eq('assigned_user_id', user.id)
-      .eq('status', 'planned')
-      .gte('meeting_datetime', todayStart)
-      .lt('meeting_datetime', todayEnd),
+    todayMeetingsCountQuery,
 
-    supabase
-      .from('meetings')
-      .select('id', { count: 'exact', head: true })
-      .eq('assigned_user_id', user.id)
-      .eq('status', 'planned')
-      .gte('meeting_datetime', weekStart)
-      .lt('meeting_datetime', weekEnd),
+    weeklyMeetingsCountQuery,
 
-    supabase
-      .from('meetings')
-      .select('id', { count: 'exact', head: true })
-      .eq('assigned_user_id', user.id)
-      .eq('status', 'planned')
-      .not('meeting_datetime', 'is', null),
+    totalPlannedCountQuery,
 
     supabase
       .from('clients')

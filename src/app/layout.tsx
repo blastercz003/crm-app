@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: {
-    default: 'B-ENERGY CRM',
-    template: '%s | B-ENERGY CRM',
+    default: 'B-ENERGY APP',
+    template: '%s | B-ENERGY APP',
   },
   description: 'CRM aplikace pro správu klientů, schůzek a úkolů',
 }
