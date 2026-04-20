@@ -401,7 +401,7 @@ export default async function JobsPage({
         <div className="print-shell mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
           <section className="print-header rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center">
+              <div className="flex items-center justify-center lg:justify-start">
                 <Image
                   src="/logo2.png"
                   alt="B-ENERGY"
