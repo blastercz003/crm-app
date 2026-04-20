@@ -210,8 +210,10 @@ function InfoButton({
 
       {isOpen ? (
         <ModalShell
-          title="Info k zakázce"
-          description={`Zakázka ${job.job_number}`}
+          title="INFO K ZAKÁZCE"
+          description={`ZAKÁZKA ${job.job_number}`}
+          descriptionAsBadge
+          showHeaderDivider={false}
           onClose={() => setIsOpen(false)}
         >
           <>
@@ -251,11 +253,15 @@ function InfoButton({
 function ModalShell({
   title,
   description,
+  descriptionAsBadge = false,
+  showHeaderDivider = true,
   onClose,
   children,
 }: {
   title: string
   description?: string
+  descriptionAsBadge?: boolean
+  showHeaderDivider?: boolean
   onClose: () => void
   children: React.ReactNode
 }) {
@@ -281,13 +287,23 @@ function ModalShell({
     >
       <div className="flex h-full items-center justify-center">
         <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-5 shadow-2xl">
-          <div className="mb-4 flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
-            <div>
+          <div
+            className={`mb-4 flex items-start justify-between gap-4 ${
+              showHeaderDivider ? 'border-b border-gray-100 pb-4' : ''
+            }`}
+          >
+            <div className="flex flex-col items-start">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900">
                 {title}
               </h2>
               {description ? (
-                <p className="mt-1 text-sm text-gray-500">{description}</p>
+                descriptionAsBadge ? (
+                  <div className="mt-1.5 inline-flex items-center rounded-full border border-[#2980B9] bg-[#2980B9] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white">
+                    {description}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-gray-500">{description}</p>
+                )
               ) : null}
             </div>
 
