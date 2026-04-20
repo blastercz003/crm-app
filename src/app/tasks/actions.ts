@@ -162,6 +162,9 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     throw new Error('Na úpravu tohoto úkolu nemáš oprávnění.')
   }
 
+  const canManageAssignment =
+    isAdmin || existingTask.created_by === currentProfile.id
+
   const resolvedFields = await resolveTaskClientFields({
     clientId,
     companyName: rawCompanyName,
@@ -172,6 +175,10 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     submittedPriority === null
       ? existingTask.priority ?? 'medium'
       : normalizePriority(submittedPriority)
+
+  const nextAssignedTo = canManageAssignment
+    ? assigned_to
+    : existingTask.assigned_to
 
   const { error } = await supabase
     .from('tasks')
@@ -184,7 +191,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
       client_id: clientId,
       company_name: resolvedFields.companyName,
       contact_person: resolvedFields.contactPerson,
-      assigned_to,
+      assigned_to: nextAssignedTo,
     })
     .eq('id', taskId)
 
