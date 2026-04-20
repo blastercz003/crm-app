@@ -144,7 +144,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
-    .select('id, created_by, assigned_to, client_id, priority')
+    .select('id, created_by, assigned_to, client_id, company_name, contact_person, priority')
     .eq('id', taskId)
     .single()
 
@@ -164,12 +164,19 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
 
   const canManageAssignment =
     isAdmin || existingTask.created_by === currentProfile.id
+  const canManageClientLink =
+    isAdmin || existingTask.created_by === currentProfile.id
 
-  const resolvedFields = await resolveTaskClientFields({
-    clientId,
-    companyName: rawCompanyName,
-    contactPerson: rawContactPerson,
-  })
+  const resolvedFields = canManageClientLink
+    ? await resolveTaskClientFields({
+        clientId,
+        companyName: rawCompanyName,
+        contactPerson: rawContactPerson,
+      })
+    : {
+        companyName: existingTask.company_name ?? rawCompanyName,
+        contactPerson: existingTask.contact_person ?? rawContactPerson,
+      }
 
   const priority =
     submittedPriority === null
@@ -179,6 +186,9 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const nextAssignedTo = canManageAssignment
     ? assigned_to
     : existingTask.assigned_to
+  const nextClientId = canManageClientLink
+    ? clientId
+    : existingTask.client_id
 
   const { error } = await supabase
     .from('tasks')
@@ -188,7 +198,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
       due_date,
       status,
       priority,
-      client_id: clientId,
+      client_id: nextClientId,
       company_name: resolvedFields.companyName,
       contact_person: resolvedFields.contactPerson,
       assigned_to: nextAssignedTo,
@@ -204,11 +214,11 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   revalidatePath(`/tasks/${taskId}/edit`)
   revalidatePath('/clients')
 
-  if (clientId) {
-    revalidatePath(`/clients/${clientId}`)
+  if (nextClientId) {
+    revalidatePath(`/clients/${nextClientId}`)
   }
 
-  if (existingTask.client_id && existingTask.client_id !== clientId) {
+  if (existingTask.client_id && existingTask.client_id !== nextClientId) {
     revalidatePath(`/clients/${existingTask.client_id}`)
   }
 }
