@@ -4,8 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
 import { updateTaskStatus } from '../actions'
 import {
-  getPriorityBadgeClass,
-  getPriorityLabel,
   getStatusBadgeClass,
   getStatusLabel,
 } from '../taskUi'
@@ -204,11 +202,6 @@ export default async function TaskDetailPage({
                   {getStatusLabel(typedTask.status)}
                 </span>
 
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(typedTask.priority)}`}
-                >
-                  Priorita: {getPriorityLabel(typedTask.priority)}
-                </span>
               </div>
 
               <p className="text-sm text-gray-500">
@@ -290,15 +283,6 @@ export default async function TaskDetailPage({
                   </p>
                   <p className="mt-2 text-sm font-medium text-gray-900">
                     {getStatusLabel(typedTask.status)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Priorita
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-gray-900">
-                    {getPriorityLabel(typedTask.priority)}
                   </p>
                 </div>
 
