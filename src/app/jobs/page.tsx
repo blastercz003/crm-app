@@ -519,36 +519,40 @@ export default async function JobsPage({
                   </select>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label
                     htmlFor="date_from"
                     className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                   >
                     Od dne
                   </label>
-                  <input
-                    id="date_from"
-                    name="date_from"
-                    type="date"
-                    defaultValue={dateFrom}
-                    className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                  />
+                  <div className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 transition focus-within:border-gray-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-gray-200 sm:overflow-visible sm:border-0 sm:bg-transparent sm:focus-within:border-0 sm:focus-within:bg-transparent sm:focus-within:ring-0">
+                    <input
+                      id="date_from"
+                      name="date_from"
+                      type="date"
+                      defaultValue={dateFrom}
+                      className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-xl sm:border sm:border-gray-200 sm:bg-gray-50 sm:transition sm:focus:border-gray-300 sm:focus:bg-white sm:focus:ring-2 sm:focus:ring-gray-200"
+                    />
+                  </div>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label
                     htmlFor="date_to"
                     className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                   >
                     Do dne
                   </label>
-                  <input
-                    id="date_to"
-                    name="date_to"
-                    type="date"
-                    defaultValue={dateTo}
-                    className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
-                  />
+                  <div className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 transition focus-within:border-gray-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-gray-200 sm:overflow-visible sm:border-0 sm:bg-transparent sm:focus-within:border-0 sm:focus-within:bg-transparent sm:focus-within:ring-0">
+                    <input
+                      id="date_to"
+                      name="date_to"
+                      type="date"
+                      defaultValue={dateTo}
+                      className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-xl sm:border sm:border-gray-200 sm:bg-gray-50 sm:transition sm:focus:border-gray-300 sm:focus:bg-white sm:focus:ring-2 sm:focus:ring-gray-200"
+                    />
+                  </div>
                 </div>
               </div>
 
