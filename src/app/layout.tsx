@@ -14,11 +14,14 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata = {
-  title: {
-    default: 'B-ENERGY APP',
-    template: '%s | B-ENERGY APP',
-  },
+  title: 'B-ENERGY APP',
+  applicationName: 'B-ENERGY APP',
   description: 'CRM aplikace pro správu klientů, schůzek a úkolů',
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
 }
 
 export default function RootLayout({
