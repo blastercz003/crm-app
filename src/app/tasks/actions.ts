@@ -233,7 +233,7 @@ export async function createTaskModalAction(
 
 export async function updateTask(taskId: string, formData: FormData) {
   await updateTaskRecord(taskId, formData)
-  redirect('/tasks')
+  redirect(`/tasks/${taskId}`)
 }
 
 export async function updateTaskModalAction(
