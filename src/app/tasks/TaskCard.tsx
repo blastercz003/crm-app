@@ -118,7 +118,7 @@ export default function TaskCard({
   const { isToday, isOverdue } = getDueDateState(task.due_date, task.status)
 
   const cardClassName = [
-    'rounded-2xl border px-4 py-4 shadow-sm transition',
+    'min-w-0 overflow-hidden rounded-2xl border px-4 py-4 shadow-sm transition',
     isOverdue
       ? 'border-red-300 bg-red-50/40'
       : isToday
@@ -141,7 +141,7 @@ export default function TaskCard({
   return (
     <div className={cardClassName}>
       <div className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0 flex-1">
             <h3 className="break-words text-sm font-semibold text-zinc-900 md:text-base">
               {task.title}
@@ -158,7 +158,7 @@ export default function TaskCard({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 flex-wrap justify-end gap-2 text-sm">
+          <div className="min-w-0 flex flex-wrap gap-2 text-sm sm:shrink-0 sm:justify-end">
             <div className={dueBadgeClassName}>
               {formatDueDate(task.due_date)}
             </div>
@@ -181,7 +181,7 @@ export default function TaskCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="min-w-0 flex flex-wrap gap-2">
           <Link
             href={`/tasks/${task.id}`}
             className={`${actionButtonClassName} border border-gray-200 bg-white text-gray-700 hover:bg-gray-100`}
