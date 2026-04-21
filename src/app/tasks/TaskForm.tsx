@@ -40,7 +40,7 @@ type TaskFormProps = {
 }
 
 const inputClassName =
-  'w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200'
+  'min-w-0 w-full max-w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200'
 
 const labelClassName = 'mb-2 block text-sm font-medium text-gray-700'
 
@@ -249,7 +249,7 @@ export default function TaskForm({
           </p>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <label htmlFor="contact_person" className={labelClassName}>
             Kontaktní osoba
           </label>
@@ -263,7 +263,7 @@ export default function TaskForm({
           />
         </div>
 
-        <div>
+        <div className="min-w-0">
           <label htmlFor="assigned_to" className={labelClassName}>
             Přiřadit uživateli
           </label>
@@ -283,7 +283,7 @@ export default function TaskForm({
           </select>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <label htmlFor="due_date" className={labelClassName}>
             Termín
           </label>
@@ -296,7 +296,7 @@ export default function TaskForm({
           />
         </div>
 
-        <div>
+        <div className="min-w-0">
           <label htmlFor="status" className={labelClassName}>
             Stav
           </label>
