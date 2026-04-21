@@ -292,7 +292,8 @@ export default function TaskForm({
             name="due_date"
             type="date"
             defaultValue={initialValues?.due_date ?? ''}
-            className={inputClassName}
+            className={`${inputClassName} appearance-none [&::-webkit-calendar-picker-indicator]:opacity-100`}
+            style={{ minWidth: 0 }}
           />
         </div>
 
