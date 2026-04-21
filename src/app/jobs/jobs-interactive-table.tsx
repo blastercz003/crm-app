@@ -280,7 +280,7 @@ function MobileCard({
           </p>
         </div>
 
-        <EvidenceStatusButton job={job} compact canEdit />
+        <JobStatusButton job={job} canEdit />
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
@@ -310,13 +310,14 @@ function MobileCard({
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-2">
+      <div className="mt-2 flex items-end justify-between gap-2">
         <div className="flex items-center gap-2">
-          <MobileAssignmentButton job={job} canEdit />
           <HandoverProtocolButton job={job} />
           <InfoNoteButton job={job} canEdit />
-          <JobStatusButton job={job} canEdit />
+          <EvidenceStatusButton job={job} compact canEdit />
         </div>
+
+        <MobileAssignmentButton job={job} canEdit />
       </div>
     </div>
   )
@@ -400,15 +401,16 @@ function MobileAssignmentButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-8 min-w-[88px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-medium tracking-wide text-gray-700 transition hover:bg-gray-50"
+        className="inline-flex h-8 min-w-[88px] items-center justify-center rounded-xl border border-orange-500 bg-white px-3 text-[11px] font-medium tracking-wide text-orange-600 transition hover:bg-orange-50"
       >
-        TECH/AGR
+        UPRAVIT
       </button>
 
       {isOpen ? (
         <ModalShell
-          title={canEdit ? 'Technik a agregát' : 'Technik / agregát'}
+          title="UPRAVIT ZAKÁZKU"
           description={`Zakázka ${job.job_number}`}
+          descriptionAsBadge
           onClose={() => setIsOpen(false)}
         >
           <div className="space-y-3">
