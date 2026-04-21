@@ -11,7 +11,7 @@ const BLASTER_COMPANY = {
 
 const DEVICE_PAGE_UNITS = 3
 const ACCESSORY_PAGE_UNITS = 1
-const PAGE_WITH_SIGNATURE_CAPACITY = 6
+const PAGE_WITH_SIGNATURE_CAPACITY = 8
 const PAGE_WITHOUT_SIGNATURE_CAPACITY = 12
 
 type ProtocolPageItem =
@@ -89,12 +89,19 @@ function paginateProtocolItems(
 
   let remainingItems = items
   while (remainingItems.length > 0) {
+    const remainingUnits = remainingItems.reduce((sum, item) => sum + item.units, 0)
+
+    if (remainingUnits <= PAGE_WITH_SIGNATURE_CAPACITY) {
+      pages.push(toChunk(remainingItems))
+      break
+    }
+
     const page = takePageChunk(remainingItems, PAGE_WITHOUT_SIGNATURE_CAPACITY)
     pages.push(toChunk(page.chunk))
     remainingItems = page.rest
   }
 
-  return [...pages, { devices: [], accessories: [] }]
+  return pages
 }
 
 export function ProtocolPrintStyles() {
@@ -115,12 +122,20 @@ export function ProtocolPrintStyles() {
           print-color-adjust: exact;
         }
 
+        body {
+          margin: 0 !important;
+        }
+
+        main {
+          min-height: auto !important;
+          padding: 0 !important;
+        }
+
         [data-pp-document] {
           background: #fff !important;
           color: #000 !important;
           box-shadow: none !important;
           width: 196mm !important;
-          height: 283mm !important;
           min-height: 283mm !important;
           box-sizing: border-box !important;
           display: flex !important;
@@ -134,18 +149,16 @@ export function ProtocolPrintStyles() {
           text-shadow: none !important;
         }
 
-        [data-pp-document] .border-zinc-200,
-        [data-pp-document] .border-zinc-300,
-        [data-pp-document] .border-zinc-100 {
-          border-color: #bdbdbd !important;
+        [data-pp-document] .border-black {
+          border-color: #000 !important;
         }
 
         [data-pp-document] .bg-zinc-50 {
-          background: #f8fafc !important;
+          background: #fff !important;
         }
 
         [data-pp-document] .bg-zinc-100 {
-          background: #f1f5f9 !important;
+          background: #fff !important;
         }
 
         [data-pp-document] .bg-white {
@@ -169,19 +182,24 @@ function ValuePair({
 }) {
   return (
     <div
-      className={`flex min-h-[60px] flex-col justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 ${className}`}
+      className={`flex min-h-[60px] flex-col justify-between rounded-lg border border-black bg-white px-3 py-2 ${className}`}
     >
       <div
-        className={`text-[9px] uppercase tracking-[0.12em] ${
+        className={`uppercase tracking-[0.12em] ${
           emphasized ? 'font-bold text-zinc-950' : 'font-semibold text-zinc-950'
         }`}
+        style={{ fontSize: emphasized ? '8px' : '9px' }}
       >
         {label}
       </div>
       <div
         className={`mt-1 text-[13px] leading-5 text-zinc-950 ${
-          emphasized ? 'font-bold' : 'font-medium'
-        } ${label === 'Termín realizace' ? 'whitespace-nowrap' : ''}`}
+          emphasized
+            ? 'text-[15px] leading-[1.35] font-bold print:text-[14px]'
+            : label === 'Místo realizace'
+              ? 'font-bold'
+              : 'font-medium'
+        } ${label === 'Termín realizace' || label === 'Číslo zakázky' ? 'whitespace-nowrap' : ''}`}
       >
         {value?.trim() || '—'}
       </div>
@@ -201,7 +219,7 @@ function CompanyBlock({
   childSeparated?: boolean
 }) {
   return (
-    <section className="flex h-[136px] flex-col rounded-lg border border-zinc-200 bg-white px-3 py-3 print:h-[122px] print:px-2.5 print:py-2">
+    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:min-h-[136px] print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         {title}
       </div>
@@ -212,7 +230,7 @@ function CompanyBlock({
       </div>
       {children ? (
         <div
-          className={`mt-3 print:mt-2 ${childSeparated ? 'border-t border-zinc-200 pt-2.5 print:pt-2' : ''}`}
+          className={`mt-3 print:mt-2 ${childSeparated ? 'border-t border-black pt-2.5 print:pt-2' : ''}`}
         >
           {children}
         </div>
@@ -246,24 +264,17 @@ function formatJobDateRange(
 
 function DeviceDescription() {
   return (
-    <div className="mt-1.5 grid grid-rows-[16px_16px] text-[11px] leading-4 text-zinc-950">
+    <div className="mt-1.5 text-[11px] leading-4 text-zinc-950">
       <div className="flex items-center">Stav paliva v nádrži</div>
-      <div className="flex items-center">Připojovací kabel (sada)</div>
     </div>
   )
 }
 
-function DeviceValueColumn({
-  firstRow,
-  secondRow,
-}: {
-  firstRow?: string
-  secondRow?: string
-}) {
+function DeviceValueColumn({ value }: { value?: string }) {
   return (
-    <div className="mt-1.5 grid grid-rows-[16px_16px] text-right text-[11px] leading-4 text-zinc-950">
-      <div className="flex items-center justify-end" />
-      <div className="flex items-center justify-end" />
+    <div className="text-right text-[11px] leading-4 text-zinc-950">
+      <div className="h-5" aria-hidden="true" />
+      <div className="mt-1.5 flex h-4 items-center justify-end">{value ?? ''}</div>
     </div>
   )
 }
@@ -296,7 +307,7 @@ function ProtocolTableSection({
         {title}
       </h2>
 
-      <div className="mt-2 overflow-hidden rounded-lg border border-zinc-200 print:mt-1.5">
+      <div className="mt-2 overflow-hidden rounded-lg border border-black bg-white print:mt-1.5">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
             <col />
@@ -304,11 +315,11 @@ function ProtocolTableSection({
             <col className="w-[120px]" />
           </colgroup>
           <thead>
-            <tr className="bg-zinc-100 text-left">
+            <tr className="bg-white text-left">
               {headers.map((header, headerIndex) => (
                 <th
                   key={header}
-                  className={`border-b border-zinc-200 px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5 ${
+                  className={`border-b border-black px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5 ${
                     rightAlignedColumns.includes(headerIndex) ? 'text-right' : ''
                   }`}
                 >
@@ -326,7 +337,7 @@ function ProtocolTableSection({
                     <td
                       key={`${title}-${rowIndex}-${cellIndex}`}
                       className={`px-3 py-2 text-[13px] leading-5 text-zinc-900 print:px-2.5 print:py-1.5 print:text-[12px] print:leading-4 ${
-                        rowIndex < rows.length - 1 ? 'border-b border-zinc-100' : ''
+                        rowIndex < rows.length - 1 ? 'border-b border-black' : ''
                       } ${rightAlignedColumns.includes(cellIndex) ? 'text-right' : ''}`}
                     >
                       {renderCell
@@ -357,7 +368,7 @@ function ProtocolTableSection({
 
 function SubtenantSection() {
   return (
-    <section className="flex h-[136px] flex-col rounded-lg border border-zinc-200 bg-white px-3 py-3 print:h-[122px] print:px-2.5 print:py-2">
+    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:min-h-[136px] print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         Podnájemce
       </div>
@@ -365,16 +376,16 @@ function SubtenantSection() {
         Napojení podnájemce / potvrzení
       </div>
       <div className="mt-2 flex gap-2">
-        <div className="inline-flex h-[34px] flex-1 items-center justify-center gap-2 rounded-md border border-zinc-300 bg-zinc-50 px-2.5 py-1.5 text-[12px] font-medium text-zinc-950">
-          <span className="inline-block h-3.5 w-3.5 rounded-[3px] border border-zinc-400 bg-white" />
+        <div className="inline-flex h-[34px] flex-1 items-center justify-center gap-2 rounded-md border border-black bg-white px-2.5 py-1.5 text-[12px] font-medium text-zinc-950">
+          <span className="inline-block h-3.5 w-3.5 rounded-[3px] border border-black bg-white" />
           <span>ANO</span>
         </div>
-        <div className="inline-flex h-[34px] flex-1 items-center justify-center gap-2 rounded-md border border-zinc-300 bg-zinc-50 px-2.5 py-1.5 text-[12px] font-medium text-zinc-950">
-          <span className="inline-block h-3.5 w-3.5 rounded-[3px] border border-zinc-400 bg-white" />
+        <div className="inline-flex h-[34px] flex-1 items-center justify-center gap-2 rounded-md border border-black bg-white px-2.5 py-1.5 text-[12px] font-medium text-zinc-950">
+          <span className="inline-block h-3.5 w-3.5 rounded-[3px] border border-black bg-white" />
           <span>NE</span>
         </div>
       </div>
-      <div className="mt-3 h-12 rounded-md border border-dashed border-zinc-300 bg-white print:mt-2 print:h-11" />
+      <div className="mt-3 h-12 rounded-md border border-dashed border-black bg-white print:mt-2 print:h-11" />
     </section>
   )
 }
@@ -387,7 +398,7 @@ function SignatureBlock({
   rows: string[]
 }) {
   return (
-    <div className="flex min-h-[158px] flex-1 flex-col rounded-lg border border-zinc-200 px-3 py-3 print:min-h-[142px] print:px-2.5 print:py-2">
+    <div className="flex min-h-[158px] flex-1 flex-col rounded-lg border border-black px-3 py-3 print:min-h-[142px] print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         {title}
       </div>
@@ -395,7 +406,7 @@ function SignatureBlock({
         {rows.map((row) => (
           <div key={row}>
             <div className="text-[11px] text-zinc-950">{row}</div>
-            <div className="mt-1.5 border-b border-zinc-300 pb-1" />
+            <div className="mt-1.5 border-b border-black pb-1" />
           </div>
         ))}
       </div>
@@ -420,7 +431,7 @@ function SignatureSection() {
 
 function DeviceBlock({ device }: { device: HandoverProtocolDeviceInput }) {
   return (
-    <section className="mt-2 overflow-hidden rounded-lg border border-zinc-200 first:mt-0">
+    <section className="mt-2 overflow-hidden rounded-lg border border-black bg-white first:mt-0">
       <table className="w-full table-fixed border-collapse">
         <colgroup>
           <col />
@@ -428,14 +439,14 @@ function DeviceBlock({ device }: { device: HandoverProtocolDeviceInput }) {
           <col className="w-[120px]" />
         </colgroup>
         <thead>
-          <tr className="bg-zinc-100 text-left">
-            <th className="border-b border-zinc-200 px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5">
+          <tr className="bg-white text-left">
+            <th className="border-b border-black px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5">
               Název / kód zařízení
             </th>
-            <th className="border-b border-zinc-200 px-3 py-2 text-right text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5">
+            <th className="border-b border-black px-3 py-2 text-right text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5">
               MTH start
             </th>
-            <th className="border-b border-zinc-200 px-3 py-2 text-right text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5">
+            <th className="border-b border-black px-3 py-2 text-right text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950 print:px-2.5 print:py-1.5">
               MTH konec
             </th>
           </tr>
@@ -449,10 +460,10 @@ function DeviceBlock({ device }: { device: HandoverProtocolDeviceInput }) {
               <DeviceDescription />
             </td>
             <td className="px-3 py-2 text-right text-[13px] leading-5 text-zinc-950 print:px-2.5 print:py-1.5 print:text-[12px] print:leading-4">
-              <DeviceValueColumn firstRow="%" />
+              <DeviceValueColumn value="%" />
             </td>
             <td className="px-3 py-2 text-right text-[13px] leading-5 text-zinc-950 print:px-2.5 print:py-1.5 print:text-[12px] print:leading-4">
-              <DeviceValueColumn secondRow="ks" />
+              <DeviceValueColumn value="%" />
             </td>
           </tr>
         </tbody>
@@ -596,23 +607,25 @@ export function HandoverProtocolDocument({
                     ) : null}
 
                     {page.accessories.length > 0 ? (
-                      <ProtocolTableSection
-                        title="Příslušenství"
-                        headers={['Název / kód příslušenství', 'Převzato', 'Vráceno']}
-                        rows={page.accessories.map((item) => [
-                          item.item_name,
-                          '',
-                          '',
-                        ])}
-                        rightAlignedColumns={[1, 2]}
-                        renderCell={({ cellIndex, value }) => {
-                          if (cellIndex === 1 || cellIndex === 2) {
-                            return <AccessoryValueCell />
-                          }
+                      <div className={page.devices.length > 0 ? 'mt-6 print:mt-5' : ''}>
+                        <ProtocolTableSection
+                          title="Příslušenství"
+                          headers={['Název / kód příslušenství', 'Převzato', 'Vráceno']}
+                          rows={page.accessories.map((item) => [
+                            item.item_name,
+                            '',
+                            '',
+                          ])}
+                          rightAlignedColumns={[1, 2]}
+                          renderCell={({ cellIndex, value }) => {
+                            if (cellIndex === 1 || cellIndex === 2) {
+                              return <AccessoryValueCell />
+                            }
 
-                          return value?.trim() || '—'
-                        }}
-                      />
+                            return value?.trim() || '—'
+                          }}
+                        />
+                      </div>
                     ) : null}
                   </div>
 

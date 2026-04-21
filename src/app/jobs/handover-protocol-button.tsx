@@ -265,7 +265,7 @@ function HandoverProtocolModal({
 
       const url =
         nextAction === 'generate'
-          ? `/jobs/${job.id}/pp/pdf`
+          ? `/jobs/${job.id}/pp?standalone=1&print=1`
           : `/jobs/${job.id}/pp`
 
       window.open(url, '_blank', 'noopener,noreferrer')

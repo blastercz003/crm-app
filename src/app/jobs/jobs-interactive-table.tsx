@@ -312,12 +312,156 @@ function MobileCard({
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
+          <MobileAssignmentButton job={job} canEdit />
           <HandoverProtocolButton job={job} />
           <InfoNoteButton job={job} canEdit />
           <JobStatusButton job={job} canEdit />
         </div>
       </div>
     </div>
+  )
+}
+
+function MobileAssignmentButton({
+  job,
+  canEdit,
+}: {
+  job: JobRow
+  canEdit: boolean
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [technicianValue, setTechnicianValue] = useState(job.technician_name ?? '')
+  const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setTechnicianValue(job.technician_name ?? '')
+    setGeneratorValue(job.generator_name ?? '')
+  }, [job.generator_name, job.technician_name])
+
+  function saveAssignments() {
+    if (!canEdit) {
+      setIsOpen(false)
+      return
+    }
+
+    const originalTechnician = job.technician_name ?? ''
+    const originalGenerator = job.generator_name ?? ''
+
+    if (
+      technicianValue === originalTechnician &&
+      generatorValue === originalGenerator
+    ) {
+      setIsOpen(false)
+      return
+    }
+
+    startTransition(async () => {
+      if (technicianValue !== originalTechnician) {
+        const technicianFormData = new FormData()
+        technicianFormData.set('field', 'technician_name')
+        technicianFormData.set('value', technicianValue)
+
+        const technicianResult = await updateJobInlineFieldAction(
+          job.id,
+          { success: false, error: null },
+          technicianFormData
+        )
+
+        if (!technicianResult.success) {
+          alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
+          return
+        }
+      }
+
+      if (generatorValue !== originalGenerator) {
+        const generatorFormData = new FormData()
+        generatorFormData.set('field', 'generator_name')
+        generatorFormData.set('value', generatorValue)
+
+        const generatorResult = await updateJobInlineFieldAction(
+          job.id,
+          { success: false, error: null },
+          generatorFormData
+        )
+
+        if (!generatorResult.success) {
+          alert(generatorResult.error ?? 'Agregát se nepodařilo uložit.')
+          return
+        }
+      }
+
+      setIsOpen(false)
+    })
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="inline-flex h-8 min-w-[88px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-medium tracking-wide text-gray-700 transition hover:bg-gray-50"
+      >
+        TECH/AGR
+      </button>
+
+      {isOpen ? (
+        <ModalShell
+          title={canEdit ? 'Technik a agregát' : 'Technik / agregát'}
+          description={`Zakázka ${job.job_number}`}
+          onClose={() => setIsOpen(false)}
+        >
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                Technik
+              </span>
+              <input
+                type="text"
+                value={technicianValue}
+                disabled={isPending || !canEdit}
+                onChange={(event) => setTechnicianValue(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:bg-gray-50"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                Agregát
+              </span>
+              <input
+                type="text"
+                value={generatorValue}
+                disabled={isPending || !canEdit}
+                onChange={(event) => setGeneratorValue(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:bg-gray-50"
+              />
+            </label>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                ZRUŠIT
+              </button>
+
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={saveAssignments}
+                  disabled={isPending}
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPending ? 'UKLÁDÁM…' : 'ULOŽIT'}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </ModalShell>
+      ) : null}
+    </>
   )
 }
 

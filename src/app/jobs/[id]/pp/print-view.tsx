@@ -1,6 +1,21 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
+
+export function HandoverProtocolAutoPrint() {
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      window.print()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+    }
+  }, [])
+
+  return null
+}
 
 export function HandoverProtocolPrintToolbar({
   backHref,
