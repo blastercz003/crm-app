@@ -409,7 +409,7 @@ function MobileAssignmentButton({
       {isOpen ? (
         <ModalShell
           title="UPRAVIT ZAKÁZKU"
-          description={`Zakázka ${job.job_number}`}
+          description={`ZAKÁZKA ${job.job_number.toUpperCase()}`}
           descriptionAsBadge
           onClose={() => setIsOpen(false)}
         >
