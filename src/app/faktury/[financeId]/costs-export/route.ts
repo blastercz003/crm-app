@@ -8,10 +8,30 @@ type ProfileRoleRow = {
 
 type CostItemRow = {
   label: string
+  supplier: string | null
   unit_price: number | string | null
   quantity: number | string | null
   line_total: number | null
   sort_order: number | null
+}
+
+function isMissingSupplierColumnError(error: {
+  message?: string | null
+  details?: string | null
+  hint?: string | null
+  code?: string | null
+} | null | undefined) {
+  const haystack = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return haystack.includes('supplier')
 }
 
 type FinanceExportRow = {
@@ -114,7 +134,7 @@ export async function GET(
     )
   }
 
-  const [{ data: financeRow, error: financeError }, { data: costItems, error: costError }] =
+  const [{ data: financeRow, error: financeError }, costItemsResponse] =
     await Promise.all([
       supabase
         .from('job_finances')
@@ -135,11 +155,29 @@ export async function GET(
         .single(),
       supabase
         .from('job_finance_cost_items')
-        .select('label, unit_price, quantity, line_total, sort_order')
+        .select('label, supplier, unit_price, quantity, line_total, sort_order')
         .eq('job_finance_id', normalizedFinanceId)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }),
     ])
+
+  let costItems = costItemsResponse.data
+  let costError = costItemsResponse.error
+
+  if (costError && isMissingSupplierColumnError(costError)) {
+    const fallbackResponse = await supabase
+      .from('job_finance_cost_items')
+      .select('label, unit_price, quantity, line_total, sort_order')
+      .eq('job_finance_id', normalizedFinanceId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+
+    costItems = (fallbackResponse.data ?? []).map((item) => ({
+      ...item,
+      supplier: null,
+    }))
+    costError = fallbackResponse.error
+  }
 
   if (financeError || !financeRow) {
     return NextResponse.json(
@@ -172,6 +210,7 @@ export async function GET(
 
   worksheet.columns = [
     { header: 'Položka', key: 'label', width: 30 },
+    { header: 'Dodavatel', key: 'supplier', width: 26 },
     { header: 'Jednotková cena', key: 'unit_price', width: 18 },
     { header: 'Množství', key: 'quantity', width: 14 },
     { header: 'Cena', key: 'line_total', width: 16 },
@@ -186,7 +225,7 @@ export async function GET(
   worksheet.insertRow(7, [])
 
   const headerRow = worksheet.getRow(8)
-  headerRow.values = ['Položka', 'Jednotková cena', 'Množství', 'Cena']
+  headerRow.values = ['Položka', 'Dodavatel', 'Jednotková cena', 'Množství', 'Cena']
   headerRow.font = { bold: true }
   headerRow.alignment = { vertical: 'middle', horizontal: 'left' }
   headerRow.height = 20
@@ -194,6 +233,7 @@ export async function GET(
   ;((costItems ?? []) as CostItemRow[]).forEach((item) => {
     worksheet.addRow({
       label: item.label,
+      supplier: item.supplier ?? '',
       unit_price: toFiniteNumber(item.unit_price),
       quantity: toFiniteNumber(item.quantity),
       line_total: toFiniteNumber(item.line_total),
@@ -207,14 +247,15 @@ export async function GET(
 
   totalRow.font = { bold: true }
 
-  worksheet.getColumn('B').numFmt = '#,##0.00'
   worksheet.getColumn('C').numFmt = '#,##0.00'
-  worksheet.getColumn('D').numFmt = '#,##0 "Kč"'
+  worksheet.getColumn('D').numFmt = '#,##0.00'
+  worksheet.getColumn('E').numFmt = '#,##0 "Kč"'
 
   worksheet.getColumn('A').alignment = { horizontal: 'left' }
-  worksheet.getColumn('B').alignment = { horizontal: 'right' }
+  worksheet.getColumn('B').alignment = { horizontal: 'left' }
   worksheet.getColumn('C').alignment = { horizontal: 'right' }
   worksheet.getColumn('D').alignment = { horizontal: 'right' }
+  worksheet.getColumn('E').alignment = { horizontal: 'right' }
 
   worksheet.getCell('A1').font = { bold: true }
   worksheet.getCell('A2').font = { bold: true }
@@ -223,7 +264,7 @@ export async function GET(
   worksheet.getCell('A5').font = { bold: true }
   worksheet.getCell('A6').font = { bold: true }
   worksheet.getCell(`A${totalRow.number}`).font = { bold: true }
-  worksheet.getCell(`D${totalRow.number}`).font = { bold: true }
+  worksheet.getCell(`E${totalRow.number}`).font = { bold: true }
 
   const buffer = await workbook.xlsx.writeBuffer()
 

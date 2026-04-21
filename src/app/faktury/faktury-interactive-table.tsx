@@ -28,6 +28,7 @@ type CostPreset = {
 type CostRowDraft = {
   id: string
   label: string
+  supplier: string
   presetKey: string | null
   unitPrice: string
   quantity: string
@@ -710,7 +711,7 @@ function CostItemsModal({
 
   function handleRowChange(
     rowId: string,
-    field: 'label' | 'unitPrice' | 'quantity',
+    field: 'label' | 'supplier' | 'unitPrice' | 'quantity',
     nextValue: string
   ) {
     setRows((currentRows) =>
@@ -853,8 +854,8 @@ function CostItemsModal({
         }
       }}
     >
-      <div className="mx-auto flex h-full w-full max-w-5xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1080px] flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+      <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-center">
+        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -940,21 +941,32 @@ function CostItemsModal({
 
               <div className="overflow-x-auto rounded-3xl border border-gray-200">
                 <table className="min-w-full table-fixed border-separate border-spacing-0 bg-white">
+                  <colgroup>
+                    <col className="w-[24%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[96px]" />
+                    <col className="w-[96px]" />
+                    <col className="w-[132px]" />
+                    <col className="w-[220px]" />
+                  </colgroup>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                      <th className="w-[28%] border-b border-gray-200 px-3 py-3">
+                      <th className="border-b border-gray-200 px-3 py-3">
                         Položka
                       </th>
-                      <th className="w-[20%] border-b border-gray-200 px-3 py-3 text-right">
+                      <th className="border-b border-gray-200 px-3 py-3">
+                        Dodavatel
+                      </th>
+                      <th className="border-b border-gray-200 px-3 py-3 text-right">
                         Jedn. cena
                       </th>
-                      <th className="w-[20%] border-b border-gray-200 px-3 py-3 text-right">
+                      <th className="border-b border-gray-200 px-3 py-3 text-right">
                         Množství
                       </th>
-                      <th className="w-[16%] border-b border-gray-200 px-3 py-3 text-right">
+                      <th className="border-b border-gray-200 px-3 py-3 text-right">
                         Cena
                       </th>
-                      <th className="w-[16%] border-b border-gray-200 px-2 py-3 text-right">
+                      <th className="border-b border-gray-200 px-2 py-3 text-right">
                         Akce
                       </th>
                     </tr>
@@ -964,7 +976,7 @@ function CostItemsModal({
                     {isLoading ? (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           className="px-4 py-10 text-center text-sm text-gray-500"
                         >
                           Načítám nákladové položky...
@@ -1016,6 +1028,19 @@ function CostItemsModal({
                             </td>
 
                             <td className="border-b border-gray-100 px-3 py-3 align-middle">
+                              <input
+                                type="text"
+                                value={row.supplier}
+                                disabled={isPending}
+                                onChange={(event) =>
+                                  handleRowChange(row.id, 'supplier', event.target.value)
+                                }
+                                placeholder="Dodavatel"
+                                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                              />
+                            </td>
+
+                            <td className="border-b border-gray-100 px-3 py-3 align-middle">
                               <div>
                                 <input
                                   type="text"
@@ -1026,7 +1051,7 @@ function CostItemsModal({
                                     handleRowChange(row.id, 'unitPrice', event.target.value)
                                   }
                                   placeholder="0"
-                                  className={`h-10 w-full rounded-xl border bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                                     rowErrors.unitPrice
                                       ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
                                       : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
@@ -1051,7 +1076,7 @@ function CostItemsModal({
                                     handleRowChange(row.id, 'quantity', event.target.value)
                                   }
                                   placeholder="0"
-                                  className={`h-10 w-full rounded-xl border bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                                     rowErrors.quantity
                                       ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
                                       : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
@@ -1067,7 +1092,7 @@ function CostItemsModal({
 
                             <td className="border-b border-gray-100 px-3 py-3 align-middle text-right">
                               <span
-                                className={`block text-sm font-semibold ${
+                                className={`ml-auto block w-[108px] text-right text-sm font-semibold ${
                                   hasValidTotal ? 'text-gray-900' : 'text-red-600'
                                 }`}
                               >
@@ -1079,21 +1104,26 @@ function CostItemsModal({
 
                             <td className="border-b border-gray-100 px-2 py-3 align-middle text-right">
                               {row.isBase ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDuplicateRow(row.id)}
-                                  disabled={isPending}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  Kopie
-                                </button>
+                                <div className="flex min-w-[212px] justify-end gap-1">
+                                  <span className="inline-flex h-9 w-9 shrink-0" aria-hidden="true" />
+                                  <span className="inline-flex h-9 w-9 shrink-0" aria-hidden="true" />
+                                  <span className="inline-flex h-9 w-[72px] shrink-0" aria-hidden="true" />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDuplicateRow(row.id)}
+                                    disabled={isPending}
+                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl bg-gray-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    Kopie
+                                  </button>
+                                </div>
                               ) : (
-                                <div className="flex justify-end gap-1">
+                                <div className="flex min-w-[212px] justify-end gap-1">
                                   <button
                                     type="button"
                                     onClick={() => handleMoveRow(row.id, 'up')}
                                     disabled={isPending || !canMoveUp}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                                     title="Posunout nahoru"
                                   >
                                     ↑
@@ -1102,7 +1132,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleMoveRow(row.id, 'down')}
                                     disabled={isPending || !canMoveDown}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                                     title="Posunout dolů"
                                   >
                                     ↓
@@ -1111,7 +1141,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleDuplicateRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl bg-gray-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                                     title="Duplikovat řádek"
                                   >
                                     Kopie
@@ -1120,10 +1150,10 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleRemoveRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                                     title="Smazat řádek"
                                   >
-                                    Smazat
+                                    SMAZAT
                                   </button>
                                 </div>
                               )}
@@ -1279,6 +1309,7 @@ function createPresetDraftRow(preset: CostPreset, isBase = false): CostRowDraft 
   return {
     id: createDraftId(),
     label: preset.label,
+    supplier: '',
     presetKey: preset.key,
     unitPrice: formatNumberInput(preset.defaultUnitPrice),
     quantity: '0',
@@ -1290,6 +1321,7 @@ function createCustomDraftRow(): CostRowDraft {
   return {
     id: createDraftId(),
     label: '',
+    supplier: '',
     presetKey: null,
     unitPrice: '',
     quantity: '',
@@ -1318,6 +1350,7 @@ function buildDraftRowsFromItems(items: FinanceCostItem[]) {
     return {
       id: item.id,
       label: preset.label,
+      supplier: item.supplier ?? '',
       presetKey: preset.key,
       unitPrice: formatNumberInput(item.unitPrice),
       quantity: formatNumberInput(item.quantity),
@@ -1328,6 +1361,7 @@ function buildDraftRowsFromItems(items: FinanceCostItem[]) {
   const extraRows = remainingItems.map((item) => ({
     id: item.id,
     label: item.label,
+    supplier: item.supplier ?? '',
     presetKey: item.presetKey,
     unitPrice: formatNumberInput(item.unitPrice),
     quantity: formatNumberInput(item.quantity),
@@ -1373,6 +1407,7 @@ function getDraftRowsFromStorage(financeId: string) {
     return parsed.map((row) => ({
       id: typeof row.id === 'string' ? row.id : createDraftId(),
       label: typeof row.label === 'string' ? row.label : '',
+      supplier: typeof row.supplier === 'string' ? row.supplier : '',
       presetKey: typeof row.presetKey === 'string' ? row.presetKey : null,
       unitPrice: typeof row.unitPrice === 'string' ? row.unitPrice : '',
       quantity: typeof row.quantity === 'string' ? row.quantity : '',
@@ -1395,6 +1430,7 @@ function normalizeDraftRows(rows: CostRowDraft[]) {
   return rows.map((row) => ({
     id: row.id,
     label: row.label,
+    supplier: row.supplier,
     presetKey: row.presetKey,
     unitPrice: row.unitPrice,
     quantity: row.quantity,
@@ -1507,6 +1543,7 @@ function getDraftRowErrors(rows: CostRowDraft[]) {
     const isBlankCustomRow =
       !row.isBase &&
       !label &&
+      !row.supplier.trim() &&
       !row.unitPrice.trim() &&
       !row.quantity.trim() &&
       !row.presetKey
@@ -1555,6 +1592,7 @@ function prepareRowsForSave(
     const isBlankCustomRow =
       !row.isBase &&
       !label &&
+      !row.supplier.trim() &&
       !row.unitPrice.trim() &&
       !row.quantity.trim() &&
       !row.presetKey
@@ -1586,6 +1624,7 @@ function prepareRowsForSave(
 
     items.push({
       label,
+      supplier: row.supplier.trim() || null,
       presetKey: row.presetKey,
       sortOrder: items.length,
       unitPrice: unitPrice.value,

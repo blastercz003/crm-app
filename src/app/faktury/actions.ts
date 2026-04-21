@@ -11,6 +11,7 @@ export type UpdateFinanceInlineFieldActionState = {
 export type FinanceCostItem = {
   id: string
   label: string
+  supplier: string | null
   presetKey: string | null
   sortOrder: number
   unitPrice: number
@@ -20,6 +21,7 @@ export type FinanceCostItem = {
 
 export type FinanceCostItemInput = {
   label: string
+  supplier?: string | null
   presetKey?: string | null
   sortOrder: number
   unitPrice: number
@@ -75,11 +77,31 @@ type JobFinanceAccessRow = {
 type JobFinanceCostItemRow = {
   id: string
   label: string
+  supplier: string | null
   preset_key: string | null
   sort_order: number | null
   unit_price: number | string | null
   quantity: number | string | null
   line_total: number | null
+}
+
+function isMissingSupplierColumnError(error: {
+  message?: string | null
+  details?: string | null
+  hint?: string | null
+  code?: string | null
+} | null | undefined) {
+  const haystack = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return haystack.includes('supplier')
 }
 
 function isFinanceEditableField(value: string): value is FinanceEditableField {
@@ -157,6 +179,7 @@ function mapFinanceCostItemRow(row: JobFinanceCostItemRow): FinanceCostItem {
   return {
     id: String(row.id),
     label: String(row.label ?? '').trim(),
+    supplier: normalizeOptionalPresetKey(row.supplier),
     presetKey: normalizeOptionalPresetKey(row.preset_key),
     sortOrder:
       typeof row.sort_order === 'number' && row.sort_order >= 0
@@ -304,14 +327,29 @@ export async function getFinanceCostItemsAction(
     }
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('job_finance_cost_items')
     .select(
-      'id, label, preset_key, sort_order, unit_price, quantity, line_total'
+      'id, label, supplier, preset_key, sort_order, unit_price, quantity, line_total'
     )
     .eq('job_finance_id', normalizedFinanceId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
+
+  if (error && isMissingSupplierColumnError(error)) {
+    const fallbackResponse = await supabase
+      .from('job_finance_cost_items')
+      .select('id, label, preset_key, sort_order, unit_price, quantity, line_total')
+      .eq('job_finance_id', normalizedFinanceId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+
+    data = (fallbackResponse.data ?? []).map((row) => ({
+      ...row,
+      supplier: null,
+    }))
+    error = fallbackResponse.error
+  }
 
   if (error) {
     return {
@@ -373,6 +411,7 @@ export async function saveFinanceCostItemsAction(
 
   const normalizedItems = items.map((item, index) => {
     const label = String(item.label ?? '').trim()
+    const supplier = normalizeOptionalPresetKey(item.supplier)
     const unitPrice = normalizeFiniteNumber(item.unitPrice)
     const quantity = normalizeFiniteNumber(item.quantity)
     const sortOrder =
@@ -412,6 +451,7 @@ export async function saveFinanceCostItemsAction(
       item: {
         job_finance_id: normalizedFinanceId,
         label,
+        supplier,
         preset_key: normalizeOptionalPresetKey(item.presetKey),
         sort_order: sortOrder,
         unit_price: unitPrice,
@@ -455,9 +495,19 @@ export async function saveFinanceCostItemsAction(
     }
   }
 
-  const { error: insertError } = await supabase
+  let { error: insertError } = await supabase
     .from('job_finance_cost_items')
     .insert(rowsToInsert)
+
+  if (insertError && isMissingSupplierColumnError(insertError)) {
+    const fallbackRowsToInsert = rowsToInsert.map(({ supplier: _supplier, ...row }) => row)
+
+    const fallbackInsertResponse = await supabase
+      .from('job_finance_cost_items')
+      .insert(fallbackRowsToInsert)
+
+    insertError = fallbackInsertResponse.error
+  }
 
   if (insertError) {
     return {
