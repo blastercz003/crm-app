@@ -219,18 +219,18 @@ function CompanyBlock({
   childSeparated?: boolean
 }) {
   return (
-    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:min-h-[136px] print:px-2.5 print:py-2">
+    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:h-[136px] print:min-h-0 print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         {title}
       </div>
-      <div className="mt-1.5 flex-1 space-y-0.5 text-[13px] leading-5 text-zinc-950">
+      <div className="mt-1.5 space-y-0.5 text-[13px] leading-5 text-zinc-950">
         {lines.map((line) => (
           <div key={line}>{line}</div>
         ))}
       </div>
       {children ? (
         <div
-          className={`mt-3 print:mt-2 ${childSeparated ? 'border-t border-black pt-2.5 print:pt-2' : ''}`}
+          className={`mt-auto pt-3 print:pt-2 ${childSeparated ? 'border-t border-black pt-2.5 print:pt-2' : ''}`}
         >
           {children}
         </div>
@@ -368,7 +368,7 @@ function ProtocolTableSection({
 
 function SubtenantSection() {
   return (
-    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:min-h-[136px] print:px-2.5 print:py-2">
+    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:h-[136px] print:min-h-0 print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         Podnájemce
       </div>
@@ -385,7 +385,7 @@ function SubtenantSection() {
           <span>NE</span>
         </div>
       </div>
-      <div className="mt-3 h-12 rounded-md border border-dashed border-black bg-white print:mt-2 print:h-11" />
+      <div className="mt-auto h-12 rounded-md border border-dashed border-black bg-white print:h-11" />
     </section>
   )
 }
@@ -398,11 +398,11 @@ function SignatureBlock({
   rows: string[]
 }) {
   return (
-    <div className="flex min-h-[158px] flex-1 flex-col rounded-lg border border-black px-3 py-3 print:min-h-[142px] print:px-2.5 print:py-2">
+    <div className="flex min-h-[158px] flex-1 flex-col rounded-lg border border-black px-3 py-3 print:h-[142px] print:min-h-0 print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         {title}
       </div>
-      <div className="mt-3 flex-1 space-y-3 print:mt-2 print:space-y-2">
+      <div className="mt-3 space-y-3 print:mt-2 print:space-y-2">
         {rows.map((row) => (
           <div key={row}>
             <div className="text-[11px] text-zinc-950">{row}</div>
