@@ -476,7 +476,7 @@ function ProtocolHeader() {
   return (
     <section className="flex items-start justify-between gap-5 pb-2">
       <div className="shrink-0">
-        <img src="/logo.png" alt="B-ENERGY" className="h-5 w-auto" />
+        <img src="/logo-pp-black.png" alt="B-ENERGY" className="h-5 w-auto" />
       </div>
 
       <div className="text-right">

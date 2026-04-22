@@ -86,7 +86,7 @@ const ACCESSORY_PAGE_UNITS = 1
 const PAGE_WITH_SIGNATURE_CAPACITY = 6
 const PAGE_WITHOUT_SIGNATURE_CAPACITY = 12
 
-const logoPath = path.join(process.cwd(), 'public', 'logo.png')
+const logoPath = path.join(process.cwd(), 'public', 'logo-pp-black.png')
 const logoDataUri = `data:image/png;base64,${readFileSync(logoPath).toString('base64')}`
 const arialRegularPath = path.join(process.cwd(), 'public', 'fonts', 'Arial.ttf')
 const arialBoldPath = path.join(process.cwd(), 'public', 'fonts', 'Arial-Bold.ttf')
