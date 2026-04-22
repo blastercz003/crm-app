@@ -219,7 +219,7 @@ function CompanyBlock({
   childSeparated?: boolean
 }) {
   return (
-    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:h-[136px] print:min-h-0 print:px-2.5 print:py-2">
+    <section className="flex min-h-[152px] h-full flex-col rounded-lg border border-black bg-white px-3 py-3 print:min-h-[136px] print:h-full print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         {title}
       </div>
@@ -368,7 +368,7 @@ function ProtocolTableSection({
 
 function SubtenantSection() {
   return (
-    <section className="flex min-h-[152px] flex-col rounded-lg border border-black bg-white px-3 py-3 print:h-[136px] print:min-h-0 print:px-2.5 print:py-2">
+    <section className="flex min-h-[152px] h-full flex-col rounded-lg border border-black bg-white px-3 py-3 print:min-h-[136px] print:h-full print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         Podnájemce
       </div>
@@ -398,7 +398,7 @@ function SignatureBlock({
   rows: string[]
 }) {
   return (
-    <div className="flex min-h-[158px] flex-1 flex-col rounded-lg border border-black px-3 py-3 print:h-[142px] print:min-h-0 print:px-2.5 print:py-2">
+    <div className="flex min-h-[158px] h-full flex-1 flex-col rounded-lg border border-black px-3 py-3 print:min-h-[142px] print:h-full print:px-2.5 print:py-2">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-950">
         {title}
       </div>
@@ -416,7 +416,7 @@ function SignatureBlock({
 
 function SignatureSection() {
   return (
-    <section className="mt-6 break-inside-avoid-page break-inside-avoid grid gap-4 md:grid-cols-2 print:mt-4 print:gap-3">
+    <section className="mt-6 break-inside-avoid-page break-inside-avoid grid gap-4 md:grid-cols-2 print:mt-4 print:grid-cols-2 print:items-stretch print:gap-3">
       <SignatureBlock
         title="Realizace"
         rows={['Datum a čas', 'Technik B-ENERGY', 'Podpis technika']}
@@ -557,7 +557,7 @@ export function HandoverProtocolDocument({
                           />
                         </section>
 
-                        <section className="mt-4 grid gap-3 md:grid-cols-3">
+                        <section className="mt-4 grid gap-3 md:grid-cols-3 print:grid-cols-3 print:items-stretch">
                           <CompanyBlock
                             title="Předávající"
                             lines={[BLASTER_COMPANY.name, ...BLASTER_COMPANY.lines]}
@@ -582,9 +582,9 @@ export function HandoverProtocolDocument({
                           <SubtenantSection />
                         </section>
 
-                        <section className="mt-4 grid gap-2 md:grid-cols-3">
-                          <div className="hidden md:block" />
-                          <div className="hidden md:block" />
+                        <section className="mt-4 grid gap-2 md:grid-cols-3 print:grid-cols-3 print:items-stretch">
+                          <div className="hidden md:block print:block" />
+                          <div className="hidden md:block print:block" />
                           <ValuePair
                             label="Místo realizace"
                             value={protocol.handover_place}
