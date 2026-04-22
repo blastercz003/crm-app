@@ -787,7 +787,7 @@ function DashboardMiniCalendar({
                   hasMeetings
                     ? day.isToday
                       ? 'bg-[#2980B9] hover:opacity-95'
-                      : 'border-zinc-300 bg-zinc-50 hover:border-[#2980B9]/60'
+                      : 'border-zinc-300 bg-white hover:border-[#2980B9]/60'
                     : day.isToday
                       ? 'bg-[#2980B9]'
                     : '',
@@ -796,7 +796,7 @@ function DashboardMiniCalendar({
                 <div className="flex items-start justify-between gap-2">
                   <div
                     className={[
-                      'flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold',
+                      'inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold leading-none aspect-square',
                       day.isToday
                         ? 'bg-black text-white'
                         : day.isCurrentMonth
@@ -806,13 +806,15 @@ function DashboardMiniCalendar({
                   >
                     {day.dayNumber}
                   </div>
+                </div>
 
-                  {hasMeetings ? (
-                    <div className="rounded-full bg-[#2980B9] px-2 py-0.5 text-[10px] font-semibold text-white">
+                {hasMeetings ? (
+                  <div className="mt-4 flex justify-center">
+                    <div className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/90 bg-[#2980B9] px-1.5 text-[10px] font-semibold leading-none text-white shadow-sm">
                       {day.meetings.length}
                     </div>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
 
               {hasMeetings ? (
