@@ -249,11 +249,19 @@ function HandoverProtocolModal({
   function persistDraft(nextAction: 'save' | 'preview' | 'generate') {
     setLoadError(null)
     setSaveMessage(null)
+    const shouldUseCurrentTab =
+      nextAction !== 'save' &&
+      window.matchMedia('(max-width: 1023px)').matches
+    const previewWindow =
+      nextAction === 'save' || shouldUseCurrentTab
+        ? null
+        : window.open('', '_blank')
 
     startSaving(async () => {
       const result = await saveHandoverProtocolDraftAction(job.id, sanitizeDraft(draft))
 
       if (!result.success) {
+        previewWindow?.close()
         setLoadError(result.error ?? 'Předávací protokol se nepodařilo uložit.')
         return
       }
@@ -268,7 +276,12 @@ function HandoverProtocolModal({
           ? `/jobs/${job.id}/pp?standalone=1&print=1`
           : `/jobs/${job.id}/pp`
 
-      window.open(url, '_blank', 'noopener,noreferrer')
+      if (previewWindow) {
+        previewWindow.location.href = url
+        return
+      }
+
+      window.location.assign(url)
     })
   }
 

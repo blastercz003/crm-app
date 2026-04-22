@@ -401,7 +401,7 @@ function MobileAssignmentButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-8 min-w-[88px] items-center justify-center rounded-xl border border-orange-500 bg-white px-3 text-[11px] font-medium tracking-wide text-orange-600 transition hover:bg-orange-50"
+        className="inline-flex h-8 min-w-[88px] items-center justify-center rounded-xl border border-gray-900 bg-white px-3 text-[11px] font-medium tracking-wide text-gray-900 transition hover:bg-gray-50"
       >
         UPRAVIT
       </button>
