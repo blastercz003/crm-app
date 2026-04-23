@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -7,6 +6,7 @@ import {
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
 import { DashboardWelcomeOverlay } from '@/components/dashboard/dashboard-welcome-overlay'
+import { AppShell } from '@/components/layout/app-shell'
 
 export const dynamic = 'force-dynamic'
 
@@ -576,22 +576,22 @@ function DashboardStatCard({
   alert?: boolean
 }) {
   const cardClassName = highlighted
-    ? 'border border-[#2980B9] bg-[#2980B9]'
+    ? 'bg-gradient-to-br from-[#2f8fc8] to-[#2369A0] border border-white/20 shadow-[0_2px_12px_rgba(41,128,185,0.30)]'
     : alert
-      ? 'border border-red-600 bg-red-600'
-      : 'border border-zinc-200 bg-zinc-50'
+      ? 'bg-gradient-to-br from-red-500 to-red-600 border border-white/20 shadow-[0_2px_12px_rgba(220,38,38,0.25)]'
+      : 'glass-card'
 
-  const labelClassName = highlighted || alert ? 'text-xs text-white/80' : 'text-xs text-zinc-500'
+  const labelClassName = highlighted || alert ? 'text-xs text-white/80' : 'text-xs text-slate-500'
 
   const valueClassName =
     highlighted || alert
       ? 'mt-1.5 text-xl font-semibold text-white'
-      : 'mt-1.5 text-xl font-semibold text-zinc-950'
+      : 'mt-1.5 text-xl font-semibold text-slate-900'
 
   return (
     <div
       className={[
-        'rounded-2xl px-4 py-3.5 shadow-sm transition',
+        'rounded-2xl px-4 py-3.5 transition',
         cardClassName,
       ].join(' ')}
     >
@@ -612,13 +612,13 @@ function DashboardSectionHeader({
 }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
         {eyebrow}
       </div>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+      <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900">
         {title}
       </h2>
-      <p className="mt-1.5 text-sm text-zinc-500">{description}</p>
+      <p className="mt-1 text-sm text-slate-500">{description}</p>
     </div>
   )
 }
@@ -634,38 +634,38 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
   return (
     <div
       className={[
-        'relative rounded-2xl border px-4 py-3 shadow-sm transition duration-200 hover:shadow-md',
+        'relative rounded-xl px-4 py-3 transition duration-200',
         isOverdue
-          ? 'border-red-300 bg-red-50/60 hover:border-red-400'
-          : 'border-zinc-200/80 bg-white hover:border-zinc-300',
+          ? 'bg-red-500/10 border border-red-400/25 hover:bg-red-500/15'
+          : 'glass-card hover:bg-white/80',
       ].join(' ')}
     >
       <Link
         href={`/tasks/${task.id}`}
-        className="absolute inset-0 rounded-2xl"
+        className="absolute inset-0 rounded-xl"
         aria-label={`Otevřít úkol ${task.title}`}
       />
 
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="relative z-10 break-words text-sm font-semibold text-zinc-900">
+            <div className="relative z-10 break-words text-sm font-medium text-slate-800">
               {task.title}
             </div>
           </div>
 
           <div className="relative z-10 flex shrink-0 items-center gap-2">
             {isOverdue ? (
-              <span className="inline-flex items-center rounded-full border border-red-200 bg-red-600 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="inline-flex items-center rounded-full status-badge-overdue px-2.5 py-0.5 text-xs font-medium">
                 Po termínu
               </span>
             ) : null}
 
             <Link
               href={`/tasks/${task.id}`}
-              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
+              className="inline-flex items-center justify-center rounded-lg btn-glass-secondary px-3 py-1.5 text-xs font-medium transition"
             >
-              DETAIL
+              Detail
             </Link>
           </div>
         </div>
@@ -681,17 +681,17 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
   return (
     <Link
       href={`/meetings/${meeting.id}`}
-      className="block rounded-2xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md"
+      className="block glass-card rounded-xl px-4 py-3 transition duration-200 hover:bg-white/80"
     >
       <div className="flex items-start gap-3">
-        <div className="flex w-[64px] shrink-0 flex-col items-center rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-2 text-center">
-          <div className="text-xl font-semibold leading-none text-zinc-950">
+        <div className="flex w-[58px] shrink-0 flex-col items-center rounded-lg bg-[#2980B9]/10 border border-[#2980B9]/15 px-2 py-2 text-center">
+          <div className="text-lg font-bold leading-none text-[#2369A0]">
             {day}
           </div>
-          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#2980B9]/70">
             {month}
           </div>
-          <div className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-1.5 py-1 text-[11px] font-medium text-zinc-700">
+          <div className="mt-1.5 w-full rounded-md bg-white/70 border border-white/80 px-1 py-0.5 text-[10px] font-medium text-slate-600">
             {time}
           </div>
         </div>
@@ -699,15 +699,15 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-zinc-900">
+              <div className="truncate text-sm font-semibold text-slate-800">
                 {meeting.company_name ?? 'Bez firmy'}
               </div>
 
-              <div className="mt-0.5 truncate text-sm text-zinc-600">
+              <div className="mt-0.5 truncate text-sm text-slate-500">
                 {meeting.contact_person ?? meeting.title ?? 'Bez kontaktní osoby'}
               </div>
 
-              <div className="mt-1 text-[11px] text-zinc-500">
+              <div className="mt-0.5 text-[11px] text-slate-400">
                 {meeting.contact_phone ?? '—'}
               </div>
             </div>
@@ -739,8 +739,8 @@ function DashboardMiniCalendar({
   const weekdayLabels = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne']
 
   return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <section className="glass-card rounded-2xl p-5">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <DashboardSectionHeader
             eyebrow="Kalendář"
@@ -751,24 +751,24 @@ function DashboardMiniCalendar({
 
         <Link
           href="/calendar"
-          className="hidden shrink-0 items-center self-start rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800 md:inline-flex"
+          className="hidden shrink-0 items-center self-start rounded-xl btn-glass-primary px-4 py-2 text-sm font-medium transition md:inline-flex"
         >
-          KALENDÁŘ
+          Kalendář
         </Link>
       </div>
 
-      <div className="mb-3 grid grid-cols-7 gap-2">
+      <div className="mb-2 grid grid-cols-7 gap-1">
         {weekdayLabels.map((label) => (
           <div
             key={label}
-            className="px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400"
+            className="px-1 py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
           >
             {label}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1">
         {calendarDays.map((day) => {
           const hasMeetings = day.meetings.length > 0
           const visibleMeetings = day.meetings.slice(0, 3)
@@ -778,39 +778,41 @@ function DashboardMiniCalendar({
             <div key={day.isoKey} className="group relative">
               <div
                 className={[
-                  'flex min-h-[82px] flex-col rounded-2xl border p-2 transition duration-200',
-                  day.isToday
-                    ? 'border-[#2980B9] text-white'
-                    : day.isCurrentMonth
-                      ? 'border-zinc-200 bg-white'
-                      : 'border-zinc-100 bg-zinc-50/70 text-zinc-400',
-                  hasMeetings
-                    ? day.isToday
-                      ? 'bg-[#2980B9] hover:opacity-95'
-                      : 'border-zinc-300 bg-white hover:border-[#2980B9]/60'
+                  'flex min-h-[72px] flex-col rounded-xl border p-1.5 transition duration-200',
+                  day.isToday && hasMeetings
+                    ? 'bg-[#2980B9] border-[#2369A0]/50 text-white hover:opacity-95'
                     : day.isToday
-                      ? 'bg-[#2980B9]'
-                    : '',
+                      ? 'bg-[#2980B9] border-[#2369A0]/50 text-white'
+                      : day.isCurrentMonth
+                        ? hasMeetings
+                          ? 'border-[#2980B9]/25 bg-white/60 hover:border-[#2980B9]/40'
+                          : 'border-white/50 bg-white/35 hover:bg-white/50'
+                        : 'border-transparent bg-transparent',
                 ].join(' ')}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div
-                    className={[
-                      'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold leading-none',
-                      day.isToday
-                        ? 'bg-black text-white'
-                        : day.isCurrentMonth
-                          ? 'text-zinc-900'
-                          : 'text-zinc-400',
-                    ].join(' ')}
-                  >
-                    {day.dayNumber}
-                  </div>
+                <div
+                  className={[
+                    'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold leading-none',
+                    day.isToday
+                      ? 'bg-white/20 text-white'
+                      : day.isCurrentMonth
+                        ? 'text-slate-700'
+                        : 'text-slate-300',
+                  ].join(' ')}
+                >
+                  {day.dayNumber}
                 </div>
 
-                <div className="mt-auto flex h-6 items-center justify-center pt-4">
+                <div className="mt-auto flex h-5 items-center justify-center">
                   {hasMeetings ? (
-                    <div className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/90 bg-[#2980B9] text-[10px] font-semibold leading-none text-white shadow-sm">
+                    <div
+                      className={[
+                        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold leading-none',
+                        day.isToday
+                          ? 'bg-white/25 text-white'
+                          : 'bg-[#2980B9] text-white shadow-sm',
+                      ].join(' ')}
+                    >
                       {day.meetings.length}
                     </div>
                   ) : null}
@@ -818,34 +820,34 @@ function DashboardMiniCalendar({
               </div>
 
               {hasMeetings ? (
-                <div className="pointer-events-none absolute left-1/2 top-[calc(100%+10px)] z-30 hidden w-[260px] -translate-x-1/2 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:block group-hover:opacity-100 xl:w-[280px]">
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl">
-                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                <div className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-30 hidden w-[240px] -translate-x-1/2 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:block group-hover:opacity-100 xl:w-[260px]">
+                  <div className="glass-card rounded-xl border border-white/60 p-3 shadow-xl backdrop-blur-2xl">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                       Schůzky
                     </div>
 
-                    <div className="grid gap-2">
+                    <div className="grid gap-1.5">
                       {visibleMeetings.map((meeting) => (
                         <Link
                           key={meeting.id}
                           href={`/meetings/${meeting.id}`}
-                          className="block rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition duration-200 hover:border-zinc-300 hover:bg-white"
+                          className="block rounded-lg bg-white/60 border border-white/70 px-2.5 py-2 transition duration-200 hover:bg-white/80"
                         >
                           <div className="text-[11px] font-semibold text-[#2980B9]">
                             {formatMeetingTime(meeting.meeting_datetime)}
                           </div>
-                          <div className="mt-1 text-sm font-medium text-zinc-900">
+                          <div className="mt-0.5 text-xs font-medium text-slate-800">
                             {meeting.company_name ?? 'Bez firmy'}
                           </div>
-                          <div className="mt-0.5 text-xs text-zinc-500">
+                          <div className="mt-0.5 text-[11px] text-slate-500">
                             {meeting.contact_person ?? 'Bez kontaktní osoby'}
                           </div>
                         </Link>
                       ))}
 
                       {hasMoreMeetings ? (
-                        <div className="px-1 pt-1 text-xs font-medium text-zinc-500">
-                          a další
+                        <div className="px-1 pt-0.5 text-xs font-medium text-slate-400">
+                          a další…
                         </div>
                       ) : null}
                     </div>
@@ -857,122 +859,48 @@ function DashboardMiniCalendar({
         })}
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3 text-xs text-zinc-500">
-        <div className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-zinc-900" />
+      <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+        <div className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#2980B9]" />
           Dnes
         </div>
-        <div className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-[#2980B9]" />
-          Počet schůzek v daném dni
+        <div className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#2980B9]/50" />
+          Schůzky
         </div>
       </div>
 
-      <div className="mt-5 md:hidden">
+      <div className="mt-4 md:hidden">
         <Link
           href="/calendar"
-          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+          className="inline-flex items-center rounded-xl btn-glass-primary px-4 py-2 text-sm font-medium transition"
         >
-          OTEVŘÍT KALENDÁŘ
+          Otevřít kalendář
         </Link>
       </div>
     </section>
   )
 }
 
-function ClientsCard() {
+function QuickNavCard({
+  href,
+  label,
+  description,
+}: {
+  href: string
+  label: string
+  description: string
+}) {
   return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Klienti
-          </h2>
-        </div>
-
-        <Link
-          href="/clients"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          OTEVŘÍT KLIENTY
-        </Link>
+    <Link
+      href={href}
+      className="glass-card group flex flex-col gap-1 rounded-xl p-4 transition duration-200 hover:bg-white/80"
+    >
+      <div className="text-sm font-semibold text-slate-800 group-hover:text-[#2980B9] transition-colors">
+        {label}
       </div>
-    </section>
-  )
-}
-
-function JobsCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Zakázky
-          </h2>
-        </div>
-
-        <Link
-          href="/jobs"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          OTEVŘÍT ZAKÁZKY
-        </Link>
-      </div>
-    </section>
-  )
-}
-
-function JobsPortalCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Portál zakázek
-          </h2>
-        </div>
-
-        <Link
-          href="/jobs-portal"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          OTEVŘÍT PORTÁL
-        </Link>
-      </div>
-    </section>
-  )
-}
-
-function FinanceCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Finance
-          </h2>
-        </div>
-
-        <Link
-          href="/faktury"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
-          OTEVŘÍT FINANCE
-        </Link>
-      </div>
-    </section>
+      <div className="text-xs text-slate-500">{description}</div>
+    </Link>
   )
 }
 
@@ -1283,7 +1211,7 @@ export default async function DashboardPage() {
   })
 
   return (
-    <main className="min-h-screen bg-gray-50 text-zinc-900">
+    <AppShell>
       {shouldShowOverlay ? (
         <DashboardWelcomeOverlay
           shouldShow={shouldShowOverlay}
@@ -1297,72 +1225,55 @@ export default async function DashboardPage() {
         />
       ) : null}
 
-      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center justify-center lg:justify-start">
-              <Link href="/dashboard" className="inline-flex items-center">
-                <Image
-                  src="/logo2.png"
-                  alt="B-ENERGY"
-                  width={150}
-                  height={42}
-                  priority
-                  className="h-6 w-auto transition hover:opacity-80"
-                />
-              </Link>
-            </div>
-
-            <div className="w-full lg:w-auto">
-              <div className="flex w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:min-w-[390px]">
-                <div className="min-w-0 text-[10px] leading-4 text-zinc-500">
-                  <div className="truncate">
-                    Uživatel:{' '}
-                    <span className="font-medium text-zinc-900">
-                      {profile?.name ?? user.email}
-                    </span>
-                  </div>
-                  <div>
-                    Role:{' '}
-                    <span className="font-medium uppercase text-zinc-900">
-                      {profile?.role ?? 'neuvedeno'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Link
-                    href="/settings/password"
-                    className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
-                  >
-                    HESLO
-                  </Link>
-
-                  <form action="/auth/signout" method="post" className="shrink-0">
-                    <button className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-800 sm:w-auto">
-                      ODHLÁSIT
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
+      <div className="flex flex-col gap-6 p-6 lg:p-8">
+        {/* Page header */}
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+              Vítej zpět{profile?.name ? `, ${profile.name.split(' ')[0]}` : ''}!
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Přehled tvých úkolů a schůzek
+            </p>
           </div>
-        </section>
 
+          <div className="flex shrink-0 gap-2">
+            <Link
+              href="/tasks/new"
+              className="inline-flex items-center rounded-xl btn-glass-primary px-4 py-2 text-sm font-medium transition"
+            >
+              + Nový úkol
+            </Link>
+            <Link
+              href="/meetings/new"
+              className="inline-flex items-center rounded-xl btn-glass-secondary px-4 py-2 text-sm font-medium transition"
+            >
+              + Schůzka
+            </Link>
+          </div>
+        </div>
+
+        {/* Quick nav (optional module shortcuts) */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:hidden">
+          <QuickNavCard href="/clients" label="Klienti" description="Databáze klientů" />
+          {profile?.can_view_jobs ? (
+            <QuickNavCard href="/jobs" label="Zakázky" description="Přehled projektů" />
+          ) : null}
+          {profile?.can_view_jobs_portal ? (
+            <QuickNavCard href="/jobs-portal" label="Portál" description="Portál zakázek" />
+          ) : null}
+          {isAdmin ? (
+            <QuickNavCard href="/faktury" label="Finance" description="Faktury a platby" />
+          ) : null}
+        </div>
+
+        {/* Main grid */}
         <div className="grid gap-6 xl:grid-cols-3">
-          <div className="space-y-6">
-            <ClientsCard />
-
-            {profile?.can_view_jobs ? <JobsCard /> : null}
-
-            {profile?.can_view_jobs_portal ? <JobsPortalCard /> : null}
-
-            {isAdmin ? <FinanceCard /> : null}
-          </div>
-
-          <div className="space-y-6">
-            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-              <div className="mb-5">
+          {/* Tasks + Meetings */}
+          <div className="xl:col-span-2 space-y-6">
+            {/* Tasks */}
+            <section className="glass-card rounded-2xl p-5">
+              <div className="mb-4">
                 <DashboardSectionHeader
                   eyebrow="Úkoly"
                   title="Moje úkoly"
@@ -1370,7 +1281,7 @@ export default async function DashboardPage() {
                 />
               </div>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
                 <DashboardStatCard
                   label="Aktivní úkoly"
                   value={activeTasksCount}
@@ -1384,29 +1295,30 @@ export default async function DashboardPage() {
               </div>
 
               {tasks.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white/40 px-4 py-8 text-center text-sm text-slate-400">
                   Nemáš žádné aktivní úkoly.
                 </div>
               ) : (
-                <div className="grid gap-3">
+                <div className="grid gap-2">
                   {tasks.map((task) => (
                     <DashboardTaskItem key={task.id} task={task} />
                   ))}
                 </div>
               )}
 
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4">
                 <Link
                   href="/tasks"
-                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                  className="inline-flex items-center rounded-xl btn-glass-primary px-4 py-2 text-sm font-medium transition"
                 >
-                  VŠECHNY ÚKOLY
+                  Všechny úkoly
                 </Link>
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-              <div className="mb-5">
+            {/* Meetings */}
+            <section className="glass-card rounded-2xl p-5">
+              <div className="mb-4">
                 <DashboardSectionHeader
                   eyebrow="Schůzky"
                   title="Moje nejbližší schůzky"
@@ -1414,7 +1326,7 @@ export default async function DashboardPage() {
                 />
               </div>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
                 <DashboardStatCard
                   label="Schůzky dnes"
                   value={dashboardTodayMeetingsCount}
@@ -1427,40 +1339,34 @@ export default async function DashboardPage() {
               </div>
 
               {meetings.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white/40 px-4 py-8 text-center text-sm text-slate-400">
                   Nemáš žádné nadcházející schůzky.
                 </div>
               ) : (
-                <div className="grid gap-2.5">
+                <div className="grid gap-2">
                   {meetings.map((meeting) => (
                     <DashboardMeetingItem key={meeting.id} meeting={meeting} />
                   ))}
                 </div>
               )}
 
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4">
                 <Link
                   href="/meetings"
-                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                  className="inline-flex items-center rounded-xl btn-glass-primary px-4 py-2 text-sm font-medium transition"
                 >
-                  VŠECHNY SCHŮZKY
+                  Všechny schůzky
                 </Link>
               </div>
             </section>
           </div>
 
+          {/* Calendar */}
           <div className="space-y-6">
             <DashboardMiniCalendar meetings={monthMeetings} />
           </div>
         </div>
       </div>
-
-      <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
-          <div>B-ENERGY APP — coding by blaster</div>
-          <div>v1.8.1</div>
-        </div>
-      </footer>
-    </main>
+    </AppShell>
   )
 }

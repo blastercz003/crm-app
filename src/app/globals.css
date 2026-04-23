@@ -1,33 +1,114 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary: #2980B9;
+  --primary-dark: #2369A0;
+  --primary-light: rgba(41, 128, 185, 0.12);
+  --app-bg: #E6EDF8;
+  --sidebar-width: 228px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--app-bg);
+  --color-foreground: #0F172A;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--app-bg);
+  color: #0F172A;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── Glass utilities ───────────────────────────────────── */
+
+.sidebar-glass {
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border-right: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 4px 0 28px rgba(0, 0, 0, 0.05), inset -1px 0 0 rgba(255,255,255,0.7);
 }
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 6px 20px rgba(0,0,0,0.05);
+}
+
+.glass-card-solid {
+  background: rgba(255, 255, 255, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.06);
+}
+
+.nav-item-active {
+  background: rgba(41, 128, 185, 0.11);
+  border: 1px solid rgba(41, 128, 185, 0.20);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.btn-glass-primary {
+  background: linear-gradient(145deg, #2f8fc8 0%, #2369A0 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    inset 0 -1px 0 rgba(0,0,0,0.08);
+  color: white;
+  transition: all 0.15s ease;
+}
+
+.btn-glass-primary:hover {
+  background: linear-gradient(145deg, #3a9fd6 0%, #2980B9 100%);
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.22);
+}
+
+.btn-glass-secondary {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+  color: #374151;
+  transition: all 0.15s ease;
+}
+
+.btn-glass-secondary:hover {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.status-badge-planned {
+  background: rgba(41, 128, 185, 0.12);
+  border: 1px solid rgba(41, 128, 185, 0.22);
+  color: #1a6fa0;
+}
+
+.status-badge-done {
+  background: rgba(22, 163, 74, 0.10);
+  border: 1px solid rgba(22, 163, 74, 0.20);
+  color: #166534;
+}
+
+.status-badge-overdue {
+  background: rgba(220, 38, 38, 0.10);
+  border: 1px solid rgba(220, 38, 38, 0.20);
+  color: #991b1b;
+}
+
+/* ─── FullCalendar theme ───────────────────────────────── */
 
 .calendar-shell .fc {
   --fc-border-color: rgb(232 232 232);
-  --fc-page-bg-color: #ffffff;
+  --fc-page-bg-color: transparent;
   --fc-neutral-bg-color: rgb(250 250 250);
   --fc-neutral-text-color: rgb(82 82 91);
   --fc-today-bg-color: rgba(24, 24, 27, 0.035);
@@ -64,14 +145,15 @@ body {
 }
 
 .calendar-shell .fc .fc-button-primary {
-  background: #ffffff;
-  border-color: rgb(228 228 231);
+  background: rgba(255,255,255,0.7);
+  border-color: rgba(255,255,255,0.5);
   color: #18181b;
+  backdrop-filter: blur(8px);
 }
 
 .calendar-shell .fc .fc-button-primary:hover {
-  background: rgb(244 244 245);
-  border-color: rgb(212 212 216);
+  background: rgba(255,255,255,0.9);
+  border-color: rgba(255,255,255,0.7);
   color: #18181b;
 }
 
@@ -88,10 +170,10 @@ body {
 }
 
 .calendar-shell .fc .fc-scrollgrid {
-  border: 1px solid rgb(228 228 231);
+  border: 1px solid rgba(255,255,255,0.5);
   border-radius: 1.5rem;
   overflow: hidden;
-  background: #ffffff;
+  background: rgba(255,255,255,0.6);
 }
 
 .calendar-shell .fc .fc-scrollgrid-section > * {
@@ -108,11 +190,11 @@ body {
 }
 
 .calendar-shell .fc .fc-col-header {
-  background: #ffffff;
+  background: rgba(255,255,255,0.5);
 }
 
 .calendar-shell .fc .fc-col-header-cell {
-  background: #ffffff;
+  background: rgba(255,255,255,0.5);
   padding-top: 0.35rem;
   padding-bottom: 0.35rem;
 }
@@ -128,17 +210,17 @@ body {
 
 .calendar-shell .fc .fc-daygrid-body,
 .calendar-shell .fc .fc-scrollgrid-sync-table {
-  background: #ffffff;
+  background: rgba(255,255,255,0.5);
 }
 
 .calendar-shell .fc .fc-daygrid-day {
-  background: #ffffff;
+  background: rgba(255,255,255,0.4);
 }
 
 .calendar-shell .fc .fc-daygrid-day-frame {
   min-height: 9.5rem;
   padding: 0.35rem;
-  background: #ffffff;
+  background: transparent;
 }
 
 .calendar-shell .fc .fc-daygrid-day-top {
@@ -161,11 +243,11 @@ body {
 }
 
 .calendar-shell .fc .fc-day-other {
-  background: #fafafa;
+  background: rgba(250,250,250,0.3);
 }
 
 .calendar-shell .fc .fc-day-other .fc-daygrid-day-frame {
-  background: #fafafa;
+  background: rgba(250,250,250,0.3);
 }
 
 .calendar-shell .fc .fc-day-other .fc-daygrid-day-number {
@@ -202,7 +284,7 @@ body {
 }
 
 .calendar-shell .fc .fc-timegrid-axis {
-  background: #fafafa;
+  background: rgba(250,250,250,0.5);
 }
 
 .calendar-shell .fc .fc-timegrid-axis-cushion,
@@ -259,14 +341,14 @@ body {
 }
 
 .calendar-shell .fc .fc-event.fc-event-completed {
-  background: #f4f4f5;
-  border-color: #e4e4e7;
+  background: rgba(244,244,245,0.8);
+  border-color: rgb(228 228 231);
   color: #18181b;
 }
 
 .calendar-shell .fc .fc-event.fc-event-completed:hover {
-  background: #ececef;
-  border-color: #d4d4d8;
+  background: rgba(236,236,239,0.9);
+  border-color: rgb(212 212 216);
 }
 
 .calendar-shell .fc .fc-event-main {
@@ -321,14 +403,16 @@ body {
 }
 
 .calendar-shell .fc .fc-popover {
-  border: 1px solid rgb(228 228 231);
+  border: 1px solid rgba(255,255,255,0.5);
   border-radius: 1rem;
   box-shadow: 0 10px 30px rgba(24, 24, 27, 0.08);
   overflow: hidden;
+  backdrop-filter: blur(16px);
+  background: rgba(255,255,255,0.85);
 }
 
 .calendar-shell .fc .fc-popover-header {
-  background: #fafafa;
+  background: rgba(250,250,250,0.8);
   color: #18181b;
   font-weight: 600;
   padding: 0.75rem 0.9rem;
@@ -336,7 +420,7 @@ body {
 
 .calendar-shell .fc .fc-popover-body {
   padding: 0.5rem;
-  background: #ffffff;
+  background: transparent;
 }
 
 @media (max-width: 1024px) {
@@ -384,6 +468,8 @@ body {
     height: 2.1rem;
   }
 }
+
+/* ─── Navigation overlay pulse ─────────────────────────── */
 
 @keyframes navigation-overlay-pulse {
   0% {
