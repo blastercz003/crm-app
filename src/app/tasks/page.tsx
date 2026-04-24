@@ -9,6 +9,7 @@ type TasksPageProps = {
   searchParams?: Promise<{
     search?: string
     view?: string
+    range?: string
   }>
 }
 
@@ -18,6 +19,7 @@ type ClientOption = {
 }
 
 type TaskView = 'all' | 'active' | 'resolved'
+type TaskRange = 'all' | 'today' | 'this_week' | 'next_week'
 
 function StatCard({
   label,
@@ -91,9 +93,11 @@ function FilterTab({
 function getTabHref({
   search,
   view,
+  range,
 }: {
   search: string
   view: TaskView
+  range: TaskRange
 }) {
   const params = new URLSearchParams()
 
@@ -105,8 +109,96 @@ function getTabHref({
     params.set('view', view)
   }
 
+  if (range !== 'all') {
+    params.set('range', range)
+  }
+
   const query = params.toString()
   return query ? `/tasks?${query}` : '/tasks'
+}
+
+function isTaskRange(value: string | undefined): value is TaskRange {
+  return (
+    value === 'all' ||
+    value === 'today' ||
+    value === 'this_week' ||
+    value === 'next_week'
+  )
+}
+
+function getPragueTodayParts() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+
+  const parts = formatter.formatToParts(new Date())
+
+  const year = Number(parts.find((part) => part.type === 'year')?.value ?? '')
+  const month = Number(parts.find((part) => part.type === 'month')?.value ?? '')
+  const day = Number(parts.find((part) => part.type === 'day')?.value ?? '')
+
+  return { year, month, day }
+}
+
+function toDateOnly(value: Date) {
+  const year = value.getUTCFullYear()
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(value.getUTCDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function addDaysUtc(value: Date, days: number) {
+  const next = new Date(value)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
+}
+
+function getTodayRange() {
+  const today = getPragueTodayParts()
+  const pragueDateAsUtc = new Date(
+    Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0)
+  )
+
+  const date = toDateOnly(pragueDateAsUtc)
+
+  return {
+    from: date,
+    to: date,
+  }
+}
+
+function getWeekRange(offsetWeeks = 0) {
+  const today = getPragueTodayParts()
+  const pragueDateAsUtc = new Date(
+    Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0)
+  )
+
+  const day = pragueDateAsUtc.getUTCDay()
+  const mondayOffset = day === 0 ? -6 : 1 - day
+  const monday = addDaysUtc(pragueDateAsUtc, mondayOffset + offsetWeeks * 7)
+  const sunday = addDaysUtc(monday, 6)
+
+  return {
+    from: toDateOnly(monday),
+    to: toDateOnly(sunday),
+  }
+}
+
+function getRangeLabel(range: TaskRange) {
+  switch (range) {
+    case 'today':
+      return 'Dnes'
+    case 'this_week':
+      return 'Tento týden'
+    case 'next_week':
+      return 'Příští týden'
+    default:
+      return 'Bez termínového filtru'
+  }
 }
 
 function splitTasks(tasks: TaskRow[]) {
@@ -166,6 +258,30 @@ function filterTasks(tasks: TaskRow[], search: string) {
   })
 }
 
+function filterTasksByRange(tasks: TaskRow[], range: TaskRange) {
+  if (range === 'all') return tasks
+
+  const todayRange = getTodayRange()
+  const thisWeekRange = getWeekRange(0)
+  const nextWeekRange = getWeekRange(1)
+
+  const selectedRange =
+    range === 'today'
+      ? todayRange
+      : range === 'this_week'
+        ? thisWeekRange
+        : nextWeekRange
+
+  return tasks.filter((task) => {
+    if (!task.due_date) return false
+
+    return (
+      task.due_date >= selectedRange.from &&
+      task.due_date <= selectedRange.to
+    )
+  })
+}
+
 function getProfileId(profile: { id?: string | null } | null | undefined) {
   return profile?.id ?? null
 }
@@ -177,6 +293,9 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const rawView = resolvedSearchParams?.view
   const view: TaskView =
     rawView === 'active' || rawView === 'resolved' ? rawView : 'all'
+  const range: TaskRange = isTaskRange(resolvedSearchParams?.range)
+    ? resolvedSearchParams?.range
+    : 'all'
 
   const supabase = await createClient()
   const users = await getAssignableUsers()
@@ -198,9 +317,18 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const isAdmin = profile.role === 'admin'
   const profileId = getProfileId(profile)
 
-  const filteredAssignedToMe = filterTasks(assignedToMe, search)
-  const filteredCreatedByMe = filterTasks(createdByMe, search)
-  const filteredAllTasks = filterTasks(allTasks, search)
+  const filteredAssignedToMe = filterTasksByRange(
+    filterTasks(assignedToMe, search),
+    range
+  )
+  const filteredCreatedByMe = filterTasksByRange(
+    filterTasks(createdByMe, search),
+    range
+  )
+  const filteredAllTasks = filterTasksByRange(
+    filterTasks(allTasks, search),
+    range
+  )
 
   const createdForOthers = profileId
     ? filteredCreatedByMe.filter((task) => task.assigned_to !== profileId)
@@ -249,6 +377,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 />
 
                 <input type="hidden" name="view" value={view} />
+                <input type="hidden" name="range" value={range} />
 
                 <button
                   type="submit"
@@ -271,7 +400,8 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         </section>
 
         <section className="rounded-[26px] border border-zinc-200 bg-white shadow-sm">
-          <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
+          <div className="p-4 md:p-5">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
             <div className="min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Zobrazení
@@ -279,17 +409,17 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <FilterTab
-                  href={getTabHref({ search, view: 'all' })}
+                  href={getTabHref({ search, view: 'all', range })}
                   label="Vše"
                   active={view === 'all'}
                 />
                 <FilterTab
-                  href={getTabHref({ search, view: 'active' })}
+                  href={getTabHref({ search, view: 'active', range })}
                   label="Aktivní"
                   active={view === 'active'}
                 />
                 <FilterTab
-                  href={getTabHref({ search, view: 'resolved' })}
+                  href={getTabHref({ search, view: 'resolved', range })}
                   label="Vyřešené"
                   active={view === 'resolved'}
                 />
@@ -306,6 +436,9 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   }
                 />
                 {search ? <InfoChip label={`Hledání: ${search}`} /> : null}
+                {range !== 'all' ? (
+                  <InfoChip label={`Termín: ${getRangeLabel(range)}`} />
+                ) : null}
                 {isAdmin ? <InfoChip label="Admin" /> : null}
               </div>
             </div>
@@ -331,6 +464,49 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 />
                 <StatCard label="Úkolů celkem" value={totalVisibleCount} />
               </div>
+            </div>
+          </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-100 pt-4">
+              <Link
+                href={getTabHref({ search, view, range: 'today' })}
+                className={`inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-medium text-white transition ${
+                  range === 'today'
+                    ? 'bg-[#236f9f] shadow-sm'
+                    : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                }`}
+              >
+                DNES
+              </Link>
+
+              <Link
+                href={getTabHref({ search, view, range: 'this_week' })}
+                className={`inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-medium text-white transition ${
+                  range === 'this_week'
+                    ? 'bg-[#236f9f] shadow-sm'
+                    : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                }`}
+              >
+                TENTO TÝDEN
+              </Link>
+
+              <Link
+                href={getTabHref({ search, view, range: 'next_week' })}
+                className={`inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-medium text-white transition ${
+                  range === 'next_week'
+                    ? 'bg-[#236f9f] shadow-sm'
+                    : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                }`}
+              >
+                PŘÍŠTÍ TÝDEN
+              </Link>
+
+              <Link
+                href={getTabHref({ search, view, range: 'all' })}
+                className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
+              >
+                RESET
+              </Link>
             </div>
           </div>
         </section>

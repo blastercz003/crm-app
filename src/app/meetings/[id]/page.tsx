@@ -21,6 +21,7 @@ type MeetingDetail = {
   pre_meeting_note: string | null
   result_note: string | null
   follow_up_task: string | null
+  follow_up_task_note: string | null
   status: 'planned' | 'completed'
   created_at: string | null
   updated_at: string | null
@@ -125,6 +126,60 @@ function ContentSection({
   )
 }
 
+function FollowUpTaskSection({
+  title,
+  description,
+  taskTitle,
+  taskNote,
+}: {
+  title: string
+  description: string
+  taskTitle: string | null | undefined
+  taskNote: string | null | undefined
+}) {
+  const hasTaskTitle = Boolean(taskTitle?.trim())
+  const hasTaskNote = Boolean(taskNote?.trim())
+
+  return (
+    <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        <p className="mt-1 text-sm text-gray-500">{description}</p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+        {hasTaskTitle || hasTaskNote ? (
+          <div className="space-y-4">
+            {hasTaskTitle ? (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Název úkolu
+                </div>
+                <p className="mt-2 text-sm font-medium leading-7 text-gray-900">
+                  {taskTitle}
+                </p>
+              </div>
+            ) : null}
+
+            {hasTaskNote ? (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Poznámka
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-gray-700">
+                  {taskNote}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">Zatím bez navazujícího úkolu po schůzce.</p>
+        )}
+      </div>
+    </section>
+  )
+}
+
 export default async function MeetingDetailPage({
   params,
 }: {
@@ -165,6 +220,7 @@ export default async function MeetingDetailPage({
       pre_meeting_note,
       result_note,
       follow_up_task,
+      follow_up_task_note,
       status,
       created_at,
       updated_at,
@@ -323,11 +379,11 @@ export default async function MeetingDetailPage({
           emptyText="Výsledek schůzky zatím nebyl doplněn."
         />
 
-        <ContentSection
-          title="Úkol po schůzce"
-          description="Navazující krok nebo úkol, který ze schůzky vyplynul."
-          value={meeting.follow_up_task}
-          emptyText="Zatím bez úkolu po schůzce."
+        <FollowUpTaskSection
+          title="Navazující úkol"
+          description="Navazující krok ze schůzky včetně názvu úkolu a doplňující poznámky."
+          taskTitle={meeting.follow_up_task}
+          taskNote={meeting.follow_up_task_note}
         />
       </div>
     </main>

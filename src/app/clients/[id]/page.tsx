@@ -1,6 +1,10 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import {
+  getPriorityBadgeClass,
+  getPriorityLabel,
+} from '@/app/tasks/taskUi'
 
 type ClientRow = {
   id: string
@@ -389,6 +393,16 @@ export default async function ClientDetailPage({
                         {getTaskStatusLabel(task.status)}
                       </span>
                     </div>
+
+                    {task.priority ? (
+                      <div className="mt-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
+                        >
+                          Priorita: {getPriorityLabel(task.priority)}
+                        </span>
+                      </div>
+                    ) : null}
                   </Link>
                 ))}
               </div>

@@ -21,6 +21,7 @@ type MeetingFormValues = {
   pre_meeting_note?: string | null
   result_note?: string | null
   follow_up_task?: string | null
+  follow_up_task_note?: string | null
   status?: 'planned' | 'completed'
 }
 
@@ -338,7 +339,7 @@ export function MeetingForm({
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label
             htmlFor="meeting_datetime"
             className="text-sm font-medium text-gray-900"
@@ -352,11 +353,12 @@ export function MeetingForm({
             defaultValue={formatDateTimeLocalInput(
               initialValues?.meeting_datetime
             )}
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+            className="w-full max-w-full min-w-0 appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+            style={{ minWidth: 0 }}
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label htmlFor="status" className="text-sm font-medium text-gray-900">
             Stav
           </label>
@@ -364,7 +366,7 @@ export function MeetingForm({
             id="status"
             name="status"
             defaultValue={initialValues?.status ?? 'planned'}
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+            className="w-full max-w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
           >
             <option value="planned">Plánovaná</option>
             <option value="completed">Dokončená</option>
@@ -408,13 +410,31 @@ export function MeetingForm({
             htmlFor="follow_up_task"
             className="text-sm font-medium text-gray-900"
           >
-            Navazující úkol
+            Název úkolu po schůzce
           </label>
-          <textarea
+          <input
             id="follow_up_task"
             name="follow_up_task"
-            rows={3}
+            type="text"
             defaultValue={initialValues?.follow_up_task ?? ''}
+            placeholder="Např. Poslat cenovou nabídku"
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+          />
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <label
+            htmlFor="follow_up_task_note"
+            className="text-sm font-medium text-gray-900"
+          >
+            Poznámka k úkolu
+          </label>
+          <textarea
+            id="follow_up_task_note"
+            name="follow_up_task_note"
+            rows={4}
+            defaultValue={initialValues?.follow_up_task_note ?? ''}
+            placeholder="Doplňující informace, které se mají propsat do poznámky úkolu"
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
           />
         </div>

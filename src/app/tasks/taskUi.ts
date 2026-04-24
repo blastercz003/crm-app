@@ -36,12 +36,12 @@ export function getStatusBadgeClass(status: string | null | undefined) {
 export function getPriorityBadgeClass(priority: string | null | undefined) {
   switch (priority) {
     case 'low':
-      return 'bg-gray-100 text-gray-800'
+      return 'border border-zinc-200 bg-zinc-100 text-zinc-700'
     case 'medium':
-      return 'bg-yellow-100 text-yellow-800'
+      return 'border border-sky-200 bg-sky-100 text-sky-800'
     case 'high':
-      return 'bg-red-100 text-red-800'
+      return 'border border-red-200 bg-red-100 text-red-800'
     default:
-      return 'bg-gray-100 text-gray-700'
+      return 'border border-gray-200 bg-gray-100 text-gray-700'
   }
 }

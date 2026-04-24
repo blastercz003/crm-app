@@ -1,7 +1,10 @@
 import Link from 'next/link'
 import { TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
 import EditTaskButton from './edit-task-button'
+import { updateTaskStatus } from './actions'
 import {
+  getPriorityBadgeClass,
+  getPriorityLabel,
   getStatusBadgeClass,
   getStatusLabel,
 } from './taskUi'
@@ -110,6 +113,7 @@ export default function TaskCard({
   users,
   clients,
 }: TaskCardProps) {
+  const markTaskDoneAction = updateTaskStatus.bind(null, task.id, 'done')
   const clientName = resolveClientName(
     task.client,
     task.company_name ?? 'Bez klienta'
@@ -139,23 +143,30 @@ export default function TaskCard({
     'inline-flex h-9 items-center justify-center rounded-xl px-3 text-xs font-medium transition'
 
   return (
-    <div className={cardClassName}>
-      <div className="flex flex-col gap-3">
+    <div className={`${cardClassName} min-h-[178px]`}>
+      <div className="flex h-full flex-col gap-2.5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0 flex-1">
-            <h3 className="break-words text-sm font-semibold text-zinc-900 md:text-base">
+            <h3
+              className="line-clamp-2 min-h-[2.4rem] break-words text-sm font-semibold leading-5 text-zinc-900 md:text-base"
+              title={task.title}
+            >
               {task.title}
             </h3>
 
-            <div className="mt-1 text-sm text-zinc-600">
+            <div
+              className="mt-0.5 min-h-[1.125rem] truncate text-sm leading-5 text-zinc-600"
+              title={clientName}
+            >
               {clientName}
             </div>
 
-            {task.note ? (
-              <div className="mt-1 truncate text-xs text-zinc-500">
-                {truncatePreviewText(task.note)}
-              </div>
-            ) : null}
+            <div
+              className={`mt-0.5 min-h-[1rem] text-xs leading-4 text-zinc-500 ${task.note ? 'line-clamp-1' : 'invisible'}`}
+              title={task.note ?? undefined}
+            >
+              {task.note ? truncatePreviewText(task.note) : '—'}
+            </div>
           </div>
 
           <div className="min-w-0 flex flex-wrap gap-2 text-sm sm:shrink-0 sm:justify-end">
@@ -168,6 +179,13 @@ export default function TaskCard({
             >
               {getStatusLabel(task.status)}
             </span>
+            {task.priority ? (
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
+              >
+                Priorita: {getPriorityLabel(task.priority)}
+              </span>
+            ) : null}
             {isOverdue ? (
               <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
                 Po termínu
@@ -181,10 +199,21 @@ export default function TaskCard({
           </div>
         </div>
 
-        <div className="min-w-0 flex flex-wrap gap-2">
+        <div className="mt-auto min-w-0 flex flex-wrap justify-end gap-2 pt-1">
+          {task.status !== 'done' ? (
+            <form action={markTaskDoneAction} className="shrink-0">
+              <button
+                type="submit"
+                className={`${actionButtonClassName} border border-emerald-600 bg-emerald-600 text-white hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]`}
+              >
+                SPLNIT
+              </button>
+            </form>
+          ) : null}
+
           <Link
             href={`/tasks/${task.id}`}
-            className={`${actionButtonClassName} border border-gray-200 bg-white text-gray-700 hover:bg-gray-100`}
+            className={`${actionButtonClassName} shrink-0 bg-zinc-900 text-white hover:bg-zinc-800`}
           >
             DETAIL
           </Link>
@@ -204,7 +233,7 @@ export default function TaskCard({
             }}
             users={users}
             clients={clients}
-            className={`${actionButtonClassName} bg-zinc-900 text-white hover:bg-zinc-800`}
+            className={`${actionButtonClassName} shrink-0 border border-gray-200 bg-white text-gray-700 hover:bg-gray-100`}
             label="UPRAVIT"
           />
         </div>

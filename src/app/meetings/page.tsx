@@ -12,6 +12,7 @@ type SearchParams = {
 
 type MeetingRowBase = {
   id: string
+  client_id: string | null
   company_name: string | null
   contact_person: string | null
   contact_phone: string | null
@@ -22,6 +23,7 @@ type MeetingRowBase = {
   pre_meeting_note: string | null
   result_note: string | null
   follow_up_task: string | null
+  follow_up_task_note: string | null
   status: 'planned' | 'completed'
   assigned_user_id: string | null
   client:
@@ -452,6 +454,7 @@ export default async function MeetingsPage({
 
   const meetingSelect = `
     id,
+    client_id,
     company_name,
     contact_person,
     contact_phone,
@@ -462,6 +465,7 @@ export default async function MeetingsPage({
     pre_meeting_note,
     result_note,
     follow_up_task,
+    follow_up_task_note,
     status,
     assigned_user_id,
     client:clients (

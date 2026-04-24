@@ -105,7 +105,7 @@ async function createTaskRecord(formData: FormData) {
   const due_date = normalizeOptionalString(formData.get('due_date'))
   const assigned_to = normalizeOptionalString(formData.get('assigned_to'))
   const status = normalizeStatus(formData.get('status'))
-  const priority = 'medium'
+  const priority = normalizePriority(formData.get('priority'))
 
   const clientId = normalizeClientId(formData.get('client_id'))
   const rawCompanyName = normalizeOptionalString(formData.get('company_name'))

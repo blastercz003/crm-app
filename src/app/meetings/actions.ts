@@ -202,6 +202,7 @@ async function resolveMeetingClientFields(params: {
 async function syncMeetingFollowUpTask(params: {
   meetingId: string
   followUpTask: string | null
+  followUpTaskNote: string | null
   companyName: string | null
   contactPerson: string | null
   assignedUserId?: string | null
@@ -212,6 +213,7 @@ async function syncMeetingFollowUpTask(params: {
   const {
     meetingId,
     followUpTask,
+    followUpTaskNote,
     companyName,
     contactPerson,
     assignedUserId,
@@ -239,6 +241,7 @@ async function syncMeetingFollowUpTask(params: {
         .from('tasks')
         .update({
           title: followUpTask,
+          note: followUpTaskNote,
           company_name: companyName,
           contact_person: contactPerson,
           assigned_to: assignedUserId ?? null,
@@ -253,6 +256,7 @@ async function syncMeetingFollowUpTask(params: {
     } else {
       const { error } = await supabase.from('tasks').insert({
         title: followUpTask,
+        note: followUpTaskNote,
         status: 'todo',
         source: 'meeting',
         meeting_id: meetingId,
@@ -289,6 +293,7 @@ async function createMeetingRecord(formData: FormData) {
   const preMeetingNote = normalizeText(formData.get('pre_meeting_note'))
   const resultNote = normalizeText(formData.get('result_note'))
   const followUpTask = normalizeText(formData.get('follow_up_task'))
+  const followUpTaskNote = normalizeText(formData.get('follow_up_task_note'))
   const status = normalizeStatus(formData.get('status'))
 
   const resolvedFields = await resolveMeetingClientFields({
@@ -328,6 +333,7 @@ async function createMeetingRecord(formData: FormData) {
       pre_meeting_note: preMeetingNote,
       result_note: resultNote,
       follow_up_task: followUpTask,
+      follow_up_task_note: followUpTaskNote,
       status,
       assigned_user_id: user.id,
       created_by: user.id,
@@ -344,6 +350,7 @@ async function createMeetingRecord(formData: FormData) {
   await syncMeetingFollowUpTask({
     meetingId: data.id,
     followUpTask,
+    followUpTaskNote,
     companyName,
     contactPerson,
     assignedUserId: data.assigned_user_id,
@@ -377,6 +384,7 @@ async function updateMeetingRecord(formData: FormData) {
   const preMeetingNote = normalizeText(formData.get('pre_meeting_note'))
   const resultNote = normalizeText(formData.get('result_note'))
   const followUpTask = normalizeText(formData.get('follow_up_task'))
+  const followUpTaskNote = normalizeText(formData.get('follow_up_task_note'))
   const status = normalizeStatus(formData.get('status'))
 
   if (!id) {
@@ -431,6 +439,7 @@ async function updateMeetingRecord(formData: FormData) {
       pre_meeting_note: preMeetingNote,
       result_note: resultNote,
       follow_up_task: followUpTask,
+      follow_up_task_note: followUpTaskNote,
       status,
     })
     .eq('id', id)
@@ -446,6 +455,7 @@ async function updateMeetingRecord(formData: FormData) {
   await syncMeetingFollowUpTask({
     meetingId: data.id,
     followUpTask,
+    followUpTaskNote,
     companyName,
     contactPerson,
     assignedUserId: data.assigned_user_id,

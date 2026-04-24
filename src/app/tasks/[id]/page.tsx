@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
 import { updateTaskStatus } from '../actions'
 import {
+  getPriorityBadgeClass,
+  getPriorityLabel,
   getStatusBadgeClass,
   getStatusLabel,
 } from '../taskUi'
@@ -205,6 +207,14 @@ export default async function TaskDetailPage({
                   {getStatusLabel(typedTask.status)}
                 </span>
 
+                {typedTask.priority ? (
+                  <span
+                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(typedTask.priority)}`}
+                  >
+                    Priorita: {getPriorityLabel(typedTask.priority)}
+                  </span>
+                ) : null}
+
               </div>
 
               <p className="text-sm text-gray-500">
@@ -215,8 +225,8 @@ export default async function TaskDetailPage({
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:justify-end lg:w-[24rem]">
               {canUpdateStatus && typedTask.status !== 'done' ? (
                 <form action={markTaskDoneAction}>
-                  <button className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-emerald-700 transition hover:bg-emerald-100">
-                    DOKONČIT
+                  <button className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]">
+                    SPLNIT
                   </button>
                 </form>
               ) : null}
@@ -261,6 +271,10 @@ export default async function TaskDetailPage({
                 <InfoCard label="Zadal" value={creatorName} />
                 <InfoCard label="Klient" value={clientName} />
                 <InfoCard
+                  label="Priorita"
+                  value={getPriorityLabel(typedTask.priority)}
+                />
+                <InfoCard
                   label="Kontaktní osoba"
                   value={typedTask.contact_person || '—'}
                 />
@@ -287,6 +301,19 @@ export default async function TaskDetailPage({
                   <p className="mt-2 text-sm font-medium text-gray-900">
                     {getStatusLabel(typedTask.status)}
                   </p>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Priorita
+                  </p>
+                  <div className="mt-2">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(typedTask.priority)}`}
+                    >
+                      {getPriorityLabel(typedTask.priority)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">

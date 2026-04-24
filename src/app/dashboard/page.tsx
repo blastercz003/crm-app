@@ -2,6 +2,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { updateTaskStatus } from '@/app/tasks/actions'
+import {
+  getPriorityBadgeClass,
+  getPriorityLabel,
+} from '@/app/tasks/taskUi'
 import {
   MeetingStatusBadge,
   MeetingTaskBadge,
@@ -30,6 +35,7 @@ type DashboardTask = {
   id: string
   title: string
   status: 'todo' | 'done'
+  priority: string | null
   source: 'manual' | 'meeting' | null
   meeting_id: string | null
   company_name: string | null
@@ -681,6 +687,7 @@ function DashboardSectionHeader({
 
 function DashboardTaskItem({ task }: { task: DashboardTask }) {
   const todayDateKeyInPrague = getTodayDateKeyInPrague()
+  const markTaskDoneAction = updateTaskStatus.bind(null, task.id, 'done')
   const dueDate = task.due_date
   const isOverdue =
     task.status !== 'done' &&
@@ -692,7 +699,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
       className={[
         'relative rounded-2xl border px-4 py-3 shadow-sm transition duration-200 hover:shadow-md',
         isOverdue
-          ? 'border-red-300 bg-red-50/60 hover:border-red-400'
+          ? 'border-red-300 bg-white hover:border-red-400'
           : 'border-zinc-200/80 bg-white hover:border-zinc-300',
       ].join(' ')}
     >
@@ -704,26 +711,54 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
       <div className="flex flex-col gap-2.5">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="relative z-10 break-words text-sm font-semibold text-zinc-900">
+          <div className="min-w-0 flex-1 pr-4">
+            <div
+              className="relative z-10 line-clamp-2 min-h-10 break-words text-sm font-semibold leading-5 text-zinc-900"
+              title={task.title}
+            >
               {task.title}
             </div>
           </div>
 
-          <div className="relative z-10 flex shrink-0 items-center gap-2">
-            {isOverdue ? (
-              <span className="inline-flex items-center rounded-full border border-red-200 bg-red-600 px-2.5 py-1 text-xs font-medium text-white">
-                Po termínu
-              </span>
-            ) : null}
+          <div className="relative z-10 flex min-h-[1.75rem] w-52 shrink-0 flex-wrap justify-end gap-1.5">
+            <div className="min-h-[1.75rem]">
+              {task.priority ? (
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
+                >
+                  {getPriorityLabel(task.priority)}
+                </span>
+              ) : null}
+            </div>
 
-            <Link
-              href={`/tasks/${task.id}`}
-              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
-            >
-              DETAIL
-            </Link>
+            <div className="min-h-[1.75rem]">
+              {isOverdue ? (
+                <span className="inline-flex items-center rounded-full border border-red-200 bg-red-600 px-2.5 py-1 text-xs font-medium text-white task-overdue-badge">
+                  Po termínu
+                </span>
+              ) : null}
+            </div>
           </div>
+        </div>
+
+        <div className="relative z-10 flex justify-end gap-2">
+          <Link
+            href={`/tasks/${task.id}`}
+            className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
+          >
+            DETAIL
+          </Link>
+
+          {task.status !== 'done' ? (
+            <form action={markTaskDoneAction}>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]"
+              >
+                SPLNIT
+              </button>
+            </form>
+          ) : null}
         </div>
       </div>
     </div>
@@ -1173,6 +1208,7 @@ export default async function DashboardPage() {
         id,
         title,
         status,
+        priority,
         source,
         meeting_id,
         company_name,
@@ -1227,6 +1263,7 @@ export default async function DashboardPage() {
           .select('id', { count: 'exact', head: true })
           .neq('status', 'done')
           .eq('assigned_to', user.id)
+          .neq('created_by', user.id)
           .gt('created_at', lastSeenUpdatesAt)
       : Promise.resolve({ count: 0, error: null } as { count: number | null; error: null }),
 
