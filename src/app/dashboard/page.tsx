@@ -1509,7 +1509,7 @@ export default async function DashboardPage() {
               <DashboardUserPanel
                 profileName={profile?.name ?? null}
                 profileRole={profile?.role ?? null}
-                userEmail={user.email}
+                userEmail={user.email ?? ''}
                 className="w-[320px] min-w-[320px] max-w-[320px]"
               />
             </div>
@@ -1622,7 +1622,7 @@ export default async function DashboardPage() {
             <DashboardUserPanel
               profileName={profile?.name ?? null}
               profileRole={profile?.role ?? null}
-              userEmail={user.email}
+              userEmail={user.email ?? ''}
               className="lg:hidden"
             />
           </div>
