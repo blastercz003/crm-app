@@ -19,7 +19,7 @@ export function TaskCompleteButton({
     <button
       type="submit"
       disabled={pending}
-      className={`${className} disabled:cursor-not-allowed disabled:opacity-100`}
+      className={`task-complete-cta ${className} disabled:cursor-not-allowed disabled:opacity-100`}
     >
       {pending ? pendingLabel : idleLabel}
     </button>

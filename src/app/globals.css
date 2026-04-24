@@ -157,7 +157,7 @@ input[type="reset"]:not(:disabled) {
 @media (max-width: 767px) {
   .primary-ambient-glow--blue,
   .primary-ambient-glow--dark,
-  button[class*='task-complete-glow'] {
+  .task-complete-cta {
     animation: none !important;
     box-shadow: none !important;
   }
