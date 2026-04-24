@@ -671,12 +671,12 @@ function DashboardStatCard({
   return (
     <div
       className={[
-        'rounded-2xl px-4 py-3.5 shadow-sm transition',
+        'min-w-0 rounded-2xl px-3 py-3 shadow-sm transition sm:px-4 sm:py-3.5',
         cardClassName,
       ].join(' ')}
     >
-      <div className={labelClassName}>{label}</div>
-      <div className={valueClassName}>{value}</div>
+      <div className={`${labelClassName} leading-tight`}>{label}</div>
+      <div className={`${valueClassName} text-lg sm:text-xl`}>{value}</div>
     </div>
   )
 }
@@ -1497,7 +1497,7 @@ export default async function DashboardPage() {
                 />
               </div>
 
-              <div className="mb-5 grid grid-cols-2 gap-3">
+              <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
                 <DashboardStatCard
                   label="Aktivní úkoly"
                   value={activeTasksCount}
@@ -1541,7 +1541,7 @@ export default async function DashboardPage() {
                 />
               </div>
 
-              <div className="mb-5 grid grid-cols-2 gap-3">
+              <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
                 <DashboardStatCard
                   label="Schůzky dnes"
                   value={dashboardTodayMeetingsCount}

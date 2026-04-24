@@ -242,6 +242,11 @@ async function getProtocolDraftData(
       .maybeSingle()
 
     protocol = fallbackResponse.data
+      ? {
+          ...fallbackResponse.data,
+          is_sent: false,
+        }
+      : null
     protocolError = fallbackResponse.error
   }
 
