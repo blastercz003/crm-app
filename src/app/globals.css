@@ -154,6 +154,15 @@ input[type="reset"]:not(:disabled) {
   will-change: box-shadow;
 }
 
+@media (max-width: 767px) {
+  .primary-ambient-glow--blue,
+  .primary-ambient-glow--dark,
+  button[class*='task-complete-glow'] {
+    animation: none !important;
+    box-shadow: none !important;
+  }
+}
+
 .task-priority-badge {
   will-change: box-shadow;
 }
