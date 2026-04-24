@@ -703,6 +703,57 @@ function DashboardSectionHeader({
   )
 }
 
+function DashboardUserPanel({
+  profileName,
+  profileRole,
+  userEmail,
+  className = '',
+}: {
+  profileName: string | null
+  profileRole: string | null
+  userEmail: string
+  className?: string
+}) {
+  return (
+    <div
+      className={[
+        'flex w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between',
+        className,
+      ].join(' ')}
+    >
+      <div className="min-w-0 flex-1 text-[10px] leading-4 text-zinc-500">
+        <div className="truncate">
+          Uživatel:{' '}
+          <span className="font-medium text-zinc-900">
+            {profileName ?? userEmail}
+          </span>
+        </div>
+        <div className="truncate">
+          Role:{' '}
+          <span className="font-medium uppercase text-zinc-900">
+            {profileRole ?? 'neuvedeno'}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Link
+          href="/settings/password"
+          className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+        >
+          HESLO
+        </Link>
+
+        <form action="/auth/signout" method="post" className="shrink-0">
+          <button className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-800 sm:w-auto">
+            ODHLÁSIT
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function DashboardTaskItem({ task }: { task: DashboardTask }) {
   const todayDateKeyInPrague = getTodayDateKeyInPrague()
   const markTaskDoneAction = updateTaskStatus.bind(null, task.id, 'done')
@@ -1440,37 +1491,12 @@ export default async function DashboardPage() {
                   summaryItems={overlaySummaryItems}
                 />
 
-                <div className="flex w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]">
-                  <div className="min-w-0 flex-1 text-[10px] leading-4 text-zinc-500">
-                    <div className="truncate">
-                      Uživatel:{' '}
-                      <span className="font-medium text-zinc-900">
-                        {profile?.name ?? user.email}
-                      </span>
-                    </div>
-                    <div className="truncate">
-                      Role:{' '}
-                      <span className="font-medium uppercase text-zinc-900">
-                        {profile?.role ?? 'neuvedeno'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Link
-                      href="/settings/password"
-                      className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
-                    >
-                      HESLO
-                    </Link>
-
-                    <form action="/auth/signout" method="post" className="shrink-0">
-                      <button className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-800 sm:w-auto">
-                        ODHLÁSIT
-                      </button>
-                    </form>
-                  </div>
-                </div>
+                <DashboardUserPanel
+                  profileName={profile?.name ?? null}
+                  profileRole={profile?.role ?? null}
+                  userEmail={user.email}
+                  className="hidden lg:flex lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
+                />
 	              </div>
 	            </div>
 	          </div>
@@ -1578,6 +1604,13 @@ export default async function DashboardPage() {
 
           <div className="space-y-6">
             <DashboardMiniCalendar meetings={monthMeetings} />
+
+            <DashboardUserPanel
+              profileName={profile?.name ?? null}
+              profileRole={profile?.role ?? null}
+              userEmail={user.email}
+              className="lg:hidden"
+            />
           </div>
         </div>
       </div>
