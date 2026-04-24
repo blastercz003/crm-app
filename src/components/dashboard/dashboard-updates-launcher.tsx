@@ -19,6 +19,7 @@ type DashboardUpdatesLauncherProps = {
   headline?: string
   description?: string
   summaryItems?: OverlaySummaryItem[]
+  className?: string
 }
 
 export function DashboardUpdatesLauncher({
@@ -31,6 +32,7 @@ export function DashboardUpdatesLauncher({
   headline,
   description,
   summaryItems,
+  className = '',
 }: DashboardUpdatesLauncherProps) {
   const [isManualOpen, setIsManualOpen] = useState(false)
 
@@ -39,7 +41,10 @@ export function DashboardUpdatesLauncher({
       <button
         type="button"
         onClick={() => setIsManualOpen(true)}
-        className="primary-ambient-glow--blue relative inline-flex min-h-[44px] w-full items-center justify-center overflow-visible rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 text-sm font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#2471A3] lg:min-h-full lg:w-auto lg:self-stretch"
+        className={[
+          'primary-ambient-glow--blue relative items-center justify-center overflow-visible rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 text-sm font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#2471A3]',
+          className,
+        ].join(' ')}
       >
         <span className="relative z-10">NOVINKY</span>
       </button>
