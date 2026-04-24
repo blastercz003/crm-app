@@ -174,12 +174,6 @@ export default function TaskCard({
             <div className={dueBadgeClassName}>
               {formatDueDate(task.due_date)}
             </div>
-            <span
-              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
-              style={task.status === 'todo' ? { backgroundColor: '#2980B9' } : undefined}
-            >
-              {getStatusLabel(task.status)}
-            </span>
             {task.priority ? (
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
@@ -187,6 +181,12 @@ export default function TaskCard({
                 Priorita: {getPriorityLabel(task.priority)}
               </span>
             ) : null}
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(task.status)}`}
+              style={task.status === 'todo' ? { backgroundColor: '#2980B9' } : undefined}
+            >
+              {getStatusLabel(task.status)}
+            </span>
             {isOverdue ? (
               <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
                 Po termínu
