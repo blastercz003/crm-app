@@ -124,10 +124,10 @@ export default function TaskCard({
   const cardClassName = [
     'min-w-0 overflow-hidden rounded-2xl border px-4 py-4 shadow-sm transition',
     isOverdue
-      ? 'border-red-300 bg-red-50/40'
+      ? 'border-red-300 bg-white hover:border-red-400'
       : isToday
-        ? 'border-orange-300 bg-orange-50/40'
-        : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-zinc-100',
+        ? 'border-orange-300 bg-white hover:border-orange-400'
+        : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50',
   ].join(' ')
 
   const dueBadgeClassName = [

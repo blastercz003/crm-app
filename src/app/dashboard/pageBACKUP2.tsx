@@ -1287,6 +1287,7 @@ export default async function DashboardPage() {
           shouldShow={shouldShowOverlay}
           profileName={profile?.name ?? ''}
           newTasksCount={newTasksCount}
+          completedDelegatedTasksCount={0}
           todayMeetingsCount={todayMeetingsCount}
           overdueTasksCount={overdueTasksCount}
           headline={overlayHeadline}
