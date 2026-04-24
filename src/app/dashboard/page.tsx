@@ -81,6 +81,13 @@ type OverlaySummaryItem = {
   tone?: 'default' | 'highlight' | 'success' | 'warning'
 }
 
+type RecentCompletedDelegatedTask = {
+  id: string
+  title: string
+  assigned_to: string | null
+  completed_at: string | null
+}
+
 function parseDate(value: string | null) {
   if (!value) return null
 
@@ -546,7 +553,10 @@ function getOverlayDescription(
 
 function buildOverlaySummaryItems(args: {
   newTasksCount: number
-  completedDelegatedTasksCount: number
+  recentCompletedDelegatedTasks: Array<{
+    title: string
+    assigneeName: string | null
+  }>
   todayMeetingsCount: number
   overdueTasksCount: number
 }): OverlaySummaryItem[] {
@@ -563,18 +573,17 @@ function buildOverlaySummaryItems(args: {
     })
   }
 
-  if (args.completedDelegatedTasksCount > 0) {
+  args.recentCompletedDelegatedTasks.forEach((task) => {
     items.push({
       label: 'Splněné úkoly',
-      value:
-        args.completedDelegatedTasksCount === 1
-          ? '1 zadaný úkol byl splněn'
-          : `${args.completedDelegatedTasksCount} zadané úkoly byly splněny`,
+      value: task.assigneeName
+        ? `${task.assigneeName}: ${task.title}`
+        : task.title,
       tone: 'success',
     })
-  }
+  })
 
-  if (args.newTasksCount === 0 && args.completedDelegatedTasksCount === 0) {
+  if (args.newTasksCount === 0 && args.recentCompletedDelegatedTasks.length === 0) {
     items.push({
       label: 'Dnešní úkoly',
       value: 'Žádný nový úkol.',
@@ -613,32 +622,32 @@ function buildOverlaySummaryItems(args: {
   return items
 }
 
-async function getCompletedDelegatedTasksCount(params: {
+async function getRecentCompletedDelegatedTasks(params: {
   supabase: Awaited<ReturnType<typeof createClient>>
   userId: string
-  lastSeenUpdatesAt: string | null
 }) {
-  const { supabase, userId, lastSeenUpdatesAt } = params
-
-  if (!lastSeenUpdatesAt) {
-    return { count: 0, error: null as null | { message: string } }
-  }
+  const { supabase, userId } = params
+  const completedSince = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
 
   const response = await supabase
     .from('tasks')
-    .select('id', { count: 'exact', head: true })
+    .select('id, title, assigned_to, completed_at')
     .eq('status', 'done')
     .eq('created_by', userId)
     .not('assigned_to', 'is', null)
     .neq('assigned_to', userId)
-    .gt('completed_at', lastSeenUpdatesAt)
+    .gte('completed_at', completedSince)
+    .order('completed_at', { ascending: false })
 
   if (
     response.error &&
     response.error.message.toLowerCase().includes('completed_at') &&
     response.error.message.toLowerCase().includes('column')
   ) {
-    return { count: 0, error: null as null | { message: string } }
+    return {
+      data: [] as RecentCompletedDelegatedTask[],
+      error: null as null | { message: string },
+    }
   }
 
   return response
@@ -1266,7 +1275,7 @@ export default async function DashboardPage() {
     weeklyMeetingsCountResponse,
     monthMeetingsResponse,
     newTasksCountResponse,
-    completedDelegatedTasksCountResponse,
+    recentCompletedDelegatedTasksResponse,
   ] = await Promise.all([
     supabase
       .from('tasks')
@@ -1333,10 +1342,9 @@ export default async function DashboardPage() {
           .gt('created_at', lastSeenUpdatesAt)
       : Promise.resolve({ count: 0, error: null } as { count: number | null; error: null }),
 
-    getCompletedDelegatedTasksCount({
+    getRecentCompletedDelegatedTasks({
       supabase,
       userId: user.id,
-      lastSeenUpdatesAt,
     }),
   ])
 
@@ -1396,9 +1404,9 @@ export default async function DashboardPage() {
     )
   }
 
-  if (completedDelegatedTasksCountResponse.error) {
+  if (recentCompletedDelegatedTasksResponse.error) {
     throw new Error(
-      `Nepodařilo se načíst počet splněných zadaných úkolů: ${completedDelegatedTasksCountResponse.error.message}`
+      `Nepodařilo se načíst splněné zadané úkoly: ${recentCompletedDelegatedTasksResponse.error.message}`
     )
   }
 
@@ -1438,8 +1446,15 @@ export default async function DashboardPage() {
   const dashboardWeeklyMeetingsCount = dashboardWeeklyMeetingsCountResponse.count ?? 0
   const todayMeetingsCount = todayMeetingsCountResponse.count ?? 0
   const newTasksCount = newTasksCountResponse.count ?? 0
-  const completedDelegatedTasksCount =
-    completedDelegatedTasksCountResponse.count ?? 0
+  const recentCompletedDelegatedTasks = (
+    (recentCompletedDelegatedTasksResponse.data ?? []) as RecentCompletedDelegatedTask[]
+  ).map((task) => ({
+    ...task,
+    assigneeName: task.assigned_to
+      ? profileMap.get(task.assigned_to)?.name ?? null
+      : null,
+  }))
+  const completedDelegatedTasksCount = recentCompletedDelegatedTasks.length
   const hasTaskUpdates =
     newTasksCount > 0 || completedDelegatedTasksCount > 0
   const shouldShowOverlay = isFirstVisitToday || hasTaskUpdates
@@ -1454,7 +1469,7 @@ export default async function DashboardPage() {
   )
   const overlaySummaryItems = buildOverlaySummaryItems({
     newTasksCount,
-    completedDelegatedTasksCount,
+    recentCompletedDelegatedTasks,
     todayMeetingsCount,
     overdueTasksCount,
   })
