@@ -190,14 +190,17 @@ export default async function TaskDetailPage({
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+            <div className="min-w-0 space-y-2 lg:max-w-[calc(100%-24rem)]">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1
+                  className="min-w-0 text-2xl font-semibold tracking-tight text-gray-900 lg:block lg:truncate"
+                  title={typedTask.title}
+                >
                   {typedTask.title}
                 </h1>
 
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(typedTask.status)}`}
+                  className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(typedTask.status)}`}
                 >
                   {getStatusLabel(typedTask.status)}
                 </span>
@@ -209,10 +212,10 @@ export default async function TaskDetailPage({
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:justify-end lg:w-[24rem]">
               {canUpdateStatus && typedTask.status !== 'done' ? (
                 <form action={markTaskDoneAction}>
-                  <button className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-emerald-700 transition hover:bg-emerald-100">
+                  <button className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-emerald-700 transition hover:bg-emerald-100">
                     DOKONČIT
                   </button>
                 </form>
@@ -220,14 +223,14 @@ export default async function TaskDetailPage({
 
               <Link
                 href={`/tasks/${typedTask.id}/edit`}
-                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
+                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
               >
                 UPRAVIT ÚKOL
               </Link>
 
               <Link
                 href="/tasks"
-                className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:opacity-90"
+                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:opacity-90"
                 style={{ backgroundColor: '#2980B9' }}
               >
                 ZPĚT NA ÚKOLY

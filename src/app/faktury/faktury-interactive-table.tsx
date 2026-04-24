@@ -845,7 +845,7 @@ function CostItemsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-gray-900/45 p-3 sm:p-4"
+      className="fixed inset-0 z-50 bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
       aria-modal="true"
       role="dialog"
       onMouseDown={(event) => {

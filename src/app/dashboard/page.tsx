@@ -6,7 +6,7 @@ import {
   MeetingStatusBadge,
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
-import { DashboardWelcomeOverlay } from '@/components/dashboard/dashboard-welcome-overlay'
+import { DashboardUpdatesLauncher } from '@/components/dashboard/dashboard-updates-launcher'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,7 +71,7 @@ type PragueDateParts = {
 type OverlaySummaryItem = {
   label: string
   value: string
-  tone?: 'default' | 'highlight' | 'warning'
+  tone?: 'default' | 'highlight' | 'success' | 'warning'
 }
 
 function parseDate(value: string | null) {
@@ -497,10 +497,23 @@ function getOverlayHeadline(hasNewUpdates: boolean) {
 function getOverlayDescription(
   hasNewUpdates: boolean,
   newTasksCount: number,
+  completedDelegatedTasksCount: number,
   todayMeetingsCount: number,
   overdueTasksCount: number
 ) {
   if (hasNewUpdates) {
+    if (newTasksCount > 0 && completedDelegatedTasksCount > 0) {
+      return 'V úkolech se objevily nové změny, které se týkají právě Tebe.'
+    }
+
+    if (newTasksCount > 0) {
+      return 'Byly Ti přiřazeny nové úkoly, které stojí za pozornost.'
+    }
+
+    if (completedDelegatedTasksCount > 0) {
+      return 'Některé úkoly, které jsi zadal, byly právě dokončeny.'
+    }
+
     return 'V aplikaci se objevilo něco nového, co se týká právě Tebe.'
   }
 
@@ -517,6 +530,7 @@ function getOverlayDescription(
 
 function buildOverlaySummaryItems(args: {
   newTasksCount: number
+  completedDelegatedTasksCount: number
   todayMeetingsCount: number
   overdueTasksCount: number
 }): OverlaySummaryItem[] {
@@ -530,6 +544,17 @@ function buildOverlaySummaryItems(args: {
           ? 'Byl Ti přiřazen 1 nový úkol'
           : `Byly Ti přiřazeny ${args.newTasksCount} nové úkoly`,
       tone: 'highlight',
+    })
+  }
+
+  if (args.completedDelegatedTasksCount > 0) {
+    items.push({
+      label: 'Splněné úkoly',
+      value:
+        args.completedDelegatedTasksCount === 1
+          ? '1 zadaný úkol byl splněn'
+          : `${args.completedDelegatedTasksCount} zadané úkoly byly splněny`,
+      tone: 'success',
     })
   }
 
@@ -562,6 +587,37 @@ function buildOverlaySummaryItems(args: {
   }
 
   return items
+}
+
+async function getCompletedDelegatedTasksCount(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  userId: string
+  lastSeenUpdatesAt: string | null
+}) {
+  const { supabase, userId, lastSeenUpdatesAt } = params
+
+  if (!lastSeenUpdatesAt) {
+    return { count: 0, error: null as null | { message: string } }
+  }
+
+  const response = await supabase
+    .from('tasks')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'done')
+    .eq('created_by', userId)
+    .not('assigned_to', 'is', null)
+    .neq('assigned_to', userId)
+    .gt('completed_at', lastSeenUpdatesAt)
+
+  if (
+    response.error &&
+    response.error.message.toLowerCase().includes('completed_at') &&
+    response.error.message.toLowerCase().includes('column')
+  ) {
+    return { count: 0, error: null as null | { message: string } }
+  }
+
+  return response
 }
 
 function DashboardStatCard({
@@ -1109,6 +1165,7 @@ export default async function DashboardPage() {
     weeklyMeetingsCountResponse,
     monthMeetingsResponse,
     newTasksCountResponse,
+    completedDelegatedTasksCountResponse,
   ] = await Promise.all([
     supabase
       .from('tasks')
@@ -1172,6 +1229,12 @@ export default async function DashboardPage() {
           .eq('assigned_to', user.id)
           .gt('created_at', lastSeenUpdatesAt)
       : Promise.resolve({ count: 0, error: null } as { count: number | null; error: null }),
+
+    getCompletedDelegatedTasksCount({
+      supabase,
+      userId: user.id,
+      lastSeenUpdatesAt,
+    }),
   ])
 
   if (tasksResponse.error) {
@@ -1230,6 +1293,12 @@ export default async function DashboardPage() {
     )
   }
 
+  if (completedDelegatedTasksCountResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst počet splněných zadaných úkolů: ${completedDelegatedTasksCountResponse.error.message}`
+    )
+  }
+
   const todayDateKeyInPrague = getTodayDateKeyInPrague()
 
   const tasks = ((tasksResponse.data ?? []) as DashboardTask[])
@@ -1266,37 +1335,29 @@ export default async function DashboardPage() {
   const dashboardWeeklyMeetingsCount = dashboardWeeklyMeetingsCountResponse.count ?? 0
   const todayMeetingsCount = todayMeetingsCountResponse.count ?? 0
   const newTasksCount = newTasksCountResponse.count ?? 0
-  const hasNewUpdates = newTasksCount > 0
-  const shouldShowOverlay = isFirstVisitToday || hasNewUpdates
+  const completedDelegatedTasksCount =
+    completedDelegatedTasksCountResponse.count ?? 0
+  const hasTaskUpdates =
+    newTasksCount > 0 || completedDelegatedTasksCount > 0
+  const shouldShowOverlay = isFirstVisitToday || hasTaskUpdates
 
-  const overlayHeadline = getOverlayHeadline(hasNewUpdates)
+  const overlayHeadline = getOverlayHeadline(hasTaskUpdates)
   const overlayDescription = getOverlayDescription(
-    hasNewUpdates,
+    hasTaskUpdates,
     newTasksCount,
+    completedDelegatedTasksCount,
     todayMeetingsCount,
     overdueTasksCount
   )
   const overlaySummaryItems = buildOverlaySummaryItems({
     newTasksCount,
+    completedDelegatedTasksCount,
     todayMeetingsCount,
     overdueTasksCount,
   })
 
   return (
     <main className="min-h-screen bg-gray-50 text-zinc-900">
-      {shouldShowOverlay ? (
-        <DashboardWelcomeOverlay
-          shouldShow={shouldShowOverlay}
-          profileName={profile?.name ?? ''}
-          newTasksCount={newTasksCount}
-          todayMeetingsCount={todayMeetingsCount}
-          overdueTasksCount={overdueTasksCount}
-          headline={overlayHeadline}
-          description={overlayDescription}
-          summaryItems={overlaySummaryItems}
-        />
-      ) : null}
-
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1313,41 +1374,55 @@ export default async function DashboardPage() {
               </Link>
             </div>
 
-            <div className="w-full lg:w-auto">
-              <div className="flex w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:min-w-[390px]">
-                <div className="min-w-0 text-[10px] leading-4 text-zinc-500">
-                  <div className="truncate">
-                    Uživatel:{' '}
-                    <span className="font-medium text-zinc-900">
-                      {profile?.name ?? user.email}
-                    </span>
+            <div className="w-full lg:w-auto lg:flex-none">
+              <div className="flex w-full items-stretch justify-end gap-3 lg:w-auto">
+                <DashboardUpdatesLauncher
+                  shouldShow={shouldShowOverlay}
+                  profileName={profile?.name ?? ''}
+                  newTasksCount={newTasksCount}
+                  completedDelegatedTasksCount={completedDelegatedTasksCount}
+                  todayMeetingsCount={todayMeetingsCount}
+                  overdueTasksCount={overdueTasksCount}
+                  headline={overlayHeadline}
+                  description={overlayDescription}
+                  summaryItems={overlaySummaryItems}
+                />
+
+                <div className="flex w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]">
+                  <div className="min-w-0 flex-1 text-[10px] leading-4 text-zinc-500">
+                    <div className="truncate">
+                      Uživatel:{' '}
+                      <span className="font-medium text-zinc-900">
+                        {profile?.name ?? user.email}
+                      </span>
+                    </div>
+                    <div className="truncate">
+                      Role:{' '}
+                      <span className="font-medium uppercase text-zinc-900">
+                        {profile?.role ?? 'neuvedeno'}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    Role:{' '}
-                    <span className="font-medium uppercase text-zinc-900">
-                      {profile?.role ?? 'neuvedeno'}
-                    </span>
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Link
+                      href="/settings/password"
+                      className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+                    >
+                      HESLO
+                    </Link>
+
+                    <form action="/auth/signout" method="post" className="shrink-0">
+                      <button className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-800 sm:w-auto">
+                        ODHLÁSIT
+                      </button>
+                    </form>
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Link
-                    href="/settings/password"
-                    className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
-                  >
-                    HESLO
-                  </Link>
-
-                  <form action="/auth/signout" method="post" className="shrink-0">
-                    <button className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-800 sm:w-auto">
-                      ODHLÁSIT
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+	              </div>
+	            </div>
+	          </div>
+	        </section>
 
         <div className="grid gap-6 xl:grid-cols-3">
           <div className="space-y-6">

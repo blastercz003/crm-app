@@ -287,7 +287,7 @@ function HandoverProtocolModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/45 p-2 sm:p-3"
+      className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 p-2 backdrop-blur-sm sm:p-3"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {

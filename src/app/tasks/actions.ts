@@ -13,6 +13,29 @@ export type TaskFormActionState = {
 export type CreateTaskActionState = TaskFormActionState
 export type UpdateTaskActionState = TaskFormActionState
 
+function isMissingCompletedAtColumnError(errorMessage: string | null | undefined) {
+  const message = String(errorMessage ?? '').toLowerCase()
+  return message.includes('completed_at') && message.includes('column')
+}
+
+function resolveCompletedAt(params: {
+  nextStatus: string
+  previousStatus?: string | null
+  previousCompletedAt?: string | null
+}) {
+  const { nextStatus, previousStatus = null, previousCompletedAt = null } = params
+
+  if (nextStatus !== 'done') {
+    return null
+  }
+
+  if (previousStatus === 'done' && previousCompletedAt) {
+    return previousCompletedAt
+  }
+
+  return new Date().toISOString()
+}
+
 function normalizeStatus(value: FormDataEntryValue | null): string {
   const allowed = ['todo', 'done']
   const str = String(value ?? 'todo')
@@ -103,6 +126,7 @@ async function createTaskRecord(formData: FormData) {
     note,
     due_date,
     status,
+    completed_at: status === 'done' ? new Date().toISOString() : null,
     priority,
     client_id: clientId,
     company_name: resolvedFields.companyName,
@@ -111,7 +135,24 @@ async function createTaskRecord(formData: FormData) {
     assigned_to: assigned_to ?? currentProfile.id,
   })
 
-  if (error) {
+  if (error && isMissingCompletedAtColumnError(error.message)) {
+    const { error: fallbackError } = await supabase.from('tasks').insert({
+      title,
+      note,
+      due_date,
+      status,
+      priority,
+      client_id: clientId,
+      company_name: resolvedFields.companyName,
+      contact_person: resolvedFields.contactPerson,
+      created_by: currentProfile.id,
+      assigned_to: assigned_to ?? currentProfile.id,
+    })
+
+    if (fallbackError) {
+      throw new Error(`Nepodařilo se vytvořit úkol: ${fallbackError.message}`)
+    }
+  } else if (error) {
     throw new Error(`Nepodařilo se vytvořit úkol: ${error.message}`)
   }
 
@@ -144,7 +185,9 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
-    .select('id, created_by, assigned_to, client_id, company_name, contact_person, priority')
+    .select(
+      'id, created_by, assigned_to, client_id, company_name, contact_person, priority, status'
+    )
     .eq('id', taskId)
     .single()
 
@@ -190,6 +233,12 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     ? clientId
     : existingTask.client_id
 
+  const completed_at = resolveCompletedAt({
+    nextStatus: status,
+    previousStatus: existingTask.status,
+    previousCompletedAt: null,
+  })
+
   const { error } = await supabase
     .from('tasks')
     .update({
@@ -197,6 +246,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
       note,
       due_date,
       status,
+      completed_at,
       priority,
       client_id: nextClientId,
       company_name: resolvedFields.companyName,
@@ -205,7 +255,26 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     })
     .eq('id', taskId)
 
-  if (error) {
+  if (error && isMissingCompletedAtColumnError(error.message)) {
+    const { error: fallbackError } = await supabase
+      .from('tasks')
+      .update({
+        title,
+        note,
+        due_date,
+        status,
+        priority,
+        client_id: nextClientId,
+        company_name: resolvedFields.companyName,
+        contact_person: resolvedFields.contactPerson,
+        assigned_to: nextAssignedTo,
+      })
+      .eq('id', taskId)
+
+    if (fallbackError) {
+      throw new Error(`Nepodařilo se upravit úkol: ${fallbackError.message}`)
+    }
+  } else if (error) {
     throw new Error(`Nepodařilo se upravit úkol: ${error.message}`)
   }
 
@@ -282,7 +351,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
-    .select('id, created_by, assigned_to, client_id')
+    .select('id, created_by, assigned_to, client_id, status')
     .eq('id', taskId)
     .single()
 
@@ -300,12 +369,27 @@ export async function updateTaskStatus(taskId: string, status: string) {
     throw new Error('Na změnu stavu tohoto úkolu nemáš oprávnění.')
   }
 
+  const completed_at = resolveCompletedAt({
+    nextStatus: normalizedStatus,
+    previousStatus: existingTask.status,
+    previousCompletedAt: null,
+  })
+
   const { error } = await supabase
     .from('tasks')
-    .update({ status: normalizedStatus })
+    .update({ status: normalizedStatus, completed_at })
     .eq('id', taskId)
 
-  if (error) {
+  if (error && isMissingCompletedAtColumnError(error.message)) {
+    const { error: fallbackError } = await supabase
+      .from('tasks')
+      .update({ status: normalizedStatus })
+      .eq('id', taskId)
+
+    if (fallbackError) {
+      throw new Error(`Nepodařilo se změnit stav úkolu: ${fallbackError.message}`)
+    }
+  } else if (error) {
     throw new Error(`Nepodařilo se změnit stav úkolu: ${error.message}`)
   }
 

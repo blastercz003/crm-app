@@ -7,18 +7,20 @@ import { markDashboardOverlaySeen } from '@/app/dashboard/actions'
 type OverlaySummaryItem = {
   label: string
   value: string
-  tone?: 'default' | 'highlight' | 'warning'
+  tone?: 'default' | 'highlight' | 'success' | 'warning'
 }
 
 type DashboardWelcomeOverlayProps = {
   shouldShow: boolean
   profileName: string
   newTasksCount: number
+  completedDelegatedTasksCount: number
   todayMeetingsCount: number
   overdueTasksCount: number
   headline?: string
   description?: string
   summaryItems?: OverlaySummaryItem[]
+  onClosed?: () => void
 }
 
 function pluralize(
@@ -36,11 +38,13 @@ export function DashboardWelcomeOverlay({
   shouldShow,
   profileName,
   newTasksCount,
+  completedDelegatedTasksCount,
   todayMeetingsCount,
   overdueTasksCount,
   headline,
   description,
   summaryItems,
+  onClosed,
 }: DashboardWelcomeOverlayProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(shouldShow)
@@ -64,7 +68,8 @@ export function DashboardWelcomeOverlay({
 
   if (!isOpen) return null
 
-  const hasUpdates = newTasksCount > 0
+  const hasUpdates =
+    newTasksCount > 0 || completedDelegatedTasksCount > 0
 
   const title = headline ?? (hasUpdates ? 'Máme pro Tebe novinky' : 'Vítej zpět')
 
@@ -80,6 +85,7 @@ export function DashboardWelcomeOverlay({
     try {
       await markDashboardOverlaySeen()
       setIsOpen(false)
+      onClosed?.()
       router.refresh()
 
       if (targetHref) {
@@ -141,6 +147,11 @@ export function DashboardWelcomeOverlay({
                           card: 'border-amber-200 bg-amber-50',
                           label: 'text-amber-700',
                         }
+                      : item.tone === 'success'
+                        ? {
+                            card: 'border-emerald-200 bg-emerald-50',
+                            label: 'text-emerald-700',
+                          }
                       : {
                           card: 'border-zinc-200 bg-zinc-50',
                           label: 'text-zinc-500',
@@ -244,7 +255,7 @@ export function DashboardWelcomeOverlay({
           )}
 
           <div className="mt-6 flex flex-wrap gap-3">
-            {(newTasksCount > 0 || overdueTasksCount > 0) && (
+            {(newTasksCount > 0 || completedDelegatedTasksCount > 0 || overdueTasksCount > 0) && (
               <button
                 onClick={() => handleAction('/tasks')}
                 disabled={isPending}
@@ -257,7 +268,7 @@ export function DashboardWelcomeOverlay({
             <button
               onClick={() => handleAction()}
               disabled={isPending}
-              className="inline-flex min-h-[46px] items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700"
+              className="inline-flex min-h-[46px] items-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#2471A3] disabled:cursor-not-allowed disabled:opacity-60"
             >
               POKRAČOVAT NA DASHBOARD
             </button>
