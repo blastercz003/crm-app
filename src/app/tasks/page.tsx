@@ -467,10 +467,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             </div>
           </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-100 pt-4">
+            <div className="mt-4 grid grid-cols-4 gap-1.5 border-t border-zinc-100 pt-4 sm:flex sm:flex-nowrap sm:items-center sm:justify-end sm:gap-2">
               <Link
                 href={getTabHref({ search, view, range: 'today' })}
-                className={`inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-medium text-white transition ${
+                className={`inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl px-2 text-[11px] font-medium text-white transition sm:h-9 sm:px-4 sm:text-sm ${
                   range === 'today'
                     ? 'bg-[#236f9f] shadow-sm'
                     : 'bg-[#2980B9] hover:bg-[#236f9f]'
@@ -481,7 +481,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href={getTabHref({ search, view, range: 'this_week' })}
-                className={`inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-medium text-white transition ${
+                className={`inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl px-2 text-[11px] font-medium text-white transition sm:h-9 sm:px-4 sm:text-sm ${
                   range === 'this_week'
                     ? 'bg-[#236f9f] shadow-sm'
                     : 'bg-[#2980B9] hover:bg-[#236f9f]'
@@ -492,7 +492,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href={getTabHref({ search, view, range: 'next_week' })}
-                className={`inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-medium text-white transition ${
+                className={`inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl px-2 text-[11px] font-medium text-white transition sm:h-9 sm:px-4 sm:text-sm ${
                   range === 'next_week'
                     ? 'bg-[#236f9f] shadow-sm'
                     : 'bg-[#2980B9] hover:bg-[#236f9f]'
@@ -503,7 +503,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href={getTabHref({ search, view, range: 'all' })}
-                className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-gray-200 bg-white px-2 text-[11px] font-medium uppercase text-gray-700 transition hover:bg-gray-50 sm:h-9 sm:px-4 sm:text-sm"
               >
                 RESET
               </Link>

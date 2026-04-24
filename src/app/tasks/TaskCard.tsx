@@ -147,7 +147,7 @@ export default function TaskCard({
     <div className={`${cardClassName} min-h-[178px]`}>
       <div className="flex h-full flex-col gap-2.5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-          <div className="min-w-0 flex-1">
+          <div className="order-2 min-w-0 flex-1 sm:order-1">
             <h3
               className="line-clamp-2 min-h-[2.4rem] break-words text-sm font-semibold leading-5 text-zinc-900 md:text-base"
               title={task.title}
@@ -170,7 +170,7 @@ export default function TaskCard({
             </div>
           </div>
 
-          <div className="min-w-0 flex flex-wrap gap-2 text-sm sm:shrink-0 sm:justify-end">
+          <div className="order-1 min-w-0 flex flex-wrap gap-2 text-sm sm:order-2 sm:shrink-0 sm:justify-end">
             <div className={dueBadgeClassName}>
               {formatDueDate(task.due_date)}
             </div>
@@ -201,21 +201,6 @@ export default function TaskCard({
         </div>
 
         <div className="mt-auto min-w-0 flex flex-wrap justify-end gap-2 pt-1">
-          {task.status !== 'done' ? (
-            <form action={markTaskDoneAction} className="shrink-0">
-              <TaskCompleteButton
-                className={`${actionButtonClassName} border border-emerald-600 bg-emerald-600 text-white hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]`}
-              />
-            </form>
-          ) : null}
-
-          <Link
-            href={`/tasks/${task.id}`}
-            className={`${actionButtonClassName} shrink-0 bg-zinc-900 text-white hover:bg-zinc-800`}
-          >
-            DETAIL
-          </Link>
-
           <EditTaskButton
             task={{
               id: task.id,
@@ -234,6 +219,21 @@ export default function TaskCard({
             className={`${actionButtonClassName} shrink-0 border border-gray-200 bg-white text-gray-700 hover:bg-gray-100`}
             label="UPRAVIT"
           />
+
+          <Link
+            href={`/tasks/${task.id}`}
+            className={`${actionButtonClassName} shrink-0 bg-zinc-900 text-white hover:bg-zinc-800`}
+          >
+            DETAIL
+          </Link>
+
+          {task.status !== 'done' ? (
+            <form action={markTaskDoneAction} className="shrink-0">
+              <TaskCompleteButton
+                className={`${actionButtonClassName} border border-emerald-600 bg-emerald-600 text-white hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]`}
+              />
+            </form>
+          ) : null}
         </div>
       </div>
     </div>
