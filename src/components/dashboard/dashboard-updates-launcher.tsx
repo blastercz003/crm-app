@@ -19,7 +19,7 @@ type DashboardUpdatesLauncherProps = {
   headline?: string
   description?: string
   summaryItems?: OverlaySummaryItem[]
-  className?: string
+  variant?: 'desktop' | 'mobile'
 }
 
 export function DashboardUpdatesLauncher({
@@ -32,19 +32,21 @@ export function DashboardUpdatesLauncher({
   headline,
   description,
   summaryItems,
-  className = '',
+  variant = 'desktop',
 }: DashboardUpdatesLauncherProps) {
   const [isManualOpen, setIsManualOpen] = useState(false)
+
+  const buttonClassName =
+    variant === 'mobile'
+      ? 'primary-ambient-glow--blue relative inline-flex min-h-[44px] w-full items-center justify-center overflow-visible rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 text-sm font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#2471A3]'
+      : 'primary-ambient-glow--blue relative inline-flex min-h-full self-stretch items-center justify-center overflow-visible rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 text-sm font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#2471A3]'
 
   return (
     <>
       <button
         type="button"
         onClick={() => setIsManualOpen(true)}
-        className={[
-          'primary-ambient-glow--blue relative items-center justify-center overflow-visible rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 text-sm font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#2471A3]',
-          className,
-        ].join(' ')}
+        className={buttonClassName}
       >
         <span className="relative z-10">NOVINKY</span>
       </button>

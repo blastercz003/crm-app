@@ -1477,42 +1477,44 @@ export default async function DashboardPage() {
               </Link>
             </div>
 
-            <div className="w-full lg:hidden">
-              <DashboardUpdatesLauncher
-                shouldShow={shouldShowOverlay}
-                profileName={profile?.name ?? ''}
-                newTasksCount={newTasksCount}
-                completedDelegatedTasksCount={completedDelegatedTasksCount}
-                todayMeetingsCount={todayMeetingsCount}
-                overdueTasksCount={overdueTasksCount}
-                headline={overlayHeadline}
-                description={overlayDescription}
-                summaryItems={overlaySummaryItems}
-                className="inline-flex min-h-[44px] w-full items-center"
-              />
-            </div>
+            <div className="hidden w-full lg:block lg:w-auto lg:flex-none">
+              <div className="flex w-full items-stretch justify-end gap-3 lg:w-auto">
+                <DashboardUpdatesLauncher
+                  shouldShow={shouldShowOverlay}
+                  profileName={profile?.name ?? ''}
+                  newTasksCount={newTasksCount}
+                  completedDelegatedTasksCount={completedDelegatedTasksCount}
+                  todayMeetingsCount={todayMeetingsCount}
+                  overdueTasksCount={overdueTasksCount}
+                  headline={overlayHeadline}
+                  description={overlayDescription}
+                  summaryItems={overlaySummaryItems}
+                  variant="desktop"
+                />
 
-            <div className="hidden lg:flex lg:w-auto lg:flex-none lg:items-stretch lg:justify-end lg:gap-3">
-              <DashboardUpdatesLauncher
-                shouldShow={shouldShowOverlay}
-                profileName={profile?.name ?? ''}
-                newTasksCount={newTasksCount}
-                completedDelegatedTasksCount={completedDelegatedTasksCount}
-                todayMeetingsCount={todayMeetingsCount}
-                overdueTasksCount={overdueTasksCount}
-                headline={overlayHeadline}
-                description={overlayDescription}
-                summaryItems={overlaySummaryItems}
-                className="inline-flex min-h-full self-stretch items-center"
-              />
-
-              <DashboardUserPanel
-                profileName={profile?.name ?? null}
-                profileRole={profile?.role ?? null}
-                userEmail={user.email ?? ''}
-                className="w-[320px] min-w-[320px] max-w-[320px]"
-              />
+                <DashboardUserPanel
+                  profileName={profile?.name ?? null}
+                  profileRole={profile?.role ?? null}
+                  userEmail={user.email ?? ''}
+                  className="lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
+                />
+              </div>
             </div>
+          </div>
+
+          <div className="mt-3 lg:hidden">
+            <DashboardUpdatesLauncher
+              shouldShow={shouldShowOverlay}
+              profileName={profile?.name ?? ''}
+              newTasksCount={newTasksCount}
+              completedDelegatedTasksCount={completedDelegatedTasksCount}
+              todayMeetingsCount={todayMeetingsCount}
+              overdueTasksCount={overdueTasksCount}
+              headline={overlayHeadline}
+              description={overlayDescription}
+              summaryItems={overlaySummaryItems}
+              variant="mobile"
+            />
           </div>
         </section>
 
