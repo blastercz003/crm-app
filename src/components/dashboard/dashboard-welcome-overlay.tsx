@@ -73,12 +73,6 @@ export function DashboardWelcomeOverlay({
 
   const title = headline ?? (hasUpdates ? 'Máme pro Tebe novinky' : 'Vítej zpět')
 
-  const subtitle =
-    description ??
-    (hasUpdates
-      ? 'Na Dashboardu se objevilo něco nového, co stojí za pozornost.'
-      : 'Tady je rychlý přehled dne, ať víš, co je právě důležité.')
-
   async function closeOverlay(targetHref?: string) {
     setErrorMessage(null)
 
@@ -119,17 +113,13 @@ export function DashboardWelcomeOverlay({
           ×
         </button>
 
-        <div className="border-b border-zinc-200 px-6 pb-5 pt-6 md:px-8 md:pb-6 md:pt-7">
+        <div className="px-6 pb-5 pt-6 md:px-8 md:pb-6 md:pt-7">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
             Dashboard overview
           </div>
           <h2 className="mt-2 pr-12 text-2xl font-semibold tracking-tight text-zinc-950 md:text-[30px]">
             {title}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">
-            {profileName ? `${profileName}, ` : ''}
-            {subtitle}
-          </p>
         </div>
 
         <div className="px-6 py-6 md:px-8">
@@ -268,7 +258,7 @@ export function DashboardWelcomeOverlay({
             <button
               onClick={() => handleAction()}
               disabled={isPending}
-              className="inline-flex min-h-[46px] items-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#2471A3] disabled:cursor-not-allowed disabled:opacity-60"
+              className="primary-ambient-glow--blue inline-flex min-h-[46px] items-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#2471A3] disabled:cursor-not-allowed disabled:opacity-60"
             >
               POKRAČOVAT NA DASHBOARD
             </button>

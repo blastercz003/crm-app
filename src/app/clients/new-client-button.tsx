@@ -38,7 +38,7 @@ export function NewClientButton({
       <button
         type="button"
         onClick={openModal}
-        className={resolvedClassName}
+        className={`${resolvedClassName} primary-ambient-glow--blue`}
       >
         {label}
       </button>

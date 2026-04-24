@@ -57,7 +57,7 @@ export default function NewTaskButton({
       <button
         type="button"
         onClick={openModal}
-        className={resolvedClassName}
+        className={`${resolvedClassName} primary-ambient-glow--blue`}
       >
         {label}
       </button>

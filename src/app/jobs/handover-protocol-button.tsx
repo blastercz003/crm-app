@@ -24,6 +24,7 @@ type DraftState = {
   handover_place: string
   contact_person: string
   contact_phone: string
+  is_sent: boolean
   devices: HandoverProtocolDeviceInput[]
   accessories: HandoverProtocolAccessoryInput[]
 }
@@ -50,6 +51,7 @@ function buildInitialDraft(siteAddress: string | null): DraftState {
     handover_place: siteAddress ?? '',
     contact_person: '',
     contact_phone: '',
+    is_sent: false,
     devices: [createEmptyDevice()],
     accessories: [createEmptyAccessory()],
   }
@@ -61,6 +63,7 @@ function sanitizeDraft(state: DraftState) {
     handover_place: state.handover_place,
     contact_person: state.contact_person,
     contact_phone: state.contact_phone,
+    is_sent: state.is_sent,
     devices: state.devices,
     accessories: state.accessories,
   }
@@ -145,6 +148,7 @@ function HandoverProtocolModal({
         handover_place: result.data.handover_place || job.site_address || '',
         contact_person: result.data.contact_person,
         contact_phone: result.data.contact_phone,
+        is_sent: result.data.is_sent,
         devices:
           result.data.devices.length > 0
             ? result.data.devices.map((device) => ({
@@ -246,6 +250,33 @@ function HandoverProtocolModal({
     setSaveMessage(null)
   }
 
+  function toggleSentState(nextIsSent: boolean) {
+    const nextDraft = {
+      ...draft,
+      is_sent: nextIsSent,
+    }
+
+    setDraft(nextDraft)
+    setLoadError(null)
+    setSaveMessage(null)
+
+    startSaving(async () => {
+      const result = await saveHandoverProtocolDraftAction(job.id, sanitizeDraft(nextDraft))
+
+      if (!result.success) {
+        setLoadError(result.error ?? 'Nepodařilo se uložit stav předávacího protokolu.')
+        setDraft(draft)
+        return
+      }
+
+      setSaveMessage(
+        nextIsSent
+          ? 'Předávací protokol byl označen jako POSLÁNO.'
+          : 'Předávací protokol byl označen jako NEPOSLÁNO.'
+      )
+    })
+  }
+
   function persistDraft(nextAction: 'save' | 'preview' | 'generate') {
     setLoadError(null)
     setSaveMessage(null)
@@ -303,8 +334,22 @@ function HandoverProtocolModal({
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 Předávací protokol
               </h2>
-              <div className="mt-1.5 inline-flex items-center rounded-full border border-[#2980B9] bg-[#2980B9] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white">
-                ZAKÁZKA {job.job_number}
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center rounded-full border border-[#2980B9] bg-[#2980B9] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white">
+                  ZAKÁZKA {job.job_number}
+                </div>
+                <button
+                  type="button"
+                  disabled={isLoading || isSaving}
+                  onClick={() => toggleSentState(!draft.is_sent)}
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    draft.is_sent
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  {draft.is_sent ? 'POSLÁNO' : 'NEPOSLÁNO'}
+                </button>
               </div>
             </div>
 

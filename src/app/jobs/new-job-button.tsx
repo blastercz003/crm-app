@@ -65,7 +65,7 @@ export function NewJobButton({
         type="button"
         onClick={openModal}
         aria-disabled={!isAdmin}
-        className={`${resolvedClassName} ${!isAdmin ? 'cursor-not-allowed' : ''}`}
+        className={`${resolvedClassName} primary-ambient-glow--blue ${!isAdmin ? 'cursor-not-allowed' : ''}`}
       >
         NOVÁ ZAKÁZKA
       </button>

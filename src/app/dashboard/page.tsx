@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { updateTaskStatus } from '@/app/tasks/actions'
+import { TaskCompleteButton } from '@/app/tasks/task-complete-button'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
@@ -490,14 +491,23 @@ function getDayGreeting() {
     }).format(now)
   )
 
-  if (hour < 12) return 'Dobré ráno'
-  if (hour < 18) return 'Vítej zpět'
-  return 'Dobrý večer'
+  if (hour < 12) return 'morning'
+  if (hour < 18) return 'day'
+  return 'evening'
 }
 
 function getOverlayHeadline(hasNewUpdates: boolean) {
-  if (hasNewUpdates) return 'Máme pro Tebe novinky'
-  return getDayGreeting()
+  const dayPeriod = getDayGreeting()
+
+  if (hasNewUpdates) {
+    if (dayPeriod === 'morning') return 'Dobré ráno, máš novinky k řešení!'
+    if (dayPeriod === 'day') return 'Krásný den, máš novinky k řešení!'
+    return 'Hezký večer, máš novinky k řešení!'
+  }
+
+  if (dayPeriod === 'morning') return 'Dobré ráno!'
+  if (dayPeriod === 'day') return 'Hezký den!'
+  return 'Dobrý večer!'
 }
 
 function getOverlayDescription(
@@ -561,6 +571,14 @@ function buildOverlaySummaryItems(args: {
           ? '1 zadaný úkol byl splněn'
           : `${args.completedDelegatedTasksCount} zadané úkoly byly splněny`,
       tone: 'success',
+    })
+  }
+
+  if (args.newTasksCount === 0 && args.completedDelegatedTasksCount === 0) {
+    items.push({
+      label: 'Dnešní úkoly',
+      value: 'Žádný nový úkol.',
+      tone: 'default',
     })
   }
 
@@ -710,8 +728,8 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
       />
 
       <div className="flex flex-col gap-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 pr-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 pr-2">
             <div
               className="relative z-10 line-clamp-2 min-h-10 break-words text-sm font-semibold leading-5 text-zinc-900"
               title={task.title}
@@ -720,7 +738,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
             </div>
           </div>
 
-          <div className="relative z-10 flex min-h-[1.75rem] w-52 shrink-0 flex-wrap justify-end gap-1.5">
+          <div className="relative z-10 flex min-h-[1.75rem] w-44 shrink-0 flex-wrap justify-end gap-1">
             <div className="min-h-[1.75rem]">
               {task.priority ? (
                 <span
@@ -751,12 +769,9 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
           {task.status !== 'done' ? (
             <form action={markTaskDoneAction}>
-              <button
-                type="submit"
+              <TaskCompleteButton
                 className="inline-flex items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]"
-              >
-                SPLNIT
-              </button>
+              />
             </form>
           ) : null}
         </div>
@@ -1482,7 +1497,7 @@ export default async function DashboardPage() {
                 />
               </div>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+              <div className="mb-5 grid grid-cols-2 gap-3">
                 <DashboardStatCard
                   label="Aktivní úkoly"
                   value={activeTasksCount}
@@ -1526,7 +1541,7 @@ export default async function DashboardPage() {
                 />
               </div>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+              <div className="mb-5 grid grid-cols-2 gap-3">
                 <DashboardStatCard
                   label="Schůzky dnes"
                   value={dashboardTodayMeetingsCount}

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
 import EditTaskButton from './edit-task-button'
 import { updateTaskStatus } from './actions'
+import { TaskCompleteButton } from './task-complete-button'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
@@ -202,12 +203,9 @@ export default function TaskCard({
         <div className="mt-auto min-w-0 flex flex-wrap justify-end gap-2 pt-1">
           {task.status !== 'done' ? (
             <form action={markTaskDoneAction} className="shrink-0">
-              <button
-                type="submit"
+              <TaskCompleteButton
                 className={`${actionButtonClassName} border border-emerald-600 bg-emerald-600 text-white hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]`}
-              >
-                SPLNIT
-              </button>
+              />
             </form>
           ) : null}
 

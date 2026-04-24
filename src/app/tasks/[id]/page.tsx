@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
 import { updateTaskStatus } from '../actions'
+import { TaskCompleteButton } from '../task-complete-button'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
@@ -225,9 +226,7 @@ export default async function TaskDetailPage({
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:justify-end lg:w-[24rem]">
               {canUpdateStatus && typedTask.status !== 'done' ? (
                 <form action={markTaskDoneAction}>
-                  <button className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]">
-                    SPLNIT
-                  </button>
+                  <TaskCompleteButton className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]" />
                 </form>
               ) : null}
 

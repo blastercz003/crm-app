@@ -34,6 +34,7 @@ type HandoverProtocolRow = {
   handover_place: string | null
   contact_person: string | null
   contact_phone: string | null
+  is_sent: boolean | null
 }
 
 type DeviceRow = {
@@ -73,6 +74,7 @@ export type HandoverProtocolDraftInput = {
   handover_place: string
   contact_person: string
   contact_phone: string
+  is_sent: boolean
   devices: HandoverProtocolDeviceInput[]
   accessories: HandoverProtocolAccessoryInput[]
 }
@@ -83,6 +85,7 @@ export type HandoverProtocolDraft = {
   handover_place: string
   contact_person: string
   contact_phone: string
+  is_sent: boolean
   devices: HandoverProtocolDeviceInput[]
   accessories: HandoverProtocolAccessoryInput[]
 }
@@ -117,12 +120,20 @@ function trimText(value: string | null | undefined) {
   return (value ?? '').trim()
 }
 
+function isMissingIsSentColumnError(message: string | undefined) {
+  if (!message) return false
+
+  const normalized = message.toLowerCase()
+  return normalized.includes('is_sent') && normalized.includes('column')
+}
+
 function sanitizeDraftInput(input: HandoverProtocolDraftInput, siteAddress: string | null) {
   return {
     handover_title: trimText(input.handover_title),
     handover_place: trimText(input.handover_place) || trimText(siteAddress),
     contact_person: trimText(input.contact_person),
     contact_phone: trimText(input.contact_phone),
+    is_sent: Boolean(input.is_sent),
     devices: input.devices
       .map((device, index) => ({
         id: device.id,
@@ -214,11 +225,25 @@ async function getProtocolDraftData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   job: JobProtocolRow
 ) {
-  const { data: protocol, error: protocolError } = await supabase
+  const protocolResponse = await supabase
     .from('handover_protocols')
-    .select('id, job_id, handover_title, handover_place, contact_person, contact_phone')
+    .select('id, job_id, handover_title, handover_place, contact_person, contact_phone, is_sent')
     .eq('job_id', job.id)
     .maybeSingle()
+
+  let protocol = protocolResponse.data
+  let protocolError = protocolResponse.error
+
+  if (protocolError && isMissingIsSentColumnError(protocolError.message)) {
+    const fallbackResponse = await supabase
+      .from('handover_protocols')
+      .select('id, job_id, handover_title, handover_place, contact_person, contact_phone')
+      .eq('job_id', job.id)
+      .maybeSingle()
+
+    protocol = fallbackResponse.data
+    protocolError = fallbackResponse.error
+  }
 
   if (protocolError) {
     return {
@@ -284,6 +309,7 @@ function buildDraftFromRows(params: {
     handover_place: protocol?.handover_place ?? job.site_address ?? '',
     contact_person: protocol?.contact_person ?? '',
     contact_phone: protocol?.contact_phone ?? '',
+    is_sent: protocol?.is_sent ?? false,
     devices: devices.map((device) => ({
       id: device.id,
       device_name: device.device_name ?? '',
@@ -365,7 +391,7 @@ export async function saveHandoverProtocolDraftAction(
 
   const sanitized = sanitizeDraftInput(input, job.site_address)
 
-  const { data: protocol, error: protocolError } = await supabase
+  const protocolResponse = await supabase
     .from('handover_protocols')
     .upsert(
       {
@@ -374,6 +400,7 @@ export async function saveHandoverProtocolDraftAction(
         handover_place: sanitized.handover_place || null,
         contact_person: sanitized.contact_person || null,
         contact_phone: sanitized.contact_phone || null,
+        is_sent: sanitized.is_sent,
       },
       {
         onConflict: 'job_id',
@@ -381,6 +408,31 @@ export async function saveHandoverProtocolDraftAction(
     )
     .select('id')
     .single()
+
+  let protocol = protocolResponse.data
+  let protocolError = protocolResponse.error
+
+  if (protocolError && isMissingIsSentColumnError(protocolError.message)) {
+    const fallbackResponse = await supabase
+      .from('handover_protocols')
+      .upsert(
+        {
+          job_id: job.id,
+          handover_title: sanitized.handover_title || null,
+          handover_place: sanitized.handover_place || null,
+          contact_person: sanitized.contact_person || null,
+          contact_phone: sanitized.contact_phone || null,
+        },
+        {
+          onConflict: 'job_id',
+        }
+      )
+      .select('id')
+      .single()
+
+    protocol = fallbackResponse.data
+    protocolError = fallbackResponse.error
+  }
 
   if (protocolError || !protocol) {
     return {

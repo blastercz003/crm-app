@@ -49,7 +49,7 @@ export function NewMeetingButton({
       <button
         type="button"
         onClick={openModal}
-        className={resolvedClassName}
+        className={`${resolvedClassName} primary-ambient-glow--blue`}
       >
         {label}
       </button>
