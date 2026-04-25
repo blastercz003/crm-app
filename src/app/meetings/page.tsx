@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import { EditMeetingButton } from './edit-meeting-button'
 import { NewMeetingButton } from './new-meeting-button'
 
@@ -424,6 +425,8 @@ export default async function MeetingsPage({
   const isAdmin = profile?.role === 'admin'
   const scope: 'mine' | 'team' = isAdmin ? requestedScope : 'mine'
   const isAdminTeamView = isAdmin && scope === 'team'
+
+  await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
   const { data: allProfiles, error: profilesError } = await supabase
     .from('profiles')

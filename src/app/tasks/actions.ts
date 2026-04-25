@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
+import { createNotification } from '@/lib/notifications/createNotification'
 
 export type TaskFormActionState = {
   success: boolean
@@ -46,6 +47,10 @@ function normalizePriority(value: FormDataEntryValue | null): string {
   const allowed = ['low', 'medium', 'high']
   const str = String(value ?? 'medium')
   return allowed.includes(str) ? str : 'medium'
+}
+
+function getNotificationPriority(taskPriority: string) {
+  return taskPriority === 'high' ? 'high' : 'normal'
 }
 
 function normalizeOptionalString(value: FormDataEntryValue | null): string | null {
@@ -121,26 +126,14 @@ async function createTaskRecord(formData: FormData) {
     throw new Error('Název úkolu je povinný.')
   }
 
-  const { error } = await supabase.from('tasks').insert({
-    title,
-    note,
-    due_date,
-    status,
-    completed_at: status === 'done' ? new Date().toISOString() : null,
-    priority,
-    client_id: clientId,
-    company_name: resolvedFields.companyName,
-    contact_person: resolvedFields.contactPerson,
-    created_by: currentProfile.id,
-    assigned_to: assigned_to ?? currentProfile.id,
-  })
-
-  if (error && isMissingCompletedAtColumnError(error.message)) {
-    const { error: fallbackError } = await supabase.from('tasks').insert({
+  const { data: createdTask, error } = await supabase
+    .from('tasks')
+    .insert({
       title,
       note,
       due_date,
       status,
+      completed_at: status === 'done' ? new Date().toISOString() : null,
       priority,
       client_id: clientId,
       company_name: resolvedFields.companyName,
@@ -148,15 +141,63 @@ async function createTaskRecord(formData: FormData) {
       created_by: currentProfile.id,
       assigned_to: assigned_to ?? currentProfile.id,
     })
+    .select('id, title, assigned_to, created_by')
+    .single()
+
+  let notificationTask = createdTask as {
+    id: string
+    title: string
+    assigned_to: string | null
+    created_by: string | null
+  } | null
+
+  if (error && isMissingCompletedAtColumnError(error.message)) {
+    const { data: fallbackTask, error: fallbackError } = await supabase
+      .from('tasks')
+      .insert({
+        title,
+        note,
+        due_date,
+        status,
+        priority,
+        client_id: clientId,
+        company_name: resolvedFields.companyName,
+        contact_person: resolvedFields.contactPerson,
+        created_by: currentProfile.id,
+        assigned_to: assigned_to ?? currentProfile.id,
+      })
+      .select('id, title, assigned_to, created_by')
+      .single()
 
     if (fallbackError) {
       throw new Error(`Nepodařilo se vytvořit úkol: ${fallbackError.message}`)
     }
+
+    notificationTask = fallbackTask as typeof notificationTask
   } else if (error) {
     throw new Error(`Nepodařilo se vytvořit úkol: ${error.message}`)
   }
 
+  if (notificationTask) {
+    await createNotification({
+      supabase,
+      recipientUserId: notificationTask.assigned_to,
+      actorUserId: currentProfile.id,
+      category: 'tasks',
+      type: 'task_assigned',
+      title: 'Nový úkol',
+      message: `${currentProfile.name ?? 'Uživatel'} Ti přiřadil úkol: ${notificationTask.title}.`,
+      entityType: 'task',
+      entityId: notificationTask.id,
+      href: `/tasks/${notificationTask.id}`,
+      priority: getNotificationPriority(priority),
+      dedupeKey: `task_assigned:${notificationTask.id}:${notificationTask.assigned_to}`,
+    })
+  }
+
   revalidatePath('/tasks')
+  revalidatePath('/dashboard')
+  revalidatePath('/notifications')
   revalidatePath('/clients')
 
   if (clientId) {
@@ -186,7 +227,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
     .select(
-      'id, created_by, assigned_to, client_id, company_name, contact_person, priority, status'
+      'id, title, created_by, assigned_to, client_id, company_name, contact_person, priority, status'
     )
     .eq('id', taskId)
     .single()
@@ -278,9 +319,45 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     throw new Error(`Nepodařilo se upravit úkol: ${error.message}`)
   }
 
+  if (nextAssignedTo && nextAssignedTo !== existingTask.assigned_to) {
+    await createNotification({
+      supabase,
+      recipientUserId: nextAssignedTo,
+      actorUserId: currentProfile.id,
+      category: 'tasks',
+      type: 'task_assigned',
+      title: 'Nový úkol',
+      message: `${currentProfile.name ?? 'Uživatel'} Ti přiřadil úkol: ${title}.`,
+      entityType: 'task',
+      entityId: taskId,
+      href: `/tasks/${taskId}`,
+      priority: getNotificationPriority(priority),
+      dedupeKey: `task_assigned:${taskId}:${nextAssignedTo}`,
+    })
+  }
+
+  if (existingTask.status !== 'done' && status === 'done') {
+    await createNotification({
+      supabase,
+      recipientUserId: existingTask.created_by,
+      actorUserId: currentProfile.id,
+      category: 'tasks',
+      type: 'task_completed',
+      title: 'Úkol byl splněn',
+      message: `${currentProfile.name ?? 'Uživatel'} splnil úkol: ${title}.`,
+      entityType: 'task',
+      entityId: taskId,
+      href: `/tasks/${taskId}`,
+      priority: 'normal',
+      dedupeKey: `task_completed:${taskId}`,
+    })
+  }
+
   revalidatePath('/tasks')
   revalidatePath(`/tasks/${taskId}`)
   revalidatePath(`/tasks/${taskId}/edit`)
+  revalidatePath('/dashboard')
+  revalidatePath('/notifications')
   revalidatePath('/clients')
 
   if (nextClientId) {
@@ -351,7 +428,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
-    .select('id, created_by, assigned_to, client_id, status')
+    .select('id, title, created_by, assigned_to, client_id, status')
     .eq('id', taskId)
     .single()
 
@@ -393,8 +470,27 @@ export async function updateTaskStatus(taskId: string, status: string) {
     throw new Error(`Nepodařilo se změnit stav úkolu: ${error.message}`)
   }
 
+  if (existingTask.status !== 'done' && normalizedStatus === 'done') {
+    await createNotification({
+      supabase,
+      recipientUserId: existingTask.created_by,
+      actorUserId: currentProfile.id,
+      category: 'tasks',
+      type: 'task_completed',
+      title: 'Úkol byl splněn',
+      message: `${currentProfile.name ?? 'Uživatel'} splnil úkol: ${existingTask.title}.`,
+      entityType: 'task',
+      entityId: taskId,
+      href: `/tasks/${taskId}`,
+      priority: 'normal',
+      dedupeKey: `task_completed:${taskId}`,
+    })
+  }
+
   revalidatePath('/tasks')
   revalidatePath(`/tasks/${taskId}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/notifications')
   revalidatePath('/clients')
 
   if (existingTask.client_id) {

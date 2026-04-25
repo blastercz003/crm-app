@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createNotificationsForAdmins } from '@/lib/notifications/createNotification'
 
 export type MeetingFormActionState = {
   success: boolean
@@ -113,7 +114,7 @@ async function getCurrentUserWithRole() {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, role')
+    .select('id, name, role')
     .eq('id', user.id)
     .single()
 
@@ -280,7 +281,7 @@ async function syncMeetingFollowUpTask(params: {
 }
 
 async function createMeetingRecord(formData: FormData) {
-  const { supabase, user } = await getCurrentUserWithRole()
+  const { supabase, user, profile } = await getCurrentUserWithRole()
 
   const clientId = normalizeClientId(formData.get('client_id'))
   const rawCompanyName = normalizeText(formData.get('company_name'))
@@ -357,8 +358,23 @@ async function createMeetingRecord(formData: FormData) {
     createdByUserId: data.created_by,
   })
 
+  await createNotificationsForAdmins({
+    supabase,
+    actorUserId: user.id,
+    category: 'meetings',
+    type: 'meeting_created',
+    title: 'Nová domluvená schůzka',
+    message: `${profile.name ?? user.email ?? 'Uživatel'} domluvil schůzku: ${companyName}.`,
+    entityType: 'meeting',
+    entityId: data.id,
+    href: `/meetings/${data.id}`,
+    priority: 'normal',
+    dedupeKey: `meeting_created:${data.id}`,
+  })
+
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
+  revalidatePath('/notifications')
   revalidatePath('/tasks')
   revalidatePath('/clients')
 

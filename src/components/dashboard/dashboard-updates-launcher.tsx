@@ -1,40 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { DashboardWelcomeOverlay } from '@/components/dashboard/dashboard-welcome-overlay'
-
-type OverlaySummaryItem = {
-  label: string
-  value: string
-  tone?: 'default' | 'highlight' | 'success' | 'warning'
-}
+import { NotificationsModal } from '@/components/notifications/notifications-modal'
+import type { NotificationRow } from '@/lib/notifications/types'
 
 type DashboardUpdatesLauncherProps = {
-  shouldShow: boolean
-  profileName: string
-  newTasksCount: number
-  completedDelegatedTasksCount: number
-  todayMeetingsCount: number
-  overdueTasksCount: number
-  headline?: string
-  description?: string
-  summaryItems?: OverlaySummaryItem[]
+  notifications: NotificationRow[]
+  unreadCount: number
   variant?: 'desktop' | 'mobile'
 }
 
 export function DashboardUpdatesLauncher({
-  shouldShow,
-  profileName,
-  newTasksCount,
-  completedDelegatedTasksCount,
-  todayMeetingsCount,
-  overdueTasksCount,
-  headline,
-  description,
-  summaryItems,
+  notifications,
+  unreadCount,
   variant = 'desktop',
 }: DashboardUpdatesLauncherProps) {
-  const [isManualOpen, setIsManualOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
 
   const buttonClassName =
     variant === 'mobile'
@@ -45,23 +26,22 @@ export function DashboardUpdatesLauncher({
     <>
       <button
         type="button"
-        onClick={() => setIsManualOpen(true)}
+        onClick={() => setIsOpen(true)}
         className={buttonClassName}
       >
-        <span className="relative z-10">NOVINKY</span>
+        <span className="relative z-10">NOTIFIKACE</span>
+        {unreadCount > 0 ? (
+          <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        ) : null}
       </button>
 
-      <DashboardWelcomeOverlay
-        shouldShow={shouldShow || isManualOpen}
-        profileName={profileName}
-        newTasksCount={newTasksCount}
-        completedDelegatedTasksCount={completedDelegatedTasksCount}
-        todayMeetingsCount={todayMeetingsCount}
-        overdueTasksCount={overdueTasksCount}
-        headline={headline}
-        description={description}
-        summaryItems={summaryItems}
-        onClosed={() => setIsManualOpen(false)}
+      <NotificationsModal
+        isOpen={isOpen}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onClosed={() => setIsOpen(false)}
       />
     </>
   )

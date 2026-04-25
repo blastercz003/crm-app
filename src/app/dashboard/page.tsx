@@ -13,6 +13,11 @@ import {
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
 import { DashboardUpdatesLauncher } from '@/components/dashboard/dashboard-updates-launcher'
+import {
+  getCurrentUserNotificationStats,
+  getCurrentUserNotifications,
+} from '@/lib/notifications/getNotifications'
+import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,8 +31,6 @@ type ProfileRef = {
 type DashboardProfile = {
   name: string | null
   role: string | null
-  last_seen_dashboard_at: string | null
-  last_seen_updates_at: string | null
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
 }
@@ -73,19 +76,6 @@ type PragueDateParts = {
   year: number
   month: number
   day: number
-}
-
-type OverlaySummaryItem = {
-  label: string
-  value: string
-  tone?: 'default' | 'highlight' | 'success' | 'warning'
-}
-
-type RecentCompletedDelegatedTask = {
-  id: string
-  title: string
-  assigned_to: string | null
-  completed_at: string | null
 }
 
 function parseDate(value: string | null) {
@@ -215,21 +205,6 @@ function isSameCarrierDay(a: Date, b: Date) {
     a.getUTCFullYear() === b.getUTCFullYear() &&
     a.getUTCMonth() === b.getUTCMonth() &&
     a.getUTCDate() === b.getUTCDate()
-  )
-}
-
-function isSamePragueDay(a: string | null, b: Date) {
-  const parsed = parseDate(a)
-
-  if (!parsed) return false
-
-  const aParts = getPragueDateParts(parsed)
-  const bParts = getPragueDateParts(b)
-
-  return (
-    aParts.year === bParts.year &&
-    aParts.month === bParts.month &&
-    aParts.day === bParts.day
   )
 }
 
@@ -486,171 +461,6 @@ function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
   }
 
   return days
-}
-
-function getDayGreeting() {
-  const now = new Date()
-  const hour = Number(
-    new Intl.DateTimeFormat('en-GB', {
-      timeZone: PRAGUE_TIME_ZONE,
-      hour: '2-digit',
-      hour12: false,
-    }).format(now)
-  )
-
-  if (hour < 12) return 'morning'
-  if (hour < 18) return 'day'
-  return 'evening'
-}
-
-function getOverlayHeadline(hasNewUpdates: boolean) {
-  const dayPeriod = getDayGreeting()
-
-  if (hasNewUpdates) {
-    if (dayPeriod === 'morning') return 'Dobré ráno, máš novinky k řešení!'
-    if (dayPeriod === 'day') return 'Krásný den, máš novinky k řešení!'
-    return 'Hezký večer, máš novinky k řešení!'
-  }
-
-  if (dayPeriod === 'morning') return 'Dobré ráno!'
-  if (dayPeriod === 'day') return 'Hezký den!'
-  return 'Dobrý večer!'
-}
-
-function getOverlayDescription(
-  hasNewUpdates: boolean,
-  newTasksCount: number,
-  completedDelegatedTasksCount: number,
-  todayMeetingsCount: number,
-  overdueTasksCount: number
-) {
-  if (hasNewUpdates) {
-    if (newTasksCount > 0 && completedDelegatedTasksCount > 0) {
-      return 'V úkolech se objevily nové změny, které se týkají právě Tebe.'
-    }
-
-    if (newTasksCount > 0) {
-      return 'Byly Ti přiřazeny nové úkoly, které stojí za pozornost.'
-    }
-
-    if (completedDelegatedTasksCount > 0) {
-      return 'Některé úkoly, které jsi zadal, byly právě dokončeny.'
-    }
-
-    return 'V aplikaci se objevilo něco nového, co se týká právě Tebe.'
-  }
-
-  if (todayMeetingsCount > 0 || overdueTasksCount > 0) {
-    return 'Tady je rychlý přehled, ať hned víš, co je dnes důležité.'
-  }
-
-  if (newTasksCount === 0) {
-    return 'Dnes je zatím klid. Přesto máš přehled o tom nejdůležitějším.'
-  }
-
-  return 'Tady je rychlé shrnutí po přihlášení.'
-}
-
-function buildOverlaySummaryItems(args: {
-  newTasksCount: number
-  recentCompletedDelegatedTasks: Array<{
-    title: string
-    assigneeName: string | null
-  }>
-  todayMeetingsCount: number
-  overdueTasksCount: number
-}): OverlaySummaryItem[] {
-  const items: OverlaySummaryItem[] = []
-
-  if (args.newTasksCount > 0) {
-    items.push({
-      label: 'Nové úkoly',
-      value:
-        args.newTasksCount === 1
-          ? 'Byl Ti přiřazen 1 nový úkol'
-          : `Byly Ti přiřazeny ${args.newTasksCount} nové úkoly`,
-      tone: 'highlight',
-    })
-  }
-
-  args.recentCompletedDelegatedTasks.forEach((task) => {
-    items.push({
-      label: 'Splněné úkoly',
-      value: task.assigneeName
-        ? `${task.assigneeName}: ${task.title}`
-        : task.title,
-      tone: 'success',
-    })
-  })
-
-  if (args.newTasksCount === 0 && args.recentCompletedDelegatedTasks.length === 0) {
-    items.push({
-      label: 'Dnešní úkoly',
-      value: 'Žádný nový úkol.',
-      tone: 'default',
-    })
-  }
-
-  if (args.todayMeetingsCount > 0) {
-    items.push({
-      label: 'Dnešní schůzky',
-      value:
-        args.todayMeetingsCount === 1
-          ? 'Dnes máš 1 schůzku'
-          : `Dnes máš ${args.todayMeetingsCount} schůzky`,
-      tone: 'default',
-    })
-  } else {
-    items.push({
-      label: 'Dnešní schůzky',
-      value: 'Dnes zatím nemáš žádnou schůzku',
-      tone: 'default',
-    })
-  }
-
-  if (args.overdueTasksCount > 0) {
-    items.push({
-      label: 'Po termínu',
-      value:
-        args.overdueTasksCount === 1
-          ? '1 úkol je po termínu'
-          : `${args.overdueTasksCount} úkoly jsou po termínu`,
-      tone: 'warning',
-    })
-  }
-
-  return items
-}
-
-async function getRecentCompletedDelegatedTasks(params: {
-  supabase: Awaited<ReturnType<typeof createClient>>
-  userId: string
-}) {
-  const { supabase, userId } = params
-  const completedSince = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-
-  const response = await supabase
-    .from('tasks')
-    .select('id, title, assigned_to, completed_at')
-    .eq('status', 'done')
-    .eq('created_by', userId)
-    .not('assigned_to', 'is', null)
-    .neq('assigned_to', userId)
-    .gte('completed_at', completedSince)
-    .order('completed_at', { ascending: false })
-
-  if (
-    response.error &&
-    response.error.message.toLowerCase().includes('completed_at') &&
-    response.error.message.toLowerCase().includes('column')
-  ) {
-    return {
-      data: [] as RecentCompletedDelegatedTask[],
-      error: null as null | { message: string },
-    }
-  }
-
-  return response
 }
 
 function DashboardStatCard({
@@ -1156,7 +966,7 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, last_seen_dashboard_at, last_seen_updates_at, can_view_jobs, can_view_jobs_portal'
+      'name, role, can_view_jobs, can_view_jobs_portal'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
@@ -1175,10 +985,8 @@ export default async function DashboardPage() {
   const { start: todayStart, end: todayEnd } = getTodayRange()
   const { start: monthStart, end: monthEnd } = getMonthRange()
 
-  const lastSeenUpdatesAt = profile?.last_seen_updates_at ?? null
   const today = new Date()
   const nowIso = today.toISOString()
-  const isFirstVisitToday = !isSamePragueDay(profile?.last_seen_dashboard_at ?? null, today)
   const isAdmin = profile?.role === 'admin'
 
   const nearestMeetingsQuery = supabase
@@ -1220,28 +1028,6 @@ export default async function DashboardPage() {
     dashboardMeetingsCountQuery = dashboardMeetingsCountQuery.eq('assigned_user_id', user.id)
   }
 
-  let todayMeetingsCountQuery = supabase
-    .from('meetings')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'planned')
-    .gte('meeting_datetime', todayStart)
-    .lt('meeting_datetime', todayEnd)
-
-  if (!isAdmin) {
-    todayMeetingsCountQuery = todayMeetingsCountQuery.eq('assigned_user_id', user.id)
-  }
-
-  let weeklyMeetingsCountQuery = supabase
-    .from('meetings')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'planned')
-    .gte('meeting_datetime', start)
-    .lt('meeting_datetime', end)
-
-  if (!isAdmin) {
-    weeklyMeetingsCountQuery = weeklyMeetingsCountQuery.eq('assigned_user_id', user.id)
-  }
-
   let monthMeetingsQuery = supabase
     .from('meetings')
     .select(`
@@ -1271,11 +1057,7 @@ export default async function DashboardPage() {
     meetingsResponse,
     dashboardMeetingsCountResponse,
     dashboardWeeklyMeetingsCountResponse,
-    todayMeetingsCountResponse,
-    weeklyMeetingsCountResponse,
     monthMeetingsResponse,
-    newTasksCountResponse,
-    recentCompletedDelegatedTasksResponse,
   ] = await Promise.all([
     supabase
       .from('tasks')
@@ -1326,26 +1108,7 @@ export default async function DashboardPage() {
 
     dashboardWeeklyMeetingsCountQuery,
 
-    todayMeetingsCountQuery,
-
-    weeklyMeetingsCountQuery,
-
     monthMeetingsQuery,
-
-    lastSeenUpdatesAt
-      ? supabase
-          .from('tasks')
-          .select('id', { count: 'exact', head: true })
-          .neq('status', 'done')
-          .eq('assigned_to', user.id)
-          .neq('created_by', user.id)
-          .gt('created_at', lastSeenUpdatesAt)
-      : Promise.resolve({ count: 0, error: null } as { count: number | null; error: null }),
-
-    getRecentCompletedDelegatedTasks({
-      supabase,
-      userId: user.id,
-    }),
   ])
 
   if (tasksResponse.error) {
@@ -1380,33 +1143,9 @@ export default async function DashboardPage() {
     )
   }
 
-  if (todayMeetingsCountResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst dnešní počet schůzek: ${todayMeetingsCountResponse.error.message}`
-    )
-  }
-
-  if (weeklyMeetingsCountResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst týdenní počet schůzek: ${weeklyMeetingsCountResponse.error.message}`
-    )
-  }
-
   if (monthMeetingsResponse.error) {
     throw new Error(
       `Nepodařilo se načíst měsíční kalendář schůzek: ${monthMeetingsResponse.error.message}`
-    )
-  }
-
-  if (newTasksCountResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst počet nových úkolů: ${newTasksCountResponse.error.message}`
-    )
-  }
-
-  if (recentCompletedDelegatedTasksResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst splněné zadané úkoly: ${recentCompletedDelegatedTasksResponse.error.message}`
     )
   }
 
@@ -1444,35 +1183,12 @@ export default async function DashboardPage() {
   const overdueTasksCount = overdueTasksCountResponse.count ?? 0
   const dashboardTodayMeetingsCount = dashboardMeetingsCountResponse.count ?? 0
   const dashboardWeeklyMeetingsCount = dashboardWeeklyMeetingsCountResponse.count ?? 0
-  const todayMeetingsCount = todayMeetingsCountResponse.count ?? 0
-  const newTasksCount = newTasksCountResponse.count ?? 0
-  const recentCompletedDelegatedTasks = (
-    (recentCompletedDelegatedTasksResponse.data ?? []) as RecentCompletedDelegatedTask[]
-  ).map((task) => ({
-    ...task,
-    assigneeName: task.assigned_to
-      ? profileMap.get(task.assigned_to)?.name ?? null
-      : null,
-  }))
-  const completedDelegatedTasksCount = recentCompletedDelegatedTasks.length
-  const hasTaskUpdates =
-    newTasksCount > 0 || completedDelegatedTasksCount > 0
-  const shouldShowOverlay = isFirstVisitToday || hasTaskUpdates
+  await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
-  const overlayHeadline = getOverlayHeadline(hasTaskUpdates)
-  const overlayDescription = getOverlayDescription(
-    hasTaskUpdates,
-    newTasksCount,
-    completedDelegatedTasksCount,
-    todayMeetingsCount,
-    overdueTasksCount
-  )
-  const overlaySummaryItems = buildOverlaySummaryItems({
-    newTasksCount,
-    recentCompletedDelegatedTasks,
-    todayMeetingsCount,
-    overdueTasksCount,
-  })
+  const [notificationStats, modalNotifications] = await Promise.all([
+    getCurrentUserNotificationStats(),
+    getCurrentUserNotifications({ status: 'active', limit: 30 }),
+  ])
 
   return (
     <main className="min-h-screen bg-gray-50 text-zinc-900">
@@ -1495,15 +1211,8 @@ export default async function DashboardPage() {
             <div className="hidden w-full lg:block lg:w-auto lg:flex-none">
               <div className="flex w-full items-stretch justify-end gap-3 lg:w-auto">
                 <DashboardUpdatesLauncher
-                  shouldShow={shouldShowOverlay}
-                  profileName={profile?.name ?? ''}
-                  newTasksCount={newTasksCount}
-                  completedDelegatedTasksCount={completedDelegatedTasksCount}
-                  todayMeetingsCount={todayMeetingsCount}
-                  overdueTasksCount={overdueTasksCount}
-                  headline={overlayHeadline}
-                  description={overlayDescription}
-                  summaryItems={overlaySummaryItems}
+                  notifications={modalNotifications}
+                  unreadCount={notificationStats.unread}
                   variant="desktop"
                 />
 
@@ -1519,15 +1228,8 @@ export default async function DashboardPage() {
 
           <div className="mt-3 lg:hidden">
             <DashboardUpdatesLauncher
-              shouldShow={shouldShowOverlay}
-              profileName={profile?.name ?? ''}
-              newTasksCount={newTasksCount}
-              completedDelegatedTasksCount={completedDelegatedTasksCount}
-              todayMeetingsCount={todayMeetingsCount}
-              overdueTasksCount={overdueTasksCount}
-              headline={overlayHeadline}
-              description={overlayDescription}
-              summaryItems={overlaySummaryItems}
+              notifications={modalNotifications}
+              unreadCount={notificationStats.unread}
               variant="mobile"
             />
           </div>

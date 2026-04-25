@@ -48,6 +48,15 @@ type ClientTaskRow = {
     | null
 }
 
+type ClientOfferRow = {
+  id: string
+  offer_number: string
+  title: string
+  status: 'draft' | 'submitted' | 'changes_requested' | 'approved' | 'ordered' | 'rejected'
+  valid_until: string | null
+  updated_at: string
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('cs-CZ', {
     dateStyle: 'medium',
@@ -90,6 +99,24 @@ function getTaskStatusClass(status: string | null) {
   return 'bg-slate-100 text-slate-700'
 }
 
+function getOfferStatusLabel(status: ClientOfferRow['status']) {
+  if (status === 'ordered') return 'Objednáno'
+  if (status === 'rejected') return 'Zamítnuto'
+  if (status === 'approved') return 'Schválená'
+  if (status === 'submitted') return 'Ke schválení'
+  if (status === 'changes_requested') return 'Vrácená'
+  return 'Rozpracovaná'
+}
+
+function getOfferStatusClass(status: ClientOfferRow['status']) {
+  if (status === 'ordered') return 'bg-green-600 text-white'
+  if (status === 'rejected') return 'bg-red-100 text-red-700'
+  if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'submitted') return 'bg-[#2980B9]/10 text-[#236f9f]'
+  if (status === 'changes_requested') return 'bg-amber-100 text-amber-700'
+  return 'bg-zinc-100 text-zinc-600'
+}
+
 export default async function ClientDetailPage({
   params,
 }: {
@@ -106,7 +133,7 @@ export default async function ClientDetailPage({
     redirect('/login')
   }
 
-  const [clientResponse, meetingsResponse, tasksResponse] = await Promise.all([
+  const [clientResponse, meetingsResponse, tasksResponse, offersResponse] = await Promise.all([
     supabase.from('clients').select('*').eq('id', id).single(),
     supabase
       .from('meetings')
@@ -131,11 +158,17 @@ export default async function ClientDetailPage({
       `)
       .eq('client_id', id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('offers')
+      .select('id, offer_number, title, status, valid_until, updated_at')
+      .eq('client_id', id)
+      .order('updated_at', { ascending: false }),
   ])
 
   const { data: client, error: clientError } = clientResponse
   const { data: meetings, error: meetingsError } = meetingsResponse
   const { data: tasks, error: tasksError } = tasksResponse
+  const { data: offers, error: offersError } = offersResponse
 
   if (clientError || !client) {
     notFound()
@@ -149,9 +182,14 @@ export default async function ClientDetailPage({
     throw new Error('Nepodařilo se načíst úkoly klienta.')
   }
 
+  if (offersError) {
+    throw new Error('Nepodařilo se načíst nabídky klienta.')
+  }
+
   const typedClient = client as ClientRow
   const typedMeetings = (meetings ?? []) as ClientMeetingRow[]
   const typedTasks = (tasks ?? []) as ClientTaskRow[]
+  const typedOffers = (offers ?? []) as ClientOfferRow[]
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -408,6 +446,52 @@ export default async function ClientDetailPage({
               </div>
             )}
           </div>
+        </section>
+
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Nabídky klienta
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Přehled nabídek navázaných na tohoto klienta.
+            </p>
+          </div>
+
+          {typedOffers.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
+              Klient zatím nemá žádné nabídky.
+            </div>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {typedOffers.map((offer) => (
+                <Link
+                  key={offer.id}
+                  href={`/offers/${offer.id}`}
+                  className="block rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {offer.offer_number}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-gray-600">
+                        {offer.title}
+                      </p>
+                      <p className="mt-2 text-xs text-gray-500">
+                        Platnost: {formatDate(offer.valid_until ?? offer.updated_at)}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusClass(offer.status)}`}
+                    >
+                      {getOfferStatusLabel(offer.status)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>
