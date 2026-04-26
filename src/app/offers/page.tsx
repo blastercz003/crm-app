@@ -299,12 +299,12 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
 
         <section className="overflow-hidden rounded-[26px] border border-zinc-200 bg-white shadow-sm">
           <div className="p-4 md:p-5">
-            <div className="flex items-start justify-between gap-8">
-              <form action="/offers" method="get" className="w-[796px] flex-none space-y-3">
+            <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+              <form action="/offers" method="get" className="w-full flex-none space-y-3 lg:w-[796px]">
                 <input type="hidden" name="q" value={q} />
 
-                <div className="flex w-[796px] items-end gap-2">
-                  <div className="w-[240px] shrink-0">
+                <div className="grid w-full gap-2 sm:grid-cols-2 lg:flex lg:w-[796px] lg:items-end">
+                  <div className="min-w-0 lg:w-[240px] lg:shrink-0">
                     <label
                       htmlFor="status"
                       className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
@@ -326,7 +326,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   </div>
 
                   {isAdmin ? (
-                    <div className="w-[240px] shrink-0">
+                    <div className="min-w-0 lg:w-[240px] lg:shrink-0">
                       <label
                         htmlFor="author"
                         className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
@@ -349,7 +349,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     </div>
                   ) : null}
 
-                  <div className="w-[300px] shrink-0">
+                  <div className="min-w-0 sm:col-span-2 lg:col-span-1 lg:w-[300px] lg:shrink-0">
                     <label
                       htmlFor="sort"
                       className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
@@ -371,7 +371,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   </div>
                 </div>
 
-                <div className="w-[796px] border-t border-gray-100 pt-3">
+                <div className="w-full border-t border-gray-100 pt-3 lg:w-[796px]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-gray-600">
                       <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
@@ -429,38 +429,26 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 </div>
               </form>
 
-              <div className="relative right-8 ml-auto mr-0 grid max-w-full flex-none grid-cols-4 justify-end gap-3">
-                <div
-                  className="flex-none rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2.5 py-3 text-white shadow-sm"
-                  style={{ width: 119 }}
-                >
+              <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:relative lg:right-8 lg:ml-auto lg:mr-0 lg:w-auto lg:max-w-full lg:flex-none lg:justify-end">
+                <div className="w-full rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2.5 py-3 text-white shadow-sm lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     CELKEM
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.total}</div>
                 </div>
-                <div
-                  className="flex-none rounded-2xl border border-zinc-200 bg-white px-2.5 py-3 text-zinc-950 shadow-sm"
-                  style={{ width: 119 }}
-                >
+                <div className="w-full rounded-2xl border border-zinc-200 bg-white px-2.5 py-3 text-zinc-950 shadow-sm lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em]">
                     ROZPRACOVANÉ
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.draft}</div>
                 </div>
-                <div
-                  className="flex-none rounded-2xl border border-zinc-800 bg-zinc-800 px-2.5 py-3 text-white shadow-sm"
-                  style={{ width: 119 }}
-                >
+                <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-800 px-2.5 py-3 text-white shadow-sm lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     SCHVÁLIT
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.submitted}</div>
                 </div>
-                <div
-                  className="flex-none rounded-2xl border border-green-100 bg-green-100 px-2.5 py-3 text-green-800 shadow-sm"
-                  style={{ width: 119 }}
-                >
+                <div className="w-full rounded-2xl border border-green-100 bg-green-100 px-2.5 py-3 text-green-800 shadow-sm lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-current/80">
                     SCHVÁLENO
                   </div>
@@ -481,8 +469,115 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
             </p>
           </section>
         ) : (
-          <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
-            <div className="max-h-[70vh] overflow-auto">
+          <>
+            <section className="grid gap-3 lg:hidden">
+              {sortedOffers.map((offer) => {
+                const client = clientById.get(offer.client_id)
+                const author = profileById.get(offer.created_by)
+                const total = getOfferTotalWithoutVat(itemsByOfferId.get(offer.id) ?? [])
+
+                return (
+                  <article
+                    key={offer.id}
+                    className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-gray-900">
+                          {offer.offer_number}
+                        </div>
+                        <div className="mt-1 text-sm text-gray-500">
+                          {offer.title}
+                        </div>
+                      </div>
+                      <span className={`inline-flex h-8 min-w-[112px] shrink-0 items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${getStatusClass(offer.status)}`}>
+                        {STATUS_LABELS[offer.status]}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500">
+                      <div>
+                        <div className="font-semibold uppercase tracking-[0.12em] text-gray-400">
+                          Typ
+                        </div>
+                        <span className={`mt-1 inline-flex h-8 min-w-[110px] items-center justify-center rounded-xl border px-3 text-[11px] font-bold uppercase ${getOfferTypeClass(offer.offer_type)}`}>
+                          {OFFER_TYPE_LABELS[offer.offer_type]}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-semibold uppercase tracking-[0.12em] text-gray-400">
+                          Cena bez DPH
+                        </div>
+                        <div className="mt-2 text-sm font-semibold text-gray-900">
+                          {formatCurrency(total, offer.currency)}
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="font-semibold uppercase tracking-[0.12em] text-gray-400">
+                          Klient
+                        </div>
+                        <div className="mt-1 text-sm text-gray-800">
+                          {client?.name ?? 'Neznámý klient'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-semibold uppercase tracking-[0.12em] text-gray-400">
+                          Autor
+                        </div>
+                        <div className="mt-1 text-sm text-gray-800">
+                          {author?.name ?? 'Neznámý uživatel'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-semibold uppercase tracking-[0.12em] text-gray-400">
+                          Platnost
+                        </div>
+                        <div className="mt-1 text-sm text-gray-800">
+                          {formatDate(offer.valid_until)}
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="font-semibold uppercase tracking-[0.12em] text-gray-400">
+                          Poznámka
+                        </div>
+                        <div className="mt-1">
+                          <OfferNoteInput offerId={offer.id} initialValue={offer.internal_note ?? ''} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap justify-end gap-2">
+                      <Link
+                        href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-9 items-center justify-center rounded-xl bg-[#2980B9] px-4 text-[11px] font-bold uppercase text-white transition hover:bg-[#236f9f]"
+                      >
+                        PDF
+                      </Link>
+                      <form action={duplicateOffer}>
+                        <input type="hidden" name="offer_id" value={offer.id} />
+                        <button
+                          type="submit"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-[11px] font-bold uppercase text-gray-700 transition hover:bg-gray-50"
+                        >
+                          KOPIE
+                        </button>
+                      </form>
+                      <Link
+                        href={`/offers/${offer.id}`}
+                        className="inline-flex h-9 items-center justify-center rounded-xl bg-black px-4 text-[11px] font-bold uppercase text-white transition hover:bg-gray-800"
+                      >
+                        DETAIL
+                      </Link>
+                    </div>
+                  </article>
+                )
+              })}
+            </section>
+
+            <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
+              <div className="max-h-[70vh] overflow-auto">
               <table className="w-full min-w-[1320px] table-fixed border-separate border-spacing-y-2">
                 <colgroup>
                   <col style={{ width: '11%' }} />
@@ -581,8 +676,9 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   })}
                 </tbody>
               </table>
-            </div>
-          </section>
+              </div>
+            </section>
+          </>
         )}
       </div>
     </main>
