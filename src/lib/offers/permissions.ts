@@ -17,7 +17,7 @@ export async function getOfferRuntimeContext() {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('id, name, role, can_view_offers')
+    .select('id, name, role, can_view_offers, offer_prepared_by_name, offer_prepared_by_phone, offer_prepared_by_email')
     .eq('id', user.id)
     .single<OfferProfile>()
 

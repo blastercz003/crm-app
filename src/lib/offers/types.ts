@@ -6,6 +6,8 @@ export type OfferStatus =
   | 'ordered'
   | 'rejected'
 
+export type OfferType = 'classic' | 'bsafe24'
+
 export type OfferRow = {
   id: string
   offer_number: string
@@ -14,6 +16,7 @@ export type OfferRow = {
   last_edited_by: string | null
   approver_user_id: string | null
   title: string
+  offer_type: OfferType
   status: OfferStatus
   current_version: number
   submitted_version: number | null
@@ -43,6 +46,7 @@ export type OfferItemRow = {
   id: string
   offer_id: string
   position: number
+  item_section: string
   description: string
   specification: string | null
   quantity: number
@@ -80,4 +84,7 @@ export type OfferProfile = {
   name: string | null
   role: string | null
   can_view_offers: boolean | null
+  offer_prepared_by_name: string | null
+  offer_prepared_by_phone: string | null
+  offer_prepared_by_email: string | null
 }

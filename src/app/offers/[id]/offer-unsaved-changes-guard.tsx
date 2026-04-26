@@ -7,6 +7,23 @@ type OfferUnsavedChangesGuardProps = {
   message: string
 }
 
+let isOfferFormDirty = false
+
+export function isOfferDirty() {
+  return isOfferFormDirty
+}
+
+export function clearOfferDirtyState() {
+  isOfferFormDirty = false
+}
+
+export function confirmOfferNavigation(message: string) {
+  if (!isOfferFormDirty) return true
+
+  window.alert(message)
+  return false
+}
+
 export function OfferUnsavedChangesGuard({ formId, message }: OfferUnsavedChangesGuardProps) {
   useEffect(() => {
     const form = document.getElementById(formId) as HTMLFormElement | null
@@ -14,27 +31,26 @@ export function OfferUnsavedChangesGuard({ formId, message }: OfferUnsavedChange
       document.querySelectorAll<HTMLAnchorElement>('[data-offer-unsaved-guard="true"]')
     )
 
-    if (!form || guardedLinks.length === 0) return
-
-    let isDirty = false
+    if (!form) return
 
     const markDirty = () => {
-      isDirty = true
+      isOfferFormDirty = true
     }
 
     const markClean = () => {
-      isDirty = false
+      isOfferFormDirty = false
     }
 
     const handleGuardedClick = (event: MouseEvent) => {
-      if (!isDirty) return
+      if (!isOfferFormDirty) return
 
       event.preventDefault()
+      event.stopImmediatePropagation()
       window.alert(message)
     }
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!isDirty) return
+      if (!isOfferFormDirty) return
 
       event.preventDefault()
       event.returnValue = message

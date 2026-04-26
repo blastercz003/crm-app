@@ -1,7 +1,10 @@
 create extension if not exists "pgcrypto";
 
 alter table public.profiles
-  add column if not exists can_view_offers boolean not null default false;
+  add column if not exists can_view_offers boolean not null default false,
+  add column if not exists offer_prepared_by_name text,
+  add column if not exists offer_prepared_by_phone text,
+  add column if not exists offer_prepared_by_email text;
 
 create table if not exists public.offers (
   id uuid primary key default gen_random_uuid(),
@@ -11,6 +14,9 @@ create table if not exists public.offers (
   last_edited_by uuid references public.profiles(id) on delete set null,
   approver_user_id uuid references public.profiles(id) on delete set null,
   title text not null,
+  offer_type text not null default 'classic' check (
+    offer_type in ('classic', 'bsafe24')
+  ),
   status text not null default 'draft' check (
     status in ('draft', 'submitted', 'changes_requested', 'approved', 'ordered', 'rejected')
   ),
@@ -31,6 +37,7 @@ create table if not exists public.offers (
 
 alter table public.offers
   add column if not exists project_name text,
+  add column if not exists offer_type text not null default 'classic',
   add column if not exists realization_address text,
   add column if not exists realization_starts_at timestamptz,
   add column if not exists realization_ends_at timestamptz,
@@ -50,6 +57,16 @@ begin
     check (status in ('draft', 'submitted', 'changes_requested', 'approved', 'ordered', 'rejected'));
 end $$;
 
+do $$
+begin
+  alter table public.offers
+    drop constraint if exists offers_offer_type_check;
+
+  alter table public.offers
+    add constraint offers_offer_type_check
+    check (offer_type in ('classic', 'bsafe24'));
+end $$;
+
 create table if not exists public.offer_items (
   id uuid primary key default gen_random_uuid(),
   offer_id uuid not null references public.offers(id) on delete cascade,
@@ -65,7 +82,8 @@ create table if not exists public.offer_items (
 );
 
 alter table public.offer_items
-  add column if not exists specification text;
+  add column if not exists specification text,
+  add column if not exists item_section text not null default 'main';
 
 create table if not exists public.offer_service_items (
   id uuid primary key default gen_random_uuid(),

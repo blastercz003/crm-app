@@ -40,6 +40,7 @@ export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
       <button
         type="button"
         onClick={() => setIsEditing(true)}
+        title={savedValue || 'Přidat poznámku'}
         className={[
           'block h-8 w-full truncate rounded-lg px-1 py-1 text-left text-[12px] transition hover:bg-black/[0.025]',
           savedValue ? 'text-gray-700 hover:text-gray-900' : 'text-gray-400 hover:text-gray-600',

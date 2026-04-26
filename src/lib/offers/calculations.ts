@@ -32,7 +32,8 @@ export function formatCurrency(value: number, currency = 'CZK') {
   return new Intl.NumberFormat('cs-CZ', {
     style: 'currency',
     currency,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value)
 }
 

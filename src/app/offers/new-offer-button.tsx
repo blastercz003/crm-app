@@ -181,10 +181,10 @@ function NewOfferModal({
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Nová nabídka
+                NOVÁ NABÍDKA
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Založ základ nabídky. Položky a schvalování navážeš na detailu nabídky.
+                Vyber typ nabídky a vyplň základní data.
               </p>
             </div>
 
@@ -200,6 +200,33 @@ function NewOfferModal({
 
           <form action={formAction} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
             <div className="grid gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Typ nabídky
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="flex min-h-[46px] cursor-pointer items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-black transition hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="offer_type"
+                      value="classic"
+                      defaultChecked
+                      className="h-4 w-4 accent-[#2980B9]"
+                    />
+                    <span className="text-base font-semibold uppercase text-gray-900">KLASICKÁ</span>
+                  </label>
+                  <label className="flex min-h-[46px] cursor-pointer items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-black transition hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="offer_type"
+                      value="bsafe24"
+                      className="h-4 w-4 accent-[#2980B9]"
+                    />
+                    <span className="text-base font-semibold uppercase text-gray-900">B-SAFE 24</span>
+                  </label>
+                </div>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   Klient
@@ -259,7 +286,7 @@ function NewOfferModal({
                   id="title"
                   name="title"
                   required
-                  placeholder="Např. Cenová nabídka elektroinstalace"
+                  placeholder="Např. Pronájem DA 250kVA / 200kW"
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                 />
               </div>

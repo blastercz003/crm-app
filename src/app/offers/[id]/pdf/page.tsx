@@ -7,17 +7,19 @@ import type {
   OfferRow,
   OfferServiceItemRow,
 } from '@/lib/offers/types'
-import { BSafe24OfferDetail } from './bsafe24-offer-detail'
-import { ClassicOfferDetail } from './classic-offer-detail'
+import { BSafe24OfferPdf } from './bsafe24-offer-pdf'
+import { ClassicOfferPdf } from './classic-offer-pdf'
 
-type OfferDetailPageProps = {
+type OfferPdfPageProps = {
   params: Promise<{ id: string }>
-  searchParams?: Promise<{ saved?: string }>
+  searchParams?: Promise<{ standalone?: string; print?: string }>
 }
 
-export default async function OfferDetailPage({ params, searchParams }: OfferDetailPageProps) {
+export default async function OfferPdfPage({ params, searchParams }: OfferPdfPageProps) {
   const { id } = await params
-  const resolvedSearchParams = await searchParams
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const isStandalone = resolvedSearchParams?.standalone === '1'
+  const shouldAutoPrint = resolvedSearchParams?.print === '1'
   const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
 
   let offerQuery = supabase.from('offers').select('*').eq('id', id)
@@ -34,7 +36,7 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
 
   const offer = offerResponse.data
 
-  const [clientResponse, itemsResponse, serviceItemsResponse, profilesResponse] = await Promise.all([
+  const [clientResponse, itemsResponse, serviceItemsResponse, authorResponse] = await Promise.all([
     supabase
       .from('clients')
       .select('id, name, ico, contact_person, contact_email, address, created_by')
@@ -52,39 +54,32 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
       .order('position', { ascending: true }),
     supabase
       .from('profiles')
-      .select('id, name, role, can_view_offers, offer_prepared_by_name, offer_prepared_by_phone, offer_prepared_by_email'),
+      .select('id, name, role, can_view_offers, offer_prepared_by_name, offer_prepared_by_phone, offer_prepared_by_email')
+      .eq('id', offer.created_by)
+      .maybeSingle<OfferProfile>(),
   ])
 
   if (clientResponse.error || !clientResponse.data) {
-    throw new Error('Nepodařilo se načíst klienta nabídky.')
+    notFound()
   }
 
-  if (itemsResponse.error) {
-    throw new Error('Nepodařilo se načíst položky nabídky.')
+  if (itemsResponse.error || serviceItemsResponse.error) {
+    throw new Error('Nepodařilo se načíst data nabídky pro PDF.')
   }
 
-  if (serviceItemsResponse.error) {
-    throw new Error('Nepodařilo se načíst rozsah služby.')
-  }
-
-  if (profilesResponse.error) {
-    throw new Error('Nepodařilo se načíst uživatele.')
-  }
-
-  const detailProps = {
+  const pdfProps = {
     offer,
     client: clientResponse.data,
     items: (itemsResponse.data ?? []) as OfferItemRow[],
     serviceItems: (serviceItemsResponse.data ?? []) as OfferServiceItemRow[],
-    profiles: (profilesResponse.data ?? []) as OfferProfile[],
-    profile,
-    isAdmin,
-    saved: resolvedSearchParams?.saved === '1',
+    authorProfile: authorResponse.data ?? null,
+    isStandalone,
+    shouldAutoPrint,
   }
 
   if (offer.offer_type === 'bsafe24') {
-    return <BSafe24OfferDetail {...detailProps} />
+    return <BSafe24OfferPdf {...pdfProps} />
   }
 
-  return <ClassicOfferDetail {...detailProps} />
+  return <ClassicOfferPdf {...pdfProps} />
 }

@@ -1,14 +1,17 @@
 import Link from 'next/link'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
-import type { OfferClient, OfferProfile, OfferRow, OfferStatus } from '@/lib/offers/types'
+import type { OfferClient, OfferProfile, OfferRow, OfferStatus, OfferType } from '@/lib/offers/types'
 import { formatCurrency } from '@/lib/offers/calculations'
 import { NewOfferButton } from './new-offer-button'
 import { OfferNoteInput } from './offer-note-input'
+import { duplicateOffer } from './actions'
 
 type OffersPageProps = {
   searchParams?: Promise<{
     q?: string
     status?: string
+    author?: string
+    sort?: string
   }>
 }
 
@@ -28,6 +31,17 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
   rejected: 'Zamítnuto',
 }
 
+const STATUS_BADGE_WIDTH_CLASS = 'w-[150px]'
+
+const OFFER_TYPE_LABELS: Record<OfferType, string> = {
+  classic: 'KLASICKÁ',
+  bsafe24: 'B-SAFE 24',
+}
+
+function getOfferTypeClass(type: OfferType) {
+  return 'border-black bg-white text-black'
+}
+
 const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
   { value: '', label: 'Všechny' },
   { value: 'draft', label: 'Rozpracované' },
@@ -38,6 +52,15 @@ const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
   { value: 'rejected', label: 'Zamítnuté' },
 ]
 
+type OfferSort = 'updated_desc' | 'offer_number_desc' | 'valid_until_asc' | 'price_desc'
+
+const SORT_OPTIONS: Array<{ value: OfferSort; label: string }> = [
+  { value: 'updated_desc', label: 'Dle poslední úpravy' },
+  { value: 'offer_number_desc', label: 'Dle čísla nabídky' },
+  { value: 'valid_until_asc', label: 'Dle platnosti' },
+  { value: 'price_desc', label: 'Dle ceny bez DPH' },
+]
+
 function isOfferStatus(value: string | undefined): value is OfferStatus {
   return (
     value === 'draft' ||
@@ -46,6 +69,15 @@ function isOfferStatus(value: string | undefined): value is OfferStatus {
     value === 'approved' ||
     value === 'ordered' ||
     value === 'rejected'
+  )
+}
+
+function isOfferSort(value: string | undefined): value is OfferSort {
+  return (
+    value === 'updated_desc' ||
+    value === 'offer_number_desc' ||
+    value === 'valid_until_asc' ||
+    value === 'price_desc'
   )
 }
 
@@ -81,10 +113,20 @@ function getOfferTotalWithoutVat(items: OfferItemForTotal[]) {
   }, 0)
 }
 
-function getOfferHref(params: { q: string; status: string }) {
+function getStatusLabel(status: string) {
+  return STATUS_OPTIONS.find((option) => option.value === status)?.label ?? 'Všechny'
+}
+
+function getSortLabel(sort: OfferSort) {
+  return SORT_OPTIONS.find((option) => option.value === sort)?.label ?? 'Dle poslední úpravy'
+}
+
+function getOfferHref(params: { q: string; status: string; authorId: string; sort: OfferSort }) {
   const query = new URLSearchParams()
   if (params.q) query.set('q', params.q)
   if (params.status) query.set('status', params.status)
+  if (params.authorId) query.set('author', params.authorId)
+  if (params.sort !== 'updated_desc') query.set('sort', params.sort)
   const search = query.toString()
   return search ? `/offers?${search}` : '/offers'
 }
@@ -93,13 +135,27 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const params = searchParams ? await searchParams : undefined
   const q = params?.q?.trim() ?? ''
   const status = isOfferStatus(params?.status) ? params.status : ''
+  const requestedAuthorId = params?.author?.trim() ?? ''
+  const sort = isOfferSort(params?.sort) ? params.sort : 'updated_desc'
 
   const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
+  const authorId = isAdmin
+    ? requestedAuthorId === 'all'
+      ? ''
+      : requestedAuthorId || profile.id
+    : ''
+  const authorSelectValue = isAdmin
+    ? requestedAuthorId === 'all'
+      ? 'all'
+      : authorId
+    : ''
 
   let offersQuery = supabase.from('offers').select('*')
 
   if (!isAdmin) {
     offersQuery = offersQuery.eq('created_by', profile.id)
+  } else if (authorId) {
+    offersQuery = offersQuery.eq('created_by', authorId)
   }
 
   if (q) {
@@ -110,7 +166,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     offersQuery = offersQuery.eq('status', status)
   }
 
-  offersQuery = offersQuery.order('updated_at', { ascending: false })
+  if (sort === 'offer_number_desc') {
+    offersQuery = offersQuery.order('offer_number', { ascending: false })
+  } else if (sort === 'valid_until_asc') {
+    offersQuery = offersQuery.order('valid_until', { ascending: true, nullsFirst: false })
+  } else {
+    offersQuery = offersQuery.order('updated_at', { ascending: false })
+  }
 
   let clientsQuery = supabase
     .from('clients')
@@ -129,7 +191,9 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   ] = await Promise.all([
     offersQuery,
     clientsQuery,
-    supabase.from('profiles').select('id, name, role, can_view_offers'),
+    supabase
+      .from('profiles')
+      .select('id, name, role, can_view_offers, offer_prepared_by_name, offer_prepared_by_phone, offer_prepared_by_email'),
     supabase
       .from('offer_items')
       .select('offer_id, quantity, unit_price_without_vat, discount_percent'),
@@ -157,6 +221,10 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const items = (itemsResponse.data ?? []) as OfferItemForTotal[]
   const clientById = new Map(clients.map((client) => [client.id, client]))
   const profileById = new Map(profiles.map((item) => [item.id, item]))
+  const authorOptions = profiles
+    .filter((item) => item.role === 'admin' || item.can_view_offers)
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'cs'))
+  const selectedAuthor = authorId ? profileById.get(authorId) : null
   const itemsByOfferId = new Map<string, OfferItemForTotal[]>()
 
   items.forEach((item) => {
@@ -174,10 +242,17 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     draft: offers.filter((offer) => offer.status === 'draft').length,
     submitted: offers.filter((offer) => offer.status === 'submitted').length,
     approved: offers.filter((offer) => offer.status === 'approved').length,
-    ordered: offers.filter((offer) => offer.status === 'ordered').length,
-    rejected: offers.filter((offer) => offer.status === 'rejected').length,
     total: offers.length,
   }
+
+  const sortedOffers =
+    sort === 'price_desc'
+      ? [...offers].sort((a, b) => {
+          const aTotal = getOfferTotalWithoutVat(itemsByOfferId.get(a.id) ?? [])
+          const bTotal = getOfferTotalWithoutVat(itemsByOfferId.get(b.id) ?? [])
+          return bTotal - aTotal
+        })
+      : offers
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -193,6 +268,8 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
               <form action="/offers" method="get" className="flex w-full gap-3 sm:w-auto">
                 <input type="hidden" name="status" value={status} />
+                <input type="hidden" name="author" value={authorSelectValue} />
+                <input type="hidden" name="sort" value={sort} />
                 <input
                   type="text"
                   name="q"
@@ -220,84 +297,181 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
           </div>
         </section>
 
-        <section className="rounded-[26px] border border-zinc-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-[26px] border border-zinc-200 bg-white shadow-sm">
           <div className="p-4 md:p-5">
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_640px] xl:items-start">
-              <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                  Stav nabídky
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {STATUS_OPTIONS.map((option) => (
-                    <Link
-                      key={option.value || 'all'}
-                      href={getOfferHref({ q, status: option.value })}
-                      className={[
-                        'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition',
-                        status === option.value
-                          ? 'bg-zinc-900 text-white shadow-sm'
-                          : 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900',
-                      ].join(' ')}
-                    >
-                      {option.label}
-                    </Link>
-                  ))}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-500">
-                    {isAdmin ? 'Admin pohled' : 'Moje nabídky'}
-                  </span>
-                  {q ? (
-                    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-500">
-                      Hledání: {q}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
+            <div className="flex items-start justify-between gap-8">
+              <form action="/offers" method="get" className="w-[796px] flex-none space-y-3">
+                <input type="hidden" name="q" value={q} />
 
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-                <div className="rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 py-3 text-white shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                    Celkem
+                <div className="flex w-[796px] items-end gap-2">
+                  <div className="w-[240px] shrink-0">
+                    <label
+                      htmlFor="status"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      STAV NABÍDKY
+                    </label>
+                    <select
+                      id="status"
+                      name="status"
+                      defaultValue={status}
+                      className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                    >
+                      {STATUS_OPTIONS.map((option) => (
+                        <option key={option.value || 'all'} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {isAdmin ? (
+                    <div className="w-[240px] shrink-0">
+                      <label
+                        htmlFor="author"
+                        className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                      >
+                        UŽIVATEL
+                      </label>
+                      <select
+                        id="author"
+                        name="author"
+                        defaultValue={authorSelectValue}
+                        className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                      >
+                        <option value="all">Všichni uživatelé</option>
+                        {authorOptions.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name ?? 'Neznámý uživatel'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
+                  <div className="w-[300px] shrink-0">
+                    <label
+                      htmlFor="sort"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      ŘAZENÍ
+                    </label>
+                    <select
+                      id="sort"
+                      name="sort"
+                      defaultValue={sort}
+                      className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                    >
+                      {SORT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="w-[796px] border-t border-gray-100 pt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                        Stav:{' '}
+                        <span className="ml-1 font-medium text-gray-900">
+                          {getStatusLabel(status)}
+                        </span>
+                      </span>
+                      {isAdmin ? (
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                          Uživatel:{' '}
+                          <span className="ml-1 font-medium text-gray-900">
+                            {selectedAuthor?.name ?? 'Všichni uživatelé'}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                          Pohled:{' '}
+                          <span className="ml-1 font-medium text-gray-900">
+                            Moje nabídky
+                          </span>
+                        </span>
+                      )}
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                        Řazení:{' '}
+                        <span className="ml-1 font-medium text-gray-900">
+                          {getSortLabel(sort)}
+                        </span>
+                      </span>
+                      {q ? (
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                          Hledání:{' '}
+                          <span className="ml-1 font-medium text-gray-900">
+                            {q}
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="submit"
+                        className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800"
+                      >
+                        POUŽÍT FILTRY
+                      </button>
+                      <Link
+                        href="/offers"
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
+                      >
+                        RESET
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div className="relative right-8 ml-auto mr-0 grid max-w-full flex-none grid-cols-4 justify-end gap-3">
+                <div
+                  className="flex-none rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2.5 py-3 text-white shadow-sm"
+                  style={{ width: 119 }}
+                >
+                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
+                    CELKEM
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.total}</div>
                 </div>
-                <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-zinc-950 shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
-                    Rozprac.
+                <div
+                  className="flex-none rounded-2xl border border-zinc-200 bg-white px-2.5 py-3 text-zinc-950 shadow-sm"
+                  style={{ width: 119 }}
+                >
+                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em]">
+                    ROZPRACOVANÉ
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.draft}</div>
                 </div>
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-800 px-4 py-3 text-white shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                    Schválit
+                <div
+                  className="flex-none rounded-2xl border border-zinc-800 bg-zinc-800 px-2.5 py-3 text-white shadow-sm"
+                  style={{ width: 119 }}
+                >
+                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
+                    SCHVÁLIT
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.submitted}</div>
                 </div>
-                <div className="rounded-2xl border border-green-100 bg-green-100 px-4 py-3 text-green-800 shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-current/80">
-                    Schvál.
+                <div
+                  className="flex-none rounded-2xl border border-green-100 bg-green-100 px-2.5 py-3 text-green-800 shadow-sm"
+                  style={{ width: 119 }}
+                >
+                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-current/80">
+                    SCHVÁLENO
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.approved}</div>
-                </div>
-                <div className="rounded-2xl border border-green-600 bg-green-600 px-4 py-3 text-white shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                    Objed.
-                  </div>
-                  <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.ordered}</div>
-                </div>
-                <div className="rounded-2xl border border-red-100 bg-red-100 px-4 py-3 text-red-700 shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-current/80">
-                    Zamít.
-                  </div>
-                  <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.rejected}</div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {offers.length === 0 ? (
+        {sortedOffers.length === 0 ? (
           <section className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900">
               Zatím tu nejsou žádné nabídky.
@@ -310,20 +484,32 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
           <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
             <div className="max-h-[70vh] overflow-auto">
               <table className="w-full min-w-[1320px] table-fixed border-separate border-spacing-y-2">
+                <colgroup>
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '4%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '16%' }} />
+                </colgroup>
                 <thead className="sticky top-0 z-10 bg-white">
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                    <th className="w-[180px] px-2 py-2">Nabídka</th>
-                    <th className="w-[180px] px-2 py-2">Klient</th>
-                    <th className="w-[135px] px-2 py-2">Autor</th>
-                    <th className="w-[145px] px-2 py-2">Stav</th>
-                    <th className="w-[120px] px-2 py-2">Platnost</th>
-                    <th className="w-[270px] px-2 py-2">Poznámka</th>
-                    <th className="w-[150px] px-2 py-2 text-right">Cena bez DPH</th>
-                    <th className="w-[100px] px-2 py-2 text-right">Akce</th>
+                    <th className="px-2 py-2">Nabídka</th>
+                    <th className="px-2 py-2">Typ</th>
+                    <th className="px-2 py-2">Klient</th>
+                    <th className="px-2 py-2">Autor</th>
+                    <th className="px-2 py-2">Platnost</th>
+                    <th className="px-2 py-2">Poznámka</th>
+                    <th className="px-2 py-2 text-right">Cena bez DPH</th>
+                    <th className="px-2 py-2 text-center">Stav</th>
+                    <th className="px-2 py-2 text-center">Akce</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {offers.map((offer) => {
+                  {sortedOffers.map((offer) => {
                     const client = clientById.get(offer.client_id)
                     const author = profileById.get(offer.created_by)
                     const total = getOfferTotalWithoutVat(itemsByOfferId.get(offer.id) ?? [])
@@ -338,16 +524,16 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                             {offer.title}
                           </div>
                         </td>
+                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                          <span className={`inline-flex h-8 w-full items-center justify-center rounded-xl border px-2 text-sm font-bold uppercase transition ${getOfferTypeClass(offer.offer_type)}`}>
+                            {OFFER_TYPE_LABELS[offer.offer_type]}
+                          </span>
+                        </td>
                         <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-[12px] text-gray-700 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
                           <div className="truncate">{client?.name ?? 'Neznámý klient'}</div>
                         </td>
                         <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-[12px] text-gray-700 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
                           <div className="truncate">{author?.name ?? 'Neznámý uživatel'}</div>
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-                          <span className={`inline-flex h-8 max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${getStatusClass(offer.status)}`}>
-                            {STATUS_LABELS[offer.status]}
-                          </span>
                         </td>
                         <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-[12px] text-gray-700 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
                           {formatDate(offer.valid_until)}
@@ -358,8 +544,30 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 text-right align-middle text-[12px] font-semibold text-gray-900 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
                           {formatCurrency(total, offer.currency)}
                         </td>
+                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                          <span className={`inline-flex h-8 ${STATUS_BADGE_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${getStatusClass(offer.status)}`}>
+                            {STATUS_LABELS[offer.status]}
+                          </span>
+                        </td>
                         <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex h-8 items-center justify-center rounded-xl bg-[#2980B9] px-3 text-[11px] font-bold uppercase text-white transition hover:bg-[#236f9f]"
+                            >
+                              PDF
+                            </Link>
+                            <form action={duplicateOffer}>
+                              <input type="hidden" name="offer_id" value={offer.id} />
+                              <button
+                                type="submit"
+                                className="inline-flex h-8 items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-bold uppercase text-gray-700 transition hover:bg-gray-50"
+                              >
+                                KOPIE
+                              </button>
+                            </form>
                             <Link
                               href={`/offers/${offer.id}`}
                               className="inline-flex h-8 items-center justify-center rounded-xl bg-black px-3 text-[11px] font-bold uppercase text-white transition hover:bg-gray-800"
