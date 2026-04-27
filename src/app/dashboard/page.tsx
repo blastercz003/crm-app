@@ -508,7 +508,7 @@ function DashboardSectionHeader({
 }: {
   eyebrow: string
   title: string
-  description: string
+  description?: string
 }) {
   return (
     <div>
@@ -518,7 +518,9 @@ function DashboardSectionHeader({
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
         {title}
       </h2>
-      <p className="mt-1.5 text-sm text-zinc-500">{description}</p>
+      {description ? (
+        <p className="mt-1.5 text-sm text-zinc-500">{description}</p>
+      ) : null}
     </div>
   )
 }
@@ -725,7 +727,6 @@ function DashboardMiniCalendar({
           <DashboardSectionHeader
             eyebrow="Kalendář"
             title={monthLabel}
-            description="Přehled schůzek v aktuálním měsíci."
           />
         </div>
 
@@ -758,7 +759,7 @@ function DashboardMiniCalendar({
             <div key={day.isoKey} className="group relative">
               <div
                 className={[
-                  'flex min-h-[82px] flex-col rounded-2xl border p-2 transition duration-200',
+                  'flex min-h-[62px] flex-col rounded-2xl border p-1.5 transition duration-200',
                   day.isToday
                     ? 'border-[#2980B9] text-white'
                     : day.isCurrentMonth
@@ -776,7 +777,7 @@ function DashboardMiniCalendar({
                 <div className="flex items-start justify-between gap-2">
                   <div
                     className={[
-                      'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold leading-none',
+                      'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold leading-none',
                       day.isToday
                         ? 'bg-black text-white'
                         : day.isCurrentMonth
@@ -788,9 +789,9 @@ function DashboardMiniCalendar({
                   </div>
                 </div>
 
-                <div className="mt-auto flex h-6 items-center justify-center pt-4">
+                <div className="mt-auto flex h-5 items-center justify-center pt-1">
                   {hasMeetings ? (
-                    <div className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/90 bg-[#2980B9] text-[10px] font-semibold leading-none text-white shadow-sm">
+                    <div className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/90 bg-[#2980B9] text-[10px] font-semibold leading-none text-white shadow-sm">
                       {day.meetings.length}
                     </div>
                   ) : null}
@@ -1274,6 +1275,8 @@ export default async function DashboardPage() {
             {isAdmin || profile?.can_view_offers ? <OffersCard /> : null}
 
             {isAdmin ? <FinanceCard /> : null}
+
+            <DashboardMiniCalendar meetings={monthMeetings} />
           </div>
 
           <div className="space-y-6">
@@ -1282,7 +1285,6 @@ export default async function DashboardPage() {
                 <DashboardSectionHeader
                   eyebrow="Úkoly"
                   title="Moje úkoly"
-                  description="Nejbližší aktivní úkoly, které máš aktuálně přiřazené."
                 />
               </div>
 
@@ -1320,13 +1322,14 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             </section>
+          </div>
 
+          <div className="space-y-6">
             <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
               <div className="mb-5">
                 <DashboardSectionHeader
                   eyebrow="Schůzky"
-                  title="Moje nejbližší schůzky"
-                  description="Pět nejbližších plánovaných schůzek."
+                  title="Moje schůzky"
                 />
               </div>
 
@@ -1363,10 +1366,6 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             </section>
-          </div>
-
-          <div className="space-y-6">
-            <DashboardMiniCalendar meetings={monthMeetings} />
 
             <DashboardUserPanel
               profileName={profile?.name ?? null}
@@ -1381,7 +1380,7 @@ export default async function DashboardPage() {
       <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY APP — coding by blaster</div>
-          <div>v1.9.2</div>
+          <div>v1.9.3</div>
         </div>
       </footer>
     </main>
