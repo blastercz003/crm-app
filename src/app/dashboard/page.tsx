@@ -675,8 +675,11 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-zinc-900">
+            <div className="min-w-0 flex-1">
+              <div
+                className="truncate text-sm font-semibold text-zinc-900"
+                title={meeting.company_name ?? 'Bez firmy'}
+              >
                 {meeting.company_name ?? 'Bez firmy'}
               </div>
 

@@ -104,14 +104,6 @@ function formatCompactDateTime(value: string | null) {
   )
 }
 
-function truncateMeetingCompanyLabel(value: string, maxLength = 23) {
-  if (value.length <= maxLength) {
-    return value
-  }
-
-  return `${value.slice(0, maxLength)}...`
-}
-
 function isMeetingOverdue(meeting: MeetingRow) {
   if (meeting.status !== 'planned') return false
 
@@ -271,25 +263,27 @@ function MeetingListItem({
 }) {
   const companyLabel =
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
-  const previewCompanyLabel = truncateMeetingCompanyLabel(companyLabel)
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-100">
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2.5 text-sm">
+        <div className="flex min-w-0 items-center gap-2.5 text-sm">
           <div className="shrink-0 whitespace-nowrap rounded-xl border border-transparent bg-[#2980B9] px-2.5 py-1 text-[11px] font-medium text-white">
             {formatCompactDateTime(meeting.meeting_datetime)}
           </div>
 
           <div
-            className="min-w-0 flex-1 break-words font-medium text-zinc-900"
+            className="min-w-0 flex-1 truncate font-medium text-zinc-900"
             title={companyLabel}
           >
-            {previewCompanyLabel}
+            {companyLabel}
           </div>
 
           {isAdminView && meeting.assigned_user_name ? (
-            <div className="max-w-full break-words rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-600">
+            <div
+              className="max-w-[120px] shrink-0 truncate rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-600"
+              title={meeting.assigned_user_name}
+            >
               {meeting.assigned_user_name}
             </div>
           ) : null}
