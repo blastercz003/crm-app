@@ -10,6 +10,7 @@ export type SortMode = 'start_nearest' | 'job_number_desc' | 'sale_desc'
 export type FakturaRow = {
   id: string
   job_id: string
+  client_id: string | null
   job_number: string
   company_name: string
   contact_person: string | null
@@ -18,6 +19,10 @@ export type FakturaRow = {
   end_at: string
   site_address: string | null
   store_number: string | null
+  technician_name: string | null
+  generator_name: string | null
+  job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
+  invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
   info_note: string | null
   invoice_number: string | null
   sale_amount: number | null
@@ -47,6 +52,7 @@ type JobFinanceJoinRow = {
   job:
     | {
         id: string
+        client_id: string | null
         job_number: string
         company_name: string
         contact_person: string | null
@@ -55,9 +61,14 @@ type JobFinanceJoinRow = {
         end_at: string
         site_address: string | null
         store_number: string | null
+        technician_name: string | null
+        generator_name: string | null
+        job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
+        invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
       }
     | {
         id: string
+        client_id: string | null
         job_number: string
         company_name: string
         contact_person: string | null
@@ -66,12 +77,34 @@ type JobFinanceJoinRow = {
         end_at: string
         site_address: string | null
         store_number: string | null
+        technician_name: string | null
+        generator_name: string | null
+        job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
+        invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
       }[]
     | null
 }
 
 type JobIdRow = {
   id: string
+}
+
+type ClientSuggestionRow = {
+  id: string
+  name: string | null
+}
+
+type FinanceStatsJoinRow = {
+  sale_amount: number | null
+  cost_amount: number | null
+  job:
+    | {
+        start_at: string
+      }
+    | {
+        start_at: string
+      }[]
+    | null
 }
 
 const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
@@ -137,6 +170,17 @@ function getPragueTodayParts() {
 function getCurrentMonthValue() {
   const today = getPragueTodayParts()
   return `${today.year}-${String(today.month).padStart(2, '0')}`
+}
+
+function getCurrentMonthRange() {
+  const today = getPragueTodayParts()
+  const month = String(today.month).padStart(2, '0')
+  const lastDay = new Date(Date.UTC(today.year, today.month, 0)).getUTCDate()
+
+  return {
+    from: `${today.year}-${month}-01`,
+    to: `${today.year}-${month}-${String(lastDay).padStart(2, '0')}`,
+  }
 }
 
 function getProfit(saleAmount: number | null, costAmount: number | null) {
@@ -214,6 +258,42 @@ function buildExportHref({
 
   const search = params.toString()
   return search ? `/faktury/export?${search}` : '/faktury/export'
+}
+
+function buildCurrentMonthHref({
+  query,
+  salesOwner,
+  sort,
+  invoiced,
+}: {
+  query: string
+  salesOwner: string
+  sort: SortMode
+  invoiced: string
+}) {
+  const currentMonthRange = getCurrentMonthRange()
+  const params = new URLSearchParams()
+
+  if (query) {
+    params.set('q', query)
+  }
+
+  if (salesOwner) {
+    params.set('sales', salesOwner)
+  }
+
+  if (sort) {
+    params.set('sort', sort)
+  }
+
+  params.set('date_from', currentMonthRange.from)
+  params.set('date_to', currentMonthRange.to)
+
+  if (invoiced) {
+    params.set('invoiced', invoiced)
+  }
+
+  return `/faktury?${params.toString()}`
 }
 
 export default async function FakturyPage({
@@ -294,6 +374,7 @@ export default async function FakturyPage({
       cost_amount,
       job:jobs!inner (
         id,
+        client_id,
         job_number,
         company_name,
         contact_person,
@@ -301,7 +382,11 @@ export default async function FakturyPage({
         start_at,
         end_at,
         site_address,
-        store_number
+        store_number,
+        technician_name,
+        generator_name,
+        job_status,
+        invoice_status
       )
     `)
 
@@ -337,11 +422,45 @@ export default async function FakturyPage({
     }
   }
 
-  const { data, error } = await request
+  const [
+    financeResponse,
+    clientSuggestionsResponse,
+    statsResponse,
+  ] = await Promise.all([
+    request,
+    supabase
+      .from('clients')
+      .select('id, name')
+      .order('name', { ascending: true }),
+    supabase.from('job_finances').select(`
+      sale_amount,
+      cost_amount,
+      job:jobs!inner (
+        start_at
+      )
+    `),
+  ])
+
+  const { data, error } = financeResponse
 
   if (error) {
     throw new Error('Nepodařilo se načíst fakturaci.')
   }
+
+  if (clientSuggestionsResponse.error) {
+    throw new Error('Nepodařilo se načíst klienty.')
+  }
+
+  if (statsResponse.error) {
+    throw new Error('Nepodařilo se načíst přehled fakturace.')
+  }
+
+  const clientSuggestions = ((clientSuggestionsResponse.data ?? []) as ClientSuggestionRow[])
+    .map((client) => ({
+      id: String(client.id ?? '').trim(),
+      name: String(client.name ?? '').trim(),
+    }))
+    .filter((client) => client.id && client.name)
 
   let rows: FakturaRow[] = ((data ?? []) as JobFinanceJoinRow[])
     .map((item) => {
@@ -352,6 +471,7 @@ export default async function FakturyPage({
       return {
         id: item.id,
         job_id: item.job_id,
+        client_id: job.client_id,
         job_number: job.job_number,
         company_name: job.company_name,
         contact_person: job.contact_person,
@@ -360,6 +480,10 @@ export default async function FakturyPage({
         end_at: job.end_at,
         site_address: job.site_address,
         store_number: job.store_number,
+        technician_name: job.technician_name,
+        generator_name: job.generator_name,
+        job_status: job.job_status,
+        invoice_status: job.invoice_status,
         info_note: item.info_note,
         invoice_number: item.invoice_number,
         sale_amount:
@@ -396,28 +520,44 @@ export default async function FakturyPage({
     rows = [...rows].sort(compareByJobNumberDesc)
   }
 
-  const currentMonthRows = rows.filter(
+  const statRows = ((statsResponse.data ?? []) as FinanceStatsJoinRow[])
+    .map((item) => {
+      const job = Array.isArray(item.job) ? item.job[0] : item.job
+
+      if (!job) return null
+
+      return {
+        sale_amount: typeof item.sale_amount === 'number' ? item.sale_amount : null,
+        cost_amount: typeof item.cost_amount === 'number' ? item.cost_amount : null,
+        start_at: job.start_at,
+      }
+    })
+    .filter((item): item is { sale_amount: number | null; cost_amount: number | null; start_at: string } =>
+      Boolean(item)
+    )
+
+  const currentMonthStatRows = statRows.filter(
     (row) => row.start_at.slice(0, 7) === currentMonth
   )
 
-  const totalSale = rows.reduce(
+  const totalSale = statRows.reduce(
     (sum, row) =>
       sum + (typeof row.sale_amount === 'number' ? row.sale_amount : 0),
     0
   )
 
-  const currentMonthSale = currentMonthRows.reduce(
+  const currentMonthSale = currentMonthStatRows.reduce(
     (sum, row) =>
       sum + (typeof row.sale_amount === 'number' ? row.sale_amount : 0),
     0
   )
 
-  const totalProfit = rows.reduce(
+  const totalProfit = statRows.reduce(
     (sum, row) => sum + getProfit(row.sale_amount, row.cost_amount),
     0
   )
 
-  const currentMonthProfit = currentMonthRows.reduce(
+  const currentMonthProfit = currentMonthStatRows.reduce(
     (sum, row) => sum + getProfit(row.sale_amount, row.cost_amount),
     0
   )
@@ -446,6 +586,12 @@ export default async function FakturyPage({
     sort,
     dateFrom,
     dateTo,
+    invoiced,
+  })
+  const currentMonthHref = buildCurrentMonthHref({
+    query,
+    salesOwner,
+    sort,
     invoiced,
   })
 
@@ -622,6 +768,13 @@ export default async function FakturyPage({
                 </Link>
 
                 <Link
+                  href={currentMonthHref}
+                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f]"
+                >
+                  TENTO MĚSÍC
+                </Link>
+
+                <Link
                   href={exportHref}
                   className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f]"
                 >
@@ -665,11 +818,13 @@ export default async function FakturyPage({
               <StatCard
                 label="Zisk celkem"
                 value={formatCurrency(totalProfit)}
+                accent="green"
                 valueClassName={totalProfit < 0 ? 'text-red-600' : 'text-black'}
               />
               <StatCard
                 label="Zisk tento měsíc"
                 value={formatCurrency(currentMonthProfit)}
+                accent="greenSoft"
                 valueClassName={
                   currentMonthProfit < 0 ? 'text-red-600' : 'text-black'
                 }
@@ -695,7 +850,7 @@ export default async function FakturyPage({
             </div>
           </section>
         ) : (
-          <FakturyInteractiveTable rows={rows} />
+          <FakturyInteractiveTable rows={rows} clientSuggestions={clientSuggestions} />
         )}
       </div>
     </main>
@@ -711,23 +866,21 @@ function StatCard({
   label: string
   value: string
   valueClassName?: string
-  accent?: 'default' | 'blue' | 'blueSoft'
+  accent?: 'default' | 'blue' | 'blueSoft' | 'green' | 'greenSoft'
 }) {
   const accentClass =
     accent === 'blue'
       ? 'border-[#2980B9]/20 bg-white'
       : accent === 'blueSoft'
         ? 'border-[#2980B9]/20 bg-[#2980B9]/[0.05]'
+        : accent === 'green'
+          ? 'border-emerald-200 bg-emerald-50'
+          : accent === 'greenSoft'
+            ? 'border-emerald-200 bg-emerald-50/80'
         : 'border-gray-200 bg-gray-50'
-
-  const topBarClass =
-    accent === 'blue' || accent === 'blueSoft'
-      ? 'bg-[#2980B9]'
-      : 'bg-gray-200'
 
   return (
     <div className={`overflow-hidden rounded-2xl border ${accentClass}`}>
-      <div className={`h-[2px] w-full ${topBarClass}`} />
       <div className="p-4">
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
           {label}

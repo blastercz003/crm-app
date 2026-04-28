@@ -39,6 +39,7 @@ type OfferItemsModalProps = {
   items: OfferItemRow[]
   sectionNote?: string
   showDiscount?: boolean
+  showQuantityAndTotal?: boolean
   presets?: OfferItemPreset[]
 }
 
@@ -135,7 +136,7 @@ function createPresetDraftItem(preset: OfferItemPreset): DraftOfferItem {
 
 function buildDraftItems(items: OfferItemRow[]) {
   if (items.length === 0) {
-    return [createEmptyDraftItem()]
+    return []
   }
 
   return items.map((item) => ({
@@ -269,6 +270,7 @@ export function OfferItemsEditor({
   items,
   sectionNote = '',
   showDiscount = true,
+  showQuantityAndTotal = true,
   presets = OFFER_ITEM_PRESETS,
 }: OfferItemsModalProps) {
   const router = useRouter()
@@ -283,6 +285,25 @@ export function OfferItemsEditor({
     () => items.reduce((sum, item) => sum + getOfferItemNetTotal(item), 0),
     [items]
   )
+  const detailColumnClasses = showQuantityAndTotal
+    ? {
+        item: 'w-[23%]',
+        specification: 'w-[28%]',
+        price: 'w-[13%]',
+        unit: 'w-[8%]',
+        quantity: 'w-[10%]',
+        discount: 'w-[8%]',
+        total: showDiscount ? 'w-[10%]' : 'w-[18%]',
+      }
+    : {
+        item: 'w-[31%]',
+        specification: 'w-[36%]',
+        price: 'w-[22%]',
+        unit: 'w-[11%]',
+      }
+  const modalGridColumns = showQuantityAndTotal
+    ? OFFER_ITEM_MODAL_GRID_COLUMNS
+    : 'minmax(170px,1fr) minmax(220px,1.35fr) 130px 80px 168px'
 
   useEffect(() => {
     if (presets.length === 0) {
@@ -347,8 +368,7 @@ export function OfferItemsEditor({
 
   function removeRow(rowId: string) {
     setRows((currentRows) => {
-      const nextRows = currentRows.filter((row) => row.id !== rowId)
-      return nextRows.length > 0 ? nextRows : [createEmptyDraftItem()]
+      return currentRows.filter((row) => row.id !== rowId)
     })
   }
 
@@ -423,14 +443,16 @@ export function OfferItemsEditor({
           </div>
 
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-            <div className="rounded-2xl bg-gray-50 px-4 py-2 text-right">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                Cena bez DPH
+            {showQuantityAndTotal ? (
+              <div className="rounded-2xl bg-gray-50 px-4 py-2 text-right">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Cena bez DPH
+                </div>
+                <div className="mt-1 text-base font-semibold text-gray-900">
+                  {formatCurrency(savedTotal, currency)}
+                </div>
               </div>
-              <div className="mt-1 text-base font-semibold text-gray-900">
-                {formatCurrency(savedTotal, currency)}
-              </div>
-            </div>
+            ) : null}
             <button
               type="button"
               onClick={handleOpen}
@@ -455,13 +477,15 @@ export function OfferItemsEditor({
           <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200">
             <table className="w-full table-fixed border-collapse text-sm">
               <colgroup>
-                <col className="w-[23%]" />
-                <col className="w-[28%]" />
-                <col className="w-[13%]" />
-                <col className="w-[8%]" />
-                <col className="w-[10%]" />
-                {showDiscount ? <col className="w-[8%]" /> : null}
-                <col className={showDiscount ? 'w-[10%]' : 'w-[18%]'} />
+                <col className={detailColumnClasses.item} />
+                <col className={detailColumnClasses.specification} />
+                <col className={detailColumnClasses.price} />
+                <col className={detailColumnClasses.unit} />
+                {showQuantityAndTotal ? <col className={detailColumnClasses.quantity} /> : null}
+                {showQuantityAndTotal && showDiscount ? (
+                  <col className={detailColumnClasses.discount} />
+                ) : null}
+                {showQuantityAndTotal ? <col className={detailColumnClasses.total} /> : null}
               </colgroup>
               <thead>
                 <tr className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
@@ -469,9 +493,13 @@ export function OfferItemsEditor({
                   <th className="px-4 py-3">Specifikace / popis</th>
                   <th className="px-4 py-3 text-right">Jedn. cena</th>
                   <th className="px-4 py-3 text-center">Jedn.</th>
-                  <th className="px-4 py-3 text-right">Množství</th>
-                  {showDiscount ? <th className="px-4 py-3 text-right">Sleva</th> : null}
-                  <th className="px-4 py-3 text-right">Cena bez DPH</th>
+                  {showQuantityAndTotal ? <th className="px-4 py-3 text-right">Množství</th> : null}
+                  {showQuantityAndTotal && showDiscount ? (
+                    <th className="px-4 py-3 text-right">Sleva</th>
+                  ) : null}
+                  {showQuantityAndTotal ? (
+                    <th className="px-4 py-3 text-right">Cena bez DPH</th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -483,17 +511,21 @@ export function OfferItemsEditor({
                       {formatCurrency(Number(item.unit_price_without_vat), currency)}
                     </td>
                     <td className="px-4 py-3 text-center text-gray-600">{item.unit}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">
-                      {Number(item.quantity).toLocaleString('cs-CZ')}
-                    </td>
-                    {showDiscount ? (
+                    {showQuantityAndTotal ? (
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {Number(item.quantity).toLocaleString('cs-CZ')}
+                      </td>
+                    ) : null}
+                    {showQuantityAndTotal && showDiscount ? (
                       <td className="px-4 py-3 text-right text-gray-600">
                         {Number(item.discount_percent) > 0 ? `${Number(item.discount_percent).toLocaleString('cs-CZ')} %` : '-'}
                       </td>
                     ) : null}
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                      {formatCurrency(getOfferItemNetTotal(item), currency)}
-                    </td>
+                    {showQuantityAndTotal ? (
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                        {formatCurrency(getOfferItemNetTotal(item), currency)}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -525,9 +557,11 @@ export function OfferItemsEditor({
                     <h2 className="text-lg font-semibold uppercase text-gray-900">
                       Položky nabídky
                     </h2>
-                    <div className="mt-2 inline-flex items-center rounded-full bg-[#2980B9] px-2.5 py-1 text-xs font-semibold text-white">
-                      {formatCurrency(total, currency)} bez DPH
-                    </div>
+                    {showQuantityAndTotal ? (
+                      <div className="mt-2 inline-flex items-center rounded-full bg-[#2980B9] px-2.5 py-1 text-xs font-semibold text-white">
+                        {formatCurrency(total, currency)} bez DPH
+                      </div>
+                    ) : null}
                   </div>
 
                   <button
@@ -590,17 +624,25 @@ export function OfferItemsEditor({
                 <div className="space-y-3">
                   <div
                     className="grid gap-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500"
-                    style={{ gridTemplateColumns: OFFER_ITEM_MODAL_GRID_COLUMNS }}
+                    style={{ gridTemplateColumns: modalGridColumns }}
                   >
                     <div>Položka</div>
                     <div>Specifikace / popis</div>
                     <div className="text-right">Jedn. cena</div>
                     <div>Jedn.</div>
-                    <div className="text-right">Množství</div>
-                    {showDiscount ? <div className="text-right">Sleva %</div> : null}
-                    <div className="text-right">Cena bez DPH</div>
+                    {showQuantityAndTotal ? <div className="text-right">Množství</div> : null}
+                    {showQuantityAndTotal && showDiscount ? (
+                      <div className="text-right">Sleva %</div>
+                    ) : null}
+                    {showQuantityAndTotal ? <div className="text-right">Cena bez DPH</div> : null}
                     <div />
                   </div>
+
+                  {rows.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
+                      Přidej položku z nabídky nebo vytvoř vlastní řádek.
+                    </div>
+                  ) : null}
 
                   {rows.map((row, index) => {
                     const lineTotal = getDraftLineTotal(row)
@@ -609,7 +651,7 @@ export function OfferItemsEditor({
                       <div
                         key={row.id}
                         className="grid gap-2 rounded-2xl border border-gray-200 bg-white p-3"
-                        style={{ gridTemplateColumns: OFFER_ITEM_MODAL_GRID_COLUMNS }}
+                        style={{ gridTemplateColumns: modalGridColumns }}
                       >
                         <input
                           value={row.description}
@@ -635,13 +677,15 @@ export function OfferItemsEditor({
                           className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                           placeholder="ks"
                         />
-                        <input
-                          value={row.quantity}
-                          onChange={(event) => updateRow(row.id, 'quantity', event.target.value)}
-                          className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-                          placeholder="1"
-                        />
-                        {showDiscount ? (
+                        {showQuantityAndTotal ? (
+                          <input
+                            value={row.quantity}
+                            onChange={(event) => updateRow(row.id, 'quantity', event.target.value)}
+                            className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                            placeholder="1"
+                          />
+                        ) : null}
+                        {showQuantityAndTotal && showDiscount ? (
                           <input
                             value={row.discountPercent}
                             onChange={(event) => updateRow(row.id, 'discountPercent', event.target.value)}
@@ -649,11 +693,13 @@ export function OfferItemsEditor({
                             placeholder="-"
                           />
                         ) : (
-                          <div />
+                          showQuantityAndTotal ? <div /> : null
                         )}
-                        <div className="flex h-10 items-center justify-end rounded-xl bg-gray-50 px-3 text-sm font-semibold text-gray-900">
-                          {typeof lineTotal === 'number' ? formatCurrency(lineTotal, currency) : '-'}
-                        </div>
+                        {showQuantityAndTotal ? (
+                          <div className="flex h-10 items-center justify-end rounded-xl bg-gray-50 px-3 text-sm font-semibold text-gray-900">
+                            {typeof lineTotal === 'number' ? formatCurrency(lineTotal, currency) : '-'}
+                          </div>
+                        ) : null}
                         <div className="grid grid-cols-4 gap-1">
                           <button
                             type="button"

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 
+export const NAVIGATION_OVERLAY_START_EVENT = 'navigation-overlay:start'
+
 function isModifiedEvent(event: MouseEvent) {
   return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
 }
@@ -75,9 +77,11 @@ export function NavigationOverlay() {
     }
 
     document.addEventListener('click', handleDocumentClick, true)
+    window.addEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
 
     return () => {
       document.removeEventListener('click', handleDocumentClick, true)
+      window.removeEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
     }
   }, [])
 

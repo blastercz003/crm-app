@@ -168,7 +168,7 @@ export default async function ClientsPage({
                       <th className="px-5 py-4">Telefon</th>
                       <th className="px-5 py-4">E-mail</th>
                       <th className="px-5 py-4">Vytvořeno</th>
-                      <th className="px-5 py-4 text-right">Akce</th>
+                      <th className="px-5 py-4 text-center">Akce</th>
                     </tr>
                   </thead>
 
@@ -216,14 +216,17 @@ export default async function ClientsPage({
 
                           <td className="px-5 py-4">
                             <div className="flex justify-end gap-2">
+                              <EditClientButton
+                                client={client}
+                                className="inline-flex w-[74px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 transition hover:bg-gray-100"
+                              />
+
                               <Link
                                 href={`/clients/${client.id}`}
-                                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+                                className="inline-flex w-[74px] items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
                               >
                                 DETAIL
                               </Link>
-
-                              <EditClientButton client={client} />
                             </div>
                           </td>
                         </tr>
@@ -292,14 +295,17 @@ export default async function ClientsPage({
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
+                      <EditClientButton
+                        client={client}
+                        className="inline-flex w-[74px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 transition hover:bg-gray-100"
+                      />
+
                       <Link
                         href={`/clients/${client.id}`}
-                        className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+                        className="inline-flex w-[74px] items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
                       >
                         DETAIL
                       </Link>
-
-                      <EditClientButton client={client} />
                     </div>
                   </div>
                 )

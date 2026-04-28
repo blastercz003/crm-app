@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { EditJobButton } from '../jobs/edit-job-button'
 import {
   deleteFinanceCostItemsAction,
   getFinanceCostItemsAction,
@@ -17,6 +17,12 @@ type InlineEditableFinanceField = 'info_note' | 'invoice_number' | 'sale_amount'
 
 type FakturyInteractiveTableProps = {
   rows: FakturaRow[]
+  clientSuggestions: ClientOption[]
+}
+
+type ClientOption = {
+  id: string
+  name: string
 }
 
 type CostPreset = {
@@ -75,6 +81,7 @@ const DEFAULT_OPTIONAL_PRESET_KEY = OPTIONAL_COST_PRESETS[0]?.key ?? ''
 
 export function FakturyInteractiveTable({
   rows,
+  clientSuggestions,
 }: FakturyInteractiveTableProps) {
   return (
     <>
@@ -101,7 +108,11 @@ export function FakturyInteractiveTable({
 
             <tbody>
               {rows.map((row) => (
-                <DesktopRow key={row.id} row={row} />
+                <DesktopRow
+                  key={row.id}
+                  row={row}
+                  clientSuggestions={clientSuggestions}
+                />
               ))}
             </tbody>
           </table>
@@ -110,28 +121,36 @@ export function FakturyInteractiveTable({
 
       <section className="grid gap-3 lg:hidden">
         {rows.map((row) => (
-          <MobileCard key={row.id} row={row} />
+          <MobileCard
+            key={row.id}
+            row={row}
+            clientSuggestions={clientSuggestions}
+          />
         ))}
       </section>
     </>
   )
 }
 
-function DesktopRow({ row }: { row: FakturaRow }) {
-  const detailHref = `/jobs/${row.job_id}`
-
+function DesktopRow({
+  row,
+  clientSuggestions,
+}: {
+  row: FakturaRow
+  clientSuggestions: ClientOption[]
+}) {
   return (
     <tr className="group">
       <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-        <Link
-          href={detailHref}
+        <EditJobButton
+          job={row}
+          clientSuggestions={clientSuggestions}
           className="block h-8 rounded-lg px-1 py-1 text-center text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
-          title={row.job_number}
         >
           <span className="block truncate leading-6 text-gray-900">
             {row.job_number}
           </span>
-        </Link>
+        </EditJobButton>
       </td>
 
       <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
@@ -220,19 +239,24 @@ function DesktopRow({ row }: { row: FakturaRow }) {
   )
 }
 
-function MobileCard({ row }: { row: FakturaRow }) {
-  const detailHref = `/jobs/${row.job_id}`
-
+function MobileCard({
+  row,
+  clientSuggestions,
+}: {
+  row: FakturaRow
+  clientSuggestions: ClientOption[]
+}) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <Link
-            href={detailHref}
+          <EditJobButton
+            job={row}
+            clientSuggestions={clientSuggestions}
             className="text-sm font-semibold leading-tight text-gray-900 hover:underline"
           >
             {row.job_number}
-          </Link>
+          </EditJobButton>
           <p
             className="mt-0.5 truncate text-sm text-gray-700"
             title={row.company_name}

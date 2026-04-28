@@ -201,9 +201,44 @@ function getRangeLabel(range: TaskRange) {
   }
 }
 
+function getPriorityRank(priority: string | null | undefined) {
+  switch (priority) {
+    case 'high':
+      return 0
+    case 'medium':
+      return 1
+    case 'low':
+      return 2
+    default:
+      return 3
+  }
+}
+
+function getDueDateRank(dueDate: string | null | undefined) {
+  return dueDate || '9999-12-31'
+}
+
+function sortActiveTasks(tasks: TaskRow[]) {
+  return [...tasks].sort((a, b) => {
+    const priorityDifference = getPriorityRank(a.priority) - getPriorityRank(b.priority)
+
+    if (priorityDifference !== 0) {
+      return priorityDifference
+    }
+
+    const dueDateDifference = getDueDateRank(a.due_date).localeCompare(getDueDateRank(b.due_date))
+
+    if (dueDateDifference !== 0) {
+      return dueDateDifference
+    }
+
+    return (b.created_at ?? '').localeCompare(a.created_at ?? '')
+  })
+}
+
 function splitTasks(tasks: TaskRow[]) {
   return {
-    active: tasks.filter((task) => task.status !== 'done'),
+    active: sortActiveTasks(tasks.filter((task) => task.status !== 'done')),
     resolved: tasks.filter((task) => task.status === 'done'),
   }
 }

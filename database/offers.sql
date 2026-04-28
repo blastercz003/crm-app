@@ -102,6 +102,37 @@ create index if not exists offers_status_idx on public.offers (status, created_a
 create index if not exists offer_items_offer_idx on public.offer_items (offer_id, position asc);
 create index if not exists offer_service_items_offer_idx on public.offer_service_items (offer_id, position asc);
 
+create table if not exists public.fuel_price_cache (
+  fuel_type text primary key,
+  source_price_with_vat numeric(12, 3) not null,
+  display_price_without_vat numeric(12, 3) not null,
+  source text not null,
+  source_url text not null,
+  fetched_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.fuel_price_cache enable row level security;
+
+drop policy if exists "Authenticated users can read fuel price cache" on public.fuel_price_cache;
+create policy "Authenticated users can read fuel price cache"
+  on public.fuel_price_cache
+  for select
+  using (auth.uid() is not null);
+
+drop policy if exists "Authenticated users can create fuel price cache" on public.fuel_price_cache;
+create policy "Authenticated users can create fuel price cache"
+  on public.fuel_price_cache
+  for insert
+  with check (auth.uid() is not null);
+
+drop policy if exists "Authenticated users can update fuel price cache" on public.fuel_price_cache;
+create policy "Authenticated users can update fuel price cache"
+  on public.fuel_price_cache
+  for update
+  using (auth.uid() is not null)
+  with check (auth.uid() is not null);
+
 alter table public.offers enable row level security;
 alter table public.offer_items enable row level security;
 alter table public.offer_service_items enable row level security;

@@ -538,7 +538,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       </div>
                       <div className="col-span-2">
                         <div className="font-semibold uppercase tracking-[0.12em] text-gray-400">
-                          Poznámka
+                          Poznámka (interní)
                         </div>
                         <div className="mt-1">
                           <OfferNoteInput offerId={offer.id} initialValue={offer.internal_note ?? ''} />
@@ -597,7 +597,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     <th className="px-2 py-2">Klient</th>
                     <th className="px-2 py-2">Autor</th>
                     <th className="px-2 py-2">Platnost</th>
-                    <th className="px-2 py-2">Poznámka</th>
+                    <th className="px-2 py-2">Poznámka (interní)</th>
                     <th className="px-2 py-2 text-right">Cena bez DPH</th>
                     <th className="px-2 py-2 text-center">Stav</th>
                     <th className="px-2 py-2 text-center">Akce</th>

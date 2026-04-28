@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { NAVIGATION_OVERLAY_START_EVENT } from '../../../components/navigation/navigation-overlay'
 import {
   clearOfferDirtyState,
   confirmOfferNavigation,
@@ -26,6 +27,7 @@ export function GuardedOfferLink({
     if (!confirmOfferNavigation(message)) return
 
     clearOfferDirtyState()
+    window.dispatchEvent(new Event(NAVIGATION_OVERLAY_START_EVENT))
     router.push(href)
   }
 

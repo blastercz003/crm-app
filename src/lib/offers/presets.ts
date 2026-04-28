@@ -19,7 +19,10 @@ export const OFFER_DEPOT_PRESETS = [
   'HUMPOLEC',
   'KARLOVY VARY',
   'BRNO',
+  'CZ',
 ] as const
+
+export const OFFER_DEPOT_SELECTION_LIMIT = 2
 
 export const BSAFE24_BACKUP_LOCATION_PRESETS = ['ANO', 'NE'] as const
 

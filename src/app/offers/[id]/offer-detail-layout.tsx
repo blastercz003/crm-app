@@ -20,6 +20,7 @@ import {
   BSAFE24_BACKUP_LOCATION_PRESETS,
   OFFER_DEPOT_GROUP_LABEL,
   OFFER_DEPOT_PRESETS,
+  OFFER_DEPOT_SELECTION_LIMIT,
   OFFER_ITEM_SECTION_NOTE_GROUP_LABEL,
   OFFER_SERVICE_PRESET_ALIASES,
   OFFER_SERVICE_GROUP_LABEL,
@@ -40,10 +41,13 @@ import type {
   OfferStatus,
   OfferType,
 } from '@/lib/offers/types'
+import { DepotToggleButton } from './depot-toggle-button'
+import { DieselPriceBadge } from './diesel-price-badge'
 import { GuardedOfferLink } from './guarded-offer-link'
 import { OfferItemsEditor } from './offer-items-modal'
 import { OfferServicesModal } from './offer-services-modal'
 import { OfferUnsavedChangesGuard } from './offer-unsaved-changes-guard'
+import { SubmitOfferApprovalButton } from './submit-offer-approval-button'
 
 type OfferDetailPageProps = {
   params: Promise<{ id: string }>
@@ -121,8 +125,11 @@ function canShowResubmitNotice(offer: OfferRow) {
   )
 }
 
-const DEFAULT_TERMS_NOTE =
-  'Nedílnou součástí nabídky jsou všeobecné obchodní podmínky pronájmu.\n* Spotřeba pohonných hmot se vyúčtuje na základě skutečné spotřeby.\n** Platbu za PHM a služby je nutné uhradit min. 3 dny před započetím realizace (peníze na účtu Blaster Services s.r.o.)'
+const CLASSIC_DEFAULT_TERMS_NOTE =
+  'Nedílnou součástí nabídky jsou všeobecné obchodní podmínky pronájmu (VOPP).\nPro rezervaci termínu relizace je třeba zaslat písemnou objednávku.\n\n* Spotřeba pohonných hmot se vyúčtuje na základě skutečné spotřeby.\n** Platbu za PHM a služby je nutno uhradit min. 3 dny před započetím realizace (peníze na účtu Blaster Services s.r.o.)'
+
+const BSAFE24_DEFAULT_TERMS_NOTE =
+  'Nedílnou součástí nabídky jsou všeobecné obchodní podmínky pronájmu (VOPP).\n\n* Spotřeba pohonných hmot se vyúčtuje na základě skutečné spotřeby.\n** Platbu za PHM a služby je nutno uhradit min. 3 dny před započetím realizace (peníze na účtu Blaster Services s.r.o.)'
 
 const BSAFE24_SERVICE_ITEM_PRESETS = [
   {
@@ -132,6 +139,16 @@ const BSAFE24_SERVICE_ITEM_PRESETS = [
     unitPrice: 0,
     unit: 'ks',
   },
+]
+
+const BSAFE24_TRIP_ITEM_PRESETS = [
+  { key: 'bsafe24-trip-generator-rental', description: 'Pronájem DA', specification: '', unitPrice: 0, unit: 'den' },
+  { key: 'bsafe24-trip-cable-chbu-20m', description: 'Kabeláž CHBU 20m', specification: '', unitPrice: 1500, unit: 'den' },
+  { key: 'bsafe24-trip-cable-viacom-twin', description: 'Kabeláž viaCOM TWIN', specification: '', unitPrice: 500, unit: 'den' },
+  { key: 'bsafe24-trip-transport-under-35t', description: 'Doprava do 3,5t', specification: '', unitPrice: 24, unit: 'km' },
+  { key: 'bsafe24-trip-install-deinstall', description: 'Instalace / Deinstalace', specification: '', unitPrice: 890, unit: 'hod' },
+  { key: 'bsafe24-trip-operator', description: 'Odborná obsluha', specification: '', unitPrice: 690, unit: 'hod' },
+  { key: 'bsafe24-trip-fuel-energy', description: 'Spotřebované PHM / Výroba EE *', specification: '', unitPrice: 40, unit: 'litr' },
 ]
 
 const CLASSIC_GENERATOR_ITEM_PRESETS = [
@@ -146,21 +163,29 @@ const CLASSIC_GENERATOR_ITEM_PRESETS = [
 ]
 
 const CLASSIC_ACCESSORY_ITEM_PRESETS = [
-  {
-    key: 'classic-cable-20m',
-    description: 'Kabel 20m',
-    specification: '',
-    unitPrice: 1500,
-    unit: 'den',
-    discountPercent: 50,
-  },
+  { key: 'classic-accessory-chbu-cable-20m', description: 'Připojovací kabel CHBU 20m', specification: '', unitPrice: 1500, unit: 'den', discountPercent: 50 },
+  { key: 'classic-accessory-chbu-cable-40m', description: 'Připojovací kabel CHBU 40m', specification: '', unitPrice: 3000, unit: 'den', discountPercent: 50 },
+  { key: 'classic-accessory-viacom-twin', description: 'Kabeláž viaCOM TWIN', specification: '', unitPrice: 500, unit: 'den' },
+  { key: 'classic-accessory-cable-230v-20m', description: 'Kabel 230V 20m', specification: '', unitPrice: 50, unit: 'den' },
+  { key: 'classic-accessory-cable-32a-20m', description: 'Kabel 32A 20m', specification: '', unitPrice: 300, unit: 'den' },
+  { key: 'classic-accessory-cable-63a-20m', description: 'Kabel 63A 20m', specification: '', unitPrice: 450, unit: 'den' },
+  { key: 'classic-accessory-cable-125a-20m', description: 'Kabel 125A 20m', specification: '', unitPrice: 600, unit: 'den' },
+  { key: 'classic-accessory-distribution-32a', description: 'Rozvaděč 32A', specification: '', unitPrice: 800, unit: 'den' },
+  { key: 'classic-accessory-distribution-63a', description: 'Rozvaděč 63A', specification: '', unitPrice: 1000, unit: 'den' },
+  { key: 'classic-accessory-distribution-125a', description: 'Rozvaděč 125A', specification: '', unitPrice: 1250, unit: 'den' },
+  { key: 'classic-accessory-connection-box-pro', description: 'Propojovací krabice PRO', specification: '', unitPrice: 500, unit: 'den' },
+  { key: 'classic-accessory-cable-bridge-07m', description: 'Kabelový přejezd 0.7m', specification: '', unitPrice: 190, unit: 'den' },
+  { key: 'classic-accessory-fuel-tank-200l', description: 'Externí tankovací nádrž 200l', specification: '', unitPrice: 500, unit: 'den' },
+  { key: 'classic-accessory-fuel-tank-1000l', description: 'Externí tankovací nádrž 1000l', specification: '', unitPrice: 1000, unit: 'den' },
 ]
 
 const CLASSIC_SERVICE_ITEM_PRESETS = [
   { key: 'classic-transport-under-35t', description: 'Doprava do 3,5t', specification: '', unitPrice: 24, unit: 'km' },
   { key: 'classic-install-deinstall', description: 'Instalace / Deinstalace', specification: '', unitPrice: 890, unit: 'hod' },
-  { key: 'classic-permanent-operator', description: 'Trvalá obsluha', specification: '', unitPrice: 690, unit: 'hod' },
-  { key: 'classic-fuel-energy', description: 'Spotřeba PHM / Výroba EE', specification: '', unitPrice: 39, unit: 'litr' },
+  { key: 'classic-operator', description: 'Odborná obsluha', specification: '', unitPrice: 690, unit: 'hod' },
+  { key: 'classic-fuel-energy', description: 'Spotřebované PHM / Výroba EE *', specification: '', unitPrice: 40, unit: 'litr' },
+  { key: 'classic-fuel-management', description: 'Palivové hospodářství', specification: '', unitPrice: 0, unit: 'úkon' },
+  { key: 'classic-standby-24-7', description: 'POHOTOVOST 24/7', specification: '', unitPrice: 7500, unit: 'ks' },
 ]
 
 function isOfferWaitingForApproval(offer: OfferRow) {
@@ -171,11 +196,13 @@ function isOfferWaitingForApproval(offer: OfferRow) {
   )
 }
 
-function offerPresetButtonClassName(isActive: boolean) {
+function offerPresetButtonClassName(isActive: boolean, isDisabled = false) {
   return [
     'inline-flex h-8 w-[150px] items-center justify-center rounded-xl border px-2 text-center text-[11px] uppercase tracking-[0.04em] transition',
     isActive
       ? 'border-[#2980B9] bg-[#2980B9] font-semibold text-white shadow-sm hover:bg-[#236f9f]'
+      : isDisabled
+        ? 'cursor-not-allowed border-gray-200 bg-gray-100 font-normal text-gray-400 opacity-60'
       : 'border-gray-200 bg-gray-100 font-normal text-gray-900 hover:border-gray-300 hover:bg-gray-200',
   ].join(' ')
 }
@@ -509,9 +536,12 @@ export function OfferDetailLayout({
               <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                 ZÁKLAD NABÍDKY
               </h2>
-              <span className="inline-flex h-8 w-[150px] max-w-full items-center justify-center rounded-xl border border-black bg-white px-3 text-sm font-bold uppercase text-black transition">
-                {OFFER_TYPE_LABELS[offer.offer_type]}
-              </span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <DieselPriceBadge />
+                <span className="inline-flex h-8 w-[150px] max-w-full items-center justify-center rounded-xl border border-black bg-white px-3 text-sm font-bold uppercase text-black transition">
+                  {OFFER_TYPE_LABELS[offer.offer_type]}
+                </span>
+              </div>
             </div>
 
             <form
@@ -523,26 +553,43 @@ export function OfferDetailLayout({
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Nabídka a termín
                 </div>
-                <div className="grid gap-3 xl:grid-cols-[minmax(260px,1fr)_220px_220px]">
-              <div>
-                <label htmlFor="title" className="mb-2 block text-sm font-medium text-gray-700">
-                  Název nabídky
-                </label>
-                <input id="title" name="title" defaultValue={offer.title} required className={inputClassName()} />
-              </div>
+                <div
+                  className={
+                    offer.offer_type === 'bsafe24'
+                      ? 'grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3'
+                      : 'grid gap-3 xl:grid-cols-[minmax(260px,1fr)_220px_220px]'
+                  }
+                >
+                  <div>
+                    <label htmlFor="title" className="mb-2 block text-sm font-medium text-gray-700">
+                      Název nabídky
+                    </label>
+                    <input id="title" name="title" defaultValue={offer.title} required className={inputClassName()} />
+                  </div>
 
-              <div>
-                  <label htmlFor="realization_starts_at" className="mb-2 block text-sm font-medium text-gray-700">
-                    Termín realizace od
-                  </label>
-                  <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={inputClassName()} />
-                </div>
-                <div>
-                  <label htmlFor="realization_ends_at" className="mb-2 block text-sm font-medium text-gray-700">
-                    Termín realizace do
-                  </label>
-                  <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={inputClassName()} />
-                </div>
+                  {offer.offer_type === 'bsafe24' ? (
+                    <div>
+                      <label htmlFor="project_name" className="mb-2 block text-sm font-medium text-gray-700">
+                        Aktivace produktu od
+                      </label>
+                      <input id="project_name" name="project_name" defaultValue={offer.project_name ?? ''} className={inputClassName()} />
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label htmlFor="realization_starts_at" className="mb-2 block text-sm font-medium text-gray-700">
+                          Termín realizace od
+                        </label>
+                        <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={inputClassName()} />
+                      </div>
+                      <div>
+                        <label htmlFor="realization_ends_at" className="mb-2 block text-sm font-medium text-gray-700">
+                          Termín realizace do
+                        </label>
+                        <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={inputClassName()} />
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -550,7 +597,7 @@ export function OfferDetailLayout({
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Realizace a kontakt
                 </div>
-                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_280px]">
+                <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3">
               <div>
                 <label htmlFor="realization_address" className="mb-2 block text-sm font-medium text-gray-700">
                   Adresa realizace
@@ -567,7 +614,9 @@ export function OfferDetailLayout({
                 </div>
               </div>
 
-              <input type="hidden" name="project_name" value={offer.project_name ?? ''} />
+              {offer.offer_type === 'bsafe24' ? null : (
+                <input type="hidden" name="project_name" value={offer.project_name ?? ''} />
+              )}
               <input type="hidden" name="valid_until" value={offer.valid_until ?? ''} />
               <input type="hidden" name="intro_note" value={offer.intro_note ?? ''} />
 
@@ -599,7 +648,7 @@ export function OfferDetailLayout({
 
               <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
-                  Poznámka
+                  Poznámka (interní)
                 </div>
                 <textarea
                   id="internal_note"
@@ -620,22 +669,10 @@ export function OfferDetailLayout({
               </div>
               <div className="mt-4 space-y-3">
                 <form action={submitOfferForApproval.bind(null, offer.id)}>
-                  <button
-                    type="submit"
-                    disabled={waitingForApproval}
-                    className={[
-                      'inline-flex min-h-10 w-full items-center justify-center rounded-xl px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-70',
-                      waitingForApproval
-                        ? 'border border-zinc-200 bg-zinc-100 text-zinc-500'
-                        : 'bg-[#2980B9] text-white hover:bg-[#236f9f]',
-                    ].join(' ')}
-                  >
-                    {waitingForApproval
-                      ? 'ODESLÁNO KE SCHVÁLENÍ'
-                      : staleSubmitted
-                        ? 'ODESLAT ZNOVU KE SCHVÁLENÍ'
-                        : 'ODESLAT KE SCHVÁLENÍ'}
-                  </button>
+                  <SubmitOfferApprovalButton
+                    waitingForApproval={waitingForApproval}
+                    staleSubmitted={staleSubmitted}
+                  />
                 </form>
 
                 {isAdmin ? (
@@ -834,14 +871,17 @@ export function OfferDetailLayout({
               <div className="flex flex-wrap gap-2">
                 {OFFER_DEPOT_PRESETS.map((depot) => {
                   const isActive = selectedDepots.has(depot)
+                  const isDisabled = !isActive && selectedDepots.size >= OFFER_DEPOT_SELECTION_LIMIT
 
                   return (
                     <form key={depot} action={toggleOfferPresetItem.bind(null, offer.id)}>
                       <input type="hidden" name="group" value={OFFER_DEPOT_GROUP_LABEL} />
                       <input type="hidden" name="value" value={depot} />
-                      <button type="submit" className={offerPresetButtonClassName(isActive)}>
-                        {depot}
-                      </button>
+                      <DepotToggleButton
+                        label={depot}
+                        disabled={isDisabled}
+                        className={offerPresetButtonClassName(isActive, isDisabled)}
+                      />
                     </form>
                   )
                 })}
@@ -869,6 +909,8 @@ export function OfferDetailLayout({
               items={bsafeRealizationItems}
               sectionNote={sectionNoteBySection.get('bsafe_realization') ?? ''}
               showDiscount={false}
+              showQuantityAndTotal={false}
+              presets={BSAFE24_TRIP_ITEM_PRESETS}
             />
             <OfferItemsEditor
               offerId={offer.id}
@@ -878,6 +920,8 @@ export function OfferDetailLayout({
               items={bsafePlannedTripItems}
               sectionNote={sectionNoteBySection.get('bsafe_planned_trip') ?? ''}
               showDiscount={false}
+              showQuantityAndTotal={false}
+              presets={BSAFE24_TRIP_ITEM_PRESETS}
             />
           </>
         ) : (
@@ -925,36 +969,45 @@ export function OfferDetailLayout({
               name="terms_note"
               form="offer-details-form"
               rows={3}
-              defaultValue={offer.terms_note ?? DEFAULT_TERMS_NOTE}
+              defaultValue={
+                offer.terms_note ??
+                (offer.offer_type === 'bsafe24'
+                  ? BSAFE24_DEFAULT_TERMS_NOTE
+                  : CLASSIC_DEFAULT_TERMS_NOTE)
+              }
               className={`${textareaClassName()} mt-4 flex-1 resize-none`}
             />
           </section>
 
-          <section className="w-[360px] rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
-              SOUHRN CENOVÉ NABÍDKY
-            </div>
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">Bez DPH</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(totals.subtotalWithoutVat, offer.currency)}
-                </span>
+          {offer.offer_type === 'bsafe24' ? (
+            <div aria-hidden="true" />
+          ) : (
+            <section className="w-[360px] rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
+                SOUHRN CENOVÉ NABÍDKY
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500">DPH</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(totals.vatTotal, offer.currency)}
-                </span>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Bez DPH</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatCurrency(totals.subtotalWithoutVat, offer.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">DPH</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatCurrency(totals.vatTotal, offer.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4 border-t border-gray-100 pt-3 text-base">
+                  <span className="font-semibold text-gray-900">Celkem</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatCurrency(totals.totalWithVat, offer.currency)}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between gap-4 border-t border-gray-100 pt-3 text-base">
-                <span className="font-semibold text-gray-900">Celkem</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(totals.totalWithVat, offer.currency)}
-                </span>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
       </div>
     </main>

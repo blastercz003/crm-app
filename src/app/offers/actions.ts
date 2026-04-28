@@ -12,6 +12,7 @@ import {
   BSAFE24_DEPOT_PRESETS,
   OFFER_DEPOT_GROUP_LABEL,
   OFFER_DEPOT_PRESETS,
+  OFFER_DEPOT_SELECTION_LIMIT,
   OFFER_ITEM_SECTION_NOTE_GROUP_LABEL,
   OFFER_SERVICE_PRESET_ALIASES,
   OFFER_SERVICE_GROUP_LABEL,
@@ -785,6 +786,22 @@ export async function toggleOfferPresetItem(offerId: string, formData: FormData)
     throw new Error(`Nepodařilo se ověřit položku nabídky: ${existingError.message}`)
   }
 
+  if (!existing && group === OFFER_DEPOT_GROUP_LABEL) {
+    const { count, error: depotCountError } = await supabase
+      .from('offer_service_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('offer_id', offerId)
+      .eq('specification', OFFER_DEPOT_GROUP_LABEL)
+
+    if (depotCountError) {
+      throw new Error(`Nepodařilo se ověřit počet vybraných dep: ${depotCountError.message}`)
+    }
+
+    if ((count ?? 0) >= OFFER_DEPOT_SELECTION_LIMIT) {
+      throw new Error(`U klasické nabídky lze vybrat maximálně ${OFFER_DEPOT_SELECTION_LIMIT} depa.`)
+    }
+  }
+
   let aliasExisting: { id: string } | null = null
 
   if (!existing && group === OFFER_SERVICE_GROUP_LABEL) {
@@ -971,6 +988,13 @@ export async function deleteOfferItem(itemId: string, formData: FormData) {
 
 export async function submitOfferForApproval(offerId: string) {
   const { supabase, profile, offer } = await loadOfferForAction(offerId)
+
+  if (offer.status === 'submitted' && offer.submitted_version === offer.current_version) {
+    revalidatePath('/offers')
+    revalidatePath(`/offers/${offerId}`)
+    return
+  }
+
   const approver = await getOfferApprover({ supabase })
   const now = new Date().toISOString()
 
