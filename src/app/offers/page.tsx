@@ -414,7 +414,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     <div className="flex shrink-0 items-center gap-2">
                       <button
                         type="submit"
-                        className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800"
+                        className="inline-flex h-9 items-center justify-center rounded-xl bg-black px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800"
                       >
                         POUŽÍT FILTRY
                       </button>
