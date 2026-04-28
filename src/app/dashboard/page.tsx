@@ -1391,7 +1391,7 @@ export default async function DashboardPage() {
               profileName={profile?.name ?? null}
               profileRole={profile?.role ?? null}
               userEmail={user.email ?? ''}
-              className="order-4 lg:hidden xl:order-none"
+              className="order-6 lg:hidden xl:order-none"
             />
           </div>
         </div>
@@ -1400,7 +1400,7 @@ export default async function DashboardPage() {
       <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY APP — coding by blaster</div>
-          <div>v1.9.3</div>
+          <div>v1.9.9</div>
         </div>
       </footer>
     </main>
