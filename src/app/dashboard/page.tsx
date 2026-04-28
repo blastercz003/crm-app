@@ -1265,22 +1265,42 @@ export default async function DashboardPage() {
         </section>
 
         <div className="grid gap-6 xl:grid-cols-3">
-          <div className="space-y-6">
-            <ClientsCard />
+          <div className="contents xl:block xl:space-y-6">
+            <div className="order-1 xl:order-none">
+              <ClientsCard />
+            </div>
 
-            {profile?.can_view_jobs ? <JobsCard /> : null}
+            {profile?.can_view_jobs ? (
+              <div className="order-1 xl:order-none">
+                <JobsCard />
+              </div>
+            ) : null}
 
-            {profile?.can_view_jobs_portal ? <JobsPortalCard /> : null}
+            {profile?.can_view_jobs_portal ? (
+              <div className="order-1 xl:order-none">
+                <JobsPortalCard />
+              </div>
+            ) : null}
 
-            {isAdmin || profile?.can_view_offers ? <OffersCard /> : null}
+            {isAdmin || profile?.can_view_offers ? (
+              <div className="order-1 xl:order-none">
+                <OffersCard />
+              </div>
+            ) : null}
 
-            {isAdmin ? <FinanceCard /> : null}
+            {isAdmin ? (
+              <div className="order-1 xl:order-none">
+                <FinanceCard />
+              </div>
+            ) : null}
 
-            <DashboardMiniCalendar meetings={monthMeetings} />
+            <div className="order-5 xl:order-none">
+              <DashboardMiniCalendar meetings={monthMeetings} />
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="contents xl:block xl:space-y-6">
+            <section className="order-2 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6 xl:order-none">
               <div className="mb-5">
                 <DashboardSectionHeader
                   eyebrow="Úkoly"
@@ -1324,8 +1344,8 @@ export default async function DashboardPage() {
             </section>
           </div>
 
-          <div className="space-y-6">
-            <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="contents xl:block xl:space-y-6">
+            <section className="order-3 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6 xl:order-none">
               <div className="mb-5">
                 <DashboardSectionHeader
                   eyebrow="Schůzky"
@@ -1371,7 +1391,7 @@ export default async function DashboardPage() {
               profileName={profile?.name ?? null}
               profileRole={profile?.role ?? null}
               userEmail={user.email ?? ''}
-              className="lg:hidden"
+              className="order-4 lg:hidden xl:order-none"
             />
           </div>
         </div>
