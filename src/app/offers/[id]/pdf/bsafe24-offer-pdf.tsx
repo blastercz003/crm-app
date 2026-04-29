@@ -279,13 +279,13 @@ export function BSafe24OfferPdf({
             min-height: 30px;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(7, 132, 195, 0.18);
+            border: 1px solid #101828;
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.9);
-            color: var(--brand-blue);
-            font-size: 10px;
+            color: var(--ink);
+            font-size: 13px;
             font-weight: 800;
-            letter-spacing: 0.16em;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
           }
 

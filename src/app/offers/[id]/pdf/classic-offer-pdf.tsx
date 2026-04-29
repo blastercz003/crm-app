@@ -299,6 +299,7 @@ export function ClassicOfferPdf({
             --line: rgba(7, 132, 195, 0.18);
             --glass-bg: rgba(255, 255, 255, 0.72);
             --glass-strong: rgba(255, 255, 255, 0.86);
+            --content-left-align: 15px;
             width: ${OFFER_PDF_TEMPLATE.screenWidthPx}px;
             height: ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
             background-image: url("${CLASSIC_BACKGROUND_URL}");
@@ -421,13 +422,13 @@ export function ClassicOfferPdf({
             min-height: 30px;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(7, 132, 195, 0.18);
+            border: 1px solid #101828;
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.9);
-            color: var(--brand-blue);
-            font-size: 8px;
+            color: var(--ink);
+            font-size: 13px;
             font-weight: 800;
-            letter-spacing: 0.18em;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
           }
 
@@ -567,7 +568,7 @@ export function ClassicOfferPdf({
             justify-content: space-between;
             border-radius: 16px 16px 0 0;
             background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-dark));
-            padding: 5px 14px;
+            padding: 5px var(--content-left-align);
             color: #fff;
           }
 
@@ -603,6 +604,14 @@ export function ClassicOfferPdf({
             vertical-align: middle;
           }
 
+          .classic-pdf-items-table td:first-child {
+            padding-left: var(--content-left-align);
+          }
+
+          .classic-pdf-items-table td:last-child {
+            padding-right: var(--content-left-align);
+          }
+
           .classic-pdf-items-table tr.no-border-after td {
             border-bottom: 0;
           }
@@ -619,7 +628,7 @@ export function ClassicOfferPdf({
             height: auto;
             border-bottom: 0;
             background: rgba(7, 132, 195, 0.09);
-            padding: 7px 10px;
+            padding: 7px var(--content-left-align);
             color: var(--brand-blue);
             font-size: 8px;
             font-weight: 800;
@@ -647,7 +656,7 @@ export function ClassicOfferPdf({
             height: auto;
             background: rgba(255, 255, 255, 0.34);
             border-bottom: 0;
-            padding: 1px 10px 2px;
+            padding: 1px var(--content-left-align) 2px;
           }
 
           .classic-pdf-section-note-row .classic-pdf-section-note {
@@ -714,7 +723,7 @@ export function ClassicOfferPdf({
           }
 
           .classic-pdf-terms {
-            padding: 4px 0 0 15px;
+            padding: 4px 0 0 var(--content-left-align);
             color: #475467;
             font-size: 7.2px;
             line-height: 1.3;
