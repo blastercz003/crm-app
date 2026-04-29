@@ -32,11 +32,6 @@ export const BSAFE24_BACKUP_LOCATION_COUNT_PRESETS = [
   '3',
   '4',
   '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '10',
 ] as const
 
 export const BSAFE24_DEPOT_PRESETS = ['5 VÝJEZDOVÝCH DEP V ČR'] as const

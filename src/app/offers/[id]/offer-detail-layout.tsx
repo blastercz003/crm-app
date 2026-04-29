@@ -820,7 +820,7 @@ export function OfferDetailLayout({
                     </div>
                     <div
                       className="grid gap-1.5"
-                      style={{ gridTemplateColumns: 'repeat(10, minmax(0, 1fr))' }}
+                      style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}
                     >
                       {BSAFE24_BACKUP_LOCATION_COUNT_PRESETS.map((value) => {
                         const isActive = selectedBackupLocationCount === value
