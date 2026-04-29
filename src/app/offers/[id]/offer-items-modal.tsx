@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import {
   saveOfferItemsAction,
   type OfferItemInput,
@@ -17,6 +17,7 @@ type DraftOfferItem = {
   description: string
   specification: string
   unitPrice: string
+  plannedUnitPrice: string
   unit: string
   quantity: string
   discountPercent: string
@@ -27,6 +28,7 @@ type OfferItemPreset = {
   description: string
   specification: string
   unitPrice: number
+  plannedUnitPrice?: number
   unit: string
   discountPercent?: number
 }
@@ -40,6 +42,7 @@ type OfferItemsModalProps = {
   sectionNote?: string
   showDiscount?: boolean
   showQuantityAndTotal?: boolean
+  showPlannedPrice?: boolean
   presets?: OfferItemPreset[]
 }
 
@@ -113,6 +116,7 @@ function createEmptyDraftItem(): DraftOfferItem {
     description: '',
     specification: '',
     unitPrice: '',
+    plannedUnitPrice: '',
     unit: 'ks',
     quantity: '1',
     discountPercent: '',
@@ -125,6 +129,8 @@ function createPresetDraftItem(preset: OfferItemPreset): DraftOfferItem {
     description: preset.description,
     specification: preset.specification,
     unitPrice: formatInputNumber(preset.unitPrice),
+    plannedUnitPrice:
+      typeof preset.plannedUnitPrice === 'number' ? formatInputNumber(preset.plannedUnitPrice) : '',
     unit: preset.unit,
     quantity: '1',
     discountPercent:
@@ -144,6 +150,10 @@ function buildDraftItems(items: OfferItemRow[]) {
     description: item.description,
     specification: item.specification ?? '',
     unitPrice: formatInputNumber(item.unit_price_without_vat),
+    plannedUnitPrice:
+      item.planned_unit_price_without_vat == null
+        ? ''
+        : formatInputNumber(item.planned_unit_price_without_vat),
     unit: item.unit,
     quantity: formatInputNumber(item.quantity),
     discountPercent:
@@ -181,7 +191,8 @@ function getDraftLineTotal(item: DraftOfferItem) {
 
 function prepareItemsForSave(
   items: DraftOfferItem[],
-  itemSection: string
+  itemSection: string,
+  includePlannedPrice = false
 ):
   | {
       success: true
@@ -197,12 +208,16 @@ function prepareItemsForSave(
     const description = item.description.trim()
     const specification = item.specification.trim()
     const unitPrice = parseDecimalInput(item.unitPrice)
+    const plannedUnitPrice = includePlannedPrice
+      ? parseDecimalInput(item.plannedUnitPrice)
+      : null
     const quantity = parseDecimalInput(item.quantity)
     const discountPercent = parseDecimalInput(item.discountPercent)
     const isBlankRow =
       !description &&
       !specification &&
       !item.unitPrice.trim() &&
+      (!includePlannedPrice || !item.plannedUnitPrice.trim()) &&
       !item.quantity.trim() &&
       !item.discountPercent.trim()
 
@@ -224,6 +239,16 @@ function prepareItemsForSave(
       }
     }
 
+    if (
+      includePlannedPrice &&
+      (plannedUnitPrice === null || !Number.isFinite(plannedUnitPrice) || plannedUnitPrice < 0)
+    ) {
+      return {
+        success: false,
+        error: `Plánovaná cena u položky "${description}" není platná.`,
+      }
+    }
+
     if (!Number.isFinite(quantity) || quantity < 0) {
       return {
         success: false,
@@ -238,10 +263,13 @@ function prepareItemsForSave(
       }
     }
 
+    const resolvedPlannedUnitPrice = includePlannedPrice ? plannedUnitPrice : null
+
     preparedItems.push({
       description,
       specification: specification || null,
       unitPrice,
+      plannedUnitPrice: resolvedPlannedUnitPrice,
       unit: item.unit.trim() || 'ks',
       quantity,
       discountPercent,
@@ -271,6 +299,7 @@ export function OfferItemsEditor({
   sectionNote = '',
   showDiscount = true,
   showQuantityAndTotal = true,
+  showPlannedPrice = false,
   presets = OFFER_ITEM_PRESETS,
 }: OfferItemsModalProps) {
   const router = useRouter()
@@ -295,7 +324,15 @@ export function OfferItemsEditor({
         discount: 'w-[8%]',
         total: showDiscount ? 'w-[10%]' : 'w-[18%]',
       }
-    : {
+    : showPlannedPrice
+      ? {
+          item: 'w-[25%]',
+          specification: 'w-[28%]',
+          price: 'w-[16%]',
+          plannedPrice: 'w-[16%]',
+          unit: 'w-[15%]',
+        }
+      : {
         item: 'w-[31%]',
         specification: 'w-[36%]',
         price: 'w-[22%]',
@@ -303,19 +340,15 @@ export function OfferItemsEditor({
       }
   const modalGridColumns = showQuantityAndTotal
     ? OFFER_ITEM_MODAL_GRID_COLUMNS
-    : 'minmax(170px,1fr) minmax(220px,1.35fr) 130px 80px 168px'
+    : showPlannedPrice
+      ? 'minmax(150px,1fr) minmax(180px,1.2fr) 120px 120px 72px 168px'
+      : 'minmax(170px,1fr) minmax(220px,1.35fr) 130px 80px 168px'
   const useCompactClassicMobileCards = showQuantityAndTotal && itemSection !== 'bsafe_service'
-
-  useEffect(() => {
-    if (presets.length === 0) {
-      setSelectedPresetKey('')
-      return
-    }
-
-    if (!presets.some((preset) => preset.key === selectedPresetKey)) {
-      setSelectedPresetKey(presets[0].key)
-    }
-  }, [presets, selectedPresetKey])
+  const showSectionTotalBadge = showQuantityAndTotal && itemSection !== 'bsafe_service' && !showPlannedPrice
+  const leftAlignNumericHeaders = itemSection === 'bsafe_service' || showPlannedPrice
+  const activePresetKey = presets.some((preset) => preset.key === selectedPresetKey)
+    ? selectedPresetKey
+    : presets[0]?.key ?? ''
 
   function resetRows() {
     setRows(buildDraftItems(items))
@@ -341,7 +374,7 @@ export function OfferItemsEditor({
   }
 
   function addPresetRow() {
-    const preset = presets.find((item) => item.key === selectedPresetKey) ?? presets[0]
+    const preset = presets.find((item) => item.key === activePresetKey) ?? presets[0]
 
     if (!preset) {
       return
@@ -407,7 +440,8 @@ export function OfferItemsEditor({
             ...row,
             discountPercent: '',
           })),
-      itemSection
+      itemSection,
+      showPlannedPrice
     )
 
     if (!prepared.success) {
@@ -444,7 +478,7 @@ export function OfferItemsEditor({
           </div>
 
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-            {showQuantityAndTotal ? (
+            {showSectionTotalBadge ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-2 text-right">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                   Cena bez DPH
@@ -550,7 +584,7 @@ export function OfferItemsEditor({
                       ) : null}
                     </>
                   ) : (
-                    <div className="grid grid-cols-[minmax(0,1fr)_92px_58px] items-center gap-2">
+                    <div className={`grid ${showPlannedPrice ? 'grid-cols-[minmax(0,1fr)_82px_82px_48px]' : 'grid-cols-[minmax(0,1fr)_92px_58px]'} items-center gap-2`}>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold leading-5 text-gray-900" title={item.description}>
                           {item.description}
@@ -563,12 +597,22 @@ export function OfferItemsEditor({
                       </div>
                       <div className="rounded-xl bg-gray-50 px-2 py-1.5">
                         <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-gray-500">
-                          Jedn. cena
+                          {showPlannedPrice ? 'Pohot.' : 'Jedn. cena'}
                         </div>
                         <div className="mt-0.5 whitespace-nowrap text-xs font-semibold text-gray-900">
                           {formatCurrency(Number(item.unit_price_without_vat), currency)}
                         </div>
                       </div>
+                      {showPlannedPrice ? (
+                        <div className="rounded-xl bg-gray-50 px-2 py-1.5">
+                          <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                            Plán.
+                          </div>
+                          <div className="mt-0.5 whitespace-nowrap text-xs font-semibold text-gray-900">
+                            {formatCurrency(Number(item.planned_unit_price_without_vat) || 0, currency)}
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="rounded-xl bg-gray-50 px-2 py-1.5">
                         <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-gray-500">
                           Jedn.
@@ -641,6 +685,7 @@ export function OfferItemsEditor({
                   <col className={detailColumnClasses.price} />
                   <col className={detailColumnClasses.unit} />
                   {showQuantityAndTotal ? <col className={detailColumnClasses.quantity} /> : null}
+                  {showPlannedPrice ? <col className={detailColumnClasses.plannedPrice} /> : null}
                   {showQuantityAndTotal && showDiscount ? (
                     <col className={detailColumnClasses.discount} />
                   ) : null}
@@ -650,14 +695,25 @@ export function OfferItemsEditor({
                   <tr className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
                     <th className="px-4 py-3">Položka</th>
                     <th className="px-4 py-3">Specifikace / popis</th>
-                    <th className="px-4 py-3 text-right">Jedn. cena</th>
+                    <th className="px-4 py-3">
+                      {showPlannedPrice ? 'POHOTOVOST' : 'Jedn. cena'}
+                    </th>
+                    {showPlannedPrice ? <th className="px-4 py-3">ODSTÁVKA</th> : null}
                     <th className="px-4 py-3 text-center">Jedn.</th>
-                    {showQuantityAndTotal ? <th className="px-4 py-3 text-right">Množství</th> : null}
+                    {showQuantityAndTotal ? (
+                      <th className={`px-4 py-3${leftAlignNumericHeaders ? '' : ' text-right'}`}>
+                        Množství
+                      </th>
+                    ) : null}
                     {showQuantityAndTotal && showDiscount ? (
-                      <th className="px-4 py-3 text-right">Sleva</th>
+                      <th className={`px-4 py-3${leftAlignNumericHeaders ? '' : ' text-right'}`}>
+                        Sleva
+                      </th>
                     ) : null}
                     {showQuantityAndTotal ? (
-                      <th className="px-4 py-3 text-right">Cena bez DPH</th>
+                      <th className={`px-4 py-3${leftAlignNumericHeaders ? '' : ' text-right'}`}>
+                        Cena bez DPH
+                      </th>
                     ) : null}
                   </tr>
                 </thead>
@@ -669,6 +725,11 @@ export function OfferItemsEditor({
                       <td className="px-4 py-3 text-right text-gray-700">
                         {formatCurrency(Number(item.unit_price_without_vat), currency)}
                       </td>
+                      {showPlannedPrice ? (
+                        <td className="px-4 py-3 text-right text-gray-700">
+                          {formatCurrency(Number(item.planned_unit_price_without_vat) || 0, currency)}
+                        </td>
+                      ) : null}
                       <td className="px-4 py-3 text-center text-gray-600">{item.unit}</td>
                       {showQuantityAndTotal ? (
                         <td className="px-4 py-3 text-right text-gray-600">
@@ -717,7 +778,7 @@ export function OfferItemsEditor({
                     <h2 className="text-lg font-semibold uppercase text-gray-900">
                       Položky nabídky
                     </h2>
-                    {showQuantityAndTotal ? (
+                    {showSectionTotalBadge ? (
                       <div className="mt-2 inline-flex items-center rounded-full bg-[#2980B9] px-2.5 py-1 text-xs font-semibold text-white">
                         {formatCurrency(total, currency)} bez DPH
                       </div>
@@ -740,14 +801,19 @@ export function OfferItemsEditor({
                 <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 md:flex-row md:items-center md:justify-between">
                   <div className="grid gap-2 sm:grid-cols-2 md:flex md:flex-wrap md:items-center">
                     <select
-                      value={selectedPresetKey}
+                      value={activePresetKey}
                       onChange={(event) => setSelectedPresetKey(event.target.value)}
                       disabled={isPending}
                       className="h-10 w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2 md:w-auto md:min-w-[260px]"
                     >
                       {presets.map((preset) => (
                         <option key={preset.key} value={preset.key}>
-                          {preset.description} / {formatCurrency(preset.unitPrice, currency)} / {preset.unit}
+                          {preset.description} / {formatCurrency(preset.unitPrice, currency)}
+                          {showPlannedPrice && typeof preset.plannedUnitPrice === 'number'
+                            ? ` / ${formatCurrency(preset.plannedUnitPrice, currency)}`
+                            : ''}
+                          {' / '}
+                          {preset.unit}
                         </option>
                       ))}
                     </select>
@@ -788,13 +854,18 @@ export function OfferItemsEditor({
                   >
                     <div>Položka</div>
                     <div>Specifikace / popis</div>
-                    <div className="text-right">Jedn. cena</div>
+                    <div>{showPlannedPrice ? 'POHOTOVOST' : 'Jedn. cena'}</div>
+                    {showPlannedPrice ? <div>ODSTÁVKA</div> : null}
                     <div>Jedn.</div>
-                    {showQuantityAndTotal ? <div className="text-right">Množství</div> : null}
-                    {showQuantityAndTotal && showDiscount ? (
-                      <div className="text-right">Sleva %</div>
+                    {showQuantityAndTotal ? (
+                      <div className={leftAlignNumericHeaders ? '' : 'text-right'}>Množství</div>
                     ) : null}
-                    {showQuantityAndTotal ? <div className="text-right">Cena bez DPH</div> : null}
+                    {showQuantityAndTotal && showDiscount ? (
+                      <div className={leftAlignNumericHeaders ? '' : 'text-right'}>Sleva %</div>
+                    ) : null}
+                    {showQuantityAndTotal ? (
+                      <div className={leftAlignNumericHeaders ? '' : 'text-right'}>Cena bez DPH</div>
+                    ) : null}
                     <div />
                   </div>
 
@@ -837,7 +908,7 @@ export function OfferItemsEditor({
                             <div className={useCompactClassicMobileCards ? 'grid grid-cols-4 gap-1' : 'grid grid-cols-2 gap-2'}>
                               <label className="block">
                                 <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
-                                  {useCompactClassicMobileCards ? 'Cena' : 'Jedn. cena'}
+                                  {showPlannedPrice ? 'Pohotovost' : useCompactClassicMobileCards ? 'Cena' : 'Jedn. cena'}
                                 </span>
                                 <input
                                   value={row.unitPrice}
@@ -849,6 +920,19 @@ export function OfferItemsEditor({
                                   placeholder="0"
                                 />
                               </label>
+                              {showPlannedPrice ? (
+                                <label className="block">
+                                  <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                                    Odstávka
+                                  </span>
+                                  <input
+                                    value={row.plannedUnitPrice}
+                                    onChange={(event) => updateRow(row.id, 'plannedUnitPrice', event.target.value)}
+                                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                                    placeholder="0"
+                                  />
+                                </label>
+                              ) : null}
                               <label className="block">
                                 <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
                                   Jedn.
@@ -978,6 +1062,14 @@ export function OfferItemsEditor({
                           className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                           placeholder="0"
                         />
+                        {showPlannedPrice ? (
+                          <input
+                            value={row.plannedUnitPrice}
+                            onChange={(event) => updateRow(row.id, 'plannedUnitPrice', event.target.value)}
+                            className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                            placeholder="0"
+                          />
+                        ) : null}
                         <input
                           value={row.unit}
                           onChange={(event) => updateRow(row.id, 'unit', event.target.value)}

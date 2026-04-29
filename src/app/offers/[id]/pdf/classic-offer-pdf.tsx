@@ -16,12 +16,40 @@ import type { OfferPdfLayoutProps } from './offer-pdf-layout'
 
 const CLASSIC_BACKGROUND_URL = '/offers/templates/background-nabidka-new.png'
 const OFFER_TYPE_LABEL = 'KLASICKÁ'
+const SINGLE_PAGE_VISUAL_ROW_LIMIT = 15
+const FIRST_PAGE_CONTINUED_VISUAL_ROW_LIMIT = 16
+const CONTINUATION_PAGE_VISUAL_ROW_LIMIT = 21
+const LAST_PAGE_WITH_SUMMARY_VISUAL_ROW_LIMIT = 21
 
 type ItemSection = {
   key: string
   title: string
   note: string
   items: OfferItemRow[]
+}
+
+type TableGroup =
+  | {
+      key: string
+      type: 'section'
+      title: string
+      visualRows: number
+    }
+  | {
+      key: string
+      type: 'item'
+      item: OfferItemRow
+      note: string
+      visualRows: number
+    }
+
+type TablePage = {
+  key: string
+  groups: TableGroup[]
+  showTop: boolean
+  showBottom: boolean
+  showTableEnd: boolean
+  isContinuation: boolean
 }
 
 function formatDate(value: string | null) {
@@ -116,6 +144,125 @@ function getClassicItemSections(items: OfferItemRow[], serviceItems: OfferServic
   ]
 }
 
+function getTableGroups(sections: ItemSection[]) {
+  return sections.flatMap((section) => {
+    if (section.items.length === 0) return []
+
+    const itemGroups = section.items.map((item, index) => {
+      const note = index === section.items.length - 1 ? section.note : ''
+
+      return {
+        key: item.id,
+        type: 'item' as const,
+        item,
+        note,
+        visualRows: note ? 2 : 1,
+      }
+    })
+
+    return [
+      {
+        key: `${section.key}-title`,
+        type: 'section' as const,
+        title: section.title,
+        visualRows: 1,
+      },
+      ...itemGroups,
+    ]
+  })
+}
+
+function getVisualRowCount(groups: TableGroup[]) {
+  return groups.reduce((sum, group) => sum + group.visualRows, 0)
+}
+
+function takeTableGroups(groups: TableGroup[], limit: number) {
+  const pageGroups: TableGroup[] = []
+  let usedRows = 0
+  let index = 0
+
+  while (index < groups.length) {
+    const group = groups[index]
+    const nextGroup = groups[index + 1]
+    const requiredRows = group.type === 'section' && nextGroup
+      ? group.visualRows + nextGroup.visualRows
+      : group.visualRows
+
+    if (pageGroups.length > 0 && usedRows + requiredRows > limit) {
+      break
+    }
+
+    pageGroups.push(group)
+    usedRows += group.visualRows
+    index += 1
+  }
+
+  return {
+    pageGroups,
+    remainingGroups: groups.slice(index),
+  }
+}
+
+function getTablePages(groups: TableGroup[]): TablePage[] {
+  const totalRows = getVisualRowCount(groups)
+
+  if (totalRows <= SINGLE_PAGE_VISUAL_ROW_LIMIT) {
+    return [
+      {
+        key: 'page-1',
+        groups,
+        showTop: true,
+        showBottom: true,
+        showTableEnd: true,
+        isContinuation: false,
+      },
+    ]
+  }
+
+  const pages: TablePage[] = []
+  let remainingGroups = groups
+  let firstPage = takeTableGroups(remainingGroups, FIRST_PAGE_CONTINUED_VISUAL_ROW_LIMIT)
+
+  if (firstPage.remainingGroups.length === 0) {
+    firstPage = takeTableGroups(remainingGroups, SINGLE_PAGE_VISUAL_ROW_LIMIT)
+  }
+
+  pages.push({
+    key: 'page-1',
+    groups: firstPage.pageGroups,
+    showTop: true,
+    showBottom: false,
+    showTableEnd: false,
+    isContinuation: false,
+  })
+
+  remainingGroups = firstPage.remainingGroups
+
+  while (remainingGroups.length > 0) {
+    const remainingRows = getVisualRowCount(remainingGroups)
+    const isLastPage = remainingRows <= LAST_PAGE_WITH_SUMMARY_VISUAL_ROW_LIMIT
+    const limit = isLastPage
+      ? LAST_PAGE_WITH_SUMMARY_VISUAL_ROW_LIMIT
+      : CONTINUATION_PAGE_VISUAL_ROW_LIMIT
+    const page = takeTableGroups(remainingGroups, limit)
+    const nextRemainingGroups = page.remainingGroups
+    const willBeLastPage = nextRemainingGroups.length === 0
+
+    pages.push({
+      key: `page-${pages.length + 1}`,
+      groups: page.pageGroups,
+      showTop: false,
+      showBottom: willBeLastPage,
+      showTableEnd: willBeLastPage,
+      isContinuation: true,
+    })
+
+    remainingGroups = nextRemainingGroups
+  }
+
+  return pages
+}
+
 export function ClassicOfferPdf({
   offer,
   client,
@@ -131,6 +278,8 @@ export function ClassicOfferPdf({
   const services = getServiceNames(serviceItems, OFFER_SERVICE_GROUP_LABEL)
   const depots = getServiceNames(serviceItems, OFFER_DEPOT_GROUP_LABEL)
   const sections = getClassicItemSections(items, serviceItems)
+  const tableGroups = getTableGroups(sections)
+  const tablePages = getTablePages(tableGroups)
 
   return (
     <>
@@ -151,20 +300,31 @@ export function ClassicOfferPdf({
             --glass-bg: rgba(255, 255, 255, 0.72);
             --glass-strong: rgba(255, 255, 255, 0.86);
             width: ${OFFER_PDF_TEMPLATE.screenWidthPx}px;
-            min-height: ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
+            height: ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
             background-image: url("${CLASSIC_BACKGROUND_URL}");
             background-position: top center;
             background-repeat: repeat-y;
             background-size: ${OFFER_PDF_TEMPLATE.screenWidthPx}px ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
             color: var(--ink);
             font-family: Arial, sans-serif;
+            break-after: page;
+            page-break-after: always;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
 
+          .classic-offer-pdf-document:last-child {
+            break-after: auto;
+            page-break-after: auto;
+          }
+
           .classic-offer-pdf-content {
-            min-height: ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
+            height: ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
             padding: 42px 54px 204px;
+          }
+
+          .classic-offer-pdf-content.continuation {
+            padding-top: 106px;
           }
 
           .classic-pdf-top {
@@ -554,7 +714,7 @@ export function ClassicOfferPdf({
           }
 
           .classic-pdf-terms {
-            padding-top: 4px;
+            padding: 4px 0 0 15px;
             color: #475467;
             font-size: 7.2px;
             line-height: 1.3;
@@ -570,7 +730,7 @@ export function ClassicOfferPdf({
           }
 
           .classic-pdf-summary {
-            padding: 14px;
+            padding: 12px 14px;
             background: var(--glass-strong);
           }
 
@@ -584,8 +744,8 @@ export function ClassicOfferPdf({
 
           .classic-pdf-summary-lines {
             display: grid;
-            gap: 7px;
-            margin-top: 10px;
+            gap: 5px;
+            margin-top: 8px;
             font-size: 10px;
           }
 
@@ -596,7 +756,7 @@ export function ClassicOfferPdf({
           }
 
           .classic-pdf-summary-line span:first-child {
-            color: var(--muted);
+            color: #000;
           }
 
           .classic-pdf-summary-line span:last-child {
@@ -604,10 +764,10 @@ export function ClassicOfferPdf({
           }
 
           .classic-pdf-summary-total {
-            margin-top: 3px;
+            margin-top: 2px;
             border-top: 1px solid rgba(7, 132, 195, 0.22);
-            padding-top: 9px;
-            color: var(--brand-blue);
+            padding-top: 7px;
+            color: var(--ink);
             font-size: 12px;
             font-weight: 800;
           }
@@ -619,13 +779,18 @@ export function ClassicOfferPdf({
 
             .classic-offer-pdf-document {
               width: ${OFFER_PDF_TEMPLATE.printWidthMm}mm;
-              min-height: ${OFFER_PDF_TEMPLATE.printHeightMm}mm;
+              height: ${OFFER_PDF_TEMPLATE.printHeightMm}mm;
               background-size: ${OFFER_PDF_TEMPLATE.printWidthMm}mm ${OFFER_PDF_TEMPLATE.printHeightMm}mm;
+              overflow: hidden;
             }
 
             .classic-offer-pdf-content {
-              min-height: ${OFFER_PDF_TEMPLATE.printHeightMm}mm;
+              height: ${OFFER_PDF_TEMPLATE.printHeightMm}mm;
               padding: 11mm 14mm 54mm;
+            }
+
+            .classic-offer-pdf-content.continuation {
+              padding-top: 28mm;
             }
           }
         `}
@@ -641,185 +806,194 @@ export function ClassicOfferPdf({
       ) : null}
 
       <main className={isStandalone ? 'bg-white text-gray-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-gray-950 print:bg-white print:px-0 print:py-0'}>
-        <article className="classic-offer-pdf-document mx-auto shadow-[0_18px_60px_rgba(15,23,42,0.12)] print:shadow-none">
-          <div className="classic-offer-pdf-content">
-            <section className="classic-pdf-top">
-              <div className="classic-pdf-left-start">
-                <div className="classic-pdf-left-stack">
-                  <div className="classic-pdf-card classic-pdf-client-card">
-                    <div className="classic-pdf-card-title">Klient</div>
-                    <div className="classic-pdf-card-primary">{client.name}</div>
-                    {client.ico ? <div className="classic-pdf-card-text">IČO: {client.ico}</div> : null}
-                    {client.address ? <div className="classic-pdf-card-text">{client.address}</div> : null}
-                    {offer.contact_person ? (
-                      <div className="classic-pdf-card-text">Kontaktní osoba: {offer.contact_person}</div>
-                    ) : null}
-                  </div>
-
-                  <div className="classic-pdf-card classic-pdf-address-card">
-                    <div className="classic-pdf-card-title">Adresa realizace</div>
-                    <div className="classic-pdf-card-primary classic-pdf-address-value">
-                      {offer.realization_address || 'Adresa není vyplněná'}
-                    </div>
-                  </div>
-
-                  <header className="classic-pdf-intro">
-                    <div className="classic-pdf-eyebrow">
-                      Cenová kalkulace zajištění záložního napájení pro projekt:
-                    </div>
-                    <h1 className="classic-pdf-project-name">{offer.title}</h1>
-                    <div className="classic-pdf-realization-term">
-                      {formatRealizationTerm(offer.realization_starts_at, offer.realization_ends_at)}
-                    </div>
-                  </header>
-                </div>
-              </div>
-
-              <aside className="classic-pdf-meta">
-                <div className="classic-pdf-offer-number">
-                  <span className="classic-pdf-offer-number-label">Číslo nabídky</span>
-                  <span className="classic-pdf-offer-number-value">{offer.offer_number}</span>
-                </div>
-                <div className="classic-pdf-type-badge">{OFFER_TYPE_LABEL}</div>
-                <div className="classic-pdf-card compact classic-pdf-prepared-card">
-                  <div className="classic-pdf-prepared-head">
-                    <div className="classic-pdf-card-title">Zpracoval</div>
-                    <div className="classic-pdf-date-lines">
-                      <div>Vystaveno {formatDate(offer.created_at)}</div>
-                      <div>Platnost do {formatDate(offer.valid_until)}</div>
-                    </div>
-                  </div>
-                  <div className="classic-pdf-card-primary">{preparedBy}</div>
-                  {preparedByContact ? <div className="classic-pdf-card-text">{preparedByContact}</div> : null}
-                </div>
-                <div className="classic-pdf-card classic-pdf-service-card classic-pdf-service-summary">
-                  <div className="classic-pdf-service-block">
-                    <div className="classic-pdf-card-title">Objednané služby</div>
-                    {services.length > 0 ? (
-                      <div className="classic-pdf-chip-list">
-                        {services.map((service) => (
-                          <span key={service} className="classic-pdf-chip">{service}</span>
-                        ))}
+        {tablePages.map((page) => (
+          <article
+            key={page.key}
+            className="classic-offer-pdf-document mx-auto shadow-[0_18px_60px_rgba(15,23,42,0.12)] print:shadow-none"
+          >
+            <div className={`classic-offer-pdf-content${page.isContinuation ? ' continuation' : ''}`}>
+              {page.showTop ? (
+                <section className="classic-pdf-top">
+                  <div className="classic-pdf-left-start">
+                    <div className="classic-pdf-left-stack">
+                      <div className="classic-pdf-card classic-pdf-client-card">
+                        <div className="classic-pdf-card-title">Klient</div>
+                        <div className="classic-pdf-card-primary">{client.name}</div>
+                        {client.ico ? <div className="classic-pdf-card-text">IČO: {client.ico}</div> : null}
+                        {client.address ? <div className="classic-pdf-card-text">{client.address}</div> : null}
+                        {offer.contact_person ? (
+                          <div className="classic-pdf-card-text">Kontaktní osoba: {offer.contact_person}</div>
+                        ) : null}
                       </div>
-                    ) : (
-                      <div className="classic-pdf-empty-text">Bez vybraných služeb</div>
-                    )}
-                  </div>
-                  <div className="classic-pdf-service-block">
-                    <div className="classic-pdf-card-title">Depo</div>
-                    {depots.length > 0 ? (
-                      <div className="classic-pdf-chip-list">
-                        {depots.map((depot) => (
-                          <span key={depot} className="classic-pdf-chip classic-pdf-depot-chip">{depot}</span>
-                        ))}
+
+                      <div className="classic-pdf-card classic-pdf-address-card">
+                        <div className="classic-pdf-card-title">Adresa realizace</div>
+                        <div className="classic-pdf-card-primary classic-pdf-address-value">
+                          {offer.realization_address || 'Adresa není vyplněná'}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="classic-pdf-empty-text">Bez vybraného depa</div>
-                    )}
+
+                      <header className="classic-pdf-intro">
+                        <div className="classic-pdf-eyebrow">
+                          Cenová kalkulace zajištění záložního napájení pro projekt:
+                        </div>
+                        <h1 className="classic-pdf-project-name">{offer.title}</h1>
+                        <div className="classic-pdf-realization-term">
+                          {formatRealizationTerm(offer.realization_starts_at, offer.realization_ends_at)}
+                        </div>
+                      </header>
+                    </div>
                   </div>
+
+                  <aside className="classic-pdf-meta">
+                    <div className="classic-pdf-offer-number">
+                      <span className="classic-pdf-offer-number-label">Číslo nabídky</span>
+                      <span className="classic-pdf-offer-number-value">{offer.offer_number}</span>
+                    </div>
+                    <div className="classic-pdf-type-badge">{OFFER_TYPE_LABEL}</div>
+                    <div className="classic-pdf-card compact classic-pdf-prepared-card">
+                      <div className="classic-pdf-prepared-head">
+                        <div className="classic-pdf-card-title">Zpracoval</div>
+                        <div className="classic-pdf-date-lines">
+                          <div>Vystaveno {formatDate(offer.created_at)}</div>
+                          <div>Platnost do {formatDate(offer.valid_until)}</div>
+                        </div>
+                      </div>
+                      <div className="classic-pdf-card-primary">{preparedBy}</div>
+                      {preparedByContact ? <div className="classic-pdf-card-text">{preparedByContact}</div> : null}
+                    </div>
+                    <div className="classic-pdf-card classic-pdf-service-card classic-pdf-service-summary">
+                      <div className="classic-pdf-service-block">
+                        <div className="classic-pdf-card-title">Objednané služby</div>
+                        {services.length > 0 ? (
+                          <div className="classic-pdf-chip-list">
+                            {services.map((service) => (
+                              <span key={service} className="classic-pdf-chip">{service}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="classic-pdf-empty-text">Bez vybraných služeb</div>
+                        )}
+                      </div>
+                      <div className="classic-pdf-service-block">
+                        <div className="classic-pdf-card-title">Depo</div>
+                        {depots.length > 0 ? (
+                          <div className="classic-pdf-chip-list">
+                            {depots.map((depot) => (
+                              <span key={depot} className="classic-pdf-chip classic-pdf-depot-chip">{depot}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="classic-pdf-empty-text">Bez vybraného depa</div>
+                        )}
+                      </div>
+                    </div>
+                  </aside>
+                </section>
+              ) : null}
+
+              <section className="classic-pdf-items-section">
+                <div className="classic-pdf-items-header">
+                  <h2 className="classic-pdf-items-title">Kalkulace služby</h2>
+                  <div className="classic-pdf-items-note">Ceny bez DPH</div>
                 </div>
-              </aside>
-            </section>
 
-            <section className="classic-pdf-items-section">
-              <div className="classic-pdf-items-header">
-                <h2 className="classic-pdf-items-title">Kalkulace služby</h2>
-                <div className="classic-pdf-items-note">Ceny bez DPH</div>
-              </div>
-
-              <table className="classic-pdf-items-table">
-                <colgroup>
-                  <col style={{ width: '25%' }} />
-                  <col style={{ width: '24%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '7%' }} />
-                  <col style={{ width: '22%' }} />
-                </colgroup>
-                <tbody>
-                  {items.length > 0 ? (
-                    sections.map((section) => (
-                      section.items.length > 0 ? (
-                        <Fragment key={section.key}>
-                          <tr key={`${section.key}-title`} className="classic-pdf-section-row">
-                            <td colSpan={6}>
-                              <span className="classic-pdf-section-title">{section.title}</span>
-                            </td>
-                          </tr>
-                          {section.items.map((item, itemIndex) => {
-                            const visibleDiscountPercent = getVisibleDiscountPercent(item)
-                            const isLastItemBeforeNote = Boolean(section.note) && itemIndex === section.items.length - 1
-
-                            return (
-                              <tr key={item.id} className={isLastItemBeforeNote ? 'no-border-after' : undefined}>
-                                <td className="classic-pdf-item-name">{item.description}</td>
-                                <td className="classic-pdf-specification">{item.specification ?? ''}</td>
-                                <td className="number">{formatCurrency(Number(item.unit_price_without_vat), offer.currency)}</td>
-                                <td className="center">{item.unit}</td>
-                                <td className="number">{Number(item.quantity).toLocaleString('cs-CZ')}</td>
-                                <td>
-                                  <div className={`classic-pdf-price-cell${visibleDiscountPercent === null ? ' no-discount' : ''}`}>
-                                    {visibleDiscountPercent !== null ? (
-                                      <span className="classic-pdf-discount">
-                                        SLEVA {formatPercent(visibleDiscountPercent)}%
-                                      </span>
-                                    ) : null}
-                                    <span className="classic-pdf-price-value">
-                                      {formatCurrency(getOfferItemNetTotal(item), offer.currency)}
-                                    </span>
-                                  </div>
-                                </td>
-                              </tr>
-                            )
-                          })}
-                          {section.note ? (
-                            <tr key={`${section.key}-note`} className="classic-pdf-section-note-row">
+                <table className="classic-pdf-items-table">
+                  <colgroup>
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '14%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '22%' }} />
+                  </colgroup>
+                  <tbody>
+                    {page.groups.length > 0 ? (
+                      page.groups.map((group) => {
+                        if (group.type === 'section') {
+                          return (
+                            <tr key={group.key} className="classic-pdf-section-row">
                               <td colSpan={6}>
-                                <span className="classic-pdf-section-note">{section.note}</span>
+                                <span className="classic-pdf-section-title">{group.title}</span>
                               </td>
                             </tr>
-                          ) : null}
-                        </Fragment>
-                      ) : null
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#667085' }}>
-                        Nabídka zatím nemá položky.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-              <div className="classic-pdf-table-end" />
-            </section>
+                          )
+                        }
 
-            <section className="classic-pdf-bottom">
-              <div className="classic-pdf-terms">
-                <div className="classic-pdf-terms-title">Obchodní podmínky</div>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{offer.terms_note ?? ''}</div>
-              </div>
+                        const visibleDiscountPercent = getVisibleDiscountPercent(group.item)
 
-              <div className="classic-pdf-card classic-pdf-summary">
-                <div className="classic-pdf-summary-title">Souhrn cenové nabídky</div>
-                <div className="classic-pdf-summary-lines">
-                  <div className="classic-pdf-summary-line">
-                    <span>Bez DPH</span>
-                    <span>{formatCurrency(totals.subtotalWithoutVat, offer.currency)}</span>
+                        return (
+                          <Fragment key={group.key}>
+                            <tr className={group.note ? 'no-border-after' : undefined}>
+                              <td className="classic-pdf-item-name">{group.item.description}</td>
+                              <td className="classic-pdf-specification">{group.item.specification ?? ''}</td>
+                              <td className="number">{formatCurrency(Number(group.item.unit_price_without_vat), offer.currency)}</td>
+                              <td className="center">{group.item.unit}</td>
+                              <td className="number">{Number(group.item.quantity).toLocaleString('cs-CZ')}</td>
+                              <td>
+                                <div className={`classic-pdf-price-cell${visibleDiscountPercent === null ? ' no-discount' : ''}`}>
+                                  {visibleDiscountPercent !== null ? (
+                                    <span className="classic-pdf-discount">
+                                      SLEVA {formatPercent(visibleDiscountPercent)}%
+                                    </span>
+                                  ) : null}
+                                  <span className="classic-pdf-price-value">
+                                    {formatCurrency(getOfferItemNetTotal(group.item), offer.currency)}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                            {group.note ? (
+                              <tr className="classic-pdf-section-note-row">
+                                <td colSpan={6}>
+                                  <span className="classic-pdf-section-note">{group.note}</span>
+                                </td>
+                              </tr>
+                            ) : null}
+                          </Fragment>
+                        )
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#667085' }}>
+                          Nabídka zatím nemá položky.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                {page.showTableEnd ? <div className="classic-pdf-table-end" /> : null}
+              </section>
+
+              {page.showBottom ? (
+                <section className="classic-pdf-bottom">
+                  <div className="classic-pdf-terms">
+                    <div className="classic-pdf-terms-title">Obchodní podmínky</div>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{offer.terms_note ?? ''}</div>
                   </div>
-                  <div className="classic-pdf-summary-line">
-                    <span>DPH</span>
-                    <span>{formatCurrency(totals.vatTotal, offer.currency)}</span>
+
+                  <div className="classic-pdf-card classic-pdf-summary">
+                    <div className="classic-pdf-summary-title">Cenový souhrn</div>
+                    <div className="classic-pdf-summary-lines">
+                      <div className="classic-pdf-summary-line">
+                        <span>CENA BEZ DPH</span>
+                        <span>{formatCurrency(totals.subtotalWithoutVat, offer.currency)}</span>
+                      </div>
+                      <div className="classic-pdf-summary-line">
+                        <span>DPH 21%</span>
+                        <span>{formatCurrency(totals.vatTotal, offer.currency)}</span>
+                      </div>
+                      <div className="classic-pdf-summary-line classic-pdf-summary-total">
+                        <span>CELKEM S DPH</span>
+                        <span>{formatCurrency(totals.totalWithVat, offer.currency)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="classic-pdf-summary-line classic-pdf-summary-total">
-                    <span>Celkem</span>
-                    <span>{formatCurrency(totals.totalWithVat, offer.currency)}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-        </article>
+                </section>
+              ) : null}
+            </div>
+          </article>
+        ))}
       </main>
     </>
   )

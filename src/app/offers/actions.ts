@@ -30,6 +30,7 @@ export type OfferItemInput = {
   description: string
   specification?: string | null
   unitPrice: number
+  plannedUnitPrice?: number | null
   unit: string
   quantity: number
   discountPercent: number
@@ -55,6 +56,14 @@ function getNumber(formData: FormData, key: string, fallback = 0) {
   const raw = getString(formData, key).replace(',', '.')
   const parsed = Number(raw)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function getOptionalNumber(formData: FormData, key: string) {
+  const raw = getString(formData, key).replace(',', '.')
+  if (!raw) return null
+
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function getDateTimeOrNull(formData: FormData, key: string) {
@@ -362,6 +371,7 @@ export async function addOfferItem(offerId: string, formData: FormData) {
     quantity: getNumber(formData, 'quantity', 1),
     unit: getString(formData, 'unit') || 'ks',
     unit_price_without_vat: getNumber(formData, 'unit_price_without_vat', 0),
+    planned_unit_price_without_vat: getOptionalNumber(formData, 'planned_unit_price_without_vat'),
     discount_percent: getNumber(formData, 'discount_percent', 0),
     vat_rate: 21,
   })
@@ -400,6 +410,7 @@ export async function updateOfferItem(itemId: string, formData: FormData) {
       quantity: getNumber(formData, 'quantity', 1),
       unit: getString(formData, 'unit') || 'ks',
       unit_price_without_vat: getNumber(formData, 'unit_price_without_vat', 0),
+      planned_unit_price_without_vat: getOptionalNumber(formData, 'planned_unit_price_without_vat'),
       discount_percent: getNumber(formData, 'discount_percent', 0),
       vat_rate: 21,
       updated_at: new Date().toISOString(),
@@ -440,6 +451,7 @@ export async function saveOfferItemsAction(
       const specification = String(item.specification ?? '').trim() || null
       const unit = String(item.unit ?? '').trim() || 'ks'
       const unitPrice = Number(item.unitPrice)
+      const plannedUnitPrice = item.plannedUnitPrice == null ? null : Number(item.plannedUnitPrice)
       const quantity = Number(item.quantity)
       const discountPercent = Number(item.discountPercent)
 
@@ -455,6 +467,14 @@ export async function saveOfferItemsAction(
         return {
           success: false as const,
           error: `Jednotková cena u položky "${description}" není platná.`,
+          row: null,
+        }
+      }
+
+      if (plannedUnitPrice !== null && (!Number.isFinite(plannedUnitPrice) || plannedUnitPrice < 0)) {
+        return {
+          success: false as const,
+          error: `Plánovaná cena u položky "${description}" není platná.`,
           row: null,
         }
       }
@@ -487,6 +507,7 @@ export async function saveOfferItemsAction(
           quantity,
           unit,
           unit_price_without_vat: unitPrice,
+          planned_unit_price_without_vat: plannedUnitPrice,
           discount_percent: discountPercent,
           vat_rate: 21,
         },
@@ -519,6 +540,8 @@ export async function saveOfferItemsAction(
   const { error: deleteError } =
     offer.offer_type === 'bsafe24' && normalizedSection === 'bsafe_service'
       ? await deleteQuery.in('item_section', ['bsafe_service', 'main'])
+      : offer.offer_type === 'bsafe24' && normalizedSection === 'bsafe_realization'
+        ? await deleteQuery.in('item_section', ['bsafe_realization', 'bsafe_planned_trip'])
       : offer.offer_type === 'classic' && normalizedSection === 'classic_generators'
         ? await deleteQuery.in('item_section', ['classic_generators', 'main'])
       : await deleteQuery.eq('item_section', normalizedSection)

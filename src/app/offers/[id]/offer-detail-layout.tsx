@@ -142,13 +142,13 @@ const BSAFE24_SERVICE_ITEM_PRESETS = [
 ]
 
 const BSAFE24_TRIP_ITEM_PRESETS = [
-  { key: 'bsafe24-trip-generator-rental', description: 'Pronájem DA', specification: '', unitPrice: 0, unit: 'den' },
-  { key: 'bsafe24-trip-cable-chbu-20m', description: 'Kabeláž CHBU 20m', specification: '', unitPrice: 1500, unit: 'den' },
-  { key: 'bsafe24-trip-cable-viacom-twin', description: 'Kabeláž viaCOM TWIN', specification: '', unitPrice: 500, unit: 'den' },
-  { key: 'bsafe24-trip-transport-under-35t', description: 'Doprava do 3,5t', specification: '', unitPrice: 24, unit: 'km' },
-  { key: 'bsafe24-trip-install-deinstall', description: 'Instalace / Deinstalace', specification: '', unitPrice: 890, unit: 'hod' },
-  { key: 'bsafe24-trip-operator', description: 'Odborná obsluha', specification: '', unitPrice: 690, unit: 'hod' },
-  { key: 'bsafe24-trip-fuel-energy', description: 'Spotřebované PHM / Výroba EE *', specification: '', unitPrice: 40, unit: 'litr' },
+  { key: 'bsafe24-trip-generator-rental', description: 'Pronájem DA', specification: '', unitPrice: 0, plannedUnitPrice: 0, unit: 'den' },
+  { key: 'bsafe24-trip-cable-chbu-20m', description: 'Kabeláž CHBU 20m', specification: '', unitPrice: 1500, plannedUnitPrice: 750, unit: 'den' },
+  { key: 'bsafe24-trip-cable-viacom-twin', description: 'Kabeláž viaCOM TWIN', specification: '', unitPrice: 500, plannedUnitPrice: 250, unit: 'den' },
+  { key: 'bsafe24-trip-transport-under-35t', description: 'Doprava do 3,5t', specification: '', unitPrice: 24, plannedUnitPrice: 24, unit: 'km' },
+  { key: 'bsafe24-trip-install-deinstall', description: 'Instalace / Deinstalace', specification: '', unitPrice: 890, plannedUnitPrice: 790, unit: 'hod' },
+  { key: 'bsafe24-trip-operator', description: 'Odborná obsluha', specification: '', unitPrice: 690, plannedUnitPrice: 590, unit: 'hod' },
+  { key: 'bsafe24-trip-fuel-energy', description: 'Spotřebované PHM / Výroba EE *', specification: '', unitPrice: 40, plannedUnitPrice: 40, unit: 'litr' },
 ]
 
 const CLASSIC_GENERATOR_ITEM_PRESETS = [
@@ -284,6 +284,17 @@ export function OfferDetailLayout({
   )
   const bsafeRealizationItems = items.filter((item) => item.item_section === 'bsafe_realization')
   const bsafePlannedTripItems = items.filter((item) => item.item_section === 'bsafe_planned_trip')
+  const plannedTripPriceByDescription = new Map(
+    bsafePlannedTripItems.map((item) => [item.description, item.unit_price_without_vat])
+  )
+  const bsafeTripItems = bsafeRealizationItems.map((item) => (
+    item.planned_unit_price_without_vat == null
+      ? {
+          ...item,
+          planned_unit_price_without_vat: plannedTripPriceByDescription.get(item.description) ?? null,
+        }
+      : item
+  ))
 
   const renderOfferItemsSection = (
     title: string,
@@ -777,9 +788,6 @@ export function OfferDetailLayout({
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                   SOUČASNÁ ZÁLOHA LOKALIT
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Vyber, jestli má klient současnou zálohu lokalit
-                </p>
               </div>
 
               <div
@@ -838,9 +846,6 @@ export function OfferDetailLayout({
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                   DEPO
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Výjezdová depa pro realizaci
-                </p>
               </div>
 
               <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
@@ -908,22 +913,12 @@ export function OfferDetailLayout({
               offerId={offer.id}
               currency={offer.currency}
               itemSection="bsafe_realization"
-              title="POHOTOVOSTNÍ VÝJEZD"
-              items={bsafeRealizationItems}
+              title="CENÍK VÝJEZDŮ B-SAFE 24"
+              items={bsafeTripItems}
               sectionNote={sectionNoteBySection.get('bsafe_realization') ?? ''}
               showDiscount={false}
               showQuantityAndTotal={false}
-              presets={BSAFE24_TRIP_ITEM_PRESETS}
-            />
-            <OfferItemsEditor
-              offerId={offer.id}
-              currency={offer.currency}
-              itemSection="bsafe_planned_trip"
-              title="PLÁNOVANÝ VÝJEZD"
-              items={bsafePlannedTripItems}
-              sectionNote={sectionNoteBySection.get('bsafe_planned_trip') ?? ''}
-              showDiscount={false}
-              showQuantityAndTotal={false}
+              showPlannedPrice
               presets={BSAFE24_TRIP_ITEM_PRESETS}
             />
           </>

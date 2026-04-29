@@ -52,6 +52,7 @@ export type OfferItemRow = {
   quantity: number
   unit: string
   unit_price_without_vat: number
+  planned_unit_price_without_vat: number | null
   discount_percent: number
   vat_rate: number
   created_at: string
