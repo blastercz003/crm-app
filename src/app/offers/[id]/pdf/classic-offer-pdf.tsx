@@ -3,16 +3,26 @@ import {
   getOfferItemNetTotal,
   getOfferTotals,
 } from '@/lib/offers/calculations'
+import { Fragment } from 'react'
 import {
   OFFER_DEPOT_GROUP_LABEL,
-  OFFER_SERVICE_PRESET_ALIASES,
-  OFFER_SERVICE_PRESETS,
+  OFFER_ITEM_SECTION_NOTE_GROUP_LABEL,
   OFFER_SERVICE_GROUP_LABEL,
 } from '@/lib/offers/presets'
 import { OFFER_PDF_TEMPLATE } from '@/lib/offers/pdf-template'
-import type { OfferItemRow } from '@/lib/offers/types'
+import type { OfferItemRow, OfferServiceItemRow } from '@/lib/offers/types'
 import { OfferPdfAutoPrint, OfferPdfToolbar } from './print-view'
 import type { OfferPdfLayoutProps } from './offer-pdf-layout'
+
+const CLASSIC_BACKGROUND_URL = '/offers/templates/background-nabidka-new.png'
+const OFFER_TYPE_LABEL = 'KLASICKÁ'
+
+type ItemSection = {
+  key: string
+  title: string
+  note: string
+  items: OfferItemRow[]
+}
 
 function formatDate(value: string | null) {
   if (!value) return 'Bez data'
@@ -22,13 +32,26 @@ function formatDate(value: string | null) {
   }).format(new Date(value))
 }
 
-function formatDateTime(value: string | null) {
+function formatShortDateTime(value: string | null) {
   if (!value) return 'Bez termínu'
 
-  return new Intl.DateTimeFormat('cs-CZ', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  const date = new Date(value)
+  const datePart = new Intl.DateTimeFormat('cs-CZ', {
+    day: 'numeric',
+    month: 'numeric',
+  }).format(date).replace(/\s/g, '')
+  const timePart = new Intl.DateTimeFormat('cs-CZ', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+
+  return `${datePart} ${timePart}`
+}
+
+function formatRealizationTerm(startsAt: string | null, endsAt: string | null) {
+  if (!startsAt && !endsAt) return 'Termín realizace: Bez termínu'
+
+  return `Termín realizace: ${formatShortDateTime(startsAt)} - ${formatShortDateTime(endsAt)}`
 }
 
 function getVisibleDiscountPercent(item: OfferItemRow) {
@@ -43,6 +66,56 @@ function formatPercent(value: number) {
   }).format(value)
 }
 
+function getPreparedByName({ offer, authorProfile }: Pick<OfferPdfLayoutProps, 'offer' | 'authorProfile'>) {
+  return offer.prepared_by_name ?? authorProfile?.offer_prepared_by_name ?? authorProfile?.name ?? 'Neuvedeno'
+}
+
+function getPreparedByContact({ offer, authorProfile }: Pick<OfferPdfLayoutProps, 'offer' | 'authorProfile'>) {
+  const phone = offer.prepared_by_phone ?? authorProfile?.offer_prepared_by_phone
+  const email = offer.prepared_by_email ?? authorProfile?.offer_prepared_by_email
+
+  return [phone, email].filter(Boolean).join(' / ')
+}
+
+function getServiceNames(serviceItems: OfferServiceItemRow[], groupLabel: string) {
+  return serviceItems
+    .filter((item) => item.specification === groupLabel)
+    .map((item) => item.service_name)
+}
+
+function getSectionNoteBySection(serviceItems: OfferServiceItemRow[]) {
+  return new Map(
+    serviceItems
+      .filter((item) => item.specification === OFFER_ITEM_SECTION_NOTE_GROUP_LABEL)
+      .map((item) => [item.service_name, item.operation ?? ''])
+  )
+}
+
+function getClassicItemSections(items: OfferItemRow[], serviceItems: OfferServiceItemRow[]): ItemSection[] {
+  const sectionNoteBySection = getSectionNoteBySection(serviceItems)
+
+  return [
+    {
+      key: 'classic_generators',
+      title: 'ELEKTROCENTRÁLY',
+      note: sectionNoteBySection.get('classic_generators') ?? sectionNoteBySection.get('main') ?? '',
+      items: items.filter((item) => item.item_section === 'classic_generators' || item.item_section === 'main'),
+    },
+    {
+      key: 'classic_accessories',
+      title: 'PŘÍSLUŠENSTVÍ',
+      note: sectionNoteBySection.get('classic_accessories') ?? '',
+      items: items.filter((item) => item.item_section === 'classic_accessories'),
+    },
+    {
+      key: 'classic_services',
+      title: 'SLUŽBY',
+      note: sectionNoteBySection.get('classic_services') ?? '',
+      items: items.filter((item) => item.item_section === 'classic_services'),
+    },
+  ]
+}
+
 export function ClassicOfferPdf({
   offer,
   client,
@@ -53,12 +126,11 @@ export function ClassicOfferPdf({
   shouldAutoPrint,
 }: OfferPdfLayoutProps) {
   const totals = getOfferTotals(items)
-  const services = serviceItems.filter((item) => item.specification === OFFER_SERVICE_GROUP_LABEL)
-  const depots = serviceItems.filter((item) => item.specification === OFFER_DEPOT_GROUP_LABEL)
-  const selectedServices = new Set(
-    services.map((item) => OFFER_SERVICE_PRESET_ALIASES[item.service_name] ?? item.service_name)
-  )
-  const preparedBy = offer.prepared_by_name ?? authorProfile?.name ?? 'Neuvedeno'
+  const preparedBy = getPreparedByName({ offer, authorProfile })
+  const preparedByContact = getPreparedByContact({ offer, authorProfile })
+  const services = getServiceNames(serviceItems, OFFER_SERVICE_GROUP_LABEL)
+  const depots = getServiceNames(serviceItems, OFFER_DEPOT_GROUP_LABEL)
+  const sections = getClassicItemSections(items, serviceItems)
 
   return (
     <>
@@ -71,276 +143,308 @@ export function ClassicOfferPdf({
           }
 
           .classic-offer-pdf-document {
+            --brand-blue: #0784c3;
+            --brand-blue-dark: #02699f;
+            --ink: #101828;
+            --muted: #667085;
+            --line: rgba(7, 132, 195, 0.18);
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-strong: rgba(255, 255, 255, 0.86);
             width: ${OFFER_PDF_TEMPLATE.screenWidthPx}px;
             min-height: ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
-            background-image: url("${OFFER_PDF_TEMPLATE.backgroundUrl}");
+            background-image: url("${CLASSIC_BACKGROUND_URL}");
             background-position: top center;
             background-repeat: repeat-y;
             background-size: ${OFFER_PDF_TEMPLATE.screenWidthPx}px ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
-            color: #111827;
-            font-family: "Montserrat", Arial, sans-serif;
+            color: var(--ink);
+            font-family: Arial, sans-serif;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
 
           .classic-offer-pdf-content {
             min-height: ${OFFER_PDF_TEMPLATE.screenHeightPx}px;
-            padding: 58px 56px 332px;
+            padding: 42px 54px 204px;
           }
 
-          .classic-pdf-meta {
-            display: flex;
-            justify-content: flex-end;
-          }
-
-          .classic-pdf-meta-inner {
-            width: 232px;
-          }
-
-          .classic-pdf-badge {
-            display: flex;
-            min-height: 58px;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            background: #2980b9;
-            color: #fff;
-            box-shadow: 0 10px 26px rgba(41, 128, 185, 0.18);
-            text-align: center;
-            text-transform: uppercase;
-          }
-
-          .classic-pdf-badge-label {
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 0.22em;
-            line-height: 1;
-          }
-
-          .classic-pdf-badge-number {
-            margin-top: 5px;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.16em;
-            line-height: 1;
-          }
-
-          .classic-pdf-dates {
-            margin-top: 8px;
-            padding-right: 10px;
-            text-align: right;
-            font-size: 8.5px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            line-height: 1.65;
-            color: #4b5563;
-            text-transform: uppercase;
-          }
-
-          .classic-pdf-card {
-            border: 1px solid rgba(41, 128, 185, 0.2);
-            border-radius: 18px;
-            background: #fff;
-            box-shadow: 0 8px 22px rgba(41, 128, 185, 0.05);
-          }
-
-          .classic-pdf-prepared {
-            margin-top: 8px;
-            padding: 11px 13px;
-          }
-
-          .classic-pdf-section-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 8.5px;
-            font-weight: 800;
-            letter-spacing: 0.16em;
-            line-height: 1;
-            color: #2980b9;
-            text-transform: uppercase;
-          }
-
-          .classic-pdf-dot {
-            width: 8px;
-            height: 8px;
-            flex: 0 0 auto;
-            border-radius: 999px;
-            background: #2980b9;
-          }
-
-          .classic-pdf-title {
-            margin-top: 42px;
-            max-width: 610px;
-            font-size: 10px;
-            font-weight: 800;
-            line-height: 1.25;
-            color: #111827;
-          }
-
-          .classic-pdf-realization-term {
-            display: inline-flex;
-            margin-top: 16px;
-            border-radius: 999px;
-            background: #2980b9;
-            padding: 10px 22px;
-            color: #fff;
-            font-size: 10px;
-            font-weight: 800;
-            box-shadow: 0 8px 20px rgba(41, 128, 185, 0.18);
-          }
-
-          .classic-pdf-info-grid {
+          .classic-pdf-top {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 24px;
+            grid-template-columns: minmax(0, 1fr) 238px;
+            gap: 28px;
+            align-items: start;
           }
 
-          .classic-pdf-left-column,
-          .classic-pdf-right-column {
+          .classic-pdf-left-start {
+            padding-top: 64px;
+          }
+
+          .classic-pdf-left-stack {
             display: grid;
             gap: 12px;
           }
 
-          .classic-pdf-info-card {
-            padding: 14px;
+          .classic-pdf-card {
+            border: 1px solid rgba(255, 255, 255, 0.82);
+            border-radius: 16px;
+            background: var(--glass-bg);
+            box-shadow: 0 12px 34px rgba(15, 55, 85, 0.08);
+            backdrop-filter: blur(8px);
           }
 
-          .classic-pdf-card-primary {
-            margin-top: 8px;
-            font-size: 12px;
+          .classic-pdf-card.compact {
+            border-radius: 14px;
+          }
+
+          .classic-pdf-card-title {
+            color: var(--brand-blue);
+            font-size: 8px;
             font-weight: 800;
-            line-height: 1.25;
-            color: #111827;
-          }
-
-          .classic-pdf-card-text {
-            margin-top: 6px;
-            font-size: 10px;
-            line-height: 1.45;
-            color: #4b5563;
-            white-space: pre-wrap;
-          }
-
-          .classic-pdf-service-card {
-            min-height: 106px;
-          }
-
-          .classic-pdf-depot-card {
-            min-height: 70px;
-          }
-
-          .classic-pdf-service-list {
-            display: grid;
-            gap: 4px;
-            margin-top: 11px;
-          }
-
-          .classic-pdf-service-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            font-size: 8.2px;
-            font-weight: 800;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.16em;
             line-height: 1;
             text-transform: uppercase;
           }
 
-          .classic-pdf-service-switch {
-            display: grid;
-            grid-template-columns: 28px 28px;
-            gap: 3px;
-            flex: 0 0 auto;
+          .classic-pdf-card-primary {
+            margin-top: 7px;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.22;
           }
 
-          .classic-pdf-service-switch-option {
-            display: inline-flex;
-            height: 16px;
+          .classic-pdf-card-text {
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: 9px;
+            line-height: 1.35;
+            white-space: pre-wrap;
+          }
+
+          .classic-pdf-client-card {
+            min-height: 104px;
+            padding: 14px 16px;
+          }
+
+          .classic-pdf-meta {
+            display: grid;
+            gap: 8px;
+          }
+
+          .classic-pdf-offer-number {
+            display: flex;
+            min-height: 56px;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 1px solid #e5e7eb;
             border-radius: 999px;
-            background: #f3f4f6;
-            color: #6b7280;
-            font-size: 6.8px;
-            font-weight: 800;
-            line-height: 1;
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-dark));
+            color: #fff;
+            box-shadow: 0 12px 28px rgba(7, 132, 195, 0.22);
+            text-align: center;
+            text-transform: uppercase;
           }
 
-          .classic-pdf-service-switch-option.active {
-            border-color: #2980b9;
-            background: #2980b9;
+          .classic-pdf-offer-number-label {
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.2em;
+          }
+
+          .classic-pdf-offer-number-value {
+            margin-top: 5px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+          }
+
+          .classic-pdf-type-badge {
+            display: flex;
+            min-height: 30px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(7, 132, 195, 0.18);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--brand-blue);
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+          }
+
+          .classic-pdf-date-lines {
+            color: #475467;
+            font-size: 6.2px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            line-height: 1.45;
+            text-align: right;
+            text-transform: uppercase;
+          }
+
+          .classic-pdf-prepared-head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: start;
+          }
+
+          .classic-pdf-prepared-card {
+            min-height: 58px;
+            padding: 9px 14px;
+          }
+
+          .classic-pdf-intro {
+            margin-top: 6px;
+            padding-left: 15px;
+          }
+
+          .classic-pdf-eyebrow {
+            color: var(--brand-blue);
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            line-height: 1.2;
+            text-transform: uppercase;
+          }
+
+          .classic-pdf-project-name {
+            margin-top: 5px;
+            max-width: 470px;
+            color: var(--ink);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.22;
+          }
+
+          .classic-pdf-realization-term {
+            margin-top: 6px;
+            color: var(--ink);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.22;
+          }
+
+          .classic-pdf-info-card {
+            min-height: 78px;
+            padding: 13px 15px;
+          }
+
+          .classic-pdf-address-card {
+            min-height: 48px;
+            padding: 11px 15px;
+          }
+
+          .classic-pdf-address-value {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .classic-pdf-service-summary {
+            display: grid;
+            gap: 6px;
+            align-content: start;
+          }
+
+          .classic-pdf-service-card {
+            min-height: 78px;
+            padding: 11px 15px;
+          }
+
+          .classic-pdf-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin-top: 5px;
+          }
+
+          .classic-pdf-chip {
+            display: inline-flex;
+            min-height: 14px;
+            align-items: center;
+            border: 1px solid rgba(7, 132, 195, 0.18);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px 6px;
+            color: var(--brand-blue);
+            font-size: 6.2px;
+            font-weight: 800;
+            line-height: 1;
+            text-transform: uppercase;
+            white-space: nowrap;
+          }
+
+          .classic-pdf-depot-chip {
+            border-color: transparent;
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-dark));
             color: #fff;
           }
 
-          .classic-pdf-items-section {
-            margin-top: 28px;
+          .classic-pdf-empty-text {
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: 7px;
+            line-height: 1.2;
           }
 
-          .classic-pdf-items-head {
+          .classic-pdf-service-block + .classic-pdf-service-block {
+            margin-top: 1px;
+          }
+
+          .classic-pdf-service-block .classic-pdf-card-title {
+            font-size: 8px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+          }
+
+          .classic-pdf-items-section {
+            margin-top: 16px;
+          }
+
+          .classic-pdf-items-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-radius: 18px 18px 0 0;
-            background: #2980b9;
-            padding: 12px 16px;
+            border-radius: 16px 16px 0 0;
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-dark));
+            padding: 5px 14px;
             color: #fff;
           }
 
           .classic-pdf-items-title {
-            font-size: 11px;
+            margin: 0;
+            font-size: 8.5px;
             font-weight: 800;
             letter-spacing: 0.18em;
-            line-height: 1;
             text-transform: uppercase;
           }
 
-          .classic-pdf-items-prices {
-            width: 142px;
-            text-align: left;
-            font-size: 8px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            line-height: 1;
-            color: rgba(255, 255, 255, 0.75);
+          .classic-pdf-items-note {
+            color: #fff;
+            font-size: 8.5px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            opacity: 1;
             text-transform: uppercase;
           }
 
           .classic-pdf-items-table {
             width: 100%;
             border-collapse: collapse;
-            background: #fff;
-            font-size: 11px;
-          }
-
-          .classic-pdf-items-table th {
-            border-right: 1px solid rgba(41, 128, 185, 0.15);
-            border-bottom: 1px solid rgba(41, 128, 185, 0.15);
-            background: rgba(41, 128, 185, 0.08);
-            padding: 9px 8px;
-            color: #2980b9;
-            font-size: 9px;
-            font-weight: 800;
-            letter-spacing: 0.12em;
-            text-align: left;
-            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.78);
+            font-size: 8.4px;
+            table-layout: fixed;
           }
 
           .classic-pdf-items-table td {
-            border-right: 1px solid rgba(41, 128, 185, 0.1);
-            border-bottom: 1px solid rgba(41, 128, 185, 0.1);
-            padding: 11px 8px;
-            vertical-align: top;
+            height: 30px;
+            border-bottom: 1px solid rgba(7, 132, 195, 0.12);
+            padding: 5px 6px;
+            vertical-align: middle;
           }
 
-          .classic-pdf-items-table th:first-child,
-          .classic-pdf-items-table td:first-child {
-            border-left: 1px solid rgba(41, 128, 185, 0.1);
-            padding-left: 16px;
+          .classic-pdf-items-table tr.no-border-after td {
+            border-bottom: 0;
           }
 
           .classic-pdf-items-table .number {
@@ -351,68 +455,148 @@ export function ClassicOfferPdf({
             text-align: center;
           }
 
-          .classic-pdf-item-name {
+          .classic-pdf-section-row td {
+            height: auto;
+            border-bottom: 0;
+            background: rgba(7, 132, 195, 0.09);
+            padding: 7px 10px;
+            color: var(--brand-blue);
+            font-size: 8px;
             font-weight: 800;
-            color: #111827;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
           }
 
-          .classic-pdf-item-total {
-            color: #2980b9;
+          .classic-pdf-section-title {
+            display: block;
+          }
+
+          .classic-pdf-section-note {
+            display: inline-block;
+            margin: 0 0 0 8px;
+            color: #475467;
+            font-size: 6.4px;
+            font-weight: 700;
+            letter-spacing: 0;
+            line-height: 1.2;
+            text-transform: none;
+            white-space: pre-wrap;
+          }
+
+          .classic-pdf-section-note-row td {
+            height: auto;
+            background: rgba(255, 255, 255, 0.34);
+            border-bottom: 0;
+            padding: 1px 10px 2px;
+          }
+
+          .classic-pdf-section-note-row .classic-pdf-section-note {
+            margin-left: 0;
+          }
+
+          .classic-pdf-item-name {
+            font-weight: 800;
+            line-height: 1.22;
+          }
+
+          .classic-pdf-specification {
+            color: var(--muted);
+            line-height: 1.22;
+            white-space: pre-wrap;
+          }
+
+          .classic-pdf-price-cell {
+            display: grid;
+            grid-template-columns: 68px minmax(0, 1fr);
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+          }
+
+          .classic-pdf-price-cell.no-discount {
+            grid-template-columns: minmax(0, 1fr);
+          }
+
+          .classic-pdf-discount {
+            display: inline-flex;
+            min-height: 16px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            background: var(--brand-blue);
+            padding: 3px 6px;
+            color: #fff;
+            font-size: 6.8px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            line-height: 1;
+            text-transform: uppercase;
+          }
+
+          .classic-pdf-price-value {
+            color: var(--ink);
             font-weight: 800;
             text-align: right;
           }
 
-          .classic-pdf-bottom-grid {
+          .classic-pdf-table-end {
+            height: 10px;
+            border-radius: 0 0 16px 16px;
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-dark));
+          }
+
+          .classic-pdf-bottom {
             display: grid;
-            grid-template-columns: 1fr 245px;
-            gap: 20px;
-            margin-top: 18px;
+            grid-template-columns: minmax(0, 1fr) 238px;
+            gap: 18px;
+            margin-top: 14px;
+            align-items: start;
           }
 
           .classic-pdf-terms {
-            max-width: 410px;
-            color: #4b5563;
-            font-size: 7.8px;
-            line-height: 1.35;
+            padding-top: 4px;
+            color: #475467;
+            font-size: 7.2px;
+            line-height: 1.3;
           }
 
           .classic-pdf-terms-title {
-            color: #374151;
-            font-size: 7.5px;
+            margin-bottom: 4px;
+            color: var(--brand-blue);
+            font-size: 7.4px;
             font-weight: 800;
-            letter-spacing: 0.14em;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
           }
 
           .classic-pdf-summary {
-            border-color: #2980b9;
-            padding: 16px;
-            box-shadow: 0 14px 32px rgba(41, 128, 185, 0.14);
+            padding: 14px;
+            background: var(--glass-strong);
           }
 
           .classic-pdf-summary-title {
-            color: #2980b9;
-            font-size: 10px;
+            color: var(--brand-blue);
+            font-size: 8px;
             font-weight: 800;
-            letter-spacing: 0.18em;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
           }
 
           .classic-pdf-summary-lines {
-            margin-top: 12px;
             display: grid;
-            gap: 8px;
-            font-size: 12px;
+            gap: 7px;
+            margin-top: 10px;
+            font-size: 10px;
           }
 
           .classic-pdf-summary-line {
             display: flex;
             justify-content: space-between;
-            gap: 16px;
+            gap: 14px;
           }
 
           .classic-pdf-summary-line span:first-child {
-            color: #6b7280;
+            color: var(--muted);
           }
 
           .classic-pdf-summary-line span:last-child {
@@ -420,11 +604,11 @@ export function ClassicOfferPdf({
           }
 
           .classic-pdf-summary-total {
-            margin-top: 4px;
-            border-top: 1px solid rgba(41, 128, 185, 0.25);
-            padding-top: 12px;
-            color: #2980b9;
-            font-size: 14px;
+            margin-top: 3px;
+            border-top: 1px solid rgba(7, 132, 195, 0.22);
+            padding-top: 9px;
+            color: var(--brand-blue);
+            font-size: 12px;
             font-weight: 800;
           }
 
@@ -441,7 +625,7 @@ export function ClassicOfferPdf({
 
             .classic-offer-pdf-content {
               min-height: ${OFFER_PDF_TEMPLATE.printHeightMm}mm;
-              padding: 15mm 15mm 88mm;
+              padding: 11mm 14mm 54mm;
             }
           }
         `}
@@ -459,157 +643,162 @@ export function ClassicOfferPdf({
       <main className={isStandalone ? 'bg-white text-gray-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-gray-950 print:bg-white print:px-0 print:py-0'}>
         <article className="classic-offer-pdf-document mx-auto shadow-[0_18px_60px_rgba(15,23,42,0.12)] print:shadow-none">
           <div className="classic-offer-pdf-content">
-            <div className="classic-pdf-meta">
-              <div className="classic-pdf-meta-inner">
-                <div className="classic-pdf-badge">
-                  <span className="classic-pdf-badge-label">Cenová nabídka</span>
-                  <span className="classic-pdf-badge-number">{offer.offer_number}</span>
+            <section className="classic-pdf-top">
+              <div className="classic-pdf-left-start">
+                <div className="classic-pdf-left-stack">
+                  <div className="classic-pdf-card classic-pdf-client-card">
+                    <div className="classic-pdf-card-title">Klient</div>
+                    <div className="classic-pdf-card-primary">{client.name}</div>
+                    {client.ico ? <div className="classic-pdf-card-text">IČO: {client.ico}</div> : null}
+                    {client.address ? <div className="classic-pdf-card-text">{client.address}</div> : null}
+                    {offer.contact_person ? (
+                      <div className="classic-pdf-card-text">Kontaktní osoba: {offer.contact_person}</div>
+                    ) : null}
+                  </div>
+
+                  <div className="classic-pdf-card classic-pdf-address-card">
+                    <div className="classic-pdf-card-title">Adresa realizace</div>
+                    <div className="classic-pdf-card-primary classic-pdf-address-value">
+                      {offer.realization_address || 'Adresa není vyplněná'}
+                    </div>
+                  </div>
+
+                  <header className="classic-pdf-intro">
+                    <div className="classic-pdf-eyebrow">
+                      Cenová kalkulace zajištění záložního napájení pro projekt:
+                    </div>
+                    <h1 className="classic-pdf-project-name">{offer.title}</h1>
+                    <div className="classic-pdf-realization-term">
+                      {formatRealizationTerm(offer.realization_starts_at, offer.realization_ends_at)}
+                    </div>
+                  </header>
                 </div>
-                <div className="classic-pdf-dates">
-                  <div>Vystaveno {formatDate(offer.created_at)}</div>
-                  <div>Platnost do {formatDate(offer.valid_until)}</div>
+              </div>
+
+              <aside className="classic-pdf-meta">
+                <div className="classic-pdf-offer-number">
+                  <span className="classic-pdf-offer-number-label">Číslo nabídky</span>
+                  <span className="classic-pdf-offer-number-value">{offer.offer_number}</span>
                 </div>
-                <div className="classic-pdf-card classic-pdf-prepared">
-                  <div className="classic-pdf-section-label">Zpracoval</div>
+                <div className="classic-pdf-type-badge">{OFFER_TYPE_LABEL}</div>
+                <div className="classic-pdf-card compact classic-pdf-prepared-card">
+                  <div className="classic-pdf-prepared-head">
+                    <div className="classic-pdf-card-title">Zpracoval</div>
+                    <div className="classic-pdf-date-lines">
+                      <div>Vystaveno {formatDate(offer.created_at)}</div>
+                      <div>Platnost do {formatDate(offer.valid_until)}</div>
+                    </div>
+                  </div>
                   <div className="classic-pdf-card-primary">{preparedBy}</div>
-                  <div className="classic-pdf-card-text">
-                    {offer.prepared_by_phone ? <span>{offer.prepared_by_phone}</span> : null}
-                    {offer.prepared_by_phone && offer.prepared_by_email ? <span> / </span> : null}
-                    {offer.prepared_by_email ? <span>{offer.prepared_by_email}</span> : null}
-                  </div>
+                  {preparedByContact ? <div className="classic-pdf-card-text">{preparedByContact}</div> : null}
                 </div>
-              </div>
-            </div>
-
-            <header>
-              <h1 className="classic-pdf-title">
-                Cenová kalkulace zajištění záložního napájení {offer.title ? `(${offer.title})` : ''}
-              </h1>
-              <div className="classic-pdf-realization-term">
-                Termín realizace: {formatDateTime(offer.realization_starts_at)}, {formatDateTime(offer.realization_ends_at)}
-              </div>
-            </header>
-
-            <section className="classic-pdf-info-grid">
-              <div className="classic-pdf-left-column">
-                <div className="classic-pdf-card classic-pdf-info-card">
-                  <div className="classic-pdf-section-label">
-                    <span className="classic-pdf-dot" />
-                    Klient
+                <div className="classic-pdf-card classic-pdf-service-card classic-pdf-service-summary">
+                  <div className="classic-pdf-service-block">
+                    <div className="classic-pdf-card-title">Objednané služby</div>
+                    {services.length > 0 ? (
+                      <div className="classic-pdf-chip-list">
+                        {services.map((service) => (
+                          <span key={service} className="classic-pdf-chip">{service}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="classic-pdf-empty-text">Bez vybraných služeb</div>
+                    )}
                   </div>
-                  <div className="classic-pdf-card-primary">{client.name}</div>
-                  {client.ico ? <div className="classic-pdf-card-text">IČO: {client.ico}</div> : null}
-                  {client.address ? <div className="classic-pdf-card-text">{client.address}</div> : null}
-                  {offer.contact_person ? (
-                    <div className="classic-pdf-card-text">Kontaktní osoba: {offer.contact_person}</div>
-                  ) : null}
-                </div>
-
-                <div className="classic-pdf-card classic-pdf-info-card">
-                  <div className="classic-pdf-section-label">
-                    <span className="classic-pdf-dot" />
-                    Adresa realizace
-                  </div>
-                  <div className="classic-pdf-card-primary">
-                    {offer.realization_address || 'Adresa není vyplněná'}
-                  </div>
-                </div>
-              </div>
-
-              <aside className="classic-pdf-right-column">
-                <div className="classic-pdf-card classic-pdf-info-card classic-pdf-service-card">
-                  <div className="classic-pdf-section-label">
-                    <span className="classic-pdf-dot" />
-                    Objednané služby
-                  </div>
-                  <div className="classic-pdf-service-list">
-                    {OFFER_SERVICE_PRESETS.map((service) => {
-                      const isActive = selectedServices.has(service)
-
-                      return (
-                        <div key={service} className="classic-pdf-service-row">
-                          <span>{service}</span>
-                          <span className="classic-pdf-service-switch">
-                            <span className={`classic-pdf-service-switch-option${isActive ? ' active' : ''}`}>
-                              ANO
-                            </span>
-                            <span className="classic-pdf-service-switch-option">NE</span>
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="classic-pdf-card classic-pdf-info-card classic-pdf-depot-card">
-                  <div className="classic-pdf-section-label">
-                    <span className="classic-pdf-dot" />
-                    Depo
-                  </div>
-                  <div className="classic-pdf-card-primary">
-                    {depots.length > 0 ? depots.map((item) => item.service_name).join(' / ') : 'Bez vybraného depa'}
+                  <div className="classic-pdf-service-block">
+                    <div className="classic-pdf-card-title">Depo</div>
+                    {depots.length > 0 ? (
+                      <div className="classic-pdf-chip-list">
+                        {depots.map((depot) => (
+                          <span key={depot} className="classic-pdf-chip classic-pdf-depot-chip">{depot}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="classic-pdf-empty-text">Bez vybraného depa</div>
+                    )}
                   </div>
                 </div>
               </aside>
             </section>
 
             <section className="classic-pdf-items-section">
-              <div className="classic-pdf-items-head">
+              <div className="classic-pdf-items-header">
                 <h2 className="classic-pdf-items-title">Kalkulace služby</h2>
-                <div className="classic-pdf-items-prices">Ceny bez DPH</div>
+                <div className="classic-pdf-items-note">Ceny bez DPH</div>
               </div>
 
               <table className="classic-pdf-items-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '38%' }}>Položka</th>
-                    <th className="number" style={{ width: '16%' }}>Jedn. cena</th>
-                    <th className="center" style={{ width: '10%' }}>Jedn.</th>
-                    <th className="number" style={{ width: '12%' }}>Množství</th>
-                    <th className="number" style={{ width: '10%' }}>Sleva</th>
-                    <th className="number" style={{ width: '14%' }}>Celkem</th>
-                  </tr>
-                </thead>
+                <colgroup>
+                  <col style={{ width: '25%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '22%' }} />
+                </colgroup>
                 <tbody>
                   {items.length > 0 ? (
-                    items.map((item) => {
-                      const visibleDiscountPercent = getVisibleDiscountPercent(item)
+                    sections.map((section) => (
+                      section.items.length > 0 ? (
+                        <Fragment key={section.key}>
+                          <tr key={`${section.key}-title`} className="classic-pdf-section-row">
+                            <td colSpan={6}>
+                              <span className="classic-pdf-section-title">{section.title}</span>
+                            </td>
+                          </tr>
+                          {section.items.map((item, itemIndex) => {
+                            const visibleDiscountPercent = getVisibleDiscountPercent(item)
+                            const isLastItemBeforeNote = Boolean(section.note) && itemIndex === section.items.length - 1
 
-                      return (
-                        <tr key={item.id}>
-                          <td className="classic-pdf-item-name">{item.description}</td>
-                          <td className="number">{formatCurrency(Number(item.unit_price_without_vat), offer.currency)}</td>
-                          <td className="center">{item.unit}</td>
-                          <td className="number">{Number(item.quantity).toLocaleString('cs-CZ')}</td>
-                          <td className="number">
-                            {visibleDiscountPercent !== null ? `${formatPercent(visibleDiscountPercent)} %` : ''}
-                          </td>
-                          <td className="classic-pdf-item-total">
-                            {formatCurrency(getOfferItemNetTotal(item), offer.currency)}
-                          </td>
-                        </tr>
-                      )
-                    })
+                            return (
+                              <tr key={item.id} className={isLastItemBeforeNote ? 'no-border-after' : undefined}>
+                                <td className="classic-pdf-item-name">{item.description}</td>
+                                <td className="classic-pdf-specification">{item.specification ?? ''}</td>
+                                <td className="number">{formatCurrency(Number(item.unit_price_without_vat), offer.currency)}</td>
+                                <td className="center">{item.unit}</td>
+                                <td className="number">{Number(item.quantity).toLocaleString('cs-CZ')}</td>
+                                <td>
+                                  <div className={`classic-pdf-price-cell${visibleDiscountPercent === null ? ' no-discount' : ''}`}>
+                                    {visibleDiscountPercent !== null ? (
+                                      <span className="classic-pdf-discount">
+                                        SLEVA {formatPercent(visibleDiscountPercent)}%
+                                      </span>
+                                    ) : null}
+                                    <span className="classic-pdf-price-value">
+                                      {formatCurrency(getOfferItemNetTotal(item), offer.currency)}
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          {section.note ? (
+                            <tr key={`${section.key}-note`} className="classic-pdf-section-note-row">
+                              <td colSpan={6}>
+                                <span className="classic-pdf-section-note">{section.note}</span>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      ) : null
+                    ))
                   ) : (
                     <tr>
-                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
+                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#667085' }}>
                         Nabídka zatím nemá položky.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+              <div className="classic-pdf-table-end" />
             </section>
 
-            <section className="classic-pdf-bottom-grid">
-              {offer.terms_note ? (
-                <div className="classic-pdf-terms">
-                  <div className="classic-pdf-terms-title">Obchodní podmínky</div>
-                  <p style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{offer.terms_note}</p>
-                </div>
-              ) : (
-                <div />
-              )}
+            <section className="classic-pdf-bottom">
+              <div className="classic-pdf-terms">
+                <div className="classic-pdf-terms-title">Obchodní podmínky</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{offer.terms_note ?? ''}</div>
+              </div>
 
               <div className="classic-pdf-card classic-pdf-summary">
                 <div className="classic-pdf-summary-title">Souhrn cenové nabídky</div>
@@ -634,4 +823,4 @@ export function ClassicOfferPdf({
       </main>
     </>
   )
-} 
+}

@@ -304,6 +304,7 @@ export function OfferItemsEditor({
   const modalGridColumns = showQuantityAndTotal
     ? OFFER_ITEM_MODAL_GRID_COLUMNS
     : 'minmax(170px,1fr) minmax(220px,1.35fr) 130px 80px 168px'
+  const useCompactClassicMobileCards = showQuantityAndTotal && itemSection !== 'bsafe_service'
 
   useEffect(() => {
     if (presets.length === 0) {
@@ -474,65 +475,224 @@ export function OfferItemsEditor({
             </div>
           </div>
         ) : (
-          <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200">
-            <table className="w-full table-fixed border-collapse text-sm">
-              <colgroup>
-                <col className={detailColumnClasses.item} />
-                <col className={detailColumnClasses.specification} />
-                <col className={detailColumnClasses.price} />
-                <col className={detailColumnClasses.unit} />
-                {showQuantityAndTotal ? <col className={detailColumnClasses.quantity} /> : null}
-                {showQuantityAndTotal && showDiscount ? (
-                  <col className={detailColumnClasses.discount} />
-                ) : null}
-                {showQuantityAndTotal ? <col className={detailColumnClasses.total} /> : null}
-              </colgroup>
-              <thead>
-                <tr className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
-                  <th className="px-4 py-3">Položka</th>
-                  <th className="px-4 py-3">Specifikace / popis</th>
-                  <th className="px-4 py-3 text-right">Jedn. cena</th>
-                  <th className="px-4 py-3 text-center">Jedn.</th>
-                  {showQuantityAndTotal ? <th className="px-4 py-3 text-right">Množství</th> : null}
+          <div className="mt-4">
+            <div className="grid gap-3 md:hidden">
+              {items.map((item) => (
+                <article key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                  {useCompactClassicMobileCards ? (
+                    <>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold leading-5 text-gray-900">
+                            {item.description}
+                          </div>
+                          {item.specification ? (
+                            <div className="mt-1 whitespace-pre-wrap text-xs leading-4 text-gray-500">
+                              {item.specification}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="shrink-0 rounded-xl bg-gray-50 px-3 py-2 text-right">
+                          <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                            Cena bez DPH
+                          </div>
+                          <div className="mt-0.5 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            {formatCurrency(getOfferItemNetTotal(item), currency)}
+                          </div>
+                        </div>
+                      </div>
+                      <dl className="mt-3 grid grid-cols-4 gap-1 text-[10px]">
+                        <div className="min-w-0 rounded-xl bg-gray-50 px-1.5 py-1.5">
+                          <dt className="truncate font-semibold uppercase tracking-[0.04em] text-gray-500">
+                            Cena
+                          </dt>
+                          <dd className="mt-0.5 truncate font-semibold text-gray-900">
+                            {formatCurrency(Number(item.unit_price_without_vat), currency)}
+                          </dd>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-gray-50 px-1.5 py-1.5">
+                          <dt className="truncate font-semibold uppercase tracking-[0.04em] text-gray-500">
+                            Jedn.
+                          </dt>
+                          <dd className="mt-0.5 truncate font-semibold text-gray-900">{item.unit}</dd>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-gray-50 px-1.5 py-1.5">
+                          <dt className="truncate font-semibold uppercase tracking-[0.04em] text-gray-500">
+                            Množ.
+                          </dt>
+                          <dd className="mt-0.5 truncate font-semibold text-gray-900">
+                            {Number(item.quantity).toLocaleString('cs-CZ')}
+                          </dd>
+                        </div>
+                        {showDiscount ? (
+                          <div className="min-w-0 rounded-xl bg-gray-50 px-1.5 py-1.5">
+                            <dt className="truncate font-semibold uppercase tracking-[0.04em] text-gray-500">
+                              Sleva
+                            </dt>
+                            <dd className="mt-0.5 truncate font-semibold text-gray-900">
+                              {Number(item.discount_percent) > 0
+                                ? `${Number(item.discount_percent).toLocaleString('cs-CZ')} %`
+                                : '-'}
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </>
+                  ) : showQuantityAndTotal ? (
+                    <>
+                      <div className="text-sm font-semibold leading-5 text-gray-900">
+                        {item.description}
+                      </div>
+                      {item.specification ? (
+                        <div className="mt-1 whitespace-pre-wrap text-sm leading-5 text-gray-600">
+                          {item.specification}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-[minmax(0,1fr)_92px_58px] items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold leading-5 text-gray-900" title={item.description}>
+                          {item.description}
+                        </div>
+                        {item.specification ? (
+                          <div className="mt-0.5 truncate text-xs leading-4 text-gray-500" title={item.specification}>
+                            {item.specification}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-2 py-1.5">
+                        <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                          Jedn. cena
+                        </div>
+                        <div className="mt-0.5 whitespace-nowrap text-xs font-semibold text-gray-900">
+                          {formatCurrency(Number(item.unit_price_without_vat), currency)}
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-2 py-1.5">
+                        <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                          Jedn.
+                        </div>
+                        <div className="mt-0.5 truncate text-xs font-semibold text-gray-900">
+                          {item.unit}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {showQuantityAndTotal && !useCompactClassicMobileCards ? (
+                    <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div className="rounded-xl bg-gray-50 px-3 py-2">
+                        <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                          Jedn. cena
+                        </dt>
+                        <dd className="mt-1 font-semibold text-gray-900">
+                          {formatCurrency(Number(item.unit_price_without_vat), currency)}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-3 py-2">
+                        <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                          Jedn.
+                        </dt>
+                        <dd className="mt-1 font-semibold text-gray-900">{item.unit}</dd>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-3 py-2">
+                        <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                          Množství
+                        </dt>
+                        <dd className="mt-1 font-semibold text-gray-900">
+                          {Number(item.quantity).toLocaleString('cs-CZ')}
+                        </dd>
+                      </div>
+                      {showDiscount ? (
+                      <div className="rounded-xl bg-gray-50 px-3 py-2">
+                        <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                          Sleva
+                        </dt>
+                        <dd className="mt-1 font-semibold text-gray-900">
+                          {Number(item.discount_percent) > 0
+                            ? `${Number(item.discount_percent).toLocaleString('cs-CZ')} %`
+                            : '-'}
+                        </dd>
+                      </div>
+                      ) : null}
+                      <div className="col-span-2 rounded-xl bg-gray-50 px-3 py-2">
+                        <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                          Cena bez DPH
+                        </dt>
+                        <dd className="mt-1 text-base font-semibold text-gray-900">
+                          {formatCurrency(getOfferItemNetTotal(item), currency)}
+                        </dd>
+                      </div>
+                    </dl>
+                  ) : null}
+                </article>
+              ))}
+              <div className="min-h-[44px] rounded-2xl bg-gray-50 px-4 py-2 text-xs leading-5 text-gray-900">
+                <span className="font-semibold">Poznámka:</span>{' '}
+                <span className="whitespace-pre-wrap">{sectionNote}</span>
+              </div>
+            </div>
+
+            <div className="hidden overflow-hidden rounded-2xl border border-gray-200 md:block">
+              <table className="w-full table-fixed border-collapse text-sm">
+                <colgroup>
+                  <col className={detailColumnClasses.item} />
+                  <col className={detailColumnClasses.specification} />
+                  <col className={detailColumnClasses.price} />
+                  <col className={detailColumnClasses.unit} />
+                  {showQuantityAndTotal ? <col className={detailColumnClasses.quantity} /> : null}
                   {showQuantityAndTotal && showDiscount ? (
-                    <th className="px-4 py-3 text-right">Sleva</th>
+                    <col className={detailColumnClasses.discount} />
                   ) : null}
-                  {showQuantityAndTotal ? (
-                    <th className="px-4 py-3 text-right">Cena bez DPH</th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-t border-gray-100">
-                    <td className="break-words px-4 py-3 font-medium text-gray-900">{item.description}</td>
-                    <td className="break-words px-4 py-3 text-gray-600">{item.specification ?? ''}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">
-                      {formatCurrency(Number(item.unit_price_without_vat), currency)}
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-600">{item.unit}</td>
-                    {showQuantityAndTotal ? (
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {Number(item.quantity).toLocaleString('cs-CZ')}
-                      </td>
-                    ) : null}
+                  {showQuantityAndTotal ? <col className={detailColumnClasses.total} /> : null}
+                </colgroup>
+                <thead>
+                  <tr className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                    <th className="px-4 py-3">Položka</th>
+                    <th className="px-4 py-3">Specifikace / popis</th>
+                    <th className="px-4 py-3 text-right">Jedn. cena</th>
+                    <th className="px-4 py-3 text-center">Jedn.</th>
+                    {showQuantityAndTotal ? <th className="px-4 py-3 text-right">Množství</th> : null}
                     {showQuantityAndTotal && showDiscount ? (
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {Number(item.discount_percent) > 0 ? `${Number(item.discount_percent).toLocaleString('cs-CZ')} %` : '-'}
-                      </td>
+                      <th className="px-4 py-3 text-right">Sleva</th>
                     ) : null}
                     {showQuantityAndTotal ? (
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        {formatCurrency(getOfferItemNetTotal(item), currency)}
-                      </td>
+                      <th className="px-4 py-3 text-right">Cena bez DPH</th>
                     ) : null}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="min-h-[44px] bg-gray-50 px-4 py-2 text-xs leading-5 text-gray-900">
-              <span className="font-semibold">Poznámka:</span>{' '}
-              <span className="whitespace-pre-wrap">{sectionNote}</span>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id} className="border-t border-gray-100">
+                      <td className="break-words px-4 py-3 font-medium text-gray-900">{item.description}</td>
+                      <td className="break-words px-4 py-3 text-gray-600">{item.specification ?? ''}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">
+                        {formatCurrency(Number(item.unit_price_without_vat), currency)}
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-600">{item.unit}</td>
+                      {showQuantityAndTotal ? (
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {Number(item.quantity).toLocaleString('cs-CZ')}
+                        </td>
+                      ) : null}
+                      {showQuantityAndTotal && showDiscount ? (
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {Number(item.discount_percent) > 0 ? `${Number(item.discount_percent).toLocaleString('cs-CZ')} %` : '-'}
+                        </td>
+                      ) : null}
+                      {showQuantityAndTotal ? (
+                        <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                          {formatCurrency(getOfferItemNetTotal(item), currency)}
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="min-h-[44px] bg-gray-50 px-4 py-2 text-xs leading-5 text-gray-900">
+                <span className="font-semibold">Poznámka:</span>{' '}
+                <span className="whitespace-pre-wrap">{sectionNote}</span>
+              </div>
             </div>
           </div>
         )}
@@ -577,13 +737,13 @@ export function OfferItemsEditor({
               </div>
 
               <div className="px-4 pb-4 sm:px-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                  <div className="grid gap-2 sm:grid-cols-2 md:flex md:flex-wrap md:items-center">
                     <select
                       value={selectedPresetKey}
                       onChange={(event) => setSelectedPresetKey(event.target.value)}
                       disabled={isPending}
-                      className="h-10 min-w-[260px] rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-10 w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2 md:w-auto md:min-w-[260px]"
                     >
                       {presets.map((preset) => (
                         <option key={preset.key} value={preset.key}>
@@ -608,7 +768,7 @@ export function OfferItemsEditor({
                       Vlastní řádek
                     </button>
                   </div>
-                  <div className="text-sm font-medium text-gray-600">
+                  <div className="text-xs font-medium text-gray-600 md:text-sm">
                     Úpravy se uloží najednou tlačítkem dole.
                   </div>
                 </div>
@@ -623,7 +783,7 @@ export function OfferItemsEditor({
 
                 <div className="space-y-3">
                   <div
-                    className="grid gap-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500"
+                    className="hidden gap-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500 md:grid"
                     style={{ gridTemplateColumns: modalGridColumns }}
                   >
                     <div>Položka</div>
@@ -644,13 +804,160 @@ export function OfferItemsEditor({
                     </div>
                   ) : null}
 
+                  <div className="grid gap-3 md:hidden">
+                    {rows.map((row, index) => {
+                      const lineTotal = getDraftLineTotal(row)
+
+                      return (
+                        <div key={`mobile-${row.id}`} className="rounded-2xl border border-gray-200 bg-white p-3">
+                          <div className="grid gap-2">
+                            <label className="block">
+                              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                                Položka
+                              </span>
+                              <input
+                                value={row.description}
+                                onChange={(event) => updateRow(row.id, 'description', event.target.value)}
+                                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                                placeholder="Položka"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                                Specifikace / popis
+                              </span>
+                              <input
+                                value={row.specification}
+                                onChange={(event) => updateRow(row.id, 'specification', event.target.value)}
+                                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                                placeholder="Specifikace / popis"
+                              />
+                            </label>
+
+                            <div className={useCompactClassicMobileCards ? 'grid grid-cols-4 gap-1' : 'grid grid-cols-2 gap-2'}>
+                              <label className="block">
+                                <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                                  {useCompactClassicMobileCards ? 'Cena' : 'Jedn. cena'}
+                                </span>
+                                <input
+                                  value={row.unitPrice}
+                                  onChange={(event) => updateRow(row.id, 'unitPrice', event.target.value)}
+                                  className={[
+                                    'w-full rounded-xl border border-gray-200 bg-white text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200',
+                                    useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
+                                  ].join(' ')}
+                                  placeholder="0"
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                                  Jedn.
+                                </span>
+                                <input
+                                  value={row.unit}
+                                  onChange={(event) => updateRow(row.id, 'unit', event.target.value)}
+                                  className={[
+                                    'w-full rounded-xl border border-gray-200 bg-white text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200',
+                                    useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
+                                  ].join(' ')}
+                                  placeholder="ks"
+                                />
+                              </label>
+                              {showQuantityAndTotal ? (
+                                <label className="block">
+                                  <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                                    {useCompactClassicMobileCards ? 'Množ.' : 'Množství'}
+                                  </span>
+                                  <input
+                                    value={row.quantity}
+                                    onChange={(event) => updateRow(row.id, 'quantity', event.target.value)}
+                                    className={[
+                                      'w-full rounded-xl border border-gray-200 bg-white text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200',
+                                      useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
+                                    ].join(' ')}
+                                    placeholder="1"
+                                  />
+                                </label>
+                              ) : null}
+                              {showQuantityAndTotal && showDiscount ? (
+                                <label className="block">
+                                  <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                                    Sleva %
+                                  </span>
+                                  <input
+                                    value={row.discountPercent}
+                                    onChange={(event) => updateRow(row.id, 'discountPercent', event.target.value)}
+                                    className={[
+                                      'w-full rounded-xl border border-gray-200 bg-white text-right text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200',
+                                      useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
+                                    ].join(' ')}
+                                    placeholder="-"
+                                  />
+                                </label>
+                              ) : null}
+                              {showQuantityAndTotal ? (
+                                <div className={`${useCompactClassicMobileCards ? 'col-span-4' : 'col-span-2'} rounded-xl bg-gray-50 px-3 py-2`}>
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                                    Cena bez DPH
+                                  </div>
+                                  <div className="mt-1 text-right text-base font-semibold text-gray-900">
+                                    {typeof lineTotal === 'number' ? formatCurrency(lineTotal, currency) : '-'}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-1 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => moveRow(row.id, 'up')}
+                                disabled={index === 0 || isPending}
+                                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-35"
+                                title="Nahoru"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveRow(row.id, 'down')}
+                                disabled={index === rows.length - 1 || isPending}
+                                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-35"
+                                title="Dolů"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => duplicateRow(row.id)}
+                                disabled={isPending}
+                                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                title="Duplikovat"
+                              >
+                                2×
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeRow(row.id)}
+                                disabled={isPending}
+                                className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                title="Smazat"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
                   {rows.map((row, index) => {
                     const lineTotal = getDraftLineTotal(row)
 
                     return (
                       <div
                         key={row.id}
-                        className="grid gap-2 rounded-2xl border border-gray-200 bg-white p-3"
+                        className="hidden gap-2 rounded-2xl border border-gray-200 bg-white p-3 md:grid"
                         style={{ gridTemplateColumns: modalGridColumns }}
                       >
                         <input

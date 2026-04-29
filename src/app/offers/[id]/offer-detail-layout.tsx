@@ -198,7 +198,7 @@ function isOfferWaitingForApproval(offer: OfferRow) {
 
 function offerPresetButtonClassName(isActive: boolean, isDisabled = false) {
   return [
-    'inline-flex h-8 w-[150px] items-center justify-center rounded-xl border px-2 text-center text-[11px] uppercase tracking-[0.04em] transition',
+    'inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] uppercase tracking-[0.02em] transition sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
     isActive
       ? 'border-[#2980B9] bg-[#2980B9] font-semibold text-white shadow-sm hover:bg-[#236f9f]'
       : isDisabled
@@ -570,7 +570,8 @@ export function OfferDetailLayout({
                   {offer.offer_type === 'bsafe24' ? (
                     <div>
                       <label htmlFor="project_name" className="mb-2 block text-sm font-medium text-gray-700">
-                        Aktivace produktu od
+                        <span className="sm:hidden">Aktivace od</span>
+                        <span className="hidden sm:inline">Aktivace produktu od</span>
                       </label>
                       <input id="project_name" name="project_name" defaultValue={offer.project_name ?? ''} className={inputClassName()} />
                     </div>
@@ -625,24 +626,26 @@ export function OfferDetailLayout({
                   Zpracovatel
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
-                <div>
-                  <label htmlFor="prepared_by_name" className="mb-2 block text-sm font-medium text-gray-700">
-                    Nabídku zpracoval
-                  </label>
-                  <input id="prepared_by_name" name="prepared_by_name" defaultValue={offer.prepared_by_name ?? author?.name ?? ''} className={inputClassName()} />
-                </div>
-                <div>
-                  <label htmlFor="prepared_by_phone" className="mb-2 block text-sm font-medium text-gray-700">
-                    Mobil
-                  </label>
-                  <input id="prepared_by_phone" name="prepared_by_phone" defaultValue={offer.prepared_by_phone ?? ''} className={inputClassName()} />
-                </div>
-                <div>
-                  <label htmlFor="prepared_by_email" className="mb-2 block text-sm font-medium text-gray-700">
-                    E-mail
-                  </label>
-                  <input id="prepared_by_email" name="prepared_by_email" defaultValue={offer.prepared_by_email ?? ''} className={inputClassName()} />
-                </div>
+                  <div className="md:col-span-1">
+                    <label htmlFor="prepared_by_name" className="mb-2 block text-sm font-medium text-gray-700">
+                      Nabídku zpracoval
+                    </label>
+                    <input id="prepared_by_name" name="prepared_by_name" defaultValue={offer.prepared_by_name ?? author?.name ?? ''} className={inputClassName()} />
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 md:col-span-2 md:grid-cols-2">
+                    <div className="min-w-0">
+                      <label htmlFor="prepared_by_phone" className="mb-2 block text-sm font-medium text-gray-700">
+                        Mobil
+                      </label>
+                      <input id="prepared_by_phone" name="prepared_by_phone" defaultValue={offer.prepared_by_phone ?? ''} className={inputClassName()} />
+                    </div>
+                    <div className="min-w-0">
+                      <label htmlFor="prepared_by_email" className="mb-2 block text-sm font-medium text-gray-700">
+                        E-mail
+                      </label>
+                      <input id="prepared_by_email" name="prepared_by_email" defaultValue={offer.prepared_by_email ?? ''} className={inputClassName()} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -868,7 +871,7 @@ export function OfferDetailLayout({
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                 {OFFER_DEPOT_PRESETS.map((depot) => {
                   const isActive = selectedDepots.has(depot)
                   const isDisabled = !isActive && selectedDepots.size >= OFFER_DEPOT_SELECTION_LIMIT
@@ -956,10 +959,7 @@ export function OfferDetailLayout({
           </>
         )}
 
-        <div
-          className="grid min-w-0 gap-5"
-          style={{ gridTemplateColumns: 'minmax(0, 1fr) 360px' }}
-        >
+        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <section className="flex min-w-0 flex-1 flex-col rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
               OBCHODNÍ PODMÍNKY
@@ -982,26 +982,26 @@ export function OfferDetailLayout({
           {offer.offer_type === 'bsafe24' ? (
             <div aria-hidden="true" />
           ) : (
-            <section className="w-[360px] rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
+            <section className="w-full rounded-3xl border border-gray-200 bg-white p-3 shadow-sm sm:p-5 xl:w-[360px]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900 sm:tracking-[0.18em]">
                 SOUHRN CENOVÉ NABÍDKY
               </div>
-              <div className="mt-4 space-y-3 text-sm">
-                <div className="flex justify-between gap-4">
+              <div className="mt-3 space-y-1.5 text-sm sm:mt-4 sm:space-y-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_150px] items-baseline gap-3 px-0">
                   <span className="text-gray-500">Bez DPH</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-right font-semibold tabular-nums text-gray-900">
                     {formatCurrency(totals.subtotalWithoutVat, offer.currency)}
                   </span>
                 </div>
-                <div className="flex justify-between gap-4">
+                <div className="grid grid-cols-[minmax(0,1fr)_150px] items-baseline gap-3 px-0">
                   <span className="text-gray-500">DPH</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-right font-semibold tabular-nums text-gray-900">
                     {formatCurrency(totals.vatTotal, offer.currency)}
                   </span>
                 </div>
-                <div className="flex justify-between gap-4 border-t border-gray-100 pt-3 text-base">
+                <div className="mt-2 grid grid-cols-[minmax(0,1fr)_150px] items-baseline gap-3 rounded-2xl bg-gray-50 px-0 py-2 text-base sm:mt-0 sm:border-t sm:border-gray-100 sm:bg-transparent sm:pt-3">
                   <span className="font-semibold text-gray-900">Celkem</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-right font-semibold tabular-nums text-gray-900">
                     {formatCurrency(totals.totalWithVat, offer.currency)}
                   </span>
                 </div>

@@ -74,7 +74,7 @@ export function OfferServicesModal({
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
           {services.map((service) => {
             const isActive = selectedServiceSet.has(service)
 
@@ -82,7 +82,7 @@ export function OfferServicesModal({
               <span
                 key={service}
                 className={[
-                  'inline-flex h-8 w-[150px] items-center justify-center rounded-xl border px-2 text-center text-[11px] font-semibold uppercase tracking-[0.04em]',
+                  'inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.02em] sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
                   isActive
                     ? 'border-[#2980B9] bg-[#2980B9] text-white'
                     : 'border-gray-200 bg-gray-100 text-gray-900',
