@@ -74,7 +74,7 @@ function formatPrice(value: number) {
 function toResponse(row: FuelPriceCacheRow) {
   return NextResponse.json({
     success: true,
-    priceText: `${formatPrice(Number(row.display_price_without_vat))},- Kč/l`,
+    priceText: `${formatPrice(Number(row.display_price_without_vat))} Kč/l`,
     source: row.source,
     sourceUrl: row.source_url,
     fetchedAt: row.fetched_at,
@@ -98,6 +98,14 @@ function parseMbenzinDieselPrice(html: string) {
 
   if (todayRowMatch?.[2]) {
     return Number(todayRowMatch[2].replace(',', '.'))
+  }
+
+  const recentPricesMatch = text.match(
+    /Aktuální cena paliv v posledních dnech\s+Datum\s+Benzín\s+Nafta\s+(?:Dnes|Včera|\d{1,2}\.\d{1,2}\.\d{4})\s+(\d{1,3},\d{1,2})\s*Kč\s+(\d{1,3},\d{1,2})\s*Kč/
+  )
+
+  if (recentPricesMatch?.[2]) {
+    return Number(recentPricesMatch[2].replace(',', '.'))
   }
 
   return null

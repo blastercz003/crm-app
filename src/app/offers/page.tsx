@@ -596,73 +596,73 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
 
             <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
               <div className="max-h-[70vh] overflow-auto">
-              <table className="w-full min-w-[1320px] table-fixed border-separate border-spacing-y-2">
-                <colgroup>
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '4%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '17%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '16%' }} />
-                </colgroup>
-                <thead className="sticky top-0 z-10 bg-white">
-                  <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                    <th className="px-2 py-2">Nabídka</th>
-                    <th className="px-2 py-2">Typ</th>
-                    <th className="px-2 py-2">Klient</th>
-                    <th className="px-2 py-2">Autor</th>
-                    <th className="px-2 py-2">Platnost</th>
-                    <th className="px-2 py-2">Poznámka (interní)</th>
-                    <th className="px-2 py-2 text-right">Cena bez DPH</th>
-                    <th className="px-2 py-2 text-center">Stav</th>
-                    <th className="px-2 py-2 text-center">Akce</th>
-                  </tr>
-                </thead>
-                <tbody>
+                <div
+                  className="sticky top-0 z-20 grid min-w-[1320px] bg-white pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 shadow-[0_1px_0_0_#e5e7eb]"
+                  style={{
+                    gridTemplateColumns:
+                      '11% 9% 14% 4% 8% 17% 11% 10% 16%',
+                  }}
+                >
+                  <div className="px-2 py-2">Nabídka</div>
+                  <div className="px-2 py-2">Typ</div>
+                  <div className="px-2 py-2">Klient</div>
+                  <div className="px-2 py-2">Autor</div>
+                  <div className="px-2 py-2">Platnost</div>
+                  <div className="px-2 py-2">Poznámka (interní)</div>
+                  <div className="px-2 py-2 text-right">Cena bez DPH</div>
+                  <div className="px-2 py-2 text-center">Stav</div>
+                  <div className="px-2 py-2 text-center">Akce</div>
+                </div>
+
+                <div className="grid min-w-[1320px] gap-2 pt-2">
                   {sortedOffers.map((offer) => {
                     const client = clientById.get(offer.client_id)
                     const author = profileById.get(offer.created_by)
                     const total = getOfferTotalWithoutVat(itemsByOfferId.get(offer.id) ?? [])
 
                     return (
-                      <tr key={offer.id} className="group">
-                        <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                      <div
+                        key={offer.id}
+                        className="group grid items-center rounded-2xl border border-gray-200 bg-white transition hover:border-gray-300 hover:bg-gray-50/70"
+                        style={{
+                          gridTemplateColumns:
+                            '11% 9% 14% 4% 8% 17% 11% 10% 16%',
+                        }}
+                      >
+                        <div className="min-w-0 px-2 py-2">
                           <div className="text-sm font-semibold text-gray-900">
                             {offer.offer_number}
                           </div>
                           <div className="mt-1 truncate text-[12px] text-gray-500">
                             {offer.title}
                           </div>
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2">
                           <span className={`inline-flex h-8 w-full items-center justify-center rounded-xl border px-2 text-sm font-bold uppercase transition ${getOfferTypeClass(offer.offer_type)}`}>
                             {OFFER_TYPE_LABELS[offer.offer_type]}
                           </span>
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-[12px] text-gray-700 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2 text-[12px] text-gray-700">
                           <div className="truncate">{client?.name ?? 'Neznámý klient'}</div>
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-[12px] text-gray-700 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2 text-[12px] text-gray-700">
                           <div className="truncate">{author?.name ?? 'Neznámý uživatel'}</div>
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-[12px] text-gray-700 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2 text-[12px] text-gray-700">
                           {formatDate(offer.valid_until)}
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2">
                           <OfferNoteInput offerId={offer.id} initialValue={offer.internal_note ?? ''} />
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 text-right align-middle text-[12px] font-semibold text-gray-900 transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2 text-right text-[12px] font-semibold text-gray-900">
                           {formatCurrency(total, offer.currency)}
-                        </td>
-                        <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2">
                           <span className={`inline-flex h-8 ${STATUS_BADGE_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${getStatusClass(offer.status)}`}>
                             {STATUS_LABELS[offer.status]}
                           </span>
-                        </td>
-                        <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+                        </div>
+                        <div className="min-w-0 px-2 py-2">
                           <div className="flex justify-end gap-2">
                             <Link
                               href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
@@ -688,12 +688,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                               DETAIL
                             </Link>
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     )
                   })}
-                </tbody>
-              </table>
+                </div>
               </div>
             </section>
           </>
