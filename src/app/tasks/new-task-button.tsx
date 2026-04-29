@@ -18,9 +18,17 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type NewTaskButtonProps = {
   users: UserOption[]
   clients: ClientOption[]
+  contacts?: ClientContactOption[]
   className?: string
   label?: string
 }
@@ -33,6 +41,7 @@ const initialCreateState: CreateTaskActionState = {
 export default function NewTaskButton({
   users,
   clients,
+  contacts = [],
   className,
   label = 'NOVÝ ÚKOL',
 }: NewTaskButtonProps) {
@@ -67,6 +76,7 @@ export default function NewTaskButton({
           key={formKey}
           users={users}
           clients={clients}
+          contacts={contacts}
           onClose={closeModal}
         />
       ) : null}
@@ -77,10 +87,12 @@ export default function NewTaskButton({
 function CreateTaskModal({
   users,
   clients,
+  contacts,
   onClose,
 }: {
   users: UserOption[]
   clients: ClientOption[]
+  contacts: ClientContactOption[]
   onClose: () => void
 }) {
   const [state, formAction] = useActionState(
@@ -142,6 +154,7 @@ function CreateTaskModal({
               action={formAction}
               users={users}
               clients={clients}
+              contacts={contacts}
               submitLabel="VYTVOŘIT ÚKOL"
               onCancel={onClose}
               cancelLabel="ZRUŠIT"

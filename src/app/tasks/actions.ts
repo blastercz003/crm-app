@@ -63,6 +63,11 @@ function normalizeClientId(value: FormDataEntryValue | null): string | null {
   return str.length ? str : null
 }
 
+function normalizeContactId(value: FormDataEntryValue | null): string | null {
+  const str = String(value ?? '').trim()
+  return str.length ? str : null
+}
+
 async function getClientSnapshot(clientId: string) {
   const supabase = await createClient()
 
@@ -79,12 +84,30 @@ async function getClientSnapshot(clientId: string) {
   return data
 }
 
+async function getClientContactSnapshot(contactId: string, clientId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('client_contacts')
+    .select('id, client_id, name')
+    .eq('id', contactId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (error || !data) {
+    throw new Error('Vybraná kontaktní osoba nebyla nalezena.')
+  }
+
+  return data
+}
+
 async function resolveTaskClientFields(params: {
   clientId: string | null
+  contactId: string | null
   companyName: string | null
   contactPerson: string | null
 }) {
-  const { clientId, companyName, contactPerson } = params
+  const { clientId, contactId, companyName, contactPerson } = params
 
   if (!clientId) {
     return {
@@ -94,6 +117,15 @@ async function resolveTaskClientFields(params: {
   }
 
   const client = await getClientSnapshot(clientId)
+
+  if (contactId) {
+    const contact = await getClientContactSnapshot(contactId, clientId)
+
+    return {
+      companyName: companyName ?? client.name ?? null,
+      contactPerson: contact.name ?? null,
+    }
+  }
 
   return {
     companyName: companyName ?? client.name ?? null,
@@ -113,11 +145,13 @@ async function createTaskRecord(formData: FormData) {
   const priority = normalizePriority(formData.get('priority'))
 
   const clientId = normalizeClientId(formData.get('client_id'))
+  const contactId = normalizeContactId(formData.get('client_contact_id'))
   const rawCompanyName = normalizeOptionalString(formData.get('company_name'))
   const rawContactPerson = normalizeOptionalString(formData.get('contact_person'))
 
   const resolvedFields = await resolveTaskClientFields({
     clientId,
+    contactId,
     companyName: rawCompanyName,
     contactPerson: rawContactPerson,
   })
@@ -136,6 +170,7 @@ async function createTaskRecord(formData: FormData) {
       completed_at: status === 'done' ? new Date().toISOString() : null,
       priority,
       client_id: clientId,
+      client_contact_id: contactId,
       company_name: resolvedFields.companyName,
       contact_person: resolvedFields.contactPerson,
       created_by: currentProfile.id,
@@ -161,6 +196,7 @@ async function createTaskRecord(formData: FormData) {
         status,
         priority,
         client_id: clientId,
+        client_contact_id: contactId,
         company_name: resolvedFields.companyName,
         contact_person: resolvedFields.contactPerson,
         created_by: currentProfile.id,
@@ -217,6 +253,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const submittedPriority = formData.get('priority')
 
   const clientId = normalizeClientId(formData.get('client_id'))
+  const contactId = normalizeContactId(formData.get('client_contact_id'))
   const rawCompanyName = normalizeOptionalString(formData.get('company_name'))
   const rawContactPerson = normalizeOptionalString(formData.get('contact_person'))
 
@@ -227,7 +264,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
     .select(
-      'id, title, created_by, assigned_to, client_id, company_name, contact_person, priority, status'
+      'id, title, created_by, assigned_to, client_id, client_contact_id, company_name, contact_person, priority, status'
     )
     .eq('id', taskId)
     .single()
@@ -254,6 +291,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const resolvedFields = canManageClientLink
     ? await resolveTaskClientFields({
         clientId,
+        contactId,
         companyName: rawCompanyName,
         contactPerson: rawContactPerson,
       })
@@ -273,6 +311,9 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const nextClientId = canManageClientLink
     ? clientId
     : existingTask.client_id
+  const nextContactId = canManageClientLink
+    ? contactId
+    : existingTask.client_contact_id
 
   const completed_at = resolveCompletedAt({
     nextStatus: status,
@@ -290,6 +331,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
       completed_at,
       priority,
       client_id: nextClientId,
+      client_contact_id: nextContactId,
       company_name: resolvedFields.companyName,
       contact_person: resolvedFields.contactPerson,
       assigned_to: nextAssignedTo,
@@ -306,6 +348,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
         status,
         priority,
         client_id: nextClientId,
+        client_contact_id: nextContactId,
         company_name: resolvedFields.companyName,
         contact_person: resolvedFields.contactPerson,
         assigned_to: nextAssignedTo,

@@ -25,11 +25,19 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type JobRow = {
   id: string
   job_number: string
   company_name: string
   client_id?: string | null
+  client_contact_id?: string | null
   contact_person: string | null
   sales_owner: SalesOwner
   start_at: string
@@ -57,6 +65,7 @@ type InlineEditableField =
 type JobsInteractiveTableProps = {
   jobs: JobRow[]
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
   isAdmin: boolean
 }
 
@@ -89,6 +98,7 @@ function normalizeSearchText(value: string) {
 export function JobsInteractiveTable({
   jobs,
   clientSuggestions,
+  clientContacts,
   isAdmin,
 }: JobsInteractiveTableProps) {
   return (
@@ -138,6 +148,7 @@ export function JobsInteractiveTable({
                 key={job.id}
                 job={job}
                 clientSuggestions={clientSuggestions}
+                clientContacts={clientContacts}
                 isAdmin={isAdmin}
               />
             ))}
@@ -151,6 +162,7 @@ export function JobsInteractiveTable({
             key={job.id}
             job={job}
             clientSuggestions={clientSuggestions}
+            clientContacts={clientContacts}
             isAdmin={isAdmin}
           />
         ))}
@@ -162,10 +174,12 @@ export function JobsInteractiveTable({
 function DesktopRow({
   job,
   clientSuggestions,
+  clientContacts,
   isAdmin,
 }: {
   job: JobRow
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
   isAdmin: boolean
 }) {
   return (
@@ -174,6 +188,7 @@ function DesktopRow({
         <EditJobButton
           job={job}
           clientSuggestions={clientSuggestions}
+          clientContacts={clientContacts}
           isAdmin={isAdmin}
         >
           <span className="block truncate print:text-[11px]">
@@ -257,10 +272,12 @@ function DesktopRow({
 function MobileCard({
   job,
   clientSuggestions,
+  clientContacts,
   isAdmin,
 }: {
   job: JobRow
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
   isAdmin: boolean
 }) {
   return (
@@ -270,6 +287,7 @@ function MobileCard({
           <EditJobButton
             job={job}
             clientSuggestions={clientSuggestions}
+            clientContacts={clientContacts}
             className="text-sm font-semibold leading-tight text-gray-900 hover:underline"
             isAdmin={isAdmin}
           >

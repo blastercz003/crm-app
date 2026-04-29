@@ -23,6 +23,7 @@ export type TaskRow = {
   assigned_to: string | null
   created_at: string | null
   client_id: string | null
+  client_contact_id: string | null
   company_name: string | null
   contact_person: string | null
   creator: TaskPerson | TaskPerson[] | null
@@ -50,6 +51,7 @@ export async function getTasksForCurrentUser(): Promise<{
     assigned_to,
     created_at,
     client_id,
+    client_contact_id,
     company_name,
     contact_person,
     creator:created_by (

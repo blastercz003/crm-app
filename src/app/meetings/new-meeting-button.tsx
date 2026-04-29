@@ -12,8 +12,18 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  is_primary: boolean
+}
+
 type NewMeetingButtonProps = {
   clients: ClientOption[]
+  contacts?: ClientContactOption[]
   className?: string
   label?: string
 }
@@ -25,6 +35,7 @@ const initialCreateState: CreateMeetingActionState = {
 
 export function NewMeetingButton({
   clients,
+  contacts = [],
   className,
   label = 'NOVÁ SCHŮZKA',
 }: NewMeetingButtonProps) {
@@ -58,6 +69,7 @@ export function NewMeetingButton({
         <CreateMeetingModal
           key={formKey}
           clients={clients}
+          contacts={contacts}
           onClose={closeModal}
         />
       ) : null}
@@ -67,9 +79,11 @@ export function NewMeetingButton({
 
 function CreateMeetingModal({
   clients,
+  contacts,
   onClose,
 }: {
   clients: ClientOption[]
+  contacts: ClientContactOption[]
   onClose: () => void
 }) {
   const [state, formAction] = useActionState(
@@ -132,6 +146,7 @@ function CreateMeetingModal({
               onCancel={onClose}
               cancelLabel="ZRUŠIT"
               clients={clients}
+              contacts={contacts}
               error={state.error}
             />
           </div>

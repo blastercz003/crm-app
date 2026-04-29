@@ -12,6 +12,7 @@ export type OfferRow = {
   id: string
   offer_number: string
   client_id: string
+  client_contact_id: string | null
   created_by: string
   last_edited_by: string | null
   approver_user_id: string | null
@@ -78,6 +79,13 @@ export type OfferClient = {
   contact_email: string | null
   address: string | null
   created_by?: string | null
+}
+
+export type OfferClientContact = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
 }
 
 export type OfferProfile = {

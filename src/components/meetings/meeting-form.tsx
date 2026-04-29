@@ -8,9 +8,19 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  is_primary: boolean
+}
+
 type MeetingFormValues = {
   id?: string
   client_id?: string | null
+  client_contact_id?: string | null
   company_name?: string | null
   contact_person?: string | null
   contact_phone?: string | null
@@ -33,6 +43,7 @@ type MeetingFormProps = {
   cancelLabel?: string
   initialValues?: MeetingFormValues
   clients: ClientOption[]
+  contacts?: ClientContactOption[]
   error?: string | null
 }
 
@@ -82,20 +93,29 @@ export function MeetingForm({
   cancelLabel = 'ZRUŠIT',
   initialValues,
   clients,
+  contacts = [],
   error,
 }: MeetingFormProps) {
   const companyInputRef = useRef<HTMLInputElement>(null)
 
   const initialCompanyName = initialValues?.company_name ?? ''
   const initialClientId = initialValues?.client_id ?? ''
+  const initialContactId = initialValues?.client_contact_id ?? ''
 
   const [companyName, setCompanyName] = useState(initialCompanyName)
   const [selectedClientId, setSelectedClientId] = useState(initialClientId)
+  const [selectedContactId, setSelectedContactId] = useState(initialContactId)
+  const [contactPerson, setContactPerson] = useState(initialValues?.contact_person ?? '')
+  const [contactPhone, setContactPhone] = useState(initialValues?.contact_phone ?? '')
+  const [contactEmail, setContactEmail] = useState(initialValues?.contact_email ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
   const selectedClient =
     clients.find((client) => client.id === selectedClientId) ?? null
+  const selectedClientContacts = contacts.filter(
+    (contact) => contact.client_id === selectedClientId
+  )
 
   const companySelectionIsValid =
     Boolean(selectedClientId) &&
@@ -120,6 +140,7 @@ export function MeetingForm({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
       return
     }
 
@@ -131,6 +152,7 @@ export function MeetingForm({
     if (exactMatch) {
       setCompanyName(exactMatch.name)
       setSelectedClientId(exactMatch.id)
+      setSelectedContactId('')
       return
     }
 
@@ -144,6 +166,7 @@ export function MeetingForm({
 
       setCompanyName(completedName)
       setSelectedClientId(matchedClient.id)
+      setSelectedContactId('')
 
       setAutocompleteSelection(nextRawValue.length, completedName.length)
       return
@@ -151,6 +174,7 @@ export function MeetingForm({
 
     setCompanyName(nextRawValue)
     setSelectedClientId('')
+    setSelectedContactId('')
   }
 
   function handleCompanyFocus() {
@@ -167,6 +191,7 @@ export function MeetingForm({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
       return
     }
 
@@ -182,6 +207,25 @@ export function MeetingForm({
     }
 
     setSelectedClientId('')
+    setSelectedContactId('')
+  }
+
+  function handleContactChange(nextContactId: string) {
+    setSelectedContactId(nextContactId)
+
+    const nextContact =
+      selectedClientContacts.find((contact) => contact.id === nextContactId) ?? null
+
+    if (!nextContact) {
+      setContactPerson('')
+      setContactPhone('')
+      setContactEmail('')
+      return
+    }
+
+    setContactPerson(nextContact.name)
+    setContactPhone(nextContact.phone ?? '')
+    setContactEmail(nextContact.email ?? '')
   }
 
   const companyStatusText = (() => {
@@ -212,6 +256,7 @@ export function MeetingForm({
       ) : null}
 
       <input type="hidden" name="client_id" value={selectedClientId} />
+      <input type="hidden" name="client_contact_id" value={selectedContactId} />
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
@@ -264,14 +309,35 @@ export function MeetingForm({
           >
             Kontaktní osoba
           </label>
-          <input
-            id="contact_person"
-            name="contact_person"
-            type="text"
-            defaultValue={initialValues?.contact_person ?? ''}
-            placeholder="Např. Jan Novák"
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-          />
+          {selectedClientContacts.length > 0 ? (
+            <>
+              <select
+                id="client_contact_select"
+                value={selectedContactId}
+                onChange={(event) => handleContactChange(event.target.value)}
+                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+              >
+                <option value="">Bez konkrétní osoby</option>
+                {selectedClientContacts.map((contact) => (
+                  <option key={contact.id} value={contact.id}>
+                    {contact.name}
+                    {contact.is_primary ? ' (hlavní)' : ''}
+                  </option>
+                ))}
+              </select>
+              <input type="hidden" name="contact_person" value={contactPerson} />
+            </>
+          ) : (
+            <input
+              id="contact_person"
+              name="contact_person"
+              type="text"
+              value={contactPerson}
+              onChange={(event) => setContactPerson(event.target.value)}
+              placeholder="Např. Jan Novák"
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+            />
+          )}
         </div>
 
         <div className="space-y-2">
@@ -285,7 +351,8 @@ export function MeetingForm({
             id="contact_phone"
             name="contact_phone"
             type="text"
-            defaultValue={initialValues?.contact_phone ?? ''}
+            value={contactPhone}
+            onChange={(event) => setContactPhone(event.target.value)}
             placeholder="Např. +420 777 123 456"
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
           />
@@ -302,7 +369,8 @@ export function MeetingForm({
             id="contact_email"
             name="contact_email"
             type="email"
-            defaultValue={initialValues?.contact_email ?? ''}
+            value={contactEmail}
+            onChange={(event) => setContactEmail(event.target.value)}
             placeholder="Např. novak@firma.cz"
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
           />

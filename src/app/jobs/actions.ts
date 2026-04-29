@@ -58,6 +58,12 @@ type ClientRow = {
   name: string | null
 }
 
+type ClientContactRow = {
+  id: string
+  client_id: string
+  name: string | null
+}
+
 const SALES_OWNER_VALUES = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME'] as const
 const JOB_STATUS_VALUES = [
   'nova',
@@ -94,10 +100,6 @@ type InlineEditableField = (typeof INLINE_EDITABLE_FIELDS)[number]
 function normalizeText(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
   return text.length > 0 ? text : null
-}
-
-function normalizeRequiredText(value: FormDataEntryValue | null) {
-  return String(value ?? '').trim()
 }
 
 function normalizeUuid(value: FormDataEntryValue | null) {
@@ -274,8 +276,9 @@ async function requireJobsAccess() {
   }
 
   const typedProfile = profile as ProfilePermissionRow | null
+  const isAdmin = typedProfile?.role === 'admin'
 
-  if (!typedProfile?.can_view_jobs) {
+  if (!isAdmin && !typedProfile?.can_view_jobs) {
     return {
       supabase,
       user: null,
@@ -288,7 +291,7 @@ async function requireJobsAccess() {
     supabase,
     user,
     error: null,
-    isAdmin: typedProfile?.role === 'admin',
+    isAdmin,
   }
 }
 
@@ -342,6 +345,45 @@ async function resolveClientSelection(
   }
 }
 
+async function resolveJobContactSelection(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string,
+  formData: FormData
+) {
+  const contactId = normalizeUuid(formData.get('client_contact_id'))
+
+  if (!contactId) {
+    return {
+      error: null,
+      contactId: null,
+      contactPerson: normalizeText(formData.get('contact_person')),
+    }
+  }
+
+  const { data: contact, error } = await supabase
+    .from('client_contacts')
+    .select('id, client_id, name')
+    .eq('id', contactId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (error || !contact) {
+    return {
+      error: 'Vybranou kontaktní osobu se nepodařilo ověřit.',
+      contactId: null,
+      contactPerson: null,
+    }
+  }
+
+  const typedContact = contact as ClientContactRow
+
+  return {
+    error: null,
+    contactId: String(typedContact.id),
+    contactPerson: typedContact.name?.trim() || null,
+  }
+}
+
 async function getJobPayload(
   supabase: Awaited<ReturnType<typeof createClient>>,
   formData: FormData
@@ -358,7 +400,19 @@ async function getJobPayload(
     }
   }
 
-  const contactPerson = normalizeText(formData.get('contact_person'))
+  const {
+    error: contactError,
+    contactId,
+    contactPerson,
+  } = await resolveJobContactSelection(supabase, client.id, formData)
+
+  if (contactError) {
+    return {
+      error: contactError,
+      payload: null,
+    }
+  }
+
   const salesOwner = normalizeSalesOwner(formData.get('sales_owner'))
   const startAt = parseDateTimeLocalAsPrague(formData.get('start_at'))
   const endAt = parseDateTimeLocalAsPrague(formData.get('end_at'))
@@ -395,6 +449,7 @@ async function getJobPayload(
     error: null,
     payload: {
       client_id: client.id,
+      client_contact_id: contactId,
       company_name: client.name,
       contact_person: contactPerson,
       sales_owner: salesOwner,
@@ -933,7 +988,9 @@ export async function updateJobInlineFieldAction(
       .from('jobs')
       .update({
         client_id: client.id,
+        client_contact_id: null,
         company_name: client.name,
+        contact_person: null,
       })
       .eq('id', normalizedJobId)
 
@@ -1023,6 +1080,30 @@ export async function updateJobInlineFieldAction(
   }
 
   const normalizedValue = normalizeText(value)
+
+  if (field === 'contact_person') {
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        contact_person: normalizedValue,
+        client_contact_id: null,
+      })
+      .eq('id', normalizedJobId)
+
+    if (error) {
+      return {
+        success: false,
+        error: 'Změnu se nepodařilo uložit.',
+      }
+    }
+
+    revalidateAllRelatedPaths()
+
+    return {
+      success: true,
+      error: null,
+    }
+  }
 
   const { error } = await supabase
     .from('jobs')

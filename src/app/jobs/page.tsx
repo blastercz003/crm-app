@@ -27,6 +27,8 @@ export type SortMode = 'job_number_desc' | 'start_nearest'
 export type JobRow = {
   id: string
   job_number: string
+  client_id?: string | null
+  client_contact_id?: string | null
   company_name: string
   contact_person: string | null
   sales_owner: SalesOwner
@@ -52,6 +54,13 @@ type ClientSuggestionRow = {
 type ClientOption = {
   id: string
   name: string
+}
+
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
 }
 
 type ProfilePermissionRow = {
@@ -269,14 +278,54 @@ export default async function JobsPage({
   }
 
   const typedProfile = profile as ProfilePermissionRow | null
+  const isAdmin = typedProfile?.role === 'admin'
 
-  if (!typedProfile?.can_view_jobs) {
+  if (!isAdmin && !typedProfile?.can_view_jobs) {
     redirect('/dashboard')
   }
 
-  const isAdmin = typedProfile?.role === 'admin'
+  let clientsRequest = supabase
+    .from('clients')
+    .select('id, name')
+    .order('name', { ascending: true })
+
+  if (!isAdmin) {
+    clientsRequest = clientsRequest.eq('created_by', user.id)
+  }
+
+  const { data: clientSuggestionsData, error: clientsError } =
+    await clientsRequest
+
+  if (clientsError) {
+    throw new Error('Nepodařilo se načíst firmy pro našeptávání.')
+  }
+
+  const clientOptions = Array.from(
+    new Map(
+      ((clientSuggestionsData ?? []) as ClientSuggestionRow[])
+        .map((item) => ({
+          id: String(item.id ?? '').trim(),
+          name: item.name?.trim() ?? '',
+        }))
+        .filter(
+          (item): item is ClientOption =>
+            Boolean(item.id) && Boolean(item.name)
+        )
+        .map((item) => [item.id, item])
+    ).values()
+  )
+
+  const visibleClientIds = clientOptions.map((client) => client.id)
 
   let request = supabase.from('jobs').select('*')
+
+  if (!isAdmin) {
+    if (visibleClientIds.length > 0) {
+      request = request.in('client_id', visibleClientIds)
+    } else {
+      request = request.eq('client_id', '00000000-0000-0000-0000-000000000000')
+    }
+  }
 
   if (query) {
     request = request.or(buildSearchFilter(query))
@@ -304,43 +353,46 @@ export default async function JobsPage({
     request = request.order('job_number', { ascending: false })
   }
 
+  let contactsRequest = supabase
+    .from('client_contacts')
+    .select('id, client_id, name, is_primary')
+    .order('is_primary', { ascending: false })
+    .order('name', { ascending: true })
+
+  if (!isAdmin) {
+    if (visibleClientIds.length > 0) {
+      contactsRequest = contactsRequest.in('client_id', visibleClientIds)
+    } else {
+      contactsRequest = contactsRequest.eq(
+        'client_id',
+        '00000000-0000-0000-0000-000000000000'
+      )
+    }
+  }
+
   const [
     { data: jobs, error },
-    { data: clientSuggestionsData, error: clientsError },
-  ] = await Promise.all([
-    request,
-    supabase
-      .from('clients')
-      .select('id, name')
-      .order('name', { ascending: true }),
-  ])
+    { data: clientContactsData, error: contactsError },
+  ] = await Promise.all([request, contactsRequest])
 
   if (error) {
     throw new Error('Nepodařilo se načíst zakázky.')
   }
 
-  if (clientsError) {
-    throw new Error('Nepodařilo se načíst firmy pro našeptávání.')
+  if (contactsError) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
   }
 
   const typedJobs = (jobs ?? []) as JobRow[]
 
-  const clientOptions = Array.from(
-    new Map(
-      ((clientSuggestionsData ?? []) as ClientSuggestionRow[])
-        .map((item) => ({
-          id: String(item.id ?? '').trim(),
-          name: item.name?.trim() ?? '',
-        }))
-        .filter(
-          (item): item is ClientOption =>
-            Boolean(item.id) && Boolean(item.name)
-        )
-        .map((item) => [item.id, item])
-    ).values()
-  )
-
-  const clientSuggestions = clientOptions.map((item) => item.name)
+  const clientContacts = ((clientContactsData ?? []) as ClientContactOption[])
+    .map((item) => ({
+      id: String(item.id ?? '').trim(),
+      client_id: String(item.client_id ?? '').trim(),
+      name: item.name?.trim() ?? '',
+      is_primary: Boolean(item.is_primary),
+    }))
+    .filter((item) => Boolean(item.id) && Boolean(item.client_id) && Boolean(item.name))
 
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo
@@ -449,6 +501,7 @@ export default async function JobsPage({
 
                 <NewJobButton
                   clientSuggestions={clientOptions}
+                  clientContacts={clientContacts}
                   isAdmin={isAdmin}
                   className="inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]"
                 />
@@ -675,6 +728,7 @@ export default async function JobsPage({
               <JobsInteractiveTable
                 jobs={typedJobs}
                 clientSuggestions={clientOptions}
+                clientContacts={clientContacts}
                 isAdmin={isAdmin}
               />
             </div>

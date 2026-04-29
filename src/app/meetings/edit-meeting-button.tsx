@@ -12,9 +12,19 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  is_primary: boolean
+}
+
 type MeetingFormValues = {
   id: string
   client_id?: string | null
+  client_contact_id?: string | null
   company_name?: string | null
   contact_person?: string | null
   contact_phone?: string | null
@@ -32,6 +42,7 @@ type MeetingFormValues = {
 type EditMeetingButtonProps = {
   meeting: MeetingFormValues
   clients: ClientOption[]
+  contacts?: ClientContactOption[]
   className?: string
   label?: string
 }
@@ -44,6 +55,7 @@ const initialUpdateState: UpdateMeetingActionState = {
 export function EditMeetingButton({
   meeting,
   clients,
+  contacts = [],
   className,
   label = 'UPRAVIT',
 }: EditMeetingButtonProps) {
@@ -78,6 +90,7 @@ export function EditMeetingButton({
           key={formKey}
           meeting={meeting}
           clients={clients}
+          contacts={contacts}
           onClose={closeModal}
         />
       ) : null}
@@ -88,10 +101,12 @@ export function EditMeetingButton({
 function EditMeetingModal({
   meeting,
   clients,
+  contacts,
   onClose,
 }: {
   meeting: MeetingFormValues
   clients: ClientOption[]
+  contacts: ClientContactOption[]
   onClose: () => void
 }) {
   const [state, formAction] = useActionState(
@@ -155,6 +170,7 @@ function EditMeetingModal({
               cancelLabel="ZRUŠIT"
               initialValues={meeting}
               clients={clients}
+              contacts={contacts}
               error={state.error}
             />
           </div>

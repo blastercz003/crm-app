@@ -5,6 +5,12 @@ import {
   getPriorityBadgeClass,
   getPriorityLabel,
 } from '@/app/tasks/taskUi'
+import {
+  EditClientContactButton,
+  NewClientContactButton,
+} from '../client-contact-buttons'
+import { deleteClientContact, setPrimaryClientContact } from '../actions'
+import { EditClientButton } from '../edit-client-button'
 
 type ClientRow = {
   id: string
@@ -16,6 +22,22 @@ type ClientRow = {
   address: string | null
   note: string | null
   created_at: string
+}
+
+type ProfileRow = {
+  role: string | null
+  can_view_jobs: boolean | null
+}
+
+type ClientContactRow = {
+  id: string
+  client_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  role: string | null
+  note: string | null
+  is_primary: boolean
 }
 
 type ClientMeetingRow = {
@@ -55,6 +77,19 @@ type ClientOfferRow = {
   status: 'draft' | 'submitted' | 'changes_requested' | 'approved' | 'ordered' | 'rejected'
   valid_until: string | null
   updated_at: string
+}
+
+type ClientJobRow = {
+  id: string
+  job_number: string
+  contact_person: string | null
+  sales_owner: 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+  start_at: string
+  end_at: string
+  site_address: string | null
+  store_number: string | null
+  job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
+  invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
 }
 
 function formatDate(value: string) {
@@ -117,6 +152,28 @@ function getOfferStatusClass(status: ClientOfferRow['status']) {
   return 'bg-zinc-100 text-zinc-600'
 }
 
+function getJobStatusLabel(status: ClientJobRow['job_status']) {
+  if (status === 'k_reseni') return 'K řešení'
+  if (status === 'realizace') return 'Realizace'
+  if (status === 'ukoncena') return 'Ukončená'
+  if (status === 'storno') return 'Storno'
+  return 'Nová'
+}
+
+function getJobStatusClass(status: ClientJobRow['job_status']) {
+  if (status === 'realizace') return 'bg-[#2980B9]/10 text-[#236f9f]'
+  if (status === 'ukoncena') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'storno') return 'bg-red-100 text-red-700'
+  if (status === 'k_reseni') return 'bg-amber-100 text-amber-700'
+  return 'bg-slate-100 text-slate-700'
+}
+
+function getInvoiceStatusLabel(status: ClientJobRow['invoice_status']) {
+  if (status === 'k_fakturaci') return 'K fakturaci'
+  if (status === 'vyfakturovano') return 'Vyfakturováno'
+  return 'Bez faktury'
+}
+
 export default async function ClientDetailPage({
   params,
 }: {
@@ -133,8 +190,60 @@ export default async function ClientDetailPage({
     redirect('/login')
   }
 
-  const [clientResponse, meetingsResponse, tasksResponse, offersResponse] = await Promise.all([
-    supabase.from('clients').select('*').eq('id', id).single(),
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, can_view_jobs')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
+
+  const typedProfile = profile as ProfileRow | null
+  const isAdmin = typedProfile?.role === 'admin'
+  const canViewJobs = isAdmin || Boolean(typedProfile?.can_view_jobs)
+
+  let clientRequest = supabase.from('clients').select('*').eq('id', id)
+
+  if (!isAdmin) {
+    clientRequest = clientRequest.eq('created_by', user.id)
+  }
+
+  const jobsRequest = canViewJobs
+    ? supabase
+        .from('jobs')
+        .select(`
+          id,
+          job_number,
+          contact_person,
+          sales_owner,
+          start_at,
+          end_at,
+          site_address,
+          store_number,
+          job_status,
+          invoice_status
+        `)
+        .eq('client_id', id)
+        .order('start_at', { ascending: false })
+    : Promise.resolve({ data: [], error: null })
+
+  const [
+    clientResponse,
+    contactsResponse,
+    meetingsResponse,
+    tasksResponse,
+    offersResponse,
+    jobsResponse,
+  ] = await Promise.all([
+    clientRequest.single(),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, phone, email, role, note, is_primary')
+      .eq('client_id', id)
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
     supabase
       .from('meetings')
       .select('id, title, meeting_datetime, status, contact_person, company_name')
@@ -163,12 +272,15 @@ export default async function ClientDetailPage({
       .select('id, offer_number, title, status, valid_until, updated_at')
       .eq('client_id', id)
       .order('updated_at', { ascending: false }),
+    jobsRequest,
   ])
 
   const { data: client, error: clientError } = clientResponse
+  const { data: contacts, error: contactsError } = contactsResponse
   const { data: meetings, error: meetingsError } = meetingsResponse
   const { data: tasks, error: tasksError } = tasksResponse
   const { data: offers, error: offersError } = offersResponse
+  const { data: jobs, error: jobsError } = jobsResponse
 
   if (clientError || !client) {
     notFound()
@@ -176,6 +288,10 @@ export default async function ClientDetailPage({
 
   if (meetingsError) {
     throw new Error('Nepodařilo se načíst schůzky klienta.')
+  }
+
+  if (contactsError) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klienta.')
   }
 
   if (tasksError) {
@@ -186,152 +302,227 @@ export default async function ClientDetailPage({
     throw new Error('Nepodařilo se načíst nabídky klienta.')
   }
 
+  if (jobsError) {
+    throw new Error('Nepodařilo se načíst zakázky klienta.')
+  }
+
   const typedClient = client as ClientRow
+  const typedContacts = (contacts ?? []) as ClientContactRow[]
   const typedMeetings = (meetings ?? []) as ClientMeetingRow[]
   const typedTasks = (tasks ?? []) as ClientTaskRow[]
   const typedOffers = (offers ?? []) as ClientOfferRow[]
+  const typedJobs = (jobs ?? []) as ClientJobRow[]
+  const summaryItems = [
+    { label: 'Kontakty', value: typedContacts.length, tone: 'bg-sky-50 text-sky-700 ring-sky-100' },
+    { label: 'Schůzky', value: typedMeetings.length, tone: 'bg-amber-50 text-amber-700 ring-amber-100' },
+    { label: 'Úkoly', value: typedTasks.length, tone: 'bg-slate-100 text-slate-700 ring-slate-200' },
+    { label: 'Nabídky', value: typedOffers.length, tone: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
+    ...(canViewJobs
+      ? [{ label: 'Zakázky', value: typedJobs.length, tone: 'bg-violet-50 text-violet-700 ring-violet-100' }]
+      : []),
+  ]
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-                  {typedClient.name}
-                </h1>
-
-                {typedClient.ico ? (
-                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                    IČO: {typedClient.ico}
-                  </span>
-                ) : null}
-              </div>
-
-              <p className="text-sm text-gray-500">
-                Klient vytvořen {formatDate(typedClient.created_at)}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href={`/clients/${typedClient.id}/edit`}
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                UPRAVIT KLIENTA
-              </Link>
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-5">
+            <div className="flex gap-2 sm:hidden">
+              <EditClientButton
+                client={typedClient}
+                label="UPRAVIT KLIENTA"
+                className="inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              />
 
               <Link
                 href="/clients"
-                className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                className="inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl px-3 text-sm font-medium text-white transition hover:opacity-90"
                 style={{ backgroundColor: '#2980B9' }}
               >
                 ZPĚT NA KLIENTY
               </Link>
             </div>
+
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+                    {typedClient.name}
+                  </h1>
+
+                  {typedClient.ico ? (
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                      IČO: {typedClient.ico}
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-2 grid gap-1.5 text-sm text-gray-600 lg:grid-cols-2 xl:max-w-3xl">
+                  <p className="min-w-0">
+                    <span className="font-medium text-gray-900">Adresa:</span>{' '}
+                    {typedClient.address || '—'}
+                  </p>
+                  <p>
+                    <span className="font-medium text-gray-900">Vytvořeno:</span>{' '}
+                    {formatDate(typedClient.created_at)}
+                  </p>
+                </div>
+
+                <div className="mt-5 w-full sm:w-fit">
+                  <div className="flex w-full flex-nowrap gap-1.5 overflow-hidden sm:w-fit sm:gap-2">
+                    {summaryItems.map((item) => (
+                      <div
+                        key={item.label}
+                        className={`inline-flex min-w-0 flex-1 items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-1 text-[9px] font-medium ring-1 min-[390px]:gap-1 min-[390px]:px-2 min-[390px]:text-[10px] sm:w-[145px] sm:flex-none sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm ${item.tone}`}
+                      >
+                        <span>{item.label}</span>
+                        <span className="font-semibold sm:inline-flex sm:h-6 sm:min-w-6 sm:items-center sm:justify-center sm:rounded-full sm:bg-white/80 sm:px-1.5 sm:text-xs">
+                          {item.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Interní poznámka
+                    </p>
+                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                      {typedClient.note || 'Zatím bez poznámky.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden gap-2 sm:flex sm:justify-end xl:w-[320px]">
+                <EditClientButton
+                  client={typedClient}
+                  label="UPRAVIT KLIENTA"
+                  className="inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50 sm:w-[150px]"
+                />
+
+                <Link
+                  href="/clients"
+                  className="inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl px-4 text-sm font-medium text-white transition hover:opacity-90 sm:w-[150px]"
+                  style={{ backgroundColor: '#2980B9' }}
+                >
+                  ZPĚT NA KLIENTY
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="mb-5">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Základní informace
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Přehled hlavních údajů o klientovi.
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Název firmy
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-gray-900">
-                    {typedClient.name}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    IČO
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-gray-900">
-                    {typedClient.ico || '—'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Kontaktní osoba
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-gray-900">
-                    {typedClient.contact_person || '—'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Telefon
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-gray-900">
-                    {typedClient.contact_phone || '—'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 sm:col-span-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    E-mail
-                  </p>
-                  <p className="mt-2 break-all text-sm font-medium text-gray-900">
-                    {typedClient.contact_email || '—'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 sm:col-span-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Adresa
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-gray-900">
-                    {typedClient.address || '—'}
-                  </p>
-                </div>
-              </div>
+        <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Kontaktní osoby
+              </h2>
             </div>
+
+            <NewClientContactButton
+              clientId={typedClient.id}
+              hasContacts={typedContacts.length > 0}
+              className="inline-flex h-10 w-[150px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl bg-black px-4 text-sm font-medium text-white transition hover:bg-gray-800"
+            />
           </div>
 
-          <div className="lg:col-span-1">
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="mb-5">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Poznámka
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Interní informace ke klientovi.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">
-                  {typedClient.note || 'Zatím bez poznámky.'}
-                </p>
-              </div>
+          {typedContacts.length === 0 ? (
+            <div className="m-5 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 sm:m-6">
+              Klient zatím nemá žádné kontaktní osoby.
             </div>
-          </div>
+          ) : (
+            <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2 xl:grid-cols-3">
+              {typedContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="flex min-h-[168px] flex-col rounded-2xl border border-gray-200 bg-gray-50 p-3.5"
+                >
+                  <div className="flex flex-1 flex-col">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          {contact.name}
+                        </h3>
+
+                        {contact.is_primary ? (
+                          <span className="rounded-full bg-[#2980B9]/10 px-2.5 py-1 text-xs font-medium text-[#236f9f]">
+                            Hlavní kontakt
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {contact.role ? (
+                        <p className="mt-1 text-sm text-gray-600">
+                          {contact.role}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-2 grid gap-0.5 text-sm text-gray-600">
+                      <p>Telefon: {contact.phone || '—'}</p>
+                      <p className="break-all">E-mail: {contact.email || '—'}</p>
+                      {contact.note ? (
+                        <p className="mt-1.5 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-gray-500">
+                          {contact.note}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-auto flex flex-wrap justify-end gap-2 pt-3">
+                    {!contact.is_primary ? (
+                      <form action={setPrimaryClientContact}>
+                        <input type="hidden" name="id" value={contact.id} />
+                        <input
+                          type="hidden"
+                          name="client_id"
+                          value={typedClient.id}
+                        />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 transition hover:bg-gray-100"
+                        >
+                          NASTAVIT HLAVNÍ
+                        </button>
+                      </form>
+                    ) : null}
+
+                    <EditClientContactButton contact={contact} />
+
+                    <form action={deleteClientContact}>
+                      <input type="hidden" name="id" value={contact.id} />
+                      <input
+                        type="hidden"
+                        name="client_id"
+                        value={typedClient.id}
+                      />
+                      <button
+                        type="submit"
+                        className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
+                      >
+                        SMAZAT
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Schůzky klienta
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Přehled všech schůzek navázaných na tohoto klienta.
-              </p>
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Schůzky klienta
+                </h2>
+              </div>
+              <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 px-3 text-base font-semibold text-amber-700 ring-1 ring-amber-100">
+                {typedMeetings.length}
+              </span>
             </div>
 
             {typedMeetings.length === 0 ? (
@@ -344,15 +535,15 @@ export default async function ClientDetailPage({
                   <Link
                     key={meeting.id}
                     href={`/meetings/${meeting.id}`}
-                    className="block rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100"
+                    className="block min-h-[118px] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 sm:h-[118px]"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="truncate text-sm font-medium text-gray-900">
                           {meeting.title || 'Bez názvu schůzky'}
                         </p>
 
-                        <p className="mt-1 text-sm text-gray-600">
+                        <p className="mt-1 truncate text-sm text-gray-600">
                           {meeting.contact_person ||
                             meeting.company_name ||
                             'Bez doplňujících údajů'}
@@ -382,13 +573,15 @@ export default async function ClientDetailPage({
           </div>
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Úkoly klienta
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Přehled úkolů navázaných na tohoto klienta.
-              </p>
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Úkoly klienta
+                </h2>
+              </div>
+              <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 px-3 text-base font-semibold text-slate-700 ring-1 ring-slate-200">
+                {typedTasks.length}
+              </span>
             </div>
 
             {typedTasks.length === 0 ? (
@@ -401,46 +594,52 @@ export default async function ClientDetailPage({
                   <Link
                     key={task.id}
                     href={`/tasks/${task.id}/edit`}
-                    className="block rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100"
+                    className="relative block min-h-[118px] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 sm:h-[118px]"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">
+                    <div className="flex h-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <div className="min-w-0 pr-[178px] sm:flex-1 sm:pr-0">
+                        <p className="truncate text-sm font-medium text-gray-900">
                           {task.title}
                         </p>
 
-                        <p className="mt-1 text-sm text-gray-600">
+                        <p className="mt-1 truncate text-sm text-gray-600">
                           {task.contact_person || 'Bez kontaktní osoby'}
                         </p>
 
-                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-                          <span>Termín: {task.due_date || 'Bez termínu'}</span>
-                          <span>Řeší: {resolveAssigneeName(task.assignee)}</span>
-                        </div>
-
                         {task.note ? (
-                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">
+                          <p className="mt-2 line-clamp-1 text-xs leading-5 text-gray-500 sm:line-clamp-2">
                             {task.note}
                           </p>
                         ) : null}
                       </div>
 
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getTaskStatusClass(task.status)}`}
-                      >
-                        {getTaskStatusLabel(task.status)}
-                      </span>
-                    </div>
+                      <div className="absolute bottom-4 right-4 top-4 flex w-[170px] shrink-0 flex-col items-end justify-between gap-2 text-right sm:static sm:h-full sm:w-[265px]">
+                        <div className="flex w-full min-w-0 flex-nowrap justify-end gap-1.5 overflow-hidden">
+                          {task.priority ? (
+                            <span
+                              className={`inline-flex min-w-0 max-w-[108px] shrink items-center rounded-full px-2.5 py-1 text-xs font-medium sm:max-w-[155px] ${getPriorityBadgeClass(task.priority)}`}
+                            >
+                              <span className="truncate">
+                                Priorita: {getPriorityLabel(task.priority)}
+                              </span>
+                            </span>
+                          ) : null}
 
-                    {task.priority ? (
-                      <div className="mt-3">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
-                        >
-                          Priorita: {getPriorityLabel(task.priority)}
-                        </span>
+                          <span
+                            className={`inline-flex min-w-0 max-w-[62px] shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium sm:max-w-[100px] ${getTaskStatusClass(task.status)}`}
+                          >
+                            <span className="truncate">
+                              {getTaskStatusLabel(task.status)}
+                            </span>
+                          </span>
+                        </div>
+
+                        <div className="flex w-full min-w-0 flex-nowrap justify-end gap-2 overflow-hidden text-xs text-gray-500">
+                          <p className="max-w-[95px] truncate sm:max-w-none">Termín: {task.due_date || 'Bez termínu'}</p>
+                          <p className="max-w-[64px] truncate sm:max-w-none">Řeší: {resolveAssigneeName(task.assignee)}</p>
+                        </div>
                       </div>
-                    ) : null}
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -448,48 +647,127 @@ export default async function ClientDetailPage({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Nabídky klienta
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Přehled nabídek navázaných na tohoto klienta.
-            </p>
+        <section className="grid gap-6 xl:grid-cols-2">
+          <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Nabídky klienta
+                </h2>
+              </div>
+              <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 px-3 text-base font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                {typedOffers.length}
+              </span>
+            </div>
+
+            {typedOffers.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
+                Klient zatím nemá žádné nabídky.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {typedOffers.map((offer) => (
+                  <Link
+                    key={offer.id}
+                    href={`/offers/${offer.id}`}
+                    className="block min-h-[118px] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 sm:h-[118px]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {offer.offer_number}
+                        </p>
+                        <p className="mt-1 truncate text-sm text-gray-600">
+                          {offer.title}
+                        </p>
+                        <p className="mt-2 text-xs text-gray-500">
+                          Platnost: {formatDate(offer.valid_until ?? offer.updated_at)}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusClass(offer.status)}`}
+                      >
+                        {getOfferStatusLabel(offer.status)}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
-          {typedOffers.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
-              Klient zatím nemá žádné nabídky.
+          {canViewJobs ? (
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Zakázky klienta
+                  </h2>
+                </div>
+                <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-violet-50 px-3 text-base font-semibold text-violet-700 ring-1 ring-violet-100">
+                  {typedJobs.length}
+                </span>
+              </div>
+
+              {typedJobs.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
+                  Klient zatím nemá žádné zakázky.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {typedJobs.map((job) => (
+                    <Link
+                      key={job.id}
+                      href="/jobs"
+                      className="block min-h-[118px] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 sm:h-[118px]"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-gray-900">
+                            {job.job_number}
+                          </p>
+                          <p className="mt-1 truncate text-sm text-gray-600">
+                            {job.contact_person || 'Bez kontaktní osoby'}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden text-xs text-gray-500">
+                            <span className="truncate">Začátek: {formatDateTime(job.start_at)}</span>
+                            <span className="truncate">Konec: {formatDateTime(job.end_at)}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden text-xs text-gray-500">
+                            <span className="truncate">Obchodník: {job.sales_owner}</span>
+                            <span className="truncate">Fakturace: {getInvoiceStatusLabel(job.invoice_status)}</span>
+                          </div>
+                          {job.site_address || job.store_number ? (
+                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">
+                              {[
+                                job.site_address,
+                                job.store_number ? `Prodejna ${job.store_number}` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getJobStatusClass(job.job_status)}`}
+                        >
+                          {getJobStatusLabel(job.job_status)}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {typedOffers.map((offer) => (
-                <Link
-                  key={offer.id}
-                  href={`/offers/${offer.id}`}
-                  className="block rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {offer.offer_number}
-                      </p>
-                      <p className="mt-1 truncate text-sm text-gray-600">
-                        {offer.title}
-                      </p>
-                      <p className="mt-2 text-xs text-gray-500">
-                        Platnost: {formatDate(offer.valid_until ?? offer.updated_at)}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusClass(offer.status)}`}
-                    >
-                      {getOfferStatusLabel(offer.status)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+            <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Zakázky klienta
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Zakázky se zobrazují pouze uživatelům s oprávněním k zakázkám.
+              </p>
             </div>
           )}
         </section>

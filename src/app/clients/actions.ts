@@ -11,6 +11,7 @@ export type ClientFormActionState = {
 
 export type CreateClientActionState = ClientFormActionState
 export type UpdateClientActionState = ClientFormActionState
+export type ClientContactActionState = ClientFormActionState
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -29,6 +30,203 @@ async function requireUser() {
   }
 
   return { supabase, user }
+}
+
+async function syncPrimaryContactSnapshot(clientId: string) {
+  const { supabase } = await requireUser()
+
+  const { data: primaryContact, error: primaryError } = await supabase
+    .from('client_contacts')
+    .select('name, phone, email')
+    .eq('client_id', clientId)
+    .eq('is_primary', true)
+    .maybeSingle<{
+      name: string
+      phone: string | null
+      email: string | null
+    }>()
+
+  if (primaryError) {
+    throw new Error('Nepodařilo se načíst hlavní kontakt klienta.')
+  }
+
+  const { error } = await supabase
+    .from('clients')
+    .update({
+      contact_person: primaryContact?.name ?? null,
+      contact_phone: primaryContact?.phone ?? null,
+      contact_email: primaryContact?.email ?? null,
+    })
+    .eq('id', clientId)
+
+  if (error) {
+    throw new Error('Nepodařilo se synchronizovat hlavní kontakt klienta.')
+  }
+}
+
+async function ensurePrimaryContact(clientId: string) {
+  const { supabase } = await requireUser()
+
+  const { data: primaryContact, error: primaryError } = await supabase
+    .from('client_contacts')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('is_primary', true)
+    .maybeSingle<{ id: string }>()
+
+  if (primaryError) {
+    throw new Error('Nepodařilo se ověřit hlavní kontakt klienta.')
+  }
+
+  if (primaryContact) return
+
+  const { data: firstContact, error: firstError } = await supabase
+    .from('client_contacts')
+    .select('id')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle<{ id: string }>()
+
+  if (firstError) {
+    throw new Error('Nepodařilo se vybrat náhradní hlavní kontakt.')
+  }
+
+  if (!firstContact) {
+    await syncPrimaryContactSnapshot(clientId)
+    return
+  }
+
+  const { error } = await supabase
+    .from('client_contacts')
+    .update({ is_primary: true, updated_at: new Date().toISOString() })
+    .eq('id', firstContact.id)
+    .eq('client_id', clientId)
+
+  if (error) {
+    throw new Error('Nepodařilo se nastavit náhradní hlavní kontakt.')
+  }
+
+  await syncPrimaryContactSnapshot(clientId)
+}
+
+async function createClientContactValues(formData: FormData) {
+  const { supabase, user } = await requireUser()
+
+  const clientId = getString(formData, 'client_id')
+  const name = getString(formData, 'name')
+  const phone = getString(formData, 'phone')
+  const email = getString(formData, 'email')
+  const role = getString(formData, 'role')
+  const note = getString(formData, 'note')
+  const requestedPrimary = formData.get('is_primary') === 'on'
+
+  if (!clientId) {
+    throw new Error('Chybí ID klienta.')
+  }
+
+  if (!name) {
+    throw new Error('Jméno kontaktní osoby je povinné.')
+  }
+
+  const { count, error: countError } = await supabase
+    .from('client_contacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', clientId)
+
+  if (countError) {
+    throw new Error('Nepodařilo se ověřit kontakty klienta.')
+  }
+
+  const isPrimary = requestedPrimary || (count ?? 0) === 0
+
+  if (isPrimary) {
+    const { error } = await supabase
+      .from('client_contacts')
+      .update({ is_primary: false, updated_at: new Date().toISOString() })
+      .eq('client_id', clientId)
+
+    if (error) {
+      throw new Error('Nepodařilo se připravit hlavní kontakt.')
+    }
+  }
+
+  const { error } = await supabase.from('client_contacts').insert({
+    client_id: clientId,
+    name,
+    phone: phone || null,
+    email: email || null,
+    role: role || null,
+    note: note || null,
+    is_primary: isPrimary,
+    created_by: user.id,
+  })
+
+  if (error) {
+    throw new Error('Nepodařilo se vytvořit kontaktní osobu.')
+  }
+
+  await ensurePrimaryContact(clientId)
+  await syncPrimaryContactSnapshot(clientId)
+
+  revalidatePath('/clients')
+  revalidatePath(`/clients/${clientId}`)
+}
+
+async function updateClientContactValues(formData: FormData) {
+  const { supabase } = await requireUser()
+
+  const id = getString(formData, 'id')
+  const clientId = getString(formData, 'client_id')
+  const name = getString(formData, 'name')
+  const phone = getString(formData, 'phone')
+  const email = getString(formData, 'email')
+  const role = getString(formData, 'role')
+  const note = getString(formData, 'note')
+  const isPrimary = formData.get('is_primary') === 'on'
+
+  if (!id || !clientId) {
+    throw new Error('Chybí ID kontaktní osoby.')
+  }
+
+  if (!name) {
+    throw new Error('Jméno kontaktní osoby je povinné.')
+  }
+
+  if (isPrimary) {
+    const { error } = await supabase
+      .from('client_contacts')
+      .update({ is_primary: false, updated_at: new Date().toISOString() })
+      .eq('client_id', clientId)
+
+    if (error) {
+      throw new Error('Nepodařilo se připravit hlavní kontakt.')
+    }
+  }
+
+  const { error } = await supabase
+    .from('client_contacts')
+    .update({
+      name,
+      phone: phone || null,
+      email: email || null,
+      role: role || null,
+      note: note || null,
+      is_primary: isPrimary,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('client_id', clientId)
+
+  if (error) {
+    throw new Error('Nepodařilo se upravit kontaktní osobu.')
+  }
+
+  await ensurePrimaryContact(clientId)
+  await syncPrimaryContactSnapshot(clientId)
+
+  revalidatePath('/clients')
+  revalidatePath(`/clients/${clientId}`)
 }
 
 async function insertClientRecord(formData: FormData) {
@@ -183,4 +381,111 @@ export async function deleteClientRecord(formData: FormData) {
 
   revalidatePath('/clients')
   redirect('/clients')
+}
+
+export async function createClientContactModalAction(
+  _prevState: ClientContactActionState,
+  formData: FormData
+): Promise<ClientContactActionState> {
+  try {
+    await createClientContactValues(formData)
+
+    return {
+      success: true,
+      error: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se vytvořit kontaktní osobu.',
+    }
+  }
+}
+
+export async function updateClientContactModalAction(
+  _prevState: ClientContactActionState,
+  formData: FormData
+): Promise<ClientContactActionState> {
+  try {
+    await updateClientContactValues(formData)
+
+    return {
+      success: true,
+      error: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se upravit kontaktní osobu.',
+    }
+  }
+}
+
+export async function setPrimaryClientContact(formData: FormData) {
+  const { supabase } = await requireUser()
+
+  const id = getString(formData, 'id')
+  const clientId = getString(formData, 'client_id')
+
+  if (!id || !clientId) {
+    throw new Error('Chybí ID kontaktní osoby.')
+  }
+
+  const now = new Date().toISOString()
+
+  const { error: resetError } = await supabase
+    .from('client_contacts')
+    .update({ is_primary: false, updated_at: now })
+    .eq('client_id', clientId)
+
+  if (resetError) {
+    throw new Error('Nepodařilo se připravit hlavní kontakt.')
+  }
+
+  const { error } = await supabase
+    .from('client_contacts')
+    .update({ is_primary: true, updated_at: now })
+    .eq('id', id)
+    .eq('client_id', clientId)
+
+  if (error) {
+    throw new Error('Nepodařilo se nastavit hlavní kontakt.')
+  }
+
+  await syncPrimaryContactSnapshot(clientId)
+
+  revalidatePath('/clients')
+  revalidatePath(`/clients/${clientId}`)
+}
+
+export async function deleteClientContact(formData: FormData) {
+  const { supabase } = await requireUser()
+
+  const id = getString(formData, 'id')
+  const clientId = getString(formData, 'client_id')
+
+  if (!id || !clientId) {
+    throw new Error('Chybí ID kontaktní osoby.')
+  }
+
+  const { error } = await supabase
+    .from('client_contacts')
+    .delete()
+    .eq('id', id)
+    .eq('client_id', clientId)
+
+  if (error) {
+    throw new Error('Nepodařilo se smazat kontaktní osobu.')
+  }
+
+  await ensurePrimaryContact(clientId)
+
+  revalidatePath('/clients')
+  revalidatePath(`/clients/${clientId}`)
 }

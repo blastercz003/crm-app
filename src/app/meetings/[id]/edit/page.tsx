@@ -7,6 +7,7 @@ import { MeetingForm } from '@/components/meetings/meeting-form'
 type MeetingData = {
   id: string
   client_id: string | null
+  client_contact_id: string | null
   company_name: string | null
   contact_person: string | null
   contact_phone: string | null
@@ -26,6 +27,15 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  is_primary: boolean
+}
+
 export default async function EditMeetingPage({
   params,
 }: {
@@ -42,13 +52,19 @@ export default async function EditMeetingPage({
     redirect('/login')
   }
 
-  const [meetingResponse, clientsResponse] = await Promise.all([
+  const [meetingResponse, clientsResponse, contactsResponse] = await Promise.all([
     supabase.from('meetings').select('*').eq('id', id).single(),
     supabase.from('clients').select('id, name').order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, phone, email, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
   ])
 
   const { data: meeting, error: meetingError } = meetingResponse
   const { data: clients, error: clientsError } = clientsResponse
+  const { data: contacts, error: contactsError } = contactsResponse
 
   if (meetingError || !meeting) {
     notFound()
@@ -56,6 +72,10 @@ export default async function EditMeetingPage({
 
   if (clientsError) {
     throw new Error('Nepodařilo se načíst klienty.')
+  }
+
+  if (contactsError) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
   }
 
   const typedMeeting = meeting as MeetingData
@@ -122,6 +142,7 @@ export default async function EditMeetingPage({
             cancelLabel="ZRUŠIT ÚPRAVY"
             initialValues={typedMeeting}
             clients={(clients ?? []) as ClientOption[]}
+            contacts={(contacts ?? []) as ClientContactOption[]}
           />
         </section>
       </div>

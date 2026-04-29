@@ -16,6 +16,10 @@ type ClientRow = {
   created_at: string
 }
 
+type ProfileRow = {
+  role: string | null
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('cs-CZ', {
     dateStyle: 'medium',
@@ -45,10 +49,26 @@ export default async function ClientsPage({
     redirect('/login')
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
+
+  const isAdmin = (profile as ProfileRow | null)?.role === 'admin'
+
   let request = supabase
     .from('clients')
     .select('*')
     .order('name', { ascending: true })
+
+  if (!isAdmin) {
+    request = request.eq('created_by', user.id)
+  }
 
   if (query) {
     request = request.or(buildSearchFilter(query))
@@ -257,10 +277,6 @@ export default async function ClientsPage({
                             </span>
                           ) : null}
                         </div>
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          Vytvořeno {formatDate(client.created_at)}
-                        </p>
                       </div>
 
                     </div>
@@ -278,23 +294,9 @@ export default async function ClientsPage({
                         </span>{' '}
                         {client.contact_phone || '—'}
                       </div>
-                      <div className="break-all">
-                        <span className="font-medium text-gray-900">
-                          E-mail:
-                        </span>{' '}
-                        {client.contact_email || '—'}
-                      </div>
-                      {client.address ? (
-                        <div>
-                          <span className="font-medium text-gray-900">
-                            Adresa:
-                          </span>{' '}
-                          {client.address}
-                        </div>
-                      ) : null}
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-wrap justify-end gap-2">
                       <EditClientButton
                         client={client}
                         className="inline-flex w-[74px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 transition hover:bg-gray-100"

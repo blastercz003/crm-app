@@ -92,7 +92,7 @@ export function DieselPriceBadge() {
   return (
     <span
       title={title}
-      className="inline-flex h-8 max-w-full items-center justify-center rounded-xl border border-black bg-white px-3 text-sm font-bold text-black transition"
+      className="inline-flex h-8 min-w-0 max-w-[calc(100%-140px)] shrink items-center justify-center whitespace-nowrap rounded-xl border border-black bg-white px-2 text-[10px] font-bold text-black transition sm:max-w-full sm:px-3 sm:text-sm"
     >
       {text}
     </span>

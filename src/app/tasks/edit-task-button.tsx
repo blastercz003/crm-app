@@ -19,6 +19,13 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type TaskFormValues = {
   id: string
   title?: string | null
@@ -28,6 +35,7 @@ type TaskFormValues = {
   priority?: string | null
   assigned_to?: string | null
   client_id?: string | null
+  client_contact_id?: string | null
   company_name?: string | null
   contact_person?: string | null
 }
@@ -36,6 +44,7 @@ type EditTaskButtonProps = {
   task: TaskFormValues
   users: UserOption[]
   clients: ClientOption[]
+  contacts?: ClientContactOption[]
   className?: string
   label?: string
 }
@@ -49,6 +58,7 @@ export default function EditTaskButton({
   task,
   users,
   clients,
+  contacts = [],
   className,
   label = 'UPRAVIT',
 }: EditTaskButtonProps) {
@@ -88,6 +98,7 @@ export default function EditTaskButton({
           task={task}
           users={users}
           clients={clients}
+          contacts={contacts}
           action={updateAction}
           onClose={closeModal}
         />
@@ -100,12 +111,14 @@ function EditTaskModal({
   task,
   users,
   clients,
+  contacts,
   action,
   onClose,
 }: {
   task: TaskFormValues
   users: UserOption[]
   clients: ClientOption[]
+  contacts: ClientContactOption[]
   action: (
     prevState: UpdateTaskActionState,
     formData: FormData
@@ -169,6 +182,7 @@ function EditTaskModal({
               action={formAction}
               users={users}
               clients={clients}
+              contacts={contacts}
               submitLabel="ULOŽIT ZMĚNY"
               onCancel={onClose}
               cancelLabel="ZRUŠIT"

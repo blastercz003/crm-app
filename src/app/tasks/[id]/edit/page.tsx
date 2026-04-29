@@ -17,13 +17,20 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 export default async function EditTaskPage({ params }: EditTaskPageProps) {
   const { id } = await params
   const supabase = await createClient()
   const currentProfile = await getCurrentProfile()
   const users = await getAssignableUsers()
 
-  const [taskResponse, clientsResponse] = await Promise.all([
+  const [taskResponse, clientsResponse, contactsResponse] = await Promise.all([
     supabase
       .from('tasks')
       .select(`
@@ -36,16 +43,23 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
         assigned_to,
         created_by,
         client_id,
+        client_contact_id,
         company_name,
         contact_person
       `)
       .eq('id', id)
       .single(),
     supabase.from('clients').select('id, name').order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
   ])
 
   const { data: task, error } = taskResponse
   const { data: clients, error: clientsError } = clientsResponse
+  const { data: contacts, error: contactsError } = contactsResponse
 
   if (error || !task) {
     notFound()
@@ -53,6 +67,10 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
 
   if (clientsError) {
     throw new Error('Nepodařilo se načíst klienty.')
+  }
+
+  if (contactsError) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
   }
 
   const isAdmin = currentProfile.role === 'admin'
@@ -137,6 +155,7 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
               action={updateTaskAction}
               users={users}
               clients={(clients ?? []) as ClientOption[]}
+              contacts={(contacts ?? []) as ClientContactOption[]}
               submitLabel="ULOŽIT ZMĚNY"
               initialValues={{
                 title: task.title,
@@ -146,6 +165,7 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
                 priority: task.priority,
                 assigned_to: task.assigned_to,
                 client_id: task.client_id,
+                client_contact_id: task.client_contact_id,
                 company_name: task.company_name,
                 contact_person: task.contact_person,
               }}

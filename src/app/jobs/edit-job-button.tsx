@@ -27,11 +27,19 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type JobFormValues = {
   id: string
   job_number: string
   company_name: string
   client_id?: string | null
+  client_contact_id?: string | null
   contact_person: string | null
   sales_owner: SalesOwner
   start_at: string
@@ -48,6 +56,7 @@ type JobFormValues = {
 type EditJobButtonProps = {
   job: JobFormValues
   clientSuggestions: ClientOption[]
+  clientContacts?: ClientContactOption[]
   className?: string
   children?: React.ReactNode
   isAdmin?: boolean
@@ -61,6 +70,7 @@ const initialUpdateState: UpdateJobActionState = {
 export function EditJobButton({
   job,
   clientSuggestions,
+  clientContacts = [],
   className,
   children,
   isAdmin = true,
@@ -94,6 +104,7 @@ export function EditJobButton({
         <EditJobModal
           job={job}
           clientSuggestions={clientSuggestions}
+          clientContacts={clientContacts}
           onClose={closeModal}
         />
       ) : null}
@@ -104,10 +115,12 @@ export function EditJobButton({
 function EditJobModal({
   job,
   clientSuggestions,
+  clientContacts,
   onClose,
 }: {
   job: JobFormValues
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
   onClose: () => void
 }) {
   const [state, formAction] = useActionState(
@@ -145,6 +158,7 @@ function EditJobModal({
     <JobFormShell
       mode="edit"
       clientSuggestions={clientSuggestions}
+      clientContacts={clientContacts}
       onClose={onClose}
       error={state.error}
       formAction={formAction}
@@ -158,6 +172,7 @@ function EditJobModal({
 function JobFormShell({
   mode,
   clientSuggestions,
+  clientContacts,
   onClose,
   error,
   formAction,
@@ -167,6 +182,7 @@ function JobFormShell({
 }: {
   mode: 'edit'
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
   onClose: () => void
   error: string | null
   formAction: (payload: FormData) => void
@@ -205,12 +221,17 @@ function JobFormShell({
 
   const [companyName, setCompanyName] = useState(job.company_name ?? '')
   const [selectedClientId, setSelectedClientId] = useState(job.client_id ?? '')
+  const [selectedContactId, setSelectedContactId] = useState(job.client_contact_id ?? '')
+  const [contactPerson, setContactPerson] = useState(job.contact_person ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
   const selectedClient = useMemo(() => {
     return companyOptions.find((client) => client.id === selectedClientId) ?? null
   }, [companyOptions, selectedClientId])
+  const selectedClientContacts = clientContacts.filter(
+    (contact) => contact.client_id === selectedClientId
+  )
 
   const companySelectionIsValid =
     Boolean(selectedClientId) &&
@@ -248,6 +269,8 @@ function JobFormShell({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
+      setContactPerson('')
       return
     }
 
@@ -259,6 +282,8 @@ function JobFormShell({
     if (exactMatch) {
       setCompanyName(exactMatch.name)
       setSelectedClientId(exactMatch.id)
+      setSelectedContactId('')
+      setContactPerson('')
       return
     }
 
@@ -272,6 +297,8 @@ function JobFormShell({
 
       setCompanyName(completedName)
       setSelectedClientId(matchedClient.id)
+      setSelectedContactId('')
+      setContactPerson('')
 
       setAutocompleteSelection(nextRawValue.length, completedName.length)
       return
@@ -279,6 +306,8 @@ function JobFormShell({
 
     setCompanyName(nextRawValue)
     setSelectedClientId('')
+    setSelectedContactId('')
+    setContactPerson('')
   }
 
   function handleCompanyFocus() {
@@ -295,6 +324,8 @@ function JobFormShell({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
+      setContactPerson('')
       return
     }
 
@@ -310,6 +341,17 @@ function JobFormShell({
     }
 
     setSelectedClientId('')
+    setSelectedContactId('')
+    setContactPerson('')
+  }
+
+  function handleContactChange(nextContactId: string) {
+    setSelectedContactId(nextContactId)
+
+    const nextContact =
+      selectedClientContacts.find((contact) => contact.id === nextContactId) ?? null
+
+    setContactPerson(nextContact?.name ?? '')
   }
 
   const companyStatusText = (() => {
@@ -372,6 +414,7 @@ function JobFormShell({
               value={job.invoice_status}
             />
             <input type="hidden" name="client_id" value={selectedClientId} />
+            <input type="hidden" name="client_contact_id" value={selectedContactId} />
             <input
               type="hidden"
               name="company_name"
@@ -447,14 +490,35 @@ function JobFormShell({
                       >
                         Osoba
                       </label>
-                      <input
-                        id={`${mode}-contact_person`}
-                        name="contact_person"
-                        type="text"
-                        defaultValue={job.contact_person ?? ''}
-                        placeholder="Kontaktní osoba"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-                      />
+                      {selectedClientContacts.length > 0 ? (
+                        <>
+                          <select
+                            id={`${mode}-client_contact_id`}
+                            value={selectedContactId}
+                            onChange={(event) => handleContactChange(event.target.value)}
+                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                          >
+                            <option value="">Bez konkrétní osoby</option>
+                            {selectedClientContacts.map((contact) => (
+                              <option key={contact.id} value={contact.id}>
+                                {contact.name}
+                                {contact.is_primary ? ' (hlavní)' : ''}
+                              </option>
+                            ))}
+                          </select>
+                          <input type="hidden" name="contact_person" value={contactPerson} />
+                        </>
+                      ) : (
+                        <input
+                          id={`${mode}-contact_person`}
+                          name="contact_person"
+                          type="text"
+                          value={contactPerson}
+                          onChange={(event) => setContactPerson(event.target.value)}
+                          placeholder="Kontaktní osoba"
+                          className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        />
+                      )}
                     </div>
 
                     <div>

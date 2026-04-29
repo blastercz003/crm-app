@@ -22,6 +22,13 @@ type OfferItemForTotal = {
   discount_percent: number
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 const STATUS_LABELS: Record<OfferStatus, string> = {
   draft: 'Rozpracovaná',
   submitted: 'Ke schválení',
@@ -186,11 +193,17 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const [
     offersResponse,
     clientsResponse,
+    contactsResponse,
     profilesResponse,
     itemsResponse,
   ] = await Promise.all([
     offersQuery,
     clientsQuery,
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
     supabase
       .from('profiles')
       .select('id, name, role, can_view_offers, offer_prepared_by_name, offer_prepared_by_phone, offer_prepared_by_email'),
@@ -207,6 +220,10 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     throw new Error(`Nepodařilo se načíst klienty: ${clientsResponse.error.message}`)
   }
 
+  if (contactsResponse.error) {
+    throw new Error(`Nepodařilo se načíst kontaktní osoby klientů: ${contactsResponse.error.message}`)
+  }
+
   if (profilesResponse.error) {
     throw new Error(`Nepodařilo se načíst uživatele: ${profilesResponse.error.message}`)
   }
@@ -217,6 +234,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
 
   const offers = (offersResponse.data ?? []) as OfferRow[]
   const clients = (clientsResponse.data ?? []) as OfferClient[]
+  const contacts = (contactsResponse.data ?? []) as ClientContactOption[]
   const profiles = (profilesResponse.data ?? []) as OfferProfile[]
   const items = (itemsResponse.data ?? []) as OfferItemForTotal[]
   const clientById = new Map(clients.map((client) => [client.id, client]))
@@ -292,7 +310,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <NewOfferButton clients={visibleClientOptions} />
+              <NewOfferButton clients={visibleClientOptions} contacts={contacts} />
             </div>
           </div>
         </section>

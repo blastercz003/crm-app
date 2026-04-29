@@ -14,6 +14,7 @@ type SearchParams = {
 type MeetingRowBase = {
   id: string
   client_id: string | null
+  client_contact_id: string | null
   company_name: string | null
   contact_person: string | null
   contact_phone: string | null
@@ -50,6 +51,15 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  is_primary: boolean
+}
+
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 
 function parseMeetingDate(value: string | null) {
@@ -77,17 +87,6 @@ function formatInPrague(
     ...options,
     timeZone: PRAGUE_TIME_ZONE,
   }).format(date)
-}
-
-function formatDateTime(value: string | null) {
-  return formatInPrague(
-    value,
-    {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    },
-    'Bez termínu'
-  )
 }
 
 function formatCompactDateTime(value: string | null) {
@@ -256,10 +255,12 @@ function MeetingListItem({
   meeting,
   isAdminView,
   clients,
+  contacts,
 }: {
   meeting: MeetingRow
   isAdminView: boolean
   clients: ClientOption[]
+  contacts: ClientContactOption[]
 }) {
   const companyLabel =
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
@@ -297,7 +298,7 @@ function MeetingListItem({
             DETAIL
           </Link>
 
-          <EditMeetingButton clients={clients} meeting={meeting} />
+          <EditMeetingButton clients={clients} contacts={contacts} meeting={meeting} />
         </div>
       </div>
     </div>
@@ -313,6 +314,7 @@ function MeetingSection({
   emptyText,
   isAdminView,
   clients,
+  contacts,
   scrollClassName,
 }: {
   eyebrow: string
@@ -323,6 +325,7 @@ function MeetingSection({
   emptyText: string
   isAdminView: boolean
   clients: ClientOption[]
+  contacts: ClientContactOption[]
   scrollClassName?: string
 }) {
   const countClassName =
@@ -366,6 +369,7 @@ function MeetingSection({
                 meeting={meeting}
                 isAdminView={isAdminView}
                 clients={clients}
+                contacts={contacts}
               />
             ))}
           </div>
@@ -433,16 +437,28 @@ export default async function MeetingsPage({
     )
   }
 
-  const { data: clients, error: clientsError } = await supabase
-    .from('clients')
-    .select('id, name')
-    .order('name', { ascending: true })
+  const [clientsResponse, contactsResponse] = await Promise.all([
+    supabase.from('clients').select('id, name').order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, phone, email, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+  ])
+
+  const { data: clients, error: clientsError } = clientsResponse
+  const { data: contacts, error: contactsError } = contactsResponse
 
   if (clientsError) {
     throw new Error('Nepodařilo se načíst klienty.')
   }
 
+  if (contactsError) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
+  }
+
   const clientOptions = (clients ?? []) as ClientOption[]
+  const contactOptions = (contacts ?? []) as ClientContactOption[]
 
   const profileRows = (allProfiles ?? []) as ProfileRow[]
   const profileNameById = new Map(
@@ -452,6 +468,7 @@ export default async function MeetingsPage({
   const meetingSelect = `
     id,
     client_id,
+    client_contact_id,
     company_name,
     contact_person,
     contact_phone,
@@ -623,7 +640,7 @@ export default async function MeetingsPage({
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <NewMeetingButton clients={clientOptions} />
+              <NewMeetingButton clients={clientOptions} contacts={contactOptions} />
             </div>
           </div>
         </section>
@@ -776,6 +793,7 @@ export default async function MeetingsPage({
               emptyText="Pro zadaný filtr tu není žádná plánovaná schůzka."
               isAdminView={isAdminTeamView}
               clients={clientOptions}
+              contacts={contactOptions}
               scrollClassName="xl:max-h-[960px] xl:overflow-y-auto xl:pr-1"
             />
 
@@ -788,6 +806,7 @@ export default async function MeetingsPage({
               emptyText="Pro zadaný filtr tu není žádná schůzka po termínu."
               isAdminView={isAdminTeamView}
               clients={clientOptions}
+              contacts={contactOptions}
               scrollClassName="xl:max-h-[960px] xl:overflow-y-auto xl:pr-1"
             />
 
@@ -800,6 +819,7 @@ export default async function MeetingsPage({
               emptyText="Pro zadaný filtr tu není žádná proběhlá schůzka."
               isAdminView={isAdminTeamView}
               clients={clientOptions}
+              contacts={contactOptions}
               scrollClassName="xl:max-h-[960px] xl:overflow-y-auto xl:pr-1"
             />
           </div>
@@ -815,6 +835,7 @@ export default async function MeetingsPage({
             emptyText="Pro zadaný filtr tu není žádná plánovaná schůzka."
             isAdminView={isAdminTeamView}
             clients={clientOptions}
+            contacts={contactOptions}
           />
         ) : null}
 
@@ -828,6 +849,7 @@ export default async function MeetingsPage({
             emptyText="Pro zadaný filtr tu není žádná schůzka po termínu."
             isAdminView={isAdminTeamView}
             clients={clientOptions}
+            contacts={contactOptions}
           />
         ) : null}
 
@@ -841,6 +863,7 @@ export default async function MeetingsPage({
             emptyText="Pro zadaný filtr tu není žádná proběhlá schůzka."
             isAdminView={isAdminTeamView}
             clients={clientOptions}
+            contacts={contactOptions}
           />
         ) : null}
       </div>

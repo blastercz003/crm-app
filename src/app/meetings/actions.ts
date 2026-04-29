@@ -22,6 +22,11 @@ function normalizeStatus(value: FormDataEntryValue | null) {
   return value === 'completed' ? 'completed' : 'planned'
 }
 
+function normalizeContactId(value: FormDataEntryValue | null): string | null {
+  const str = String(value ?? '').trim()
+  return str.length ? str : null
+}
+
 function getPragueOffsetMinutes(dateUtc: Date) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Europe/Prague',
@@ -162,8 +167,26 @@ async function getClientSnapshot(clientId: string) {
   return data
 }
 
+async function getClientContactSnapshot(contactId: string, clientId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('client_contacts')
+    .select('id, client_id, name, phone, email')
+    .eq('id', contactId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (error || !data) {
+    throw new Error('Vybraná kontaktní osoba nebyla nalezena.')
+  }
+
+  return data
+}
+
 async function resolveMeetingClientFields(params: {
   clientId: string | null
+  contactId: string | null
   companyName: string | null
   contactPerson: string | null
   contactPhone: string | null
@@ -172,6 +195,7 @@ async function resolveMeetingClientFields(params: {
 }) {
   const {
     clientId,
+    contactId,
     companyName,
     contactPerson,
     contactPhone,
@@ -191,6 +215,18 @@ async function resolveMeetingClientFields(params: {
 
   const client = await getClientSnapshot(clientId)
 
+  if (contactId) {
+    const contact = await getClientContactSnapshot(contactId, clientId)
+
+    return {
+      companyName: companyName ?? client.name ?? null,
+      contactPerson: contact.name ?? null,
+      contactPhone: contact.phone ?? null,
+      contactEmail: contact.email ?? null,
+      address: address ?? client.address ?? null,
+    }
+  }
+
   return {
     companyName: companyName ?? client.name ?? null,
     contactPerson: contactPerson ?? client.contact_person ?? null,
@@ -202,6 +238,8 @@ async function resolveMeetingClientFields(params: {
 
 async function syncMeetingFollowUpTask(params: {
   meetingId: string
+  clientId: string | null
+  contactId: string | null
   followUpTask: string | null
   followUpTaskNote: string | null
   companyName: string | null
@@ -213,6 +251,8 @@ async function syncMeetingFollowUpTask(params: {
 
   const {
     meetingId,
+    clientId,
+    contactId,
     followUpTask,
     followUpTaskNote,
     companyName,
@@ -243,6 +283,8 @@ async function syncMeetingFollowUpTask(params: {
         .update({
           title: followUpTask,
           note: followUpTaskNote,
+          client_id: clientId,
+          client_contact_id: contactId,
           company_name: companyName,
           contact_person: contactPerson,
           assigned_to: assignedUserId ?? null,
@@ -261,6 +303,8 @@ async function syncMeetingFollowUpTask(params: {
         status: 'todo',
         source: 'meeting',
         meeting_id: meetingId,
+        client_id: clientId,
+        client_contact_id: contactId,
         company_name: companyName,
         contact_person: contactPerson,
         assigned_to: assignedUserId ?? null,
@@ -284,6 +328,7 @@ async function createMeetingRecord(formData: FormData) {
   const { supabase, user, profile } = await getCurrentUserWithRole()
 
   const clientId = normalizeClientId(formData.get('client_id'))
+  const contactId = normalizeContactId(formData.get('client_contact_id'))
   const rawCompanyName = normalizeText(formData.get('company_name'))
   const rawContactPerson = normalizeText(formData.get('contact_person'))
   const rawContactPhone = normalizeText(formData.get('contact_phone'))
@@ -299,6 +344,7 @@ async function createMeetingRecord(formData: FormData) {
 
   const resolvedFields = await resolveMeetingClientFields({
     clientId,
+    contactId,
     companyName: rawCompanyName,
     contactPerson: rawContactPerson,
     contactPhone: rawContactPhone,
@@ -324,6 +370,7 @@ async function createMeetingRecord(formData: FormData) {
     .from('meetings')
     .insert({
       client_id: clientId,
+      client_contact_id: contactId,
       company_name: companyName,
       contact_person: contactPerson,
       contact_phone: contactPhone,
@@ -350,6 +397,8 @@ async function createMeetingRecord(formData: FormData) {
 
   await syncMeetingFollowUpTask({
     meetingId: data.id,
+    clientId,
+    contactId,
     followUpTask,
     followUpTaskNote,
     companyName,
@@ -390,6 +439,7 @@ async function updateMeetingRecord(formData: FormData) {
 
   const id = normalizeText(formData.get('id'))
   const clientId = normalizeClientId(formData.get('client_id'))
+  const contactId = normalizeContactId(formData.get('client_contact_id'))
   const rawCompanyName = normalizeText(formData.get('company_name'))
   const rawContactPerson = normalizeText(formData.get('contact_person'))
   const rawContactPhone = normalizeText(formData.get('contact_phone'))
@@ -409,6 +459,7 @@ async function updateMeetingRecord(formData: FormData) {
 
   const resolvedFields = await resolveMeetingClientFields({
     clientId,
+    contactId,
     companyName: rawCompanyName,
     contactPerson: rawContactPerson,
     contactPhone: rawContactPhone,
@@ -445,6 +496,7 @@ async function updateMeetingRecord(formData: FormData) {
     .from('meetings')
     .update({
       client_id: clientId,
+      client_contact_id: contactId,
       company_name: companyName,
       contact_person: contactPerson,
       contact_phone: contactPhone,
@@ -470,6 +522,8 @@ async function updateMeetingRecord(formData: FormData) {
 
   await syncMeetingFollowUpTask({
     meetingId: data.id,
+    clientId,
+    contactId,
     followUpTask,
     followUpTaskNote,
     companyName,

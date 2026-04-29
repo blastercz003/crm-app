@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
 import type {
   OfferClient,
+  OfferClientContact,
   OfferItemRow,
   OfferProfile,
   OfferRow,
@@ -34,12 +35,24 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
 
   const offer = offerResponse.data
 
-  const [clientResponse, itemsResponse, serviceItemsResponse, profilesResponse] = await Promise.all([
+  const [
+    clientResponse,
+    contactsResponse,
+    itemsResponse,
+    serviceItemsResponse,
+    profilesResponse,
+  ] = await Promise.all([
     supabase
       .from('clients')
       .select('id, name, ico, contact_person, contact_email, address, created_by')
       .eq('id', offer.client_id)
       .single<OfferClient>(),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .eq('client_id', offer.client_id)
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
     supabase
       .from('offer_items')
       .select('*')
@@ -59,6 +72,10 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
     throw new Error('Nepodařilo se načíst klienta nabídky.')
   }
 
+  if (contactsResponse.error) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klienta.')
+  }
+
   if (itemsResponse.error) {
     throw new Error('Nepodařilo se načíst položky nabídky.')
   }
@@ -74,6 +91,7 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
   const detailProps = {
     offer,
     client: clientResponse.data,
+    contacts: (contactsResponse.data ?? []) as OfferClientContact[],
     items: (itemsResponse.data ?? []) as OfferItemRow[],
     serviceItems: (serviceItemsResponse.data ?? []) as OfferServiceItemRow[],
     profiles: (profilesResponse.data ?? []) as OfferProfile[],

@@ -12,8 +12,16 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type NewOfferButtonProps = {
   clients: ClientOption[]
+  contacts?: ClientContactOption[]
   className?: string
 }
 
@@ -30,7 +38,11 @@ function normalizeSearchText(value: string) {
     .trim()
 }
 
-export function NewOfferButton({ clients, className }: NewOfferButtonProps) {
+export function NewOfferButton({
+  clients,
+  contacts = [],
+  className,
+}: NewOfferButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
 
@@ -56,6 +68,7 @@ export function NewOfferButton({ clients, className }: NewOfferButtonProps) {
         <NewOfferModal
           key={formKey}
           clients={clients}
+          contacts={contacts}
           onClose={() => setIsOpen(false)}
         />
       ) : null}
@@ -65,20 +78,27 @@ export function NewOfferButton({ clients, className }: NewOfferButtonProps) {
 
 function NewOfferModal({
   clients,
+  contacts,
   onClose,
 }: {
   clients: ClientOption[]
+  contacts: ClientContactOption[]
   onClose: () => void
 }) {
   const router = useRouter()
   const [state, formAction] = useActionState(createOfferModalAction, initialState)
   const [companyName, setCompanyName] = useState('')
   const [selectedClientId, setSelectedClientId] = useState('')
+  const [selectedContactId, setSelectedContactId] = useState('')
+  const [contactPerson, setContactPerson] = useState('')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
   const selectedClient =
     clients.find((client) => client.id === selectedClientId) ?? null
+  const selectedClientContacts = contacts.filter(
+    (contact) => contact.client_id === selectedClientId
+  )
 
   const companySelectionIsValid =
     Boolean(selectedClientId) &&
@@ -96,6 +116,8 @@ function NewOfferModal({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
+      setContactPerson('')
       return
     }
 
@@ -107,11 +129,15 @@ function NewOfferModal({
     if (exactMatch) {
       setCompanyName(exactMatch.name)
       setSelectedClientId(exactMatch.id)
+      setSelectedContactId('')
+      setContactPerson('')
       return
     }
 
     setCompanyName(nextRawValue)
     setSelectedClientId('')
+    setSelectedContactId('')
+    setContactPerson('')
   }
 
   function handleCompanyBlur() {
@@ -124,6 +150,8 @@ function NewOfferModal({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
+      setContactPerson('')
       return
     }
 
@@ -135,7 +163,18 @@ function NewOfferModal({
     if (exactMatch) {
       setCompanyName(exactMatch.name)
       setSelectedClientId(exactMatch.id)
+      setSelectedContactId('')
+      setContactPerson('')
     }
+  }
+
+  function handleContactChange(nextContactId: string) {
+    setSelectedContactId(nextContactId)
+
+    const nextContact =
+      selectedClientContacts.find((contact) => contact.id === nextContactId) ?? null
+
+    setContactPerson(nextContact?.name ?? '')
   }
 
   const suggestions =
@@ -257,6 +296,8 @@ function NewOfferModal({
                             event.preventDefault()
                             setCompanyName(client.name)
                             setSelectedClientId(client.id)
+                            setSelectedContactId('')
+                            setContactPerson('')
                             setCompanyTouched(true)
                             setCompanyHasFocus(false)
                           }}
@@ -313,12 +354,35 @@ function NewOfferModal({
                 >
                   Kontaktní osoba
                 </label>
-                <input
-                  id="contact_person"
-                  name="contact_person"
-                  placeholder="Kontaktní osoba zákazníka"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-                />
+                <input type="hidden" name="client_contact_id" value={selectedContactId} />
+                {selectedClientContacts.length > 0 ? (
+                  <>
+                    <select
+                      id="client_contact_select"
+                      value={selectedContactId}
+                      onChange={(event) => handleContactChange(event.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    >
+                      <option value="">Bez konkrétní osoby</option>
+                      {selectedClientContacts.map((contact) => (
+                        <option key={contact.id} value={contact.id}>
+                          {contact.name}
+                          {contact.is_primary ? ' (hlavní)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <input type="hidden" name="contact_person" value={contactPerson} />
+                  </>
+                ) : (
+                  <input
+                    id="contact_person"
+                    name="contact_person"
+                    value={contactPerson}
+                    onChange={(event) => setContactPerson(event.target.value)}
+                    placeholder="Kontaktní osoba zákazníka"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  />
+                )}
               </div>
 
 

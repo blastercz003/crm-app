@@ -34,6 +34,7 @@ import {
 } from '@/lib/offers/calculations'
 import type {
   OfferClient,
+  OfferClientContact,
   OfferItemRow,
   OfferProfile,
   OfferRow,
@@ -228,6 +229,7 @@ function locationCountButtonClassName(isActive: boolean) {
 export type OfferDetailLayoutProps = {
   offer: OfferRow
   client: OfferClient
+  contacts: OfferClientContact[]
   items: OfferItemRow[]
   serviceItems: OfferServiceItemRow[]
   profiles: OfferProfile[]
@@ -239,6 +241,7 @@ export type OfferDetailLayoutProps = {
 export function OfferDetailLayout({
   offer,
   client,
+  contacts,
   items,
   serviceItems,
   profiles,
@@ -481,11 +484,11 @@ export function OfferDetailLayout({
         <section className="min-w-0 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
+              <div className="flex min-w-0 flex-nowrap items-center justify-between gap-2 sm:justify-start">
+                <h1 className="min-w-0 truncate text-2xl font-semibold leading-none tracking-tight text-gray-900 sm:text-3xl">
                   {offer.offer_number}
                 </h1>
-                <span className={`inline-flex h-8 ${STATUS_BADGE_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${getStatusClass(offer.status)}`}>
+                <span className={`inline-flex h-8 w-[132px] shrink-0 items-center justify-center rounded-xl px-3 text-[10px] font-bold uppercase transition sm:${STATUS_BADGE_WIDTH_CLASS} sm:text-[11px] ${getStatusClass(offer.status)}`}>
                   {STATUS_LABELS[offer.status]}
                 </span>
               </div>
@@ -543,13 +546,15 @@ export function OfferDetailLayout({
 
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch">
           <section className="flex min-w-0 flex-col rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="mb-5 flex flex-nowrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                 ZÁKLAD NABÍDKY
               </h2>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <DieselPriceBadge />
-                <span className="inline-flex h-8 w-[150px] max-w-full items-center justify-center rounded-xl border border-black bg-white px-3 text-sm font-bold uppercase text-black transition">
+              <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2">
+                <div className="hidden sm:block">
+                  <DieselPriceBadge />
+                </div>
+                <span className="inline-flex h-8 w-[132px] shrink-0 items-center justify-center rounded-xl border border-black bg-white px-3 text-xs font-bold uppercase text-black transition sm:w-[150px] sm:text-sm">
                   {OFFER_TYPE_LABELS[offer.offer_type]}
                 </span>
               </div>
@@ -621,7 +626,27 @@ export function OfferDetailLayout({
                 <label htmlFor="contact_person" className="mb-2 block text-sm font-medium text-gray-700">
                   Kontaktní osoba
                 </label>
-                <input id="contact_person" name="contact_person" defaultValue={offer.contact_person ?? client.contact_person ?? ''} className={inputClassName()} />
+                {contacts.length > 0 ? (
+                  <>
+                    <select
+                      id="client_contact_id"
+                      name="client_contact_id"
+                      defaultValue={offer.client_contact_id ?? ''}
+                      className={inputClassName()}
+                    >
+                      <option value="">Bez konkrétní osoby</option>
+                      {contacts.map((contact) => (
+                        <option key={contact.id} value={contact.id}>
+                          {contact.name}
+                          {contact.is_primary ? ' (hlavní)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <input type="hidden" name="contact_person" value="" />
+                  </>
+                ) : (
+                  <input id="contact_person" name="contact_person" defaultValue={offer.contact_person ?? client.contact_person ?? ''} className={inputClassName()} />
+                )}
               </div>
                 </div>
               </div>

@@ -12,12 +12,20 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type TaskSectionProps = {
   title: string
   description?: string
   tasks: TaskRow[]
   users: UserOption[]
   clients: ClientOption[]
+  contacts: ClientContactOption[]
   muted?: boolean
   countVariant?: 'primary' | 'dark' | 'success' | 'neutral'
 }
@@ -28,6 +36,7 @@ export default function TaskSection({
   tasks,
   users,
   clients,
+  contacts,
   muted = false,
   countVariant = 'neutral',
 }: TaskSectionProps) {
@@ -89,6 +98,7 @@ export default function TaskSection({
                 task={task}
                 users={users}
                 clients={clients}
+                contacts={contacts}
               />
             ))}
           </div>

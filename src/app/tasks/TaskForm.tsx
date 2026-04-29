@@ -14,6 +14,13 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type TaskFormValues = {
   title?: string | null
   note?: string | null
@@ -22,6 +29,7 @@ type TaskFormValues = {
   priority?: string | null
   assigned_to?: string | null
   client_id?: string | null
+  client_contact_id?: string | null
   company_name?: string | null
   contact_person?: string | null
 }
@@ -29,6 +37,7 @@ type TaskFormValues = {
 type TaskFormProps = {
   users: UserOption[]
   clients: ClientOption[]
+  contacts?: ClientContactOption[]
   submitLabel: string
   cancelHref?: string
   onCancel?: () => void
@@ -55,6 +64,7 @@ function normalizeSearchText(value: string) {
 export default function TaskForm({
   users,
   clients,
+  contacts = [],
   submitLabel,
   cancelHref = '/tasks',
   onCancel,
@@ -68,14 +78,20 @@ export default function TaskForm({
 
   const initialCompanyName = initialValues?.company_name ?? ''
   const initialClientId = initialValues?.client_id ?? ''
+  const initialContactId = initialValues?.client_contact_id ?? ''
 
   const [companyName, setCompanyName] = useState(initialCompanyName)
   const [selectedClientId, setSelectedClientId] = useState(initialClientId)
+  const [selectedContactId, setSelectedContactId] = useState(initialContactId)
+  const [contactPerson, setContactPerson] = useState(initialValues?.contact_person ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
   const selectedClient =
     clients.find((client) => client.id === selectedClientId) ?? null
+  const selectedClientContacts = contacts.filter(
+    (contact) => contact.client_id === selectedClientId
+  )
 
   const companySelectionIsValid =
     Boolean(selectedClientId) &&
@@ -100,6 +116,7 @@ export default function TaskForm({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
       return
     }
 
@@ -111,6 +128,7 @@ export default function TaskForm({
     if (exactMatch) {
       setCompanyName(exactMatch.name)
       setSelectedClientId(exactMatch.id)
+      setSelectedContactId('')
       return
     }
 
@@ -124,6 +142,7 @@ export default function TaskForm({
 
       setCompanyName(completedName)
       setSelectedClientId(matchedClient.id)
+      setSelectedContactId('')
 
       setAutocompleteSelection(nextRawValue.length, completedName.length)
       return
@@ -131,6 +150,7 @@ export default function TaskForm({
 
     setCompanyName(nextRawValue)
     setSelectedClientId('')
+    setSelectedContactId('')
   }
 
   function handleCompanyFocus() {
@@ -147,6 +167,7 @@ export default function TaskForm({
     if (!trimmedValue) {
       setCompanyName('')
       setSelectedClientId('')
+      setSelectedContactId('')
       return
     }
 
@@ -162,6 +183,16 @@ export default function TaskForm({
     }
 
     setSelectedClientId('')
+    setSelectedContactId('')
+  }
+
+  function handleContactChange(nextContactId: string) {
+    setSelectedContactId(nextContactId)
+
+    const nextContact =
+      selectedClientContacts.find((contact) => contact.id === nextContactId) ?? null
+
+    setContactPerson(nextContact?.name ?? '')
   }
 
   const companyStatusText = (() => {
@@ -188,6 +219,7 @@ export default function TaskForm({
   return (
     <form action={action} className="space-y-6">
       <input type="hidden" name="client_id" value={selectedClientId} />
+      <input type="hidden" name="client_contact_id" value={selectedContactId} />
 
       <div className="grid gap-5 md:grid-cols-2">
         <div className="md:col-span-2">
@@ -253,14 +285,35 @@ export default function TaskForm({
           <label htmlFor="contact_person" className={labelClassName}>
             Kontaktní osoba
           </label>
-          <input
-            id="contact_person"
-            name="contact_person"
-            type="text"
-            defaultValue={initialValues?.contact_person ?? ''}
-            className={inputClassName}
-            placeholder="Např. Jan Novák"
-          />
+          {selectedClientContacts.length > 0 ? (
+            <>
+              <select
+                id="client_contact_select"
+                value={selectedContactId}
+                onChange={(event) => handleContactChange(event.target.value)}
+                className={inputClassName}
+              >
+                <option value="">Bez konkrétní osoby</option>
+                {selectedClientContacts.map((contact) => (
+                  <option key={contact.id} value={contact.id}>
+                    {contact.name}
+                    {contact.is_primary ? ' (hlavní)' : ''}
+                  </option>
+                ))}
+              </select>
+              <input type="hidden" name="contact_person" value={contactPerson} />
+            </>
+          ) : (
+            <input
+              id="contact_person"
+              name="contact_person"
+              type="text"
+              value={contactPerson}
+              onChange={(event) => setContactPerson(event.target.value)}
+              className={inputClassName}
+              placeholder="Např. Jan Novák"
+            />
+          )}
         </div>
 
         <div className="min-w-0">
@@ -330,7 +383,7 @@ export default function TaskForm({
 
         <div className="md:col-span-2">
           <label htmlFor="note" className={labelClassName}>
-            Poznámka
+            Zadání úkolu
           </label>
           <textarea
             id="note"
@@ -338,7 +391,7 @@ export default function TaskForm({
             rows={6}
             defaultValue={initialValues?.note ?? ''}
             className={`${inputClassName} min-h-[220px] resize-y`}
-            placeholder="Doplňující informace k úkolu"
+            placeholder="Popište zadání úkolu"
           />
         </div>
       </div>

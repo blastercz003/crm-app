@@ -8,6 +8,15 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  is_primary: boolean
+}
+
 export default async function NewMeetingPage() {
   const supabase = await createClient()
 
@@ -19,13 +28,24 @@ export default async function NewMeetingPage() {
     redirect('/login')
   }
 
-  const { data: clients, error: clientsError } = await supabase
-    .from('clients')
-    .select('id, name')
-    .order('name', { ascending: true })
+  const [clientsResponse, contactsResponse] = await Promise.all([
+    supabase.from('clients').select('id, name').order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, phone, email, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+  ])
+
+  const { data: clients, error: clientsError } = clientsResponse
+  const { data: contacts, error: contactsError } = contactsResponse
 
   if (clientsError) {
     throw new Error('Nepodařilo se načíst klienty.')
+  }
+
+  if (contactsError) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
   }
 
   return (
@@ -48,6 +68,7 @@ export default async function NewMeetingPage() {
             submitLabel="Uložit schůzku"
             cancelHref="/meetings"
             clients={(clients ?? []) as ClientOption[]}
+            contacts={(contacts ?? []) as ClientContactOption[]}
           />
         </section>
       </div>

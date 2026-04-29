@@ -18,6 +18,13 @@ type ClientOption = {
   name: string
 }
 
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
 type TaskView = 'all' | 'active' | 'resolved'
 type TaskRange = 'all' | 'today' | 'this_week' | 'next_week'
 
@@ -335,16 +342,28 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const supabase = await createClient()
   const users = await getAssignableUsers()
 
-  const { data: clients, error: clientsError } = await supabase
-    .from('clients')
-    .select('id, name')
-    .order('name', { ascending: true })
+  const [clientsResponse, contactsResponse] = await Promise.all([
+    supabase.from('clients').select('id, name').order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+  ])
+
+  const { data: clients, error: clientsError } = clientsResponse
+  const { data: contacts, error: contactsError } = contactsResponse
 
   if (clientsError) {
     throw new Error('Nepodařilo se načíst klienty.')
   }
 
+  if (contactsError) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
+  }
+
   const clientOptions = (clients ?? []) as ClientOption[]
+  const contactOptions = (contacts ?? []) as ClientContactOption[]
 
   const { profile, assignedToMe, createdByMe, allTasks } =
     await getTasksForCurrentUser()
@@ -429,7 +448,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <NewTaskButton users={users} clients={clientOptions} />
+              <NewTaskButton users={users} clients={clientOptions} contacts={contactOptions} />
             </div>
           </div>
         </section>
@@ -554,6 +573,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 tasks={visibleAssignedActive}
                 users={users}
                 clients={clientOptions}
+                contacts={contactOptions}
                 countVariant="primary"
               />
             </div>
@@ -564,6 +584,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 tasks={visibleDelegatedActive}
                 users={users}
                 clients={clientOptions}
+                contacts={contactOptions}
                 countVariant="dark"
               />
             </div>
@@ -587,6 +608,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 tasks={visibleAssignedResolved}
                 users={users}
                 clients={clientOptions}
+                contacts={contactOptions}
                 muted
                 countVariant="success"
               />
@@ -596,6 +618,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 tasks={visibleDelegatedResolved}
                 users={users}
                 clients={clientOptions}
+                contacts={contactOptions}
                 muted
                 countVariant="success"
               />
@@ -624,6 +647,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   tasks={visibleAdminActive}
                   users={users}
                   clients={clientOptions}
+                  contacts={contactOptions}
                   countVariant="dark"
                 />
               ) : null}
@@ -634,6 +658,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   tasks={visibleAdminResolved}
                   users={users}
                   clients={clientOptions}
+                  contacts={contactOptions}
                   muted
                   countVariant="success"
                 />

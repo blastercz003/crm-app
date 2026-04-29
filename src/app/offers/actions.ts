@@ -52,6 +52,10 @@ function getOptionalString(formData: FormData, key: string) {
   return value || null
 }
 
+function getOptionalContactId(formData: FormData) {
+  return getOptionalString(formData, 'client_contact_id')
+}
+
 function getNumber(formData: FormData, key: string, fallback = 0) {
   const raw = getString(formData, key).replace(',', '.')
   const parsed = Number(raw)
@@ -119,6 +123,38 @@ async function ensureClientAccess(clientId: string) {
   return { supabase, profile, isAdmin, client: data }
 }
 
+async function resolveOfferContact(params: {
+  supabase: Awaited<ReturnType<typeof getOfferRuntimeContext>>['supabase']
+  clientId: string
+  contactId: string | null
+  fallbackContactPerson: string | null
+}) {
+  const { supabase, clientId, contactId, fallbackContactPerson } = params
+
+  if (!contactId) {
+    return {
+      contactId: null,
+      contactPerson: fallbackContactPerson,
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('client_contacts')
+    .select('id, client_id, name')
+    .eq('id', contactId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (error || !data) {
+    throw new Error('Vybraná kontaktní osoba nebyla nalezena.')
+  }
+
+  return {
+    contactId: data.id,
+    contactPerson: data.name ?? fallbackContactPerson,
+  }
+}
+
 async function loadOfferForAction(offerId: string) {
   const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
 
@@ -164,6 +200,7 @@ export async function createOfferModalAction(
 ): Promise<OfferFormActionState> {
   try {
     const clientId = getString(formData, 'client_id')
+    const contactId = getOptionalContactId(formData)
     const title = getString(formData, 'title')
     const offerType = getOfferType(formData)
 
@@ -176,6 +213,12 @@ export async function createOfferModalAction(
     }
 
     const { supabase, profile } = await ensureClientAccess(clientId)
+    const resolvedContact = await resolveOfferContact({
+      supabase,
+      clientId,
+      contactId,
+      fallbackContactPerson: getOptionalString(formData, 'contact_person'),
+    })
     const offerNumber = createOfferNumber()
 
     const { data, error } = await supabase
@@ -183,13 +226,14 @@ export async function createOfferModalAction(
       .insert({
         offer_number: offerNumber,
         client_id: clientId,
+        client_contact_id: resolvedContact.contactId,
         created_by: profile.id,
         last_edited_by: profile.id,
         title,
         offer_type: offerType,
         project_name: getOptionalString(formData, 'project_name'),
         realization_address: getOptionalString(formData, 'realization_address'),
-        contact_person: getOptionalString(formData, 'contact_person'),
+        contact_person: resolvedContact.contactPerson,
         prepared_by_name: profile.offer_prepared_by_name ?? profile.name,
         prepared_by_phone: profile.offer_prepared_by_phone,
         prepared_by_email: profile.offer_prepared_by_email,
@@ -266,6 +310,7 @@ export async function createOfferModalAction(
 export async function updateOfferDetails(offerId: string, formData: FormData) {
   const { supabase, profile, offer } = await loadOfferForAction(offerId)
   const title = getString(formData, 'title')
+  const contactId = getOptionalContactId(formData)
 
   if (!title) {
     throw new Error('Název nabídky je povinný.')
@@ -275,6 +320,12 @@ export async function updateOfferDetails(offerId: string, formData: FormData) {
   const nextStatus = ['approved', 'ordered', 'rejected'].includes(offer.status)
     ? 'draft'
     : offer.status
+  const resolvedContact = await resolveOfferContact({
+    supabase,
+    clientId: offer.client_id,
+    contactId,
+    fallbackContactPerson: getOptionalString(formData, 'contact_person'),
+  })
 
   const { error } = await supabase
     .from('offers')
@@ -284,7 +335,8 @@ export async function updateOfferDetails(offerId: string, formData: FormData) {
       realization_address: getOptionalString(formData, 'realization_address'),
       realization_starts_at: getDateTimeOrNull(formData, 'realization_starts_at'),
       realization_ends_at: getDateTimeOrNull(formData, 'realization_ends_at'),
-      contact_person: getOptionalString(formData, 'contact_person'),
+      client_contact_id: resolvedContact.contactId,
+      contact_person: resolvedContact.contactPerson,
       prepared_by_name: getOptionalString(formData, 'prepared_by_name'),
       prepared_by_phone: getOptionalString(formData, 'prepared_by_phone'),
       prepared_by_email: getOptionalString(formData, 'prepared_by_email'),
@@ -1242,6 +1294,7 @@ export async function duplicateOffer(formData: FormData) {
     .insert({
       offer_number: createOfferNumber(),
       client_id: offer.client_id,
+      client_contact_id: offer.client_contact_id,
       created_by: profile.id,
       last_edited_by: profile.id,
       title: offer.title,
