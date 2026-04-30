@@ -85,11 +85,18 @@ function getOfferType(formData: FormData): OfferType {
   return value === 'bsafe24' ? 'bsafe24' : 'classic'
 }
 
-function createOfferNumber() {
-  const now = new Date()
-  const year = now.getFullYear()
-  const stamp = `${now.getTime()}`.slice(-8)
-  return `NAB-${year}-${stamp}`
+async function createOfferNumber(
+  supabase: Awaited<ReturnType<typeof getOfferRuntimeContext>>['supabase']
+) {
+  const { data, error } = await supabase.rpc('next_offer_number')
+
+  if (error || typeof data !== 'string') {
+    throw new Error(
+      `Nepodařilo se vygenerovat číslo nabídky: ${error?.message ?? 'Neznámá chyba'}`
+    )
+  }
+
+  return data
 }
 
 function getDefaultValidUntilDate() {
@@ -219,7 +226,7 @@ export async function createOfferModalAction(
       contactId,
       fallbackContactPerson: getOptionalString(formData, 'contact_person'),
     })
-    const offerNumber = createOfferNumber()
+    const offerNumber = await createOfferNumber(supabase)
 
     const { data, error } = await supabase
       .from('offers')
@@ -1292,7 +1299,7 @@ export async function duplicateOffer(formData: FormData) {
   const { data: duplicatedOffer, error: offerError } = await supabase
     .from('offers')
     .insert({
-      offer_number: createOfferNumber(),
+      offer_number: await createOfferNumber(supabase),
       client_id: offer.client_id,
       client_contact_id: offer.client_contact_id,
       created_by: profile.id,

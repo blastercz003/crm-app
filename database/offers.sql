@@ -102,6 +102,42 @@ create index if not exists offers_status_idx on public.offers (status, created_a
 create index if not exists offer_items_offer_idx on public.offer_items (offer_id, position asc);
 create index if not exists offer_service_items_offer_idx on public.offer_service_items (offer_id, position asc);
 
+create table if not exists public.offer_number_sequences (
+  year integer primary key,
+  last_number integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+revoke all on table public.offer_number_sequences from public;
+revoke all on table public.offer_number_sequences from anon;
+revoke all on table public.offer_number_sequences from authenticated;
+
+create or replace function public.next_offer_number()
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_year integer := extract(year from now())::integer;
+  next_number integer;
+begin
+  insert into public.offer_number_sequences as sequences (year, last_number, updated_at)
+  values (current_year, 1, now())
+  on conflict (year)
+  do update set
+    last_number = sequences.last_number + 1,
+    updated_at = now()
+  returning last_number into next_number;
+
+  return 'NAB-' || current_year || '-' || next_number;
+end;
+$$;
+
+revoke execute on function public.next_offer_number() from public;
+revoke execute on function public.next_offer_number() from anon;
+grant execute on function public.next_offer_number() to authenticated;
+
 create table if not exists public.fuel_price_cache (
   fuel_type text primary key,
   source_price_with_vat numeric(12, 3) not null,
