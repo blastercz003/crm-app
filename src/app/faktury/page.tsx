@@ -183,6 +183,20 @@ function getCurrentMonthRange() {
   }
 }
 
+function getPreviousMonthRange() {
+  const today = getPragueTodayParts()
+  const previousMonthDate = new Date(Date.UTC(today.year, today.month - 2, 1))
+  const year = previousMonthDate.getUTCFullYear()
+  const monthNumber = previousMonthDate.getUTCMonth() + 1
+  const month = String(monthNumber).padStart(2, '0')
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate()
+
+  return {
+    from: `${year}-${month}-01`,
+    to: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
+  }
+}
+
 function getProfit(saleAmount: number | null, costAmount: number | null) {
   const sale = typeof saleAmount === 'number' ? saleAmount : 0
   const cost = typeof costAmount === 'number' ? costAmount : 0
@@ -288,6 +302,42 @@ function buildCurrentMonthHref({
 
   params.set('date_from', currentMonthRange.from)
   params.set('date_to', currentMonthRange.to)
+
+  if (invoiced) {
+    params.set('invoiced', invoiced)
+  }
+
+  return `/faktury?${params.toString()}`
+}
+
+function buildPreviousMonthHref({
+  query,
+  salesOwner,
+  sort,
+  invoiced,
+}: {
+  query: string
+  salesOwner: string
+  sort: SortMode
+  invoiced: string
+}) {
+  const previousMonthRange = getPreviousMonthRange()
+  const params = new URLSearchParams()
+
+  if (query) {
+    params.set('q', query)
+  }
+
+  if (salesOwner) {
+    params.set('sales', salesOwner)
+  }
+
+  if (sort) {
+    params.set('sort', sort)
+  }
+
+  params.set('date_from', previousMonthRange.from)
+  params.set('date_to', previousMonthRange.to)
 
   if (invoiced) {
     params.set('invoiced', invoiced)
@@ -594,6 +644,12 @@ export default async function FakturyPage({
     sort,
     invoiced,
   })
+  const previousMonthHref = buildPreviousMonthHref({
+    query,
+    salesOwner,
+    sort,
+    invoiced,
+  })
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -771,15 +827,22 @@ export default async function FakturyPage({
 
                 <div className="flex flex-wrap items-center gap-2 sm:contents">
                   <Link
-                    href={currentMonthHref}
+                    href={previousMonthHref}
                     className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-3"
+                  >
+                    MINULÝ MĚSÍC
+                  </Link>
+
+                  <Link
+                    href={currentMonthHref}
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-4"
                   >
                     TENTO MĚSÍC
                   </Link>
 
                   <Link
                     href={exportHref}
-                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-4"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-5"
                   >
                     EXPORT
                   </Link>
