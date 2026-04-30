@@ -18,7 +18,7 @@ create table if not exists public.offers (
     offer_type in ('classic', 'bsafe24')
   ),
   status text not null default 'draft' check (
-    status in ('draft', 'submitted', 'changes_requested', 'approved', 'ordered', 'rejected')
+    status in ('draft', 'submitted', 'changes_requested', 'approved', 'sent_to_client', 'ordered', 'rejected')
   ),
   current_version integer not null default 1,
   submitted_version integer,
@@ -54,7 +54,7 @@ begin
 
   alter table public.offers
     add constraint offers_status_check
-    check (status in ('draft', 'submitted', 'changes_requested', 'approved', 'ordered', 'rejected'));
+    check (status in ('draft', 'submitted', 'changes_requested', 'approved', 'sent_to_client', 'ordered', 'rejected'));
 end $$;
 
 do $$

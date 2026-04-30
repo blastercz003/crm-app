@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
 import type {
   OfferClient,
@@ -13,6 +14,42 @@ import { ClassicOfferPdf } from './classic-offer-pdf'
 type OfferPdfPageProps = {
   params: Promise<{ id: string }>
   searchParams?: Promise<{ standalone?: string; print?: string }>
+}
+
+function sanitizePdfTitlePart(value: string | null | undefined) {
+  return (value ?? '')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getOfferPdfTitle(offer: Pick<OfferRow, 'offer_number' | 'title'>) {
+  const offerNumber = sanitizePdfTitlePart(offer.offer_number)
+  const title = sanitizePdfTitlePart(offer.title)
+
+  return [offerNumber, title].filter(Boolean).join(' - ') || 'Nabidka'
+}
+
+export async function generateMetadata({
+  params,
+}: Pick<OfferPdfPageProps, 'params'>): Promise<Metadata> {
+  const { id } = await params
+  const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
+
+  let offerQuery = supabase
+    .from('offers')
+    .select('offer_number, title')
+    .eq('id', id)
+
+  if (!isAdmin) {
+    offerQuery = offerQuery.eq('created_by', profile.id)
+  }
+
+  const { data } = await offerQuery.single<Pick<OfferRow, 'offer_number' | 'title'>>()
+
+  return {
+    title: data ? getOfferPdfTitle(data) : 'Nabidka',
+  }
 }
 
 export default async function OfferPdfPage({ params, searchParams }: OfferPdfPageProps) {

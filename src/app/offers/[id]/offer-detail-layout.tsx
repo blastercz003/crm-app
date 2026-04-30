@@ -6,6 +6,7 @@ import {
   deleteOfferItem,
   moveOfferItem,
   rejectOffer,
+  sendOfferToClient,
   setOfferClientOutcome,
   setOfferPresetChoice,
   submitOfferForApproval,
@@ -48,6 +49,7 @@ import { GuardedOfferLink } from './guarded-offer-link'
 import { OfferItemsEditor } from './offer-items-modal'
 import { OfferServicesModal } from './offer-services-modal'
 import { OfferUnsavedChangesGuard } from './offer-unsaved-changes-guard'
+import { SendOfferToClientButton } from './send-offer-to-client-button'
 import { SubmitOfferApprovalButton } from './submit-offer-approval-button'
 
 type OfferDetailPageProps = {
@@ -59,6 +61,7 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
   submitted: 'Ke schválení',
   changes_requested: 'Vrácená k úpravě',
   approved: 'Schválená',
+  sent_to_client: 'Odesláno klientovi',
   ordered: 'Objednáno',
   rejected: 'Zamítnuto',
 }
@@ -69,6 +72,8 @@ const OFFER_TYPE_LABELS: Record<OfferType, string> = {
   classic: 'KLASICKÁ',
   bsafe24: 'B-SAFE 24',
 }
+
+const PRAGUE_TIME_ZONE = 'Europe/Prague'
 
 function formatDate(value: string | null) {
   if (!value) return 'Bez data'
@@ -84,6 +89,7 @@ function formatDateTime(value: string | null) {
   return new Intl.DateTimeFormat('cs-CZ', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: PRAGUE_TIME_ZONE,
   }).format(new Date(value))
 }
 
@@ -100,6 +106,7 @@ function formatDateTimeInput(value: string | null) {
 function getStatusClass(status: OfferStatus) {
   if (status === 'ordered') return 'bg-green-600 text-white'
   if (status === 'rejected') return 'bg-red-100 text-red-700'
+  if (status === 'sent_to_client') return 'border border-black bg-white text-black'
   if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
   if (status === 'submitted') return 'bg-[#2980B9]/10 text-[#236f9f]'
   if (status === 'changes_requested') return 'bg-amber-100 text-amber-700'
@@ -707,12 +714,18 @@ export function OfferDetailLayout({
                 Schvalování
               </div>
               <div className="mt-4 space-y-3">
-                <form action={submitOfferForApproval.bind(null, offer.id)}>
-                  <SubmitOfferApprovalButton
-                    waitingForApproval={waitingForApproval}
-                    staleSubmitted={staleSubmitted}
-                  />
-                </form>
+                {offer.status === 'approved' || offer.status === 'sent_to_client' ? (
+                  <form action={sendOfferToClient.bind(null, offer.id)}>
+                    <SendOfferToClientButton isSent={offer.status === 'sent_to_client'} />
+                  </form>
+                ) : (
+                  <form action={submitOfferForApproval.bind(null, offer.id)}>
+                    <SubmitOfferApprovalButton
+                      waitingForApproval={waitingForApproval}
+                      staleSubmitted={staleSubmitted}
+                    />
+                  </form>
+                )}
 
                 {isAdmin ? (
                   <>
@@ -742,7 +755,7 @@ export function OfferDetailLayout({
                   </>
                 ) : null}
 
-                {offer.status === 'approved' ? (
+                {offer.status === 'sent_to_client' ? (
                   <div className="grid gap-2 border-t border-gray-100 pt-3">
                     <form action={setOfferClientOutcome.bind(null, offer.id, 'ordered')}>
                       <button

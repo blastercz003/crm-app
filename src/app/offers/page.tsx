@@ -38,6 +38,7 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
   submitted: 'Ke schválení',
   changes_requested: 'Vrácená k úpravě',
   approved: 'Schválená',
+  sent_to_client: 'Odesláno klientovi',
   ordered: 'Objednáno',
   rejected: 'Zamítnuto',
 }
@@ -59,6 +60,7 @@ const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
   { value: 'submitted', label: 'Ke schválení' },
   { value: 'changes_requested', label: 'Vrácené' },
   { value: 'approved', label: 'Schválené' },
+  { value: 'sent_to_client', label: 'Odeslané klientovi' },
   { value: 'ordered', label: 'Objednané' },
   { value: 'rejected', label: 'Zamítnuté' },
 ]
@@ -78,6 +80,7 @@ function isOfferStatus(value: string | undefined): value is OfferStatus {
     value === 'submitted' ||
     value === 'changes_requested' ||
     value === 'approved' ||
+    value === 'sent_to_client' ||
     value === 'ordered' ||
     value === 'rejected'
   )
@@ -103,6 +106,7 @@ function formatDate(value: string | null) {
 function getStatusClass(status: OfferStatus) {
   if (status === 'ordered') return 'bg-green-600 text-white'
   if (status === 'rejected') return 'bg-red-100 text-red-700'
+  if (status === 'sent_to_client') return 'border border-black bg-white text-black'
   if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
   if (status === 'submitted') return 'bg-[#2980B9]/10 text-[#236f9f]'
   if (status === 'changes_requested') return 'bg-amber-100 text-amber-700'

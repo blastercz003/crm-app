@@ -182,7 +182,7 @@ async function loadOfferForAction(offerId: string) {
 
 async function touchOfferVersion(offerId: string, editorId: string) {
   const { supabase, offer } = await loadOfferForAction(offerId)
-  const nextStatus = ['approved', 'ordered', 'rejected'].includes(offer.status)
+  const nextStatus = ['approved', 'sent_to_client', 'ordered', 'rejected'].includes(offer.status)
     ? 'draft'
     : offer.status
 
@@ -324,7 +324,7 @@ export async function updateOfferDetails(offerId: string, formData: FormData) {
   }
 
   const nextVersion = offer.current_version + 1
-  const nextStatus = ['approved', 'ordered', 'rejected'].includes(offer.status)
+  const nextStatus = ['approved', 'sent_to_client', 'ordered', 'rejected'].includes(offer.status)
     ? 'draft'
     : offer.status
   const resolvedContact = await resolveOfferContact({
@@ -1215,11 +1215,37 @@ export async function rejectOffer(offerId: string, formData: FormData) {
   revalidatePath('/notifications')
 }
 
+export async function sendOfferToClient(offerId: string) {
+  const { supabase, profile, offer } = await loadOfferForAction(offerId)
+
+  if (offer.status !== 'approved') {
+    throw new Error('Klientovi lze odeslat pouze schválenou nabídku.')
+  }
+
+  const { error } = await supabase
+    .from('offers')
+    .update({
+      status: 'sent_to_client',
+      last_edited_by: profile.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', offerId)
+
+  if (error) {
+    throw new Error(`Nepodařilo se označit nabídku jako odeslanou klientovi: ${error.message}`)
+  }
+
+  revalidatePath('/offers')
+  revalidatePath(`/offers/${offerId}`)
+  revalidatePath(`/clients/${offer.client_id}`)
+  revalidatePath('/dashboard')
+}
+
 export async function setOfferClientOutcome(offerId: string, status: 'ordered' | 'rejected') {
   const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
 
-  if (offer.status !== 'approved') {
-    throw new Error('Výsledek od klienta lze nastavit pouze u schválené nabídky.')
+  if (offer.status !== 'sent_to_client') {
+    throw new Error('Výsledek od klienta lze nastavit pouze u nabídky odeslané klientovi.')
   }
 
   const { error } = await supabase

@@ -3,6 +3,7 @@ export type OfferStatus =
   | 'submitted'
   | 'changes_requested'
   | 'approved'
+  | 'sent_to_client'
   | 'ordered'
   | 'rejected'
 
