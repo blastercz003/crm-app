@@ -29,6 +29,10 @@ type ClientContactOption = {
   is_primary: boolean
 }
 
+type OfferStatsRow = {
+  status: OfferStatus
+}
+
 const STATUS_LABELS: Record<OfferStatus, string> = {
   draft: 'Rozpracovaná',
   submitted: 'Ke schválení',
@@ -158,9 +162,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     : ''
 
   let offersQuery = supabase.from('offers').select('*')
+  let statsOffersQuery = supabase.from('offers').select('status')
 
   if (!isAdmin) {
     offersQuery = offersQuery.eq('created_by', profile.id)
+    statsOffersQuery = statsOffersQuery.eq('created_by', profile.id)
   } else if (authorId) {
     offersQuery = offersQuery.eq('created_by', authorId)
   }
@@ -196,6 +202,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     contactsResponse,
     profilesResponse,
     itemsResponse,
+    statsOffersResponse,
   ] = await Promise.all([
     offersQuery,
     clientsQuery,
@@ -210,6 +217,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     supabase
       .from('offer_items')
       .select('offer_id, quantity, unit_price_without_vat, discount_percent'),
+    statsOffersQuery,
   ])
 
   if (offersResponse.error) {
@@ -232,7 +240,12 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     throw new Error(`Nepodařilo se načíst položky nabídek: ${itemsResponse.error.message}`)
   }
 
+  if (statsOffersResponse.error) {
+    throw new Error(`Nepodařilo se načíst statistiky nabídek: ${statsOffersResponse.error.message}`)
+  }
+
   const offers = (offersResponse.data ?? []) as OfferRow[]
+  const statsOffers = (statsOffersResponse.data ?? []) as OfferStatsRow[]
   const clients = (clientsResponse.data ?? []) as OfferClient[]
   const contacts = (contactsResponse.data ?? []) as ClientContactOption[]
   const profiles = (profilesResponse.data ?? []) as OfferProfile[]
@@ -257,10 +270,10 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   }))
 
   const statusCounts = {
-    draft: offers.filter((offer) => offer.status === 'draft').length,
-    submitted: offers.filter((offer) => offer.status === 'submitted').length,
-    approved: offers.filter((offer) => offer.status === 'approved').length,
-    total: offers.length,
+    draft: statsOffers.filter((offer) => offer.status === 'draft').length,
+    submitted: statsOffers.filter((offer) => offer.status === 'submitted').length,
+    approved: statsOffers.filter((offer) => offer.status === 'approved').length,
+    total: statsOffers.length,
   }
 
   const sortedOffers =
@@ -466,8 +479,8 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.submitted}</div>
                 </div>
-                <div className="w-full rounded-2xl border border-green-100 bg-green-100 px-2.5 py-3 text-green-800 shadow-sm lg:w-[119px] lg:flex-none">
-                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-current/80">
+                <div className="w-full rounded-2xl border border-transparent bg-emerald-600 px-2.5 py-3 text-white shadow-sm lg:w-[119px] lg:flex-none">
+                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     SCHVÁLENO
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.approved}</div>

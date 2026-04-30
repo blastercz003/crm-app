@@ -130,7 +130,7 @@ begin
     updated_at = now()
   returning last_number into next_number;
 
-  return 'NAB-' || current_year || '-' || next_number;
+  return 'NAB-' || current_year || '-' || lpad(next_number::text, 4, '0');
 end;
 $$;
 

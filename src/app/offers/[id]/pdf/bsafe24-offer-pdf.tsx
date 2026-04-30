@@ -48,7 +48,15 @@ function formatShortDateTime(value: string | null) {
   return `${datePart} ${timePart}`
 }
 
-function formatActivationTerm(startsAt: string | null, endsAt: string | null) {
+function formatActivationTerm(
+  activationText: string | null,
+  startsAt: string | null,
+  endsAt: string | null
+) {
+  if (activationText?.trim()) {
+    return `Aktivace produktu od: ${activationText.trim()}`
+  }
+
   if (!startsAt && !endsAt) return 'Aktivace produktu od: Bez termínu'
 
   return `Aktivace produktu od: ${formatShortDateTime(startsAt ?? endsAt)}`
@@ -545,6 +553,11 @@ export function BSafe24OfferPdf({
             white-space: pre-wrap;
           }
 
+          .bsafe-pdf-service-table .bsafe-pdf-specification {
+            color: inherit;
+            font-weight: 800;
+          }
+
           .bsafe-pdf-price-cell {
             position: relative;
             display: grid;
@@ -701,7 +714,11 @@ export function BSafe24OfferPdf({
                     </div>
                     <h1 className="bsafe-pdf-project-name">{offer.title}</h1>
                     <div className="bsafe-pdf-realization-term">
-                      {formatActivationTerm(offer.realization_starts_at, offer.realization_ends_at)}
+                      {formatActivationTerm(
+                        offer.project_name,
+                        offer.realization_starts_at,
+                        offer.realization_ends_at
+                      )}
                     </div>
                   </header>
                 </div>
@@ -750,7 +767,7 @@ export function BSafe24OfferPdf({
                 <div className="bsafe-pdf-trip-header-label">Měsíčně</div>
               </div>
 
-              <table className="bsafe-pdf-items-table">
+              <table className="bsafe-pdf-items-table bsafe-pdf-service-table">
                 <colgroup>
                   <col style={{ width: '25%' }} />
                   <col style={{ width: '24%' }} />
