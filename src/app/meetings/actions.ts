@@ -605,7 +605,7 @@ export async function updateMeetingModalAction(
 }
 
 export async function deleteMeeting(formData: FormData) {
-  const { supabase, user, role } = await getCurrentUserWithRole()
+  const { supabase, role } = await getCurrentUserWithRole()
 
   const id = normalizeText(formData.get('id'))
 
@@ -615,13 +615,10 @@ export async function deleteMeeting(formData: FormData) {
 
   const meeting = await getMeetingForPermissionCheck(id)
 
-  const canDelete =
-    role === 'admin' ||
-    meeting.assigned_user_id === user.id ||
-    meeting.created_by === user.id
+  const canDelete = role === 'admin'
 
   if (!canDelete) {
-    throw new Error('Tuto schůzku můžete smazat jen jako admin nebo jako její vlastník.')
+    throw new Error('Tuto schůzku může smazat jen admin.')
   }
 
   const { error: taskDeleteError } = await supabase

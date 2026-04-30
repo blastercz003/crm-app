@@ -246,7 +246,7 @@ export default async function MeetingDetailPage({
     notFound()
   }
 
-  const canDelete = isAdmin || meeting.created_by === user.id
+  const canDelete = isAdmin
   const hasTask = Boolean(meeting.follow_up_task?.trim())
   const displayStatus = getMeetingDisplayStatus(meeting)
 
@@ -285,7 +285,7 @@ export default async function MeetingDetailPage({
 
               <Link
                 href={`/meetings/${meeting.id}/edit`}
-                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
+                className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-900"
               >
                 UPRAVIT SCHŮZKU
               </Link>

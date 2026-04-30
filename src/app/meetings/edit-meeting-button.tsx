@@ -73,7 +73,7 @@ export function EditMeetingButton({
 
   const resolvedClassName =
     className ??
-    'inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800'
+    'inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-900'
 
   return (
     <>

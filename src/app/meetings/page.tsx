@@ -221,11 +221,11 @@ function StatCard({
       : variant === 'dark'
         ? 'border-transparent bg-zinc-800 text-white'
         : variant === 'success'
-          ? 'border-green-200 bg-green-50 text-green-800'
+          ? 'border-transparent bg-emerald-600 text-white'
           : 'border-zinc-200 bg-white text-zinc-950'
 
   const labelClassName =
-    variant === 'primary' || variant === 'dark'
+    variant === 'primary' || variant === 'dark' || variant === 'success'
       ? 'text-white'
       : variant === 'neutral'
         ? 'text-zinc-950'
@@ -266,13 +266,9 @@ function MeetingListItem({
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-100">
-      <div className="flex flex-col gap-3">
+    <div className="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-100">
+      <div className="flex min-w-0 flex-col gap-3">
         <div className="flex min-w-0 items-center gap-2.5 text-sm">
-          <div className="shrink-0 whitespace-nowrap rounded-xl border border-transparent bg-[#2980B9] px-2.5 py-1 text-[11px] font-medium text-white">
-            {formatCompactDateTime(meeting.meeting_datetime)}
-          </div>
-
           <div
             className="min-w-0 flex-1 truncate font-medium text-zinc-900"
             title={companyLabel}
@@ -290,15 +286,21 @@ function MeetingListItem({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/meetings/${meeting.id}`}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
-          >
-            DETAIL
-          </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="shrink-0 whitespace-nowrap rounded-xl border border-transparent bg-[#2980B9] px-2.5 py-1 text-[11px] font-medium text-white">
+            {formatCompactDateTime(meeting.meeting_datetime)}
+          </div>
 
-          <EditMeetingButton clients={clients} contacts={contacts} meeting={meeting} />
+          <div className="flex flex-wrap justify-end gap-2">
+            <Link
+              href={`/meetings/${meeting.id}`}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+            >
+              DETAIL
+            </Link>
+
+            <EditMeetingButton clients={clients} contacts={contacts} meeting={meeting} />
+          </div>
         </div>
       </div>
     </div>
@@ -334,11 +336,11 @@ function MeetingSection({
       : countVariant === 'dark'
         ? 'border-transparent bg-zinc-800 text-white'
         : countVariant === 'success'
-          ? 'border-green-200 bg-green-50 text-green-800'
+          ? 'border-transparent bg-emerald-600 text-white'
           : 'border-zinc-200 bg-zinc-50 text-zinc-600'
 
   return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+    <section className="min-w-0 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
@@ -361,8 +363,8 @@ function MeetingSection({
           {emptyText}
         </div>
       ) : (
-        <div className={scrollClassName ?? 'grid gap-3'}>
-          <div className="grid gap-3">
+        <div className={`min-w-0 ${scrollClassName ?? 'grid gap-3'}`}>
+          <div className="grid min-w-0 gap-3">
             {meetings.map((meeting) => (
               <MeetingListItem
                 key={meeting.id}

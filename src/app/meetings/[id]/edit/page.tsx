@@ -52,7 +52,12 @@ export default async function EditMeetingPage({
     redirect('/login')
   }
 
-  const [meetingResponse, clientsResponse, contactsResponse] = await Promise.all([
+  const [profileResponse, meetingResponse, clientsResponse, contactsResponse] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('id', user.id)
+      .single(),
     supabase.from('meetings').select('*').eq('id', id).single(),
     supabase.from('clients').select('id, name').order('name', { ascending: true }),
     supabase
@@ -62,9 +67,14 @@ export default async function EditMeetingPage({
       .order('name', { ascending: true }),
   ])
 
+  const { data: profile, error: profileError } = profileResponse
   const { data: meeting, error: meetingError } = meetingResponse
   const { data: clients, error: clientsError } = clientsResponse
   const { data: contacts, error: contactsError } = contactsResponse
+
+  if (profileError || !profile) {
+    notFound()
+  }
 
   if (meetingError || !meeting) {
     notFound()
@@ -81,6 +91,7 @@ export default async function EditMeetingPage({
   const typedMeeting = meeting as MeetingData
   const meetingTitle =
     typedMeeting.title ?? typedMeeting.company_name ?? 'Upravit schůzku'
+  const canDelete = profile.role === 'admin'
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -97,15 +108,17 @@ export default async function EditMeetingPage({
             </div>
 
             <div className="flex flex-row items-center gap-3 lg:justify-end">
-              <form action={deleteMeeting} className="shrink-0">
-                <input type="hidden" name="id" value={id} />
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-100"
-                >
-                  SMAZAT SCHŮZKU
-                </button>
-              </form>
+              {canDelete ? (
+                <form action={deleteMeeting} className="shrink-0">
+                  <input type="hidden" name="id" value={id} />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-100"
+                  >
+                    SMAZAT SCHŮZKU
+                  </button>
+                </form>
+              ) : null}
 
               <Link
                 href={`/meetings/${id}`}
