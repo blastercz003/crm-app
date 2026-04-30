@@ -571,6 +571,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 clients={clientOptions}
                 contacts={contactOptions}
                 countVariant="primary"
+                initialVisibleCount={5}
               />
             </div>
 
@@ -582,6 +583,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 clients={clientOptions}
                 contacts={contactOptions}
                 countVariant="dark"
+                initialVisibleCount={5}
               />
             </div>
           </section>
