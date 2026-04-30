@@ -1235,22 +1235,26 @@ export async function sendOfferToClient(offerId: string) {
     throw new Error(`Nepodařilo se označit nabídku jako odeslanou klientovi: ${error.message}`)
   }
 
-  const approver = await getOfferApprover({ supabase })
+  try {
+    const approver = await getOfferApprover({ supabase })
 
-  await createNotification({
-    supabase,
-    recipientUserId: approver.id,
-    actorUserId: profile.id,
-    category: 'offers',
-    type: 'offer_sent_to_client',
-    title: 'Nabídka odeslána klientovi',
-    message: `Uživatel ${profile.name ?? 'Neznámý uživatel'} odeslal nabídku ${offer.offer_number} klientovi.`,
-    entityType: 'offer',
-    entityId: offerId,
-    href: `/offers/${offerId}`,
-    priority: 'normal',
-    dedupeKey: `offer_sent_to_client:${offerId}`,
-  })
+    await createNotification({
+      supabase,
+      recipientUserId: approver.id,
+      actorUserId: profile.id,
+      category: 'offers',
+      type: 'offer_sent_to_client',
+      title: 'Nabídka odeslána klientovi',
+      message: `Uživatel ${profile.name ?? 'Neznámý uživatel'} odeslal nabídku ${offer.offer_number} klientovi.`,
+      entityType: 'offer',
+      entityId: offerId,
+      href: `/offers/${offerId}`,
+      priority: 'normal',
+      dedupeKey: `offer_sent_to_client:${offerId}`,
+    })
+  } catch (error) {
+    console.error('Nepodařilo se vytvořit notifikaci o odeslání nabídky klientovi.', error)
+  }
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
