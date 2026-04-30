@@ -37,9 +37,9 @@ type OfferStatsRow = {
 const STATUS_LABELS: Record<OfferStatus, string> = {
   draft: 'Rozpracovaná',
   submitted: 'Ke schválení',
-  changes_requested: 'Vrácená k úpravě',
+  changes_requested: 'K úpravě',
   approved: 'Schválená',
-  sent_to_client: 'Odesláno klientovi',
+  sent_to_client: 'Odeslaná',
   ordered: 'Objednáno',
   rejected: 'Zamítnuto',
 }
