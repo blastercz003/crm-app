@@ -315,17 +315,7 @@ export default async function JobsPage({
     ).values()
   )
 
-  const visibleClientIds = clientOptions.map((client) => client.id)
-
   let request = supabase.from('jobs').select('*')
-
-  if (!isAdmin) {
-    if (visibleClientIds.length > 0) {
-      request = request.in('client_id', visibleClientIds)
-    } else {
-      request = request.eq('client_id', '00000000-0000-0000-0000-000000000000')
-    }
-  }
 
   if (query) {
     request = request.or(buildSearchFilter(query))
@@ -360,6 +350,8 @@ export default async function JobsPage({
     .order('name', { ascending: true })
 
   if (!isAdmin) {
+    const visibleClientIds = clientOptions.map((client) => client.id)
+
     if (visibleClientIds.length > 0) {
       contactsRequest = contactsRequest.in('client_id', visibleClientIds)
     } else {
