@@ -645,55 +645,61 @@ export default async function JobsPage({
                   ) : null}
                 </div>
 
-                <div className="print-hidden flex flex-wrap items-center gap-2">
-                  <PrintJobsButton />
+                <div className="print-hidden flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                  <div className="h-px bg-gray-100 sm:hidden" />
 
-                  <Link
-                    href={todayHref}
-                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
-                      isTodayActive
-                        ? 'bg-[#236f9f] shadow-sm'
-                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
-                    }`}
-                  >
-                    DNES
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2 sm:contents">
+                    <PrintJobsButton />
 
-                  <Link
-                    href={thisWeekHref}
-                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
-                      isThisWeekActive
-                        ? 'bg-[#236f9f] shadow-sm'
-                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
-                    }`}
-                  >
-                    TENTO TÝDEN
-                  </Link>
+                    <button
+                      type="submit"
+                      className="inline-flex h-9 items-center justify-center rounded-xl bg-black px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800 sm:order-4"
+                    >
+                      POUŽÍT FILTRY
+                    </button>
 
-                  <Link
-                    href={nextWeekHref}
-                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition ${
-                      isNextWeekActive
-                        ? 'bg-[#236f9f] shadow-sm'
-                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
-                    }`}
-                  >
-                    PŘÍŠTÍ TÝDEN
-                  </Link>
+                    <Link
+                      href="/jobs"
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50 sm:order-5"
+                    >
+                      RESET
+                    </Link>
+                  </div>
 
-                  <button
-                    type="submit"
-                    className="inline-flex h-9 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800"
-                  >
-                    POUŽÍT FILTRY
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 sm:contents">
+                    <Link
+                      href={todayHref}
+                      className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition sm:order-1 ${
+                        isTodayActive
+                          ? 'bg-[#236f9f] shadow-sm'
+                          : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                      }`}
+                    >
+                      DNES
+                    </Link>
 
-                  <Link
-                    href="/jobs"
-                    className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
-                  >
-                    RESET
-                  </Link>
+                    <Link
+                      href={thisWeekHref}
+                      className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition sm:order-2 ${
+                        isThisWeekActive
+                          ? 'bg-[#236f9f] shadow-sm'
+                          : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                      }`}
+                    >
+                      TENTO TÝDEN
+                    </Link>
+
+                    <Link
+                      href={nextWeekHref}
+                      className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition sm:order-3 ${
+                        isNextWeekActive
+                          ? 'bg-[#236f9f] shadow-sm'
+                          : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                      }`}
+                    >
+                      PŘÍŠTÍ TÝDEN
+                    </Link>
+                  </div>
                 </div>
               </div>
             </form>

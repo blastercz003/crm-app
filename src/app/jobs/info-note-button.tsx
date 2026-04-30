@@ -42,12 +42,12 @@ export function InfoNoteButton({
     variant === 'mobile'
       ? `inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-medium transition ${
           infoNote
-            ? 'bg-gray-900 text-white hover:bg-gray-800'
+            ? 'bg-black text-white hover:bg-gray-800'
             : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
         }`
       : `inline-flex min-w-[88px] items-center justify-center rounded-xl px-3 py-2 text-xs font-medium transition ${
           infoNote
-            ? 'bg-gray-900 text-white hover:bg-gray-800'
+            ? 'bg-black text-white hover:bg-gray-800'
             : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
         }`
 

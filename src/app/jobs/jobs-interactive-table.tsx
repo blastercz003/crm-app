@@ -909,7 +909,7 @@ function InfoNoteButton({
           compact ? 'min-w-[78px]' : 'min-w-[78px]'
         } border px-3 text-[11px] font-medium tracking-wide transition ${
           job.info_note
-            ? 'border-gray-900 bg-gray-900 text-white hover:bg-gray-800'
+            ? 'border-black bg-black text-white hover:bg-gray-800'
             : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
         }`}
       >

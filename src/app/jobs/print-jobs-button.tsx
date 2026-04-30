@@ -7,7 +7,7 @@ export function PrintJobsButton() {
       onClick={() => window.print()}
       title="Tisk / Uložit do PDF"
       aria-label="Tisk / Uložit do PDF"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-white transition hover:bg-gray-800 active:scale-95"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white transition hover:bg-gray-800 active:scale-95"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

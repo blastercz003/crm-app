@@ -752,34 +752,38 @@ export default async function FakturyPage({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
-                <button
-                  type="submit"
-                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800"
-                >
-                  POUŽÍT FILTRY
-                </button>
+              <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex flex-wrap items-center gap-2 sm:contents">
+                  <button
+                    type="submit"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-black px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800 sm:order-1"
+                  >
+                    POUŽÍT FILTRY
+                  </button>
 
-                <Link
-                  href="/faktury"
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
-                >
-                  UPDATE
-                </Link>
+                  <Link
+                    href="/faktury"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50 sm:order-2"
+                  >
+                    UPDATE
+                  </Link>
+                </div>
 
-                <Link
-                  href={currentMonthHref}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f]"
-                >
-                  TENTO MĚSÍC
-                </Link>
+                <div className="flex flex-wrap items-center gap-2 sm:contents">
+                  <Link
+                    href={currentMonthHref}
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-3"
+                  >
+                    TENTO MĚSÍC
+                  </Link>
 
-                <Link
-                  href={exportHref}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f]"
-                >
-                  EXPORT
-                </Link>
+                  <Link
+                    href={exportHref}
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-4"
+                  >
+                    EXPORT
+                  </Link>
+                </div>
               </div>
 
               <div className="border-t border-gray-100 pt-3">
