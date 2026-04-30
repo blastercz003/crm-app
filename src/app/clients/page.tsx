@@ -238,12 +238,13 @@ export default async function ClientsPage({
                             <div className="flex justify-end gap-2">
                               <EditClientButton
                                 client={client}
+                                canDeleteClient={isAdmin}
                                 className="inline-flex w-[74px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 transition hover:bg-gray-100"
                               />
 
                               <Link
                                 href={`/clients/${client.id}`}
-                                className="inline-flex w-[74px] items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
+                                className="inline-flex w-[74px] items-center justify-center rounded-xl bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
                               >
                                 DETAIL
                               </Link>
@@ -299,12 +300,13 @@ export default async function ClientsPage({
                     <div className="mt-4 flex flex-wrap justify-end gap-2">
                       <EditClientButton
                         client={client}
+                        canDeleteClient={isAdmin}
                         className="inline-flex w-[74px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 transition hover:bg-gray-100"
                       />
 
                       <Link
                         href={`/clients/${client.id}`}
-                        className="inline-flex w-[74px] items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
+                        className="inline-flex w-[74px] items-center justify-center rounded-xl bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
                       >
                         DETAIL
                       </Link>

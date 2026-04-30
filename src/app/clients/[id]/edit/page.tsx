@@ -15,6 +15,10 @@ type ClientRow = {
   created_at: string
 }
 
+type ProfileRow = {
+  role: string | null
+}
+
 export default async function EditClientPage({
   params,
 }: {
@@ -30,6 +34,18 @@ export default async function EditClientPage({
   if (!user) {
     redirect('/login')
   }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
+
+  const isAdmin = (profile as ProfileRow | null)?.role === 'admin'
 
   const { data: client, error } = await supabase
     .from('clients')
@@ -204,28 +220,30 @@ export default async function EditClientPage({
               </div>
             </form>
 
-            <div className="border-t border-gray-100 pt-6">
-              <div className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <h2 className="text-sm font-semibold text-red-800">
-                    Smazání klienta
-                  </h2>
-                  <p className="text-sm text-red-700">
-                    Tato akce klienta odstraní ze seznamu.
-                  </p>
-                </div>
+            {isAdmin ? (
+              <div className="border-t border-gray-100 pt-6">
+                <div className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-sm font-semibold text-red-800">
+                      Smazání klienta
+                    </h2>
+                    <p className="text-sm text-red-700">
+                      Tato akce klienta odstraní ze seznamu.
+                    </p>
+                  </div>
 
-                <form action={deleteClientRecord}>
-                  <input type="hidden" name="id" value={typedClient.id} />
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center rounded-2xl border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
-                  >
-                    SMAZAT KLIENTA
-                  </button>
-                </form>
+                  <form action={deleteClientRecord}>
+                    <input type="hidden" name="id" value={typedClient.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-2xl border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                    >
+                      SMAZAT KLIENTA
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </section>
       </div>

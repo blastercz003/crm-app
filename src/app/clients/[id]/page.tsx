@@ -581,6 +581,7 @@ export default async function ClientDetailPage({
               <EditClientButton
                 client={typedClient}
                 label="UPRAVIT KLIENTA"
+                canDeleteClient={isAdmin}
                 className="inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               />
 
@@ -631,6 +632,7 @@ export default async function ClientDetailPage({
                   <EditClientButton
                     client={typedClient}
                     label="UPRAVIT KLIENTA"
+                    canDeleteClient={isAdmin}
                     className="inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50 sm:w-[150px]"
                   />
 

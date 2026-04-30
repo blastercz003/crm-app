@@ -369,11 +369,24 @@ export async function deleteClientRecord(formData: FormData) {
     throw new Error('Chybí ID klienta.')
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single<{ role: string | null }>()
+
+  if (profileError) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
+
+  if (profile?.role !== 'admin') {
+    throw new Error('Klienta může smazat pouze administrátor.')
+  }
+
   const { error } = await supabase
     .from('clients')
     .delete()
     .eq('id', id)
-    .eq('created_by', user.id)
 
   if (error) {
     throw new Error('Nepodařilo se smazat klienta.')
