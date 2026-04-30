@@ -28,6 +28,7 @@ type TaskSectionProps = {
   contacts: ClientContactOption[]
   muted?: boolean
   countVariant?: 'primary' | 'dark' | 'success' | 'neutral'
+  initialVisibleCount?: number
 }
 
 export default function TaskSection({
@@ -39,14 +40,20 @@ export default function TaskSection({
   contacts,
   muted = false,
   countVariant = 'neutral',
+  initialVisibleCount,
 }: TaskSectionProps) {
+  const shouldLimitTasks =
+    typeof initialVisibleCount === 'number' && tasks.length > initialVisibleCount
+  const visibleTasks = shouldLimitTasks ? tasks.slice(0, initialVisibleCount) : tasks
+  const hiddenTasks = shouldLimitTasks ? tasks.slice(initialVisibleCount) : []
+
   const countClassName =
     countVariant === 'primary'
       ? 'border-transparent bg-[#2980B9] text-white'
       : countVariant === 'dark'
         ? 'border-transparent bg-zinc-800 text-white'
         : countVariant === 'success'
-          ? 'border-green-100 bg-green-100 text-green-800'
+          ? 'border-transparent bg-emerald-600 text-white'
           : muted
             ? 'bg-white text-zinc-500 ring-1 ring-zinc-200'
             : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
@@ -92,7 +99,7 @@ export default function TaskSection({
           </div>
         ) : (
           <div className="grid gap-3">
-            {tasks.map((task) => (
+            {visibleTasks.map((task) => (
               <TaskCard
                 key={task.id}
                 task={task}
@@ -101,6 +108,26 @@ export default function TaskSection({
                 contacts={contacts}
               />
             ))}
+
+            {hiddenTasks.length > 0 ? (
+              <details className="group grid gap-3">
+                <summary className="inline-flex min-h-10 cursor-pointer list-none items-center justify-center rounded-xl bg-black px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
+                  ZOBRAZIT VŠE
+                </summary>
+
+                <div className="grid gap-3">
+                  {hiddenTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      users={users}
+                      clients={clients}
+                      contacts={contacts}
+                    />
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </div>
         )}
       </div>

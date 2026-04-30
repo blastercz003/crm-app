@@ -43,15 +43,11 @@ function StatCard({
       : variant === 'dark'
         ? 'border-zinc-800 bg-zinc-800 text-white'
         : variant === 'success'
-          ? 'border-green-100 bg-green-100 text-green-800'
+          ? 'border-transparent bg-emerald-600 text-white'
           : 'border-zinc-200 bg-white text-zinc-950'
 
   const labelClassName =
-    variant === 'neutral'
-      ? 'text-zinc-950'
-      : variant === 'success'
-        ? 'text-current/80'
-        : 'text-white'
+    variant === 'neutral' ? 'text-zinc-950' : 'text-white'
 
   return (
     <div className={`rounded-2xl border px-4 py-3 shadow-sm ${className}`}>
@@ -611,6 +607,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 contacts={contactOptions}
                 muted
                 countVariant="success"
+                initialVisibleCount={5}
               />
 
               <TaskSection
@@ -621,6 +618,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 contacts={contactOptions}
                 muted
                 countVariant="success"
+                initialVisibleCount={5}
               />
             </div>
           </section>
@@ -649,6 +647,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   clients={clientOptions}
                   contacts={contactOptions}
                   countVariant="dark"
+                  initialVisibleCount={5}
                 />
               ) : null}
 
@@ -661,6 +660,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   contacts={contactOptions}
                   muted
                   countVariant="success"
+                  initialVisibleCount={5}
                 />
               ) : null}
             </div>
