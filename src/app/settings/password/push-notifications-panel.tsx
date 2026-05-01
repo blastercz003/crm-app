@@ -153,15 +153,9 @@ export function PushNotificationsPanel() {
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="max-w-xl space-y-4">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-            Testovací funkce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+          <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
             Push notifikace
           </h2>
-          <p className="mt-2 text-sm text-zinc-500">
-            Skrytý test zapnutí notifikací pro toto zařízení.
-          </p>
         </div>
 
         {status === 'unsupported' ? (

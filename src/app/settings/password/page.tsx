@@ -58,10 +58,11 @@ export default function ChangePasswordPage() {
                 Nastavení účtu
               </div>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-                Změna hesla
+                Nastavení
               </h1>
               <p className="mt-2 text-sm text-zinc-500">
-                Zde si můžeš nastavit nové přihlašovací heslo do CRM.
+                Zde si můžeš nastavit nové heslo do appky a zapnout notifikace
+                (iPhone).
               </p>
             </div>
 

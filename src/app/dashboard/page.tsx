@@ -563,7 +563,7 @@ function DashboardUserPanel({
           href="/settings/password"
           className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
         >
-          HESLO
+          NASTAVENÍ
         </Link>
 
         <form action="/auth/signout" method="post" className="shrink-0">
