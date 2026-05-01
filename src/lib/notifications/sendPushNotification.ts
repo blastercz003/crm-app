@@ -15,6 +15,10 @@ type SendPushNotificationInput = {
   href?: string | null
 }
 
+type PushSupabaseClient =
+  | Awaited<ReturnType<typeof createClient>>
+  | NonNullable<ReturnType<typeof getServiceRoleClient>>
+
 function getPushConfig() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const privateKey = process.env.VAPID_PRIVATE_KEY
@@ -47,6 +51,22 @@ function shouldDeleteSubscription(error: unknown) {
   return false
 }
 
+async function getUnreadNotificationCount(
+  supabase: PushSupabaseClient,
+  recipientUserId: string
+) {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('recipient_user_id', recipientUserId)
+    .is('read_at', null)
+    .is('archived_at', null)
+
+  if (error) return null
+
+  return count ?? 0
+}
+
 export async function sendPushNotificationToUser(input: SendPushNotificationInput) {
   const config = getPushConfig()
 
@@ -72,10 +92,13 @@ export async function sendPushNotificationToUser(input: SendPushNotificationInpu
 
   webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey)
 
+  const badgeCount = await getUnreadNotificationCount(supabase, input.recipientUserId)
+
   const payload = JSON.stringify({
     title: input.title,
     body: input.message ?? '',
     url: input.href ?? '/',
+    badgeCount,
   })
 
   const results = await Promise.allSettled(

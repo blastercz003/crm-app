@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import {
   createTestCrmNotification,
+  deletePushSubscription,
   savePushSubscription,
   sendTestPushNotification,
 } from './push-actions'
@@ -29,6 +30,7 @@ export function PushNotificationsPanel() {
   const [status, setStatus] = useState<PushStatus>('checking')
   const [message, setMessage] = useState('')
   const [isPending, startTransition] = useTransition()
+  const [isRemoving, startRemovingTransition] = useTransition()
   const [isSendingTest, startSendingTestTransition] = useTransition()
   const [isCreatingCrmTest, startCreatingCrmTestTransition] = useTransition()
 
@@ -132,6 +134,46 @@ export function PushNotificationsPanel() {
     })
   }
 
+  async function disableNotifications() {
+    setMessage('')
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setStatus('unsupported')
+      return
+    }
+
+    const registration = await navigator.serviceWorker.ready
+    const subscription = await registration.pushManager.getSubscription()
+
+    if (!subscription) {
+      setStatus('ready')
+      setMessage('Notifikace už nejsou zapnuté pro toto zařízení.')
+      return
+    }
+
+    const endpoint = subscription.endpoint
+    const unsubscribed = await subscription.unsubscribe()
+
+    if (!unsubscribed) {
+      setMessage('Notifikace se nepodařilo odebrat v prohlížeči.')
+      return
+    }
+
+    startRemovingTransition(async () => {
+      const result = await deletePushSubscription(endpoint)
+
+      if (!result.success) {
+        setMessage(result.error ?? 'Subscription se nepodařilo odebrat.')
+        return
+      }
+
+      setStatus('ready')
+      setMessage('Notifikace byly odebrány pro toto zařízení.')
+    })
+  }
+
+  const isBusy = isPending || isRemoving
+
   function createCrmTestNotification() {
     setMessage('')
 
@@ -181,7 +223,7 @@ export function PushNotificationsPanel() {
             type="button"
             onClick={enableNotifications}
             disabled={
-              isPending ||
+              isBusy ||
               status === 'checking' ||
               status === 'unsupported' ||
               status === 'not-configured' ||
@@ -190,6 +232,15 @@ export function PushNotificationsPanel() {
             className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {buttonLabel}
+          </button>
+
+          <button
+            type="button"
+            onClick={disableNotifications}
+            disabled={isBusy || status !== 'enabled'}
+            className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isRemoving ? 'ODEBÍRÁM...' : 'ODEBRAT NOTIFIKACE'}
           </button>
 
           {showTestControls ? (

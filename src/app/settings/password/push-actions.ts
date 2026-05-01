@@ -74,6 +74,45 @@ export async function savePushSubscription(subscription: PushSubscriptionPayload
   }
 }
 
+export async function deletePushSubscription(endpoint: string) {
+  if (!endpoint) {
+    return {
+      success: false,
+      error: 'Chybí endpoint zařízení.',
+    }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return {
+      success: false,
+      error: 'Pro odebrání notifikací musíš být přihlášený.',
+    }
+  }
+
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('endpoint', endpoint)
+
+  if (error) {
+    return {
+      success: false,
+      error: `Subscription se nepodařilo odebrat: ${error.message}`,
+    }
+  }
+
+  return {
+    success: true,
+  }
+}
+
 export async function sendTestPushNotification() {
   const supabase = await createClient()
   const {

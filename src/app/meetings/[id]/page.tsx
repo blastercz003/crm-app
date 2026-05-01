@@ -6,6 +6,7 @@ import {
   MeetingStatusBadge,
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
+import { getPriorityLabel } from '@/app/tasks/taskUi'
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 
@@ -22,6 +23,8 @@ type MeetingDetail = {
   result_note: string | null
   follow_up_task: string | null
   follow_up_task_note: string | null
+  follow_up_task_priority: string | null
+  follow_up_task_due_date: string | null
   status: 'planned' | 'completed'
   created_at: string | null
   updated_at: string | null
@@ -131,11 +134,15 @@ function FollowUpTaskSection({
   description,
   taskTitle,
   taskNote,
+  taskPriority,
+  taskDueDate,
 }: {
   title: string
   description: string
   taskTitle: string | null | undefined
   taskNote: string | null | undefined
+  taskPriority: string | null | undefined
+  taskDueDate: string | null | undefined
 }) {
   const hasTaskTitle = Boolean(taskTitle?.trim())
   const hasTaskNote = Boolean(taskNote?.trim())
@@ -160,6 +167,26 @@ function FollowUpTaskSection({
                 </p>
               </div>
             ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Termín
+                </div>
+                <p className="mt-2 text-sm font-medium leading-7 text-gray-900">
+                  {taskDueDate ?? 'Bez termínu'}
+                </p>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Priorita
+                </div>
+                <p className="mt-2 text-sm font-medium leading-7 text-gray-900">
+                  {getPriorityLabel(taskPriority ?? 'medium')}
+                </p>
+              </div>
+            </div>
 
             {hasTaskNote ? (
               <div>
@@ -221,6 +248,8 @@ export default async function MeetingDetailPage({
       result_note,
       follow_up_task,
       follow_up_task_note,
+      follow_up_task_priority,
+      follow_up_task_due_date,
       status,
       created_at,
       updated_at,
@@ -384,6 +413,8 @@ export default async function MeetingDetailPage({
           description="Navazující krok ze schůzky včetně názvu úkolu a doplňující poznámky."
           taskTitle={meeting.follow_up_task}
           taskNote={meeting.follow_up_task_note}
+          taskPriority={meeting.follow_up_task_priority}
+          taskDueDate={meeting.follow_up_task_due_date}
         />
       </div>
     </main>

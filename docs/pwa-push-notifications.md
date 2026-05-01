@@ -69,3 +69,13 @@ Never expose `VAPID_PRIVATE_KEY` or `SUPABASE_SERVICE_ROLE_KEY` with a
 - Push errors are caught so they do not break CRM workflows.
 - Expired push subscriptions are removed when the push provider returns a gone or
   not found response.
+
+## Badge behavior
+
+- Push payloads include `badgeCount`, based on the recipient's unread internal
+  CRM notifications.
+- The service worker sets the Home Screen app badge when a push arrives.
+- `/dashboard` and `/notifications` sync the badge to the current unread count
+  when the app is opened.
+- The badge depends on browser support. It is intended for installed Home Screen
+  web apps on supported iOS/iPadOS versions.

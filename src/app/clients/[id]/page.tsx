@@ -5,6 +5,7 @@ import {
   getPriorityBadgeClass,
   getPriorityLabel,
 } from '@/app/tasks/taskUi'
+import { RepeatTaskBadge } from '@/app/tasks/repeat-task-badge'
 import {
   EditClientContactButton,
   NewClientContactButton,
@@ -57,6 +58,7 @@ type ClientTaskRow = {
   due_date: string | null
   status: string | null
   priority: string | null
+  repeat_interval: string | null
   contact_person: string | null
   assigned_to: string | null
   assignee:
@@ -255,7 +257,7 @@ function renderTasksContent(tasks: ClientTaskRow[]) {
           className="relative block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100"
         >
           <div className="flex h-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="min-w-0 pr-[178px] sm:flex-1 sm:pr-0">
+            <div className="min-w-0 pb-8 pr-[178px] sm:flex-1 sm:pr-0">
               <p className="truncate text-sm font-medium text-gray-900">
                 {task.title}
               </p>
@@ -270,6 +272,11 @@ function renderTasksContent(tasks: ClientTaskRow[]) {
                 </p>
               ) : null}
             </div>
+
+            <RepeatTaskBadge
+              repeatInterval={task.repeat_interval}
+              className="absolute bottom-4 left-4"
+            />
 
             <div className="absolute bottom-4 right-4 top-4 flex w-[170px] shrink-0 flex-col items-end justify-between gap-2 text-right sm:static sm:h-full sm:w-[265px]">
               <div className="flex w-full min-w-0 flex-nowrap justify-end gap-1.5 overflow-hidden">
@@ -507,6 +514,7 @@ export default async function ClientDetailPage({
         due_date,
         status,
         priority,
+        repeat_interval,
         contact_person,
         assigned_to,
         assignee:assigned_to (

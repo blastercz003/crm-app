@@ -8,11 +8,13 @@ import {
   markNotificationRead,
 } from '@/app/notifications/actions'
 import type { NotificationCategory, NotificationRow } from '@/lib/notifications/types'
+import { setAppBadgeCount } from '@/lib/pwa/appBadge'
 
 type NotificationsModalProps = {
   isOpen: boolean
   notifications: NotificationRow[]
   unreadCount: number
+  onUnreadCountChange: (count: number) => void
   onClosed: () => void
 }
 
@@ -138,6 +140,7 @@ export function NotificationsModal({
   isOpen,
   notifications,
   unreadCount,
+  onUnreadCountChange,
   onClosed,
 }: NotificationsModalProps) {
   const router = useRouter()
@@ -163,6 +166,13 @@ export function NotificationsModal({
 
   if (!isOpen) return null
 
+  function syncUnreadCount(nextCount: number) {
+    const normalizedCount = Math.max(0, nextCount)
+
+    onUnreadCountChange(normalizedCount)
+    setAppBadgeCount(normalizedCount).catch(() => {})
+  }
+
   function handleOpenNotification(notification: NotificationRow) {
     if (!notification.href) return
 
@@ -171,6 +181,7 @@ export function NotificationsModal({
       try {
         if (!notification.read_at) {
           await markNotificationRead(notification.id)
+          syncUnreadCount(unreadCount - 1)
         }
 
         onClosed()
@@ -190,6 +201,7 @@ export function NotificationsModal({
     startTransition(async () => {
       try {
         await markAllNotificationsRead()
+        syncUnreadCount(0)
         router.refresh()
       } catch (error) {
         setErrorMessage(
@@ -211,6 +223,14 @@ export function NotificationsModal({
     startTransition(async () => {
       try {
         await archiveNotification(notificationId)
+        const archivedNotification = notifications.find(
+          (notification) => notification.id === notificationId
+        )
+
+        if (archivedNotification && !archivedNotification.read_at) {
+          syncUnreadCount(unreadCount - 1)
+        }
+
         router.refresh()
       } catch (error) {
         setErrorMessage(

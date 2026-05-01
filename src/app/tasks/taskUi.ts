@@ -45,3 +45,35 @@ export function getPriorityBadgeClass(priority: string | null | undefined) {
       return 'border border-gray-200 bg-gray-100 text-gray-700'
   }
 }
+
+export type TaskRepeatInterval = 'daily' | 'weekly' | 'monthly'
+
+export function getRepeatIntervalShortLabel(
+  repeatInterval: string | null | undefined
+) {
+  switch (repeatInterval) {
+    case 'daily':
+      return 'DEN'
+    case 'weekly':
+      return 'TÝDEN'
+    case 'monthly':
+      return 'MĚSÍC'
+    default:
+      return null
+  }
+}
+
+export function getRepeatIntervalLabel(
+  repeatInterval: string | null | undefined
+) {
+  switch (repeatInterval) {
+    case 'daily':
+      return 'Každý den'
+    case 'weekly':
+      return 'Každý týden'
+    case 'monthly':
+      return 'Každý měsíc'
+    default:
+      return 'Bez opakování'
+  }
+}

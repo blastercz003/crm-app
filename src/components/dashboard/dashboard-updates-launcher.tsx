@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NotificationsModal } from '@/components/notifications/notifications-modal'
 import type { NotificationRow } from '@/lib/notifications/types'
 
@@ -16,6 +16,11 @@ export function DashboardUpdatesLauncher({
   variant = 'desktop',
 }: DashboardUpdatesLauncherProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [optimisticUnreadCount, setOptimisticUnreadCount] = useState(unreadCount)
+
+  useEffect(() => {
+    setOptimisticUnreadCount(unreadCount)
+  }, [unreadCount])
 
   const buttonClassName =
     variant === 'mobile'
@@ -30,9 +35,9 @@ export function DashboardUpdatesLauncher({
         className={buttonClassName}
       >
         <span className="relative z-10">NOTIFIKACE</span>
-        {unreadCount > 0 ? (
+        {optimisticUnreadCount > 0 ? (
           <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {optimisticUnreadCount > 99 ? '99+' : optimisticUnreadCount}
           </span>
         ) : null}
       </button>
@@ -40,7 +45,8 @@ export function DashboardUpdatesLauncher({
       <NotificationsModal
         isOpen={isOpen}
         notifications={notifications}
-        unreadCount={unreadCount}
+        unreadCount={optimisticUnreadCount}
+        onUnreadCountChange={setOptimisticUnreadCount}
         onClosed={() => setIsOpen(false)}
       />
     </>

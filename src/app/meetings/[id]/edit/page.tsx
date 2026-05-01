@@ -19,6 +19,8 @@ type MeetingData = {
   result_note: string | null
   follow_up_task: string | null
   follow_up_task_note: string | null
+  follow_up_task_priority: string | null
+  follow_up_task_due_date: string | null
   status: 'planned' | 'completed'
 }
 

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRef, useState } from 'react'
+import { getRepeatIntervalLabel } from './taskUi'
 
 type UserOption = {
   id: string
@@ -27,6 +28,7 @@ type TaskFormValues = {
   due_date?: string | null
   status?: string | null
   priority?: string | null
+  repeat_interval?: string | null
   assigned_to?: string | null
   client_id?: string | null
   client_contact_id?: string | null
@@ -379,6 +381,26 @@ export default function TaskForm({
             <option value="medium">Střední</option>
             <option value="high">Vysoká</option>
           </select>
+        </div>
+
+        <div className="min-w-0">
+          <label htmlFor="repeat_interval" className={labelClassName}>
+            Opakování úkolu
+          </label>
+          <select
+            id="repeat_interval"
+            name="repeat_interval"
+            defaultValue={initialValues?.repeat_interval ?? ''}
+            className={inputClassName}
+          >
+            <option value="">Bez opakování</option>
+            <option value="daily">{getRepeatIntervalLabel('daily')}</option>
+            <option value="weekly">{getRepeatIntervalLabel('weekly')}</option>
+            <option value="monthly">{getRepeatIntervalLabel('monthly')}</option>
+          </select>
+          <p className="mt-2 text-xs text-gray-500">
+            Opakování vyžaduje termín. Po dokončení se automaticky vytvoří další výskyt.
+          </p>
         </div>
 
         <div className="md:col-span-2">

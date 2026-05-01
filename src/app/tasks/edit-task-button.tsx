@@ -33,6 +33,7 @@ type TaskFormValues = {
   due_date?: string | null
   status?: string | null
   priority?: string | null
+  repeat_interval?: string | null
   assigned_to?: string | null
   client_id?: string | null
   client_contact_id?: string | null

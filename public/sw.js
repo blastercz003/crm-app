@@ -21,6 +21,10 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || 'B-ENERGY'
+  const badgeCount =
+    typeof data.badgeCount === 'number' && Number.isFinite(data.badgeCount)
+      ? data.badgeCount
+      : null
   const options = {
     body: data.body || data.message || '',
     icon: data.icon || '/icon.png',
@@ -30,7 +34,17 @@ self.addEventListener('push', (event) => {
     },
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  const notificationPromise = self.registration.showNotification(title, options)
+  const badgePromise =
+    badgeCount === null || !self.navigator?.setAppBadge
+      ? Promise.resolve()
+      : badgeCount > 0
+        ? self.navigator.setAppBadge(badgeCount)
+        : self.navigator.clearAppBadge
+          ? self.navigator.clearAppBadge()
+          : self.navigator.setAppBadge(0)
+
+  event.waitUntil(Promise.all([notificationPromise, badgePromise]))
 })
 
 self.addEventListener('notificationclick', (event) => {

@@ -2,8 +2,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { updateTaskStatus } from '@/app/tasks/actions'
+import { endTaskRecurrence, updateTaskStatus } from '@/app/tasks/actions'
 import { TaskCompleteButton } from '@/app/tasks/task-complete-button'
+import { RepeatTaskBadge } from '@/app/tasks/repeat-task-badge'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
@@ -18,6 +19,7 @@ import {
   getCurrentUserNotifications,
 } from '@/lib/notifications/getNotifications'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
+import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +43,7 @@ type DashboardTask = {
   title: string
   status: 'todo' | 'done'
   priority: string | null
+  repeat_interval: string | null
   source: 'manual' | 'meeting' | null
   meeting_id: string | null
   company_name: string | null
@@ -62,6 +65,19 @@ type DashboardMeeting = {
   meeting_datetime: string | null
   follow_up_task: string | null
   status: 'planned' | 'completed'
+}
+
+function isMissingRepeatIntervalColumnError(error: {
+  code?: string
+  message?: string
+} | null) {
+  const message = String(error?.message ?? '').toLowerCase()
+
+  return (
+    error?.code === '42703' ||
+    error?.code === 'PGRST204' ||
+    (message.includes('repeat_interval') && message.includes('column'))
+  )
 }
 
 type CalendarDay = {
@@ -579,6 +595,7 @@ function DashboardUserPanel({
 function DashboardTaskItem({ task }: { task: DashboardTask }) {
   const todayDateKeyInPrague = getTodayDateKeyInPrague()
   const markTaskDoneAction = updateTaskStatus.bind(null, task.id, 'done')
+  const endTaskRecurrenceAction = endTaskRecurrence.bind(null, task.id)
   const dueDate = task.due_date
   const isOverdue =
     task.status !== 'done' &&
@@ -632,21 +649,38 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
           </div>
         </div>
 
-        <div className="relative z-10 flex justify-end gap-2">
-          <Link
-            href={`/tasks/${task.id}`}
-            className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
-          >
-            DETAIL
-          </Link>
+        <div className="relative z-10 flex min-w-0 flex-wrap items-end justify-between gap-2">
+          <RepeatTaskBadge repeatInterval={task.repeat_interval} />
 
-          {task.status !== 'done' ? (
-            <form action={markTaskDoneAction}>
-              <TaskCompleteButton
-                className="inline-flex items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]"
-              />
-            </form>
-          ) : null}
+          <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-2">
+            <Link
+              href={`/tasks/${task.id}`}
+              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
+            >
+              DETAIL
+            </Link>
+
+            {task.status !== 'done' ? (
+              <>
+                {task.repeat_interval ? (
+                  <form action={endTaskRecurrenceAction}>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 transition hover:bg-zinc-100"
+                    >
+                      UKONČIT
+                    </button>
+                  </form>
+                ) : null}
+
+                <form action={markTaskDoneAction}>
+                  <TaskCompleteButton
+                    className="inline-flex items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]"
+                  />
+                </form>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
@@ -1079,6 +1113,48 @@ export default async function DashboardPage() {
     monthMeetingsQuery = monthMeetingsQuery.eq('assigned_user_id', user.id)
   }
 
+  const tasksSelect = `
+    id,
+    title,
+    status,
+    priority,
+    repeat_interval,
+    source,
+    meeting_id,
+    company_name,
+    contact_person,
+    due_date,
+    created_at,
+    assigned_to,
+    created_by
+  `
+  const tasksSelectWithoutRepeatInterval = tasksSelect
+    .replace(/\s*repeat_interval,\n/, '\n')
+
+  const dashboardTasksQuery = async () => {
+    const response = await supabase
+      .from('tasks')
+      .select(tasksSelect)
+      .neq('status', 'done')
+      .eq('assigned_to', user.id)
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (!isMissingRepeatIntervalColumnError(response.error)) {
+      return response
+    }
+
+    return supabase
+      .from('tasks')
+      .select(tasksSelectWithoutRepeatInterval)
+      .neq('status', 'done')
+      .eq('assigned_to', user.id)
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(5)
+  }
+
   const [
     tasksResponse,
     activeTasksCountResponse,
@@ -1088,27 +1164,7 @@ export default async function DashboardPage() {
     dashboardWeeklyMeetingsCountResponse,
     monthMeetingsResponse,
   ] = await Promise.all([
-    supabase
-      .from('tasks')
-      .select(`
-        id,
-        title,
-        status,
-        priority,
-        source,
-        meeting_id,
-        company_name,
-        contact_person,
-        due_date,
-        created_at,
-        assigned_to,
-        created_by
-      `)
-      .neq('status', 'done')
-      .eq('assigned_to', user.id)
-      .order('due_date', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false })
-      .limit(5),
+    dashboardTasksQuery(),
 
     supabase
       .from('tasks')
@@ -1183,6 +1239,7 @@ export default async function DashboardPage() {
   const tasks = ((tasksResponse.data ?? []) as DashboardTask[])
     .map((task) => ({
       ...task,
+      repeat_interval: task.repeat_interval ?? null,
       created_by_profile: task.created_by
         ? profileMap.get(task.created_by) ?? null
         : null,
@@ -1221,6 +1278,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 text-zinc-900">
+      <AppBadgeSync count={notificationStats.unread} />
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1301,11 +1359,18 @@ export default async function DashboardPage() {
 
           <div className="contents xl:block xl:space-y-6">
             <section className="order-2 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6 xl:order-none">
-              <div className="mb-5">
+              <div className="mb-5 flex items-start justify-between gap-4">
                 <DashboardSectionHeader
                   eyebrow="Úkoly"
                   title="Moje úkoly"
                 />
+
+                <Link
+                  href="/tasks"
+                  className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                >
+                  VŠECHNY ÚKOLY
+                </Link>
               </div>
 
               <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
@@ -1332,25 +1397,23 @@ export default async function DashboardPage() {
                   ))}
                 </div>
               )}
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="/tasks"
-                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-                >
-                  VŠECHNY ÚKOLY
-                </Link>
-              </div>
             </section>
           </div>
 
           <div className="contents xl:block xl:space-y-6">
             <section className="order-3 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6 xl:order-none">
-              <div className="mb-5">
+              <div className="mb-5 flex items-start justify-between gap-4">
                 <DashboardSectionHeader
                   eyebrow="Schůzky"
                   title="Moje schůzky"
                 />
+
+                <Link
+                  href="/meetings"
+                  className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
+                >
+                  VŠECHNY SCHŮZKY
+                </Link>
               </div>
 
               <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
@@ -1376,15 +1439,6 @@ export default async function DashboardPage() {
                   ))}
                 </div>
               )}
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="/meetings"
-                  className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-                >
-                  VŠECHNY SCHŮZKY
-                </Link>
-              </div>
             </section>
 
             <DashboardUserPanel

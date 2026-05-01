@@ -6,6 +6,7 @@ import {
   getCurrentUserNotificationStats,
   getCurrentUserNotifications,
 } from '@/lib/notifications/getNotifications'
+import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import type {
   NotificationCategoryFilter,
@@ -299,6 +300,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
 
   return (
     <main className="min-h-screen bg-gray-50">
+      <AppBadgeSync count={stats.unread} />
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
         <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

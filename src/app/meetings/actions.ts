@@ -22,6 +22,17 @@ function normalizeStatus(value: FormDataEntryValue | null) {
   return value === 'completed' ? 'completed' : 'planned'
 }
 
+function normalizeTaskPriority(value: FormDataEntryValue | null) {
+  const allowed = ['low', 'medium', 'high']
+  const str = String(value ?? 'medium')
+  return allowed.includes(str) ? str : 'medium'
+}
+
+function normalizeDate(value: FormDataEntryValue | null) {
+  const text = String(value ?? '').trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null
+}
+
 function normalizeContactId(value: FormDataEntryValue | null): string | null {
   const str = String(value ?? '').trim()
   return str.length ? str : null
@@ -242,6 +253,8 @@ async function syncMeetingFollowUpTask(params: {
   contactId: string | null
   followUpTask: string | null
   followUpTaskNote: string | null
+  followUpTaskPriority: string
+  followUpTaskDueDate: string | null
   companyName: string | null
   contactPerson: string | null
   assignedUserId?: string | null
@@ -255,6 +268,8 @@ async function syncMeetingFollowUpTask(params: {
     contactId,
     followUpTask,
     followUpTaskNote,
+    followUpTaskPriority,
+    followUpTaskDueDate,
     companyName,
     contactPerson,
     assignedUserId,
@@ -283,6 +298,8 @@ async function syncMeetingFollowUpTask(params: {
         .update({
           title: followUpTask,
           note: followUpTaskNote,
+          due_date: followUpTaskDueDate,
+          priority: followUpTaskPriority,
           client_id: clientId,
           client_contact_id: contactId,
           company_name: companyName,
@@ -300,7 +317,9 @@ async function syncMeetingFollowUpTask(params: {
       const { error } = await supabase.from('tasks').insert({
         title: followUpTask,
         note: followUpTaskNote,
+        due_date: followUpTaskDueDate,
         status: 'todo',
+        priority: followUpTaskPriority,
         source: 'meeting',
         meeting_id: meetingId,
         client_id: clientId,
@@ -340,6 +359,8 @@ async function createMeetingRecord(formData: FormData) {
   const resultNote = normalizeText(formData.get('result_note'))
   const followUpTask = normalizeText(formData.get('follow_up_task'))
   const followUpTaskNote = normalizeText(formData.get('follow_up_task_note'))
+  const followUpTaskPriority = normalizeTaskPriority(formData.get('follow_up_task_priority'))
+  const followUpTaskDueDate = normalizeDate(formData.get('follow_up_task_due_date'))
   const status = normalizeStatus(formData.get('status'))
 
   const resolvedFields = await resolveMeetingClientFields({
@@ -382,6 +403,8 @@ async function createMeetingRecord(formData: FormData) {
       result_note: resultNote,
       follow_up_task: followUpTask,
       follow_up_task_note: followUpTaskNote,
+      follow_up_task_priority: followUpTaskPriority,
+      follow_up_task_due_date: followUpTaskDueDate,
       status,
       assigned_user_id: user.id,
       created_by: user.id,
@@ -401,6 +424,8 @@ async function createMeetingRecord(formData: FormData) {
     contactId,
     followUpTask,
     followUpTaskNote,
+    followUpTaskPriority,
+    followUpTaskDueDate,
     companyName,
     contactPerson,
     assignedUserId: data.assigned_user_id,
@@ -451,6 +476,8 @@ async function updateMeetingRecord(formData: FormData) {
   const resultNote = normalizeText(formData.get('result_note'))
   const followUpTask = normalizeText(formData.get('follow_up_task'))
   const followUpTaskNote = normalizeText(formData.get('follow_up_task_note'))
+  const followUpTaskPriority = normalizeTaskPriority(formData.get('follow_up_task_priority'))
+  const followUpTaskDueDate = normalizeDate(formData.get('follow_up_task_due_date'))
   const status = normalizeStatus(formData.get('status'))
 
   if (!id) {
@@ -508,6 +535,8 @@ async function updateMeetingRecord(formData: FormData) {
       result_note: resultNote,
       follow_up_task: followUpTask,
       follow_up_task_note: followUpTaskNote,
+      follow_up_task_priority: followUpTaskPriority,
+      follow_up_task_due_date: followUpTaskDueDate,
       status,
     })
     .eq('id', id)
@@ -526,6 +555,8 @@ async function updateMeetingRecord(formData: FormData) {
     contactId,
     followUpTask,
     followUpTaskNote,
+    followUpTaskPriority,
+    followUpTaskDueDate,
     companyName,
     contactPerson,
     assignedUserId: data.assigned_user_id,

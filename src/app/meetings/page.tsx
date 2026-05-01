@@ -26,6 +26,8 @@ type MeetingRowBase = {
   result_note: string | null
   follow_up_task: string | null
   follow_up_task_note: string | null
+  follow_up_task_priority: string | null
+  follow_up_task_due_date: string | null
   status: 'planned' | 'completed'
   assigned_user_id: string | null
   client:
@@ -482,6 +484,8 @@ export default async function MeetingsPage({
     result_note,
     follow_up_task,
     follow_up_task_note,
+    follow_up_task_priority,
+    follow_up_task_due_date,
     status,
     assigned_user_id,
     client:clients (

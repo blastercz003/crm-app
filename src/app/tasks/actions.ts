@@ -49,6 +49,12 @@ function normalizePriority(value: FormDataEntryValue | null): string {
   return allowed.includes(str) ? str : 'medium'
 }
 
+function normalizeRepeatInterval(value: FormDataEntryValue | null): string | null {
+  const allowed = ['daily', 'weekly', 'monthly']
+  const str = String(value ?? '').trim()
+  return allowed.includes(str) ? str : null
+}
+
 function getNotificationPriority(taskPriority: string) {
   return taskPriority === 'high' ? 'high' : 'normal'
 }
@@ -66,6 +72,156 @@ function normalizeClientId(value: FormDataEntryValue | null): string | null {
 function normalizeContactId(value: FormDataEntryValue | null): string | null {
   const str = String(value ?? '').trim()
   return str.length ? str : null
+}
+
+function parseDateOnly(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (!match) {
+    return null
+  }
+
+  const [, year, month, day] = match
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatDateOnly(value: Date) {
+  const year = value.getUTCFullYear()
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(value.getUTCDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function addMonthsClamped(value: Date, months: number) {
+  const year = value.getUTCFullYear()
+  const month = value.getUTCMonth()
+  const day = value.getUTCDate()
+  const targetMonthStart = new Date(Date.UTC(year, month + months, 1))
+  const lastDayInTargetMonth = new Date(
+    Date.UTC(
+      targetMonthStart.getUTCFullYear(),
+      targetMonthStart.getUTCMonth() + 1,
+      0
+    )
+  ).getUTCDate()
+
+  return new Date(
+    Date.UTC(
+      targetMonthStart.getUTCFullYear(),
+      targetMonthStart.getUTCMonth(),
+      Math.min(day, lastDayInTargetMonth)
+    )
+  )
+}
+
+function getNextDueDate(
+  dueDate: string | null,
+  repeatInterval: string | null
+) {
+  if (!dueDate || !repeatInterval) return null
+
+  const parsed = parseDateOnly(dueDate)
+  if (!parsed) return null
+
+  if (repeatInterval === 'daily') {
+    parsed.setUTCDate(parsed.getUTCDate() + 1)
+    return formatDateOnly(parsed)
+  }
+
+  if (repeatInterval === 'weekly') {
+    parsed.setUTCDate(parsed.getUTCDate() + 7)
+    return formatDateOnly(parsed)
+  }
+
+  if (repeatInterval === 'monthly') {
+    return formatDateOnly(addMonthsClamped(parsed, 1))
+  }
+
+  return null
+}
+
+async function createNextRecurringTask(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  task: {
+    title: string
+    note: string | null
+    due_date: string | null
+    priority: string | null
+    repeat_interval: string | null
+    client_id: string | null
+    client_contact_id: string | null
+    company_name: string | null
+    contact_person: string | null
+    created_by: string | null
+    assigned_to: string | null
+  }
+}) {
+  const { supabase, task } = params
+  const nextDueDate = getNextDueDate(task.due_date, task.repeat_interval)
+
+  if (!nextDueDate || !task.repeat_interval) {
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert({
+      title: task.title,
+      note: task.note,
+      due_date: nextDueDate,
+      status: 'todo',
+      completed_at: null,
+      priority: task.priority ?? 'medium',
+      repeat_interval: task.repeat_interval,
+      client_id: task.client_id,
+      client_contact_id: task.client_contact_id,
+      company_name: task.company_name,
+      contact_person: task.contact_person,
+      created_by: task.created_by,
+      assigned_to: task.assigned_to,
+      source: 'manual',
+      meeting_id: null,
+    })
+    .select('id')
+    .single()
+
+  if (error && isMissingCompletedAtColumnError(error.message)) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('tasks')
+      .insert({
+        title: task.title,
+        note: task.note,
+        due_date: nextDueDate,
+        status: 'todo',
+        priority: task.priority ?? 'medium',
+        repeat_interval: task.repeat_interval,
+        client_id: task.client_id,
+        client_contact_id: task.client_contact_id,
+        company_name: task.company_name,
+        contact_person: task.contact_person,
+        created_by: task.created_by,
+        assigned_to: task.assigned_to,
+        source: 'manual',
+        meeting_id: null,
+      })
+      .select('id')
+      .single()
+
+    if (fallbackError) {
+      throw new Error(`Nepodařilo se vytvořit další opakování úkolu: ${fallbackError.message}`)
+    }
+
+    return fallbackData?.id ?? null
+  }
+
+  if (error) {
+    throw new Error(`Nepodařilo se vytvořit další opakování úkolu: ${error.message}`)
+  }
+
+  return data?.id ?? null
 }
 
 async function getClientSnapshot(clientId: string) {
@@ -143,6 +299,7 @@ async function createTaskRecord(formData: FormData) {
   const assigned_to = normalizeOptionalString(formData.get('assigned_to'))
   const status = normalizeStatus(formData.get('status'))
   const priority = normalizePriority(formData.get('priority'))
+  const repeat_interval = normalizeRepeatInterval(formData.get('repeat_interval'))
 
   const clientId = normalizeClientId(formData.get('client_id'))
   const contactId = normalizeContactId(formData.get('client_contact_id'))
@@ -160,6 +317,10 @@ async function createTaskRecord(formData: FormData) {
     throw new Error('Název úkolu je povinný.')
   }
 
+  if (repeat_interval && !due_date) {
+    throw new Error('Opakování úkolu vyžaduje vyplněný termín.')
+  }
+
   const { data: createdTask, error } = await supabase
     .from('tasks')
     .insert({
@@ -169,6 +330,7 @@ async function createTaskRecord(formData: FormData) {
       status,
       completed_at: status === 'done' ? new Date().toISOString() : null,
       priority,
+      repeat_interval,
       client_id: clientId,
       client_contact_id: contactId,
       company_name: resolvedFields.companyName,
@@ -195,6 +357,7 @@ async function createTaskRecord(formData: FormData) {
         due_date,
         status,
         priority,
+        repeat_interval,
         client_id: clientId,
         client_contact_id: contactId,
         company_name: resolvedFields.companyName,
@@ -251,6 +414,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   const assigned_to = normalizeOptionalString(formData.get('assigned_to'))
   const status = normalizeStatus(formData.get('status'))
   const submittedPriority = formData.get('priority')
+  const repeat_interval = normalizeRepeatInterval(formData.get('repeat_interval'))
 
   const clientId = normalizeClientId(formData.get('client_id'))
   const contactId = normalizeContactId(formData.get('client_contact_id'))
@@ -261,10 +425,14 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     throw new Error('Název úkolu je povinný.')
   }
 
+  if (repeat_interval && !due_date) {
+    throw new Error('Opakování úkolu vyžaduje vyplněný termín.')
+  }
+
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
     .select(
-      'id, title, created_by, assigned_to, client_id, client_contact_id, company_name, contact_person, priority, status'
+      'id, title, note, due_date, created_by, assigned_to, client_id, client_contact_id, company_name, contact_person, priority, status, repeat_interval'
     )
     .eq('id', taskId)
     .single()
@@ -330,6 +498,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
       status,
       completed_at,
       priority,
+      repeat_interval,
       client_id: nextClientId,
       client_contact_id: nextContactId,
       company_name: resolvedFields.companyName,
@@ -347,6 +516,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
         due_date,
         status,
         priority,
+        repeat_interval,
         client_id: nextClientId,
         client_contact_id: nextContactId,
         company_name: resolvedFields.companyName,
@@ -393,6 +563,29 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
       href: `/tasks/${taskId}`,
       priority: 'normal',
       dedupeKey: `task_completed:${taskId}`,
+    })
+  }
+
+  if (
+    existingTask.status !== 'done' &&
+    status === 'done' &&
+    repeat_interval
+  ) {
+    await createNextRecurringTask({
+      supabase,
+      task: {
+        title,
+        note,
+        due_date,
+        priority,
+        repeat_interval,
+        client_id: nextClientId,
+        client_contact_id: nextContactId,
+        company_name: resolvedFields.companyName,
+        contact_person: resolvedFields.contactPerson,
+        created_by: existingTask.created_by,
+        assigned_to: nextAssignedTo,
+      },
     })
   }
 
@@ -463,7 +656,14 @@ export async function updateTaskModalAction(
   }
 }
 
-export async function updateTaskStatus(taskId: string, status: string) {
+async function updateTaskStatusRecord(
+  taskId: string,
+  status: string,
+  options: {
+    skipNextRepeat?: boolean
+    clearRepeatInterval?: boolean
+  } = {}
+) {
   const supabase = await createClient()
   const currentProfile = await getCurrentProfile()
 
@@ -471,7 +671,21 @@ export async function updateTaskStatus(taskId: string, status: string) {
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
-    .select('id, title, created_by, assigned_to, client_id, status')
+    .select(`
+      id,
+      title,
+      note,
+      due_date,
+      created_by,
+      assigned_to,
+      client_id,
+      client_contact_id,
+      company_name,
+      contact_person,
+      priority,
+      status,
+      repeat_interval
+    `)
     .eq('id', taskId)
     .single()
 
@@ -495,15 +709,35 @@ export async function updateTaskStatus(taskId: string, status: string) {
     previousCompletedAt: null,
   })
 
+  const updateValues = options.clearRepeatInterval
+    ? {
+        status: normalizedStatus,
+        completed_at,
+        repeat_interval: null,
+      }
+    : {
+        status: normalizedStatus,
+        completed_at,
+      }
+
   const { error } = await supabase
     .from('tasks')
-    .update({ status: normalizedStatus, completed_at })
+    .update(updateValues)
     .eq('id', taskId)
 
   if (error && isMissingCompletedAtColumnError(error.message)) {
+    const fallbackUpdateValues = options.clearRepeatInterval
+      ? {
+          status: normalizedStatus,
+          repeat_interval: null,
+        }
+      : {
+          status: normalizedStatus,
+        }
+
     const { error: fallbackError } = await supabase
       .from('tasks')
-      .update({ status: normalizedStatus })
+      .update(fallbackUpdateValues)
       .eq('id', taskId)
 
     if (fallbackError) {
@@ -530,6 +764,30 @@ export async function updateTaskStatus(taskId: string, status: string) {
     })
   }
 
+  if (
+    existingTask.status !== 'done' &&
+    normalizedStatus === 'done' &&
+    existingTask.repeat_interval &&
+    !options.skipNextRepeat
+  ) {
+    await createNextRecurringTask({
+      supabase,
+      task: {
+        title: existingTask.title,
+        note: existingTask.note,
+        due_date: existingTask.due_date,
+        priority: existingTask.priority,
+        repeat_interval: existingTask.repeat_interval,
+        client_id: existingTask.client_id,
+        client_contact_id: existingTask.client_contact_id,
+        company_name: existingTask.company_name,
+        contact_person: existingTask.contact_person,
+        created_by: existingTask.created_by,
+        assigned_to: existingTask.assigned_to,
+      },
+    })
+  }
+
   revalidatePath('/tasks')
   revalidatePath(`/tasks/${taskId}`)
   revalidatePath('/dashboard')
@@ -539,6 +797,17 @@ export async function updateTaskStatus(taskId: string, status: string) {
   if (existingTask.client_id) {
     revalidatePath(`/clients/${existingTask.client_id}`)
   }
+}
+
+export async function updateTaskStatus(taskId: string, status: string) {
+  await updateTaskStatusRecord(taskId, status)
+}
+
+export async function endTaskRecurrence(taskId: string) {
+  await updateTaskStatusRecord(taskId, 'done', {
+    skipNextRepeat: true,
+    clearRepeatInterval: true,
+  })
 }
 
 export async function deleteTask(taskId: string) {

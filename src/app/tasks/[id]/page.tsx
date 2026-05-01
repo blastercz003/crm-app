@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
-import { updateTaskStatus } from '../actions'
+import { endTaskRecurrence, updateTaskStatus } from '../actions'
 import { TaskCompleteButton } from '../task-complete-button'
+import { RepeatTaskBadge } from '../repeat-task-badge'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
+  getRepeatIntervalLabel,
   getStatusBadgeClass,
   getStatusLabel,
 } from '../taskUi'
@@ -24,6 +26,7 @@ type TaskRow = {
   due_date: string | null
   status: string | null
   priority: string | null
+  repeat_interval: string | null
   assigned_to: string | null
   created_by: string | null
   client_id: string | null
@@ -137,6 +140,7 @@ export default async function TaskDetailPage({
       due_date,
       status,
       priority,
+      repeat_interval,
       assigned_to,
       created_by,
       client_id,
@@ -187,6 +191,7 @@ export default async function TaskDetailPage({
     typedTask.assigned_to === currentProfile.id
 
   const markTaskDoneAction = updateTaskStatus.bind(null, typedTask.id, 'done')
+  const endTaskRecurrenceAction = endTaskRecurrence.bind(null, typedTask.id)
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -216,6 +221,8 @@ export default async function TaskDetailPage({
                   </span>
                 ) : null}
 
+                <RepeatTaskBadge repeatInterval={typedTask.repeat_interval} />
+
               </div>
 
               <p className="text-sm text-gray-500">
@@ -223,16 +230,29 @@ export default async function TaskDetailPage({
               </p>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:justify-end lg:w-[24rem]">
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end lg:w-[24rem]">
               {canUpdateStatus && typedTask.status !== 'done' ? (
-                <form action={markTaskDoneAction}>
-                  <TaskCompleteButton className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]" />
-                </form>
+                <>
+                  {typedTask.repeat_interval ? (
+                    <form action={endTaskRecurrenceAction}>
+                      <button
+                        type="submit"
+                        className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-zinc-800 transition hover:bg-zinc-100"
+                      >
+                        UKONČIT OPAKOVÁNÍ
+                      </button>
+                    </form>
+                  ) : null}
+
+                  <form action={markTaskDoneAction}>
+                    <TaskCompleteButton className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]" />
+                  </form>
+                </>
               ) : null}
 
               <Link
                 href={`/tasks/${typedTask.id}/edit`}
-                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
+                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-900"
               >
                 UPRAVIT ÚKOL
               </Link>
@@ -272,6 +292,10 @@ export default async function TaskDetailPage({
                 <InfoCard
                   label="Priorita"
                   value={getPriorityLabel(typedTask.priority)}
+                />
+                <InfoCard
+                  label="Opakování"
+                  value={getRepeatIntervalLabel(typedTask.repeat_interval)}
                 />
                 <InfoCard
                   label="Kontaktní osoba"

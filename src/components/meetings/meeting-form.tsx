@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRef, useState } from 'react'
+import { getPriorityLabel } from '@/app/tasks/taskUi'
 
 type ClientOption = {
   id: string
@@ -32,6 +33,8 @@ type MeetingFormValues = {
   result_note?: string | null
   follow_up_task?: string | null
   follow_up_task_note?: string | null
+  follow_up_task_priority?: string | null
+  follow_up_task_due_date?: string | null
   status?: 'planned' | 'completed'
 }
 
@@ -505,6 +508,41 @@ export function MeetingForm({
             placeholder="Doplňující informace, které se mají propsat do poznámky úkolu"
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
           />
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="follow_up_task_due_date"
+            className="text-sm font-medium text-gray-900"
+          >
+            Termín úkolu po schůzce
+          </label>
+          <input
+            id="follow_up_task_due_date"
+            name="follow_up_task_due_date"
+            type="date"
+            defaultValue={initialValues?.follow_up_task_due_date ?? ''}
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="follow_up_task_priority"
+            className="text-sm font-medium text-gray-900"
+          >
+            Priorita úkolu po schůzce
+          </label>
+          <select
+            id="follow_up_task_priority"
+            name="follow_up_task_priority"
+            defaultValue={initialValues?.follow_up_task_priority ?? 'medium'}
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+          >
+            <option value="low">{getPriorityLabel('low')}</option>
+            <option value="medium">{getPriorityLabel('medium')}</option>
+            <option value="high">{getPriorityLabel('high')}</option>
+          </select>
         </div>
       </div>
 
