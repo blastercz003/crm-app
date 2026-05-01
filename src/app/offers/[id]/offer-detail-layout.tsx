@@ -46,6 +46,7 @@ import type {
 import { DepotToggleButton } from './depot-toggle-button'
 import { DieselPriceBadge } from './diesel-price-badge'
 import { GuardedOfferLink } from './guarded-offer-link'
+import { ApproveOfferButton } from './approve-offer-button'
 import { OfferItemsEditor } from './offer-items-modal'
 import { OfferServicesModal } from './offer-services-modal'
 import { OfferUnsavedChangesGuard } from './offer-unsaved-changes-guard'
@@ -204,6 +205,17 @@ function isOfferWaitingForApproval(offer: OfferRow) {
   )
 }
 
+function isOfferApprovedCurrentVersion(offer: OfferRow) {
+  return (
+    offer.approved_version !== null &&
+    offer.current_version === offer.approved_version &&
+    (offer.status === 'approved' ||
+      offer.status === 'sent_to_client' ||
+      offer.status === 'ordered' ||
+      offer.status === 'rejected')
+  )
+}
+
 function offerPresetButtonClassName(isActive: boolean, isDisabled = false) {
   return [
     'inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] uppercase tracking-[0.02em] transition sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
@@ -284,6 +296,7 @@ export function OfferDetailLayout({
   const totals = getOfferTotals(items)
   const staleSubmitted = canShowResubmitNotice(offer)
   const waitingForApproval = isOfferWaitingForApproval(offer)
+  const approvedCurrentVersion = isOfferApprovedCurrentVersion(offer)
   const classicGeneratorItems = items.filter(
     (item) => item.item_section === 'classic_generators' || item.item_section === 'main'
   )
@@ -730,12 +743,9 @@ export function OfferDetailLayout({
                 {isAdmin ? (
                   <>
                     <form action={approveOffer.bind(null, offer.id)}>
-                      <button
-                        type="submit"
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700"
-                      >
-                        SCHVÁLIT NABÍDKU
-                      </button>
+                      <ApproveOfferButton
+                        isApprovedCurrentVersion={approvedCurrentVersion}
+                      />
                     </form>
 
                     <form action={rejectOffer.bind(null, offer.id)} className="space-y-2">
