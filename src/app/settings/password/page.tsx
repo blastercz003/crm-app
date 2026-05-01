@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { PushNotificationsPanel } from './push-notifications-panel'
 
 export default function ChangePasswordPage() {
   const supabase = createClient()
@@ -150,6 +151,8 @@ export default function ChangePasswordPage() {
             </form>
           </div>
         </section>
+
+        <PushNotificationsPanel />
       </div>
     </main>
   )

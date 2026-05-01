@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { sendPushNotificationToUser } from './sendPushNotification'
 import type { NotificationCategory, NotificationPriority } from './types'
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
@@ -58,6 +59,17 @@ export async function createNotification(input: CreateNotificationInput) {
     }
 
     throw new Error(`Nepodařilo se vytvořit notifikaci: ${error.message}`)
+  }
+
+  try {
+    await sendPushNotificationToUser({
+      recipientUserId,
+      title: input.title,
+      message: input.message,
+      href: input.href,
+    })
+  } catch (pushError) {
+    console.error('Nepodařilo se odeslat push notifikaci.', pushError)
   }
 
   return { success: true }
