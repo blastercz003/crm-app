@@ -1,9 +1,14 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { getTasksForCurrentUser, TaskRow } from '@/lib/tasks/getTasksForCurrentUser'
 import { createClient } from '@/lib/supabase/server'
 import { getAssignableUsers } from '@/lib/users/getAssignableUsers'
 import NewTaskButton from './new-task-button'
 import TaskSection from './TaskSection'
+
+export const metadata: Metadata = {
+  title: 'Úkoly',
+}
 
 type TasksPageProps = {
   searchParams?: Promise<{

@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -23,6 +24,10 @@ import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNot
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: 'Dashboard',
+}
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const DASHBOARD_ACTION_LINK_CLASS =

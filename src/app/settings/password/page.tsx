@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PushNotificationsPanel } from './push-notifications-panel'
+import { buildPageTitle } from '@/lib/pageTitles'
 
 export default function ChangePasswordPage() {
   const supabase = createClient()
@@ -13,6 +14,10 @@ export default function ChangePasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    document.title = buildPageTitle('Nastavení')
+  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

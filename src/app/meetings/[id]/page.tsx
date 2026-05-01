@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { joinTitleParts } from '@/lib/pageTitles'
 import { deleteMeeting } from '../actions'
 import {
   MeetingStatusBadge,
@@ -30,6 +32,30 @@ type MeetingDetail = {
   updated_at: string | null
   assigned_user_id: string | null
   created_by: string | null
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('meetings')
+    .select('company_name, contact_person, title')
+    .eq('id', id)
+    .maybeSingle<Pick<MeetingDetail, 'company_name' | 'contact_person' | 'title'>>()
+
+  const meetingTitle = joinTitleParts(
+    data?.company_name,
+    data?.contact_person,
+    data?.title
+  )
+
+  return {
+    title: meetingTitle ? `Schůzka - ${meetingTitle}` : 'Detail schůzky',
+  }
 }
 
 function getMeetingDisplayStatus(meeting: MeetingDetail): 'planned' | 'overdue' | 'completed' {

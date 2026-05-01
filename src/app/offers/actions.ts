@@ -1320,108 +1320,154 @@ export async function createOffer(formData: FormData) {
 }
 
 export async function duplicateOffer(formData: FormData) {
+  const result = await duplicateOfferModalAction({ success: false, error: null }, formData)
+
+  if (!result.success || !result.offerId) {
+    throw new Error(result.error ?? 'Nepodařilo se vytvořit kopii nabídky.')
+  }
+
+  redirect(`/offers/${result.offerId}`)
+}
+
+export async function duplicateOfferModalAction(
+  _prevState: OfferFormActionState,
+  formData: FormData
+): Promise<OfferFormActionState> {
   const offerId = getString(formData, 'offer_id')
 
-  if (!offerId) {
-    throw new Error('Chybí nabídka ke kopírování.')
-  }
+  try {
+    const clientId = getString(formData, 'client_id')
+    const contactId = getOptionalContactId(formData)
+    const title = getString(formData, 'title')
 
-  const { supabase, profile, offer } = await loadOfferForAction(offerId)
-  const [itemsResponse, serviceItemsResponse] = await Promise.all([
-    supabase
-      .from('offer_items')
-      .select('*')
-      .eq('offer_id', offer.id)
-      .order('position', { ascending: true }),
-    supabase
-      .from('offer_service_items')
-      .select('*')
-      .eq('offer_id', offer.id)
-      .order('position', { ascending: true }),
-  ])
+    if (!offerId) {
+      throw new Error('Chybí nabídka ke kopírování.')
+    }
 
-  if (itemsResponse.error || serviceItemsResponse.error) {
-    throw new Error('Nepodařilo se načíst data původní nabídky pro kopii.')
-  }
+    if (!clientId) {
+      throw new Error('Vyber klienta.')
+    }
 
-  const { data: duplicatedOffer, error: offerError } = await supabase
-    .from('offers')
-    .insert({
-      offer_number: await createOfferNumber(supabase),
-      client_id: offer.client_id,
-      client_contact_id: offer.client_contact_id,
-      created_by: profile.id,
-      last_edited_by: profile.id,
-      title: offer.title,
-      offer_type: offer.offer_type,
-      status: 'draft',
-      current_version: 1,
-      submitted_version: null,
-      approved_version: null,
-      currency: offer.currency,
-      valid_until: getDefaultValidUntilDate(),
-      project_name: offer.project_name,
-      realization_address: offer.realization_address,
-      realization_starts_at: offer.realization_starts_at,
-      realization_ends_at: offer.realization_ends_at,
-      contact_person: offer.contact_person,
-      prepared_by_name: offer.prepared_by_name,
-      prepared_by_phone: offer.prepared_by_phone,
-      prepared_by_email: offer.prepared_by_email,
-      intro_note: offer.intro_note,
-      internal_note: offer.internal_note,
-      terms_note: offer.terms_note,
-      rejection_comment: null,
-      submitted_at: null,
-      approved_at: null,
-      rejected_at: null,
+    if (!title) {
+      throw new Error('Název nabídky je povinný.')
+    }
+
+    const { supabase, profile, offer } = await loadOfferForAction(offerId)
+    await ensureClientAccess(clientId)
+    const resolvedContact = await resolveOfferContact({
+      supabase,
+      clientId,
+      contactId,
+      fallbackContactPerson: null,
     })
-    .select('id')
-    .single<{ id: string }>()
 
-  if (offerError || !duplicatedOffer) {
-    throw new Error(`Nepodařilo se vytvořit kopii nabídky: ${offerError?.message ?? 'Neznámá chyba'}`)
-  }
+    const [itemsResponse, serviceItemsResponse] = await Promise.all([
+      supabase
+        .from('offer_items')
+        .select('*')
+        .eq('offer_id', offer.id)
+        .order('position', { ascending: true }),
+      supabase
+        .from('offer_service_items')
+        .select('*')
+        .eq('offer_id', offer.id)
+        .order('position', { ascending: true }),
+    ])
 
-  const copiedItems = (itemsResponse.data ?? []).map((item) => ({
-    offer_id: duplicatedOffer.id,
-    position: item.position,
-    item_section: item.item_section,
-    description: item.description,
-    specification: item.specification,
-    quantity: item.quantity,
-    unit: item.unit,
-    unit_price_without_vat: item.unit_price_without_vat,
-    discount_percent: item.discount_percent,
-    vat_rate: item.vat_rate,
-  }))
+    if (itemsResponse.error || serviceItemsResponse.error) {
+      throw new Error('Nepodařilo se načíst data původní nabídky pro kopii.')
+    }
 
-  if (copiedItems.length > 0) {
-    const { error } = await supabase.from('offer_items').insert(copiedItems)
+    const { data: duplicatedOffer, error: offerError } = await supabase
+      .from('offers')
+      .insert({
+        offer_number: await createOfferNumber(supabase),
+        client_id: clientId,
+        client_contact_id: resolvedContact.contactId,
+        created_by: profile.id,
+        last_edited_by: profile.id,
+        title,
+        offer_type: offer.offer_type,
+        status: 'draft',
+        current_version: 1,
+        submitted_version: null,
+        approved_version: null,
+        currency: offer.currency,
+        valid_until: getDefaultValidUntilDate(),
+        project_name: offer.project_name,
+        realization_address: getOptionalString(formData, 'realization_address'),
+        realization_starts_at: offer.realization_starts_at,
+        realization_ends_at: offer.realization_ends_at,
+        contact_person: resolvedContact.contactPerson,
+        prepared_by_name: offer.prepared_by_name,
+        prepared_by_phone: offer.prepared_by_phone,
+        prepared_by_email: offer.prepared_by_email,
+        intro_note: offer.intro_note,
+        internal_note: offer.internal_note,
+        terms_note: offer.terms_note,
+        rejection_comment: null,
+        submitted_at: null,
+        approved_at: null,
+        rejected_at: null,
+      })
+      .select('id')
+      .single<{ id: string }>()
 
-    if (error) {
-      throw new Error(`Kopie nabídky vznikla, ale nepodařilo se zkopírovat položky: ${error.message}`)
+    if (offerError || !duplicatedOffer) {
+      throw new Error(`Nepodařilo se vytvořit kopii nabídky: ${offerError?.message ?? 'Neznámá chyba'}`)
+    }
+
+    const copiedItems = (itemsResponse.data ?? []).map((item) => ({
+      offer_id: duplicatedOffer.id,
+      position: item.position,
+      item_section: item.item_section,
+      description: item.description,
+      specification: item.specification,
+      quantity: item.quantity,
+      unit: item.unit,
+      unit_price_without_vat: item.unit_price_without_vat,
+      planned_unit_price_without_vat: item.planned_unit_price_without_vat,
+      discount_percent: item.discount_percent,
+      vat_rate: item.vat_rate,
+    }))
+
+    if (copiedItems.length > 0) {
+      const { error } = await supabase.from('offer_items').insert(copiedItems)
+
+      if (error) {
+        throw new Error(`Kopie nabídky vznikla, ale nepodařilo se zkopírovat položky: ${error.message}`)
+      }
+    }
+
+    const copiedServiceItems = (serviceItemsResponse.data ?? []).map((item) => ({
+      offer_id: duplicatedOffer.id,
+      position: item.position,
+      service_name: item.service_name,
+      specification: item.specification,
+      operation: item.operation,
+    }))
+
+    if (copiedServiceItems.length > 0) {
+      const { error } = await supabase.from('offer_service_items').insert(copiedServiceItems)
+
+      if (error) {
+        throw new Error(`Kopie nabídky vznikla, ale nepodařilo se zkopírovat služby: ${error.message}`)
+      }
+    }
+
+    revalidatePath('/offers')
+    revalidatePath(`/clients/${offer.client_id}`)
+    revalidatePath(`/clients/${clientId}`)
+
+    return {
+      success: true,
+      error: null,
+      offerId: duplicatedOffer.id,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Nepodařilo se vytvořit kopii nabídky.',
     }
   }
-
-  const copiedServiceItems = (serviceItemsResponse.data ?? []).map((item) => ({
-    offer_id: duplicatedOffer.id,
-    position: item.position,
-    service_name: item.service_name,
-    specification: item.specification,
-    operation: item.operation,
-  }))
-
-  if (copiedServiceItems.length > 0) {
-    const { error } = await supabase.from('offer_service_items').insert(copiedServiceItems)
-
-    if (error) {
-      throw new Error(`Kopie nabídky vznikla, ale nepodařilo se zkopírovat služby: ${error.message}`)
-    }
-  }
-
-  revalidatePath('/offers')
-  revalidatePath(`/clients/${offer.client_id}`)
-
-  redirect(`/offers/${duplicatedOffer.id}`)
 }

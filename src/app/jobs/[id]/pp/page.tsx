@@ -1,15 +1,33 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getHandoverProtocolPreviewData } from '@/app/jobs/handover-protocol-actions'
+import { joinTitleParts } from '@/lib/pageTitles'
 import { HandoverProtocolDocument } from './document'
 import { HandoverProtocolAutoPrint, HandoverProtocolPrintToolbar } from './print-view'
+
+type HandoverProtocolPreviewPageProps = {
+  params: Promise<{ id: string }>
+  searchParams?: Promise<{ standalone?: string; print?: string }>
+}
+
+export async function generateMetadata({
+  params,
+}: Pick<HandoverProtocolPreviewPageProps, 'params'>): Promise<Metadata> {
+  const { id } = await params
+  const result = await getHandoverProtocolPreviewData(id)
+  const jobTitle = result.success
+    ? joinTitleParts(result.data?.job.job_number, result.data?.job.company_name)
+    : ''
+
+  return {
+    title: jobTitle ? `Předávací protokol - ${jobTitle}` : 'Předávací protokol',
+  }
+}
 
 export default async function HandoverProtocolPreviewPage({
   params,
   searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams?: Promise<{ standalone?: string; print?: string }>
-}) {
+}: HandoverProtocolPreviewPageProps) {
   const { id } = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const isStandalone = resolvedSearchParams?.standalone === '1'

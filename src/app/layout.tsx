@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { NavigationOverlay } from '../components/navigation/navigation-overlay'
 import { ServiceWorkerRegistration } from '../components/pwa/service-worker-registration'
+import { APP_TITLE } from '@/lib/pageTitles'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -16,7 +17,10 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'B-ENERGY CRM',
+  title: {
+    default: APP_TITLE,
+    template: `%s | ${APP_TITLE}`,
+  },
   applicationName: 'B-ENERGY',
   description: 'CRM aplikace pro správu klientů, schůzek a úkolů',
   manifest: '/manifest.webmanifest',

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
+import { joinTitleParts } from '@/lib/pageTitles'
 import type {
   OfferClient,
   OfferItemRow,
@@ -27,7 +28,7 @@ function getOfferPdfTitle(offer: Pick<OfferRow, 'offer_number' | 'title'>) {
   const offerNumber = sanitizePdfTitlePart(offer.offer_number)
   const title = sanitizePdfTitlePart(offer.title)
 
-  return [offerNumber, title].filter(Boolean).join(' - ') || 'Nabidka'
+  return joinTitleParts(offerNumber, title) || 'Nabídka'
 }
 
 export async function generateMetadata({
@@ -48,7 +49,7 @@ export async function generateMetadata({
   const { data } = await offerQuery.single<Pick<OfferRow, 'offer_number' | 'title'>>()
 
   return {
-    title: data ? getOfferPdfTitle(data) : 'Nabidka',
+    title: data ? `PDF nabídka - ${getOfferPdfTitle(data)}` : 'PDF nabídka',
   }
 }
 

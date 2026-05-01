@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { joinTitleParts } from '@/lib/pageTitles'
 import { updateMeeting, deleteMeeting } from '../../actions'
 import { MeetingForm } from '@/components/meetings/meeting-form'
 
@@ -22,6 +24,30 @@ type MeetingData = {
   follow_up_task_priority: string | null
   follow_up_task_due_date: string | null
   status: 'planned' | 'completed'
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('meetings')
+    .select('company_name, contact_person, title')
+    .eq('id', id)
+    .maybeSingle<Pick<MeetingData, 'company_name' | 'contact_person' | 'title'>>()
+
+  const meetingTitle = joinTitleParts(
+    data?.company_name,
+    data?.contact_person,
+    data?.title
+  )
+
+  return {
+    title: meetingTitle ? `Upravit schůzku - ${meetingTitle}` : 'Upravit schůzku',
+  }
 }
 
 type ClientOption = {

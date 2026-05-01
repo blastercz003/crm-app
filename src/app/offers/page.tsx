@@ -1,10 +1,15 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
 import type { OfferClient, OfferProfile, OfferRow, OfferStatus, OfferType } from '@/lib/offers/types'
 import { formatCurrency } from '@/lib/offers/calculations'
 import { NewOfferButton } from './new-offer-button'
+import { CopyOfferButton } from './copy-offer-button'
 import { OfferNoteInput } from './offer-note-input'
-import { duplicateOffer } from './actions'
+
+export const metadata: Metadata = {
+  title: 'Nabídky',
+}
 
 type OffersPageProps = {
   searchParams?: Promise<{
@@ -571,15 +576,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       >
                         PDF
                       </Link>
-                      <form action={duplicateOffer}>
-                        <input type="hidden" name="offer_id" value={offer.id} />
-                        <button
-                          type="submit"
-                          className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-[11px] font-bold uppercase text-gray-700 transition hover:bg-gray-50"
-                        >
-                          KOPIE
-                        </button>
-                      </form>
+                      <CopyOfferButton
+                        offerId={offer.id}
+                        offerNumber={offer.offer_number}
+                        clients={visibleClientOptions}
+                        contacts={contacts}
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-[11px] font-bold uppercase text-gray-700 transition hover:bg-gray-50"
+                      />
                       <Link
                         href={`/offers/${offer.id}`}
                         className="inline-flex h-9 items-center justify-center rounded-xl bg-black px-4 text-[11px] font-bold uppercase text-white transition hover:bg-gray-800"
@@ -670,15 +673,12 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                             >
                               PDF
                             </Link>
-                            <form action={duplicateOffer}>
-                              <input type="hidden" name="offer_id" value={offer.id} />
-                              <button
-                                type="submit"
-                                className="inline-flex h-8 items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-bold uppercase text-gray-700 transition hover:bg-gray-50"
-                              >
-                                KOPIE
-                              </button>
-                            </form>
+                            <CopyOfferButton
+                              offerId={offer.id}
+                              offerNumber={offer.offer_number}
+                              clients={visibleClientOptions}
+                              contacts={contacts}
+                            />
                             <Link
                               href={`/offers/${offer.id}`}
                               className="inline-flex h-8 items-center justify-center rounded-xl bg-black px-3 text-[11px] font-bold uppercase text-white transition hover:bg-gray-800"

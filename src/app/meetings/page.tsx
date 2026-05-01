@@ -1,8 +1,13 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import { EditMeetingButton } from './edit-meeting-button'
 import { NewMeetingButton } from './new-meeting-button'
+
+export const metadata: Metadata = {
+  title: 'Schůzky',
+}
 
 type SearchParams = {
   view?: string

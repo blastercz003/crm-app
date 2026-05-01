@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
 import { createClient } from '@/lib/supabase/server'
@@ -21,6 +22,10 @@ import {
   markNotificationRead,
   openNotification,
 } from './actions'
+
+export const metadata: Metadata = {
+  title: 'Notifikace',
+}
 
 type NotificationsPageProps = {
   searchParams?: Promise<{

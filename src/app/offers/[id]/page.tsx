@@ -1,5 +1,7 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
+import { joinTitleParts } from '@/lib/pageTitles'
 import type {
   OfferClient,
   OfferClientContact,
@@ -14,6 +16,29 @@ import { ClassicOfferDetail } from './classic-offer-detail'
 type OfferDetailPageProps = {
   params: Promise<{ id: string }>
   searchParams?: Promise<{ saved?: string }>
+}
+
+export async function generateMetadata({
+  params,
+}: Pick<OfferDetailPageProps, 'params'>): Promise<Metadata> {
+  const { id } = await params
+  const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
+
+  let offerQuery = supabase
+    .from('offers')
+    .select('offer_number, title')
+    .eq('id', id)
+
+  if (!isAdmin) {
+    offerQuery = offerQuery.eq('created_by', profile.id)
+  }
+
+  const { data } = await offerQuery.maybeSingle<Pick<OfferRow, 'offer_number' | 'title'>>()
+  const offerTitle = joinTitleParts(data?.offer_number, data?.title)
+
+  return {
+    title: offerTitle ? `Nabídka - ${offerTitle}` : 'Detail nabídky',
+  }
 }
 
 export default async function OfferDetailPage({ params, searchParams }: OfferDetailPageProps) {

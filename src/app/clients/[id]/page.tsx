@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { cleanTitlePart } from '@/lib/pageTitles'
 import {
   getPriorityBadgeClass,
   getPriorityLabel,
@@ -24,6 +26,26 @@ type ClientRow = {
   address: string | null
   note: string | null
   created_at: string
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('clients')
+    .select('name')
+    .eq('id', id)
+    .maybeSingle<Pick<ClientRow, 'name'>>()
+
+  const clientName = cleanTitlePart(data?.name)
+
+  return {
+    title: clientName ? `Klient - ${clientName}` : 'Detail klienta',
+  }
 }
 
 type ProfileRow = {

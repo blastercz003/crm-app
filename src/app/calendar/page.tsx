@@ -1,10 +1,15 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import CalendarClient, { type CalendarEvent } from './calendar-client'
 import { NewMeetingButton } from '@/app/meetings/new-meeting-button'
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
+
+export const metadata: Metadata = {
+  title: 'Kalendář',
+}
 
 type CalendarMeetingRow = {
   id: string

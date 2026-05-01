@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'B-ENERGY CRM',
+    name: 'B-ENERGY APP',
     short_name: 'B-ENERGY',
     description: 'CRM aplikace pro správu klientů, schůzek a úkolů',
     start_url: '/',

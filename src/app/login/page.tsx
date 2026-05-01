@@ -1,12 +1,17 @@
 'use client'
 
 import Image from 'next/image'
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 import { loginAction, type LoginActionState } from './actions'
+import { buildPageTitle } from '@/lib/pageTitles'
 
 export default function LoginPage() {
   const initialState: LoginActionState = { error: null }
   const [state, formAction, pending] = useActionState(loginAction, initialState)
+
+  useEffect(() => {
+    document.title = buildPageTitle('Přihlášení')
+  }, [])
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 text-zinc-900">

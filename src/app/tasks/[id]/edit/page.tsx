@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
 import { getAssignableUsers } from '@/lib/users/getAssignableUsers'
+import { cleanTitlePart } from '@/lib/pageTitles'
 import TaskForm from '../../TaskForm'
 import { updateTask, deleteTask } from '../../actions'
 
@@ -22,6 +24,28 @@ type ClientContactOption = {
   client_id: string
   name: string
   is_primary: boolean
+}
+
+type TaskTitleRow = {
+  title: string
+}
+
+export async function generateMetadata({
+  params,
+}: EditTaskPageProps): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('tasks')
+    .select('title')
+    .eq('id', id)
+    .maybeSingle<TaskTitleRow>()
+
+  const taskTitle = cleanTitlePart(data?.title)
+
+  return {
+    title: taskTitle ? `Upravit úkol - ${taskTitle}` : 'Upravit úkol',
+  }
 }
 
 export default async function EditTaskPage({ params }: EditTaskPageProps) {

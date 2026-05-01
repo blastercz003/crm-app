@@ -1,7 +1,12 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createMeeting } from '../actions'
 import { MeetingForm } from '@/components/meetings/meeting-form'
+
+export const metadata: Metadata = {
+  title: 'Nová schůzka',
+}
 
 type ClientOption = {
   id: string

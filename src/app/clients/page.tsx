@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { EditClientButton } from './edit-client-button'
@@ -14,6 +15,10 @@ type ClientRow = {
   address: string | null
   note: string | null
   created_at: string
+}
+
+export const metadata: Metadata = {
+  title: 'Klienti',
 }
 
 type ProfileRow = {

@@ -1,7 +1,12 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { createTask } from '../actions'
 import TaskForm from '../TaskForm'
 import { getAssignableUsers } from '@/lib/users/getAssignableUsers'
+
+export const metadata: Metadata = {
+  title: 'Nový úkol',
+}
 
 type ClientOption = {
   id: string

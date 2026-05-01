@@ -1,7 +1,12 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createClientRecord } from '../actions'
+
+export const metadata: Metadata = {
+  title: 'Nový klient',
+}
 
 export default async function NewClientPage() {
   const supabase = await createClient()

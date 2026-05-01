@@ -1,7 +1,9 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
+import { cleanTitlePart } from '@/lib/pageTitles'
 import { endTaskRecurrence, updateTaskStatus } from '../actions'
 import { TaskCompleteButton } from '../task-complete-button'
 import { RepeatTaskBadge } from '../repeat-task-badge'
@@ -63,6 +65,24 @@ type TaskRow = {
         name: string | null
       }[]
     | null
+}
+
+export async function generateMetadata({
+  params,
+}: TaskDetailPageProps): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('tasks')
+    .select('title')
+    .eq('id', id)
+    .maybeSingle<Pick<TaskRow, 'title'>>()
+
+  const taskTitle = cleanTitlePart(data?.title)
+
+  return {
+    title: taskTitle ? `Úkol - ${taskTitle}` : 'Detail úkolu',
+  }
 }
 
 function resolvePersonName(

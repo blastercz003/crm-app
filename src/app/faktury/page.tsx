@@ -1,8 +1,13 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { FakturyInteractiveTable } from './faktury-interactive-table'
+
+export const metadata: Metadata = {
+  title: 'Faktury',
+}
 
 export type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
 export type SortMode = 'start_nearest' | 'job_number_desc' | 'sale_desc'
