@@ -61,15 +61,15 @@ export default function ChangePasswordPage() {
                 Nastavení
               </h1>
               <p className="mt-2 text-sm text-zinc-500">
-                Zde si můžeš nastavit nové heslo do appky a zapnout notifikace
-                (iPhone / Android).
+                Zde si můžeš nastavit nové heslo do appky
+                <br />a zapnout notifikace (iPhone / Android).
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950"
+                className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
