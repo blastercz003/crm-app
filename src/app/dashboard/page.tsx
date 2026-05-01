@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { endTaskRecurrence, updateTaskStatus } from '@/app/tasks/actions'
@@ -24,6 +25,35 @@ import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
 export const dynamic = 'force-dynamic'
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
+const DASHBOARD_ACTION_LINK_CLASS =
+  'inline-flex min-h-[46px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl bg-zinc-900 px-3 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800'
+const DASHBOARD_ACTION_LINK_WIDTH = 172
+
+function DashboardActionLink({
+  href,
+  children,
+  className,
+}: {
+  href: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <Link
+      href={href}
+      className={[DASHBOARD_ACTION_LINK_CLASS, className]
+        .filter(Boolean)
+        .join(' ')}
+      style={{
+        width: DASHBOARD_ACTION_LINK_WIDTH,
+        minWidth: DASHBOARD_ACTION_LINK_WIDTH,
+        maxWidth: DASHBOARD_ACTION_LINK_WIDTH,
+      }}
+    >
+      {children}
+    </Link>
+  )
+}
 
 type ProfileRef = {
   id: string
@@ -764,12 +794,11 @@ function DashboardMiniCalendar({
           />
         </div>
 
-        <Link
-          href="/calendar"
-          className="hidden shrink-0 items-center self-start rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800 md:inline-flex"
-        >
-          KALENDÁŘ
-        </Link>
+        <div className="hidden shrink-0 self-start md:block">
+          <DashboardActionLink href="/calendar">
+            OTEVŘÍT KALENDÁŘ
+          </DashboardActionLink>
+        </div>
       </div>
 
       <div className="mb-3 grid grid-cols-7 gap-2">
@@ -884,12 +913,9 @@ function DashboardMiniCalendar({
       </div>
 
       <div className="mt-5 md:hidden">
-        <Link
-          href="/calendar"
-          className="inline-flex min-h-[46px] items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
+        <DashboardActionLink href="/calendar">
           OTEVŘÍT KALENDÁŘ
-        </Link>
+        </DashboardActionLink>
       </div>
     </section>
   )
@@ -908,12 +934,9 @@ function ClientsCard() {
           </h2>
         </div>
 
-        <Link
-          href="/clients"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
+        <DashboardActionLink href="/clients">
           OTEVŘÍT KLIENTY
-        </Link>
+        </DashboardActionLink>
       </div>
     </section>
   )
@@ -932,12 +955,9 @@ function JobsCard() {
           </h2>
         </div>
 
-        <Link
-          href="/jobs"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
+        <DashboardActionLink href="/jobs">
           OTEVŘÍT ZAKÁZKY
-        </Link>
+        </DashboardActionLink>
       </div>
     </section>
   )
@@ -956,12 +976,9 @@ function JobsPortalCard() {
           </h2>
         </div>
 
-        <Link
-          href="/jobs-portal"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
+        <DashboardActionLink href="/jobs-portal">
           OTEVŘÍT PORTÁL
-        </Link>
+        </DashboardActionLink>
       </div>
     </section>
   )
@@ -980,12 +997,9 @@ function OffersCard() {
           </h2>
         </div>
 
-        <Link
-          href="/offers"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
+        <DashboardActionLink href="/offers">
           OTEVŘÍT NABÍDKY
-        </Link>
+        </DashboardActionLink>
       </div>
     </section>
   )
@@ -1004,12 +1018,9 @@ function FinanceCard() {
           </h2>
         </div>
 
-        <Link
-          href="/faktury"
-          className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-        >
+        <DashboardActionLink href="/faktury">
           OTEVŘÍT FINANCE
-        </Link>
+        </DashboardActionLink>
       </div>
     </section>
   )
@@ -1365,12 +1376,9 @@ export default async function DashboardPage() {
                   title="Moje úkoly"
                 />
 
-                <Link
-                  href="/tasks"
-                  className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-                >
+                <DashboardActionLink href="/tasks">
                   VŠECHNY ÚKOLY
-                </Link>
+                </DashboardActionLink>
               </div>
 
               <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
@@ -1408,12 +1416,9 @@ export default async function DashboardPage() {
                   title="Moje schůzky"
                 />
 
-                <Link
-                  href="/meetings"
-                  className="inline-flex min-h-[46px] shrink-0 items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800"
-                >
+                <DashboardActionLink href="/meetings">
                   VŠECHNY SCHŮZKY
-                </Link>
+                </DashboardActionLink>
               </div>
 
               <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
