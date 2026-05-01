@@ -1,4 +1,9 @@
-export type NotificationCategory = 'tasks' | 'meetings' | 'offers' | 'system'
+export type NotificationCategory =
+  | 'tasks'
+  | 'meetings'
+  | 'offers'
+  | 'jobs'
+  | 'system'
 
 export type NotificationPriority = 'low' | 'normal' | 'high'
 

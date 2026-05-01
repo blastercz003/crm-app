@@ -41,6 +41,7 @@ const CATEGORY_LABELS: Record<NotificationCategoryFilter, string> = {
   tasks: 'Úkoly',
   meetings: 'Schůzky',
   offers: 'Nabídky',
+  jobs: 'Zakázky',
   system: 'Systém',
 }
 
@@ -384,7 +385,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-100 pt-4">
-              {(['all', 'tasks', 'meetings', 'offers', 'system'] as NotificationCategoryFilter[]).map(
+              {(['all', 'tasks', 'meetings', 'jobs', 'offers', 'system'] as NotificationCategoryFilter[]).map(
                 (item) => (
                   <FilterTab
                     key={item}

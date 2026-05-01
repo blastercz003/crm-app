@@ -62,7 +62,7 @@ export default function ChangePasswordPage() {
               </h1>
               <p className="mt-2 text-sm text-zinc-500">
                 Zde si můžeš nastavit nové heslo do appky a zapnout notifikace
-                (iPhone).
+                (iPhone / Android).
               </p>
             </div>
 
@@ -79,6 +79,10 @@ export default function ChangePasswordPage() {
 
         <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
           <div className="max-w-xl">
+            <div className="mb-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+              Změna hesla
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label

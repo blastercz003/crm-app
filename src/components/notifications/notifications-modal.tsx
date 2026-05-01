@@ -22,10 +22,17 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   tasks: 'Úkoly',
   meetings: 'Schůzky',
   offers: 'Nabídky',
+  jobs: 'Zakázky',
   system: 'Systém',
 }
 
-const CATEGORY_ORDER: NotificationCategory[] = ['tasks', 'meetings', 'offers', 'system']
+const CATEGORY_ORDER: NotificationCategory[] = [
+  'tasks',
+  'meetings',
+  'jobs',
+  'offers',
+  'system',
+]
 
 function isTodayInPrague(value: string) {
   const formatter = new Intl.DateTimeFormat('en-CA', {

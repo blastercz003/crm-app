@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { createNotification } from '@/lib/notifications/createNotification'
 import { createClient } from '@/lib/supabase/server'
 
 export type CreateJobActionState = {
@@ -53,6 +54,21 @@ type ProfilePermissionRow = {
   role: string | null
 }
 
+type JobNotificationProfileRow = {
+  id: string
+  role: string | null
+  receive_job_notifications: boolean | null
+}
+
+type CreatedJobNotificationRow = {
+  id: string
+  job_number: string | null
+  company_name: string | null
+  sales_owner: string | null
+  start_at: string | null
+  end_at: string | null
+}
+
 type ClientRow = {
   id: string
   name: string | null
@@ -78,6 +94,11 @@ const INVOICE_STATUS_VALUES = [
   'vyfakturovano',
 ] as const
 const EVIDENCE_STATUS_VALUES = ['nove', 'zapsano'] as const
+
+const SALES_OWNER_NOTIFICATION_RECIPIENTS: Partial<Record<string, string>> = {
+  MICHAL: '46c40df2-04d7-41e9-ad6d-51cc2ee76019',
+  LÍDA: '735d158c-667a-42c0-8af0-6ee12a9c1f11',
+}
 
 const INLINE_EDITABLE_FIELDS = [
   'company_name',
@@ -300,6 +321,91 @@ function revalidateAllRelatedPaths() {
   revalidatePath('/faktury')
 }
 
+function formatJobNotificationDate(value: string | null) {
+  if (!value) return 'neuvedeno'
+
+  return new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: 'Europe/Prague',
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+async function getJobNotificationRecipientIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  salesOwner: string | null
+) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, role, receive_job_notifications')
+    .or('role.eq.admin,receive_job_notifications.eq.true')
+
+  if (error) {
+    throw new Error(
+      `Nepodařilo se načíst příjemce notifikací zakázek: ${error.message}`
+    )
+  }
+
+  const recipientIds = new Set(
+    ((data ?? []) as JobNotificationProfileRow[]).map((profile) => profile.id)
+  )
+  const salesOwnerRecipientId = salesOwner
+    ? SALES_OWNER_NOTIFICATION_RECIPIENTS[salesOwner]
+    : null
+
+  if (salesOwnerRecipientId) {
+    recipientIds.add(salesOwnerRecipientId)
+  }
+
+  return Array.from(recipientIds)
+}
+
+async function notifyUsersAboutCreatedJob({
+  supabase,
+  actorUserId,
+  job,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  actorUserId: string
+  job: CreatedJobNotificationRow
+}) {
+  const recipientIds = await getJobNotificationRecipientIds(
+    supabase,
+    job.sales_owner
+  )
+
+  if (recipientIds.length === 0) return
+
+  const jobNumber = job.job_number ?? String(job.id)
+  const companyName = job.company_name?.trim() || 'neuvedený klient'
+  const startAt = formatJobNotificationDate(job.start_at)
+  const endAt = formatJobNotificationDate(job.end_at)
+  const message = `Byla vytvořena nová zakázka ${jobNumber} pro klienta: ${companyName}, termín ${startAt} - ${endAt}.`
+
+  await Promise.all(
+    recipientIds.map((recipientUserId) =>
+      createNotification({
+        supabase,
+        recipientUserId,
+        actorUserId,
+        category: 'jobs',
+        type: 'job_created',
+        title: 'NOVÁ ZAKÁZKA',
+        message,
+        entityType: 'job',
+        entityId: job.id,
+        href: null,
+        priority: 'normal',
+        dedupeKey: `job_created:${job.id}:${recipientUserId}`,
+        skipSelfNotification: false,
+      })
+    )
+  )
+}
+
 async function resolveClientSelection(
   supabase: Awaited<ReturnType<typeof createClient>>,
   formData: FormData
@@ -509,7 +615,7 @@ export async function createJobAction(
       ...payload,
       evidence_status: 'nove',
     })
-    .select('id')
+    .select('id, job_number, company_name, sales_owner, start_at, end_at')
     .single()
 
   if (createJobError || !createdJob?.id) {
@@ -537,7 +643,22 @@ export async function createJobAction(
     }
   }
 
+  try {
+    await notifyUsersAboutCreatedJob({
+      supabase,
+      actorUserId: user.id,
+      job: createdJob as CreatedJobNotificationRow,
+    })
+  } catch (notificationError) {
+    console.error(
+      'Nepodařilo se vytvořit notifikace k nové zakázce.',
+      notificationError
+    )
+  }
+
   revalidateAllRelatedPaths()
+  revalidatePath('/dashboard')
+  revalidatePath('/notifications')
 
   return {
     success: true,
