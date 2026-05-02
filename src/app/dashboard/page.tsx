@@ -799,7 +799,7 @@ function DashboardMiniCalendar({
           />
         </div>
 
-        <div className="hidden shrink-0 self-start md:block">
+        <div className="shrink-0 self-start">
           <DashboardActionLink href="/calendar">
             OTEVŘÍT KALENDÁŘ
           </DashboardActionLink>
@@ -917,11 +917,6 @@ function DashboardMiniCalendar({
         </div>
       </div>
 
-      <div className="mt-5 md:hidden">
-        <DashboardActionLink href="/calendar">
-          OTEVŘÍT KALENDÁŘ
-        </DashboardActionLink>
-      </div>
     </section>
   )
 }
@@ -1464,7 +1459,7 @@ export default async function DashboardPage() {
       <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
           <div>B-ENERGY APP | coding by blaster</div>
-          <div>v2.0.2</div>
+          <div>v2.0.3</div>
         </div>
       </footer>
     </main>
