@@ -316,13 +316,13 @@ export function OfferItemsEditor({
   )
   const detailColumnClasses = showQuantityAndTotal
     ? {
-        item: 'w-[23%]',
-        specification: 'w-[28%]',
+        item: 'w-[22%]',
+        specification: 'w-[27%]',
         price: 'w-[13%]',
         unit: 'w-[8%]',
         quantity: 'w-[10%]',
         discount: 'w-[8%]',
-        total: showDiscount ? 'w-[10%]' : 'w-[18%]',
+        total: showDiscount ? 'w-[12%]' : 'w-[20%]',
       }
     : showPlannedPrice
       ? {
@@ -345,7 +345,7 @@ export function OfferItemsEditor({
       : 'minmax(170px,1fr) minmax(220px,1.35fr) 130px 80px 168px'
   const useCompactClassicMobileCards = showQuantityAndTotal && itemSection !== 'bsafe_service'
   const showSectionTotalBadge = showQuantityAndTotal && itemSection !== 'bsafe_service' && !showPlannedPrice
-  const leftAlignNumericHeaders = itemSection === 'bsafe_service' || showPlannedPrice
+  const rightAlignUnitPriceHeader = true
   const activePresetKey = presets.some((preset) => preset.key === selectedPresetKey)
     ? selectedPresetKey
     : presets[0]?.key ?? ''
@@ -695,23 +695,23 @@ export function OfferItemsEditor({
                   <tr className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
                     <th className="px-4 py-3">Položka</th>
                     <th className="px-4 py-3">Specifikace / popis</th>
-                    <th className="px-4 py-3">
+                    <th className={`px-4 py-3${rightAlignUnitPriceHeader ? ' text-right' : ''}`}>
                       {showPlannedPrice ? 'POHOTOVOST' : 'Jedn. cena'}
                     </th>
-                    {showPlannedPrice ? <th className="px-4 py-3">ODSTÁVKA</th> : null}
+                    {showPlannedPrice ? <th className="px-4 py-3 text-right">ODSTÁVKA</th> : null}
                     <th className="px-4 py-3 text-center">Jedn.</th>
                     {showQuantityAndTotal ? (
-                      <th className={`px-4 py-3${leftAlignNumericHeaders ? '' : ' text-right'}`}>
+                      <th className="px-4 py-3 text-right">
                         Množství
                       </th>
                     ) : null}
                     {showQuantityAndTotal && showDiscount ? (
-                      <th className={`px-4 py-3${leftAlignNumericHeaders ? '' : ' text-right'}`}>
+                      <th className="px-4 py-3 text-right">
                         Sleva
                       </th>
                     ) : null}
                     {showQuantityAndTotal ? (
-                      <th className={`px-4 py-3${leftAlignNumericHeaders ? '' : ' text-right'}`}>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">
                         Cena bez DPH
                       </th>
                     ) : null}
@@ -854,17 +854,19 @@ export function OfferItemsEditor({
                   >
                     <div>Položka</div>
                     <div>Specifikace / popis</div>
-                    <div>{showPlannedPrice ? 'POHOTOVOST' : 'Jedn. cena'}</div>
-                    {showPlannedPrice ? <div>ODSTÁVKA</div> : null}
+                    <div className={rightAlignUnitPriceHeader ? 'text-right' : ''}>
+                      {showPlannedPrice ? 'POHOTOVOST' : 'Jedn. cena'}
+                    </div>
+                    {showPlannedPrice ? <div className="text-right">ODSTÁVKA</div> : null}
                     <div>Jedn.</div>
                     {showQuantityAndTotal ? (
-                      <div className={leftAlignNumericHeaders ? '' : 'text-right'}>Množství</div>
+                      <div className="text-right">Množství</div>
                     ) : null}
                     {showQuantityAndTotal && showDiscount ? (
-                      <div className={leftAlignNumericHeaders ? '' : 'text-right'}>Sleva %</div>
+                      <div className="text-right">Sleva %</div>
                     ) : null}
                     {showQuantityAndTotal ? (
-                      <div className={leftAlignNumericHeaders ? '' : 'text-right'}>Cena bez DPH</div>
+                      <div className="text-right">Cena bez DPH</div>
                     ) : null}
                     <div />
                   </div>

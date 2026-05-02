@@ -47,9 +47,12 @@ export async function generateMetadata({
   }
 
   const { data } = await offerQuery.single<Pick<OfferRow, 'offer_number' | 'title'>>()
+  const title = data ? getOfferPdfTitle(data) : 'Nabídka'
 
   return {
-    title: data ? `PDF nabídka - ${getOfferPdfTitle(data)}` : 'PDF nabídka',
+    title: {
+      absolute: title,
+    },
   }
 }
 

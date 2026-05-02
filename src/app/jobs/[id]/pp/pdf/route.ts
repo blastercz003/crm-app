@@ -49,6 +49,7 @@ type PreviewData = {
   job: {
     id: string
     job_number: string
+    company_name: string
     start_at: string | null
     end_at: string | null
   }
@@ -636,6 +637,30 @@ function accessoriesTable(accessories: Array<{ item_name: string }>) {
   ]
 }
 
+function sanitizePdfFilenamePart(value: string | null | undefined) {
+  return (value ?? '')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getPpPdfTitle(data: Pick<PreviewData, 'job' | 'protocol'>) {
+  const jobNumber = sanitizePdfFilenamePart(data.job.job_number)
+  const jobName = sanitizePdfFilenamePart(data.protocol.handover_title)
+
+  return [jobNumber, jobName].filter(Boolean).join(' - ') || 'Předávací protokol'
+}
+
+function getPdfContentDisposition(filename: string) {
+  const fallbackFilename = filename
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/"/g, "'")
+
+  return `inline; filename="${fallbackFilename}.pdf"; filename*=UTF-8''${encodeURIComponent(`${filename}.pdf`)}`
+}
+
 function PPDocument({ data }: { data: PreviewData }) {
   const pages = buildPages(data)
   const clientLines = [
@@ -651,7 +676,7 @@ function PPDocument({ data }: { data: PreviewData }) {
 
   return h(
     Document,
-    { title: `PP-${data.job.job_number}` },
+    { title: getPpPdfTitle(data) },
     ...pages.map((page, pageIndex) => {
       const isFirstPage = pageIndex === 0
       const isLastPage = pageIndex === pages.length - 1
@@ -860,6 +885,7 @@ async function getPreviewData(jobId: string): Promise<PreviewData | null> {
     job: {
       id: typedJob.id,
       job_number: typedJob.job_number,
+      company_name: typedJob.company_name,
       start_at: typedJob.start_at,
       end_at: typedJob.end_at,
     },
@@ -902,12 +928,13 @@ export async function GET(
   }
 
   try {
+    const pdfTitle = getPpPdfTitle(previewData)
     const buffer = await renderToBuffer(PPDocument({ data: previewData }))
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="PP-${previewData.job.job_number}.pdf"`,
+        'Content-Disposition': getPdfContentDisposition(pdfTitle),
         'Cache-Control': 'no-store',
       },
     })

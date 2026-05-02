@@ -450,6 +450,7 @@ export function BSafe24OfferPdf({
             line-height: 1.2;
             text-align: right;
             text-transform: uppercase;
+            transform: translateX(18px);
           }
 
           .bsafe-pdf-items-header.service .bsafe-pdf-trip-header-label {

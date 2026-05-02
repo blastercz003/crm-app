@@ -16,11 +16,16 @@ export async function generateMetadata({
   const { id } = await params
   const result = await getHandoverProtocolPreviewData(id)
   const jobTitle = result.success
-    ? joinTitleParts(result.data?.job.job_number, result.data?.job.company_name)
+    ? joinTitleParts(
+        result.data?.job.job_number,
+        result.data?.protocol.handover_title
+      )
     : ''
 
   return {
-    title: jobTitle ? `Předávací protokol - ${jobTitle}` : 'Předávací protokol',
+    title: {
+      absolute: jobTitle || 'Předávací protokol',
+    },
   }
 }
 
