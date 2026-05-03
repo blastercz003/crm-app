@@ -22,6 +22,11 @@ import {
 } from '@/lib/notifications/getNotifications'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
+import {
+  DashboardGlobalSearchBody,
+  DashboardGlobalSearchInput,
+  DashboardGlobalSearchProvider,
+} from './dashboard-global-search'
 
 export const dynamic = 'force-dynamic'
 
@@ -1288,9 +1293,11 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <main className="min-h-screen bg-gray-50 text-zinc-900">
-      <AppBadgeSync count={notificationStats.unread} />
-      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <DashboardGlobalSearchProvider>
+      <div className="flex min-h-screen flex-col bg-gray-50 text-zinc-900">
+        <main className="flex-1">
+          <AppBadgeSync count={notificationStats.unread} />
+          <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-center lg:justify-start">
@@ -1308,6 +1315,12 @@ export default async function DashboardPage() {
 
             <div className="hidden w-full lg:block lg:w-auto lg:flex-none">
               <div className="flex w-full items-stretch justify-end gap-3 lg:w-auto">
+                <div className="hidden lg:block">
+                  <DashboardGlobalSearchInput
+                    className="h-full w-[260px] rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-normal text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-100"
+                  />
+                </div>
+
                 <DashboardUpdatesLauncher
                   notifications={modalNotifications}
                   unreadCount={notificationStats.unread}
@@ -1333,7 +1346,8 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-3">
+        <DashboardGlobalSearchBody>
+          <div className="grid gap-6 xl:grid-cols-3">
           <div className="contents xl:block xl:space-y-6">
             <div className="order-1 xl:order-none">
               <ClientsCard />
@@ -1453,15 +1467,18 @@ export default async function DashboardPage() {
               className="order-6 lg:hidden xl:order-none"
             />
           </div>
-        </div>
-      </div>
+          </div>
+        </DashboardGlobalSearchBody>
+          </div>
+        </main>
 
-      <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
-          <div>B-ENERGY APP | coding by blaster</div>
-          <div>v2.0.3</div>
-        </div>
-      </footer>
-    </main>
+        <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
+            <div>B-ENERGY APP | coding by blaster</div>
+            <div>v2.0.4</div>
+          </div>
+        </footer>
+      </div>
+    </DashboardGlobalSearchProvider>
   )
 }

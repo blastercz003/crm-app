@@ -74,6 +74,11 @@ const OFFER_TYPE_LABELS: Record<OfferType, string> = {
   bsafe24: 'B-SAFE 24',
 }
 
+function getOfferTypeClass(type: OfferType) {
+  if (type === 'bsafe24') return 'border-[#2980B9] bg-white text-[#236f9f]'
+  return 'border-black bg-white text-black'
+}
+
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 
 function formatDate(value: string | null) {
@@ -574,7 +579,7 @@ export function OfferDetailLayout({
                 <div className="hidden sm:block">
                   <DieselPriceBadge />
                 </div>
-                <span className="inline-flex h-8 w-[132px] shrink-0 items-center justify-center rounded-xl border border-black bg-white px-3 text-xs font-bold uppercase text-black transition sm:w-[150px] sm:text-sm">
+                <span className={`inline-flex h-8 w-[132px] shrink-0 items-center justify-center rounded-xl border px-3 text-xs font-bold uppercase transition sm:w-[150px] sm:text-sm ${getOfferTypeClass(offer.offer_type)}`}>
                   {OFFER_TYPE_LABELS[offer.offer_type]}
                 </span>
               </div>

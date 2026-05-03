@@ -57,6 +57,7 @@ const OFFER_TYPE_LABELS: Record<OfferType, string> = {
 }
 
 function getOfferTypeClass(type: OfferType) {
+  if (type === 'bsafe24') return 'border-[#2980B9] bg-white text-[#236f9f]'
   return 'border-black bg-white text-black'
 }
 
@@ -122,6 +123,15 @@ function getStatusClass(status: OfferStatus) {
 function buildSearchFilter(search: string) {
   const escaped = search.replaceAll(',', ' ').trim()
   return `title.ilike.%${escaped}%,offer_number.ilike.%${escaped}%`
+}
+
+function buildSearchFilterWithClients(search: string, clientIds: string[]) {
+  const baseFilter = buildSearchFilter(search)
+  if (clientIds.length === 0) {
+    return baseFilter
+  }
+
+  return `${baseFilter},client_id.in.(${clientIds.join(',')})`
 }
 
 function getOfferTotalWithoutVat(items: OfferItemForTotal[]) {
@@ -202,7 +212,25 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   }
 
   if (q) {
-    offersQuery = offersQuery.or(buildSearchFilter(q))
+    let matchingClientIds: string[] = []
+
+    let clientSearchQuery = supabase
+      .from('clients')
+      .select('id')
+      .ilike('name', `%${q.replaceAll(',', ' ').trim()}%`)
+
+    if (!isAdmin) {
+      clientSearchQuery = clientSearchQuery.eq('created_by', profile.id)
+    }
+
+    const { data: matchedClients, error: matchedClientsError } = await clientSearchQuery
+
+    if (matchedClientsError) {
+      throw new Error(`Nepodařilo se vyhledat firmy pro nabídky: ${matchedClientsError.message}`)
+    }
+
+    matchingClientIds = (matchedClients ?? []).map((client) => client.id)
+    offersQuery = offersQuery.or(buildSearchFilterWithClients(q, matchingClientIds))
   }
 
   if (status) {
