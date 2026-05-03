@@ -220,6 +220,23 @@ function getJobStatusLabel(status: string | null) {
   return status
 }
 
+function getEffectiveJobStatus(status: string | null, endAt: string | null) {
+  if (status !== 'realizace' && status !== 'ukoncena') {
+    return status
+  }
+
+  if (!endAt) {
+    return status
+  }
+
+  const endTime = new Date(endAt).getTime()
+  if (Number.isNaN(endTime)) {
+    return status
+  }
+
+  return endTime < Date.now() ? 'ukoncena' : 'realizace'
+}
+
 function formatMeetingDateTime(value: string | null) {
   if (!value) return null
 
@@ -598,6 +615,8 @@ async function searchJobs(params: {
   const rows = (data ?? []) as JobRow[]
 
   const items = rows.map((row) => {
+    const effectiveStatus = getEffectiveJobStatus(row.job_status, row.end_at)
+
     const score =
       textMatchScore(row.job_number, query) * 2 +
       textMatchScore(row.company_name, query) * 2 +
@@ -609,7 +628,7 @@ async function searchJobs(params: {
       title: `${row.job_number} • ${row.company_name}`,
       subtitle: row.contact_person,
       meta: formatDateTimeRange(row.start_at, row.end_at),
-      statusLabel: getJobStatusLabel(row.job_status),
+      statusLabel: getJobStatusLabel(effectiveStatus),
       startAt: row.start_at,
       updatedAt: row.updated_at,
       href: `/jobs?q=${encodeURIComponent(row.job_number)}`,
@@ -659,6 +678,8 @@ async function searchJobsPortal(params: {
   const rows = (data ?? []) as JobRow[]
 
   const items = rows.map((row) => {
+    const effectiveStatus = getEffectiveJobStatus(row.job_status, row.end_at)
+
     const score =
       textMatchScore(row.job_number, query) * 2 +
       textMatchScore(row.company_name, query) * 2 +
@@ -670,7 +691,7 @@ async function searchJobsPortal(params: {
       title: `${row.job_number} • ${row.company_name}`,
       subtitle: [row.contact_person, row.sales_owner].filter(Boolean).join(' • '),
       meta: formatDateTimeRange(row.start_at, row.end_at),
-      statusLabel: getJobStatusLabel(row.job_status),
+      statusLabel: getJobStatusLabel(effectiveStatus),
       startAt: row.start_at,
       updatedAt: row.updated_at,
       href: `/jobs-portal?q=${encodeURIComponent(row.job_number)}`,

@@ -215,17 +215,10 @@ function SectionResults({ section, query }: { section: GlobalSearchSectionResult
     return 'bg-zinc-100 text-zinc-600 border-zinc-200'
   }
 
-  const getInvoiceStatusBadgeClass = (statusLabel: string | null | undefined) => {
-    if (statusLabel === 'Bez faktury') return 'border border-zinc-300 bg-zinc-100 text-zinc-700'
-    if (statusLabel === 'K fakturaci') return 'border border-[#2980B9] bg-[#2980B9] text-white'
-    if (statusLabel === 'Vyfakturováno') return 'border border-emerald-300 bg-emerald-100 text-emerald-800'
-    return 'bg-zinc-100 text-zinc-600 border-zinc-200'
-  }
-
   return (
     <section className="relative flex h-[375px] w-full flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight text-zinc-900">{section.label}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-zinc-900">{section.label}</h2>
         {showAllHref ? (
           <Link
             href={showAllHref}
@@ -426,16 +419,6 @@ function SectionResults({ section, query }: { section: GlobalSearchSectionResult
                       <div className="truncate text-base font-semibold text-zinc-900">
                         {item.title}
                       </div>
-                      {item.statusLabel ? (
-                        <span
-                          className={[
-                            'shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]',
-                            getInvoiceStatusBadgeClass(item.statusLabel),
-                          ].join(' ')}
-                        >
-                          {item.statusLabel}
-                        </span>
-                      ) : null}
                     </div>
                     {item.subtitle ? (
                       <div className="mt-1 truncate text-sm text-zinc-600">{item.subtitle}</div>
@@ -495,16 +478,13 @@ export function DashboardGlobalSearchBody({ children }: { children: ReactNode })
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <section className="rounded-3xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
           Hledání
         </div>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+        <h1 className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-950">
           Výsledky pro: {query.trim()}
         </h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Hledání probíhá napříč dostupnými sekcemi podle oprávnění.
-        </p>
       </section>
 
       {isLoading ? (
