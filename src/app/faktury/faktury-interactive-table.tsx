@@ -1259,9 +1259,9 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleOpenAttachment(item.id)}
                       disabled={isPending}
-                      className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                      className="rounded-lg border border-[#2980B9] bg-[#2980B9] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
                     >
-                      Otevřít
+                      OTEVŘÍT
                     </button>
                     <button
                       type="button"
@@ -1269,7 +1269,7 @@ function JobAttachmentsModal({
                       disabled={isPending}
                       className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                     >
-                      Stáhnout
+                      STÁHNOUT
                     </button>
                     {renamingId === item.id ? (
                       <button
@@ -1290,7 +1290,7 @@ function JobAttachmentsModal({
                         disabled={isPending}
                         className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                       >
-                        Přejmenovat
+                        PŘEJMENOVAT
                       </button>
                     )}
                     <button
@@ -1299,7 +1299,7 @@ function JobAttachmentsModal({
                       disabled={isPending}
                       className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                     >
-                      Smazat
+                      SMAZAT
                     </button>
                   </div>
                 </div>
@@ -1412,9 +1412,9 @@ function JobAttachmentsModal({
                             type="button"
                             onClick={() => handleOpenAttachment(item.id)}
                             disabled={isPending}
-                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                            className="rounded-lg border border-[#2980B9] bg-[#2980B9] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
                           >
-                            Otevřít
+                            OTEVŘÍT
                           </button>
                           <button
                             type="button"
@@ -1422,7 +1422,7 @@ function JobAttachmentsModal({
                             disabled={isPending}
                             className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                           >
-                            Stáhnout
+                            STÁHNOUT
                           </button>
                           {renamingId === item.id ? (
                             <button
@@ -1443,7 +1443,7 @@ function JobAttachmentsModal({
                               disabled={isPending}
                               className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                             >
-                              Přejmenovat
+                              PŘEJMENOVAT
                             </button>
                           )}
                           <button
@@ -1454,7 +1454,7 @@ function JobAttachmentsModal({
                             disabled={isPending}
                             className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                           >
-                            Smazat
+                            SMAZAT
                           </button>
                         </div>
                       </td>

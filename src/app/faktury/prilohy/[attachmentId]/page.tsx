@@ -153,13 +153,13 @@ export default async function AttachmentPreviewPage({
                 rel="noreferrer"
                 className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               >
-                Otevřít originál
+                ORIGINÁL
               </Link>
               <Link
                 href={downloadUrl}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800"
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2980B9] px-4 text-sm font-medium text-white transition hover:bg-[#2472a5]"
               >
-                Stáhnout
+                STÁHNOUT
               </Link>
             </div>
           </div>
