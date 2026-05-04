@@ -68,8 +68,10 @@ type RowValidationErrors = {
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const EDITABLE_CELL_BASE_CLASS =
   'block h-8 w-full rounded-lg px-0 py-1.5 text-[12px] transition'
+const EDITABLE_CELL_COMPACT_CLASS = 'h-7 py-1'
 const EMPTY_ACTION_BADGE_CLASS =
   'flex h-full w-full items-center justify-center rounded-lg border border-[#2980B9]/30 bg-[#2980B9]/10 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2980B9] transition hover:border-[#2980B9]/40 hover:bg-[#2980B9]/15'
+const EMPTY_ACTION_BADGE_COMPACT_CLASS = 'text-[9px] tracking-[0.1em]'
 
 const BASE_COST_PRESETS: CostPreset[] = [
   { key: 'doprava', label: 'Doprava', defaultUnitPrice: 19 },
@@ -565,12 +567,18 @@ function FinanceEditableCell({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className={`${EDITABLE_CELL_BASE_CLASS} ${textAlignClass} ${
+        className={`${EDITABLE_CELL_BASE_CLASS} ${
+          compact ? EDITABLE_CELL_COMPACT_CLASS : ''
+        } ${textAlignClass} ${
           compact ? 'text-sm' : ''
         } text-gray-400 hover:bg-black/[0.025]`}
         title={title}
       >
-        <span className={`block w-full truncate px-2 leading-5 ${textAlignClass}`}>
+        <span
+          className={`block w-full truncate px-2 ${
+            compact ? 'leading-[1.125rem]' : 'leading-5'
+          } ${textAlignClass}`}
+        >
           {emptyLabel}
         </span>
       </button>
@@ -582,12 +590,18 @@ function FinanceEditableCell({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className={`${EDITABLE_CELL_BASE_CLASS} ${textAlignClass} ${
+        className={`${EDITABLE_CELL_BASE_CLASS} ${
+          compact ? EDITABLE_CELL_COMPACT_CLASS : ''
+        } ${textAlignClass} ${
           compact ? 'text-sm' : ''
         }`}
         title={title}
       >
-        <span className={EMPTY_ACTION_BADGE_CLASS}>
+        <span
+          className={`${EMPTY_ACTION_BADGE_CLASS} ${
+            compact ? EMPTY_ACTION_BADGE_COMPACT_CLASS : ''
+          }`}
+        >
           {emptyLabel}
         </span>
       </button>
@@ -612,13 +626,17 @@ function FinanceEditableCell({
     <button
       type="button"
       onClick={() => setIsEditing(true)}
-      className={`${EDITABLE_CELL_BASE_CLASS} ${textAlignClass} ${
+      className={`${EDITABLE_CELL_BASE_CLASS} ${
+        compact ? EDITABLE_CELL_COMPACT_CLASS : ''
+      } ${textAlignClass} ${
         compact ? 'text-sm' : ''
       } ${filledClassName}`}
       title={title}
     >
       <span
-        className={`block w-full truncate px-2 leading-5 ${filledTextClassName} ${
+        className={`block w-full truncate px-2 ${
+          compact ? 'leading-[1.125rem]' : 'leading-5'
+        } ${filledTextClassName} ${
           align === 'right'
             ? 'text-right'
             : align === 'center'
@@ -717,17 +735,27 @@ function CostAmountCell({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`${EDITABLE_CELL_BASE_CLASS} text-right ${
+        className={`${EDITABLE_CELL_BASE_CLASS} ${
+          compact ? EDITABLE_CELL_COMPACT_CLASS : ''
+        } text-right ${
           compact ? 'text-sm' : ''
         } ${hasValue ? 'font-semibold text-black hover:bg-black/[0.025]' : ''}`}
         title={title}
       >
         {hasValue ? (
-          <span className="block w-full truncate px-2 text-right font-semibold leading-5 text-black">
+          <span
+            className={`block w-full truncate px-2 text-right font-semibold ${
+              compact ? 'leading-[1.125rem]' : 'leading-5'
+            } text-black`}
+          >
             {formatMoney(value)}
           </span>
         ) : (
-          <span className={EMPTY_ACTION_BADGE_CLASS}>
+          <span
+            className={`${EMPTY_ACTION_BADGE_CLASS} ${
+              compact ? EMPTY_ACTION_BADGE_COMPACT_CLASS : ''
+            }`}
+          >
             DOPLNIT
           </span>
         )}
@@ -2116,7 +2144,9 @@ function ProfitText({
   if (!hasBoth) {
     return (
       <span
-        className={`flex h-8 w-full items-center justify-end gap-1 px-2 py-1.5 ${
+        className={`flex w-full items-center justify-end gap-1 px-2 ${
+          compact ? 'h-7 py-1' : 'h-8 py-1.5'
+        } ${
           compact ? 'text-sm' : 'text-[12px]'
         }`}
         title="Zisk se dopočítá po doplnění prodeje a nákladu."
@@ -2132,7 +2162,9 @@ function ProfitText({
 
   return (
     <span
-      className={`block h-8 w-full truncate px-2 py-1.5 text-right font-semibold leading-5 ${
+      className={`block w-full truncate px-2 text-right font-semibold ${
+        compact ? 'h-7 py-1 leading-[1.125rem]' : 'h-8 py-1.5 leading-5'
+      } ${
         compact ? 'text-sm' : 'text-[12px]'
       } ${profit < 0 ? 'text-red-600' : 'text-black'}`}
       title={formatMoney(profit)}
@@ -2169,7 +2201,7 @@ function MobileFinanceRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 px-3 py-1.5">
       <div className="text-[12px] text-gray-500">{label}</div>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
