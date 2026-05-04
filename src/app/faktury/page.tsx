@@ -32,6 +32,7 @@ export type FakturaRow = {
   invoice_number: string | null
   sale_amount: number | null
   cost_amount: number | null
+  has_attachments: boolean
 }
 
 type ProfileRoleRow = {
@@ -110,6 +111,10 @@ type FinanceStatsJoinRow = {
         start_at: string
       }[]
     | null
+}
+
+type JobAttachmentJobIdRow = {
+  job_id: string
 }
 
 const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
@@ -545,9 +550,34 @@ export default async function FakturyPage({
           typeof item.sale_amount === 'number' ? item.sale_amount : null,
         cost_amount:
           typeof item.cost_amount === 'number' ? item.cost_amount : null,
+        has_attachments: false,
       }
     })
     .filter((item): item is FakturaRow => Boolean(item))
+
+  const uniqueJobIds = Array.from(new Set(rows.map((row) => row.job_id)))
+
+  if (uniqueJobIds.length > 0) {
+    const { data: attachmentRows, error: attachmentsError } = await supabase
+      .from('job_attachments')
+      .select('job_id')
+      .in('job_id', uniqueJobIds)
+
+    if (attachmentsError) {
+      throw new Error('Nepodařilo se načíst stav příloh.')
+    }
+
+    const jobIdsWithAttachments = new Set(
+      ((attachmentRows ?? []) as JobAttachmentJobIdRow[]).map((row) =>
+        String(row.job_id)
+      )
+    )
+
+    rows = rows.map((row) => ({
+      ...row,
+      has_attachments: jobIdsWithAttachments.has(row.job_id),
+    }))
+  }
 
   if (sort === 'start_nearest') {
     rows = [...rows].sort((a, b) => {

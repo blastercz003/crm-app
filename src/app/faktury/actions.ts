@@ -45,6 +45,74 @@ export type DeleteFinanceCostItemsActionState = {
   error: string | null
 }
 
+export type JobAttachmentCategory = 'predavaci_protokol' | 'foto' | 'jine'
+
+export type JobAttachment = {
+  id: string
+  jobId: string
+  fileName: string
+  displayName: string
+  storageBucket: string
+  storagePath: string
+  mimeType: string | null
+  fileSizeBytes: number
+  category: JobAttachmentCategory
+  note: string | null
+  uploadedBy: string | null
+  createdAt: string
+}
+
+export type LoadJobAttachmentsActionState = {
+  success: boolean
+  error: string | null
+  items: JobAttachment[]
+}
+
+export type UploadJobAttachmentsActionState = {
+  success: boolean
+  error: string | null
+  uploadedCount: number
+}
+
+export type RenameJobAttachmentActionState = {
+  success: boolean
+  error: string | null
+}
+
+export type UpdateJobAttachmentNoteActionState = {
+  success: boolean
+  error: string | null
+}
+
+export type DeleteJobAttachmentActionState = {
+  success: boolean
+  error: string | null
+}
+
+export type OpenJobAttachmentActionState =
+  | {
+      success: true
+      error: null
+      signedUrl: string
+    }
+  | {
+      success: false
+      error: string
+      signedUrl: null
+    }
+
+export type DownloadJobAttachmentActionState =
+  | {
+      success: true
+      error: null
+      signedUrl: string
+    }
+  | {
+      success: false
+      error: string
+      signedUrl: null
+    }
+
 type ProfileRoleRow = {
   role: string | null
 }
@@ -85,6 +153,42 @@ type JobFinanceCostItemRow = {
   line_total: number | null
 }
 
+type JobAttachmentRow = {
+  id: string
+  job_id: string
+  file_name: string
+  display_name: string
+  storage_bucket: string
+  storage_path: string
+  mime_type: string | null
+  file_size_bytes: number
+  category: JobAttachmentCategory
+  note: string | null
+  uploaded_by: string | null
+  created_at: string
+}
+
+type JobAttachmentAccessRow = {
+  id: string
+}
+
+const JOB_ATTACHMENTS_BUCKET = 'job-attachments'
+const MAX_ATTACHMENT_FILE_SIZE_BYTES = 5 * 1024 * 1024
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+])
+
+const JOB_ATTACHMENT_CATEGORIES: JobAttachmentCategory[] = [
+  'predavaci_protokol',
+  'foto',
+  'jine',
+]
+
 function isMissingSupplierColumnError(error: {
   message?: string | null
   details?: string | null
@@ -102,6 +206,10 @@ function isMissingSupplierColumnError(error: {
     .toLowerCase()
 
   return haystack.includes('supplier')
+}
+
+function isJobAttachmentCategory(value: unknown): value is JobAttachmentCategory {
+  return JOB_ATTACHMENT_CATEGORIES.includes(value as JobAttachmentCategory)
 }
 
 function isFinanceEditableField(value: string): value is FinanceEditableField {
@@ -194,6 +302,34 @@ function mapFinanceCostItemRow(row: JobFinanceCostItemRow): FinanceCostItem {
   }
 }
 
+function mapJobAttachmentRow(row: JobAttachmentRow): JobAttachment {
+  return {
+    id: String(row.id),
+    jobId: String(row.job_id),
+    fileName: String(row.file_name),
+    displayName: String(row.display_name),
+    storageBucket: String(row.storage_bucket),
+    storagePath: String(row.storage_path),
+    mimeType: row.mime_type,
+    fileSizeBytes: Number(row.file_size_bytes) || 0,
+    category: row.category,
+    note: row.note,
+    uploadedBy: row.uploaded_by,
+    createdAt: row.created_at,
+  }
+}
+
+function sanitizeAttachmentFileName(value: string) {
+  const normalized = String(value ?? '').trim().replace(/\s+/g, ' ')
+  const safe = normalized.replace(/[^a-zA-Z0-9._\-() ,'!*$&@=;:+?]/g, '_')
+  return safe.length > 0 ? safe : 'soubor'
+}
+
+function buildAttachmentStoragePath(jobId: string, fileName: string) {
+  const safeName = sanitizeAttachmentFileName(fileName)
+  return `job/${jobId}/${crypto.randomUUID()}-${safeName}`
+}
+
 async function requireAuthenticatedUser() {
   const supabase = await createClient()
 
@@ -255,6 +391,31 @@ async function requireFinanceAdminAccess() {
     supabase,
     user,
     error: null,
+  }
+}
+
+async function getJobAttachmentAccessRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('id')
+    .eq('id', jobId)
+    .single()
+
+  if (error || !data) {
+    return {
+      success: false as const,
+      error: 'Zakázka neexistuje nebo se ji nepodařilo načíst.',
+      jobRow: null,
+    }
+  }
+
+  return {
+    success: true as const,
+    error: null,
+    jobRow: data as JobAttachmentAccessRow,
   }
 }
 
@@ -500,7 +661,13 @@ export async function saveFinanceCostItemsAction(
     .insert(rowsToInsert)
 
   if (insertError && isMissingSupplierColumnError(insertError)) {
-    const fallbackRowsToInsert = rowsToInsert.map(({ supplier: _supplier, ...row }) => row)
+    const fallbackRowsToInsert = rowsToInsert.map((row) => {
+      const rowWithoutSupplier = { ...row } as typeof row & {
+        supplier?: string | null
+      }
+      delete rowWithoutSupplier.supplier
+      return rowWithoutSupplier
+    })
 
     const fallbackInsertResponse = await supabase
       .from('job_finance_cost_items')
@@ -712,5 +879,428 @@ export async function updateFinanceInlineFieldAction(
   return {
     success: true,
     error: null,
+  }
+}
+
+export async function getJobAttachmentsAction(
+  jobId: string
+): Promise<LoadJobAttachmentsActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError, items: [] }
+  }
+
+  const normalizedJobId = String(jobId ?? '').trim()
+  if (!normalizedJobId) {
+    return { success: false, error: 'Chybí ID zakázky.', items: [] }
+  }
+
+  const access = await getJobAttachmentAccessRow(supabase, normalizedJobId)
+  if (!access.success) {
+    return { success: false, error: access.error, items: [] }
+  }
+
+  const { data, error } = await supabase
+    .from('job_attachments')
+    .select(
+      'id, job_id, file_name, display_name, storage_bucket, storage_path, mime_type, file_size_bytes, category, note, uploaded_by, created_at'
+    )
+    .eq('job_id', normalizedJobId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return {
+      success: false,
+      error: 'Přílohy se nepodařilo načíst.',
+      items: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    items: ((data ?? []) as JobAttachmentRow[]).map(mapJobAttachmentRow),
+  }
+}
+
+export async function uploadJobAttachmentsAction(
+  jobId: string,
+  formData: FormData
+): Promise<UploadJobAttachmentsActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError, uploadedCount: 0 }
+  }
+
+  const normalizedJobId = String(jobId ?? '').trim()
+  if (!normalizedJobId) {
+    return { success: false, error: 'Chybí ID zakázky.', uploadedCount: 0 }
+  }
+
+  const categoryValue = String(formData.get('category') ?? '').trim()
+  const category = isJobAttachmentCategory(categoryValue)
+    ? categoryValue
+    : null
+  if (!category) {
+    return { success: false, error: 'Neplatná kategorie přílohy.', uploadedCount: 0 }
+  }
+
+  const normalizedNote = normalizeText(formData.get('note'))
+  const access = await getJobAttachmentAccessRow(supabase, normalizedJobId)
+  if (!access.success) {
+    return { success: false, error: access.error, uploadedCount: 0 }
+  }
+
+  const filesFromFormData = formData.getAll('files')
+  const cleanFiles = filesFromFormData.filter(
+    (file): file is File => file instanceof File
+  )
+
+  if (cleanFiles.length === 0) {
+    return {
+      success: false,
+      error: 'Vyber alespoň jeden soubor.',
+      uploadedCount: 0,
+    }
+  }
+
+  for (const file of cleanFiles) {
+    if (file.size > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
+      return {
+        success: false,
+        error: `Soubor "${file.name}" překračuje limit 5 MB.`,
+        uploadedCount: 0,
+      }
+    }
+
+    const mimeType = String(file.type ?? '').trim().toLowerCase()
+    if (!mimeType || !ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
+      return {
+        success: false,
+        error: `Soubor "${file.name}" má nepodporovaný typ.`,
+        uploadedCount: 0,
+      }
+    }
+  }
+
+  const createdRows: Array<{ id: string; storagePath: string }> = []
+
+  for (const file of cleanFiles) {
+    const storagePath = buildAttachmentStoragePath(normalizedJobId, file.name)
+    const contentType = String(file.type ?? '').trim() || 'application/octet-stream'
+
+    const { error: uploadError } = await supabase.storage
+      .from(JOB_ATTACHMENTS_BUCKET)
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType,
+      })
+
+    if (uploadError) {
+      for (const createdRow of createdRows) {
+        await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([createdRow.storagePath])
+        await supabase.from('job_attachments').delete().eq('id', createdRow.id)
+      }
+
+      return {
+        success: false,
+        error: `Soubor "${file.name}" se nepodařilo nahrát.`,
+        uploadedCount: 0,
+      }
+    }
+
+    const insertPayload = {
+      job_id: normalizedJobId,
+      file_name: file.name,
+      display_name: file.name,
+      storage_bucket: JOB_ATTACHMENTS_BUCKET,
+      storage_path: storagePath,
+      mime_type: contentType,
+      file_size_bytes: file.size,
+      category,
+      note: normalizedNote,
+      uploaded_by: user.id,
+    }
+
+    const { data: insertedRow, error: insertError } = await supabase
+      .from('job_attachments')
+      .insert(insertPayload)
+      .select('id')
+      .single()
+
+    if (insertError || !insertedRow) {
+      await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([storagePath])
+
+      for (const createdRow of createdRows) {
+        await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([createdRow.storagePath])
+        await supabase.from('job_attachments').delete().eq('id', createdRow.id)
+      }
+
+      return {
+        success: false,
+        error: `Metadata souboru "${file.name}" se nepodařilo uložit.`,
+        uploadedCount: 0,
+      }
+    }
+
+    createdRows.push({
+      id: String((insertedRow as { id: string }).id),
+      storagePath,
+    })
+  }
+
+  revalidateFinancePaths(normalizedJobId)
+
+  return {
+    success: true,
+    error: null,
+    uploadedCount: createdRows.length,
+  }
+}
+
+export async function renameJobAttachmentAction(
+  attachmentId: string,
+  displayName: string
+): Promise<RenameJobAttachmentActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError }
+  }
+
+  const normalizedAttachmentId = String(attachmentId ?? '').trim()
+  const normalizedDisplayName = String(displayName ?? '').trim()
+
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID přílohy.' }
+  }
+
+  if (!normalizedDisplayName) {
+    return { success: false, error: 'Název přílohy nesmí být prázdný.' }
+  }
+
+  const { data: attachmentRow, error: attachmentError } = await supabase
+    .from('job_attachments')
+    .select('id, job_id')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (attachmentError || !attachmentRow) {
+    return { success: false, error: 'Příloha nebyla nalezena.' }
+  }
+
+  const { error } = await supabase
+    .from('job_attachments')
+    .update({ display_name: normalizedDisplayName })
+    .eq('id', normalizedAttachmentId)
+
+  if (error) {
+    return { success: false, error: 'Název přílohy se nepodařilo uložit.' }
+  }
+
+  revalidateFinancePaths(String((attachmentRow as { job_id: string }).job_id))
+
+  return { success: true, error: null }
+}
+
+export async function updateJobAttachmentNoteAction(
+  attachmentId: string,
+  note: string
+): Promise<UpdateJobAttachmentNoteActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError }
+  }
+
+  const normalizedAttachmentId = String(attachmentId ?? '').trim()
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID přílohy.' }
+  }
+
+  const normalizedNote = normalizeText(note)
+
+  const { data: attachmentRow, error: attachmentError } = await supabase
+    .from('job_attachments')
+    .select('id, job_id')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (attachmentError || !attachmentRow) {
+    return { success: false, error: 'Příloha nebyla nalezena.' }
+  }
+
+  const { error } = await supabase
+    .from('job_attachments')
+    .update({ note: normalizedNote })
+    .eq('id', normalizedAttachmentId)
+
+  if (error) {
+    return { success: false, error: 'Poznámku se nepodařilo uložit.' }
+  }
+
+  revalidateFinancePaths(String((attachmentRow as { job_id: string }).job_id))
+
+  return { success: true, error: null }
+}
+
+export async function deleteJobAttachmentAction(
+  attachmentId: string
+): Promise<DeleteJobAttachmentActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError }
+  }
+
+  const normalizedAttachmentId = String(attachmentId ?? '').trim()
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID přílohy.' }
+  }
+
+  const { data: attachmentRow, error: rowError } = await supabase
+    .from('job_attachments')
+    .select('id, job_id, storage_bucket, storage_path')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (rowError || !attachmentRow) {
+    return { success: false, error: 'Příloha nebyla nalezena.' }
+  }
+
+  const typedRow = attachmentRow as {
+    job_id: string
+    storage_bucket: string
+    storage_path: string
+  }
+
+  const { error: storageError } = await supabase.storage
+    .from(String(typedRow.storage_bucket))
+    .remove([String(typedRow.storage_path)])
+
+  if (storageError) {
+    return { success: false, error: 'Soubor ve storage se nepodařilo smazat.' }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('job_attachments')
+    .delete()
+    .eq('id', normalizedAttachmentId)
+
+  if (deleteError) {
+    return { success: false, error: 'Metadata přílohy se nepodařilo smazat.' }
+  }
+
+  revalidateFinancePaths(String(typedRow.job_id))
+
+  return { success: true, error: null }
+}
+
+export async function openJobAttachmentAction(
+  attachmentId: string
+): Promise<OpenJobAttachmentActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError ?? 'Chybí přihlášení.', signedUrl: null }
+  }
+
+  const normalizedAttachmentId = String(attachmentId ?? '').trim()
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID přílohy.', signedUrl: null }
+  }
+
+  const { data: attachmentRow, error: rowError } = await supabase
+    .from('job_attachments')
+    .select('storage_bucket, storage_path')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (rowError || !attachmentRow) {
+    return { success: false, error: 'Příloha nebyla nalezena.', signedUrl: null }
+  }
+
+  const typedRow = attachmentRow as {
+    storage_bucket: string
+    storage_path: string
+  }
+
+  const { data, error } = await supabase.storage
+    .from(String(typedRow.storage_bucket))
+    .createSignedUrl(String(typedRow.storage_path), 60)
+
+  if (error || !data?.signedUrl) {
+    return {
+      success: false,
+      error: 'Nepodařilo se vytvořit odkaz pro otevření přílohy.',
+      signedUrl: null,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    signedUrl: data.signedUrl,
+  }
+}
+
+export async function downloadJobAttachmentAction(
+  attachmentId: string
+): Promise<DownloadJobAttachmentActionState> {
+  const { supabase, user, error: accessError } =
+    await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError ?? 'Chybí přihlášení.', signedUrl: null }
+  }
+
+  const normalizedAttachmentId = String(attachmentId ?? '').trim()
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID přílohy.', signedUrl: null }
+  }
+
+  const { data: attachmentRow, error: rowError } = await supabase
+    .from('job_attachments')
+    .select('display_name, storage_bucket, storage_path')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (rowError || !attachmentRow) {
+    return { success: false, error: 'Příloha nebyla nalezena.', signedUrl: null }
+  }
+
+  const typedRow = attachmentRow as {
+    display_name: string
+    storage_bucket: string
+    storage_path: string
+  }
+
+  const { data, error } = await supabase.storage
+    .from(String(typedRow.storage_bucket))
+    .createSignedUrl(String(typedRow.storage_path), 60, {
+      download: String(typedRow.display_name ?? '').trim() || undefined,
+    })
+
+  if (error || !data?.signedUrl) {
+    return {
+      success: false,
+      error: 'Nepodařilo se vytvořit odkaz pro stažení přílohy.',
+      signedUrl: null,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    signedUrl: data.signedUrl,
   }
 }
