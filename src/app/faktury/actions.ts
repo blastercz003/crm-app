@@ -661,13 +661,9 @@ export async function saveFinanceCostItemsAction(
     .insert(rowsToInsert)
 
   if (insertError && isMissingSupplierColumnError(insertError)) {
-    const fallbackRowsToInsert = rowsToInsert.map((row) => {
-      const rowWithoutSupplier = { ...row } as typeof row & {
-        supplier?: string | null
-      }
-      delete rowWithoutSupplier.supplier
-      return rowWithoutSupplier
-    })
+    const fallbackRowsToInsert = rowsToInsert.map((row) =>
+      Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'supplier'))
+    )
 
     const fallbackInsertResponse = await supabase
       .from('job_finance_cost_items')

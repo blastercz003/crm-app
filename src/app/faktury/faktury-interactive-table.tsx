@@ -68,6 +68,8 @@ type RowValidationErrors = {
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const EDITABLE_CELL_BASE_CLASS =
   'block h-8 w-full rounded-lg px-0 py-1.5 text-[12px] transition'
+const EMPTY_ACTION_BADGE_CLASS =
+  'flex h-full w-full items-center justify-center rounded-lg border border-[#2980B9]/30 bg-[#2980B9]/10 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2980B9] transition hover:border-[#2980B9]/40 hover:bg-[#2980B9]/15'
 
 const BASE_COST_PRESETS: CostPreset[] = [
   { key: 'doprava', label: 'Doprava', defaultUnitPrice: 19 },
@@ -585,7 +587,7 @@ function FinanceEditableCell({
         }`}
         title={title}
       >
-        <span className="flex h-full w-full items-center justify-center rounded-lg border border-[#2980B9]/30 bg-[#2980B9]/10 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2980B9] transition hover:border-[#2980B9]/40 hover:bg-[#2980B9]/15">
+        <span className={EMPTY_ACTION_BADGE_CLASS}>
           {emptyLabel}
         </span>
       </button>
@@ -725,7 +727,7 @@ function CostAmountCell({
             {formatMoney(value)}
           </span>
         ) : (
-          <span className="flex h-full w-full items-center justify-center rounded-lg border border-[#2980B9]/30 bg-[#2980B9]/10 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2980B9] transition hover:border-[#2980B9]/40 hover:bg-[#2980B9]/15">
+          <span className={EMPTY_ACTION_BADGE_CLASS}>
             DOPLNIT
           </span>
         )}
