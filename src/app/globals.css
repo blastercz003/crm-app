@@ -184,6 +184,39 @@ input[type="reset"]:not(:disabled) {
   will-change: box-shadow;
 }
 
+@keyframes finance-energy-sweep {
+  0% { stroke-dashoffset: 0; opacity: 0; }
+  8% { opacity: 0.95; }
+  92% { opacity: 0.95; }
+  100% { stroke-dashoffset: -2600; opacity: 0; }
+}
+
+@media (min-width: 1024px) {
+  .finance-chart-energy {
+    stroke-dasharray: 20 2600;
+    animation: finance-energy-sweep 3.2s linear infinite;
+    filter: drop-shadow(0 0 2px rgba(127, 211, 255, 0.75))
+      drop-shadow(0 0 5px rgba(41, 128, 185, 0.45));
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  .finance-chart-energy--profit {
+    animation-duration: 3.8s;
+    animation-delay: 0.45s;
+    filter: drop-shadow(0 0 2px rgba(155, 199, 255, 0.7))
+      drop-shadow(0 0 5px rgba(31, 58, 95, 0.4));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finance-chart-energy {
+    animation: none !important;
+    opacity: 0 !important;
+    filter: none !important;
+  }
+}
+
 .calendar-shell .fc {
   --fc-border-color: rgb(232 232 232);
   --fc-page-bg-color: #ffffff;

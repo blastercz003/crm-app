@@ -41,6 +41,10 @@ export function NewMeetingButton({
 }: NewMeetingButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
 
   function openModal() {
     setFormKey((current) => current + 1)
@@ -50,6 +54,16 @@ export function NewMeetingButton({
   function closeModal() {
     setIsOpen(false)
   }
+
+  useEffect(() => {
+    if (!toast) return
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null)
+    }, 3200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [toast])
 
   const resolvedClassName =
     className ??
@@ -71,7 +85,24 @@ export function NewMeetingButton({
           clients={clients}
           contacts={contacts}
           onClose={closeModal}
+          onToast={setToast}
         />
+      ) : null}
+
+      {toast ? (
+        <div className="pointer-events-none fixed right-4 top-4 z-[60] max-w-[calc(100vw-2rem)] sm:right-6 sm:top-6 sm:max-w-sm">
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg ${
+              toast.type === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-red-200 bg-red-50 text-red-800'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {toast.message}
+          </div>
+        </div>
       ) : null}
     </>
   )
@@ -81,10 +112,12 @@ function CreateMeetingModal({
   clients,
   contacts,
   onClose,
+  onToast,
 }: {
   clients: ClientOption[]
   contacts: ClientContactOption[]
   onClose: () => void
+  onToast: (toast: { type: 'success' | 'error'; message: string }) => void
 }) {
   const [state, formAction] = useActionState(
     createMeetingModalAction,
@@ -93,9 +126,22 @@ function CreateMeetingModal({
 
   useEffect(() => {
     if (state.success) {
+      onToast({
+        type: 'success',
+        message: 'Schůzka byla vytvořena.',
+      })
       onClose()
     }
-  }, [onClose, state.success])
+  }, [onClose, onToast, state.success])
+
+  useEffect(() => {
+    if (!state.error) return
+
+    onToast({
+      type: 'error',
+      message: state.error,
+    })
+  }, [onToast, state.error])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow

@@ -46,6 +46,7 @@ type FakturySearchParams = {
   date_from?: string
   date_to?: string
   invoiced?: string
+  overview_year?: string
 }
 
 type JobFinanceJoinRow = {
@@ -106,9 +107,11 @@ type FinanceStatsJoinRow = {
   job:
     | {
         start_at: string
+        end_at: string
       }
     | {
         start_at: string
+        end_at: string
       }[]
     | null
 }
@@ -177,11 +180,6 @@ function getPragueTodayParts() {
   return { year, month, day }
 }
 
-function getCurrentMonthValue() {
-  const today = getPragueTodayParts()
-  return `${today.year}-${String(today.month).padStart(2, '0')}`
-}
-
 function getCurrentMonthRange() {
   const today = getPragueTodayParts()
   const month = String(today.month).padStart(2, '0')
@@ -213,6 +211,33 @@ function getProfit(saleAmount: number | null, costAmount: number | null) {
   return sale - cost
 }
 
+const MONTH_LABELS_CS = [
+  'Leden',
+  'Únor',
+  'Březen',
+  'Duben',
+  'Květen',
+  'Červen',
+  'Červenec',
+  'Srpen',
+  'Září',
+  'Říjen',
+  'Listopad',
+  'Prosinec',
+]
+
+function parseOverviewYear(value: string | undefined) {
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 2000 || parsed > 2100) return null
+  return parsed
+}
+
+function resolveFinanceStatDate(startAt: string, endAt: string) {
+  const endDate = new Date(endAt)
+  if (!Number.isNaN(endDate.getTime())) return endDate
+  return new Date(startAt)
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('cs-CZ', {
     style: 'currency',
@@ -220,6 +245,18 @@ function formatCurrency(value: number) {
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
   }).format(value)
+}
+
+function formatChartMoneyTick(value: number) {
+  if (Math.abs(value) >= 1_000_000) {
+    const millions = value / 1_000_000
+    return `${new Intl.NumberFormat('cs-CZ', {
+      minimumFractionDigits: millions < 10 ? 1 : 0,
+      maximumFractionDigits: 1,
+    }).format(millions)} mil. Kč`
+  }
+
+  return formatCurrency(value)
 }
 
 function getJobNumberSortValue(jobNumber: string) {
@@ -356,6 +393,36 @@ function buildPreviousMonthHref({
   return `/faktury?${params.toString()}`
 }
 
+function buildOverviewYearHref({
+  year,
+  query,
+  salesOwner,
+  sort,
+  dateFrom,
+  dateTo,
+  invoiced,
+}: {
+  year: number
+  query: string
+  salesOwner: string
+  sort: SortMode
+  dateFrom: string
+  dateTo: string
+  invoiced: string
+}) {
+  const params = new URLSearchParams()
+
+  if (query) params.set('q', query)
+  if (salesOwner) params.set('sales', salesOwner)
+  if (sort) params.set('sort', sort)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+  if (invoiced) params.set('invoiced', invoiced)
+  params.set('overview_year', String(year))
+
+  return `/faktury?${params.toString()}`
+}
+
 export default async function FakturyPage({
   searchParams,
 }: {
@@ -369,8 +436,7 @@ export default async function FakturyPage({
   const dateFrom = params?.date_from?.trim() ?? ''
   const dateTo = params?.date_to?.trim() ?? ''
   const invoiced = isInvoicedFilter(params?.invoiced)
-
-  const currentMonth = getCurrentMonthValue()
+  const overviewYearParam = parseOverviewYear(params?.overview_year)
 
   const supabase = await createClient()
 
@@ -496,7 +562,8 @@ export default async function FakturyPage({
       sale_amount,
       cost_amount,
       job:jobs!inner (
-        start_at
+        start_at,
+        end_at
       )
     `),
   ])
@@ -615,37 +682,42 @@ export default async function FakturyPage({
         sale_amount: typeof item.sale_amount === 'number' ? item.sale_amount : null,
         cost_amount: typeof item.cost_amount === 'number' ? item.cost_amount : null,
         start_at: job.start_at,
+        end_at: job.end_at,
       }
     })
-    .filter((item): item is { sale_amount: number | null; cost_amount: number | null; start_at: string } =>
+    .filter((item): item is { sale_amount: number | null; cost_amount: number | null; start_at: string; end_at: string } =>
       Boolean(item)
     )
+  const overviewYearOptions = Array.from(
+    new Set(
+      statRows
+        .map((row) => resolveFinanceStatDate(row.start_at, row.end_at))
+        .filter((date) => !Number.isNaN(date.getTime()))
+        .map((date) => date.getUTCFullYear())
+    )
+  ).sort((a, b) => b - a)
 
-  const currentMonthStatRows = statRows.filter(
-    (row) => row.start_at.slice(0, 7) === currentMonth
-  )
+  const currentYear = getPragueTodayParts().year
+  const selectedOverviewYear =
+    overviewYearParam &&
+    (overviewYearOptions.includes(overviewYearParam) ||
+      overviewYearParam === currentYear)
+      ? overviewYearParam
+      : overviewYearOptions[0] ?? currentYear
 
-  const totalSale = statRows.reduce(
-    (sum, row) =>
-      sum + (typeof row.sale_amount === 'number' ? row.sale_amount : 0),
-    0
-  )
+  const monthlySaleByYear = Array.from({ length: 12 }, () => 0)
+  const monthlyProfitByYear = Array.from({ length: 12 }, () => 0)
 
-  const currentMonthSale = currentMonthStatRows.reduce(
-    (sum, row) =>
-      sum + (typeof row.sale_amount === 'number' ? row.sale_amount : 0),
-    0
-  )
+  for (const row of statRows) {
+    const rowDate = resolveFinanceStatDate(row.start_at, row.end_at)
+    if (Number.isNaN(rowDate.getTime())) continue
+    if (rowDate.getUTCFullYear() !== selectedOverviewYear) continue
 
-  const totalProfit = statRows.reduce(
-    (sum, row) => sum + getProfit(row.sale_amount, row.cost_amount),
-    0
-  )
-
-  const currentMonthProfit = currentMonthStatRows.reduce(
-    (sum, row) => sum + getProfit(row.sale_amount, row.cost_amount),
-    0
-  )
+    const monthIndex = rowDate.getUTCMonth()
+    monthlySaleByYear[monthIndex] +=
+      typeof row.sale_amount === 'number' ? row.sale_amount : 0
+    monthlyProfitByYear[monthIndex] += getProfit(row.sale_amount, row.cost_amount)
+  }
 
   const activeFilterSummary = [
     salesOwner || null,
@@ -902,35 +974,61 @@ export default async function FakturyPage({
           </section>
 
           <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-              Přehled
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                Přehled
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                {(overviewYearOptions.length > 0
+                  ? overviewYearOptions
+                  : [selectedOverviewYear]
+                ).map((yearOption) => (
+                  <Link
+                    key={yearOption}
+                    href={buildOverviewYearHref({
+                      year: yearOption,
+                      query,
+                      salesOwner,
+                      sort,
+                      dateFrom,
+                      dateTo,
+                      invoiced,
+                    })}
+                    className={`inline-flex h-8 items-center justify-center rounded-xl border px-3 text-xs font-medium transition ${
+                      yearOption === selectedOverviewYear
+                        ? 'border-[#2980B9] bg-[#2980B9] text-white'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {yearOption}
+                  </Link>
+                ))}
+              </div>
             </div>
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <StatCard
-                label="Vyfakturováno celkem"
-                value={formatCurrency(totalSale)}
-                accent="blue"
+            <div className="mt-2">
+              <FinanceCombinedChart
+                months={MONTH_LABELS_CS}
+                saleValues={monthlySaleByYear}
+                profitValues={monthlyProfitByYear}
               />
-              <StatCard
-                label="Vyfakturováno tento měsíc"
-                value={formatCurrency(currentMonthSale)}
-                accent="blueSoft"
-              />
-              <StatCard
-                label="Zisk celkem"
-                value={formatCurrency(totalProfit)}
-                accent="green"
-                valueClassName={totalProfit < 0 ? 'text-red-600' : 'text-black'}
-              />
-              <StatCard
-                label="Zisk tento měsíc"
-                value={formatCurrency(currentMonthProfit)}
-                accent="greenSoft"
-                valueClassName={
-                  currentMonthProfit < 0 ? 'text-red-600' : 'text-black'
-                }
-              />
+            </div>
+            <div className="mt-[20px] pt-3">
+              <div className="text-[11px] text-gray-500">
+                Prodej:{' '}
+                <span className="font-medium text-gray-700">
+                  {formatCurrency(
+                    monthlySaleByYear.reduce((sum, value) => sum + value, 0)
+                  )}
+                </span>{' '}
+                · Zisk:{' '}
+                <span className="font-medium text-gray-700">
+                  {formatCurrency(
+                    monthlyProfitByYear.reduce((sum, value) => sum + value, 0)
+                  )}
+                </span>
+              </div>
             </div>
           </section>
         </section>
@@ -959,40 +1057,196 @@ export default async function FakturyPage({
   )
 }
 
-function StatCard({
-  label,
-  value,
-  valueClassName = 'text-black',
-  accent = 'default',
+function FinanceCombinedChart({
+  months,
+  saleValues,
+  profitValues,
 }: {
-  label: string
-  value: string
-  valueClassName?: string
-  accent?: 'default' | 'blue' | 'blueSoft' | 'green' | 'greenSoft'
+  months: string[]
+  saleValues: number[]
+  profitValues: number[]
 }) {
-  const accentClass =
-    accent === 'blue'
-      ? 'border-[#2980B9]/20 bg-white'
-      : accent === 'blueSoft'
-        ? 'border-[#2980B9]/20 bg-[#2980B9]/[0.05]'
-        : accent === 'green'
-          ? 'border-emerald-200 bg-emerald-50'
-          : accent === 'greenSoft'
-            ? 'border-emerald-200 bg-emerald-50/80'
-        : 'border-gray-200 bg-gray-50'
+  const width = 900
+  const height = 208
+  const paddingTop = 14
+  const paddingRight = 14
+  const paddingBottom = 30
+  const paddingLeft = 64
+  const innerWidth = width - paddingLeft - paddingRight
+  const innerHeight = height - paddingTop - paddingBottom
+  const maxValueRaw = Math.max(...saleValues, ...profitValues, 0)
+  const maxValue = maxValueRaw > 0 ? maxValueRaw * 1.1 : 1
+  const tickCount = 2
+
+  const salePoints = saleValues.map((value, index) => {
+    const x = paddingLeft + (index / (saleValues.length - 1)) * innerWidth
+    const y = paddingTop + innerHeight - (value / maxValue) * innerHeight
+    return { x, y }
+  })
+
+  const profitPoints = profitValues.map((value, index) => {
+    const x = paddingLeft + (index / (profitValues.length - 1)) * innerWidth
+    const y = paddingTop + innerHeight - (value / maxValue) * innerHeight
+    return { x, y }
+  })
+
+  const saleLinePath = salePoints
+    .map((point, index) =>
+      `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`
+    )
+    .join(' ')
+
+  const profitLinePath = profitPoints
+    .map((point, index) =>
+      `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`
+    )
+    .join(' ')
+
+  const saleAreaPath = `${saleLinePath} L ${(
+    paddingLeft + innerWidth
+  ).toFixed(2)} ${(paddingTop + innerHeight).toFixed(2)} L ${paddingLeft.toFixed(
+    2
+  )} ${(paddingTop + innerHeight).toFixed(2)} Z`
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${accentClass}`}>
-      <div className="p-4">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-          {label}
-        </div>
-        <div
-          className={`mt-2 text-lg font-semibold tracking-tight ${valueClassName}`}
-        >
-          <span className={valueClassName}>{value}</span>
-        </div>
-      </div>
+    <div className="rounded-2xl border border-gray-200 bg-white p-3">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-[170px] w-full"
+        role="img"
+        aria-label="Přehled fakturováno a zisk"
+      >
+        {Array.from({ length: tickCount + 1 }).map((_, index) => {
+          const ratio = index / tickCount
+          const tickValue = maxValue * (1 - ratio)
+          const y = paddingTop + ratio * innerHeight
+
+          return (
+            <g key={index}>
+              <line
+                x1={paddingLeft}
+                y1={y}
+                x2={paddingLeft + innerWidth}
+                y2={y}
+                stroke="#E5E7EB"
+                strokeWidth="1"
+              />
+              <text
+                x={paddingLeft - 8}
+                y={y + 4}
+                textAnchor="end"
+                fontSize="10"
+                fill="#6B7280"
+              >
+                {formatChartMoneyTick(Math.max(0, tickValue))}
+              </text>
+            </g>
+          )
+        })}
+
+        <path d={saleAreaPath} fill="rgba(41, 128, 185, 0.10)" />
+        <path
+          d={saleLinePath}
+          fill="none"
+          stroke="#2980B9"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d={profitLinePath}
+          fill="none"
+          stroke="#1F3A5F"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d={saleLinePath}
+          fill="none"
+          stroke="#7FD3FF"
+          strokeWidth="2.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="finance-chart-energy finance-chart-energy--sale hidden lg:block"
+        />
+        <path
+          d={profitLinePath}
+          fill="none"
+          stroke="#9BC7FF"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="finance-chart-energy finance-chart-energy--profit hidden lg:block"
+        />
+
+        {salePoints.map((point, index) => {
+          const saleValue = saleValues[index] ?? 0
+          const profitValue = profitValues[index] ?? 0
+          const month = months[index] ?? ''
+          const xStart =
+            index === 0
+              ? paddingLeft
+              : paddingLeft + ((index - 0.5) / (months.length - 1)) * innerWidth
+          const xEnd =
+            index === months.length - 1
+              ? paddingLeft + innerWidth
+              : paddingLeft + ((index + 0.5) / (months.length - 1)) * innerWidth
+          const zoneWidth = Math.max(1, xEnd - xStart)
+
+          return (
+            <g key={`${month}-${index}`}>
+              <rect
+                x={xStart}
+                y={paddingTop}
+                width={zoneWidth}
+                height={innerHeight}
+                fill="transparent"
+              >
+                <title>{`${month} · PRODEJ: ${formatCurrency(
+                  saleValue
+                )} · ZISK: ${formatCurrency(profitValue)}`}</title>
+              </rect>
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r="1.8"
+                fill="#2980B9"
+                fillOpacity="0.9"
+              >
+                <title>{`PRODEJ: ${formatCurrency(saleValue)}`}</title>
+              </circle>
+              <circle
+                cx={profitPoints[index]?.x ?? point.x}
+                cy={profitPoints[index]?.y ?? point.y}
+                r="1.8"
+                fill="#1F3A5F"
+                fillOpacity="0.9"
+              >
+                <title>{`ZISK: ${formatCurrency(profitValue)}`}</title>
+              </circle>
+            </g>
+          )
+        })}
+
+        {months.map((month, index) => {
+          const x = paddingLeft + (index / (months.length - 1)) * innerWidth
+          const textAnchor =
+            index === 0 ? 'start' : index === months.length - 1 ? 'end' : 'middle'
+          return (
+            <text
+              key={month}
+              x={x}
+              y={height - 5}
+              textAnchor={textAnchor}
+              fontSize="10.5"
+              fill="#6B7280"
+            >
+              {month}
+            </text>
+          )
+        })}
+      </svg>
     </div>
   )
 }

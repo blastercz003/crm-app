@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import {
   createClientContactModalAction,
   updateClientContactModalAction,
@@ -44,11 +45,25 @@ export function NewClientContactButton({
 }: NewClientContactButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
 
   function openModal() {
     setFormKey((current) => current + 1)
     setIsOpen(true)
   }
+
+  useEffect(() => {
+    if (!toast) return
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null)
+    }, 3200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [toast])
 
   const resolvedClassName =
     className ??
@@ -67,7 +82,24 @@ export function NewClientContactButton({
           clientId={clientId}
           defaultPrimary={!hasContacts}
           onClose={() => setIsOpen(false)}
+          onToast={setToast}
         />
+      ) : null}
+
+      {toast ? (
+        <div className="pointer-events-none fixed right-4 top-4 z-[60] max-w-[calc(100vw-2rem)] sm:right-6 sm:top-6 sm:max-w-sm">
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg ${
+              toast.type === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-red-200 bg-red-50 text-red-800'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {toast.message}
+          </div>
+        </div>
       ) : null}
     </>
   )
@@ -115,12 +147,14 @@ function ClientContactModal({
   contact,
   defaultPrimary = false,
   onClose,
+  onToast,
 }: {
   mode: 'create' | 'edit'
   clientId: string
   contact?: ClientContact
   defaultPrimary?: boolean
   onClose: () => void
+  onToast?: (toast: { type: 'success' | 'error'; message: string }) => void
 }) {
   const [state, formAction] = useActionState(
     mode === 'create'
@@ -131,9 +165,25 @@ function ClientContactModal({
 
   useEffect(() => {
     if (state.success) {
+      onToast?.({
+        type: 'success',
+        message:
+          mode === 'create'
+            ? 'Kontaktní osoba byla vytvořena.'
+            : 'Kontaktní osoba byla upravena.',
+      })
       onClose()
     }
-  }, [onClose, state.success])
+  }, [mode, onClose, onToast, state.success])
+
+  useEffect(() => {
+    if (!state.error) return
+
+    onToast?.({
+      type: 'error',
+      message: state.error,
+    })
+  }, [onToast, state.error])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -183,6 +233,8 @@ function ClientContactModal({
           </div>
 
           <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+            <PendingFormLock message="Ukládám kontaktní osobu, čekej prosím..." />
+            <PendingFieldset className="flex min-h-0 flex-1 flex-col">
             <input type="hidden" name="client_id" value={clientId} />
             {contact ? <input type="hidden" name="id" value={contact.id} /> : null}
 
@@ -296,25 +348,81 @@ function ClientContactModal({
               ) : null}
             </div>
 
-            <div className="flex shrink-0 flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:px-5 sm:py-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                ZRUŠIT
-              </button>
-
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
-              >
-                {submitLabel}
-              </button>
-            </div>
+            <ContactFormActions onClose={onClose} submitLabel={submitLabel} />
+            </PendingFieldset>
           </form>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PendingFormLock({ message }: { message: string }) {
+  const { pending } = useFormStatus()
+
+  if (!pending) return null
+
+  return (
+    <div className="mx-4 mt-3 rounded-2xl border border-[#2980B9]/25 bg-[#2980B9]/10 px-4 py-3 text-sm font-medium text-[#1d5f88] sm:mx-5 sm:mt-4">
+      {message}
+    </div>
+  )
+}
+
+function PendingFieldset({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  const { pending } = useFormStatus()
+
+  return (
+    <fieldset
+      disabled={pending}
+      className={`${className ?? ''} ${pending ? 'cursor-wait opacity-80' : ''}`}
+    >
+      {children}
+    </fieldset>
+  )
+}
+
+function ContactFormActions({
+  onClose,
+  submitLabel,
+}: {
+  onClose: () => void
+  submitLabel: string
+}) {
+  const { pending } = useFormStatus()
+
+  return (
+    <div
+      className={`flex shrink-0 flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:px-5 sm:py-4 ${
+        pending ? 'cursor-wait' : ''
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={pending}
+        className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        ZRUŠIT
+      </button>
+
+      <button
+        type="submit"
+        disabled={pending}
+        aria-busy={pending}
+        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+      >
+        {pending ? (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        ) : null}
+        {pending ? 'UKLÁDÁM...' : submitLabel}
+      </button>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRef, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { getPriorityLabel } from '@/app/tasks/taskUi'
 
 type ClientOption = {
@@ -252,16 +253,23 @@ export function MeetingForm({
         ? 'text-amber-700'
         : 'text-gray-500'
 
+  const pendingSubmitLabel =
+    submitLabel.trim().length > 0 && submitLabel === submitLabel.toUpperCase()
+      ? 'UKLÁDÁM...'
+      : 'Ukládám...'
+
   return (
     <form action={action} className="space-y-6">
-      {initialValues?.id ? (
-        <input type="hidden" name="id" value={initialValues.id} />
-      ) : null}
+      <PendingFormLock />
+      <PendingFieldset className="space-y-6">
+        {initialValues?.id ? (
+          <input type="hidden" name="id" value={initialValues.id} />
+        ) : null}
 
-      <input type="hidden" name="client_id" value={selectedClientId} />
-      <input type="hidden" name="client_contact_id" value={selectedContactId} />
+        <input type="hidden" name="client_id" value={selectedClientId} />
+        <input type="hidden" name="client_contact_id" value={selectedContactId} />
 
-      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <label
             htmlFor="company_name"
@@ -544,39 +552,112 @@ export function MeetingForm({
             <option value="high">{getPriorityLabel('high')}</option>
           </select>
         </div>
-      </div>
-
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
         </div>
-      ) : null}
 
-      <div className="flex flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
-        {onCancel ? (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
-            {cancelLabel}
-          </button>
-        ) : cancelHref ? (
-          <Link
-            href={cancelHref}
-            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
-            {cancelLabel}
-          </Link>
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
         ) : null}
 
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
-        >
-          {submitLabel}
-        </button>
-      </div>
+        <MeetingFormActions
+          submitLabel={submitLabel}
+          pendingSubmitLabel={pendingSubmitLabel}
+          onCancel={onCancel}
+          cancelHref={cancelHref}
+          cancelLabel={cancelLabel}
+        />
+      </PendingFieldset>
     </form>
+  )
+}
+
+function PendingFormLock() {
+  const { pending } = useFormStatus()
+
+  if (!pending) return null
+
+  return (
+    <div className="rounded-2xl border border-[#2980B9]/25 bg-[#2980B9]/10 px-4 py-3 text-sm font-medium text-[#1d5f88]">
+      Ukládám schůzku, čekej prosím...
+    </div>
+  )
+}
+
+function PendingFieldset({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  const { pending } = useFormStatus()
+
+  return (
+    <fieldset
+      disabled={pending}
+      className={`${className ?? ''} ${
+        pending ? 'cursor-wait opacity-80' : ''
+      }`}
+    >
+      {children}
+    </fieldset>
+  )
+}
+
+function MeetingFormActions({
+  submitLabel,
+  pendingSubmitLabel,
+  onCancel,
+  cancelHref,
+  cancelLabel,
+}: {
+  submitLabel: string
+  pendingSubmitLabel: string
+  onCancel?: () => void
+  cancelHref?: string
+  cancelLabel: string
+}) {
+  const { pending } = useFormStatus()
+
+  return (
+    <div
+      className={`flex flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end ${
+        pending ? 'cursor-wait' : ''
+      }`}
+    >
+      {onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={pending}
+          className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {cancelLabel}
+        </button>
+      ) : cancelHref ? (
+        <Link
+          href={cancelHref}
+          aria-disabled={pending}
+          className={`inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
+            pending ? 'pointer-events-none opacity-60' : ''
+          }`}
+        >
+          {cancelLabel}
+        </Link>
+      ) : null}
+
+      <button
+        type="submit"
+        disabled={pending}
+        aria-busy={pending}
+        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+      >
+        {pending ? (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        ) : null}
+        {pending ? pendingSubmitLabel : submitLabel}
+      </button>
+    </div>
   )
 }
