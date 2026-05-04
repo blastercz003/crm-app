@@ -117,10 +117,10 @@ export function FakturyInteractiveTable({
               <col className="w-[56px]" />
               <col className="w-[112px]" />
               <col className="w-[32px]" />
-              <col className="w-[88px]" />
-              <col className="w-[88px]" />
-              <col className="w-[88px]" />
-              <col className="w-[88px]" />
+              <col className="w-[120px]" />
+              <col className="w-[120px]" />
+              <col className="w-[120px]" />
+              <col className="w-[120px]" />
             </colgroup>
             <thead>
               <tr className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
@@ -134,10 +134,10 @@ export function FakturyInteractiveTable({
                 <th className="w-[56px] px-1.5 py-2 text-center">Prodejna</th>
                 <th className="w-[112px] px-1.5 py-2 text-center">Info</th>
                 <th className="w-[32px] px-0 py-2 pr-[10px] text-center">DATA</th>
-                <th className="w-[88px] px-1.5 py-2 pl-4 text-center">Faktura</th>
-                <th className="w-[88px] px-1.5 py-2 text-center">Prodej</th>
-                <th className="w-[88px] px-1.5 py-2 text-center">Náklad</th>
-                <th className="w-[88px] px-1.5 py-2 text-center">Zisk</th>
+                <th className="w-[120px] px-1.5 py-2 pl-4 text-center">Faktura</th>
+                <th className="w-[120px] px-1.5 py-2 pl-4 text-center">Prodej</th>
+                <th className="w-[120px] px-1.5 py-2 pl-4 text-center">Náklad</th>
+                <th className="w-[120px] px-1.5 py-2 pl-4 text-center">Zisk</th>
               </tr>
             </thead>
 
@@ -250,7 +250,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 pl-4 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <FinanceEditableCell
           financeId={row.id}
           field="sale_amount"
@@ -271,7 +271,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 pl-4 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <CostAmountCell
           financeId={row.id}
           jobNumber={row.job_number}
@@ -279,7 +279,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-1.5 py-2 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-1.5 py-2 pl-4 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
         <ProfitText saleAmount={row.sale_amount} costAmount={row.cost_amount} />
       </td>
     </tr>
