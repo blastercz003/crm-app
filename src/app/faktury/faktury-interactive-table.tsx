@@ -10,7 +10,6 @@ import {
   getJobAttachmentsAction,
   getFinanceCostItemsAction,
   renameJobAttachmentAction,
-  updateJobAttachmentNoteAction,
   saveFinanceCostItemsAction,
   uploadJobAttachmentsAction,
   updateFinanceInlineFieldAction,
@@ -789,14 +788,11 @@ function JobAttachmentsModal({
   const [isLoading, setIsLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [noteValue, setNoteValue] = useState('')
   const [categoryValue, setCategoryValue] =
     useState<JobAttachmentCategory>('predavaci_protokol')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
-  const [noteDraftValue, setNoteDraftValue] = useState('')
   const [filterCategory, setFilterCategory] = useState<
     JobAttachmentCategory | 'all'
   >('all')
@@ -805,9 +801,7 @@ function JobAttachmentsModal({
   const handleRequestClose = useCallback(() => {
     const hasUnsavedChanges =
       selectedFiles.length > 0 ||
-      (noteValue.trim().length > 0 && selectedFiles.length === 0) ||
-      renamingId !== null ||
-      editingNoteId !== null
+      renamingId !== null
 
     if (!hasUnsavedChanges) {
       onClose()
@@ -821,7 +815,7 @@ function JobAttachmentsModal({
     if (confirmed) {
       onClose()
     }
-  }, [editingNoteId, noteValue, onClose, renamingId, selectedFiles])
+  }, [onClose, renamingId, selectedFiles])
 
   useEffect(() => {
     let active = true
@@ -875,7 +869,6 @@ function JobAttachmentsModal({
     startTransition(async () => {
       const formData = new FormData()
       formData.set('category', categoryValue)
-      formData.set('note', noteValue)
       for (const file of selectedFiles) {
         formData.append('files', file)
       }
@@ -897,7 +890,6 @@ function JobAttachmentsModal({
       }
 
       setSelectedFiles([])
-      setNoteValue('')
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -974,31 +966,6 @@ function JobAttachmentsModal({
     })
   }
 
-  function handleSaveAttachmentNote(attachmentId: string) {
-    startTransition(async () => {
-      const result = await updateJobAttachmentNoteAction(
-        attachmentId,
-        noteDraftValue
-      )
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Poznámku se nepodařilo uložit.')
-        return
-      }
-
-      const normalizedNote = noteDraftValue.trim()
-      setItems((current) =>
-        current.map((item) =>
-          item.id === attachmentId
-            ? { ...item, note: normalizedNote.length > 0 ? normalizedNote : null }
-            : item
-        )
-      )
-      setEditingNoteId(null)
-      setNoteDraftValue('')
-      router.refresh()
-    })
-  }
-
   const normalizedFilterQuery = filterQuery.trim().toLowerCase()
   const visibleItems = items.filter((item) => {
     const matchesCategory =
@@ -1052,7 +1019,7 @@ function JobAttachmentsModal({
 
           <div className="px-4 py-4 sm:px-6">
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="grid gap-3 md:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-3">
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     Soubory
@@ -1101,18 +1068,6 @@ function JobAttachmentsModal({
                   </select>
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                    Poznámka
-                  </label>
-                  <input
-                    type="text"
-                    value={noteValue}
-                    onChange={(event) => setNoteValue(event.target.value)}
-                    disabled={isPending}
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900"
-                  />
-                </div>
               </div>
 
               <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1229,49 +1184,6 @@ function JobAttachmentsModal({
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[12px] leading-5 text-gray-600">
-                    <div className="col-span-2">
-                      <span className="font-medium text-gray-900">Poznámka:</span>{' '}
-                      {editingNoteId === item.id ? (
-                        <div className="mt-1 flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={noteDraftValue}
-                            onChange={(event) => setNoteDraftValue(event.target.value)}
-                            className="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm"
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') {
-                                event.preventDefault()
-                                handleSaveAttachmentNote(item.id)
-                              }
-                              if (event.key === 'Escape') {
-                                setEditingNoteId(null)
-                                setNoteDraftValue('')
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveAttachmentNote(item.id)}
-                            className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                          >
-                            Uložit
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingNoteId(item.id)
-                            setNoteDraftValue(item.note ?? '')
-                          }}
-                          className="mt-1 block w-full truncate rounded-md px-1 py-1 text-left text-sm text-gray-700 hover:bg-gray-50"
-                          title={item.note ?? 'Doplnit poznámku'}
-                        >
-                          {item.note ?? 'Doplnit poznámku'}
-                        </button>
-                      )}
-                    </div>
-
                     <div>
                       <span className="font-medium text-gray-900">Velikost:</span>{' '}
                       {formatFileSize(item.fileSizeBytes)}
@@ -1335,21 +1247,20 @@ function JobAttachmentsModal({
             </div>
 
             <div className="hidden overflow-x-auto rounded-3xl border border-gray-200 md:block">
-              <table className="min-w-full table-fixed bg-white">
+              <table className="w-full table-fixed bg-white">
                 <thead>
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     <th className="px-3 py-3">Název</th>
-                    <th className="w-[130px] px-3 py-3">Kategorie</th>
-                    <th className="w-[220px] px-3 py-3">Poznámka</th>
+                    <th className="w-[120px] px-3 py-3">Kategorie</th>
                     <th className="w-[100px] px-3 py-3 text-right">Velikost</th>
-                    <th className="w-[170px] px-3 py-3">Nahráno</th>
-                    <th className="w-[210px] px-3 py-3 text-right">Akce</th>
+                    <th className="w-[160px] px-3 py-3">Nahráno</th>
+                    <th className="w-[380px] px-3 py-3 text-right">Akce</th>
                   </tr>
                 </thead>
                 <tbody>
                   {!isLoading && visibleItems.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-3 py-6 text-center text-sm text-gray-500">
+                      <td colSpan={5} className="px-3 py-6 text-center text-sm text-gray-500">
                         {items.length === 0
                           ? 'Zatím nejsou nahrané žádné přílohy.'
                           : 'Filtrům neodpovídá žádná příloha.'}
@@ -1359,7 +1270,7 @@ function JobAttachmentsModal({
 
                   {visibleItems.map((item) => (
                     <tr key={item.id} className="border-t border-gray-100">
-                      <td className="px-3 py-2">
+                      <td className="max-w-0 px-3 py-2">
                         {renamingId === item.id ? (
                           <input
                             type="text"
@@ -1375,11 +1286,14 @@ function JobAttachmentsModal({
                                 setRenameValue('')
                               }
                             }}
-                            className="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm"
+                            className="h-9 min-w-0 w-full rounded-lg border border-gray-300 px-2 text-sm"
                             autoFocus
                           />
                         ) : (
-                          <span className="block truncate text-sm text-gray-900" title={item.displayName}>
+                          <span
+                            className="block w-full truncate text-sm text-gray-900"
+                            title={item.displayName}
+                          >
                             {item.displayName}
                           </span>
                         )}
@@ -1387,52 +1301,16 @@ function JobAttachmentsModal({
                       <td className="px-3 py-2 text-sm text-gray-700">
                         {formatAttachmentCategory(item.category)}
                       </td>
-                      <td className="px-3 py-2">
-                        {editingNoteId === item.id ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={noteDraftValue}
-                              onChange={(event) => setNoteDraftValue(event.target.value)}
-                              className="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm"
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                  event.preventDefault()
-                                  handleSaveAttachmentNote(item.id)
-                                }
-                                if (event.key === 'Escape') {
-                                  setEditingNoteId(null)
-                                  setNoteDraftValue('')
-                                }
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleSaveAttachmentNote(item.id)}
-                              className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                              Uložit
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingNoteId(item.id)
-                              setNoteDraftValue(item.note ?? '')
-                            }}
-                            className="block w-full truncate rounded-md px-1 py-1 text-left text-sm text-gray-700 hover:bg-gray-50"
-                            title={item.note ?? 'Doplnit poznámku'}
-                          >
-                            {item.note ?? 'Doplnit poznámku'}
-                          </button>
-                        )}
-                      </td>
                       <td className="px-3 py-2 text-right text-sm text-gray-700">
                         {formatFileSize(item.fileSizeBytes)}
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-700">
-                        {formatDateTime(item.createdAt)}
+                        <span
+                          className="block max-w-[160px] truncate whitespace-nowrap"
+                          title={formatDateTime(item.createdAt)}
+                        >
+                          {formatDateTime(item.createdAt)}
+                        </span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center justify-end gap-2">
@@ -1440,7 +1318,7 @@ function JobAttachmentsModal({
                             type="button"
                             onClick={() => handleOpenAttachment(item.id)}
                             disabled={isPending}
-                            className="rounded-lg border border-[#2980B9] bg-[#2980B9] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
+                            className="shrink-0 rounded-lg border border-[#2980B9] bg-[#2980B9] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
                           >
                             OTEVŘÍT
                           </button>
@@ -1448,7 +1326,7 @@ function JobAttachmentsModal({
                             type="button"
                             onClick={() => handleDownloadAttachment(item.id)}
                             disabled={isPending}
-                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                            className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                           >
                             STÁHNOUT
                           </button>
@@ -1457,7 +1335,7 @@ function JobAttachmentsModal({
                               type="button"
                               onClick={() => handleRenameAttachment(item.id)}
                               disabled={isPending}
-                              className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                              className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                             >
                               Uložit
                             </button>
@@ -1469,7 +1347,7 @@ function JobAttachmentsModal({
                                 setRenameValue(item.displayName)
                               }}
                               disabled={isPending}
-                              className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                              className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                             >
                               PŘEJMENOVAT
                             </button>
@@ -1480,7 +1358,7 @@ function JobAttachmentsModal({
                               handleDeleteAttachment(item.id, item.displayName)
                             }
                             disabled={isPending}
-                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                           >
                             SMAZAT
                           </button>
