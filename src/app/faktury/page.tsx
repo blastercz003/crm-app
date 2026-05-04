@@ -1014,7 +1014,7 @@ export default async function FakturyPage({
                 profitValues={monthlyProfitByYear}
               />
             </div>
-            <div className="mt-[20px] pt-3">
+            <div className="mt-[5px] pt-3">
               <div className="text-[11px] text-gray-500">
                 Prodej:{' '}
                 <span className="font-medium text-gray-700">
