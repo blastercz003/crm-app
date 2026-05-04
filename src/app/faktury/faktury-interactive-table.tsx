@@ -793,10 +793,6 @@ function JobAttachmentsModal({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
-  const [filterCategory, setFilterCategory] = useState<
-    JobAttachmentCategory | 'all'
-  >('all')
-  const [filterQuery, setFilterQuery] = useState('')
 
   const handleRequestClose = useCallback(() => {
     const hasUnsavedChanges =
@@ -966,18 +962,7 @@ function JobAttachmentsModal({
     })
   }
 
-  const normalizedFilterQuery = filterQuery.trim().toLowerCase()
-  const visibleItems = items.filter((item) => {
-    const matchesCategory =
-      filterCategory === 'all' ? true : item.category === filterCategory
-    const matchesQuery =
-      normalizedFilterQuery.length === 0
-        ? true
-        : item.displayName.toLowerCase().includes(normalizedFilterQuery) ||
-          item.fileName.toLowerCase().includes(normalizedFilterQuery)
-
-    return matchesCategory && matchesQuery
-  })
+  const visibleItems = items
 
   return (
     <div
@@ -1096,51 +1081,10 @@ function JobAttachmentsModal({
               </div>
             ) : null}
 
-            <div className="mb-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3">
-              <div className="grid gap-2 md:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                    Filtr kategorie
-                  </label>
-                  <select
-                    value={filterCategory}
-                    onChange={(event) =>
-                      setFilterCategory(
-                        event.target.value as JobAttachmentCategory | 'all'
-                      )
-                    }
-                    className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900"
-                  >
-                    <option value="all">Všechny</option>
-                    {ATTACHMENT_CATEGORY_OPTIONS.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                    Hledat soubor
-                  </label>
-                  <input
-                    type="text"
-                    value={filterQuery}
-                    onChange={(event) => setFilterQuery(event.target.value)}
-                    placeholder="Název souboru"
-                    className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div className="grid gap-3 md:hidden">
               {!isLoading && visibleItems.length === 0 ? (
                 <div className="rounded-3xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
-                  {items.length === 0
-                    ? 'Zatím nejsou nahrané žádné přílohy.'
-                    : 'Filtrům neodpovídá žádná příloha.'}
+                  Zatím nejsou nahrané žádné přílohy.
                 </div>
               ) : null}
 
@@ -1261,9 +1205,7 @@ function JobAttachmentsModal({
                   {!isLoading && visibleItems.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-3 py-6 text-center text-sm text-gray-500">
-                        {items.length === 0
-                          ? 'Zatím nejsou nahrané žádné přílohy.'
-                          : 'Filtrům neodpovídá žádná příloha.'}
+                        Zatím nejsou nahrané žádné přílohy.
                       </td>
                     </tr>
                   ) : null}
