@@ -89,6 +89,8 @@ type DashboardClientContactOption = {
   id: string
   client_id: string
   name: string
+  phone: string | null
+  email: string | null
   is_primary: boolean
 }
 
@@ -1309,7 +1311,7 @@ export default async function DashboardPage() {
     supabase.from('clients').select('id, name').order('name', { ascending: true }),
     supabase
       .from('client_contacts')
-      .select('id, client_id, name, is_primary')
+      .select('id, client_id, name, phone, email, is_primary')
       .order('is_primary', { ascending: false })
       .order('name', { ascending: true }),
     ])

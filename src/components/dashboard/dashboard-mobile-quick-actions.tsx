@@ -27,6 +27,8 @@ type ClientContactOption = {
   id: string
   client_id: string
   name: string
+  phone: string | null
+  email: string | null
   is_primary: boolean
 }
 
