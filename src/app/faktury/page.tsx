@@ -211,6 +211,12 @@ function getProfit(saleAmount: number | null, costAmount: number | null) {
   return sale - cost
 }
 
+function hasCompleteFinanceValues(
+  row: Pick<FakturaRow, 'sale_amount' | 'cost_amount'>
+): row is { sale_amount: number; cost_amount: number } {
+  return Number.isFinite(row.sale_amount) && Number.isFinite(row.cost_amount)
+}
+
 const MONTH_LABELS_CS = [
   'Leden',
   'Únor',
@@ -712,10 +718,10 @@ export default async function FakturyPage({
     const rowDate = resolveFinanceStatDate(row.start_at, row.end_at)
     if (Number.isNaN(rowDate.getTime())) continue
     if (rowDate.getUTCFullYear() !== selectedOverviewYear) continue
+    if (!hasCompleteFinanceValues(row)) continue
 
     const monthIndex = rowDate.getUTCMonth()
-    monthlySaleByYear[monthIndex] +=
-      typeof row.sale_amount === 'number' ? row.sale_amount : 0
+    monthlySaleByYear[monthIndex] += row.sale_amount
     monthlyProfitByYear[monthIndex] += getProfit(row.sale_amount, row.cost_amount)
   }
 
