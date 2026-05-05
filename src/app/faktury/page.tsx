@@ -935,21 +935,21 @@ export default async function FakturyPage({
                 <div className="grid w-full grid-cols-3 items-center gap-2 sm:contents">
                   <Link
                     href={previousMonthHref}
-                    className="inline-flex h-10 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-3 sm:px-4 sm:text-sm"
+                    className="inline-flex h-10 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-3 sm:w-auto sm:px-4 sm:text-sm"
                   >
                     MINULÝ MĚSÍC
                   </Link>
 
                   <Link
                     href={currentMonthHref}
-                    className="inline-flex h-10 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-4 sm:px-4 sm:text-sm"
+                    className="inline-flex h-10 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-4 sm:w-auto sm:px-4 sm:text-sm"
                   >
                     TENTO MĚSÍC
                   </Link>
 
                   <Link
                     href={exportHref}
-                    className="inline-flex h-10 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-5 sm:px-4 sm:text-sm"
+                    className="inline-flex h-10 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#236f9f] hover:border-[#236f9f] sm:order-5 sm:w-auto sm:px-4 sm:text-sm"
                   >
                     EXPORT
                   </Link>

@@ -1080,16 +1080,20 @@ function JobAttachmentsModal({
 
                   <div className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 text-[12px] leading-5 text-gray-600">
                     <div className="min-w-0">
-                      <span className="font-medium text-gray-900">Velikost:</span>{' '}
-                      <span className="inline-block max-w-full truncate">
-                        {formatFileSize(item.fileSizeBytes)}
-                      </span>
+                      <div className="flex min-w-0 items-baseline gap-1">
+                        <span className="shrink-0 font-medium text-gray-900">Velikost:</span>
+                        <span className="min-w-0 truncate whitespace-nowrap">
+                          {formatFileSize(item.fileSizeBytes)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="min-w-0 text-right">
-                      <span className="font-medium text-gray-900">Nahráno:</span>{' '}
-                      <span className="inline-block max-w-full truncate">
-                        {formatDateTime(item.createdAt)}
-                      </span>
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-baseline justify-end gap-1 text-right">
+                        <span className="shrink-0 font-medium text-gray-900">Nahráno:</span>
+                        <span className="min-w-0 truncate whitespace-nowrap">
+                          {formatDateTime(item.createdAt)}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
