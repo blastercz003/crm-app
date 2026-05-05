@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 export type CreateJobActionState = {
   success: boolean
   error: string | null
+  jobNumber?: string | null
+  companyName?: string | null
 }
 
 export type UpdateJobActionState = {
@@ -663,6 +665,8 @@ export async function createJobAction(
   return {
     success: true,
     error: null,
+    jobNumber: createdJob.job_number ?? null,
+    companyName: createdJob.company_name ?? null,
   }
 }
 

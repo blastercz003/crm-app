@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { createJobAction, type CreateJobActionState } from './actions'
+import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
@@ -92,22 +93,25 @@ export function NewJobButton({
   )
 }
 
-function CreateJobModal({
+export function CreateJobModal({
   clientSuggestions,
   clientContacts,
   onClose,
+  onSuccess,
 }: {
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
   onClose: () => void
+  onSuccess?: (state: CreateJobActionState) => void
 }) {
   const [state, formAction] = useActionState(createJobAction, initialCreateState)
 
   useEffect(() => {
     if (state.success) {
+      onSuccess?.(state)
       onClose()
     }
-  }, [onClose, state.success])
+  }, [onClose, onSuccess, state])
 
   return (
     <JobFormShell
@@ -637,7 +641,14 @@ function JobFormShell({
               ) : null}
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 px-4 py-3 sm:px-5">
+            <MobileModalActions
+              onCancel={onClose}
+              submitLabel={submitLabel}
+              pendingSubmitLabel="UKLÁDÁM..."
+              submitDisabled={!companySelectionIsValid}
+            />
+
+            <div className="hidden shrink-0 items-center justify-end gap-2 border-t border-gray-100 px-4 py-3 sm:flex sm:px-5">
               <button
                 type="button"
                 onClick={onClose}

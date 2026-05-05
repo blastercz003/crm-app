@@ -8,6 +8,8 @@ import { createNotificationsForAdmins } from '@/lib/notifications/createNotifica
 export type MeetingFormActionState = {
   success: boolean
   error: string | null
+  companyName?: string
+  meetingDateTime?: string
 }
 
 export type CreateMeetingActionState = MeetingFormActionState
@@ -456,7 +458,11 @@ async function createMeetingRecord(formData: FormData) {
     revalidatePath(`/clients/${clientId}`)
   }
 
-  return { id: data.id }
+  return {
+    id: data.id,
+    companyName,
+    meetingDateTime: meetingDatetime,
+  }
 }
 
 async function updateMeetingRecord(formData: FormData) {
@@ -591,11 +597,13 @@ export async function createMeetingModalAction(
   formData: FormData
 ): Promise<CreateMeetingActionState> {
   try {
-    await createMeetingRecord(formData)
+    const result = await createMeetingRecord(formData)
 
     return {
       success: true,
       error: null,
+      companyName: result.companyName ?? undefined,
+      meetingDateTime: result.meetingDateTime ?? undefined,
     }
   } catch (error) {
     return {

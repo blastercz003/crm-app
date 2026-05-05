@@ -28,6 +28,11 @@ type NewMeetingButtonProps = {
   label?: string
 }
 
+type MeetingToast = {
+  type: 'success' | 'error'
+  message: string
+}
+
 const initialCreateState: CreateMeetingActionState = {
   success: false,
   error: null,
@@ -41,10 +46,7 @@ export function NewMeetingButton({
 }: NewMeetingButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
-  const [toast, setToast] = useState<{
-    type: 'success' | 'error'
-    message: string
-  } | null>(null)
+  const [toast, setToast] = useState<MeetingToast | null>(null)
 
   function openModal() {
     setFormKey((current) => current + 1)
@@ -108,16 +110,20 @@ export function NewMeetingButton({
   )
 }
 
-function CreateMeetingModal({
+export function CreateMeetingModal({
   clients,
   contacts,
   onClose,
   onToast,
+  onSuccess,
+  suppressSuccessToast = false,
 }: {
   clients: ClientOption[]
   contacts: ClientContactOption[]
   onClose: () => void
-  onToast: (toast: { type: 'success' | 'error'; message: string }) => void
+  onToast: (toast: MeetingToast) => void
+  onSuccess?: (state: CreateMeetingActionState) => void
+  suppressSuccessToast?: boolean
 }) {
   const [state, formAction] = useActionState(
     createMeetingModalAction,
@@ -126,13 +132,16 @@ function CreateMeetingModal({
 
   useEffect(() => {
     if (state.success) {
-      onToast({
-        type: 'success',
-        message: 'Schůzka byla vytvořena.',
-      })
+      onSuccess?.(state)
+      if (!suppressSuccessToast) {
+        onToast({
+          type: 'success',
+          message: 'Schůzka byla vytvořena.',
+        })
+      }
       onClose()
     }
-  }, [onClose, onToast, state.success])
+  }, [onClose, onSuccess, onToast, state, suppressSuccessToast])
 
   useEffect(() => {
     if (!state.error) return
@@ -185,7 +194,7 @@ function CreateMeetingModal({
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+          <div className="min-h-0 flex flex-1 flex-col px-4 py-3 sm:px-5 sm:py-4">
             <MeetingForm
               action={formAction}
               submitLabel="ULOŽIT SCHŮZKU"
@@ -194,6 +203,7 @@ function CreateMeetingModal({
               clients={clients}
               contacts={contacts}
               error={state.error}
+              modalMode
             />
           </div>
         </div>

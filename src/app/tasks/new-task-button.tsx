@@ -33,6 +33,11 @@ type NewTaskButtonProps = {
   label?: string
 }
 
+type TaskToast = {
+  type: 'success' | 'error'
+  message: string
+}
+
 const initialCreateState: CreateTaskActionState = {
   success: false,
   error: null,
@@ -47,10 +52,7 @@ export default function NewTaskButton({
 }: NewTaskButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
-  const [toast, setToast] = useState<{
-    type: 'success' | 'error'
-    message: string
-  } | null>(null)
+  const [toast, setToast] = useState<TaskToast | null>(null)
 
   function openModal() {
     setFormKey((current) => current + 1)
@@ -115,18 +117,22 @@ export default function NewTaskButton({
   )
 }
 
-function CreateTaskModal({
+export function CreateTaskModal({
   users,
   clients,
   contacts,
   onClose,
   onToast,
+  onSuccess,
+  suppressSuccessToast = false,
 }: {
   users: UserOption[]
   clients: ClientOption[]
   contacts: ClientContactOption[]
   onClose: () => void
-  onToast: (toast: { type: 'success' | 'error'; message: string }) => void
+  onToast: (toast: TaskToast) => void
+  onSuccess?: (state: CreateTaskActionState) => void
+  suppressSuccessToast?: boolean
 }) {
   const [state, formAction] = useActionState(
     createTaskModalAction,
@@ -135,13 +141,16 @@ function CreateTaskModal({
 
   useEffect(() => {
     if (state.success) {
-      onToast({
-        type: 'success',
-        message: 'Úkol byl vytvořen.',
-      })
+      onSuccess?.(state)
+      if (!suppressSuccessToast) {
+        onToast({
+          type: 'success',
+          message: 'Úkol byl vytvořen.',
+        })
+      }
       onClose()
     }
-  }, [onClose, onToast, state.success])
+  }, [onClose, onSuccess, onToast, state, suppressSuccessToast])
 
   useEffect(() => {
     if (!state.error) return
@@ -195,7 +204,7 @@ function CreateTaskModal({
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+          <div className="min-h-0 flex flex-1 flex-col px-4 py-3 sm:px-5 sm:py-4">
             <TaskForm
               action={formAction}
               users={users}
@@ -205,6 +214,7 @@ function CreateTaskModal({
               onCancel={onClose}
               cancelLabel="ZRUŠIT"
               error={state.error}
+              modalMode
             />
           </div>
         </div>

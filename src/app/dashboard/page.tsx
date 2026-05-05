@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAssignableUsers } from '@/lib/users/getAssignableUsers'
 import { endTaskRecurrence, updateTaskStatus } from '@/app/tasks/actions'
 import { TaskCompleteButton } from '@/app/tasks/task-complete-button'
 import { RepeatTaskBadge } from '@/app/tasks/repeat-task-badge'
@@ -16,6 +17,7 @@ import {
   MeetingTaskBadge,
 } from '@/components/meetings/meeting-status-badge'
 import { DashboardUpdatesLauncher } from '@/components/dashboard/dashboard-updates-launcher'
+import { DashboardMobileQuickActions } from '@/components/dashboard/dashboard-mobile-quick-actions'
 import {
   getCurrentUserNotificationStats,
   getCurrentUserNotifications,
@@ -76,6 +78,18 @@ type DashboardProfile = {
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
   can_view_offers: boolean | null
+}
+
+type DashboardClientOption = {
+  id: string
+  name: string
+}
+
+type DashboardClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
 }
 
 type DashboardTask = {
@@ -1287,10 +1301,34 @@ export default async function DashboardPage() {
   const dashboardWeeklyMeetingsCount = dashboardWeeklyMeetingsCountResponse.count ?? 0
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
-  const [notificationStats, modalNotifications] = await Promise.all([
+  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse] =
+    await Promise.all([
     getCurrentUserNotificationStats(),
     getCurrentUserNotifications({ status: 'active', limit: 30 }),
-  ])
+    getAssignableUsers(),
+    supabase.from('clients').select('id, name').order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+    ])
+
+  if (clientsResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst klienty pro rychlé akce: ${clientsResponse.error.message}`
+    )
+  }
+
+  if (contactsResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst kontaktní osoby pro rychlé akce: ${contactsResponse.error.message}`
+    )
+  }
+
+  const quickActionClients = (clientsResponse.data ?? []) as DashboardClientOption[]
+  const quickActionContacts =
+    (contactsResponse.data ?? []) as DashboardClientContactOption[]
 
   return (
     <DashboardGlobalSearchProvider>
@@ -1469,13 +1507,20 @@ export default async function DashboardPage() {
           </div>
           </div>
         </DashboardGlobalSearchBody>
+        <DashboardMobileQuickActions
+          users={assignableUsers}
+          clients={quickActionClients}
+          contacts={quickActionContacts}
+          canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
+          canCreateJobs={isAdmin}
+        />
           </div>
         </main>
 
         <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
             <div>B-ENERGY APP | coding by blaster</div>
-            <div>v2.0.4</div>
+            <div>v2.0.5</div>
           </div>
         </footer>
       </div>

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { getRepeatIntervalLabel } from './taskUi'
+import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 
 type UserOption = {
   id: string
@@ -49,6 +50,7 @@ type TaskFormProps = {
   initialValues?: TaskFormValues
   error?: string | null
   extraActions?: React.ReactNode
+  modalMode?: boolean
 }
 
 const inputClassName =
@@ -76,6 +78,7 @@ export default function TaskForm({
   initialValues,
   error,
   extraActions,
+  modalMode = false,
 }: TaskFormProps) {
   const companyInputRef = useRef<HTMLInputElement>(null)
 
@@ -225,12 +228,13 @@ export default function TaskForm({
       : 'Ukládám...'
 
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
       <PendingFormLock />
-      <PendingFieldset className="space-y-6">
+      <PendingFieldset className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
         <input type="hidden" name="client_id" value={selectedClientId} />
         <input type="hidden" name="client_contact_id" value={selectedContactId} />
 
+        <div className={modalMode ? 'min-h-0 flex-1 overflow-y-auto pb-4' : ''}>
         <div className="grid gap-5 md:grid-cols-2">
         <div className="md:col-span-2">
           <label htmlFor="title" className={labelClassName}>
@@ -431,6 +435,7 @@ export default function TaskForm({
             {error}
           </div>
         ) : null}
+        </div>
 
         <TaskFormActions
           submitLabel={submitLabel}
@@ -496,41 +501,55 @@ function TaskFormActions({
   const { pending } = useFormStatus()
 
   return (
-    <div className={`flex flex-wrap gap-3 ${pending ? 'cursor-wait' : ''}`}>
-      <button
-        type="submit"
-        disabled={pending}
-        aria-busy={pending}
-        className="inline-flex items-center gap-2 rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-75"
-      >
-        {pending ? (
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-        ) : null}
-        {pending ? pendingSubmitLabel : submitLabel}
-      </button>
-
-      {extraActions}
-
+    <>
       {onCancel ? (
+        <MobileModalActions
+          onCancel={onCancel}
+          submitLabel={submitLabel}
+          pendingSubmitLabel={pendingSubmitLabel}
+        />
+      ) : null}
+
+      <div
+        className={`${onCancel ? 'hidden sm:flex' : 'flex'} flex-wrap gap-3 ${
+          pending ? 'cursor-wait' : ''
+        }`}
+      >
         <button
-          type="button"
-          onClick={onCancel}
+          type="submit"
           disabled={pending}
-          className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-busy={pending}
+          className="inline-flex items-center gap-2 rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-75"
         >
-          {cancelLabel}
+          {pending ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          ) : null}
+          {pending ? pendingSubmitLabel : submitLabel}
         </button>
-      ) : (
-        <Link
-          href={cancelHref}
-          aria-disabled={pending}
-          className={`rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
-            pending ? 'pointer-events-none opacity-60' : ''
-          }`}
-        >
-          {cancelLabel}
-        </Link>
-      )}
-    </div>
+
+        {extraActions}
+
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {cancelLabel}
+          </button>
+        ) : (
+          <Link
+            href={cancelHref}
+            aria-disabled={pending}
+            className={`rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
+              pending ? 'pointer-events-none opacity-60' : ''
+            }`}
+          >
+            {cancelLabel}
+          </Link>
+        )}
+      </div>
+    </>
   )
 }

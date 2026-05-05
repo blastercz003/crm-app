@@ -3,10 +3,16 @@
 import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { createClientModalAction, type CreateClientActionState } from './actions'
+import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 
 type NewClientButtonProps = {
   className?: string
   label?: string
+}
+
+type ClientToast = {
+  type: 'success' | 'error'
+  message: string
 }
 
 const initialCreateState: CreateClientActionState = {
@@ -20,10 +26,7 @@ export function NewClientButton({
 }: NewClientButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
-  const [toast, setToast] = useState<{
-    type: 'success' | 'error'
-    message: string
-  } | null>(null)
+  const [toast, setToast] = useState<ClientToast | null>(null)
 
   function openModal() {
     setFormKey((current) => current + 1)
@@ -81,12 +84,16 @@ export function NewClientButton({
   )
 }
 
-function CreateClientModal({
+export function CreateClientModal({
   onClose,
   onToast,
+  onSuccess,
+  suppressSuccessToast = false,
 }: {
   onClose: () => void
-  onToast: (toast: { type: 'success' | 'error'; message: string }) => void
+  onToast: (toast: ClientToast) => void
+  onSuccess?: (state: CreateClientActionState) => void
+  suppressSuccessToast?: boolean
 }) {
   const [state, formAction] = useActionState(
     createClientModalAction,
@@ -95,13 +102,16 @@ function CreateClientModal({
 
   useEffect(() => {
     if (state.success) {
-      onToast({
-        type: 'success',
-        message: 'Klient byl vytvořen.',
-      })
+      onSuccess?.(state)
+      if (!suppressSuccessToast) {
+        onToast({
+          type: 'success',
+          message: 'Klient byl vytvořen.',
+        })
+      }
       onClose()
     }
-  }, [onClose, onToast, state.success])
+  }, [onClose, onSuccess, onToast, state, suppressSuccessToast])
 
   useEffect(() => {
     if (!state.error) return
@@ -328,33 +338,45 @@ function ClientFormActions({
   submitLabel: string
 }) {
   const { pending } = useFormStatus()
+  const pendingSubmitLabel =
+    submitLabel.trim().length > 0 && submitLabel === submitLabel.toUpperCase()
+      ? 'UKLÁDÁM...'
+      : 'Ukládám...'
 
   return (
-    <div
-      className={`flex shrink-0 flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:px-5 sm:py-4 ${
-        pending ? 'cursor-wait' : ''
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={pending}
-        className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        ZRUŠIT
-      </button>
+    <>
+      <MobileModalActions
+        onCancel={onClose}
+        submitLabel={submitLabel}
+        pendingSubmitLabel={pendingSubmitLabel}
+      />
 
-      <button
-        type="submit"
-        disabled={pending}
-        aria-busy={pending}
-        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+      <div
+        className={`hidden shrink-0 gap-3 border-t border-gray-100 px-4 py-3 sm:flex sm:flex-row sm:justify-end sm:px-5 sm:py-4 ${
+          pending ? 'cursor-wait' : ''
+        }`}
       >
-        {pending ? (
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-        ) : null}
-        {pending ? 'UKLÁDÁM...' : submitLabel}
-      </button>
-    </div>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={pending}
+          className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          ZRUŠIT
+        </button>
+
+        <button
+          type="submit"
+          disabled={pending}
+          aria-busy={pending}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+        >
+          {pending ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          ) : null}
+          {pending ? pendingSubmitLabel : submitLabel}
+        </button>
+      </div>
+    </>
   )
 }

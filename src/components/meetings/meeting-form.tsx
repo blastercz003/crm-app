@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { getPriorityLabel } from '@/app/tasks/taskUi'
+import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 
 type ClientOption = {
   id: string
@@ -49,6 +50,7 @@ type MeetingFormProps = {
   clients: ClientOption[]
   contacts?: ClientContactOption[]
   error?: string | null
+  modalMode?: boolean
 }
 
 function formatDateTimeLocalInput(value?: string | null) {
@@ -99,6 +101,7 @@ export function MeetingForm({
   clients,
   contacts = [],
   error,
+  modalMode = false,
 }: MeetingFormProps) {
   const companyInputRef = useRef<HTMLInputElement>(null)
 
@@ -259,9 +262,9 @@ export function MeetingForm({
       : 'Ukládám...'
 
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
       <PendingFormLock />
-      <PendingFieldset className="space-y-6">
+      <PendingFieldset className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
         {initialValues?.id ? (
           <input type="hidden" name="id" value={initialValues.id} />
         ) : null}
@@ -269,6 +272,7 @@ export function MeetingForm({
         <input type="hidden" name="client_id" value={selectedClientId} />
         <input type="hidden" name="client_contact_id" value={selectedContactId} />
 
+        <div className={modalMode ? 'min-h-0 flex-1 overflow-y-auto pb-4' : ''}>
         <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <label
@@ -559,6 +563,7 @@ export function MeetingForm({
             {error}
           </div>
         ) : null}
+        </div>
 
         <MeetingFormActions
           submitLabel={submitLabel}
@@ -621,43 +626,53 @@ function MeetingFormActions({
   const { pending } = useFormStatus()
 
   return (
-    <div
-      className={`flex flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end ${
-        pending ? 'cursor-wait' : ''
-      }`}
-    >
+    <>
       {onCancel ? (
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={pending}
-          className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {cancelLabel}
-        </button>
-      ) : cancelHref ? (
-        <Link
-          href={cancelHref}
-          aria-disabled={pending}
-          className={`inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
-            pending ? 'pointer-events-none opacity-60' : ''
-          }`}
-        >
-          {cancelLabel}
-        </Link>
+        <MobileModalActions
+          onCancel={onCancel}
+          submitLabel={submitLabel}
+          pendingSubmitLabel={pendingSubmitLabel}
+        />
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        aria-busy={pending}
-        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+      <div
+        className={`${onCancel ? 'hidden sm:flex' : 'flex'} flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end ${
+          pending ? 'cursor-wait' : ''
+        }`}
       >
-        {pending ? (
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {cancelLabel}
+          </button>
+        ) : cancelHref ? (
+          <Link
+            href={cancelHref}
+            aria-disabled={pending}
+            className={`inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
+              pending ? 'pointer-events-none opacity-60' : ''
+            }`}
+          >
+            {cancelLabel}
+          </Link>
         ) : null}
-        {pending ? pendingSubmitLabel : submitLabel}
-      </button>
-    </div>
+
+        <button
+          type="submit"
+          disabled={pending}
+          aria-busy={pending}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+        >
+          {pending ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          ) : null}
+          {pending ? pendingSubmitLabel : submitLabel}
+        </button>
+      </div>
+    </>
   )
 }

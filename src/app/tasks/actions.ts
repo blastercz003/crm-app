@@ -9,6 +9,7 @@ import { createNotification } from '@/lib/notifications/createNotification'
 export type TaskFormActionState = {
   success: boolean
   error: string | null
+  taskTitle?: string
 }
 
 export type CreateTaskActionState = TaskFormActionState
@@ -402,6 +403,10 @@ async function createTaskRecord(formData: FormData) {
   if (clientId) {
     revalidatePath(`/clients/${clientId}`)
   }
+
+  return {
+    taskTitle: title,
+  }
 }
 
 async function updateTaskRecord(taskId: string, formData: FormData) {
@@ -615,11 +620,12 @@ export async function createTaskModalAction(
   formData: FormData
 ): Promise<CreateTaskActionState> {
   try {
-    await createTaskRecord(formData)
+    const result = await createTaskRecord(formData)
 
     return {
       success: true,
       error: null,
+      taskTitle: result.taskTitle,
     }
   } catch (error) {
     return {

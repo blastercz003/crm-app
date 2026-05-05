@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 export type ClientFormActionState = {
   success: boolean
   error: string | null
+  clientName?: string
 }
 
 export type CreateClientActionState = ClientFormActionState
@@ -16,6 +17,21 @@ export type ClientContactActionState = ClientFormActionState
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
   return typeof value === 'string' ? value.trim() : ''
+}
+
+function normalizeDuplicateComparable(value: string) {
+  return value.trim().toLocaleLowerCase('cs-CZ')
+}
+
+function normalizeIcoComparable(value: string) {
+  return value.replaceAll(/\s+/g, '').trim()
+}
+
+type DuplicateCandidateClient = {
+  id: string
+  name: string
+  ico: string | null
+  contact_email: string | null
 }
 
 async function requireUser() {
@@ -30,6 +46,81 @@ async function requireUser() {
   }
 
   return { supabase, user }
+}
+
+async function assertNoDuplicateClientOnCreate(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  userId: string
+  name: string
+  ico: string
+  contactEmail: string
+}) {
+  const { supabase, userId, name, ico, contactEmail } = params
+
+  const normalizedName = normalizeDuplicateComparable(name)
+  const normalizedIco = normalizeIcoComparable(ico)
+  const normalizedEmail = normalizeDuplicateComparable(contactEmail)
+
+  if (!normalizedName && !normalizedIco && !normalizedEmail) return
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single<{ role: string | null }>()
+
+  if (profileError) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
+
+  const isAdmin = profile?.role === 'admin'
+
+  let query = supabase
+    .from('clients')
+    .select('id, name, ico, contact_email')
+    .limit(400)
+
+  if (!isAdmin) {
+    query = query.eq('created_by', userId)
+  }
+
+  const { data: clients, error } = await query
+
+  if (error) {
+    throw new Error('Nepodařilo se ověřit duplicitu klienta.')
+  }
+
+  const duplicate = ((clients ?? []) as DuplicateCandidateClient[]).find((client) => {
+    const sameName =
+      normalizedName.length > 0 &&
+      normalizeDuplicateComparable(client.name) === normalizedName
+    const sameIco =
+      normalizedIco.length > 0 &&
+      normalizeIcoComparable(client.ico ?? '') === normalizedIco
+    const sameEmail =
+      normalizedEmail.length > 0 &&
+      normalizeDuplicateComparable(client.contact_email ?? '') === normalizedEmail
+
+    return sameName || sameIco || sameEmail
+  })
+
+  if (!duplicate) return
+
+  if (
+    normalizedIco.length > 0 &&
+    normalizeIcoComparable(duplicate.ico ?? '') === normalizedIco
+  ) {
+    throw new Error(`Klient s IČO ${ico} už existuje.`)
+  }
+
+  if (
+    normalizedEmail.length > 0 &&
+    normalizeDuplicateComparable(duplicate.contact_email ?? '') === normalizedEmail
+  ) {
+    throw new Error(`Klient s e-mailem ${contactEmail} už existuje.`)
+  }
+
+  throw new Error(`Klient s názvem ${name} už existuje.`)
 }
 
 async function syncPrimaryContactSnapshot(clientId: string) {
@@ -244,6 +335,14 @@ async function insertClientRecord(formData: FormData) {
     throw new Error('Název klienta je povinný.')
   }
 
+  await assertNoDuplicateClientOnCreate({
+    supabase,
+    userId: user.id,
+    name,
+    ico,
+    contactEmail,
+  })
+
   const { error } = await supabase.from('clients').insert({
     name,
     ico: ico || null,
@@ -260,6 +359,10 @@ async function insertClientRecord(formData: FormData) {
   }
 
   revalidatePath('/clients')
+
+  return {
+    clientName: name,
+  }
 }
 
 async function updateClientValues(formData: FormData) {
@@ -316,11 +419,12 @@ export async function createClientModalAction(
   formData: FormData
 ): Promise<CreateClientActionState> {
   try {
-    await insertClientRecord(formData)
+    const result = await insertClientRecord(formData)
 
     return {
       success: true,
       error: null,
+      clientName: result.clientName,
     }
   } catch (error) {
     return {
