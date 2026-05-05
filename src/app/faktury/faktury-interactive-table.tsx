@@ -9,7 +9,6 @@ import {
   deleteFinanceCostItemsAction,
   getJobAttachmentsAction,
   getFinanceCostItemsAction,
-  renameJobAttachmentAction,
   saveFinanceCostItemsAction,
   uploadJobAttachmentsAction,
   updateFinanceInlineFieldAction,
@@ -791,13 +790,9 @@ function JobAttachmentsModal({
   const [categoryValue, setCategoryValue] =
     useState<JobAttachmentCategory>('predavaci_protokol')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [renameValue, setRenameValue] = useState('')
 
   const handleRequestClose = useCallback(() => {
-    const hasUnsavedChanges =
-      selectedFiles.length > 0 ||
-      renamingId !== null
+    const hasUnsavedChanges = selectedFiles.length > 0
 
     if (!hasUnsavedChanges) {
       onClose()
@@ -811,7 +806,7 @@ function JobAttachmentsModal({
     if (confirmed) {
       onClose()
     }
-  }, [onClose, renamingId, selectedFiles])
+  }, [onClose, selectedFiles])
 
   useEffect(() => {
     let active = true
@@ -908,33 +903,6 @@ function JobAttachmentsModal({
       }
 
       window.open(result.signedUrl, '_blank', 'noopener,noreferrer')
-    })
-  }
-
-  function handleRenameAttachment(attachmentId: string) {
-    const nextName = renameValue.trim()
-    if (!nextName) {
-      setErrorMessage('Název přílohy nesmí být prázdný.')
-      return
-    }
-
-    setErrorMessage(null)
-
-    startTransition(async () => {
-      const result = await renameJobAttachmentAction(attachmentId, nextName)
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Název se nepodařilo uložit.')
-        return
-      }
-
-      setItems((current) =>
-        current.map((item) =>
-          item.id === attachmentId ? { ...item, displayName: nextName } : item
-        )
-      )
-      setRenamingId(null)
-      setRenameValue('')
-      router.refresh()
     })
   }
 
@@ -1095,32 +1063,12 @@ function JobAttachmentsModal({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      {renamingId === item.id ? (
-                        <input
-                          type="text"
-                          value={renameValue}
-                          onChange={(event) => setRenameValue(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault()
-                              handleRenameAttachment(item.id)
-                            }
-                            if (event.key === 'Escape') {
-                              setRenamingId(null)
-                              setRenameValue('')
-                            }
-                          }}
-                          className="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm"
-                          autoFocus
-                        />
-                      ) : (
-                        <p
-                          className="truncate text-sm font-semibold text-gray-900"
-                          title={item.displayName}
-                        >
-                          {item.displayName}
-                        </p>
-                      )}
+                      <p
+                        className="block w-full truncate text-sm font-semibold text-gray-900"
+                        title={item.displayName}
+                      >
+                        {item.displayName}
+                      </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-[#2980B9]/10 px-2.5 py-1 text-[11px] font-semibold text-[#2980B9]">
                       {formatAttachmentCategory(item.category)}
@@ -1138,12 +1086,12 @@ function JobAttachmentsModal({
                     </div>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 grid w-full grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => handleOpenAttachment(item.id)}
                       disabled={isPending}
-                      className="rounded-lg border border-[#2980B9] bg-[#2980B9] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
+                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-[#2980B9] bg-[#2980B9] px-2 py-1.5 text-[11px] font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
                     >
                       OTEVŘÍT
                     </button>
@@ -1151,37 +1099,15 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleDownloadAttachment(item.id)}
                       disabled={isPending}
-                      className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-gray-200 px-2 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                     >
                       STÁHNOUT
                     </button>
-                    {renamingId === item.id ? (
-                      <button
-                        type="button"
-                        onClick={() => handleRenameAttachment(item.id)}
-                        disabled={isPending}
-                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                      >
-                        Uložit název
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRenamingId(item.id)
-                          setRenameValue(item.displayName)
-                        }}
-                        disabled={isPending}
-                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                      >
-                        PŘEJMENOVAT
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={() => handleDeleteAttachment(item.id, item.displayName)}
                       disabled={isPending}
-                      className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-200 px-2 py-1.5 text-[11px] font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                     >
                       SMAZAT
                     </button>
@@ -1213,32 +1139,12 @@ function JobAttachmentsModal({
                   {visibleItems.map((item) => (
                     <tr key={item.id} className="border-t border-gray-100">
                       <td className="max-w-0 px-3 py-2">
-                        {renamingId === item.id ? (
-                          <input
-                            type="text"
-                            value={renameValue}
-                            onChange={(event) => setRenameValue(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') {
-                                event.preventDefault()
-                                handleRenameAttachment(item.id)
-                              }
-                              if (event.key === 'Escape') {
-                                setRenamingId(null)
-                                setRenameValue('')
-                              }
-                            }}
-                            className="h-9 min-w-0 w-full rounded-lg border border-gray-300 px-2 text-sm"
-                            autoFocus
-                          />
-                        ) : (
-                          <span
-                            className="block w-full truncate text-sm text-gray-900"
-                            title={item.displayName}
-                          >
-                            {item.displayName}
-                          </span>
-                        )}
+                        <span
+                          className="block w-full truncate text-sm text-gray-900"
+                          title={item.displayName}
+                        >
+                          {item.displayName}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-700">
                         {formatAttachmentCategory(item.category)}
@@ -1272,28 +1178,6 @@ function JobAttachmentsModal({
                           >
                             STÁHNOUT
                           </button>
-                          {renamingId === item.id ? (
-                            <button
-                              type="button"
-                              onClick={() => handleRenameAttachment(item.id)}
-                              disabled={isPending}
-                              className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                            >
-                              Uložit
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRenamingId(item.id)
-                                setRenameValue(item.displayName)
-                              }}
-                              disabled={isPending}
-                              className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                            >
-                              PŘEJMENOVAT
-                            </button>
-                          )}
                           <button
                             type="button"
                             onClick={() =>
