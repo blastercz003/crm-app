@@ -1059,7 +1059,7 @@ function JobAttachmentsModal({
               {visibleItems.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-3xl border border-gray-200 bg-white p-4"
+                  className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-gray-200 bg-white p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -1070,23 +1070,30 @@ function JobAttachmentsModal({
                         {item.displayName}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-[#2980B9]/10 px-2.5 py-1 text-[11px] font-semibold text-[#2980B9]">
+                    <span
+                      className="max-w-[42%] truncate rounded-full bg-[#2980B9]/10 px-2.5 py-1 text-[11px] font-semibold text-[#2980B9]"
+                      title={formatAttachmentCategory(item.category)}
+                    >
                       {formatAttachmentCategory(item.category)}
                     </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[12px] leading-5 text-gray-600">
-                    <div>
+                  <div className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 text-[12px] leading-5 text-gray-600">
+                    <div className="min-w-0">
                       <span className="font-medium text-gray-900">Velikost:</span>{' '}
-                      {formatFileSize(item.fileSizeBytes)}
+                      <span className="inline-block max-w-full truncate">
+                        {formatFileSize(item.fileSizeBytes)}
+                      </span>
                     </div>
-                    <div>
+                    <div className="min-w-0 text-right">
                       <span className="font-medium text-gray-900">Nahráno:</span>{' '}
-                      {formatDateTime(item.createdAt)}
+                      <span className="inline-block max-w-full truncate">
+                        {formatDateTime(item.createdAt)}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid w-full grid-cols-3 gap-2">
+                  <div className="mt-4 grid min-w-0 w-full grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => handleOpenAttachment(item.id)}
