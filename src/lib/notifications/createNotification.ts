@@ -1,8 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { getServiceRoleClient } from '@/lib/supabase/service'
 import { sendPushNotificationToUser } from './sendPushNotification'
 import type { NotificationCategory, NotificationPriority } from './types'
 
-type SupabaseClient = Awaited<ReturnType<typeof createClient>>
+type SupabaseClient =
+  | Awaited<ReturnType<typeof createClient>>
+  | NonNullable<ReturnType<typeof getServiceRoleClient>>
 
 type CreateNotificationInput = {
   supabase?: SupabaseClient

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Faktury',
 }
 
-export type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+export type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 export type SortMode = 'start_nearest' | 'job_number_desc' | 'sale_desc'
 
 export type FakturaRow = {
@@ -120,7 +120,7 @@ type JobAttachmentJobIdRow = {
   job_id: string
 }
 
-const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
+const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA']
 
 function isSalesOwner(value: string | undefined): value is SalesOwner {
   return SALES_OWNER_OPTIONS.includes(value as SalesOwner)

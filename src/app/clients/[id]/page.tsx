@@ -108,7 +108,7 @@ type ClientJobRow = {
   id: string
   job_number: string
   contact_person: string | null
-  sales_owner: 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+  sales_owner: 'JIŘÍ' | 'MICHAL' | 'LÍDA'
   start_at: string
   end_at: string
   site_address: string | null

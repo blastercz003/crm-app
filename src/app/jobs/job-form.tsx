@@ -8,7 +8,7 @@ import {
   type UpdateJobActionState,
 } from './actions'
 
-type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 type JobStatus = 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
 type InvoiceStatus =
   | 'bez_faktury'
@@ -42,7 +42,7 @@ type JobFormProps = {
   initialValues?: JobFormValues
 }
 
-const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
+const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA']
 const JOB_STATUS_OPTIONS: { value: JobStatus; label: string }[] = [
   { value: 'nova', label: 'Nová' },
   { value: 'k_reseni', label: 'K řešení' },
@@ -116,7 +116,7 @@ export function JobForm({
       id: initialValues?.id ?? '',
       company_name: initialValues?.company_name ?? '',
       contact_person: initialValues?.contact_person ?? '',
-      sales_owner: initialValues?.sales_owner ?? 'NONAME',
+      sales_owner: initialValues?.sales_owner ?? 'JIŘÍ',
       start_at: toDateTimeLocalValue(initialValues?.start_at),
       end_at: toDateTimeLocalValue(initialValues?.end_at),
       site_address: initialValues?.site_address ?? '',

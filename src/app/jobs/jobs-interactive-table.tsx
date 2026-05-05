@@ -18,7 +18,7 @@ type JobStatus =
   | 'storno'
 
 type EvidenceStatus = 'nove' | 'zapsano'
-type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
 type ClientOption = {
   id: string

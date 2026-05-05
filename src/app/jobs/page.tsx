@@ -25,7 +25,7 @@ export type InvoiceStatus =
 
 export type EvidenceStatus = 'nove' | 'zapsano'
 
-export type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+export type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 export type ViewMode = 'all' | 'active'
 export type SortMode = 'job_number_desc' | 'start_nearest'
 

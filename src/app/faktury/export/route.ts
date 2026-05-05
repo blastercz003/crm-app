@@ -59,7 +59,7 @@ type FakturaExportRow = {
   cost_amount: number | null
 }
 
-const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME']
+const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA']
 
 function isSalesOwner(value: string | null): value is SalesOwner {
   return SALES_OWNER_OPTIONS.includes(value as SalesOwner)

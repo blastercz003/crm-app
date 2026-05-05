@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentUserNotifications } from '@/lib/notifications/getNotifications'
 import {
   GLOBAL_SEARCH_MIN_QUERY_LENGTH,
-  GLOBAL_SEARCH_TOP_RESULTS_PER_SECTION,
 } from './config'
 import { GLOBAL_SEARCH_SECTIONS } from './sections'
 import type {
@@ -74,7 +73,7 @@ type JobRow = {
   start_at: string
   end_at: string
   updated_at: string
-  sales_owner?: 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+  sales_owner?: 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 }
 
 type FinanceJoinRow = {
@@ -148,7 +147,6 @@ function topAndSort(items: Array<GlobalSearchResultItem & { score: number }>) {
       const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
       return bTime - aTime
     })
-    .slice(0, GLOBAL_SEARCH_TOP_RESULTS_PER_SECTION)
     .map((item) => {
       const { score, ...rest } = item
       void score
@@ -168,7 +166,6 @@ function topAndSortByStartAtAsc(
       if (b.score !== a.score) return b.score - a.score
       return (b.updatedAt ? new Date(b.updatedAt).getTime() : 0) - (a.updatedAt ? new Date(a.updatedAt).getTime() : 0)
     })
-    .slice(0, GLOBAL_SEARCH_TOP_RESULTS_PER_SECTION)
     .map((item) => {
       const { score, startAt, ...rest } = item
       void score

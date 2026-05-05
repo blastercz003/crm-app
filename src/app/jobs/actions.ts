@@ -80,7 +80,7 @@ type ClientContactRow = {
   name: string | null
 }
 
-const SALES_OWNER_VALUES = ['JIŘÍ', 'MICHAL', 'LÍDA', 'NONAME'] as const
+const SALES_OWNER_VALUES = ['JIŘÍ', 'MICHAL', 'LÍDA'] as const
 const JOB_STATUS_VALUES = [
   'nova',
   'k_reseni',
@@ -141,7 +141,7 @@ function normalizeSalesOwner(value: FormDataEntryValue | null) {
     text as (typeof SALES_OWNER_VALUES)[number]
   )
     ? text
-    : 'NONAME'
+    : 'JIŘÍ'
 }
 
 function normalizeJobStatus(value: FormDataEntryValue | null) {

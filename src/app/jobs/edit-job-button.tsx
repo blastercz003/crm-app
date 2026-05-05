@@ -15,7 +15,7 @@ import {
   type UpdateJobActionState,
 } from './actions'
 
-type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA' | 'NONAME'
+type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 type JobStatus = 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
 type InvoiceStatus =
   | 'bez_faktury'
@@ -531,13 +531,12 @@ function JobFormShell({
                       <select
                         id={`${mode}-sales_owner`}
                         name="sales_owner"
-                        defaultValue={job.sales_owner ?? 'NONAME'}
+                        defaultValue={job.sales_owner ?? 'JIŘÍ'}
                         className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       >
                         <option value="JIŘÍ">JIŘÍ</option>
                         <option value="MICHAL">MICHAL</option>
                         <option value="LÍDA">LÍDA</option>
-                        <option value="NONAME">NONAME</option>
                       </select>
                     </div>
                   </div>
