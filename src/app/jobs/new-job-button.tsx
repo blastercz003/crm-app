@@ -322,7 +322,7 @@ function JobFormShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 p-4 backdrop-blur-sm sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -331,8 +331,17 @@ function JobFormShell({
         }
       }}
     >
-      <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+      <div
+        className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-4"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+      >
+        <div
+          className="flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl"
+          style={{
+            maxHeight:
+              'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
+          }}
+        >
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">

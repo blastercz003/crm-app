@@ -25,7 +25,7 @@ export function MobileModalActions({
 
   return (
     <div
-      className={`flex shrink-0 flex-wrap justify-start gap-3 border-t border-gray-100 px-4 py-4 sm:justify-end sm:px-5 ${
+      className={`flex shrink-0 flex-nowrap items-center justify-start gap-3 border-t border-gray-100 px-4 py-4 sm:justify-end sm:px-5 ${
         pending ? 'cursor-wait' : ''
       }`}
     >
@@ -34,7 +34,7 @@ export function MobileModalActions({
           type="button"
           onClick={onCancel}
           disabled={pending}
-          className="inline-flex min-h-10 min-w-[152px] items-center justify-center rounded-xl border border-red-300 bg-white px-4 text-sm font-medium uppercase text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-11 w-[152px] shrink-0 items-center justify-center rounded-xl border border-red-300 bg-white px-4 text-sm font-medium uppercase text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {cancelLabel}
         </button>
@@ -42,7 +42,7 @@ export function MobileModalActions({
         <Link
           href={cancelHref}
           aria-disabled={pending}
-          className={`inline-flex min-h-10 min-w-[152px] items-center justify-center rounded-xl border border-red-300 bg-white px-4 text-sm font-medium uppercase text-red-600 transition hover:bg-red-50 ${
+          className={`inline-flex h-11 w-[152px] shrink-0 items-center justify-center rounded-xl border border-red-300 bg-white px-4 text-sm font-medium uppercase text-red-600 transition hover:bg-red-50 ${
             pending ? 'pointer-events-none opacity-60' : ''
           }`}
         >
@@ -54,7 +54,7 @@ export function MobileModalActions({
         type="submit"
         disabled={isSubmitDisabled}
         aria-busy={pending}
-        className="primary-ambient-glow--blue inline-flex min-h-10 min-w-[208px] items-center justify-center gap-2 rounded-xl bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] disabled:cursor-not-allowed disabled:opacity-60"
+        className="primary-ambient-glow--blue inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#2980B9] px-4 text-sm font-medium uppercase text-white transition hover:bg-[#236f9f] sm:h-10 sm:min-w-[208px] sm:flex-none disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? (
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
