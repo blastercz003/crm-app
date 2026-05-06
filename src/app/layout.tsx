@@ -30,8 +30,11 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
   },
   icons: {
-    icon: '/icon.png',
-    shortcut: '/icon.png',
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/icon.png', sizes: '1024x1024', type: 'image/png' },
+    ],
+    shortcut: ['/favicon.ico'],
     apple: '/icon.png',
   },
 }
