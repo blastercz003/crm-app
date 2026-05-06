@@ -8,6 +8,18 @@ import { CreateJobModal } from '@/app/jobs/new-job-button'
 import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import {
+  ActionFeedbackToast,
+  type ActionFeedbackToastValue,
+  useAnimatedActionToast,
+} from '@/components/ui/action-feedback-toast'
+import {
+  buildClientCreatedToast,
+  buildErrorToast,
+  buildJobCreatedToast,
+  buildMeetingCreatedToast,
+  buildTaskCreatedToast,
+} from '@/components/ui/action-feedback-messages'
 import type { CreateClientActionState } from '@/app/clients/actions'
 import type { CreateMeetingActionState } from '@/app/meetings/actions'
 import type { CreateJobActionState } from '@/app/jobs/actions'
@@ -35,12 +47,6 @@ type ClientContactOption = {
 
 type QuickActionKey = 'meeting' | 'task' | 'offer' | 'job' | 'client'
 
-type QuickToast = {
-  title: string
-  message: string
-  tone: 'success' | 'error'
-}
-
 type DashboardMobileQuickActionsProps = {
   users: UserOption[]
   clients: ClientOption[]
@@ -57,67 +63,6 @@ function triggerHaptic(pattern: number | number[]) {
   navigator.vibrate(pattern)
 }
 
-function formatMeetingDateTime(value: string | undefined) {
-  if (!value) return 'bez uvedeného termínu'
-
-  return new Intl.DateTimeFormat('cs-CZ', {
-    timeZone: 'Europe/Prague',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
-}
-
-function ActionToast({
-  toast,
-  isVisible,
-}: {
-  toast: QuickToast
-  isVisible: boolean
-}) {
-  const isSuccess = toast.tone === 'success'
-
-  return (
-    <div
-      className={`fixed right-4 z-[75] lg:hidden transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'
-      }`}
-      style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}
-    >
-      <div
-        className={`relative w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-[28px] border px-5 py-4 transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          isSuccess
-            ? 'border-white/18 bg-[#2980B9] text-white'
-            : 'border-red-300/60 bg-[#C0392B] text-white'
-        } ${
-          isVisible
-            ? 'scale-100 shadow-[0_34px_88px_rgba(20,49,72,0.34)]'
-            : 'scale-[0.9] shadow-[0_14px_34px_rgba(20,49,72,0.16)]'
-        }`}
-        role="status"
-        aria-live="polite"
-      >
-        <div
-          className={`flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.18em] text-white transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
-          }`}
-          style={{ transitionDelay: isVisible ? '120ms' : '0ms' }}
-        >
-          <span className="h-2.5 w-2.5 rounded-full bg-white" />
-          {toast.title}
-        </div>
-        <p
-          className={`mt-2 text-[15px] leading-6 text-white/92 transition duration-[460ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-          }`}
-          style={{ transitionDelay: isVisible ? '185ms' : '0ms' }}
-        >
-          {toast.message}
-        </p>
-      </div>
-    </div>
-  )
-}
-
 export function DashboardMobileQuickActions({
   users,
   clients,
@@ -129,65 +74,31 @@ export function DashboardMobileQuickActions({
   const [activeAction, setActiveAction] = useState<QuickActionKey | null>(null)
   const [isSheetMounted, setIsSheetMounted] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const [toast, setToast] = useState<QuickToast | null>(null)
-  const [isToastVisible, setIsToastVisible] = useState(false)
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false)
   const [, startTransition] = useTransition()
   const closeTimerRef = useRef<number | null>(null)
-  const toastHideTimerRef = useRef<number | null>(null)
-  const toastUnmountTimerRef = useRef<number | null>(null)
+  const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
 
-  useBodyScrollLock(isSheetMounted)
+  useBodyScrollLock(isSheetMounted && !isDesktopViewport)
 
   useEffect(() => {
-    if (!toast) return
-
-    if (toastHideTimerRef.current) {
-      window.clearTimeout(toastHideTimerRef.current)
-      toastHideTimerRef.current = null
+    const mediaQuery = window.matchMedia('(min-width: 1024px)')
+    const syncDesktopViewport = () => {
+      setIsDesktopViewport(mediaQuery.matches)
     }
 
-    if (toastUnmountTimerRef.current) {
-      window.clearTimeout(toastUnmountTimerRef.current)
-      toastUnmountTimerRef.current = null
-    }
-
-    requestAnimationFrame(() => {
-      setIsToastVisible(true)
-    })
-
-    toastHideTimerRef.current = window.setTimeout(() => {
-      setIsToastVisible(false)
-      toastUnmountTimerRef.current = window.setTimeout(() => {
-        setToast(null)
-        toastUnmountTimerRef.current = null
-      }, 460)
-    }, 4100)
+    syncDesktopViewport()
+    mediaQuery.addEventListener('change', syncDesktopViewport)
 
     return () => {
-      if (toastHideTimerRef.current) {
-        window.clearTimeout(toastHideTimerRef.current)
-        toastHideTimerRef.current = null
-      }
-
-      if (toastUnmountTimerRef.current) {
-        window.clearTimeout(toastUnmountTimerRef.current)
-        toastUnmountTimerRef.current = null
-      }
+      mediaQuery.removeEventListener('change', syncDesktopViewport)
     }
-  }, [toast])
+  }, [])
 
   useEffect(() => {
     return () => {
       if (closeTimerRef.current) {
         window.clearTimeout(closeTimerRef.current)
-      }
-
-      if (toastHideTimerRef.current) {
-        window.clearTimeout(toastHideTimerRef.current)
-      }
-
-      if (toastUnmountTimerRef.current) {
-        window.clearTimeout(toastUnmountTimerRef.current)
       }
     }
   }, [])
@@ -235,58 +146,33 @@ export function DashboardMobileQuickActions({
     closeSheet()
   }
 
-  function handleActionSuccess(toastValue: QuickToast) {
+  function handleActionSuccess(toastValue: ActionFeedbackToastValue) {
     triggerHaptic([12, 20, 12])
-    setIsToastVisible(false)
-    setToast(toastValue)
+    showToast(toastValue)
     startTransition(() => {
       router.refresh()
     })
   }
 
   function handleClientSuccess(state: CreateClientActionState) {
-    handleActionSuccess({
-      title: 'KLIENT ULOŽEN',
-      message: `Klient „${state.clientName ?? 'Nový klient'}“ byl úspěšně vytvořen.`,
-      tone: 'success',
-    })
+    handleActionSuccess(buildClientCreatedToast(state))
   }
 
   function handleTaskSuccess(state: CreateTaskActionState) {
-    handleActionSuccess({
-      title: 'ÚKOL ULOŽEN',
-      message: `Úkol „${state.taskTitle ?? 'Nový úkol'}“ byl úspěšně vytvořen.`,
-      tone: 'success',
-    })
+    handleActionSuccess(buildTaskCreatedToast(state))
   }
 
   function handleMeetingSuccess(state: CreateMeetingActionState) {
-    handleActionSuccess({
-      title: 'SCHŮZKA ULOŽENA',
-      message: `Schůzka v „${state.companyName ?? 'Nová firma'}“ na ${formatMeetingDateTime(
-        state.meetingDateTime
-      )} byla vytvořena.`,
-      tone: 'success',
-    })
+    handleActionSuccess(buildMeetingCreatedToast(state))
   }
 
   function handleJobSuccess(state: CreateJobActionState) {
-    handleActionSuccess({
-      title: 'ZAKÁZKA ULOŽENA',
-      message: `Zakázka ${state.jobNumber ?? 'bez čísla'} pro „${
-        state.companyName ?? 'Nová firma'
-      }“ byla vytvořena.`,
-      tone: 'success',
-    })
+    handleActionSuccess(buildJobCreatedToast(state))
   }
 
   function handleModalError(message: string) {
     triggerHaptic(24)
-    setToast({
-      title: 'CHYBA',
-      message,
-      tone: 'error',
-    })
+    showToast(buildErrorToast(message))
   }
 
   const actions = [
@@ -319,7 +205,7 @@ export function DashboardMobileQuickActions({
 
   return (
     <>
-      {toast ? <ActionToast toast={toast} isVisible={isToastVisible} /> : null}
+      {toast ? <ActionFeedbackToast toast={toast} isVisible={isToastVisible} /> : null}
 
       <button
         type="button"
@@ -358,31 +244,76 @@ export function DashboardMobileQuickActions({
         </span>
       </button>
 
-      {isSheetMounted ? (
-        <div
-          className="fixed inset-0 z-[65] lg:hidden"
-          aria-hidden="true"
+      <button
+        type="button"
+        aria-label="Rychlé vytvoření"
+        onClick={() => {
+          if (isSheetMounted) {
+            closeSheet()
+            return
+          }
+
+          openSheet()
+        }}
+        className={`primary-ambient-glow--blue fixed z-[70] hidden items-center justify-center border border-white/15 bg-[#2980B9] text-white transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 lg:flex ${
+          activeAction
+            ? 'pointer-events-none opacity-0 scale-[0.94]'
+            : isSheetMounted
+            ? 'translate-y-[-2px] scale-[0.99] shadow-[0_18px_42px_rgba(20,49,72,0.24)]'
+            : 'translate-y-0 shadow-[0_12px_28px_rgba(20,49,72,0.18)]'
+        }`}
+        style={{
+          right: '28px',
+          bottom: '28px',
+          width: '68px',
+          height: '68px',
+          minWidth: '68px',
+          minHeight: '68px',
+          borderRadius: '999px',
+        }}
+      >
+        <span
+          className={`text-[34px] font-medium leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isSheetMounted ? 'rotate-45' : 'rotate-0'
+          }`}
         >
+          +
+        </span>
+      </button>
+
+      {isSheetMounted ? (
+        <div className="fixed inset-0 z-[65]" aria-hidden="true">
           <button
             type="button"
             aria-label="Zavřít rychlé vytvoření"
             onClick={closeSheet}
-            className={`absolute inset-0 bg-zinc-950/30 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`absolute inset-0 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetOpen ? 'opacity-100' : 'opacity-0'
             }`}
             style={{
-              backdropFilter: isSheetOpen ? 'blur(3px)' : 'blur(0px)',
+              backgroundColor: isDesktopViewport
+                ? 'rgba(15, 23, 42, 0.08)'
+                : 'rgba(24, 24, 27, 0.30)',
+              backdropFilter: isSheetOpen
+                ? isDesktopViewport
+                  ? 'blur(2px)'
+                  : 'blur(3px)'
+                : 'blur(0px)',
             }}
           />
 
           <div
-            className={`absolute right-4 w-[min(290px,calc(100vw-2rem))] overflow-hidden rounded-[28px] border border-zinc-200/80 bg-white/97 p-3 transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`absolute overflow-hidden rounded-[28px] border border-zinc-200/80 bg-white/97 p-3 transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetOpen
                 ? 'translate-x-0 translate-y-0 scale-100 opacity-100 shadow-[0_46px_112px_rgba(15,23,42,0.24)]'
                 : 'translate-x-4 translate-y-5 scale-[0.72] opacity-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
             }`}
             style={{
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 86px)',
+              right: isDesktopViewport ? '28px' : '16px',
+              bottom: isDesktopViewport
+                ? '104px'
+                : 'calc(env(safe-area-inset-bottom, 0px) + 86px)',
+              width: isDesktopViewport ? '340px' : 'min(290px, calc(100vw - 2rem))',
               transformOrigin: 'bottom right',
               transitionDelay: isSheetOpen ? '34ms' : '0ms',
               background:
@@ -405,13 +336,15 @@ export function DashboardMobileQuickActions({
               </div>
             </div>
 
-            <div className="mt-1 grid gap-2">
+            <div className={`mt-1 grid ${isDesktopViewport ? 'gap-2.5' : 'gap-2'}`}>
               {actions.map((action, index) => (
                 <button
                   key={action.key}
                   type="button"
                   onClick={() => handleActionSelect(action.key)}
-                  className={`flex min-h-[52px] items-center justify-between rounded-[22px] border border-zinc-200 bg-[#F4F7FA] px-4 py-3 text-left text-[15px] font-semibold uppercase tracking-[0.03em] text-zinc-900 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-zinc-300 hover:bg-[#EEF3F7] ${
+                  className={`flex items-center justify-between rounded-[22px] border border-zinc-200 bg-[#F4F7FA] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-zinc-300 hover:bg-[#EEF3F7] ${
+                    isDesktopViewport ? 'min-h-[56px] py-3.5 text-[15px]' : 'min-h-[52px] py-3 text-[15px]'
+                  } ${
                     isSheetOpen ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.96] opacity-0'
                   }`}
                   style={{ transitionDelay: isSheetOpen ? `${110 + index * 24}ms` : '0ms' }}

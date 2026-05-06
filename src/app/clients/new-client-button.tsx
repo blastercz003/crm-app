@@ -3,6 +3,11 @@
 import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { createClientModalAction, type CreateClientActionState } from './actions'
+import { buildClientCreatedToast, buildErrorToast } from '@/components/ui/action-feedback-messages'
+import {
+  ActionFeedbackToast,
+  useAnimatedActionToast,
+} from '@/components/ui/action-feedback-toast'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
@@ -27,7 +32,7 @@ export function NewClientButton({
 }: NewClientButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
-  const [toast, setToast] = useState<ClientToast | null>(null)
+  const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
 
   function openModal() {
     setFormKey((current) => current + 1)
@@ -37,16 +42,6 @@ export function NewClientButton({
   function closeModal() {
     setIsOpen(false)
   }
-
-  useEffect(() => {
-    if (!toast) return
-
-    const timeoutId = window.setTimeout(() => {
-      setToast(null)
-    }, 3200)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [toast])
 
   const resolvedClassName =
     className ??
@@ -63,24 +58,16 @@ export function NewClientButton({
       </button>
 
       {isOpen ? (
-        <CreateClientModal key={formKey} onClose={closeModal} onToast={setToast} />
+        <CreateClientModal
+          key={formKey}
+          onClose={closeModal}
+          onToast={(nextToast) => showToast(buildErrorToast(nextToast.message))}
+          onSuccess={(state) => showToast(buildClientCreatedToast(state))}
+          suppressSuccessToast
+        />
       ) : null}
 
-      {toast ? (
-        <div className="pointer-events-none fixed right-4 top-4 z-[60] max-w-[calc(100vw-2rem)] sm:right-6 sm:top-6 sm:max-w-sm">
-          <div
-            className={`rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg ${
-              toast.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-red-200 bg-red-50 text-red-800'
-            }`}
-            role="status"
-            aria-live="polite"
-          >
-            {toast.message}
-          </div>
-        </div>
-      ) : null}
+      {toast ? <ActionFeedbackToast toast={toast} isVisible={isToastVisible} /> : null}
     </>
   )
 }

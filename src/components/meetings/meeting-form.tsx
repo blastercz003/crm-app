@@ -537,7 +537,8 @@ export function MeetingForm({
             name="follow_up_task_due_date"
             type="date"
             defaultValue={initialValues?.follow_up_task_due_date ?? ''}
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+            className="w-full max-w-full min-w-0 appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 [&::-webkit-calendar-picker-indicator]:opacity-100"
+            style={{ minWidth: 0 }}
           />
         </div>
 

@@ -2,6 +2,11 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { createJobAction, type CreateJobActionState } from './actions'
+import { buildJobCreatedToast } from '@/components/ui/action-feedback-messages'
+import {
+  ActionFeedbackToast,
+  useAnimatedActionToast,
+} from '@/components/ui/action-feedback-toast'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
@@ -55,6 +60,7 @@ export function NewJobButton({
 }: NewJobButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
+  const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
 
   function openModal() {
     if (!isAdmin) return
@@ -87,8 +93,11 @@ export function NewJobButton({
           clientSuggestions={clientSuggestions}
           clientContacts={clientContacts}
           onClose={closeModal}
+          onSuccess={(state) => showToast(buildJobCreatedToast(state))}
         />
       ) : null}
+
+      {toast ? <ActionFeedbackToast toast={toast} isVisible={isToastVisible} /> : null}
     </>
   )
 }
