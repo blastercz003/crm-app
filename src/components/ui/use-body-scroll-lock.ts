@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 const LOCK_COUNT_KEY = 'codexBodyScrollLockCount'
 const PREVIOUS_OVERFLOW_KEY = 'codexBodyPreviousOverflow'
 
-function readLockCount(body: HTMLBodyElement) {
+function readLockCount(body: HTMLElement) {
   const raw = body.dataset[LOCK_COUNT_KEY]
   const parsed = raw ? Number(raw) : 0
 
