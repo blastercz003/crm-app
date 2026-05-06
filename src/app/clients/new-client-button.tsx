@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { createClientModalAction, type CreateClientActionState } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type NewClientButtonProps = {
   className?: string
@@ -100,6 +101,8 @@ export function CreateClientModal({
     initialCreateState
   )
 
+  useBodyScrollLock(true)
+
   useEffect(() => {
     if (state.success) {
       onSuccess?.(state)
@@ -121,15 +124,6 @@ export function CreateClientModal({
       message: state.error,
     })
   }, [onToast, state.error])
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
 
   return (
     <div
@@ -337,7 +331,6 @@ function ClientFormActions({
   onClose: () => void
   submitLabel: string
 }) {
-  const { pending } = useFormStatus()
   const pendingSubmitLabel =
     submitLabel.trim().length > 0 && submitLabel === submitLabel.toUpperCase()
       ? 'UKLÁDÁM...'
@@ -350,33 +343,6 @@ function ClientFormActions({
         submitLabel={submitLabel}
         pendingSubmitLabel={pendingSubmitLabel}
       />
-
-      <div
-        className={`hidden shrink-0 gap-3 border-t border-gray-100 px-4 py-3 sm:flex sm:flex-row sm:justify-end sm:px-5 sm:py-4 ${
-          pending ? 'cursor-wait' : ''
-        }`}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={pending}
-          className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          ZRUŠIT
-        </button>
-
-        <button
-          type="submit"
-          disabled={pending}
-          aria-busy={pending}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
-        >
-          {pending ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-          ) : null}
-          {pending ? pendingSubmitLabel : submitLabel}
-        </button>
-      </div>
     </>
   )
 }

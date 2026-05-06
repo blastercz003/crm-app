@@ -7,6 +7,7 @@ import { CreateMeetingModal } from '@/app/meetings/new-meeting-button'
 import { CreateJobModal } from '@/app/jobs/new-job-button'
 import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
+import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { CreateClientActionState } from '@/app/clients/actions'
 import type { CreateMeetingActionState } from '@/app/meetings/actions'
 import type { CreateJobActionState } from '@/app/jobs/actions'
@@ -135,6 +136,8 @@ export function DashboardMobileQuickActions({
   const toastHideTimerRef = useRef<number | null>(null)
   const toastUnmountTimerRef = useRef<number | null>(null)
 
+  useBodyScrollLock(isSheetMounted)
+
   useEffect(() => {
     if (!toast) return
 
@@ -172,17 +175,6 @@ export function DashboardMobileQuickActions({
       }
     }
   }, [toast])
-
-  useEffect(() => {
-    if (!isSheetMounted) return
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [isSheetMounted])
 
   useEffect(() => {
     return () => {

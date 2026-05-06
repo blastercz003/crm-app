@@ -633,46 +633,37 @@ function MeetingFormActions({
           submitLabel={submitLabel}
           pendingSubmitLabel={pendingSubmitLabel}
         />
-      ) : null}
-
-      <div
-        className={`${onCancel ? 'hidden sm:flex' : 'flex'} flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end ${
-          pending ? 'cursor-wait' : ''
-        }`}
-      >
-        {onCancel ? (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={pending}
-            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {cancelLabel}
-          </button>
-        ) : cancelHref ? (
-          <Link
-            href={cancelHref}
-            aria-disabled={pending}
-            className={`inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
-              pending ? 'pointer-events-none opacity-60' : ''
-            }`}
-          >
-            {cancelLabel}
-          </Link>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={pending}
-          aria-busy={pending}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+      ) : (
+        <div
+          className={`flex flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end ${
+            pending ? 'cursor-wait' : ''
+          }`}
         >
-          {pending ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          {cancelHref ? (
+            <Link
+              href={cancelHref}
+              aria-disabled={pending}
+              className={`inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
+                pending ? 'pointer-events-none opacity-60' : ''
+              }`}
+            >
+              {cancelLabel}
+            </Link>
           ) : null}
-          {pending ? pendingSubmitLabel : submitLabel}
-        </button>
-      </div>
+
+          <button
+            type="submit"
+            disabled={pending}
+            aria-busy={pending}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
+          >
+            {pending ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            ) : null}
+            {pending ? pendingSubmitLabel : submitLabel}
+          </button>
+        </div>
+      )}
     </>
   )
 }

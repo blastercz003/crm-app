@@ -6,6 +6,7 @@ import {
   type CreateMeetingActionState,
 } from './actions'
 import { MeetingForm } from '@/components/meetings/meeting-form'
+import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type ClientOption = {
   id: string
@@ -130,6 +131,8 @@ export function CreateMeetingModal({
     initialCreateState
   )
 
+  useBodyScrollLock(true)
+
   useEffect(() => {
     if (state.success) {
       onSuccess?.(state)
@@ -151,15 +154,6 @@ export function CreateMeetingModal({
       message: state.error,
     })
   }, [onToast, state.error])
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
 
   return (
     <div

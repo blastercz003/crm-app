@@ -6,6 +6,7 @@ import {
   type CreateTaskActionState,
 } from './actions'
 import TaskForm from './TaskForm'
+import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type UserOption = {
   id: string
@@ -139,6 +140,8 @@ export function CreateTaskModal({
     initialCreateState
   )
 
+  useBodyScrollLock(true)
+
   useEffect(() => {
     if (state.success) {
       onSuccess?.(state)
@@ -160,15 +163,6 @@ export function CreateTaskModal({
       message: state.error,
     })
   }, [onToast, state.error])
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
 
   return (
     <div

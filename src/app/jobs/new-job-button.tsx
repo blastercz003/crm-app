@@ -1,9 +1,9 @@
 'use client'
 
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
-import { useFormStatus } from 'react-dom'
 import { createJobAction, type CreateJobActionState } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
@@ -196,14 +196,7 @@ function JobFormShell({
   const description = 'Vyber existující firmu a vyplň základní údaje k nové realizaci.'
   const submitLabel = 'ULOŽIT ZAKÁZKU'
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   function setAutocompleteSelection(start: number, end: number) {
     requestAnimationFrame(() => {
@@ -647,46 +640,10 @@ function JobFormShell({
               pendingSubmitLabel="UKLÁDÁM..."
               submitDisabled={!companySelectionIsValid}
             />
-
-            <div className="hidden shrink-0 items-center justify-end gap-2 border-t border-gray-100 px-4 py-3 sm:flex sm:px-5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
-              >
-                ZRUŠIT
-              </button>
-
-              <SubmitButton
-                label={submitLabel}
-                disabled={!companySelectionIsValid}
-              />
-            </div>
           </form>
         </div>
       </div>
     </div>
-  )
-}
-
-function SubmitButton({
-  label,
-  disabled = false,
-}: {
-  label: string
-  disabled?: boolean
-}) {
-  const { pending } = useFormStatus()
-  const isDisabled = pending || disabled
-
-  return (
-    <button
-      type="submit"
-      disabled={isDisabled}
-      className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {pending ? 'UKLÁDÁM…' : label}
-    </button>
   )
 }
 

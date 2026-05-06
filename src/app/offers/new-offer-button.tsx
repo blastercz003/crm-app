@@ -7,7 +7,7 @@ import {
   type OfferFormActionState,
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
-import { useFormStatus } from 'react-dom'
+import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type ClientOption = {
   id: string
@@ -190,21 +190,14 @@ export function NewOfferModal({
           .slice(0, 6)
       : []
 
+  useBodyScrollLock(true)
+
   useEffect(() => {
     if (state.success && state.offerId) {
       onClose()
       router.push(`/offers/${state.offerId}`)
     }
   }, [onClose, router, state.offerId, state.success])
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
 
   return (
     <div
@@ -401,45 +394,10 @@ export function NewOfferModal({
                 pendingSubmitLabel="VYTVÁŘÍM NABÍDKU..."
                 submitDisabled={!companySelectionIsValid}
               />
-
-              <OfferDesktopActions
-                onClose={onClose}
-                submitDisabled={!companySelectionIsValid}
-              />
             </div>
           </form>
         </div>
       </div>
-    </div>
-  )
-}
-
-function OfferDesktopActions({
-  onClose,
-  submitDisabled,
-}: {
-  onClose: () => void
-  submitDisabled: boolean
-}) {
-  const { pending } = useFormStatus()
-
-  return (
-    <div className="mt-5 hidden flex-wrap justify-end gap-3 border-t border-gray-100 pt-4 sm:flex">
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={pending}
-        className="inline-flex min-h-10 items-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        ZRUŠIT
-      </button>
-      <button
-        type="submit"
-        disabled={pending || submitDisabled}
-        className="inline-flex min-h-10 items-center rounded-xl bg-[#2980B9] px-4 text-sm font-medium text-white transition hover:bg-[#236f9f] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {pending ? 'VYTVÁŘÍM NABÍDKU...' : 'VYTVOŘIT NABÍDKU'}
-      </button>
     </div>
   )
 }

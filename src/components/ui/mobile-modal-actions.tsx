@@ -25,7 +25,7 @@ export function MobileModalActions({
 
   return (
     <div
-      className={`flex shrink-0 flex-wrap justify-start gap-3 border-t border-gray-100 px-4 py-4 sm:hidden ${
+      className={`flex shrink-0 flex-wrap justify-start gap-3 border-t border-gray-100 px-4 py-4 sm:justify-end sm:px-5 ${
         pending ? 'cursor-wait' : ''
       }`}
     >

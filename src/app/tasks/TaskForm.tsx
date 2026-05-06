@@ -508,13 +508,8 @@ function TaskFormActions({
           submitLabel={submitLabel}
           pendingSubmitLabel={pendingSubmitLabel}
         />
-      ) : null}
-
-      <div
-        className={`${onCancel ? 'hidden sm:flex' : 'flex'} flex-wrap gap-3 ${
-          pending ? 'cursor-wait' : ''
-        }`}
-      >
+      ) : (
+        <div className={`flex flex-wrap gap-3 ${pending ? 'cursor-wait' : ''}`}>
         <button
           type="submit"
           disabled={pending}
@@ -549,7 +544,8 @@ function TaskFormActions({
             {cancelLabel}
           </Link>
         )}
-      </div>
+        </div>
+      )}
     </>
   )
 }
