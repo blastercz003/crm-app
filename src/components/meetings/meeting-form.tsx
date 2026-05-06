@@ -264,7 +264,10 @@ export function MeetingForm({
   return (
     <form action={action} className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
       <PendingFormLock />
-      <PendingFieldset className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
+      <PendingFieldset
+        as={modalMode ? 'div' : 'fieldset'}
+        className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}
+      >
         {initialValues?.id ? (
           <input type="hidden" name="id" value={initialValues.id} />
         ) : null}
@@ -592,11 +595,26 @@ function PendingFormLock() {
 function PendingFieldset({
   children,
   className,
+  as = 'fieldset',
 }: {
   children: React.ReactNode
   className?: string
+  as?: 'fieldset' | 'div'
 }) {
   const { pending } = useFormStatus()
+
+  if (as === 'div') {
+    return (
+      <div
+        aria-disabled={pending}
+        className={`${className ?? ''} ${
+          pending ? 'pointer-events-none cursor-wait opacity-80' : ''
+        }`}
+      >
+        {children}
+      </div>
+    )
+  }
 
   return (
     <fieldset

@@ -230,7 +230,10 @@ export default function TaskForm({
   return (
     <form action={action} className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
       <PendingFormLock />
-      <PendingFieldset className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
+      <PendingFieldset
+        as={modalMode ? 'div' : 'fieldset'}
+        className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}
+      >
         <input type="hidden" name="client_id" value={selectedClientId} />
         <input type="hidden" name="client_contact_id" value={selectedContactId} />
 
@@ -465,11 +468,26 @@ function PendingFormLock() {
 function PendingFieldset({
   children,
   className,
+  as = 'fieldset',
 }: {
   children: React.ReactNode
   className?: string
+  as?: 'fieldset' | 'div'
 }) {
   const { pending } = useFormStatus()
+
+  if (as === 'div') {
+    return (
+      <div
+        aria-disabled={pending}
+        className={`${className ?? ''} ${
+          pending ? 'pointer-events-none cursor-wait opacity-80' : ''
+        }`}
+      >
+        {children}
+      </div>
+    )
+  }
 
   return (
     <fieldset
