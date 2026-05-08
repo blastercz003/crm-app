@@ -499,7 +499,7 @@ function JobFormShell({
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+                <section className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/60 p-4 sm:overflow-visible">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Termín a místo
@@ -523,7 +523,7 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job?.start_at)}
-                        className="h-10 w-full min-w-0 max-w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </div>
 
@@ -540,7 +540,7 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job?.end_at)}
-                        className="h-10 w-full min-w-0 max-w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </div>
 
