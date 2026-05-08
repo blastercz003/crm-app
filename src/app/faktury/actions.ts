@@ -925,137 +925,148 @@ export async function uploadJobAttachmentsAction(
   jobId: string,
   formData: FormData
 ): Promise<UploadJobAttachmentsActionState> {
-  const { supabase, user, error: accessError } =
-    await requireFinanceAdminAccess()
+  try {
+    const { supabase, user, error: accessError } =
+      await requireFinanceAdminAccess()
 
-  if (!user) {
-    return { success: false, error: accessError, uploadedCount: 0 }
-  }
+    if (!user) {
+      return { success: false, error: accessError, uploadedCount: 0 }
+    }
 
-  const normalizedJobId = String(jobId ?? '').trim()
-  if (!normalizedJobId) {
-    return { success: false, error: 'Chybí ID zakázky.', uploadedCount: 0 }
-  }
+    const normalizedJobId = String(jobId ?? '').trim()
+    if (!normalizedJobId) {
+      return { success: false, error: 'Chybí ID zakázky.', uploadedCount: 0 }
+    }
 
-  const categoryValue = String(formData.get('category') ?? '').trim()
-  const category = isJobAttachmentCategory(categoryValue)
-    ? categoryValue
-    : null
-  if (!category) {
-    return { success: false, error: 'Neplatná kategorie přílohy.', uploadedCount: 0 }
-  }
+    const categoryValue = String(formData.get('category') ?? '').trim()
+    const category = isJobAttachmentCategory(categoryValue)
+      ? categoryValue
+      : null
+    if (!category) {
+      return { success: false, error: 'Neplatná kategorie přílohy.', uploadedCount: 0 }
+    }
 
-  const normalizedNote = normalizeText(formData.get('note'))
-  const access = await getJobAttachmentAccessRow(supabase, normalizedJobId)
-  if (!access.success) {
-    return { success: false, error: access.error, uploadedCount: 0 }
-  }
+    const normalizedNote = normalizeText(formData.get('note'))
+    const access = await getJobAttachmentAccessRow(supabase, normalizedJobId)
+    if (!access.success) {
+      return { success: false, error: access.error, uploadedCount: 0 }
+    }
 
-  const filesFromFormData = formData.getAll('files')
-  const cleanFiles = filesFromFormData.filter(
-    (file): file is File => file instanceof File
-  )
+    const filesFromFormData = formData.getAll('files')
+    const cleanFiles = filesFromFormData.filter(
+      (file): file is File => file instanceof File
+    )
 
-  if (cleanFiles.length === 0) {
+    if (cleanFiles.length === 0) {
+      return {
+        success: false,
+        error: 'Vyber alespoň jeden soubor.',
+        uploadedCount: 0,
+      }
+    }
+
+    for (const file of cleanFiles) {
+      if (file.size > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
+        return {
+          success: false,
+          error: `Soubor "${file.name}" překračuje limit 5 MB.`,
+          uploadedCount: 0,
+        }
+      }
+
+      const mimeType = String(file.type ?? '').trim().toLowerCase()
+      if (!mimeType || !ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
+        return {
+          success: false,
+          error: `Soubor "${file.name}" má nepodporovaný typ.`,
+          uploadedCount: 0,
+        }
+      }
+    }
+
+    const createdRows: Array<{ id: string; storagePath: string }> = []
+
+    for (const file of cleanFiles) {
+      const storagePath = buildAttachmentStoragePath(normalizedJobId, file.name)
+      const contentType = String(file.type ?? '').trim() || 'application/octet-stream'
+
+      const { error: uploadError } = await supabase.storage
+        .from(JOB_ATTACHMENTS_BUCKET)
+        .upload(storagePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType,
+        })
+
+      if (uploadError) {
+        for (const createdRow of createdRows) {
+          await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([createdRow.storagePath])
+          await supabase.from('job_attachments').delete().eq('id', createdRow.id)
+        }
+
+        return {
+          success: false,
+          error: `Soubor "${file.name}" se nepodařilo nahrát (${uploadError.message}).`,
+          uploadedCount: 0,
+        }
+      }
+
+      const insertPayload = {
+        job_id: normalizedJobId,
+        file_name: file.name,
+        display_name: file.name,
+        storage_bucket: JOB_ATTACHMENTS_BUCKET,
+        storage_path: storagePath,
+        mime_type: contentType,
+        file_size_bytes: file.size,
+        category,
+        note: normalizedNote,
+        uploaded_by: user.id,
+      }
+
+      const { data: insertedRow, error: insertError } = await supabase
+        .from('job_attachments')
+        .insert(insertPayload)
+        .select('id')
+        .single()
+
+      if (insertError || !insertedRow) {
+        await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([storagePath])
+
+        for (const createdRow of createdRows) {
+          await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([createdRow.storagePath])
+          await supabase.from('job_attachments').delete().eq('id', createdRow.id)
+        }
+
+        return {
+          success: false,
+          error: `Metadata souboru "${file.name}" se nepodařilo uložit (${insertError?.message ?? 'neznámá chyba'}).`,
+          uploadedCount: 0,
+        }
+      }
+
+      createdRows.push({
+        id: String((insertedRow as { id: string }).id),
+        storagePath,
+      })
+    }
+
+    revalidateFinancePaths(normalizedJobId)
+
+    return {
+      success: true,
+      error: null,
+      uploadedCount: createdRows.length,
+    }
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Neznámá chyba během nahrávání.'
+
     return {
       success: false,
-      error: 'Vyber alespoň jeden soubor.',
+      error: `Přílohu se nepodařilo nahrát (${errorMessage}).`,
       uploadedCount: 0,
     }
-  }
-
-  for (const file of cleanFiles) {
-    if (file.size > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
-      return {
-        success: false,
-        error: `Soubor "${file.name}" překračuje limit 5 MB.`,
-        uploadedCount: 0,
-      }
-    }
-
-    const mimeType = String(file.type ?? '').trim().toLowerCase()
-    if (!mimeType || !ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
-      return {
-        success: false,
-        error: `Soubor "${file.name}" má nepodporovaný typ.`,
-        uploadedCount: 0,
-      }
-    }
-  }
-
-  const createdRows: Array<{ id: string; storagePath: string }> = []
-
-  for (const file of cleanFiles) {
-    const storagePath = buildAttachmentStoragePath(normalizedJobId, file.name)
-    const contentType = String(file.type ?? '').trim() || 'application/octet-stream'
-
-    const { error: uploadError } = await supabase.storage
-      .from(JOB_ATTACHMENTS_BUCKET)
-      .upload(storagePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType,
-      })
-
-    if (uploadError) {
-      for (const createdRow of createdRows) {
-        await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([createdRow.storagePath])
-        await supabase.from('job_attachments').delete().eq('id', createdRow.id)
-      }
-
-      return {
-        success: false,
-        error: `Soubor "${file.name}" se nepodařilo nahrát.`,
-        uploadedCount: 0,
-      }
-    }
-
-    const insertPayload = {
-      job_id: normalizedJobId,
-      file_name: file.name,
-      display_name: file.name,
-      storage_bucket: JOB_ATTACHMENTS_BUCKET,
-      storage_path: storagePath,
-      mime_type: contentType,
-      file_size_bytes: file.size,
-      category,
-      note: normalizedNote,
-      uploaded_by: user.id,
-    }
-
-    const { data: insertedRow, error: insertError } = await supabase
-      .from('job_attachments')
-      .insert(insertPayload)
-      .select('id')
-      .single()
-
-    if (insertError || !insertedRow) {
-      await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([storagePath])
-
-      for (const createdRow of createdRows) {
-        await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([createdRow.storagePath])
-        await supabase.from('job_attachments').delete().eq('id', createdRow.id)
-      }
-
-      return {
-        success: false,
-        error: `Metadata souboru "${file.name}" se nepodařilo uložit.`,
-        uploadedCount: 0,
-      }
-    }
-
-    createdRows.push({
-      id: String((insertedRow as { id: string }).id),
-      storagePath,
-    })
-  }
-
-  revalidateFinancePaths(normalizedJobId)
-
-  return {
-    success: true,
-    error: null,
-    uploadedCount: createdRows.length,
   }
 }
 

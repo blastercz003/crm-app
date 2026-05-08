@@ -858,33 +858,39 @@ function JobAttachmentsModal({
     setErrorMessage(null)
 
     startTransition(async () => {
-      const formData = new FormData()
-      formData.set('category', categoryValue)
-      for (const file of selectedFiles) {
-        formData.append('files', file)
-      }
+      try {
+        const formData = new FormData()
+        formData.set('category', categoryValue)
+        for (const file of selectedFiles) {
+          formData.append('files', file)
+        }
 
-      const result = await uploadJobAttachmentsAction(
-        jobId,
-        formData
-      )
+        const result = await uploadJobAttachmentsAction(
+          jobId,
+          formData
+        )
 
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Soubor se nepodařilo nahrát.')
-        return
-      }
+        if (!result.success) {
+          setErrorMessage(result.error ?? 'Soubor se nepodařilo nahrát.')
+          return
+        }
 
-      const refreshed = await getJobAttachmentsAction(jobId)
-      if (refreshed.success) {
-        setItems(refreshed.items)
-        onAttachmentPresenceChange(refreshed.items.length > 0)
-      }
+        const refreshed = await getJobAttachmentsAction(jobId)
+        if (refreshed.success) {
+          setItems(refreshed.items)
+          onAttachmentPresenceChange(refreshed.items.length > 0)
+        }
 
-      setSelectedFiles([])
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+        setSelectedFiles([])
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        router.refresh()
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Neznámá chyba.'
+        setErrorMessage(`Soubor se nepodařilo nahrát (${errorMessage}).`)
       }
-      router.refresh()
     })
   }
 

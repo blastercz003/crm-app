@@ -590,7 +590,7 @@ export function OfferDetailLayout({
               action={updateOfferDetails.bind(null, offer.id)}
               className="flex flex-1 flex-col gap-4"
             >
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
+              <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 p-3 sm:overflow-visible">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Nabídka a termín
                 </div>
@@ -601,7 +601,7 @@ export function OfferDetailLayout({
                       : 'grid gap-3 xl:grid-cols-[minmax(260px,1fr)_220px_220px]'
                   }
                 >
-                  <div>
+                  <div className="min-w-0">
                     <label htmlFor="title" className="mb-2 block text-sm font-medium text-gray-700">
                       Název nabídky
                     </label>
@@ -618,17 +618,17 @@ export function OfferDetailLayout({
                     </div>
                   ) : (
                     <>
-                      <div>
+                      <div className="min-w-0">
                         <label htmlFor="realization_starts_at" className="mb-2 block text-sm font-medium text-gray-700">
                           Termín realizace od
                         </label>
-                        <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={inputClassName()} />
+                        <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={`${inputClassName()} min-w-0 max-w-full`} />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <label htmlFor="realization_ends_at" className="mb-2 block text-sm font-medium text-gray-700">
                           Termín realizace do
                         </label>
-                        <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={inputClassName()} />
+                        <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={`${inputClassName()} min-w-0 max-w-full`} />
                       </div>
                     </>
                   )}
