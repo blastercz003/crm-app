@@ -15,13 +15,18 @@ type PortalJobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  job_status: JobStatus | null
 }
 
 type JobsPortalTableProps = {
   jobs: PortalJobRow[]
 }
 
+type JobStatus = 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
+
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
+const STATUS_BADGE_WIDTH_CLASS = 'min-w-[100px]'
+const STATUS_BADGE_COMPACT_WIDTH_CLASS = 'min-w-[88px]'
 
 export function JobsPortalTable({ jobs }: JobsPortalTableProps) {
   return (
@@ -30,16 +35,17 @@ export function JobsPortalTable({ jobs }: JobsPortalTableProps) {
         <table className="w-full table-fixed border-separate border-spacing-y-2">
           <thead>
             <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-              <th className="w-[76px] px-2 py-2">Zakázka</th>
-              <th className="w-[120px] px-2 py-2">Firma</th>
-              <th className="w-[94px] px-2 py-2">Osoba</th>
-              <th className="w-[126px] px-2 py-2">Začátek</th>
-              <th className="w-[126px] px-2 py-2">Konec</th>
-              <th className="w-[144px] px-2 py-2">Adresa</th>
+              <th className="w-[74px] px-2 py-2">Zakázka</th>
+              <th className="w-[112px] px-2 py-2">Firma</th>
+              <th className="w-[86px] px-2 py-2">Osoba</th>
+              <th className="w-[118px] px-2 py-2">Začátek</th>
+              <th className="w-[118px] px-2 py-2">Konec</th>
+              <th className="w-[124px] px-2 py-2">Adresa</th>
               <th className="w-[74px] px-2 py-2">Prodejna</th>
-              <th className="w-[96px] px-2 py-2">Technik</th>
-              <th className="w-[96px] px-2 py-2">Agregát</th>
-              <th className="w-[86px] px-2 py-2 text-center">Info</th>
+              <th className="w-[90px] px-2 py-2">Technik</th>
+              <th className="w-[88px] px-2 py-2">Agregát</th>
+              <th className="w-[84px] px-2 py-2 text-center">Info</th>
+              <th className="w-[112px] px-2 py-2 text-center">Stav</th>
             </tr>
           </thead>
 
@@ -76,8 +82,14 @@ function DesktopRow({ job }: { job: PortalJobRow }) {
       <ReadOnlyCell value={job.technician_name} className="border-l-0 border-r-0" />
       <ReadOnlyCell value={job.generator_name} className="border-l-0 border-r-0" />
 
+      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+        <div className="flex items-center justify-center gap-2">
+          <InfoButton job={job} />
+        </div>
+      </td>
+
       <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
-        <InfoButton job={job} />
+        <JobStatusBadge status={job.job_status} />
       </td>
     </tr>
   )
@@ -96,7 +108,10 @@ function MobileCard({ job }: { job: PortalJobRow }) {
           </p>
         </div>
 
-        <InfoButton job={job} compact />
+        <div className="flex flex-col items-end gap-1.5">
+          <JobStatusBadge status={job.job_status} compact />
+          <InfoButton job={job} compact />
+        </div>
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
@@ -137,6 +152,66 @@ function MobileCard({ job }: { job: PortalJobRow }) {
       </div>
     </div>
   )
+}
+
+function JobStatusBadge({
+  status,
+  compact = false,
+}: {
+  status: JobStatus | null
+  compact?: boolean
+}) {
+  const meta = getJobStatusMeta(status ?? 'nova')
+  const widthClass = compact
+    ? STATUS_BADGE_COMPACT_WIDTH_CLASS
+    : STATUS_BADGE_WIDTH_CLASS
+
+  return (
+    <span
+      className={`inline-flex h-8 items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${widthClass} ${meta.className}`}
+    >
+      <span className="truncate whitespace-nowrap">{meta.label}</span>
+    </span>
+  )
+}
+
+function getJobStatusMeta(status: JobStatus) {
+  switch (status) {
+    case 'nova':
+      return {
+        value: 'nova' as JobStatus,
+        label: 'NOVÁ',
+        className:
+          'border border-blue-300 bg-blue-100 text-blue-800 shadow-sm',
+      }
+    case 'k_reseni':
+      return {
+        value: 'k_reseni' as JobStatus,
+        label: 'V ŘEŠENÍ',
+        className:
+          'border border-amber-300 bg-amber-100 text-amber-800 shadow-sm',
+      }
+    case 'realizace':
+      return {
+        value: 'realizace' as JobStatus,
+        label: 'REALIZACE',
+        className:
+          'border border-emerald-300 bg-emerald-100 text-emerald-800 shadow-sm',
+      }
+    case 'ukoncena':
+      return {
+        value: 'ukoncena' as JobStatus,
+        label: 'UKONČENÁ',
+        className:
+          'border border-slate-300 bg-slate-100 text-slate-700 shadow-sm',
+      }
+    case 'storno':
+      return {
+        value: 'storno' as JobStatus,
+        label: 'STORNO',
+        className: 'border border-red-300 bg-red-100 text-red-800 shadow-sm',
+      }
+  }
 }
 
 function ReadOnlyCell({
@@ -198,7 +273,7 @@ function InfoButton({
         type="button"
         onClick={() => setIsOpen(true)}
         className={`inline-flex h-8 items-center justify-center rounded-xl ${
-          compact ? 'min-w-[78px]' : 'min-w-[78px]'
+          compact ? STATUS_BADGE_COMPACT_WIDTH_CLASS : STATUS_BADGE_WIDTH_CLASS
         } border px-3 text-[11px] font-medium tracking-wide transition ${
           job.info_note
             ? 'border-black bg-black text-white hover:bg-gray-800'

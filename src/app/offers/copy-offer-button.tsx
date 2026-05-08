@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useFormStatus } from 'react-dom'
 import {
   duplicateOfferModalAction,
   type OfferFormActionState,
@@ -30,6 +31,37 @@ type CopyOfferButtonProps = {
 const initialState: OfferFormActionState = {
   success: false,
   error: null,
+}
+
+function CopyOfferModalActions({
+  onClose,
+  submitDisabled,
+}: {
+  onClose: () => void
+  submitDisabled: boolean
+}) {
+  const { pending } = useFormStatus()
+
+  return (
+    <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-gray-100 pt-4">
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={pending}
+        className="inline-flex min-h-10 items-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        ZRUŠIT
+      </button>
+      <button
+        type="submit"
+        disabled={submitDisabled || pending}
+        aria-busy={pending}
+        className="inline-flex min-h-10 items-center rounded-xl bg-[#2980B9] px-4 text-sm font-medium text-white transition hover:bg-[#236f9f] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {pending ? 'VYTVÁŘÍM KOPII...' : 'VYTVOŘIT KOPII'}
+      </button>
+    </div>
+  )
 }
 
 function normalizeSearchText(value: string) {
@@ -357,22 +389,10 @@ function CopyOfferModal({
               ) : null}
             </div>
 
-            <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-gray-100 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex min-h-10 items-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                ZRUŠIT
-              </button>
-              <button
-                type="submit"
-                disabled={!companySelectionIsValid}
-                className="inline-flex min-h-10 items-center rounded-xl bg-[#2980B9] px-4 text-sm font-medium text-white transition hover:bg-[#236f9f] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                VYTVOŘIT KOPII
-              </button>
-            </div>
+            <CopyOfferModalActions
+              onClose={onClose}
+              submitDisabled={!companySelectionIsValid}
+            />
           </form>
         </div>
       </div>

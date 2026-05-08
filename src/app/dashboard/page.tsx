@@ -40,6 +40,7 @@ const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const DASHBOARD_ACTION_LINK_CLASS =
   'inline-flex min-h-[46px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl bg-zinc-900 px-3 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800'
 const DASHBOARD_ACTION_LINK_WIDTH = 172
+const SHOW_DASHBOARD_MINI_CALENDAR = false
 
 function DashboardActionLink({
   href,
@@ -1047,6 +1048,27 @@ function FinanceCard() {
   )
 }
 
+function FilesCard() {
+  return (
+    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+            Sekce
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+            Soubory
+          </h2>
+        </div>
+
+        <DashboardActionLink href="/soubory">
+          OTEVŘÍT SOUBORY
+        </DashboardActionLink>
+      </div>
+    </section>
+  )
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -1417,9 +1439,17 @@ export default async function DashboardPage() {
               </div>
             ) : null}
 
-            <div className="order-5 xl:order-none">
-              <DashboardMiniCalendar meetings={monthMeetings} />
-            </div>
+            {isAdmin ? (
+              <div className="order-1 xl:order-none">
+                <FilesCard />
+              </div>
+            ) : null}
+
+            {SHOW_DASHBOARD_MINI_CALENDAR ? (
+              <div className="order-5 xl:order-none">
+                <DashboardMiniCalendar meetings={monthMeetings} />
+              </div>
+            ) : null}
           </div>
 
           <div className="contents xl:block xl:space-y-6">

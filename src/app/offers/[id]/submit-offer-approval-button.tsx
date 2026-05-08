@@ -1,22 +1,53 @@
 'use client'
 
-import { useFormStatus } from 'react-dom'
+import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { submitOfferForApprovalWithAutosave } from '@/app/offers/actions'
 
 type SubmitOfferApprovalButtonProps = {
+  offerId: string
+  formId: string
   waitingForApproval: boolean
   staleSubmitted: boolean
 }
 
 export function SubmitOfferApprovalButton({
+  offerId,
+  formId,
   waitingForApproval,
   staleSubmitted,
 }: SubmitOfferApprovalButtonProps) {
-  const { pending } = useFormStatus()
-  const isLocked = waitingForApproval || pending
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const isLocked = waitingForApproval || isPending
+
+  function handleSubmitForApproval() {
+    if (isLocked) return
+
+    const form = document.getElementById(formId)
+    if (!(form instanceof HTMLFormElement)) {
+      alert('Nepodařilo se načíst formulář nabídky.')
+      return
+    }
+
+    const formData = new FormData(form)
+
+    startTransition(async () => {
+      const result = await submitOfferForApprovalWithAutosave(offerId, formData)
+
+      if (!result.success) {
+        alert(result.error ?? 'Nepodařilo se odeslat nabídku ke schválení.')
+        return
+      }
+
+      router.refresh()
+    })
+  }
 
   return (
     <button
-      type="submit"
+      type="button"
+      onClick={handleSubmitForApproval}
       disabled={isLocked}
       className={[
         'inline-flex min-h-10 w-full items-center justify-center rounded-xl px-4 text-sm font-medium transition disabled:cursor-not-allowed',
@@ -26,7 +57,9 @@ export function SubmitOfferApprovalButton({
       ].join(' ')}
     >
       {isLocked
-        ? 'ODESLÁNO KE SCHVÁLENÍ'
+        ? waitingForApproval
+          ? 'ODESLÁNO KE SCHVÁLENÍ'
+          : 'ODESÍLÁM KE SCHVÁLENÍ...'
         : staleSubmitted
           ? 'ODESLAT ZNOVU KE SCHVÁLENÍ'
           : 'ODESLAT KE SCHVÁLENÍ'}

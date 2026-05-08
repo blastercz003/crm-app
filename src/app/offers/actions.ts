@@ -1118,6 +1118,95 @@ export async function submitOfferForApproval(offerId: string) {
   revalidatePath('/notifications')
 }
 
+export async function submitOfferForApprovalWithAutosave(
+  offerId: string,
+  formData: FormData
+) {
+  try {
+    const { supabase, profile, offer } = await loadOfferForAction(offerId)
+    const title = getString(formData, 'title')
+    const contactId = getOptionalContactId(formData)
+
+    if (!title) {
+      return { success: false as const, error: 'Název nabídky je povinný.' }
+    }
+
+    const nextVersion = offer.current_version + 1
+    const resolvedContact = await resolveOfferContact({
+      supabase,
+      clientId: offer.client_id,
+      contactId,
+      fallbackContactPerson: getOptionalString(formData, 'contact_person'),
+    })
+
+    const approver = await getOfferApprover({ supabase })
+    const now = new Date().toISOString()
+
+    const { error } = await supabase
+      .from('offers')
+      .update({
+        title,
+        project_name: getOptionalString(formData, 'project_name'),
+        realization_address: getOptionalString(formData, 'realization_address'),
+        realization_starts_at: getDateTimeOrNull(formData, 'realization_starts_at'),
+        realization_ends_at: getDateTimeOrNull(formData, 'realization_ends_at'),
+        client_contact_id: resolvedContact.contactId,
+        contact_person: resolvedContact.contactPerson,
+        prepared_by_name: getOptionalString(formData, 'prepared_by_name'),
+        prepared_by_phone: getOptionalString(formData, 'prepared_by_phone'),
+        prepared_by_email: getOptionalString(formData, 'prepared_by_email'),
+        valid_until: getOptionalString(formData, 'valid_until'),
+        intro_note: getOptionalString(formData, 'intro_note'),
+        internal_note: getOptionalString(formData, 'internal_note'),
+        terms_note: getOptionalString(formData, 'terms_note'),
+        status: 'submitted',
+        current_version: nextVersion,
+        submitted_version: nextVersion,
+        approver_user_id: approver.id,
+        submitted_at: now,
+        rejection_comment: null,
+        last_edited_by: profile.id,
+        updated_at: now,
+      })
+      .eq('id', offerId)
+
+    if (error) {
+      return {
+        success: false as const,
+        error: `Nepodařilo se odeslat nabídku ke schválení: ${error.message}`,
+      }
+    }
+
+    await createNotification({
+      supabase,
+      recipientUserId: approver.id,
+      actorUserId: profile.id,
+      category: 'offers',
+      type: 'offer_approval_requested',
+      title: 'Nabídka ke schválení',
+      message: `${profile.name ?? 'Uživatel'} odeslal nabídku ${offer.offer_number} ke schválení.`,
+      entityType: 'offer',
+      entityId: offerId,
+      href: `/offers/${offerId}`,
+      priority: 'high',
+      dedupeKey: `offer_approval_requested:${offerId}:${nextVersion}`,
+    })
+
+    revalidatePath('/offers')
+    revalidatePath(`/offers/${offerId}`)
+    revalidatePath(`/clients/${offer.client_id}`)
+    revalidatePath('/dashboard')
+    revalidatePath('/notifications')
+
+    return { success: true as const, error: null }
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Nepodařilo se odeslat nabídku ke schválení.',
+    }
+  }
+}
+
 export async function approveOffer(offerId: string) {
   const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
 

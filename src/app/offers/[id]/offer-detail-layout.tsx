@@ -9,7 +9,6 @@ import {
   sendOfferToClient,
   setOfferClientOutcome,
   setOfferPresetChoice,
-  submitOfferForApproval,
   toggleOfferPresetItem,
   updateOfferDetails,
   updateOfferItem,
@@ -52,6 +51,7 @@ import { OfferServicesModal } from './offer-services-modal'
 import { OfferUnsavedChangesGuard } from './offer-unsaved-changes-guard'
 import { SendOfferToClientButton } from './send-offer-to-client-button'
 import { SubmitOfferApprovalButton } from './submit-offer-approval-button'
+import { SaveOfferButton } from './save-offer-button'
 
 type OfferDetailPageProps = {
   params: Promise<{ id: string }>
@@ -737,12 +737,12 @@ export function OfferDetailLayout({
                     <SendOfferToClientButton isSent={offer.status === 'sent_to_client'} />
                   </form>
                 ) : (
-                  <form action={submitOfferForApproval.bind(null, offer.id)}>
-                    <SubmitOfferApprovalButton
-                      waitingForApproval={waitingForApproval}
-                      staleSubmitted={staleSubmitted}
-                    />
-                  </form>
+                  <SubmitOfferApprovalButton
+                    offerId={offer.id}
+                    formId="offer-details-form"
+                    waitingForApproval={waitingForApproval}
+                    staleSubmitted={staleSubmitted}
+                  />
                 )}
 
                 {isAdmin ? (
@@ -814,13 +814,7 @@ export function OfferDetailLayout({
               >
                 GENEROVAT PDF
               </Link>
-              <button
-                type="submit"
-                form="offer-details-form"
-                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-[#2980B9] px-4 text-sm font-medium text-white transition hover:bg-[#236f9f]"
-              >
-                ULOŽIT NABÍDKU
-              </button>
+              <SaveOfferButton formId="offer-details-form" />
               <form action={deleteOffer.bind(null, offer.id)}>
                 <button
                   type="submit"

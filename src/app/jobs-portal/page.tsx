@@ -33,6 +33,7 @@ type PortalJobRow = {
   generator_name: string | null
   info_note: string | null
   sales_owner: SalesOwner
+  job_status: JobStatus | null
 }
 
 type ProfilePermissionRow = {
