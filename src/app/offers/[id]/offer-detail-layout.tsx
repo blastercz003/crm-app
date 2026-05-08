@@ -622,13 +622,13 @@ export function OfferDetailLayout({
                         <label htmlFor="realization_starts_at" className="mb-2 block text-sm font-medium text-gray-700">
                           Termín realizace od
                         </label>
-                        <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={`${inputClassName()} min-w-0 max-w-full`} />
+                        <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={`${inputClassName()} block min-w-0 max-w-full appearance-none`} />
                       </div>
                       <div className="min-w-0">
                         <label htmlFor="realization_ends_at" className="mb-2 block text-sm font-medium text-gray-700">
                           Termín realizace do
                         </label>
-                        <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={`${inputClassName()} min-w-0 max-w-full`} />
+                        <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={`${inputClassName()} block min-w-0 max-w-full appearance-none`} />
                       </div>
                     </>
                   )}
