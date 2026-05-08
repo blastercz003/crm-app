@@ -423,7 +423,7 @@ function JobFormShell({
 
             <div className="px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
-                <section className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+                <section className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/60 p-4 sm:overflow-visible">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Základ zakázky
@@ -553,7 +553,7 @@ function JobFormShell({
                   </div>
 
                   <div className="grid gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <label
                         htmlFor={`${mode}-start_at`}
                         className="mb-1 block text-sm font-medium text-gray-700"
@@ -566,11 +566,11 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job.start_at)}
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full min-w-0 max-w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
                       <label
                         htmlFor={`${mode}-end_at`}
                         className="mb-1 block text-sm font-medium text-gray-700"
@@ -583,7 +583,7 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job.end_at)}
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full min-w-0 max-w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </div>
 
