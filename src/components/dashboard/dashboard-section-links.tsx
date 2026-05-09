@@ -1,0 +1,137 @@
+'use client'
+
+import Link from 'next/link'
+import { useMemo } from 'react'
+
+type SectionLink = {
+  key: string
+  href: string
+  label: string
+  visible: boolean
+  icon: React.ReactNode
+}
+
+function IconClients() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1" />
+      <circle cx="9.5" cy="7" r="3.2" />
+      <path d="M22 19v-1a4 4 0 0 0-3-3.85" />
+      <path d="M16 3.2a3.2 3.2 0 0 1 0 6.2" />
+    </svg>
+  )
+}
+
+function IconJobs() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="6" width="18" height="14" rx="2.4" />
+      <path d="M9 6V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V6" />
+      <path d="M3 11h18" />
+    </svg>
+  )
+}
+
+function IconPortal() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="3" width="8" height="8" rx="1.8" />
+      <rect x="13" y="3" width="8" height="8" rx="1.8" />
+      <rect x="3" y="13" width="8" height="8" rx="1.8" />
+      <path d="M13 17h8" />
+      <path d="M17 13v8" />
+    </svg>
+  )
+}
+
+function IconOffers() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M8 3h7l4 4v13a1 1 0 0 1-1 1H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M15 3v4h4" />
+      <path d="M9 12h6M9 16h6" />
+    </svg>
+  )
+}
+
+function IconFinance() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="5" width="18" height="14" rx="2.4" />
+      <path d="M3 10h18" />
+      <circle cx="8" cy="14.5" r="1.2" />
+      <path d="M12 14.5h6" />
+    </svg>
+  )
+}
+
+function IconFiles() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5Z" />
+    </svg>
+  )
+}
+
+export function DashboardSectionLinks({
+  canViewJobs,
+  canViewJobsPortal,
+  canViewOffers,
+  isAdmin,
+}: {
+  canViewJobs: boolean
+  canViewJobsPortal: boolean
+  canViewOffers: boolean
+  isAdmin: boolean
+}) {
+  const items = useMemo<SectionLink[]>(
+    () => [
+      { key: 'clients', href: '/clients', label: 'Klienti', visible: true, icon: <IconClients /> },
+      { key: 'jobs', href: '/jobs', label: 'Zakázky', visible: canViewJobs, icon: <IconJobs /> },
+      { key: 'jobs-portal', href: '/jobs-portal', label: 'Portál zakázek', visible: canViewJobsPortal, icon: <IconPortal /> },
+      { key: 'offers', href: '/offers', label: 'Nabídky', visible: canViewOffers, icon: <IconOffers /> },
+      { key: 'finance', href: '/faktury', label: 'Finance', visible: isAdmin, icon: <IconFinance /> },
+      { key: 'files', href: '/soubory', label: 'Soubory', visible: isAdmin, icon: <IconFiles /> },
+    ].filter((item) => item.visible),
+    [canViewJobs, canViewJobsPortal, canViewOffers, isAdmin]
+  )
+
+  return (
+    <section className="px-1 py-1 sm:px-2">
+      <div className="grid grid-cols-3 gap-3 lg:grid-flow-col lg:auto-cols-[minmax(150px,190px)] lg:justify-center lg:gap-3.5">
+        {items.map((item) => (
+          <Link
+            key={item.key}
+            href={item.href}
+            className="group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-2.5 overflow-visible rounded-2xl px-2 py-3 text-center text-[#0b1d2c] transition lg:hover:-translate-y-0.5"
+          >
+            <span
+              className="relative inline-flex h-[74px] w-[74px] items-center justify-center rounded-[18px] border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_16px_34px_rgba(9,48,82,0.50)] backdrop-blur-xl transition-all duration-200 ease-out lg:h-[82px] lg:w-[82px] lg:[animation:dashboard_liquid_7.5s_ease-in-out_infinite] lg:group-hover:scale-[1.045] lg:group-hover:border-[#1f5f8e] lg:group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_22px_42px_rgba(9,48,82,0.62)]"
+            >
+              <>
+                <span className="pointer-events-none absolute inset-[2px] hidden rounded-[14px] bg-[radial-gradient(circle_at_26%_24%,rgba(176,226,255,0.38),rgba(130,194,234,0.12)_58%,transparent_70%)] lg:block" />
+                <span className="pointer-events-none absolute -inset-[2px] hidden rounded-[20px] border border-[#4b93c7]/85 lg:block lg:group-hover:border-[#8fc4e8]" />
+              </>
+              {item.icon}
+            </span>
+            <span className="truncate text-[13px] font-semibold uppercase tracking-[0.045em] lg:text-[15px]">
+              {item.label}
+            </span>
+            <span className="pointer-events-none absolute inset-x-4 top-2 hidden h-14 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(44,120,171,0.42),transparent_72%)] lg:block lg:group-hover:bg-[radial-gradient(ellipse_at_center,rgba(33,102,152,0.58),transparent_72%)]" />
+          </Link>
+        ))}
+      </div>
+
+      <style jsx>{`
+        @media (hover: hover) and (pointer: fine) {
+          @keyframes dashboard_liquid {
+            0% { transform: translateY(0px) scale(1); }
+            33% { transform: translateY(-2px) scale(1.015); }
+            66% { transform: translateY(1px) scale(0.995); }
+            100% { transform: translateY(0px) scale(1); }
+          }
+        }
+      `}</style>
+    </section>
+  )
+}

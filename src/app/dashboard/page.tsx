@@ -18,6 +18,8 @@ import {
 } from '@/components/meetings/meeting-status-badge'
 import { DashboardUpdatesLauncher } from '@/components/dashboard/dashboard-updates-launcher'
 import { DashboardMobileQuickActions } from '@/components/dashboard/dashboard-mobile-quick-actions'
+import { DashboardMyOffersModule } from '@/components/dashboard/dashboard-my-offers-module'
+import { DashboardSectionLinks } from '@/components/dashboard/dashboard-section-links'
 import {
   getCurrentUserNotificationStats,
   getCurrentUserNotifications,
@@ -122,6 +124,32 @@ type DashboardMeeting = {
   meeting_datetime: string | null
   follow_up_task: string | null
   status: 'planned' | 'completed'
+}
+
+type DashboardOfferRow = {
+  id: string
+  offer_number: string
+  title: string
+  status:
+    | 'draft'
+    | 'submitted'
+    | 'changes_requested'
+    | 'approved'
+    | 'sent_to_client'
+    | 'in_progress'
+    | 'ordered'
+    | 'rejected'
+  updated_at: string
+  client_id: string
+  created_by: string
+}
+
+type DashboardOfferCommentRow = {
+  id: string
+  offer_id: string
+  author_user_id: string
+  note: string
+  created_at: string
 }
 
 function isMissingRepeatIntervalColumnError(error: {
@@ -943,132 +971,6 @@ function DashboardMiniCalendar({
   )
 }
 
-function ClientsCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Klienti
-          </h2>
-        </div>
-
-        <DashboardActionLink href="/clients">
-          OTEVŘÍT KLIENTY
-        </DashboardActionLink>
-      </div>
-    </section>
-  )
-}
-
-function JobsCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Zakázky
-          </h2>
-        </div>
-
-        <DashboardActionLink href="/jobs">
-          OTEVŘÍT ZAKÁZKY
-        </DashboardActionLink>
-      </div>
-    </section>
-  )
-}
-
-function JobsPortalCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Portál zakázek
-          </h2>
-        </div>
-
-        <DashboardActionLink href="/jobs-portal">
-          OTEVŘÍT PORTÁL
-        </DashboardActionLink>
-      </div>
-    </section>
-  )
-}
-
-function OffersCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Nabídky
-          </h2>
-        </div>
-
-        <DashboardActionLink href="/offers">
-          OTEVŘÍT NABÍDKY
-        </DashboardActionLink>
-      </div>
-    </section>
-  )
-}
-
-function FinanceCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Finance
-          </h2>
-        </div>
-
-        <DashboardActionLink href="/faktury">
-          OTEVŘÍT FINANCE
-        </DashboardActionLink>
-      </div>
-    </section>
-  )
-}
-
-function FilesCard() {
-  return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Sekce
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Soubory
-          </h2>
-        </div>
-
-        <DashboardActionLink href="/soubory">
-          OTEVŘÍT SOUBORY
-        </DashboardActionLink>
-      </div>
-    </section>
-  )
-}
-
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -1217,6 +1119,7 @@ export default async function DashboardPage() {
     dashboardMeetingsCountResponse,
     dashboardWeeklyMeetingsCountResponse,
     monthMeetingsResponse,
+    dashboardOffersResponse,
   ] = await Promise.all([
     dashboardTasksQuery(),
 
@@ -1248,6 +1151,12 @@ export default async function DashboardPage() {
     dashboardWeeklyMeetingsCountQuery,
 
     monthMeetingsQuery,
+
+    supabase
+      .from('offers')
+      .select('id, offer_number, title, status, updated_at, client_id, created_by')
+      .eq('created_by', user.id)
+      .order('updated_at', { ascending: false }),
   ])
 
   if (tasksResponse.error) {
@@ -1288,6 +1197,10 @@ export default async function DashboardPage() {
     )
   }
 
+  if (dashboardOffersResponse.error) {
+    throw new Error(`Nepodařilo se načíst dashboard nabídky: ${dashboardOffersResponse.error.message}`)
+  }
+
   const todayDateKeyInPrague = getTodayDateKeyInPrague()
 
   const tasks = ((tasksResponse.data ?? []) as DashboardTask[])
@@ -1318,6 +1231,7 @@ export default async function DashboardPage() {
 
   const meetings = (meetingsResponse.data ?? []) as DashboardMeeting[]
   const monthMeetings = (monthMeetingsResponse.data ?? []) as DashboardMeeting[]
+  const dashboardOffers = (dashboardOffersResponse.data ?? []) as DashboardOfferRow[]
 
   const activeTasksCount = activeTasksCountResponse.count ?? 0
   const overdueTasksCount = overdueTasksCountResponse.count ?? 0
@@ -1353,6 +1267,67 @@ export default async function DashboardPage() {
   const quickActionClients = (clientsResponse.data ?? []) as DashboardClientOption[]
   const quickActionContacts =
     (contactsResponse.data ?? []) as DashboardClientContactOption[]
+  const clientNameById = new Map(quickActionClients.map((client) => [client.id, client.name]))
+
+  const offerIds = dashboardOffers.map((offer) => offer.id)
+  let latestCommentByOfferId = new Map<
+    string,
+    {
+      authorUserId: string | null
+      authorName: string | null
+      note: string | null
+      createdAt: string | null
+    }
+  >()
+
+  if (offerIds.length > 0) {
+    const { data: offerComments, error: offerCommentsError } = await supabase
+      .from('offer_progress_notes')
+      .select('id, offer_id, author_user_id, note, created_at')
+      .in('offer_id', offerIds)
+      .order('created_at', { ascending: false })
+
+    if (offerCommentsError) {
+      throw new Error(
+        `Nepodařilo se načíst komentáře nabídek pro dashboard: ${offerCommentsError.message}`
+      )
+    }
+
+    const typedOfferComments = (offerComments ?? []) as DashboardOfferCommentRow[]
+    latestCommentByOfferId = typedOfferComments.reduce((map, comment) => {
+      if (!map.has(comment.offer_id)) {
+        map.set(comment.offer_id, {
+          authorUserId: comment.author_user_id,
+          authorName: profileMap.get(comment.author_user_id)?.name ?? null,
+          note: comment.note,
+          createdAt: comment.created_at,
+        })
+      }
+      return map
+    }, latestCommentByOfferId)
+  }
+
+  const dashboardOfferPreviews = dashboardOffers
+    .map((offer) => {
+      const latest = latestCommentByOfferId.get(offer.id)
+      return {
+        id: offer.id,
+        offerNumber: offer.offer_number,
+        title: offer.title,
+        clientName: clientNameById.get(offer.client_id) ?? 'Neznámý klient',
+        status: offer.status,
+        updatedAt: offer.updated_at,
+        lastCommentAt: latest?.createdAt ?? null,
+        lastCommentAuthorId: latest?.authorUserId ?? null,
+        lastCommentAuthorName: latest?.authorName ?? null,
+        lastCommentText: latest?.note ?? null,
+      }
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.lastCommentAt ?? a.updatedAt).getTime()
+      const bTime = new Date(b.lastCommentAt ?? b.updatedAt).getTime()
+      return bTime - aTime
+    })
 
   return (
     <DashboardGlobalSearchProvider>
@@ -1408,45 +1383,28 @@ export default async function DashboardPage() {
           </div>
         </section>
 
+        <DashboardSectionLinks
+          canViewJobs={Boolean(profile?.can_view_jobs)}
+          canViewJobsPortal={Boolean(profile?.can_view_jobs_portal)}
+          canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
+          isAdmin={isAdmin}
+        />
+
         <DashboardGlobalSearchBody>
           <div className="grid gap-6 xl:grid-cols-3">
           <div className="contents xl:block xl:space-y-6">
-            <div className="order-1 xl:order-none">
-              <ClientsCard />
-            </div>
-
-            {profile?.can_view_jobs ? (
-              <div className="order-1 xl:order-none">
-                <JobsCard />
-              </div>
-            ) : null}
-
-            {profile?.can_view_jobs_portal ? (
-              <div className="order-1 xl:order-none">
-                <JobsPortalCard />
-              </div>
-            ) : null}
-
             {isAdmin || profile?.can_view_offers ? (
               <div className="order-1 xl:order-none">
-                <OffersCard />
-              </div>
-            ) : null}
-
-            {isAdmin ? (
-              <div className="order-1 xl:order-none">
-                <FinanceCard />
-              </div>
-            ) : null}
-
-            {isAdmin ? (
-              <div className="order-1 xl:order-none">
-                <FilesCard />
+                <DashboardMyOffersModule
+                  offers={dashboardOfferPreviews}
+                  currentUserId={user.id}
+                  isAdmin={isAdmin}
+                />
               </div>
             ) : null}
 
             {SHOW_DASHBOARD_MINI_CALENDAR ? (
-              <div className="order-5 xl:order-none">
+              <div className="order-3 xl:order-none">
                 <DashboardMiniCalendar meetings={monthMeetings} />
               </div>
             ) : null}

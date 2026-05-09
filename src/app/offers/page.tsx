@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/offers/calculations'
 import { NewOfferButton } from './new-offer-button'
 import { CopyOfferButton } from './copy-offer-button'
 import { OfferNoteInput } from './offer-note-input'
+import { OfferStatusButton } from './offer-status-button'
 
 export const metadata: Metadata = {
   title: 'Nabídky',
@@ -39,18 +40,6 @@ type OfferStatsRow = {
   status: OfferStatus
 }
 
-const STATUS_LABELS: Record<OfferStatus, string> = {
-  draft: 'Rozpracovaná',
-  submitted: 'Ke schválení',
-  changes_requested: 'K úpravě',
-  approved: 'Schválená',
-  sent_to_client: 'Odeslaná',
-  ordered: 'Objednáno',
-  rejected: 'Zamítnuto',
-}
-
-const STATUS_BADGE_WIDTH_CLASS = 'w-[150px]'
-
 const OFFER_TYPE_LABELS: Record<OfferType, string> = {
   classic: 'KLASICKÁ',
   bsafe24: 'B-SAFE 24',
@@ -68,6 +57,7 @@ const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
   { value: 'changes_requested', label: 'Vrácené' },
   { value: 'approved', label: 'Schválené' },
   { value: 'sent_to_client', label: 'Odeslané klientovi' },
+  { value: 'in_progress', label: 'V řešení' },
   { value: 'ordered', label: 'Objednané' },
   { value: 'rejected', label: 'Zamítnuté' },
 ]
@@ -88,6 +78,7 @@ function isOfferStatus(value: string | undefined): value is OfferStatus {
     value === 'changes_requested' ||
     value === 'approved' ||
     value === 'sent_to_client' ||
+    value === 'in_progress' ||
     value === 'ordered' ||
     value === 'rejected'
   )
@@ -108,16 +99,6 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat('cs-CZ', {
     dateStyle: 'medium',
   }).format(new Date(value))
-}
-
-function getStatusClass(status: OfferStatus) {
-  if (status === 'ordered') return 'bg-green-600 text-white'
-  if (status === 'rejected') return 'bg-red-100 text-red-700'
-  if (status === 'sent_to_client') return 'border border-black bg-white text-black'
-  if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'submitted') return 'bg-[#2980B9]/10 text-[#236f9f]'
-  if (status === 'changes_requested') return 'bg-amber-100 text-amber-700'
-  return 'bg-zinc-100 text-zinc-600'
 }
 
 function buildSearchFilter(search: string) {
@@ -185,11 +166,18 @@ function getOfferHref(params: { q: string; status: string; authorId: string; sor
 export default async function OffersPage({ searchParams }: OffersPageProps) {
   const params = searchParams ? await searchParams : undefined
   const q = params?.q?.trim() ?? ''
-  const status = isOfferStatus(params?.status) ? params.status : ''
   const requestedAuthorId = params?.author?.trim() ?? ''
   const sort = isOfferSort(params?.sort) ? params.sort : 'updated_desc'
 
   const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
+  const statusOptions = isAdmin
+    ? STATUS_OPTIONS
+    : STATUS_OPTIONS.filter((option) => option.value !== 'submitted')
+  const status =
+    isOfferStatus(params?.status) &&
+    (isAdmin || params?.status !== 'submitted')
+      ? params.status
+      : ''
   const authorId = isAdmin
     ? requestedAuthorId === 'all'
       ? ''
@@ -406,11 +394,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       defaultValue={status}
                       className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
                     >
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value || 'all'} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                  {statusOptions.map((option) => (
+                    <option key={option.value || 'all'} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                     </select>
                   </div>
 
@@ -582,9 +570,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-2">
-                        <span className={`inline-flex h-8 w-[140px] items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${getStatusClass(offer.status)}`}>
-                          {STATUS_LABELS[offer.status]}
-                        </span>
+                        <OfferStatusButton
+                          offerId={offer.id}
+                          offerNumber={offer.offer_number}
+                          currentStatus={offer.status}
+                          isAdmin={isAdmin}
+                          isOwner={offer.created_by === profile.id}
+                        />
                         <span className={`inline-flex h-8 w-[140px] items-center justify-center rounded-xl border px-3 text-[11px] font-bold uppercase ${getOfferTypeClass(offer.offer_type)}`}>
                           {OFFER_TYPE_LABELS[offer.offer_type]}
                         </span>
@@ -687,9 +679,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                           {formatCurrency(total, offer.currency)}
                         </div>
                         <div className="min-w-0 px-2 py-2">
-                          <span className={`inline-flex h-8 ${STATUS_BADGE_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${getStatusClass(offer.status)}`}>
-                            {STATUS_LABELS[offer.status]}
-                          </span>
+                          <OfferStatusButton
+                            offerId={offer.id}
+                            offerNumber={offer.offer_number}
+                            currentStatus={offer.status}
+                            isAdmin={isAdmin}
+                            isOwner={offer.created_by === profile.id}
+                          />
                         </div>
                         <div className="min-w-0 px-2 py-2">
                           <div className="flex justify-end gap-2">

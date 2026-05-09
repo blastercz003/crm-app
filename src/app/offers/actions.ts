@@ -18,7 +18,7 @@ import {
   OFFER_SERVICE_GROUP_LABEL,
   OFFER_SERVICE_PRESETS,
 } from '@/lib/offers/presets'
-import type { OfferRow, OfferType } from '@/lib/offers/types'
+import type { OfferRow, OfferStatus, OfferType } from '@/lib/offers/types'
 
 export type OfferFormActionState = {
   success: boolean
@@ -83,6 +83,32 @@ function getDateTimeOrNull(formData: FormData, key: string) {
 function getOfferType(formData: FormData): OfferType {
   const value = getString(formData, 'offer_type')
   return value === 'bsafe24' ? 'bsafe24' : 'classic'
+}
+
+function getAllowedManualStatusTargets(
+  currentStatus: OfferStatus,
+  isAdmin: boolean
+): OfferStatus[] {
+  const baseMap: Record<OfferStatus, OfferStatus[]> = {
+    draft: ['submitted'],
+    submitted: ['draft'],
+    changes_requested: ['draft', 'submitted', 'in_progress'],
+    approved: ['sent_to_client', 'draft'],
+    sent_to_client: ['in_progress', 'ordered', 'rejected', 'draft'],
+    in_progress: ['sent_to_client', 'ordered', 'rejected', 'draft'],
+    ordered: ['in_progress', 'sent_to_client', 'draft', 'rejected'],
+    rejected: ['in_progress', 'sent_to_client', 'draft', 'ordered'],
+  }
+
+  const targets = baseMap[currentStatus] ?? []
+
+  // Keep "K úpravě" out of the list-switcher target states.
+  const withoutChangesRequested = targets.filter((status) => status !== 'changes_requested')
+
+  if (isAdmin) return withoutChangesRequested
+
+  // Non-admin users cannot force approval from the list.
+  return withoutChangesRequested.filter((status) => status !== 'approved')
 }
 
 async function createOfferNumber(
@@ -182,7 +208,7 @@ async function loadOfferForAction(offerId: string) {
 
 async function touchOfferVersion(offerId: string, editorId: string) {
   const { supabase, offer } = await loadOfferForAction(offerId)
-  const nextStatus = ['approved', 'sent_to_client', 'ordered', 'rejected'].includes(offer.status)
+  const nextStatus = ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected'].includes(offer.status)
     ? 'draft'
     : offer.status
 
@@ -324,7 +350,7 @@ export async function updateOfferDetails(offerId: string, formData: FormData) {
   }
 
   const nextVersion = offer.current_version + 1
-  const nextStatus = ['approved', 'sent_to_client', 'ordered', 'rejected'].includes(offer.status)
+  const nextStatus = ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected'].includes(offer.status)
     ? 'draft'
     : offer.status
   const resolvedContact = await resolveOfferContact({
@@ -1355,8 +1381,15 @@ export async function sendOfferToClient(offerId: string) {
 export async function setOfferClientOutcome(offerId: string, status: 'ordered' | 'rejected') {
   const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
 
-  if (offer.status !== 'sent_to_client') {
-    throw new Error('Výsledek od klienta lze nastavit pouze u nabídky odeslané klientovi.')
+  if (
+    offer.status !== 'sent_to_client' &&
+    offer.status !== 'in_progress' &&
+    offer.status !== 'ordered' &&
+    offer.status !== 'rejected'
+  ) {
+    throw new Error(
+      'Výsledek od klienta lze nastavit pouze u nabídky odeslané klientovi nebo ve stavu V řešení.'
+    )
   }
 
   const { error } = await supabase
@@ -1389,6 +1422,189 @@ export async function setOfferClientOutcome(offerId: string, status: 'ordered' |
       priority: 'high',
       dedupeKey: `offer_ordered:${offerId}`,
     })
+  }
+
+  revalidatePath('/offers')
+  revalidatePath(`/offers/${offerId}`)
+  revalidatePath(`/clients/${offer.client_id}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/notifications')
+}
+
+export async function setOfferStatusFromList(offerId: string, nextStatus: OfferStatus) {
+  const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
+  const isOwner = offer.created_by === profile.id
+
+  if (!isAdmin && !isOwner) {
+    throw new Error('Stav nabídky může měnit pouze zakladatel nabídky nebo admin.')
+  }
+
+  if (nextStatus === 'changes_requested') {
+    throw new Error('Stav K úpravě nelze přepnout z přehledu nabídek.')
+  }
+
+  const allowedTargets = getAllowedManualStatusTargets(offer.status, isAdmin)
+  if (!allowedTargets.includes(nextStatus)) {
+    throw new Error('Tento přechod stavu nabídky není povolený.')
+  }
+
+  const now = new Date().toISOString()
+  const patch: Partial<OfferRow> & { status: OfferStatus; updated_at: string; last_edited_by: string } = {
+    status: nextStatus,
+    updated_at: now,
+    last_edited_by: profile.id,
+  }
+
+  if (nextStatus === 'submitted') {
+    const approver = await getOfferApprover({ supabase })
+    patch.submitted_version = offer.current_version
+    patch.approver_user_id = approver.id
+    patch.submitted_at = now
+    patch.rejection_comment = null
+  }
+
+  if (nextStatus === 'approved') {
+    patch.approved_version = offer.current_version
+    patch.approved_at = now
+  }
+
+  if (nextStatus === 'draft') {
+    patch.rejection_comment = null
+  }
+
+  const { error } = await supabase.from('offers').update(patch).eq('id', offerId)
+
+  if (error) {
+    throw new Error(`Nepodařilo se změnit stav nabídky: ${error.message}`)
+  }
+
+  revalidatePath('/offers')
+  revalidatePath(`/offers/${offerId}`)
+  revalidatePath(`/clients/${offer.client_id}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/notifications')
+}
+
+export async function markOfferInProgress(offerId: string) {
+  const { supabase, profile, offer } = await loadOfferForAction(offerId)
+
+  if (offer.status !== 'sent_to_client' && offer.status !== 'changes_requested') {
+    throw new Error(
+      'Do stavu V řešení lze nabídku přepnout pouze ze stavu Odeslaná nebo K úpravě.'
+    )
+  }
+
+  const now = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('offers')
+    .update({
+      status: 'in_progress',
+      last_edited_by: profile.id,
+      updated_at: now,
+    })
+    .eq('id', offerId)
+
+  if (error) {
+    throw new Error(`Nepodařilo se přepnout nabídku do stavu V řešení: ${error.message}`)
+  }
+
+  try {
+    const approver = await getOfferApprover({ supabase })
+
+    await createNotification({
+      supabase,
+      recipientUserId: approver.id,
+      actorUserId: profile.id,
+      category: 'offers',
+      type: 'offer_in_progress',
+      title: 'Nabídka ve stavu V řešení',
+      message: `Uživatel ${profile.name ?? 'Neznámý uživatel'} přepnul nabídku ${offer.offer_number} do stavu V řešení.`,
+      entityType: 'offer',
+      entityId: offerId,
+      href: `/offers/${offerId}`,
+      priority: 'normal',
+      dedupeKey: `offer_in_progress:${offerId}:${now}`,
+    })
+  } catch (notificationError) {
+    console.error('Nepodařilo se vytvořit notifikaci pro stav V řešení.', notificationError)
+  }
+
+  revalidatePath('/offers')
+  revalidatePath(`/offers/${offerId}`)
+  revalidatePath(`/clients/${offer.client_id}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/notifications')
+}
+
+export async function addOfferProgressNote(offerId: string, formData: FormData) {
+  const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
+
+  if (offer.status !== 'in_progress') {
+    throw new Error('Průběžné poznámky lze přidávat pouze ve stavu V řešení.')
+  }
+
+  const note = getString(formData, 'progress_note')
+
+  if (!note) {
+    throw new Error('Komentář je povinný.')
+  }
+
+  if (!isAdmin && offer.created_by !== profile.id) {
+    throw new Error('Komentář ve stavu V řešení může přidat pouze zakladatel nabídky nebo admin.')
+  }
+
+  const now = new Date().toISOString()
+  const { error } = await supabase.from('offer_progress_notes').insert({
+    offer_id: offerId,
+    author_user_id: profile.id,
+    note,
+    created_at: now,
+  })
+
+  if (error) {
+    throw new Error(`Nepodařilo se uložit průběžný komentář: ${error.message}`)
+  }
+
+  const { error: touchError } = await supabase
+    .from('offers')
+    .update({
+      last_edited_by: profile.id,
+      updated_at: now,
+    })
+    .eq('id', offerId)
+
+  if (touchError) {
+    throw new Error(`Komentář byl uložen, ale nepodařilo se aktualizovat nabídku: ${touchError.message}`)
+  }
+
+  const recipientUserIds = new Set<string>()
+  if (offer.created_by !== profile.id) {
+    recipientUserIds.add(offer.created_by)
+  }
+  if (offer.approver_user_id && offer.approver_user_id !== profile.id) {
+    recipientUserIds.add(offer.approver_user_id)
+  }
+
+  for (const recipientUserId of recipientUserIds) {
+    try {
+      await createNotification({
+        supabase,
+        recipientUserId,
+        actorUserId: profile.id,
+        category: 'offers',
+        type: 'offer_progress_note_added',
+        title: 'Nový komentář ve stavu V řešení',
+        message: `${profile.name ?? 'Uživatel'} přidal komentář k nabídce ${offer.offer_number}.`,
+        entityType: 'offer',
+        entityId: offerId,
+        href: `/offers/${offerId}`,
+        priority: 'normal',
+        dedupeKey: `offer_progress_note_added:${offerId}:${recipientUserId}:${now}`,
+      })
+    } catch (notificationError) {
+      console.error('Nepodařilo se vytvořit notifikaci k progres komentáři.', notificationError)
+    }
   }
 
   revalidatePath('/offers')

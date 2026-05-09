@@ -4,6 +4,7 @@ export type OfferStatus =
   | 'changes_requested'
   | 'approved'
   | 'sent_to_client'
+  | 'in_progress'
   | 'ordered'
   | 'rejected'
 
@@ -70,6 +71,14 @@ export type OfferServiceItemRow = {
   operation: string | null
   created_at: string
   updated_at: string
+}
+
+export type OfferProgressNoteRow = {
+  id: string
+  offer_id: string
+  author_user_id: string
+  note: string
+  created_at: string
 }
 
 export type OfferClient = {

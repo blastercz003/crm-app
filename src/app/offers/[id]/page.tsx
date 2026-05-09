@@ -6,6 +6,7 @@ import type {
   OfferClient,
   OfferClientContact,
   OfferItemRow,
+  OfferProgressNoteRow,
   OfferProfile,
   OfferRow,
   OfferServiceItemRow,
@@ -65,6 +66,7 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
     contactsResponse,
     itemsResponse,
     serviceItemsResponse,
+    progressNotesResponse,
     profilesResponse,
   ] = await Promise.all([
     supabase
@@ -89,6 +91,11 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
       .eq('offer_id', offer.id)
       .order('position', { ascending: true }),
     supabase
+      .from('offer_progress_notes')
+      .select('*')
+      .eq('offer_id', offer.id)
+      .order('created_at', { ascending: false }),
+    supabase
       .from('profiles')
       .select('id, name, role, can_view_offers, offer_prepared_by_name, offer_prepared_by_phone, offer_prepared_by_email'),
   ])
@@ -109,6 +116,10 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
     throw new Error('Nepodařilo se načíst rozsah služby.')
   }
 
+  if (progressNotesResponse.error) {
+    throw new Error('Nepodařilo se načíst průběžné komentáře nabídky.')
+  }
+
   if (profilesResponse.error) {
     throw new Error('Nepodařilo se načíst uživatele.')
   }
@@ -119,6 +130,7 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
     contacts: (contactsResponse.data ?? []) as OfferClientContact[],
     items: (itemsResponse.data ?? []) as OfferItemRow[],
     serviceItems: (serviceItemsResponse.data ?? []) as OfferServiceItemRow[],
+    progressNotes: (progressNotesResponse.data ?? []) as OfferProgressNoteRow[],
     profiles: (profilesResponse.data ?? []) as OfferProfile[],
     profile,
     isAdmin,

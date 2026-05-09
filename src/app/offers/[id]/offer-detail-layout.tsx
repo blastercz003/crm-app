@@ -2,8 +2,9 @@ import Link from 'next/link'
 import {
   addOfferItem,
   approveOffer,
-  deleteOffer,
+  addOfferProgressNote,
   deleteOfferItem,
+  markOfferInProgress,
   moveOfferItem,
   rejectOffer,
   sendOfferToClient,
@@ -36,6 +37,7 @@ import type {
   OfferClient,
   OfferClientContact,
   OfferItemRow,
+  OfferProgressNoteRow,
   OfferProfile,
   OfferRow,
   OfferServiceItemRow,
@@ -63,6 +65,7 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
   changes_requested: 'K úpravě',
   approved: 'Schválená',
   sent_to_client: 'Odeslaná',
+  in_progress: 'V řešení',
   ordered: 'Objednáno',
   rejected: 'Zamítnuto',
 }
@@ -110,8 +113,9 @@ function formatDateTimeInput(value: string | null) {
 }
 
 function getStatusClass(status: OfferStatus) {
-  if (status === 'ordered') return 'bg-green-600 text-white'
-  if (status === 'rejected') return 'bg-red-100 text-red-700'
+  if (status === 'ordered') return 'bg-emerald-600 text-white'
+  if (status === 'rejected') return 'bg-rose-600 text-white'
+  if (status === 'in_progress') return 'bg-orange-500 text-white'
   if (status === 'sent_to_client') return 'border border-black bg-white text-black'
   if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
   if (status === 'submitted') return 'bg-[#2980B9]/10 text-[#236f9f]'
@@ -216,6 +220,7 @@ function isOfferApprovedCurrentVersion(offer: OfferRow) {
     offer.current_version === offer.approved_version &&
     (offer.status === 'approved' ||
       offer.status === 'sent_to_client' ||
+      offer.status === 'in_progress' ||
       offer.status === 'ordered' ||
       offer.status === 'rejected')
   )
@@ -256,6 +261,7 @@ export type OfferDetailLayoutProps = {
   contacts: OfferClientContact[]
   items: OfferItemRow[]
   serviceItems: OfferServiceItemRow[]
+  progressNotes: OfferProgressNoteRow[]
   profiles: OfferProfile[]
   profile: OfferProfile
   isAdmin: boolean
@@ -268,6 +274,7 @@ export function OfferDetailLayout({
   contacts,
   items,
   serviceItems,
+  progressNotes,
   profiles,
   profile,
   isAdmin,
@@ -298,6 +305,16 @@ export function OfferDetailLayout({
   const profileById = new Map(profiles.map((item) => [item.id, item]))
   const author = profileById.get(offer.created_by)
   const lastEditor = offer.last_edited_by ? profileById.get(offer.last_edited_by) : null
+  const canManageInProgressNotes = isAdmin || offer.created_by === profile.id
+  const showApprovalBox =
+    offer.status !== 'sent_to_client' &&
+    offer.status !== 'in_progress' &&
+    offer.status !== 'ordered' &&
+    offer.status !== 'rejected'
+  const canShowInProgressEntryBox = offer.status === 'sent_to_client'
+  const canShowInProgressDetailBox = offer.status === 'in_progress'
+  const isFinalClientOutcome =
+    offer.status === 'ordered' || offer.status === 'rejected'
   const totals = getOfferTotals(items)
   const staleSubmitted = canShowResubmitNotice(offer)
   const waitingForApproval = isOfferWaitingForApproval(offer)
@@ -727,55 +744,140 @@ export function OfferDetailLayout({
           </section>
 
           <aside className="flex min-w-0 h-full flex-col gap-5">
-            <section className="min-w-0 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
-                Schvalování
-              </div>
-              <div className="mt-4 space-y-3">
-                {offer.status === 'approved' || offer.status === 'sent_to_client' ? (
-                  <form action={sendOfferToClient.bind(null, offer.id)}>
-                    <SendOfferToClientButton isSent={offer.status === 'sent_to_client'} />
-                  </form>
-                ) : (
-                  <SubmitOfferApprovalButton
-                    offerId={offer.id}
-                    formId="offer-details-form"
-                    waitingForApproval={waitingForApproval}
-                    staleSubmitted={staleSubmitted}
-                  />
-                )}
-
-                {isAdmin ? (
-                  <>
-                    <form action={approveOffer.bind(null, offer.id)}>
-                      <ApproveOfferButton
-                        isApprovedCurrentVersion={approvedCurrentVersion}
-                      />
+            {showApprovalBox ? (
+              <section className="min-w-0 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
+                  Schvalování
+                </div>
+                <div className="mt-4 space-y-3">
+                  {offer.status === 'approved' || offer.status === 'sent_to_client' ? (
+                    <form action={sendOfferToClient.bind(null, offer.id)}>
+                      <SendOfferToClientButton isSent={offer.status === 'sent_to_client'} />
                     </form>
+                  ) : (
+                    <SubmitOfferApprovalButton
+                      offerId={offer.id}
+                      formId="offer-details-form"
+                      waitingForApproval={waitingForApproval}
+                      staleSubmitted={staleSubmitted}
+                    />
+                  )}
 
-                    <form action={rejectOffer.bind(null, offer.id)} className="space-y-2">
+                  {isAdmin ? (
+                    <>
+                      <form action={approveOffer.bind(null, offer.id)}>
+                        <ApproveOfferButton
+                          isApprovedCurrentVersion={approvedCurrentVersion}
+                        />
+                      </form>
+
+                      <form action={rejectOffer.bind(null, offer.id)} className="space-y-2">
+                        <textarea
+                          name="rejection_comment"
+                          rows={3}
+                          placeholder="Komentář k vrácení..."
+                          className={textareaClassName()}
+                        />
+                        <button
+                          type="submit"
+                          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+                        >
+                          VRÁTIT K ÚPRAVĚ
+                        </button>
+                      </form>
+                    </>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+
+            {canShowInProgressEntryBox ? (
+              <section className="min-w-0 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-black bg-white px-4 text-sm font-medium text-black opacity-80"
+                  >
+                    ODESLÁNO KLIENTOVI
+                  </button>
+                  <form action={markOfferInProgress.bind(null, offer.id)}>
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-orange-500 px-4 text-sm font-medium text-white transition hover:bg-orange-600"
+                    >
+                      <span>
+                        PŘEPNOUT NA <span className="font-bold">V ŘEŠENÍ</span>
+                      </span>
+                    </button>
+                  </form>
+                </div>
+              </section>
+            ) : null}
+
+            {canShowInProgressDetailBox ? (
+              <section
+                className={`min-w-0 rounded-3xl border p-5 shadow-sm ${
+                  offer.status === 'in_progress'
+                    ? 'border-orange-200 bg-orange-200/80'
+                    : 'border-gray-200 bg-white'
+                }`}
+              >
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
+                  V ŘEŠENÍ
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {canManageInProgressNotes ? (
+                    <form action={addOfferProgressNote.bind(null, offer.id)} className="space-y-2">
                       <textarea
-                        name="rejection_comment"
+                        name="progress_note"
                         rows={3}
-                        placeholder="Komentář k vrácení..."
-                        className={textareaClassName()}
+                        placeholder="Komentář k průběhu..."
+                        className="w-full rounded-xl border border-orange-300 bg-orange-100/90 px-3 py-2 text-sm text-black outline-none transition placeholder:text-black/70 focus:border-orange-400 focus:ring-2 focus:ring-orange-300"
                       />
                       <button
                         type="submit"
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+                        disabled={offer.status !== 'in_progress'}
+                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-orange-500 px-4 text-sm font-medium text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        VRÁTIT K ÚPRAVĚ
+                        PŘIDAT KOMENTÁŘ
                       </button>
                     </form>
-                  </>
-                ) : null}
+                  ) : null}
 
-                {offer.status === 'sent_to_client' ? (
-                  <div className="grid gap-2 border-t border-gray-100 pt-3">
+                  <div className="space-y-2 border-t border-orange-300 pt-3">
+                    {progressNotes.length > 0 ? (
+                      <div className="max-h-[228px] space-y-2 overflow-y-auto pr-1">
+                        {progressNotes.map((note) => {
+                          const noteAuthor = profileById.get(note.author_user_id)
+                          return (
+                            <div
+                              key={note.id}
+                              className="rounded-xl border border-orange-300 bg-orange-100/90 px-3 py-2"
+                            >
+                              <div className="text-xs font-semibold uppercase tracking-[0.08em] text-black/70">
+                                {(noteAuthor?.name ?? 'Uživatel')} · {formatDateTime(note.created_at)}
+                              </div>
+                              <div className="mt-1 whitespace-pre-wrap text-sm text-black">
+                                {note.note}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-orange-300 bg-orange-100/90 px-3 py-3 text-sm text-black">
+                        Zatím nejsou zapsány žádné průběžné komentáře.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-2 border-t border-orange-300 pt-3">
                     <form action={setOfferClientOutcome.bind(null, offer.id, 'ordered')}>
                       <button
                         type="submit"
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-green-600 px-4 text-sm font-medium text-white transition hover:bg-green-700"
+                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700"
                       >
                         OBJEDNÁNO
                       </button>
@@ -783,26 +885,63 @@ export function OfferDetailLayout({
                     <form action={setOfferClientOutcome.bind(null, offer.id, 'rejected')}>
                       <button
                         type="submit"
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-rose-300 bg-rose-50 px-4 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
                       >
                         ZAMÍTNUTO
                       </button>
                     </form>
                   </div>
-                ) : null}
-              </div>
-            </section>
+                </div>
+              </section>
+            ) : null}
 
-            <section className="min-w-0 rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
-                ČASY EDITACE
-              </div>
-              <div className="mt-2 space-y-1.5 text-sm text-gray-600">
-                <div>Vytvořeno: {formatDateTime(offer.created_at)}</div>
-                <div>Odesláno: {formatDateTime(offer.submitted_at)}</div>
-                <div>Schváleno: {formatDateTime(offer.approved_at)}</div>
-              </div>
-            </section>
+            {isFinalClientOutcome ? (
+              <section className="min-w-0 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                {offer.status === 'ordered' ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 px-4 text-sm font-medium text-white"
+                  >
+                    OBJEDNÁNO
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-rose-300 bg-rose-50 px-4 text-sm font-medium text-rose-700"
+                  >
+                    ZAMÍTNUTO
+                  </button>
+                )}
+
+                {progressNotes.length > 0 ? (
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                      Historie komentářů
+                    </div>
+                    <div className="max-h-[180px] space-y-2 overflow-y-auto pr-1">
+                      {progressNotes.map((note) => {
+                        const noteAuthor = profileById.get(note.author_user_id)
+                        return (
+                          <div
+                            key={note.id}
+                            className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2"
+                          >
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                              {(noteAuthor?.name ?? 'Uživatel')} · {formatDateTime(note.created_at)}
+                            </div>
+                            <div className="mt-1 whitespace-pre-wrap text-sm text-gray-800">
+                              {note.note}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
 
             <div className="mt-auto grid gap-3">
               <Link
@@ -815,14 +954,6 @@ export function OfferDetailLayout({
                 GENEROVAT PDF
               </Link>
               <SaveOfferButton formId="offer-details-form" />
-              <form action={deleteOffer.bind(null, offer.id)}>
-                <button
-                  type="submit"
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
-                >
-                  SMAZAT NABÍDKU
-                </button>
-              </form>
             </div>
 
           </aside>

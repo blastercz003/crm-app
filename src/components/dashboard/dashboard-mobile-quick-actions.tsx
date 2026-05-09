@@ -218,12 +218,12 @@ export function DashboardMobileQuickActions({
 
           openSheet()
         }}
-        className={`primary-ambient-glow--blue fixed z-[70] flex items-center justify-center border border-white/20 bg-[#2980B9] text-white transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+        className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
           activeAction
             ? 'pointer-events-none opacity-0 scale-[0.92]'
             : isSheetMounted
-            ? 'translate-y-[-3px] scale-[0.985] shadow-[0_26px_60px_rgba(20,49,72,0.42)]'
-            : 'translate-y-0 shadow-[0_14px_34px_rgba(20,49,72,0.28)]'
+            ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
+            : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
         }`}
         style={{
           right: '16px',
@@ -236,7 +236,7 @@ export function DashboardMobileQuickActions({
         }}
         >
         <span
-          className={`text-[30px] font-medium leading-none transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`text-[30px] font-semibold leading-none transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isSheetMounted ? 'rotate-45' : 'rotate-0'
           }`}
         >
@@ -255,12 +255,12 @@ export function DashboardMobileQuickActions({
 
           openSheet()
         }}
-        className={`primary-ambient-glow--blue fixed z-[70] hidden items-center justify-center border border-white/15 bg-[#2980B9] text-white transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 lg:flex ${
+        className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
           activeAction
             ? 'pointer-events-none opacity-0 scale-[0.94]'
             : isSheetMounted
-            ? 'translate-y-[-2px] scale-[0.99] shadow-[0_18px_42px_rgba(20,49,72,0.24)]'
-            : 'translate-y-0 shadow-[0_12px_28px_rgba(20,49,72,0.18)]'
+            ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
+            : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
         }`}
         style={{
           right: '28px',
@@ -273,7 +273,7 @@ export function DashboardMobileQuickActions({
         }}
       >
         <span
-          className={`text-[34px] font-medium leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`text-[34px] font-semibold leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isSheetMounted ? 'rotate-45' : 'rotate-0'
           }`}
         >
