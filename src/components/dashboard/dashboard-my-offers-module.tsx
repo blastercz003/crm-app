@@ -320,24 +320,26 @@ export function DashboardMyOffersModule({
       {commentOffer ? (
         <>
           <div
-            className="fixed inset-0 z-40 bg-zinc-900/10 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[80] bg-zinc-900/10 backdrop-blur-[2px]"
             onClick={() => setCommentOffer(null)}
           />
 
           <div
-            className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border border-zinc-200 bg-white p-4 shadow-2xl xl:hidden"
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 xl:hidden"
           >
-            <CommentModalContent
-              offer={commentOffer}
-              value={commentText}
-              onChange={setCommentText}
-              onClose={() => setCommentOffer(null)}
-              onSubmit={submitComment}
-              isPending={isPending}
-            />
+            <div className="w-full max-w-[420px] rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xl">
+              <CommentModalContent
+                offer={commentOffer}
+                value={commentText}
+                onChange={setCommentText}
+                onClose={() => setCommentOffer(null)}
+                onSubmit={submitComment}
+                isPending={isPending}
+              />
+            </div>
           </div>
 
-          <div className="absolute left-[calc(100%+16px)] top-0 z-50 hidden w-[360px] rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xl xl:block">
+          <div className="absolute left-[calc(100%+16px)] top-0 z-[90] hidden w-[360px] rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xl xl:block">
             <CommentModalContent
               offer={commentOffer}
               value={commentText}
