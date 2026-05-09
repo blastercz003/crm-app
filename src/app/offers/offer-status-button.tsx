@@ -63,12 +63,14 @@ export function OfferStatusButton({
   currentStatus,
   isAdmin,
   isOwner,
+  badgeWidthClass = STATUS_BADGE_WIDTH_CLASS,
 }: {
   offerId: string
   offerNumber: string
   currentStatus: OfferStatus
   isAdmin: boolean
   isOwner: boolean
+  badgeWidthClass?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -106,7 +108,7 @@ export function OfferStatusButton({
       <button
         type="button"
         onClick={() => (canEdit ? setIsOpen(true) : undefined)}
-        className={`inline-flex h-8 ${STATUS_BADGE_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${statusMetaClass} ${canEdit ? 'hover:opacity-95' : 'cursor-default'}`}
+        className={`inline-flex h-8 ${badgeWidthClass} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${statusMetaClass} ${canEdit ? 'hover:opacity-95' : 'cursor-default'}`}
       >
         <span className="truncate">{STATUS_LABELS[currentStatus]}</span>
       </button>

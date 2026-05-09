@@ -576,6 +576,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                           currentStatus={offer.status}
                           isAdmin={isAdmin}
                           isOwner={offer.created_by === profile.id}
+                          badgeWidthClass="w-[140px]"
                         />
                         <span className={`inline-flex h-8 w-[140px] items-center justify-center rounded-xl border px-3 text-[11px] font-bold uppercase ${getOfferTypeClass(offer.offer_type)}`}>
                           {OFFER_TYPE_LABELS[offer.offer_type]}
