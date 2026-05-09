@@ -128,6 +128,7 @@ type JobRow = {
   id: string
   job_number: string
   end_at: string
+  technician_name: string | null
 }
 
 type JobAttachmentRow = {
@@ -238,7 +239,7 @@ async function sendJobMissingPpNotifications(supabase: ServiceClient, now: Date)
     await Promise.all([
       supabase
         .from('jobs')
-        .select('id, job_number, end_at')
+        .select('id, job_number, end_at, technician_name')
         .lt('end_at', cutoffIso),
       supabase
         .from('job_attachments')
@@ -277,15 +278,16 @@ async function sendJobMissingPpNotifications(supabase: ServiceClient, now: Date)
   )
 
   await Promise.all(
-    jobsWithoutAnyAttachment.map((job) =>
-      createNotification({
+    jobsWithoutAnyAttachment.map((job) => {
+      const technicianLabel = job.technician_name?.trim() || 'bez technika'
+      return createNotification({
         supabase,
         recipientUserId: adminId,
         actorUserId: null,
         category: 'jobs',
         type: 'job_missing_pp',
         title: 'ZAKÁZKA BEZ PP',
-        message: `Zakázka ${job.job_number} je po termínu a nemá nahraný PP.`,
+        message: `Zakázka ${job.job_number} (${technicianLabel}) je po termínu a nemá nahraný PP.`,
         entityType: 'job',
         entityId: job.id,
         href: '/faktury',
@@ -293,7 +295,7 @@ async function sendJobMissingPpNotifications(supabase: ServiceClient, now: Date)
         dedupeKey: `job_missing_pp:${job.id}`,
         skipSelfNotification: false,
       })
-    )
+    })
   )
 
   return jobsWithoutAnyAttachment.length
