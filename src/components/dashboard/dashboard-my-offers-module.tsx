@@ -106,7 +106,7 @@ export function DashboardMyOffersModule({
     availableFilters.find((item) => item.key === filter)?.label ?? 'V ŘEŠENÍ'
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (!filterDropdownRef.current) return
       if (!filterDropdownRef.current.contains(event.target as Node)) {
         setIsFilterOpen(false)
@@ -115,10 +115,12 @@ export function DashboardMyOffersModule({
 
     if (isFilterOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
     }
   }, [isFilterOpen])
 
@@ -196,65 +198,43 @@ export function DashboardMyOffersModule({
       </div>
 
       <div className="mb-4">
-        <div className="mb-2 hidden sm:block">
-          <div className="relative" ref={filterDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsFilterOpen((prev) => !prev)}
-              className="flex h-9 w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 text-left text-sm text-zinc-900 outline-none transition hover:bg-zinc-50 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200"
-            >
-              <span className="font-medium">{activeFilterLabel}</span>
-              <span className="text-xs text-zinc-500">{isFilterOpen ? '▲' : '▼'}</span>
-            </button>
+        <div className="relative" ref={filterDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsFilterOpen((prev) => !prev)}
+            className="flex h-11 w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 text-left text-base text-zinc-900 outline-none transition hover:bg-zinc-50 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 sm:h-9 sm:text-sm"
+            aria-haspopup="listbox"
+            aria-expanded={isFilterOpen}
+          >
+            <span className="font-medium">{activeFilterLabel}</span>
+            <span className="text-xs text-zinc-500">{isFilterOpen ? '▲' : '▼'}</span>
+          </button>
 
-            {isFilterOpen ? (
-              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg">
-                {availableFilters.map((item) => {
-                  const active = item.key === filter
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => {
-                        setFilter(item.key)
-                        setIsFilterOpen(false)
-                      }}
-                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm transition ${
-                        active
-                          ? 'bg-[#2980B9] font-semibold text-white'
-                          : 'text-zinc-700 hover:bg-zinc-50'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      {active ? <span className="text-xs">✓</span> : null}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="-mx-1 overflow-x-auto px-1 sm:hidden">
-          <div className="inline-flex min-w-full gap-2 pb-1">
-            {availableFilters.map((item) => {
-              const active = filter === item.key
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setFilter(item.key)}
-                  className={`inline-flex h-9 shrink-0 items-center justify-center rounded-xl border px-3 text-[11px] font-bold uppercase tracking-[0.04em] transition ${
-                    active
-                      ? 'border-[#2980B9] bg-[#2980B9] text-white'
-                      : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
+          {isFilterOpen ? (
+            <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 max-h-[260px] overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg">
+              {availableFilters.map((item) => {
+                const active = item.key === filter
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      setFilter(item.key)
+                      setIsFilterOpen(false)
+                    }}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm transition ${
+                      active
+                        ? 'bg-[#2980B9] font-semibold text-white'
+                        : 'text-zinc-700 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {active ? <span className="text-xs">✓</span> : null}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
 
