@@ -135,7 +135,7 @@ function InfoCard({
   value: string
 }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
         {label}
       </p>
@@ -214,9 +214,17 @@ export default async function TaskDetailPage({
   const endTaskRecurrenceAction = endTaskRecurrence.bind(null, typedTask.id)
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+      />
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2 lg:max-w-[calc(100%-24rem)]">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -250,14 +258,14 @@ export default async function TaskDetailPage({
               </p>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end lg:w-[24rem]">
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end lg:w-auto lg:flex-nowrap">
               {canUpdateStatus && typedTask.status !== 'done' ? (
                 <>
                   {typedTask.repeat_interval ? (
                     <form action={endTaskRecurrenceAction}>
                       <button
                         type="submit"
-                        className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-zinc-800 transition hover:bg-zinc-100"
+                        className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                       >
                         UKONČIT OPAKOVÁNÍ
                       </button>
@@ -265,22 +273,21 @@ export default async function TaskDetailPage({
                   ) : null}
 
                   <form action={markTaskDoneAction}>
-                    <TaskCompleteButton className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]" />
+                    <TaskCompleteButton className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-500/90 bg-[linear-gradient(155deg,#11a36b_0%,#089861_55%,#067f51_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(167,243,208,0.42),0_12px_24px_rgba(5,150,105,0.3)] transition duration-200 hover:-translate-y-[1px] hover:border-emerald-600 hover:shadow-[inset_0_1px_0_rgba(167,243,208,0.5),0_16px_28px_rgba(5,150,105,0.36)] [animation:task-complete-glow_2.2s_ease-in-out_infinite]" />
                   </form>
                 </>
               ) : null}
 
               <Link
                 href={`/tasks/${typedTask.id}/edit`}
-                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-900"
+                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
               >
                 UPRAVIT ÚKOL
               </Link>
 
               <Link
                 href="/tasks"
-                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:opacity-90"
-                style={{ backgroundColor: '#2980B9' }}
+                className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
               >
                 ZPĚT NA ÚKOLY
               </Link>
@@ -290,7 +297,7 @@ export default async function TaskDetailPage({
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Základní informace
@@ -326,7 +333,7 @@ export default async function TaskDetailPage({
           </div>
 
           <div className="lg:col-span-1">
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Shrnutí
@@ -337,7 +344,7 @@ export default async function TaskDetailPage({
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                     Stav
                   </p>
@@ -346,7 +353,7 @@ export default async function TaskDetailPage({
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                     Priorita
                   </p>
@@ -359,7 +366,7 @@ export default async function TaskDetailPage({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                     Vytvořeno
                   </p>
@@ -372,7 +379,7 @@ export default async function TaskDetailPage({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-gray-900">
               Zadání úkolu
@@ -382,7 +389,7 @@ export default async function TaskDetailPage({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+          <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
             {typedTask.note?.trim() ? (
               <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
                 {typedTask.note}

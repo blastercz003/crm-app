@@ -19,6 +19,8 @@ import {
 import { DashboardUpdatesLauncher } from '@/components/dashboard/dashboard-updates-launcher'
 import { DashboardMobileQuickActions } from '@/components/dashboard/dashboard-mobile-quick-actions'
 import { DashboardMyOffersModule } from '@/components/dashboard/dashboard-my-offers-module'
+import { DashboardMyTasksModule } from '@/components/dashboard/dashboard-my-tasks-module'
+import { DashboardMyMeetingsModule } from '@/components/dashboard/dashboard-my-meetings-module'
 import { DashboardSectionLinks } from '@/components/dashboard/dashboard-section-links'
 import {
   getCurrentUserNotificationStats,
@@ -40,7 +42,7 @@ export const metadata: Metadata = {
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const DASHBOARD_ACTION_LINK_CLASS =
-  'inline-flex min-h-[46px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl bg-zinc-900 px-3 py-3 text-sm font-medium tracking-[0.04em] text-white transition duration-200 hover:bg-zinc-800'
+  'inline-flex min-h-[46px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-zinc-900 bg-zinc-900 px-3 py-3 text-sm font-medium tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800'
 const DASHBOARD_ACTION_LINK_WIDTH = 172
 const SHOW_DASHBOARD_MINI_CALENDAR = false
 
@@ -113,6 +115,7 @@ type DashboardTask = {
   created_by: string | null
   created_by_profile?: ProfileRef | null
 }
+
 
 type DashboardMeeting = {
   id: string
@@ -341,6 +344,14 @@ function getTaskPriorityOrder(task: DashboardTask, todayDateKey: string) {
   return 2
 }
 
+function isDashboardTaskOverdue(task: DashboardTask, todayDateKey: string) {
+  return (
+    task.status !== 'done' &&
+    task.due_date !== null &&
+    task.due_date < todayDateKey
+  )
+}
+
 function formatMeetingTime(value: string | null) {
   return formatInPrague(
     value,
@@ -565,50 +576,15 @@ function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
   return days
 }
 
-function DashboardStatCard({
-  label,
-  value,
-  highlighted = false,
-  alert = false,
-}: {
-  label: string
-  value: number
-  highlighted?: boolean
-  alert?: boolean
-}) {
-  const cardClassName = highlighted
-    ? 'border border-[#2980B9] bg-[#2980B9]'
-    : alert
-      ? 'border border-red-600 bg-red-600'
-      : 'border border-zinc-200 bg-zinc-50'
-
-  const labelClassName = highlighted || alert ? 'text-xs text-white/80' : 'text-xs text-zinc-500'
-
-  const valueClassName =
-    highlighted || alert
-      ? 'mt-1.5 text-xl font-semibold text-white'
-      : 'mt-1.5 text-xl font-semibold text-zinc-950'
-
-  return (
-    <div
-      className={[
-        'min-w-0 rounded-2xl px-3 py-3 shadow-sm transition sm:px-4 sm:py-3.5',
-        cardClassName,
-      ].join(' ')}
-    >
-      <div className={`${labelClassName} leading-tight`}>{label}</div>
-      <div className={`${valueClassName} text-lg sm:text-xl`}>{value}</div>
-    </div>
-  )
-}
-
 function DashboardSectionHeader({
   eyebrow,
   title,
+  href,
   description,
 }: {
   eyebrow: string
   title: string
+  href?: string
   description?: string
 }) {
   return (
@@ -616,9 +592,24 @@ function DashboardSectionHeader({
       <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
         {eyebrow}
       </div>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-        {title}
-      </h2>
+      {href ? (
+        <Link
+          href={href}
+          className="group mt-2 inline-flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-950 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-[#2f6f9f]"
+        >
+          <span>{title}</span>
+          <span
+            aria-hidden
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_8px_16px_rgba(9,48,82,0.34)] transition duration-200 ease-out group-hover:-translate-y-[1px] group-hover:border-[#1f5f8e] group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_20px_rgba(9,48,82,0.42)]"
+          >
+            <span className="-translate-y-[1px] text-[18px] leading-none">›</span>
+          </span>
+        </Link>
+      ) : (
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+          {title}
+        </h2>
+      )}
       {description ? (
         <p className="mt-1.5 text-sm text-zinc-500">{description}</p>
       ) : null}
@@ -640,7 +631,7 @@ function DashboardUserPanel({
   return (
     <div
       className={[
-        'flex w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between',
+        'flex w-full flex-col gap-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] sm:flex-row sm:items-center sm:justify-between',
         className,
       ].join(' ')}
     >
@@ -662,13 +653,13 @@ function DashboardUserPanel({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Link
           href="/settings/password"
-          className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+          className="inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
         >
           NASTAVENÍ
         </Link>
 
         <form action="/auth/signout" method="post" className="shrink-0">
-          <button className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white transition hover:bg-zinc-800 sm:w-auto">
+          <button className="inline-flex h-8 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:w-auto">
             ODHLÁSIT
           </button>
         </form>
@@ -690,10 +681,10 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
   return (
     <div
       className={[
-        'relative rounded-2xl border px-4 py-3 shadow-sm transition duration-200 hover:shadow-md',
+        'relative rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200',
         isOverdue
-          ? 'border-red-300 bg-white hover:border-red-400'
-          : 'border-zinc-200/80 bg-white hover:border-zinc-300',
+          ? 'border-red-300/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(254,242,242,0.86)_100%)] hover:border-red-400/90'
+          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] hover:border-white/90',
       ].join(' ')}
     >
       <Link
@@ -740,7 +731,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
           <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-2">
             <Link
               href={`/tasks/${task.id}`}
-              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-800"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
             >
               DETAIL
             </Link>
@@ -751,7 +742,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
                   <form action={endTaskRecurrenceAction}>
                     <button
                       type="submit"
-                      className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 transition hover:bg-zinc-100"
+                      className="inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-xs font-medium text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                     >
                       UKONČIT
                     </button>
@@ -760,7 +751,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
                 <form action={markTaskDoneAction}>
                   <TaskCompleteButton
-                    className="inline-flex items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:border-emerald-700 hover:bg-emerald-700 [animation:task-complete-glow_2.2s_ease-in-out_infinite]"
+                    className="inline-flex items-center justify-center rounded-xl border border-emerald-500/90 bg-[linear-gradient(155deg,#11a36b_0%,#089861_55%,#067f51_100%)] px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(167,243,208,0.42),0_12px_24px_rgba(5,150,105,0.3)] transition duration-200 hover:-translate-y-[1px] hover:border-emerald-600 hover:shadow-[inset_0_1px_0_rgba(167,243,208,0.5),0_16px_28px_rgba(5,150,105,0.36)] [animation:task-complete-glow_2.2s_ease-in-out_infinite]"
                   />
                 </form>
               </>
@@ -779,17 +770,17 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
   return (
     <Link
       href={`/meetings/${meeting.id}`}
-      className="block rounded-2xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm transition duration-200 hover:border-zinc-300 hover:shadow-md"
+      className="block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:border-white/90"
     >
       <div className="flex items-start gap-3">
-        <div className="flex w-[64px] shrink-0 flex-col items-center rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-2 text-center">
+        <div className="flex w-[64px] shrink-0 flex-col items-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
           <div className="text-xl font-semibold leading-none text-zinc-950">
             {day}
           </div>
           <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
             {month}
           </div>
-          <div className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-1.5 py-1 text-[11px] font-medium text-zinc-700">
+          <div className="mt-2 w-full rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] px-1.5 py-1 text-[11px] font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             {time}
           </div>
         </div>
@@ -1092,10 +1083,10 @@ export default async function DashboardPage() {
       .from('tasks')
       .select(tasksSelect)
       .neq('status', 'done')
-      .eq('assigned_to', user.id)
+      .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`)
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(20)
 
     if (!isMissingRepeatIntervalColumnError(response.error)) {
       return response
@@ -1105,16 +1096,14 @@ export default async function DashboardPage() {
       .from('tasks')
       .select(tasksSelectWithoutRepeatInterval)
       .neq('status', 'done')
-      .eq('assigned_to', user.id)
+      .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`)
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(20)
   }
 
   const [
     tasksResponse,
-    activeTasksCountResponse,
-    overdueTasksCountResponse,
     meetingsResponse,
     dashboardMeetingsCountResponse,
     dashboardWeeklyMeetingsCountResponse,
@@ -1122,27 +1111,6 @@ export default async function DashboardPage() {
     dashboardOffersResponse,
   ] = await Promise.all([
     dashboardTasksQuery(),
-
-    supabase
-      .from('tasks')
-      .select('id', { count: 'exact', head: true })
-      .neq('status', 'done')
-      .eq('assigned_to', user.id),
-
-    supabase
-      .from('tasks')
-      .select('id', { count: 'exact', head: true })
-      .neq('status', 'done')
-      .eq('assigned_to', user.id)
-      .lt(
-        'due_date',
-        new Intl.DateTimeFormat('en-CA', {
-          timeZone: PRAGUE_TIME_ZONE,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        }).format(new Date())
-      ),
 
     nearestMeetingsQuery,
 
@@ -1152,27 +1120,21 @@ export default async function DashboardPage() {
 
     monthMeetingsQuery,
 
-    supabase
-      .from('offers')
-      .select('id, offer_number, title, status, updated_at, client_id, created_by')
-      .eq('created_by', user.id)
-      .order('updated_at', { ascending: false }),
+    isAdmin
+      ? supabase
+          .from('offers')
+          .select('id, offer_number, title, status, updated_at, client_id, created_by')
+          .or(`created_by.eq.${user.id},status.eq.in_progress,status.eq.submitted`)
+          .order('updated_at', { ascending: false })
+      : supabase
+          .from('offers')
+          .select('id, offer_number, title, status, updated_at, client_id, created_by')
+          .eq('created_by', user.id)
+          .order('updated_at', { ascending: false }),
   ])
 
   if (tasksResponse.error) {
     throw new Error(`Nepodařilo se načíst dashboard úkoly: ${tasksResponse.error.message}`)
-  }
-
-  if (activeTasksCountResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst počet aktivních úkolů: ${activeTasksCountResponse.error.message}`
-    )
-  }
-
-  if (overdueTasksCountResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst počet úkolů po termínu: ${overdueTasksCountResponse.error.message}`
-    )
   }
 
   if (meetingsResponse.error) {
@@ -1229,14 +1191,32 @@ export default async function DashboardPage() {
       return b.created_at.localeCompare(a.created_at)
     })
 
+  const activeTasks = tasks.filter(
+    (task) => !isDashboardTaskOverdue(task, todayDateKeyInPrague)
+  )
+  const overdueTasks = tasks.filter((task) =>
+    isDashboardTaskOverdue(task, todayDateKeyInPrague)
+  )
+  const visibleAllTasks = tasks.slice(0, 10)
+  const visibleActiveTasks = activeTasks.slice(0, 10)
+  const visibleOverdueTasks = overdueTasks.slice(0, 10)
+
   const meetings = (meetingsResponse.data ?? []) as DashboardMeeting[]
+  const todayMeetings = meetings.filter(
+    (meeting) =>
+      Boolean(meeting.meeting_datetime) &&
+      meeting.meeting_datetime! >= todayStart &&
+      meeting.meeting_datetime! < todayEnd
+  )
+  const weeklyMeetings = meetings.filter(
+    (meeting) =>
+      Boolean(meeting.meeting_datetime) &&
+      meeting.meeting_datetime! >= start &&
+      meeting.meeting_datetime! < end
+  )
   const monthMeetings = (monthMeetingsResponse.data ?? []) as DashboardMeeting[]
   const dashboardOffers = (dashboardOffersResponse.data ?? []) as DashboardOfferRow[]
 
-  const activeTasksCount = activeTasksCountResponse.count ?? 0
-  const overdueTasksCount = overdueTasksCountResponse.count ?? 0
-  const dashboardTodayMeetingsCount = dashboardMeetingsCountResponse.count ?? 0
-  const dashboardWeeklyMeetingsCount = dashboardWeeklyMeetingsCountResponse.count ?? 0
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
   const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse] =
@@ -1316,6 +1296,8 @@ export default async function DashboardPage() {
         title: offer.title,
         clientName: clientNameById.get(offer.client_id) ?? 'Neznámý klient',
         status: offer.status,
+        createdByUserId: offer.created_by,
+        createdByName: profileMap.get(offer.created_by)?.name ?? null,
         updatedAt: offer.updated_at,
         lastCommentAt: latest?.createdAt ?? null,
         lastCommentAuthorId: latest?.authorUserId ?? null,
@@ -1331,11 +1313,19 @@ export default async function DashboardPage() {
 
   return (
     <DashboardGlobalSearchProvider>
-      <div className="flex min-h-screen flex-col bg-gray-50 text-zinc-900">
-        <main className="flex-1">
+      <div className="relative flex min-h-screen flex-col overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)] text-zinc-900">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        />
+        <main className="relative z-10 flex-1">
           <AppBadgeSync count={notificationStats.unread} />
           <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-center lg:justify-start">
               <Link href="/dashboard" className="inline-flex items-center">
@@ -1354,7 +1344,7 @@ export default async function DashboardPage() {
               <div className="flex w-full items-stretch justify-end gap-3 lg:w-auto">
                 <div className="hidden lg:block">
                   <DashboardGlobalSearchInput
-                    className="h-full w-[260px] rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-normal text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-100"
+                    className="h-full w-[260px] rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm font-normal text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   />
                 </div>
 
@@ -1411,81 +1401,97 @@ export default async function DashboardPage() {
           </div>
 
           <div className="contents xl:block xl:space-y-6">
-            <section className="order-2 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6 xl:order-none">
-              <div className="mb-5 flex items-start justify-between gap-4">
+            <section className="order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+              <div className="mb-4 flex items-start justify-between gap-4">
                 <DashboardSectionHeader
                   eyebrow="Úkoly"
                   title="Moje úkoly"
-                />
-
-                <DashboardActionLink href="/tasks">
-                  VŠECHNY ÚKOLY
-                </DashboardActionLink>
-              </div>
-
-              <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
-                <DashboardStatCard
-                  label="Aktivní úkoly"
-                  value={activeTasksCount}
-                  highlighted
-                />
-                <DashboardStatCard
-                  label="Úkoly po termínu"
-                  value={overdueTasksCount}
-                  alert={overdueTasksCount > 0}
+                  href="/tasks"
                 />
               </div>
 
-              {tasks.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-                  Nemáš žádné aktivní úkoly.
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {tasks.map((task) => (
-                    <DashboardTaskItem key={task.id} task={task} />
-                  ))}
-                </div>
-              )}
+              <DashboardMyTasksModule
+                allContent={
+                  visibleAllTasks.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      Nemáš žádné úkoly.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {visibleAllTasks.map((task) => (
+                        <DashboardTaskItem key={task.id} task={task} />
+                      ))}
+                    </div>
+                  )
+                }
+                activeContent={
+                  visibleActiveTasks.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      Nemáš žádné aktivní úkoly.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {visibleActiveTasks.map((task) => (
+                        <DashboardTaskItem key={task.id} task={task} />
+                      ))}
+                    </div>
+                  )
+                }
+                overdueContent={
+                  visibleOverdueTasks.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      Nemáš žádné úkoly po termínu.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {visibleOverdueTasks.map((task) => (
+                        <DashboardTaskItem key={task.id} task={task} />
+                      ))}
+                    </div>
+                  )
+                }
+              />
             </section>
           </div>
 
           <div className="contents xl:block xl:space-y-6">
-            <section className="order-3 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6 xl:order-none">
-              <div className="mb-5 flex items-start justify-between gap-4">
+            <section className="order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+              <div className="mb-4 flex items-start justify-between gap-4">
                 <DashboardSectionHeader
                   eyebrow="Schůzky"
                   title="Moje schůzky"
-                />
-
-                <DashboardActionLink href="/meetings">
-                  VŠECHNY SCHŮZKY
-                </DashboardActionLink>
-              </div>
-
-              <div className="mb-5 grid grid-cols-2 gap-3 [&>*]:min-w-0">
-                <DashboardStatCard
-                  label="Schůzky dnes"
-                  value={dashboardTodayMeetingsCount}
-                  highlighted
-                />
-                <DashboardStatCard
-                  label="Schůzky tento týden"
-                  value={dashboardWeeklyMeetingsCount}
+                  href="/meetings"
                 />
               </div>
 
-              {meetings.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-                  Nemáš žádné nadcházející schůzky.
-                </div>
-              ) : (
-                <div className="grid gap-2.5">
-                  {meetings.map((meeting) => (
-                    <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                  ))}
-                </div>
-              )}
+              <DashboardMyMeetingsModule
+                todayContent={
+                  todayMeetings.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      Nemáš žádné schůzky dnes.
+                    </div>
+                  ) : (
+                    <div className="grid gap-2.5">
+                      {todayMeetings.map((meeting) => (
+                        <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                      ))}
+                    </div>
+                  )
+                }
+                weekContent={
+                  weeklyMeetings.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      Nemáš žádné nadcházející schůzky.
+                    </div>
+                  ) : (
+                    <div className="grid gap-2.5">
+                      {weeklyMeetings.map((meeting) => (
+                        <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                      ))}
+                    </div>
+                  )
+                }
+              />
             </section>
 
             <DashboardUserPanel
@@ -1507,7 +1513,7 @@ export default async function DashboardPage() {
           </div>
         </main>
 
-        <footer className="border-t border-white/10 bg-zinc-950 px-4 py-5 sm:px-6 lg:px-8">
+        <footer className="border-t border-white/12 bg-zinc-950 px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] sm:px-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
             <div>B-ENERGY APP | coding by blaster</div>
             <div>v2.0.5</div>

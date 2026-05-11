@@ -86,8 +86,8 @@ export function ClientActivityTabs({
   const active = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]
 
   return (
-    <section className="min-w-0 rounded-3xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-100 px-4 py-4 sm:px-5">
+    <section className="min-w-0 rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+      <div className="border-b border-white/60 px-4 py-4 sm:px-5">
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {tabs.map((tab) => {
             const isActive = tab.id === active.id
@@ -100,7 +100,7 @@ export function ClientActivityTabs({
                 className={`inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-2xl border px-3 text-sm font-medium transition ${
                   isActive
                     ? tab.activeTone
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]'
                 }`}
               >
                 <span className="truncate">{tab.label}</span>
@@ -115,7 +115,9 @@ export function ClientActivityTabs({
         </div>
       </div>
 
-      <div className="p-4 sm:p-5">{active.content}</div>
+      <div className="p-4 sm:p-5 xl:max-h-[70vh] xl:overflow-y-auto">
+        {active.content}
+      </div>
     </section>
   )
 }

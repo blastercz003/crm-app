@@ -216,13 +216,13 @@ function SectionResults({ section, query }: { section: GlobalSearchSectionResult
   }
 
   return (
-    <section className="relative flex h-[375px] w-full flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+    <section className="relative flex h-[375px] w-full flex-col overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold tracking-tight text-zinc-900">{section.label}</h2>
         {showAllHref ? (
           <Link
             href={showAllHref}
-            className="inline-flex h-[46px] w-[172px] min-w-[172px] max-w-[172px] items-center justify-center whitespace-nowrap rounded-2xl bg-[#2980B9] px-3 py-3 text-sm font-medium uppercase tracking-[0.04em] text-white transition duration-200 hover:bg-[#236f9f]"
+            className="inline-flex h-[46px] w-[172px] min-w-[172px] max-w-[172px] items-center justify-center whitespace-nowrap rounded-2xl border border-zinc-900 bg-zinc-900 px-3 py-3 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
           >
             ZOBRAZIT VŠE
           </Link>
@@ -261,7 +261,7 @@ function SectionResults({ section, query }: { section: GlobalSearchSectionResult
                 })
               }}
               className={[
-                'group rounded-2xl border border-zinc-200 bg-white px-4 transition duration-200 hover:border-zinc-300 hover:bg-zinc-50',
+                'group rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:border-[#76a9d3]/85 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96)]',
                 section.key === 'clients' ||
                 section.key === 'tasks' ||
                 section.key === 'meetings' ||
@@ -478,7 +478,7 @@ export function DashboardGlobalSearchBody({ children }: { children: ReactNode })
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
+      <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
           Hledání
         </div>
@@ -488,20 +488,20 @@ export function DashboardGlobalSearchBody({ children }: { children: ReactNode })
       </section>
 
       {isLoading ? (
-        <section className="rounded-3xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           Vyhledávám...
         </section>
       ) : null}
 
       {error ? (
-        <section className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 shadow-sm">
+        <section className="rounded-3xl border border-red-200/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(254,242,242,0.84)_100%)] p-5 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_30px_rgba(185,28,28,0.14)]">
           {error}
         </section>
       ) : null}
 
       {!isLoading && !error ? (
         <div className="relative flex items-start gap-0">
-          <aside className="z-10 h-[375px] w-[320px] shrink-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white p-3 shadow-sm">
+          <aside className="z-10 h-[375px] w-[320px] shrink-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="flex h-full flex-col justify-center gap-1 overflow-y-auto">
               {sections.map((section) => {
                 const isActiveSection = activeSection?.key === section.key
@@ -514,15 +514,15 @@ export function DashboardGlobalSearchBody({ children }: { children: ReactNode })
                     className={[
                       'relative flex w-full items-center justify-between rounded-2xl border px-3 py-2 text-left transition',
                       isActiveSection
-                        ? 'border-[#2980B9] bg-[#2980B9] text-white'
-                        : 'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50',
+                        ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]'
+                        : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] hover:-translate-y-[1px] hover:border-[#76a9d3]/85 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96)]',
                     ].join(' ')}
                   >
                     <span className="text-sm font-medium">{section.label}</span>
                     <span
                       className={[
                         'inline-flex min-w-8 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold',
-                        isActiveSection ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-700',
+                        isActiveSection ? 'bg-white/20 text-white' : 'border border-white/75 bg-white/85 text-zinc-700',
                       ].join(' ')}
                     >
                       {section.totalCount}
@@ -557,7 +557,7 @@ export function DashboardGlobalSearchBody({ children }: { children: ReactNode })
               <SectionResults section={activeSection} query={query.trim()} />
             </div>
           ) : (
-            <section className="rounded-3xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 shadow-sm">
+            <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               Nic nenalezeno.
             </section>
           )}

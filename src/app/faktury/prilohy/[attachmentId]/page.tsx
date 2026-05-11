@@ -133,7 +133,7 @@ export default async function AttachmentPreviewPage({
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+        <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h1 className="truncate text-xl font-semibold text-gray-900">
@@ -151,13 +151,13 @@ export default async function AttachmentPreviewPage({
                 href={previewUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
               >
                 ORIGINÁL
               </Link>
               <Link
                 href={downloadUrl}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2980B9] px-4 text-sm font-medium text-white transition hover:bg-[#2472a5]"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
               >
                 STÁHNOUT
               </Link>
@@ -165,13 +165,13 @@ export default async function AttachmentPreviewPage({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           {isImage ? (
             <div className="p-3 sm:p-6">
               <object
                 data={previewUrl}
                 type={attachment.mime_type ?? 'image/*'}
-                className="mx-auto max-h-[75vh] w-auto max-w-full rounded-2xl object-contain"
+                className="mx-auto max-h-[75vh] w-auto max-w-full rounded-2xl border border-white/75 object-contain shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_24px_rgba(15,23,42,0.12)]"
                 aria-label={attachment.display_name}
               />
             </div>
@@ -179,7 +179,7 @@ export default async function AttachmentPreviewPage({
             <iframe
               src={previewUrl}
               title={attachment.display_name}
-              className="h-[75vh] w-full rounded-3xl"
+              className="h-[75vh] w-full rounded-3xl border-0"
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
@@ -190,7 +190,7 @@ export default async function AttachmentPreviewPage({
                 href={previewUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
               >
                 Otevřít soubor
               </Link>

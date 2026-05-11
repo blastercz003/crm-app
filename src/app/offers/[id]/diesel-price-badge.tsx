@@ -92,7 +92,7 @@ export function DieselPriceBadge() {
   return (
     <span
       title={title}
-      className="inline-flex h-8 min-w-0 max-w-[calc(100%-140px)] shrink items-center justify-center whitespace-nowrap rounded-xl border border-black bg-white px-2 text-[10px] font-bold text-black transition sm:max-w-full sm:px-3 sm:text-sm"
+      className="inline-flex h-8 min-w-0 max-w-[calc(100%-140px)] shrink items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 text-[10px] font-bold text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] transition duration-200 sm:max-w-full sm:px-3 sm:text-sm"
     >
       {text}
     </span>

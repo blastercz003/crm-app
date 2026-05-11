@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import {
   updateJobEvidenceStatusAction,
-  updateJobInfoAction,
   updateJobInlineFieldAction,
   updateJobStatusAction,
 } from './actions'
 import { EditJobButton } from './edit-job-button'
 import { HandoverProtocolButton } from './handover-protocol-button'
+import { InfoNoteButton } from './info-note-button'
 
 type JobStatus =
   | 'nova'
@@ -72,6 +73,10 @@ type JobsInteractiveTableProps = {
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const STATUS_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
 const EVIDENCE_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
+const GLASS_SECONDARY_BUTTON_CLASS =
+  'rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)]'
+const GLASS_DARK_BUTTON_CLASS =
+  'rounded-xl border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:bg-zinc-800 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.17),0_11px_16px_rgba(24,24,27,0.22)]'
 
 function getEffectiveJobStatus(job: JobRow): JobStatus {
   if (job.job_status !== 'realizace' && job.job_status !== 'ukoncena') {
@@ -103,10 +108,11 @@ export function JobsInteractiveTable({
 }: JobsInteractiveTableProps) {
   return (
     <>
-      <section className="print:block hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
+      <section className="print-header print:block hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
+        <div className="print:max-h-none print:overflow-visible">
         <table className="w-full table-fixed border-separate border-spacing-y-2 print:border-collapse print:border-spacing-y-0">
-          <thead>
-            <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500 print:text-[9px]">
+          <thead className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_100%)] shadow-[0_1px_0_0_#e5e7eb]">
+            <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 print:text-[9px]">
               <th className="w-[76px] px-2 py-2 print:w-[70px] print:px-1.5 print:py-1.5">
                 Zakázka
               </th>
@@ -154,6 +160,7 @@ export function JobsInteractiveTable({
             ))}
           </tbody>
         </table>
+        </div>
       </section>
 
       <section className="grid gap-3 print:hidden lg:hidden">
@@ -183,8 +190,8 @@ function DesktopRow({
   isAdmin: boolean
 }) {
   return (
-    <tr className="group">
-      <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:rounded-none print:border print:px-1.5 print:py-1.5">
+    <tr className="group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
+      <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
         <EditJobButton
           job={job}
           clientSuggestions={clientSuggestions}
@@ -197,7 +204,7 @@ function DesktopRow({
         </EditJobButton>
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:hidden">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
         <EvidenceStatusButton job={job} canEdit />
       </td>
 
@@ -255,14 +262,18 @@ function DesktopRow({
         canEdit
       />
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:hidden">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
         <div className="flex items-center justify-center gap-2">
           <HandoverProtocolButton job={job} />
-          <InfoNoteButton job={job} compact canEdit />
+          <InfoNoteButton
+            jobId={job.id}
+            jobNumber={job.job_number}
+            infoNote={job.info_note}
+          />
         </div>
       </td>
 
-      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-2 py-2 align-middle text-center transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:rounded-none print:border print:px-1.5 print:py-1.5">
+      <td className="rounded-r-2xl border border-l-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
         <JobStatusButton job={job} canEdit />
       </td>
     </tr>
@@ -281,7 +292,7 @@ function MobileCard({
   isAdmin: boolean
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 w-0 flex-1">
           <EditJobButton
@@ -331,7 +342,12 @@ function MobileCard({
       <div className="mt-2 flex items-end justify-between gap-2">
         <div className="flex items-center gap-2">
           <HandoverProtocolButton job={job} />
-          <InfoNoteButton job={job} canEdit />
+          <InfoNoteButton
+            jobId={job.id}
+            jobNumber={job.job_number}
+            infoNote={job.info_note}
+            variant="mobile"
+          />
           <EvidenceStatusButton job={job} compact canEdit />
         </div>
 
@@ -419,7 +435,7 @@ function MobileAssignmentButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-8 min-w-[96px] items-center justify-center rounded-xl border border-gray-300 bg-white px-3 text-[11px] font-bold uppercase text-gray-900 shadow-sm transition hover:bg-gray-50"
+        className={`inline-flex h-8 min-w-[96px] items-center justify-center px-3 text-[11px] font-bold uppercase ${GLASS_SECONDARY_BUTTON_CLASS}`}
       >
         UPRAVIT
       </button>
@@ -441,7 +457,7 @@ function MobileAssignmentButton({
                 value={technicianValue}
                 disabled={isPending || !canEdit}
                 onChange={(event) => setTechnicianValue(event.target.value)}
-                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:bg-gray-50"
+                className="h-11 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:bg-gray-50"
               />
             </label>
 
@@ -454,7 +470,7 @@ function MobileAssignmentButton({
                 value={generatorValue}
                 disabled={isPending || !canEdit}
                 onChange={(event) => setGeneratorValue(event.target.value)}
-                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:bg-gray-50"
+                className="h-11 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:bg-gray-50"
               />
             </label>
 
@@ -462,7 +478,7 @@ function MobileAssignmentButton({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className={`inline-flex h-10 items-center justify-center px-4 text-sm font-medium uppercase tracking-[0.04em] ${GLASS_SECONDARY_BUTTON_CLASS}`}
               >
                 ZRUŠIT
               </button>
@@ -472,7 +488,7 @@ function MobileAssignmentButton({
                   type="button"
                   onClick={saveAssignments}
                   disabled={isPending}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`inline-flex h-10 items-center justify-center px-4 text-sm font-medium uppercase tracking-[0.04em] ${GLASS_DARK_BUTTON_CLASS} disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   {isPending ? 'UKLÁDÁM…' : 'ULOŽIT'}
                 </button>
@@ -571,14 +587,14 @@ function EditableCell({
     })
   }
 
-  const cellClassName = `border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:border print:px-1.5 print:py-1.5 ${
+  const cellClassName = `border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:border print:px-1.5 print:py-1.5 ${
     printHidden ? 'print:hidden' : ''
   }`
 
   if (isEditing && canEdit) {
     return (
       <td
-        className={`border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-1.5 align-middle ${
+        className={`border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-1.5 align-middle ${
           printHidden ? 'print:hidden' : 'print:border print:px-1.5 print:py-1.5'
         }`}
       >
@@ -600,7 +616,7 @@ function EditableCell({
               cancelEditing()
             }
           }}
-          className="h-8 w-full rounded-lg border border-gray-300 bg-white px-2 text-[12px] text-gray-900 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+          className="h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-[12px] text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
         />
       </td>
     )
@@ -697,7 +713,7 @@ function EditableCompanyCell({
     }
   }, [canEdit, companyName.length, isEditing])
 
-  const cellClassName = `border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 print:border print:px-1.5 print:py-1.5 ${
+  const cellClassName = `border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:border print:px-1.5 print:py-1.5 ${
     printHidden ? 'print:hidden' : ''
   }`
 
@@ -805,7 +821,7 @@ function EditableCompanyCell({
   if (isEditing && canEdit) {
     return (
       <td
-        className={`border border-l-0 border-r-0 border-gray-200 bg-white px-2 py-1.5 align-middle ${
+        className={`border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-1.5 align-middle ${
           printHidden ? 'print:hidden' : 'print:border print:px-1.5 print:py-1.5'
         }`}
       >
@@ -828,7 +844,7 @@ function EditableCompanyCell({
             }
           }}
           autoComplete="off"
-          className="h-8 w-full rounded-lg border border-gray-300 bg-white px-2 text-[12px] text-gray-900 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+          className="h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-[12px] text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
         />
       </td>
     )
@@ -858,121 +874,6 @@ function EditableCompanyCell({
         <span className="block truncate">{displayValue}</span>
       </button>
     </td>
-  )
-}
-
-function InfoNoteButton({
-  job,
-  compact = false,
-  canEdit,
-}: {
-  job: JobRow
-  compact?: boolean
-  canEdit: boolean
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [draftValue, setDraftValue] = useState(job.info_note ?? '')
-  const [isPending, startTransition] = useTransition()
-
-  useEffect(() => {
-    setDraftValue(job.info_note ?? '')
-  }, [job.info_note])
-
-  function saveInfo() {
-    if (!canEdit) return
-
-    startTransition(async () => {
-      const formData = new FormData()
-      formData.set('info_note', draftValue)
-
-      const result = await updateJobInfoAction(
-        job.id,
-        { success: false, error: null },
-        formData
-      )
-
-      if (!result.success) {
-        alert(result.error ?? 'Info k zakázce se nepodařilo uložit.')
-        return
-      }
-
-      setIsOpen(false)
-    })
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 items-center justify-center rounded-xl ${
-          compact ? 'min-w-[78px]' : 'min-w-[78px]'
-        } border px-3 text-[11px] font-medium tracking-wide transition ${
-          job.info_note
-            ? 'border-black bg-black text-white hover:bg-gray-800'
-            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-        }`}
-      >
-        {job.info_note ? 'ZOBRAZIT' : canEdit ? 'PŘIDAT' : 'INFO'}
-      </button>
-
-      {isOpen ? (
-        <ModalShell
-          title="INFO K ZAKÁZCE"
-          description={`ZAKÁZKA ${job.job_number}`}
-          descriptionAsBadge
-          showHeaderDivider={false}
-          onClose={() => setIsOpen(false)}
-        >
-          {canEdit ? (
-            <>
-              <textarea
-                value={draftValue}
-                onChange={(event) => setDraftValue(event.target.value)}
-                rows={5}
-                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-                placeholder="Doplň interní poznámku k zakázce"
-              />
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  ZRUŠIT
-                </button>
-
-                <button
-                  type="button"
-                  onClick={saveInfo}
-                  disabled={isPending}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isPending ? 'UKLÁDÁM…' : 'ULOŽIT'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm leading-6 text-gray-700">
-                {job.info_note?.trim() ? job.info_note : 'Bez interní poznámky.'}
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  Zavřít
-                </button>
-              </div>
-            </div>
-          )}
-        </ModalShell>
-      ) : null}
-    </>
   )
 }
 
@@ -1022,60 +923,137 @@ function JobStatusButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 print:min-w-0 print:px-2 print:text-[10px] ${meta.className}`}
+        className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] print:min-w-0 print:px-2 print:text-[10px] ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
 
       {isOpen ? (
-        <ModalShell
-          title={canEdit ? 'Změnit stav zakázky' : 'Stav zakázky'}
-          description={`Zakázka ${job.job_number}`}
+        <JobStatusModal
+          jobNumber={job.job_number}
+          currentMeta={meta}
+          options={options}
+          canEdit={canEdit}
+          isPending={isPending}
           onClose={() => setIsOpen(false)}
-        >
-          {canEdit ? (
-            <div className="space-y-2">
-              {options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => saveStatus(option.value)}
-                  className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <span className="font-medium text-gray-900">
-                    {option.label}
-                  </span>
-                  <span
-                    className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
-                  >
-                    {option.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
-                Aktuální stav:{' '}
-                <span className="font-semibold text-gray-900">{meta.label}</span>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  Zavřít
-                </button>
-              </div>
-            </div>
-          )}
-        </ModalShell>
+          onSaveStatus={saveStatus}
+        />
       ) : null}
     </>
   )
+}
+
+function JobStatusModal({
+  jobNumber,
+  currentMeta,
+  options,
+  canEdit,
+  isPending,
+  onClose,
+  onSaveStatus,
+}: {
+  jobNumber: string
+  currentMeta: { value: JobStatus; label: string; className: string }
+  options: { value: JobStatus; label: string; className: string }[]
+  canEdit: boolean
+  isPending: boolean
+  onClose: () => void
+  onSaveStatus: (status: JobStatus) => void
+}) {
+  const title = canEdit ? 'Změnit stav zakázky:' : 'Stav zakázky:'
+
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[120] bg-zinc-950/48 p-3 backdrop-blur-sm sm:p-4 print:hidden"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="flex h-full items-center justify-center">
+        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
+
+          <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+            <div className="flex flex-col items-start">
+              <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+                {title}
+              </h2>
+              <div className="mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
+                {jobNumber}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+              aria-label="Zavřít"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="relative flex items-center justify-between gap-3 rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-3 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(41,128,185,0.24)]">
+            <span className="font-semibold text-white">Aktuální stav:</span>
+            <span
+              className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${currentMeta.className}`}
+            >
+              {currentMeta.label}
+            </span>
+          </div>
+
+          {canEdit ? (
+            <>
+              <div className="mt-3 text-sm font-medium text-gray-700">
+                Vyber nový stav zakázky:
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {options.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onSaveStatus(option.value)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="font-medium text-gray-900">{option.label}</span>
+                    <span
+                      className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+                    >
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className={`inline-flex h-10 items-center justify-center px-4 text-sm font-medium uppercase tracking-[0.04em] ${GLASS_SECONDARY_BUTTON_CLASS}`}
+              >
+                Zavřít
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }
 
 function EvidenceStatusButton({
@@ -1126,60 +1104,121 @@ function EvidenceStatusButton({
         onClick={() => setIsOpen(true)}
         className={`inline-flex h-8 ${
           compact ? 'min-w-[96px]' : EVIDENCE_BUTTON_WIDTH_CLASS
-        } max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition hover:opacity-95 ${meta.className}`}
+        } max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
 
       {isOpen ? (
-        <ModalShell
-          title={canEdit ? 'Změnit stav evidence' : 'Stav evidence'}
-          description={`Zakázka ${job.job_number}`}
+        <EvidenceStatusModal
+          jobNumber={job.job_number}
+          options={options}
+          canEdit={canEdit}
+          isPending={isPending}
           onClose={() => setIsOpen(false)}
-        >
-          {canEdit ? (
-            <div className="space-y-2">
-              {options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => saveEvidenceStatus(option.value)}
-                  className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <span className="font-medium text-gray-900">
-                    {option.label}
-                  </span>
-                  <span
-                    className={`inline-flex h-8 ${EVIDENCE_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
-                  >
-                    {option.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
-                Aktuální stav evidence:{' '}
-                <span className="font-semibold text-gray-900">{meta.label}</span>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  Zavřít
-                </button>
-              </div>
-            </div>
-          )}
-        </ModalShell>
+          onSaveEvidenceStatus={saveEvidenceStatus}
+        />
       ) : null}
     </>
   )
+}
+
+function EvidenceStatusModal({
+  jobNumber,
+  options,
+  canEdit,
+  isPending,
+  onClose,
+  onSaveEvidenceStatus,
+}: {
+  jobNumber: string
+  options: { value: EvidenceStatus; label: string; className: string }[]
+  canEdit: boolean
+  isPending: boolean
+  onClose: () => void
+  onSaveEvidenceStatus: (status: EvidenceStatus) => void
+}) {
+  const title = canEdit ? 'Změnit stav evidence:' : 'Stav evidence:'
+
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[120] bg-zinc-950/48 p-3 backdrop-blur-sm sm:p-4 print:hidden"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="flex h-full items-center justify-center">
+        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
+
+          <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+            <div className="flex flex-col items-start">
+              <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+                {title}
+              </h2>
+              <div className="mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
+                {jobNumber}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+              aria-label="Zavřít"
+            >
+              ✕
+            </button>
+          </div>
+
+          {canEdit ? (
+            <>
+              <div className="space-y-2">
+                {options.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onSaveEvidenceStatus(option.value)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="font-medium text-gray-900">{option.label}</span>
+                    <span
+                      className={`inline-flex h-8 ${EVIDENCE_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+                    >
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className={`inline-flex h-10 items-center justify-center px-4 text-sm font-medium uppercase tracking-[0.04em] ${GLASS_SECONDARY_BUTTON_CLASS}`}
+              >
+                Zavřít
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }
 
 function ModalShell({
@@ -1206,9 +1245,9 @@ function ModalShell({
     }
   }, [])
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4 print:hidden"
+      className="fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px] print:hidden"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -1218,7 +1257,7 @@ function ModalShell({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-5 shadow-2xl">
+        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-5 shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)]">
           <div
             className={`mb-4 flex items-start justify-between gap-4 ${
               showHeaderDivider ? 'border-b border-gray-100 pb-4' : ''
@@ -1230,7 +1269,7 @@ function ModalShell({
               </h2>
               {description ? (
                 descriptionAsBadge ? (
-                  <div className="mt-1.5 inline-flex items-center rounded-full border border-[#2980B9] bg-[#2980B9] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white">
+                  <div className="mt-1.5 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
                     {description}
                   </div>
                 ) : (
@@ -1242,7 +1281,7 @@ function ModalShell({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
               aria-label="Zavřít"
             >
               ✕
@@ -1254,6 +1293,12 @@ function ModalShell({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }
 
 function getJobStatusMeta(status: JobStatus) {
@@ -1263,34 +1308,35 @@ function getJobStatusMeta(status: JobStatus) {
         value: 'nova' as JobStatus,
         label: 'NOVÁ',
         className:
-          'border border-blue-300 bg-blue-100 text-blue-800 shadow-sm',
+          'border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]',
       }
     case 'k_reseni':
       return {
         value: 'k_reseni' as JobStatus,
         label: 'V ŘEŠENÍ',
         className:
-          'border border-amber-300 bg-amber-100 text-amber-800 shadow-sm',
+          'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]',
       }
     case 'realizace':
       return {
         value: 'realizace' as JobStatus,
         label: 'REALIZACE',
         className:
-          'border border-emerald-300 bg-emerald-100 text-emerald-800 shadow-sm',
+          'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]',
       }
     case 'ukoncena':
       return {
         value: 'ukoncena' as JobStatus,
         label: 'UKONČENÁ',
         className:
-          'border border-slate-300 bg-slate-100 text-slate-700 shadow-sm',
+          'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]',
       }
     case 'storno':
       return {
         value: 'storno' as JobStatus,
         label: 'STORNO',
-        className: 'border border-red-300 bg-red-100 text-red-800 shadow-sm',
+        className:
+          'border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(220,38,38,0.26)]',
       }
   }
 }
@@ -1302,14 +1348,14 @@ function getEvidenceStatusMeta(status: EvidenceStatus) {
         value: 'nove' as EvidenceStatus,
         label: 'ZAPSAT',
         className:
-          'border border-[#2980B9] bg-[#2980B9] text-white shadow-sm hover:bg-[#2471A3]',
+          'border border-[#7fb2d6] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_6px_12px_rgba(41,128,185,0.16)]',
       }
     case 'zapsano':
       return {
         value: 'zapsano' as EvidenceStatus,
         label: 'ZAPSÁNO',
         className:
-          'border border-gray-300 bg-white text-gray-900 shadow-sm hover:bg-gray-50',
+          'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)]',
       }
   }
 }

@@ -164,7 +164,7 @@ export function JobForm({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -174,8 +174,8 @@ export function JobForm({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
-          <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6">
+        <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+          <div className="flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4 sm:px-6">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-gray-900">
                 {title}
@@ -188,7 +188,7 @@ export function JobForm({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
               aria-label="Zavřít"
             >
               ✕
@@ -212,7 +212,7 @@ export function JobForm({
                     list={companyListId}
                     defaultValue={defaultValues.company_name}
                     required
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Název firmy"
                   />
                   <datalist id={companyListId}>
@@ -234,7 +234,7 @@ export function JobForm({
                     name="contact_person"
                     type="text"
                     defaultValue={defaultValues.contact_person ?? ''}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Jméno kontaktu"
                   />
                 </div>
@@ -250,7 +250,7 @@ export function JobForm({
                     id="sales_owner"
                     name="sales_owner"
                     defaultValue={defaultValues.sales_owner}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   >
                     {SALES_OWNER_OPTIONS.map((owner) => (
                       <option key={owner} value={owner}>
@@ -273,7 +273,7 @@ export function JobForm({
                     type="datetime-local"
                     defaultValue={defaultValues.start_at}
                     required
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   />
                 </div>
 
@@ -290,7 +290,7 @@ export function JobForm({
                     type="datetime-local"
                     defaultValue={defaultValues.end_at}
                     required
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   />
                 </div>
 
@@ -306,7 +306,7 @@ export function JobForm({
                     name="site_address"
                     type="text"
                     defaultValue={defaultValues.site_address ?? ''}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Ulice, město, provozovna"
                   />
                 </div>
@@ -323,7 +323,7 @@ export function JobForm({
                     name="store_number"
                     type="text"
                     defaultValue={defaultValues.store_number ?? ''}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Např. 1024"
                   />
                 </div>
@@ -340,7 +340,7 @@ export function JobForm({
                     name="technician_name"
                     type="text"
                     defaultValue={defaultValues.technician_name ?? ''}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Jméno technika"
                   />
                 </div>
@@ -357,7 +357,7 @@ export function JobForm({
                     name="generator_name"
                     type="text"
                     defaultValue={defaultValues.generator_name ?? ''}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Označení agregátu"
                   />
                 </div>
@@ -373,7 +373,7 @@ export function JobForm({
                     id="job_status"
                     name="job_status"
                     defaultValue={defaultValues.job_status}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   >
                     {JOB_STATUS_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -394,7 +394,7 @@ export function JobForm({
                     id="invoice_status"
                     name="invoice_status"
                     defaultValue={defaultValues.invoice_status}
-                    className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="h-11 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none transition shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   >
                     {INVOICE_STATUS_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -416,7 +416,7 @@ export function JobForm({
                     name="power_and_cables_note"
                     rows={3}
                     defaultValue={defaultValues.power_and_cables_note ?? ''}
-                    className="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="w-full resize-none rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Interní poznámka k výkonu, kabelům nebo zapojení"
                   />
                 </div>
@@ -433,7 +433,7 @@ export function JobForm({
                     name="info_note"
                     rows={4}
                     defaultValue={defaultValues.info_note ?? ''}
-                    className="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className="w-full resize-none rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     placeholder="Interní poznámka k zakázce"
                   />
                 </div>
@@ -446,12 +446,12 @@ export function JobForm({
               ) : null}
             </div>
 
-            <div className="border-t border-gray-100 px-5 py-4 sm:px-6">
+            <div className="border-t border-white/70 px-5 py-4 sm:px-6">
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
                 >
                   Zrušit
                 </button>
@@ -459,7 +459,7 @@ export function JobForm({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#2980B9] px-5 text-sm font-medium text-white transition hover:bg-[#236f9f] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3] bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isPending ? 'Ukládám…' : submitLabel}
                 </button>

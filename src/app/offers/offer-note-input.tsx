@@ -42,7 +42,7 @@ export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
         onClick={() => setIsEditing(true)}
         title={savedValue || 'Přidat poznámku'}
         className={[
-          'block h-8 w-full truncate rounded-lg px-1 py-1 text-left text-[12px] transition hover:bg-black/[0.025]',
+          'block h-8 w-full truncate rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2.5 py-1 text-left text-[12px] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_18px_rgba(15,23,42,0.12)]',
           savedValue ? 'text-gray-700 hover:text-gray-900' : 'text-gray-400 hover:text-gray-600',
         ].join(' ')}
       >
@@ -52,7 +52,7 @@ export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
   }
 
   return (
-    <input
+      <input
       ref={inputRef}
       value={value}
       onChange={(event) => setValue(event.target.value)}
@@ -69,7 +69,7 @@ export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
         event.currentTarget.blur()
       }}
       placeholder={isPending ? 'Ukládám...' : 'Vlastní poznámka'}
-      className="h-8 w-full rounded-lg border border-gray-300 bg-white px-2 text-[12px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+      className="h-8 w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2.5 text-[12px] text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
     />
   )
 }

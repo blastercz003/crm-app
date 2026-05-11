@@ -54,7 +54,15 @@ type TaskFormProps = {
 }
 
 const inputClassName =
-  'min-w-0 w-full max-w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200'
+  'min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] transition duration-200 ease-out focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+
+const selectClassName = `${inputClassName} h-[46px] appearance-none bg-no-repeat py-0 pr-10`
+const selectArrowStyle = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%20fill='none'%20stroke='%23111827'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M6%208l4%204%204-4'/%3E%3C/svg%3E\")",
+  backgroundPosition: 'right 0.95rem center',
+  backgroundSize: '16px 16px',
+} as const
 
 const labelClassName = 'mb-2 block text-sm font-medium text-gray-700'
 
@@ -205,7 +213,7 @@ export default function TaskForm({
     const trimmedValue = companyName.trim()
 
     if (!trimmedValue) {
-      return 'Začni psát název firmy.'
+      return modalMode ? '' : 'Začni psát název firmy.'
     }
 
     if (companySelectionIsValid) {
@@ -269,16 +277,16 @@ export default function TaskForm({
             onChange={(event) => handleCompanyChange(event.target.value)}
             onFocus={handleCompanyFocus}
             onBlur={handleCompanyBlur}
-            className={`w-full rounded-lg border bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 outline-none transition focus:ring-2 ${
+            className={`mb-1 w-full rounded-2xl border bg-white/96 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] transition duration-200 ease-out focus:ring-2 ${
               showCompanyError
                 ? 'border-amber-300 focus:border-amber-300 focus:ring-amber-100'
                 : companySelectionIsValid && !companyHasFocus
                   ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
-                  : 'border-gray-300 focus:border-gray-400 focus:ring-gray-200'
+                  : 'border-gray-200 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
             }`}
           />
 
-          <div className="mt-3 rounded-2xl border border-gray-200 bg-white px-4 py-3">
+          <div className="mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
               Napojení na klienta
             </div>
@@ -289,9 +297,11 @@ export default function TaskForm({
             </div>
           </div>
 
-          <p className={`mt-2 text-sm ${companyStatusClassName}`}>
-            {companyStatusText}
-          </p>
+          {companyStatusText ? (
+            <p className={`mt-2 text-sm ${companyStatusClassName}`}>
+              {companyStatusText}
+            </p>
+          ) : null}
 
           <p className="mt-2 text-xs text-gray-500">
             Klient je volitelný. Úkol může fungovat i jako běžný interní úkol mezi uživateli.
@@ -308,7 +318,8 @@ export default function TaskForm({
                 id="client_contact_select"
                 value={selectedContactId}
                 onChange={(event) => handleContactChange(event.target.value)}
-                className={inputClassName}
+                className={selectClassName}
+                style={selectArrowStyle}
               >
                 <option value="">Bez konkrétní osoby</option>
                 {selectedClientContacts.map((contact) => (
@@ -341,7 +352,8 @@ export default function TaskForm({
             id="assigned_to"
             name="assigned_to"
             defaultValue={initialValues?.assigned_to ?? ''}
-            className={inputClassName}
+            className={selectClassName}
+            style={selectArrowStyle}
           >
             <option value="">Nepřiřazeno</option>
             {users.map((user) => (
@@ -375,7 +387,8 @@ export default function TaskForm({
             id="status"
             name="status"
             defaultValue={initialValues?.status ?? 'todo'}
-            className={inputClassName}
+            className={selectClassName}
+            style={selectArrowStyle}
           >
             <option value="todo">K vyřízení</option>
             <option value="done">Hotovo</option>
@@ -390,7 +403,8 @@ export default function TaskForm({
             id="priority"
             name="priority"
             defaultValue={initialValues?.priority ?? 'medium'}
-            className={inputClassName}
+            className={selectClassName}
+            style={selectArrowStyle}
           >
             <option value="low">Nízká</option>
             <option value="medium">Střední</option>
@@ -406,7 +420,8 @@ export default function TaskForm({
             id="repeat_interval"
             name="repeat_interval"
             defaultValue={initialValues?.repeat_interval ?? ''}
-            className={inputClassName}
+            className={selectClassName}
+            style={selectArrowStyle}
           >
             <option value="">Bez opakování</option>
             <option value="daily">{getRepeatIntervalLabel('daily')}</option>
@@ -434,7 +449,7 @@ export default function TaskForm({
         </div>
 
         {error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(127,29,29,0.10)]">
             {error}
           </div>
         ) : null}
@@ -459,7 +474,7 @@ function PendingFormLock() {
   if (!pending) return null
 
   return (
-    <div className="rounded-2xl border border-[#2980B9]/25 bg-[#2980B9]/10 px-4 py-3 text-sm font-medium text-[#1d5f88]">
+    <div className="rounded-2xl border border-[#2980B9]/25 bg-[#2980B9]/10 px-4 py-3 text-sm font-medium text-[#1d5f88] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(24,95,145,0.14)]">
       Ukládám úkol, čekej prosím...
     </div>
   )
@@ -525,6 +540,7 @@ function TaskFormActions({
           onCancel={onCancel}
           submitLabel={submitLabel}
           pendingSubmitLabel={pendingSubmitLabel}
+          visualStyle="blaster"
         />
       ) : (
         <div className={`flex flex-wrap gap-3 ${pending ? 'cursor-wait' : ''}`}>
@@ -532,7 +548,7 @@ function TaskFormActions({
           type="submit"
           disabled={pending}
           aria-busy={pending}
-          className="inline-flex items-center gap-2 rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-75"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-75"
         >
           {pending ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -547,7 +563,7 @@ function TaskFormActions({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cancelLabel}
           </button>
@@ -555,7 +571,7 @@ function TaskFormActions({
           <Link
             href={cancelHref}
             aria-disabled={pending}
-            className={`rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 ${
+            className={`rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] ${
               pending ? 'pointer-events-none opacity-60' : ''
             }`}
           >

@@ -2,11 +2,12 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useFormStatus } from 'react-dom'
+import { createPortal } from 'react-dom'
 import {
   duplicateOfferModalAction,
   type OfferFormActionState,
 } from './actions'
+import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 
 type ClientOption = {
   id: string
@@ -31,37 +32,6 @@ type CopyOfferButtonProps = {
 const initialState: OfferFormActionState = {
   success: false,
   error: null,
-}
-
-function CopyOfferModalActions({
-  onClose,
-  submitDisabled,
-}: {
-  onClose: () => void
-  submitDisabled: boolean
-}) {
-  const { pending } = useFormStatus()
-
-  return (
-    <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-gray-100 pt-4">
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={pending}
-        className="inline-flex min-h-10 items-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        ZRUŠIT
-      </button>
-      <button
-        type="submit"
-        disabled={submitDisabled || pending}
-        aria-busy={pending}
-        className="inline-flex min-h-10 items-center rounded-xl bg-[#2980B9] px-4 text-sm font-medium text-white transition hover:bg-[#236f9f] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {pending ? 'VYTVÁŘÍM KOPII...' : 'VYTVOŘIT KOPII'}
-      </button>
-    </div>
-  )
 }
 
 function normalizeSearchText(value: string) {
@@ -94,7 +64,7 @@ export function CopyOfferButton({
         onClick={openModal}
         className={
           className ??
-          'inline-flex h-8 items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-bold uppercase text-gray-700 transition hover:bg-gray-50'
+          'inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]'
         }
       >
         KOPIE
@@ -132,6 +102,7 @@ function CopyOfferModal({
     duplicateOfferModalAction,
     initialState
   )
+  const [isMounted, setIsMounted] = useState(false)
   const [companyName, setCompanyName] = useState('')
   const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedContactId, setSelectedContactId] = useState('')
@@ -232,6 +203,11 @@ function CopyOfferModal({
   }, [onClose, router, state.offerId, state.success])
 
   useEffect(() => {
+    setIsMounted(true)
+    return () => setIsMounted(false)
+  }, [])
+
+  useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
@@ -240,9 +216,11 @@ function CopyOfferModal({
     }
   }, [])
 
-  return (
+  if (!isMounted) return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -252,8 +230,8 @@ function CopyOfferModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
+        <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100dvh-2rem)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 KOPIE NABÍDKY
@@ -266,14 +244,15 @@ function CopyOfferModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)]"
               aria-label="Zavřít"
             >
-              ×
+              ✕
             </button>
           </div>
 
-          <form action={formAction} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+          <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
             <input type="hidden" name="offer_id" value={offerId} />
 
             <div className="grid gap-4">
@@ -289,7 +268,7 @@ function CopyOfferModal({
                   name="title"
                   required
                   placeholder="Např. Pronájem DA 250kVA / 200kW"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 />
               </div>
 
@@ -310,15 +289,15 @@ function CopyOfferModal({
                     onBlur={handleCompanyBlur}
                     placeholder="Začni psát název klienta"
                     className={[
-                      'w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2',
+                      'w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:ring-2',
                       showCompanyError
                         ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                        : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200',
+                        : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]',
                     ].join(' ')}
                   />
 
                   {suggestions.length > 0 ? (
-                    <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
+                    <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.97)_0%,rgba(243,248,252,0.94)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_20px_36px_rgba(15,23,42,0.16)]">
                       {suggestions.map((client) => (
                         <button
                           key={client.id}
@@ -327,7 +306,7 @@ function CopyOfferModal({
                             event.preventDefault()
                             selectClient(client)
                           }}
-                          className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50"
+                          className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-[#eef6fd]"
                         >
                           {client.name}
                         </button>
@@ -355,7 +334,13 @@ function CopyOfferModal({
                   value={selectedContactId}
                   onChange={(event) => setSelectedContactId(event.target.value)}
                   disabled={!selectedClientId}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+                  className="h-[46px] w-full appearance-none rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] bg-no-repeat px-4 py-0 pr-10 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{
+                    backgroundImage:
+                      "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%20fill='none'%20stroke='%23111827'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M6%208l4%204%204-4'/%3E%3C/svg%3E\")",
+                    backgroundPosition: 'right 0.95rem center',
+                    backgroundSize: '16px 16px',
+                  }}
                 >
                   <option value="">Bez konkrétní osoby</option>
                   {selectedClientContacts.map((contact) => (
@@ -378,24 +363,32 @@ function CopyOfferModal({
                   id="copy_offer_realization_address"
                   name="realization_address"
                   placeholder="Místo realizace"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className="w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 />
               </div>
 
               {state.error ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(127,29,29,0.10)]">
                   {state.error}
                 </div>
               ) : null}
             </div>
 
-            <CopyOfferModalActions
-              onClose={onClose}
-              submitDisabled={!companySelectionIsValid}
-            />
+            </div>
+
+            <div className="shrink-0">
+              <MobileModalActions
+                onCancel={onClose}
+                submitLabel="VYTVOŘIT KOPII"
+                pendingSubmitLabel="VYTVÁŘÍM KOPII..."
+                submitDisabled={!companySelectionIsValid}
+                visualStyle="blaster"
+              />
+            </div>
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

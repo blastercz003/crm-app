@@ -7,6 +7,8 @@ import { NewOfferButton } from './new-offer-button'
 import { CopyOfferButton } from './copy-offer-button'
 import { OfferNoteInput } from './offer-note-input'
 import { OfferStatusButton } from './offer-status-button'
+import { OfferFilterSubmitButton } from './offer-filter-submit-button'
+import { OfferFilterResetLink } from './offer-filter-reset-link'
 
 export const metadata: Metadata = {
   title: 'Nabídky',
@@ -46,8 +48,11 @@ const OFFER_TYPE_LABELS: Record<OfferType, string> = {
 }
 
 function getOfferTypeClass(type: OfferType) {
-  if (type === 'bsafe24') return 'border-[#2980B9] bg-white text-[#236f9f]'
-  return 'border-black bg-white text-black'
+  if (type === 'bsafe24') {
+    return 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_18px_rgba(24,78,129,0.24)]'
+  }
+
+  return 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]'
 }
 
 const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
@@ -163,6 +168,14 @@ function getOfferHref(params: { q: string; status: string; authorId: string; sor
   return search ? `/offers?${search}` : '/offers'
 }
 
+function InfoChip({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
+      {label}
+    </span>
+  )
+}
+
 export default async function OffersPage({ searchParams }: OffersPageProps) {
   const params = searchParams ? await searchParams : undefined
   const q = params?.q?.trim() ?? ''
@@ -188,6 +201,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
       ? 'all'
       : authorId
     : ''
+  const hasActiveFilters =
+    q.length > 0 ||
+    status.length > 0 ||
+    sort !== 'updated_desc' ||
+    (isAdmin && requestedAuthorId.length > 0 && requestedAuthorId !== profile.id)
 
   let offersQuery = supabase.from('offers').select('*')
   let statsOffersQuery = supabase.from('offers').select('status')
@@ -332,9 +350,17 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
       : offers
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+      />
+      <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-end">
               <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
@@ -352,11 +378,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   name="q"
                   defaultValue={q}
                   placeholder="Hledat číslo nebo název nabídky"
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
+                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
                 <button
                   type="submit"
-                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_20px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_14px_26px_rgba(15,23,42,0.14)]"
                 >
                   HLEDAT
                 </button>
@@ -364,7 +390,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
@@ -374,10 +400,125 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[26px] border border-zinc-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="p-4 md:p-5">
             <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
-              <form action="/offers" method="get" className="w-full flex-none space-y-3 lg:w-[796px]">
+              <details className="group w-full lg:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+                  <span className="inline-flex items-center gap-2">
+                    FILTRY
+                    {hasActiveFilters ? (
+                      <span className="inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.07em] text-[#236f9f]">
+                        FILTR AKTIVNÍ
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-xs text-zinc-500 transition group-open:rotate-180">⌄</span>
+                </summary>
+
+                <form
+                  action="/offers"
+                  method="get"
+                  className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                >
+                  <input type="hidden" name="q" value={q} />
+
+                  <div className="grid w-full gap-2 sm:grid-cols-2">
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="status-mobile"
+                        className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                      >
+                        STAV NABÍDKY
+                      </label>
+                      <select
+                        id="status-mobile"
+                        name="status"
+                        defaultValue={status}
+                        className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option.value || 'all'} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {isAdmin ? (
+                      <div className="min-w-0">
+                        <label
+                          htmlFor="author-mobile"
+                          className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                        >
+                          UŽIVATEL
+                        </label>
+                        <select
+                          id="author-mobile"
+                          name="author"
+                          defaultValue={authorSelectValue}
+                          className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        >
+                          <option value="all">Všichni uživatelé</option>
+                          {authorOptions.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name ?? 'Neznámý uživatel'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
+
+                    <div className="min-w-0 sm:col-span-2">
+                      <label
+                        htmlFor="sort-mobile"
+                        className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                      >
+                        ŘAZENÍ
+                      </label>
+                      <select
+                        id="sort-mobile"
+                        name="sort"
+                        defaultValue={sort}
+                        className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      >
+                        {SORT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="w-full border-t border-gray-100 pt-3">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 text-xs text-gray-600">
+                      <InfoChip label={`Stav: ${getStatusLabel(status)}`} />
+                      {isAdmin ? (
+                        <InfoChip label={`Uživatel: ${selectedAuthor?.name ?? 'Všichni uživatelé'}`} />
+                      ) : (
+                        <InfoChip label="Pohled: Moje nabídky" />
+                      )}
+                      <InfoChip label={`Řazení: ${getSortLabel(sort)}`} />
+                      {q ? <InfoChip label={`Hledání: ${q}`} /> : null}
+                    </div>
+
+                    <div className="mt-3 flex shrink-0 items-center gap-2 border-t border-gray-100 pt-3">
+                      <OfferFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                        POUŽÍT FILTRY
+                      </OfferFilterSubmitButton>
+                      <OfferFilterResetLink
+                        href="/offers"
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                      >
+                        RESET
+                      </OfferFilterResetLink>
+                    </div>
+                  </div>
+                </form>
+              </details>
+
+              <form action="/offers" method="get" className="hidden w-full flex-none space-y-3 lg:block lg:w-[796px]">
                 <input type="hidden" name="q" value={q} />
 
                 <div className="grid w-full gap-2 sm:grid-cols-2 lg:flex lg:w-[796px] lg:items-end">
@@ -392,13 +533,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       id="status"
                       name="status"
                       defaultValue={status}
-                      className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                      className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     >
-                  {statusOptions.map((option) => (
-                    <option key={option.value || 'all'} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                      {statusOptions.map((option) => (
+                        <option key={option.value || 'all'} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -414,7 +555,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         id="author"
                         name="author"
                         defaultValue={authorSelectValue}
-                        className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       >
                         <option value="all">Všichni uživatelé</option>
                         {authorOptions.map((item) => (
@@ -437,7 +578,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       id="sort"
                       name="sort"
                       defaultValue={sort}
-                      className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                      className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     >
                       {SORT_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -450,82 +591,52 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
 
                 <div className="w-full border-t border-gray-100 pt-3 lg:w-[796px]">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-gray-600">
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                        Stav:{' '}
-                        <span className="ml-1 font-medium text-gray-900">
-                          {getStatusLabel(status)}
-                        </span>
-                      </span>
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 text-xs text-gray-600 sm:gap-y-1.5">
+                      <InfoChip label={`Stav: ${getStatusLabel(status)}`} />
                       {isAdmin ? (
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                          Uživatel:{' '}
-                          <span className="ml-1 font-medium text-gray-900">
-                            {selectedAuthor?.name ?? 'Všichni uživatelé'}
-                          </span>
-                        </span>
+                        <InfoChip label={`Uživatel: ${selectedAuthor?.name ?? 'Všichni uživatelé'}`} />
                       ) : (
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                          Pohled:{' '}
-                          <span className="ml-1 font-medium text-gray-900">
-                            Moje nabídky
-                          </span>
-                        </span>
+                        <InfoChip label="Pohled: Moje nabídky" />
                       )}
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                        Řazení:{' '}
-                        <span className="ml-1 font-medium text-gray-900">
-                          {getSortLabel(sort)}
-                        </span>
-                      </span>
-                      {q ? (
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                          Hledání:{' '}
-                          <span className="ml-1 font-medium text-gray-900">
-                            {q}
-                          </span>
-                        </span>
-                      ) : null}
+                      <InfoChip label={`Řazení: ${getSortLabel(sort)}`} />
+                      {q ? <InfoChip label={`Hledání: ${q}`} /> : null}
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2 border-t border-gray-100 pt-3 sm:border-t-0 sm:pt-0">
-                      <button
-                        type="submit"
-                        className="inline-flex h-9 items-center justify-center rounded-xl bg-black px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800"
-                      >
+                      <OfferFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                         POUŽÍT FILTRY
-                      </button>
-                      <Link
+                      </OfferFilterSubmitButton>
+                      <OfferFilterResetLink
                         href="/offers"
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50"
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                       >
                         RESET
-                      </Link>
+                      </OfferFilterResetLink>
                     </div>
                   </div>
                 </div>
               </form>
 
               <div className="hidden w-full grid-cols-2 gap-3 sm:grid sm:grid-cols-4 lg:relative lg:right-8 lg:ml-auto lg:mr-0 lg:w-auto lg:max-w-full lg:flex-none lg:justify-end">
-                <div className="w-full rounded-2xl border border-[#2980B9] bg-[#2980B9] px-2.5 py-3 text-white shadow-sm lg:w-[119px] lg:flex-none">
+                <div className="w-full rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_24px_rgba(41,128,185,0.25)] lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     CELKEM
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.total}</div>
                 </div>
-                <div className="w-full rounded-2xl border border-zinc-200 bg-white px-2.5 py-3 text-zinc-950 shadow-sm lg:w-[119px] lg:flex-none">
+                <div className="w-full rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-3 text-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em]">
                     ROZPRACOVANÉ
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.draft}</div>
                 </div>
-                <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-800 px-2.5 py-3 text-white shadow-sm lg:w-[119px] lg:flex-none">
+                <div className="w-full rounded-2xl border border-zinc-900 bg-zinc-900 px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     SCHVÁLIT
                   </div>
                   <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.submitted}</div>
                 </div>
-                <div className="w-full rounded-2xl border border-transparent bg-emerald-600 px-2.5 py-3 text-white shadow-sm lg:w-[119px] lg:flex-none">
+                <div className="w-full rounded-2xl border border-emerald-500/80 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_22px_rgba(16,185,129,0.24)] lg:w-[119px] lg:flex-none">
                   <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     SCHVÁLENO
                   </div>
@@ -537,7 +648,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
         </section>
 
         {sortedOffers.length === 0 ? (
-          <section className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
+          <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <h2 className="text-lg font-semibold text-gray-900">
               Zatím tu nejsou žádné nabídky.
             </h2>
@@ -555,7 +666,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 return (
                   <article
                     key={offer.id}
-                    className="overflow-hidden rounded-3xl border border-gray-200 bg-white p-4 shadow-sm"
+                    className="overflow-hidden rounded-3xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_24px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_16px_30px_rgba(15,23,42,0.14)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 w-0 flex-1">
@@ -593,7 +704,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex h-9 items-center justify-center rounded-xl bg-[#2980B9] px-4 text-[11px] font-bold uppercase text-white transition hover:bg-[#236f9f]"
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)]"
                       >
                         PDF
                       </Link>
@@ -602,11 +713,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         offerNumber={offer.offer_number}
                         clients={visibleClientOptions}
                         contacts={contacts}
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-[11px] font-bold uppercase text-gray-700 transition hover:bg-gray-50"
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                       />
                       <Link
                         href={`/offers/${offer.id}`}
-                        className="inline-flex h-9 items-center justify-center rounded-xl bg-black px-4 text-[11px] font-bold uppercase text-white transition hover:bg-gray-800"
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
                       >
                         DETAIL
                       </Link>
@@ -616,10 +727,10 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
               })}
             </section>
 
-            <section className="hidden rounded-3xl border border-gray-200 bg-white p-2 shadow-sm lg:block">
+            <section className="hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
               <div className="max-h-[70vh] overflow-auto">
                 <div
-                  className="sticky top-0 z-20 grid min-w-[1320px] bg-white pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 shadow-[0_1px_0_0_#e5e7eb]"
+                  className="sticky top-0 z-20 grid min-w-[1320px] bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(245,249,253,0.95)_100%)] pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 shadow-[0_1px_0_0_#e5e7eb]"
                   style={{
                     gridTemplateColumns:
                       '11% 9% 14% 4% 8% 17% 11% 10% 16%',
@@ -645,7 +756,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     return (
                       <div
                         key={offer.id}
-                        className="group grid items-center rounded-2xl border border-gray-200 bg-white transition hover:border-gray-300 hover:bg-gray-50/70"
+                        className="group grid items-center rounded-2xl border border-[#cfd8e3] bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px] hover:border-[#78abcf] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_0_0_1px_rgba(143,183,216,0.55)]"
                         style={{
                           gridTemplateColumns:
                             '11% 9% 14% 4% 8% 17% 11% 10% 16%',
@@ -694,7 +805,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                               href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex h-8 items-center justify-center rounded-xl bg-[#2980B9] px-3 text-[11px] font-bold uppercase text-white transition hover:bg-[#236f9f]"
+                              className="inline-flex h-8 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)]"
                             >
                               PDF
                             </Link>
@@ -703,10 +814,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                               offerNumber={offer.offer_number}
                               clients={visibleClientOptions}
                               contacts={contacts}
+                              className="inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_20px_rgba(15,23,42,0.12)]"
                             />
                             <Link
                               href={`/offers/${offer.id}`}
-                              className="inline-flex h-8 items-center justify-center rounded-xl bg-black px-3 text-[11px] font-bold uppercase text-white transition hover:bg-gray-800"
+                              className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
                             >
                               DETAIL
                             </Link>

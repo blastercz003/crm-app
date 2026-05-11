@@ -25,24 +25,24 @@ export function getPriorityLabel(priority: string | null | undefined) {
 export function getStatusBadgeClass(status: string | null | undefined) {
   switch (status) {
     case 'todo':
-      return 'text-white'
+      return 'border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(24,78,129,0.2)]'
     case 'done':
-      return 'bg-green-100 text-green-800'
+      return 'border border-emerald-500/90 bg-[linear-gradient(155deg,#11a36b_0%,#089861_55%,#067f51_100%)] text-white shadow-[inset_0_1px_0_rgba(167,243,208,0.42),0_8px_16px_rgba(5,150,105,0.2)]'
     default:
-      return 'bg-gray-100 text-gray-700'
+      return 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]'
   }
 }
 
 export function getPriorityBadgeClass(priority: string | null | undefined) {
   switch (priority) {
     case 'low':
-      return 'border border-zinc-200 bg-zinc-100 text-zinc-700'
+      return 'border border-slate-300/80 bg-[linear-gradient(155deg,#f3f7fb_0%,#e8eef6_100%)] text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(51,65,85,0.08)]'
     case 'medium':
-      return 'border border-sky-200 bg-sky-100 text-sky-800'
+      return 'border border-amber-300/85 bg-[linear-gradient(155deg,#fff8e7_0%,#ffefc9_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(180,83,9,0.1)]'
     case 'high':
-      return 'border border-red-200 bg-red-100 text-red-800'
+      return 'border border-rose-300/85 bg-[linear-gradient(155deg,#fff1f3_0%,#ffe0e6_100%)] text-rose-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(190,24,93,0.1)]'
     default:
-      return 'border border-gray-200 bg-gray-100 text-gray-700'
+      return 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]'
   }
 }
 

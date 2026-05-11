@@ -98,40 +98,24 @@ export function DashboardSectionLinks({
 
   return (
     <section className="px-1 py-1 sm:px-2">
-      <div className="grid grid-cols-3 gap-3 lg:grid-flow-col lg:auto-cols-[minmax(150px,190px)] lg:justify-center lg:gap-3.5">
+      <div className="grid grid-cols-3 gap-3 lg:flex lg:justify-center lg:gap-7">
         {items.map((item) => (
           <Link
             key={item.key}
             href={item.href}
-            className="group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-2.5 overflow-visible rounded-2xl px-2 py-3 text-center text-[#0b1d2c] transition lg:hover:-translate-y-0.5"
+            className="group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-2.5 overflow-visible rounded-2xl px-2 py-3 text-center text-[#0b1d2c] transition lg:w-[170px]"
           >
             <span
-              className="relative inline-flex h-[74px] w-[74px] items-center justify-center rounded-[18px] border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_16px_34px_rgba(9,48,82,0.50)] backdrop-blur-xl transition-all duration-200 ease-out lg:h-[82px] lg:w-[82px] lg:[animation:dashboard_liquid_7.5s_ease-in-out_infinite] lg:group-hover:scale-[1.045] lg:group-hover:border-[#1f5f8e] lg:group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_22px_42px_rgba(9,48,82,0.62)]"
+              className="relative inline-flex h-[74px] w-[74px] items-center justify-center rounded-[18px] border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_16px_34px_rgba(9,48,82,0.50)] backdrop-blur-xl transition-all duration-200 ease-out lg:h-[82px] lg:w-[82px] lg:group-hover:-translate-y-[2px]"
             >
-              <>
-                <span className="pointer-events-none absolute inset-[2px] hidden rounded-[14px] bg-[radial-gradient(circle_at_26%_24%,rgba(176,226,255,0.38),rgba(130,194,234,0.12)_58%,transparent_70%)] lg:block" />
-                <span className="pointer-events-none absolute -inset-[2px] hidden rounded-[20px] border border-[#4b93c7]/85 lg:block lg:group-hover:border-[#8fc4e8]" />
-              </>
               {item.icon}
             </span>
             <span className="truncate text-[13px] font-semibold uppercase tracking-[0.045em] lg:text-[15px]">
               {item.label}
             </span>
-            <span className="pointer-events-none absolute inset-x-4 top-2 hidden h-14 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(44,120,171,0.42),transparent_72%)] lg:block lg:group-hover:bg-[radial-gradient(ellipse_at_center,rgba(33,102,152,0.58),transparent_72%)]" />
           </Link>
         ))}
       </div>
-
-      <style jsx>{`
-        @media (hover: hover) and (pointer: fine) {
-          @keyframes dashboard_liquid {
-            0% { transform: translateY(0px) scale(1); }
-            33% { transform: translateY(-2px) scale(1.015); }
-            66% { transform: translateY(1px) scale(0.995); }
-            100% { transform: translateY(0px) scale(1); }
-          }
-        }
-      `}</style>
     </section>
   )
 }

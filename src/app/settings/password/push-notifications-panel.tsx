@@ -266,7 +266,7 @@ export function PushNotificationsPanel() {
   }
 
   return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
+    <section className="rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
       <div className="max-w-2xl space-y-5">
         <div>
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
@@ -275,19 +275,19 @@ export function PushNotificationsPanel() {
         </div>
 
         {status === 'unsupported' ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(255,251,235,0.92)_100%)] px-4 py-3 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(245,158,11,0.1)]">
             Tento prohlížeč nepodporuje Web Push notifikace.
           </div>
         ) : null}
 
         {status === 'not-configured' ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(255,251,235,0.92)_100%)] px-4 py-3 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(245,158,11,0.1)]">
             Chybí konfigurace VAPID public key.
           </div>
         ) : null}
 
         {message ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
+          <div className="rounded-2xl border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.9)_100%)] px-4 py-3 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_20px_rgba(15,23,42,0.08)]">
             {message}
           </div>
         ) : null}
@@ -303,7 +303,7 @@ export function PushNotificationsPanel() {
               status === 'not-configured' ||
               status === 'enabled'
             }
-            className="inline-flex items-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-[18px] border border-[#66aee4] bg-[linear-gradient(135deg,#5ea8df_0%,#2f76b7_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-white shadow-[0_18px_30px_rgba(46,123,183,0.22),inset_0_1px_0_rgba(255,255,255,0.34)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100"
           >
             {buttonLabel}
           </button>
@@ -312,7 +312,7 @@ export function PushNotificationsPanel() {
             type="button"
             onClick={disableNotifications}
             disabled={isBusy || status !== 'enabled'}
-            className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-[18px] border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.86)_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-zinc-700 shadow-[0_12px_26px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {isRemoving ? 'ODEBÍRÁM...' : 'ODEBRAT NOTIFIKACE'}
           </button>
@@ -323,7 +323,7 @@ export function PushNotificationsPanel() {
                 type="button"
                 onClick={sendTestNotification}
                 disabled={isSendingTest || status !== 'enabled'}
-                className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-[18px] border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.86)_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-zinc-700 shadow-[0_12px_26px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 {isSendingTest ? 'ODESÍLÁM...' : 'POSLAT TEST'}
               </button>
@@ -332,7 +332,7 @@ export function PushNotificationsPanel() {
                 type="button"
                 onClick={createCrmTestNotification}
                 disabled={isCreatingCrmTest || status !== 'enabled'}
-                className="inline-flex items-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium tracking-wide text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-[18px] border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.86)_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-zinc-700 shadow-[0_12px_26px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 {isCreatingCrmTest ? 'VYTVÁŘÍM...' : 'CRM TEST'}
               </button>
@@ -378,7 +378,7 @@ function BadgeDiagnosticsPanel({
     diagnostics?.hasNotifications === true
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+    <div className="rounded-2xl border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.86)_0%,rgba(244,248,252,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_14px_28px_rgba(15,23,42,0.08)]">
       <div className="flex flex-col items-center gap-2 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
         <div className="w-full sm:w-auto">
           <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-zinc-500">
@@ -471,7 +471,7 @@ function DiagnosticsRow({
           : 'bg-sky-500'
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(246,249,252,0.88)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
       <span className="text-zinc-500">{label}</span>
       <span className="inline-flex items-center gap-2 text-right font-medium text-zinc-800">
         <span className={`h-2 w-2 rounded-full ${dotClass}`} />

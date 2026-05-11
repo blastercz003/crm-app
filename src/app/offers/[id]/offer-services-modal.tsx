@@ -13,10 +13,10 @@ type OfferServicesModalProps = {
 
 function serviceChoiceButtonClassName(isActive: boolean) {
   return [
-    'inline-flex h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold uppercase transition',
+    'inline-flex h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold uppercase transition duration-200',
     isActive
-      ? 'border-[#2980B9] bg-[#2980B9] text-white shadow-sm'
-      : 'border-gray-200 bg-gray-100 text-gray-700 hover:border-gray-300 hover:bg-gray-200',
+      ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_22px_rgba(24,78,129,0.3)] hover:-translate-y-[1px]'
+      : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px]',
   ].join(' ')
 }
 
@@ -54,7 +54,7 @@ export function OfferServicesModal({
 
   return (
     <>
-      <section className="min-w-0 overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-gray-900">
@@ -68,7 +68,7 @@ export function OfferServicesModal({
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-black px-4 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
+            className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
           >
             Upravit služby
           </button>
@@ -82,10 +82,10 @@ export function OfferServicesModal({
               <span
                 key={service}
                 className={[
-                  'inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.02em] sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
+                  'inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.02em] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.08)] sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
                   isActive
-                    ? 'border-[#2980B9] bg-[#2980B9] text-white'
-                    : 'border-gray-200 bg-gray-100 text-gray-900',
+                    ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white'
+                    : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-900',
                 ].join(' ')}
               >
                 {service}
@@ -97,7 +97,7 @@ export function OfferServicesModal({
 
       {isOpen ? (
         <div
-          className="fixed inset-0 z-50 bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+          className="fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
           aria-modal="true"
           role="dialog"
           onMouseDown={(event) => {
@@ -107,7 +107,7 @@ export function OfferServicesModal({
           }}
         >
           <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center">
-            <div className="flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+            <div className="flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(249,252,255,0.82)_50%,rgba(245,250,255,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_36px_84px_rgba(24,24,27,0.32)]">
               <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
                 <div>
                   <h2 className="text-lg font-semibold uppercase text-gray-900">
@@ -120,10 +120,10 @@ export function OfferServicesModal({
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-lg text-gray-500 transition hover:bg-gray-50"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-lg text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)]"
                   aria-label="Zavřít modal"
                 >
-                  ×
+              ✕
                 </button>
               </div>
 
@@ -135,12 +135,12 @@ export function OfferServicesModal({
                     return (
                       <div
                         key={service}
-                        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2"
+                        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-4 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
                       >
                         <div className="min-w-0 text-sm font-semibold uppercase text-gray-900">
                           {service}
                         </div>
-                        <div className="grid w-[220px] shrink-0 grid-cols-2 gap-2 rounded-2xl bg-white p-1 shadow-sm">
+                        <div className="grid w-[220px] shrink-0 grid-cols-2 gap-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
                           <form action={isActive ? undefined : toggleOfferPresetItem.bind(null, offerId)}>
                             <input type="hidden" name="group" value={OFFER_SERVICE_GROUP_LABEL} />
                             <input type="hidden" name="value" value={service} />
@@ -162,11 +162,11 @@ export function OfferServicesModal({
                 </div>
               </div>
 
-              <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
+              <div className="border-t border-[#d8e4ef] px-4 py-4 sm:px-6">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-gray-900 px-5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
                 >
                   Zavřít
                 </button>

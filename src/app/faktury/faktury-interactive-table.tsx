@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { EditJobButton } from '../jobs/edit-job-button'
 import {
   downloadJobAttachmentAction,
@@ -68,7 +69,7 @@ const EDITABLE_CELL_BASE_CLASS =
   'block h-8 w-full rounded-lg px-0 py-1.5 text-[12px] transition'
 const EDITABLE_CELL_COMPACT_CLASS = 'h-7 py-1'
 const EMPTY_ACTION_BADGE_CLASS =
-  'flex h-full w-full items-center justify-center rounded-lg border border-[#2980B9]/30 bg-[#2980B9]/10 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2980B9] transition hover:border-[#2980B9]/40 hover:bg-[#2980B9]/15'
+  'flex h-full w-full items-center justify-center rounded-lg border border-[#76a9d3]/65 bg-[linear-gradient(155deg,rgba(79,146,203,0.14)_0%,rgba(58,126,184,0.1)_100%)] text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2f78b1] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] transition duration-200 hover:border-[#76a9d3]/85 hover:bg-[linear-gradient(155deg,rgba(79,146,203,0.2)_0%,rgba(58,126,184,0.14)_100%)]'
 const EMPTY_ACTION_BADGE_COMPACT_CLASS = 'text-[9px] tracking-[0.1em]'
 
 const BASE_COST_PRESETS: CostPreset[] = [
@@ -103,7 +104,7 @@ export function FakturyInteractiveTable({
 }: FakturyInteractiveTableProps) {
   return (
     <>
-      <section className="hidden rounded-3xl border border-gray-200 bg-white shadow-sm lg:block">
+      <section className="hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
         <div className="overflow-x-auto px-1 py-2">
           <table className="w-full table-fixed border-separate border-spacing-y-2">
             <colgroup>
@@ -122,7 +123,7 @@ export function FakturyInteractiveTable({
               <col className="w-[120px]" />
               <col className="w-[120px]" />
             </colgroup>
-            <thead>
+            <thead className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_100%)] shadow-[0_1px_0_0_#e5e7eb]">
               <tr className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                 <th className="w-[60px] px-1.5 py-2 text-center">Zakázka</th>
                 <th className="w-[72px] px-1.5 py-2 pr-3 text-left">Obchodník</th>
@@ -175,8 +176,8 @@ function DesktopRow({
   clientSuggestions: ClientOption[]
 }) {
   return (
-    <tr className="group">
-      <td className="rounded-l-2xl border border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+    <tr className="group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
+      <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <EditJobButton
           job={row}
           clientSuggestions={clientSuggestions}
@@ -188,7 +189,7 @@ function DesktopRow({
         </EditJobButton>
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 pr-3 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pr-3 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <SalesOwnerText salesOwner={row.sales_owner} />
       </td>
 
@@ -213,7 +214,7 @@ function DesktopRow({
         align="center"
       />
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <FinanceEditableCell
           financeId={row.id}
           field="info_note"
@@ -227,7 +228,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1 py-2 pr-[10px] text-center align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1 py-2 pr-[10px] text-center align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <JobAttachmentsCell
           jobId={row.job_id}
           jobNumber={row.job_number}
@@ -235,7 +236,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 pl-4 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pl-4 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <FinanceEditableCell
           financeId={row.id}
           field="invoice_number"
@@ -250,7 +251,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 pl-4 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pl-4 align-middle text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <FinanceEditableCell
           financeId={row.id}
           field="sale_amount"
@@ -271,7 +272,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 pl-4 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pl-4 align-middle text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <CostAmountCell
           financeId={row.id}
           jobNumber={row.job_number}
@@ -279,7 +280,7 @@ function DesktopRow({
         />
       </td>
 
-      <td className="rounded-r-2xl border border-l-0 border-gray-200 bg-white px-1.5 py-2 pl-4 align-middle text-right transition group-hover:border-gray-300 group-hover:bg-gray-50/70">
+      <td className="rounded-r-2xl border border-l-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pl-4 align-middle text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <ProfitText saleAmount={row.sale_amount} costAmount={row.cost_amount} />
       </td>
     </tr>
@@ -294,7 +295,7 @@ function MobileCard({
   clientSuggestions: ClientOption[]
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -357,7 +358,7 @@ function MobileCard({
         </div>
       </div>
 
-      <div className="mt-3 divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-gray-50">
+      <div className="mt-3 divide-y divide-white/70 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
         <MobileFinanceRow label="Faktura">
           <FinanceEditableCell
             financeId={row.id}
@@ -432,7 +433,7 @@ function ReadOnlyCell({
 
   return (
     <td
-      className={`border border-l-0 border-r-0 border-gray-200 bg-white px-1.5 py-2 align-middle transition group-hover:border-gray-300 group-hover:bg-gray-50/70 ${cellClassName}`}
+      className={`border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] ${cellClassName}`}
     >
       <span
         className={`block h-8 truncate px-1 py-1 text-[12px] leading-6 text-gray-700 ${alignClass}`}
@@ -548,7 +549,7 @@ function FinanceEditableCell({
             cancelEditing()
           }
         }}
-        className={`h-8 w-full rounded-lg border border-gray-300 bg-white px-2 text-[12px] font-semibold text-gray-900 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 ${textAlignClass}`}
+        className={`h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-[12px] font-semibold text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] ${textAlignClass}`}
       />
     )
   }
@@ -608,14 +609,14 @@ function FinanceEditableCell({
 
   const filledClassName =
     filledVariant === 'invoice'
-      ? 'font-semibold text-[#2980B9] hover:bg-[#2980B9]/[0.06]'
+      ? 'font-semibold text-[#2f78b1] hover:bg-[#4f92cb]/[0.08]'
       : filledVariant === 'strong'
         ? 'font-semibold text-black hover:bg-black/[0.025]'
         : 'font-medium text-gray-900 hover:bg-black/[0.025]'
 
   const filledTextClassName =
     filledVariant === 'invoice'
-      ? 'font-semibold text-[#2980B9]'
+      ? 'font-semibold text-[#2f78b1]'
       : filledVariant === 'strong'
         ? 'font-semibold text-black'
         : 'font-medium text-gray-900'
@@ -682,8 +683,8 @@ function JobAttachmentsCell({
         <span
           className={`inline-flex h-full w-full items-center justify-center rounded-lg transition ${
             hasAnyAttachments
-              ? 'border border-[#2980B9] bg-[#2980B9] text-white hover:bg-[#2472a5]'
-              : 'border border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
+              ? 'border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)]'
+              : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] hover:border-[#cfd8e3]'
           }`}
         >
           <svg
@@ -938,9 +939,9 @@ function JobAttachmentsModal({
 
   const visibleItems = items
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       aria-modal="true"
       role="dialog"
       onMouseDown={(event) => {
@@ -950,7 +951,7 @@ function JobAttachmentsModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-5xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[960px] flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[960px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -958,7 +959,7 @@ function JobAttachmentsModal({
                   Přílohy zakázky
                 </h2>
                 <div className="mt-2 flex justify-start">
-                  <span className="inline-flex items-center rounded-full bg-[#2980B9] px-2.5 py-1 text-xs font-semibold text-white">
+                  <span className="inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.26)]">
                     ZAKÁZKA {jobNumber}
                   </span>
                 </div>
@@ -968,7 +969,7 @@ function JobAttachmentsModal({
                 type="button"
                 onClick={handleRequestClose}
                 disabled={isPending}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-lg text-gray-500 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Zavřít modal"
               >
                 ×
@@ -977,13 +978,13 @@ function JobAttachmentsModal({
           </div>
 
           <div className="px-4 py-4 sm:px-6">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     Soubory
                   </label>
-                  <label className="relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 hover:bg-gray-50">
+                  <label className="relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px]">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1017,7 +1018,7 @@ function JobAttachmentsModal({
                       setCategoryValue(event.target.value as JobAttachmentCategory)
                     }
                     disabled={isPending}
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900"
+                    className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                   >
                     {ATTACHMENT_CATEGORY_OPTIONS.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -1037,7 +1038,7 @@ function JobAttachmentsModal({
                   type="button"
                   onClick={handleUpload}
                   disabled={isPending || selectedFiles.length === 0}
-                  className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[176px] md:w-auto"
+                  className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[176px] md:w-auto"
                 >
                   <span>
                     Nahrát
@@ -1050,14 +1051,14 @@ function JobAttachmentsModal({
 
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             {errorMessage ? (
-              <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="mb-3 rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
                 {errorMessage}
               </div>
             ) : null}
 
             <div className="grid gap-3 md:hidden">
               {!isLoading && visibleItems.length === 0 ? (
-                <div className="rounded-3xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
+                <div className="rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-6 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   Zatím nejsou nahrané žádné přílohy.
                 </div>
               ) : null}
@@ -1065,7 +1066,7 @@ function JobAttachmentsModal({
               {visibleItems.map((item) => (
                 <div
                   key={item.id}
-                  className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-gray-200 bg-white p-4"
+                  className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -1077,7 +1078,7 @@ function JobAttachmentsModal({
                       </p>
                     </div>
                     <span
-                      className="max-w-[42%] truncate rounded-full bg-[#2980B9]/10 px-2.5 py-1 text-[11px] font-semibold text-[#2980B9]"
+                      className="max-w-[42%] truncate rounded-full border border-[#76a9d3]/65 bg-[linear-gradient(155deg,rgba(79,146,203,0.14)_0%,rgba(58,126,184,0.1)_100%)] px-2.5 py-1 text-[11px] font-semibold text-[#2f78b1]"
                       title={formatAttachmentCategory(item.category)}
                     >
                       {formatAttachmentCategory(item.category)}
@@ -1108,7 +1109,7 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleOpenAttachment(item.id)}
                       disabled={isPending}
-                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-[#2980B9] bg-[#2980B9] px-2 py-1.5 text-[11px] font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
+                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 py-1.5 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       OTEVŘÍT
                     </button>
@@ -1116,7 +1117,7 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleDownloadAttachment(item.id)}
                       disabled={isPending}
-                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-gray-200 px-2 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-1.5 text-[11px] font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       STÁHNOUT
                     </button>
@@ -1124,7 +1125,7 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleDeleteAttachment(item.id, item.displayName)}
                       disabled={isPending}
-                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-200 px-2 py-1.5 text-[11px] font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 py-1.5 text-[11px] font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       SMAZAT
                     </button>
@@ -1133,8 +1134,8 @@ function JobAttachmentsModal({
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto rounded-3xl border border-gray-200 md:block">
-              <table className="w-full table-fixed bg-white">
+            <div className="hidden overflow-x-auto rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] md:block">
+              <table className="w-full table-fixed bg-transparent">
                 <thead>
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     <th className="px-3 py-3">Název</th>
@@ -1154,7 +1155,7 @@ function JobAttachmentsModal({
                   ) : null}
 
                   {visibleItems.map((item) => (
-                    <tr key={item.id} className="border-t border-gray-100">
+                    <tr key={item.id} className="border-t border-white/70">
                       <td className="max-w-0 px-3 py-2">
                         <span
                           className="block w-full truncate text-sm text-gray-900"
@@ -1183,7 +1184,7 @@ function JobAttachmentsModal({
                             type="button"
                             onClick={() => handleOpenAttachment(item.id)}
                             disabled={isPending}
-                            className="shrink-0 rounded-lg border border-[#2980B9] bg-[#2980B9] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#2472a5] disabled:opacity-60"
+                            className="shrink-0 rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1.5 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                           >
                             OTEVŘÍT
                           </button>
@@ -1191,7 +1192,7 @@ function JobAttachmentsModal({
                             type="button"
                             onClick={() => handleDownloadAttachment(item.id)}
                             disabled={isPending}
-                            className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                            className="shrink-0 rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                           >
                             STÁHNOUT
                           </button>
@@ -1201,7 +1202,7 @@ function JobAttachmentsModal({
                               handleDeleteAttachment(item.id, item.displayName)
                             }
                             disabled={isPending}
-                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                            className="shrink-0 rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2.5 py-1.5 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                           >
                             SMAZAT
                           </button>
@@ -1217,6 +1218,12 @@ function JobAttachmentsModal({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }
 
 function CostItemsModal({
@@ -1458,9 +1465,9 @@ function CostItemsModal({
   const totalCost = getDraftRowsTotal(rows)
   const validationErrors = getDraftRowErrors(rows)
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       aria-modal="true"
       role="dialog"
       onMouseDown={(event) => {
@@ -1470,16 +1477,19 @@ function CostItemsModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
                   Náklady zakázky
                 </h2>
-                <div className="mt-2 flex justify-start">
-                  <span className="inline-flex items-center rounded-full bg-[#2980B9] px-2.5 py-1 text-xs font-semibold text-white">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.26)]">
                     ZAKÁZKA {jobNumber}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(241,245,249,0.88)_100%)] px-3 py-1 text-xs font-semibold text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_16px_rgba(15,23,42,0.08)] sm:hidden">
+                    {formatMoney(totalCost)}
                   </span>
                 </div>
               </div>
@@ -1488,7 +1498,7 @@ function CostItemsModal({
                 type="button"
                 onClick={handleRequestClose}
                 disabled={isPending}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-lg text-gray-500 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Zavřít modal"
               >
                 ×
@@ -1496,16 +1506,16 @@ function CostItemsModal({
             </div>
           </div>
 
-          <div className="px-4 py-4 sm:px-6">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="px-4 py-3 sm:px-6 sm:py-4">
+            <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:px-4 sm:py-3">
+              <div className="flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <div className="flex items-center gap-2">
                     <select
                       value={addPresetKey}
                       onChange={(event) => setAddPresetKey(event.target.value)}
                       disabled={isLoading || isPending}
-                      className="h-10 min-w-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                      className="h-9 min-w-0 rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-xs text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:h-10 sm:text-sm"
                     >
                       {OPTIONAL_COST_PRESETS.map((preset) => (
                         <option key={preset.key} value={preset.key}>
@@ -1518,7 +1528,7 @@ function CostItemsModal({
                       type="button"
                       onClick={handleAddPresetRow}
                       disabled={isLoading || isPending}
-                      className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:px-4 sm:text-sm"
                     >
                       Přidat položku
                     </button>
@@ -1528,17 +1538,17 @@ function CostItemsModal({
                     type="button"
                     onClick={handleAddCustomRow}
                     disabled={isLoading || isPending}
-                    className="inline-flex h-10 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-9 items-center justify-center rounded-xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:px-4 sm:text-sm"
                   >
                     Přidat vlastní řádek
                   </button>
                 </div>
 
-                <div className="rounded-2xl bg-white px-4 py-2 text-right shadow-sm">
+                <div className="hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] sm:block sm:px-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     Celkový náklad
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-gray-900">
+                  <div className="mt-0.5 text-base font-semibold text-gray-900 sm:mt-1 sm:text-lg">
                     {formatMoney(totalCost)}
                   </div>
                 </div>
@@ -1549,71 +1559,45 @@ function CostItemsModal({
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             <div className="space-y-4">
               {errorMessage ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
                   {errorMessage}
                 </div>
               ) : null}
 
-              <div className="overflow-x-auto rounded-3xl border border-gray-200">
-                <table className="min-w-full table-fixed border-separate border-spacing-0 bg-white">
-                  <colgroup>
-                    <col className="w-[24%]" />
-                    <col className="w-[24%]" />
-                    <col className="w-[96px]" />
-                    <col className="w-[96px]" />
-                    <col className="w-[132px]" />
-                    <col className="w-[220px]" />
-                  </colgroup>
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                      <th className="border-b border-gray-200 px-3 py-3">
-                        Položka
-                      </th>
-                      <th className="border-b border-gray-200 px-3 py-3">
-                        Dodavatel
-                      </th>
-                      <th className="border-b border-gray-200 px-3 py-3 text-right">
-                        Jedn. cena
-                      </th>
-                      <th className="border-b border-gray-200 px-3 py-3 text-right">
-                        Množství
-                      </th>
-                      <th className="border-b border-gray-200 px-3 py-3 text-right">
-                        Cena
-                      </th>
-                      <th className="border-b border-gray-200 px-2 py-3 text-right">
-                        Akce
-                      </th>
-                    </tr>
-                  </thead>
+              <div className="space-y-3 md:hidden">
+                {isLoading ? (
+                  <div className="rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-10 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    Načítám nákladové položky...
+                  </div>
+                ) : rows.length === 0 ? (
+                  <div className="rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-10 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    Zatím nejsou zadané žádné nákladové položky.
+                  </div>
+                ) : (
+                  rows.map((row) => {
+                    const lineTotal = getDraftRowLineTotal(row)
+                    const hasValidTotal = typeof lineTotal === 'number'
+                    const rowErrors = validationErrors.get(row.id) ?? {}
+                    const canMoveUp = canMoveRow(rows, row.id, 'up')
+                    const canMoveDown = canMoveRow(rows, row.id, 'down')
 
-                  <tbody>
-                    {isLoading ? (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="px-4 py-10 text-center text-sm text-gray-500"
-                        >
-                          Načítám nákladové položky...
-                        </td>
-                      </tr>
-                    ) : (
-                      rows.map((row) => {
-                        const lineTotal = getDraftRowLineTotal(row)
-                        const hasValidTotal = typeof lineTotal === 'number'
-                        const rowErrors = validationErrors.get(row.id) ?? {}
-                        const canMoveUp = canMoveRow(rows, row.id, 'up')
-                        const canMoveDown = canMoveRow(rows, row.id, 'down')
-
-                        return (
-                          <tr key={row.id} className="border-t border-gray-100">
-                            <td className="border-b border-gray-100 px-3 py-3 align-middle">
+                    return (
+                      <div
+                        key={row.id}
+                        className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                      >
+                        <div className="space-y-2.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                                Položka
+                              </div>
                               {row.isBase ? (
-                                <div className="flex items-center justify-between gap-3">
+                                <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3">
                                   <span className="block min-w-0 truncate text-sm font-medium text-gray-900">
                                     {row.label}
                                   </span>
-                                  <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
+                                  <span className="shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
                                     Základ
                                   </span>
                                 </div>
@@ -1627,10 +1611,243 @@ function CostItemsModal({
                                       handleRowChange(row.id, 'label', event.target.value)
                                     }
                                     placeholder="Název položky"
-                                    className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                    className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                                       rowErrors.label
                                         ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                        : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+                                        : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                    }`}
+                                  />
+                                  {rowErrors.label ? (
+                                    <p className="mt-1 text-xs text-red-600">{rowErrors.label}</p>
+                                  ) : null}
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                                Dodavatel
+                              </div>
+                              <input
+                                type="text"
+                                value={row.supplier}
+                                disabled={isPending}
+                                onChange={(event) =>
+                                  handleRowChange(row.id, 'supplier', event.target.value)
+                                }
+                                placeholder="Dodavatel"
+                                className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                                Jedn. cena
+                              </div>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={row.unitPrice}
+                                disabled={isPending}
+                                onChange={(event) =>
+                                  handleRowChange(row.id, 'unitPrice', event.target.value)
+                                }
+                                placeholder="0"
+                                className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  rowErrors.unitPrice
+                                    ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
+                                    : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                }`}
+                              />
+                              {rowErrors.unitPrice ? (
+                                <p className="mt-1 text-xs text-red-600">{rowErrors.unitPrice}</p>
+                              ) : null}
+                            </div>
+                            <div>
+                              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                                Množství
+                              </div>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={row.quantity}
+                                disabled={isPending}
+                                onChange={(event) =>
+                                  handleRowChange(row.id, 'quantity', event.target.value)
+                                }
+                                placeholder="0"
+                                className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  rowErrors.quantity
+                                    ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
+                                    : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                }`}
+                              />
+                              {rowErrors.quantity ? (
+                                <p className="mt-1 text-xs text-red-600">{rowErrors.quantity}</p>
+                              ) : null}
+                            </div>
+                            <div>
+                              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                                Cena
+                              </div>
+                              <div className="flex h-10 items-center justify-end rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-3">
+                                <span
+                                  className={`text-sm font-semibold ${
+                                    hasValidTotal ? 'text-gray-900' : 'text-red-600'
+                                  }`}
+                                >
+                                  {hasValidTotal ? formatMoney(lineTotal) : 'Neplatný výpočet'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {row.isBase ? (
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateRow(row.id)}
+                                disabled={isPending}
+                                className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Kopie
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveRow(row.id, 'up')}
+                                disabled={isPending || !canMoveUp}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+                                title="Posunout nahoru"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveRow(row.id, 'down')}
+                                disabled={isPending || !canMoveDown}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+                                title="Posunout dolů"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateRow(row.id)}
+                                disabled={isPending}
+                                className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                title="Duplikovat řádek"
+                              >
+                                Kopie
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveRow(row.id)}
+                                disabled={isPending}
+                                className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                title="Smazat řádek"
+                              >
+                                SMAZAT
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              <div className="hidden overflow-x-auto rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] md:block">
+                <table className="min-w-full table-fixed border-separate border-spacing-0 bg-transparent">
+                  <colgroup>
+                    <col className="w-[24%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[96px]" />
+                    <col className="w-[96px]" />
+                    <col className="w-[132px]" />
+                    <col className="w-[220px]" />
+                  </colgroup>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_100%)] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                      <th className="border-b border-white/70 px-3 py-3">
+                        Položka
+                      </th>
+                      <th className="border-b border-white/70 px-3 py-3">
+                        Dodavatel
+                      </th>
+                      <th className="border-b border-white/70 px-3 py-3 text-right">
+                        Jedn. cena
+                      </th>
+                      <th className="border-b border-white/70 px-3 py-3 text-right">
+                        Množství
+                      </th>
+                      <th className="border-b border-white/70 px-3 py-3 text-right">
+                        Cena
+                      </th>
+                      <th className="border-b border-white/70 px-2 py-3 text-right">
+                        Akce
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="border-b border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-10 text-center text-sm text-gray-500"
+                        >
+                          Načítám nákladové položky...
+                        </td>
+                      </tr>
+                    ) : rows.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="border-b border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-10 text-center text-sm text-gray-500"
+                        >
+                          Zatím nejsou zadané žádné nákladové položky.
+                        </td>
+                      </tr>
+                    ) : (
+                      rows.map((row) => {
+                        const lineTotal = getDraftRowLineTotal(row)
+                        const hasValidTotal = typeof lineTotal === 'number'
+                        const rowErrors = validationErrors.get(row.id) ?? {}
+                        const canMoveUp = canMoveRow(rows, row.id, 'up')
+                        const canMoveDown = canMoveRow(rows, row.id, 'down')
+
+                        return (
+                          <tr key={row.id} className="border-t border-white/70">
+                            <td className="border-b border-white/70 px-3 py-3 align-middle">
+                              {row.isBase ? (
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="block min-w-0 truncate text-sm font-medium text-gray-900">
+                                    {row.label}
+                                  </span>
+                                  <span className="shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
+                                    Základ
+                                  </span>
+                                </div>
+                              ) : (
+                                <div>
+                                  <input
+                                    type="text"
+                                    value={row.label}
+                                    disabled={isPending}
+                                    onChange={(event) =>
+                                      handleRowChange(row.id, 'label', event.target.value)
+                                    }
+                                    placeholder="Název položky"
+                                    className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                      rowErrors.label
+                                        ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
+                                        : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
                                     }`}
                                   />
                                   {rowErrors.label ? (
@@ -1642,7 +1859,7 @@ function CostItemsModal({
                               )}
                             </td>
 
-                            <td className="border-b border-gray-100 px-3 py-3 align-middle">
+                            <td className="border-b border-white/70 px-3 py-3 align-middle">
                               <input
                                 type="text"
                                 value={row.supplier}
@@ -1651,11 +1868,11 @@ function CostItemsModal({
                                   handleRowChange(row.id, 'supplier', event.target.value)
                                 }
                                 placeholder="Dodavatel"
-                                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60"
                               />
                             </td>
 
-                            <td className="border-b border-gray-100 px-3 py-3 align-middle">
+                            <td className="border-b border-white/70 px-3 py-3 align-middle">
                               <div>
                                 <input
                                   type="text"
@@ -1666,10 +1883,10 @@ function CostItemsModal({
                                     handleRowChange(row.id, 'unitPrice', event.target.value)
                                   }
                                   placeholder="0"
-                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                                     rowErrors.unitPrice
                                       ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                      : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+                                      : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
                                   }`}
                                 />
                                 {rowErrors.unitPrice ? (
@@ -1680,7 +1897,7 @@ function CostItemsModal({
                               </div>
                             </td>
 
-                            <td className="border-b border-gray-100 px-3 py-3 align-middle">
+                            <td className="border-b border-white/70 px-3 py-3 align-middle">
                               <div>
                                 <input
                                   type="text"
@@ -1691,10 +1908,10 @@ function CostItemsModal({
                                     handleRowChange(row.id, 'quantity', event.target.value)
                                   }
                                   placeholder="0"
-                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-white px-3 text-right text-sm text-gray-900 outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                                     rowErrors.quantity
                                       ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                      : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+                                      : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
                                   }`}
                                 />
                                 {rowErrors.quantity ? (
@@ -1705,7 +1922,7 @@ function CostItemsModal({
                               </div>
                             </td>
 
-                            <td className="border-b border-gray-100 px-3 py-3 align-middle text-right">
+                            <td className="border-b border-white/70 px-3 py-3 align-middle text-right">
                               <span
                                 className={`ml-auto block w-[108px] text-right text-sm font-semibold ${
                                   hasValidTotal ? 'text-gray-900' : 'text-red-600'
@@ -1717,7 +1934,7 @@ function CostItemsModal({
                               </span>
                             </td>
 
-                            <td className="border-b border-gray-100 px-2 py-3 align-middle text-right">
+                            <td className="border-b border-white/70 px-2 py-3 align-middle text-right">
                               {row.isBase ? (
                                 <div className="flex min-w-[212px] justify-end gap-1">
                                   <span className="inline-flex h-9 w-9 shrink-0" aria-hidden="true" />
@@ -1727,7 +1944,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleDuplicateRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl bg-gray-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     Kopie
                                   </button>
@@ -1738,7 +1955,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleMoveRow(row.id, 'up')}
                                     disabled={isPending || !canMoveUp}
-                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
                                     title="Posunout nahoru"
                                   >
                                     ↑
@@ -1747,7 +1964,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleMoveRow(row.id, 'down')}
                                     disabled={isPending || !canMoveDown}
-                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
                                     title="Posunout dolů"
                                   >
                                     ↓
@@ -1756,7 +1973,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleDuplicateRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl bg-gray-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                                     title="Duplikovat řádek"
                                   >
                                     Kopie
@@ -1765,7 +1982,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleRemoveRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                     title="Smazat řádek"
                                   >
                                     SMAZAT
@@ -1783,22 +2000,22 @@ function CostItemsModal({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <button
-              type="button"
-              onClick={handleDeleteCosts}
-              disabled={isLoading || isPending}
-              className="inline-flex h-11 items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Smazat náklady
-            </button>
+          <div className="border-t border-white/70 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="grid grid-cols-2 gap-2 sm:hidden">
+              <button
+                type="button"
+                onClick={handleDeleteCosts}
+                disabled={isLoading || isPending}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Smazat náklady
+              </button>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
               <a
                 href={`/faktury/${financeId}/costs-export`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 text-[11px] font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
               >
                 Export nákladů
               </a>
@@ -1807,7 +2024,7 @@ function CostItemsModal({
                 type="button"
                 onClick={handleRequestClose}
                 disabled={isPending}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-gray-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Zrušit
               </button>
@@ -1816,16 +2033,62 @@ function CostItemsModal({
                 type="button"
                 onClick={handleSave}
                 disabled={isLoading || isPending}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#2980B9] px-5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:bg-[#236f9f] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPending ? 'Ukládám…' : 'Uložit'}
               </button>
+            </div>
+
+            <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between">
+              <button
+                type="button"
+                onClick={handleDeleteCosts}
+                disabled={isLoading || isPending}
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Smazat náklady
+              </button>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                <a
+                  href={`/faktury/${financeId}/costs-export`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                >
+                  Export nákladů
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleRequestClose}
+                  disabled={isPending}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Zrušit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isLoading || isPending}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPending ? 'Ukládám…' : 'Uložit'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }
 
 function formatAttachmentCategory(category: JobAttachmentCategory) {

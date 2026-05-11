@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   createOfferModalAction,
@@ -32,6 +33,11 @@ const initialState: OfferFormActionState = {
   error: null,
 }
 
+const glassInputClass =
+  'h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+
+const glassSelectClass = `${glassInputClass} appearance-none bg-no-repeat pr-10`
+
 function normalizeSearchText(value: string) {
   return value
     .normalize('NFD')
@@ -59,8 +65,8 @@ export function NewOfferButton({
         type="button"
         onClick={openModal}
         className={
-          className ??
-          'primary-ambient-glow--blue inline-flex items-center justify-center rounded-2xl bg-[#2980B9] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#236f9f]'
+          `${className ??
+            'inline-flex items-center justify-center rounded-2xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_26px_rgba(9,48,82,0.32)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#1f5f8e] hover:bg-[linear-gradient(160deg,rgba(56,125,177,0.95)_0%,rgba(37,109,163,0.96)_45%,rgba(22,86,138,0.98)_100%)]'} primary-ambient-glow--blue`
         }
       >
         NOVÁ NABÍDKA
@@ -199,9 +205,9 @@ export function NewOfferModal({
     }
   }, [onClose, router, state.offerId, state.success])
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 p-4 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -215,29 +221,26 @@ export function NewOfferModal({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
-          className="flex w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl"
+          className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             maxHeight:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
           }}
         >
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 NOVÁ NABÍDKA
               </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Vyber typ nabídky a vyplň základní data.
-              </p>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)]"
               aria-label="Zavřít"
             >
-              ×
+              ✕
             </button>
           </div>
 
@@ -249,7 +252,7 @@ export function NewOfferModal({
                   Typ nabídky
                 </label>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="flex min-h-[46px] cursor-pointer items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-black transition hover:bg-gray-50">
+                  <label className="flex min-h-[46px] cursor-pointer items-center gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition hover:border-[#b9d8ef]">
                     <input
                       type="radio"
                       name="offer_type"
@@ -259,7 +262,7 @@ export function NewOfferModal({
                     />
                     <span className="text-base font-semibold uppercase text-gray-900">KLASICKÁ</span>
                   </label>
-                  <label className="flex min-h-[46px] cursor-pointer items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-black transition hover:bg-gray-50">
+                  <label className="flex min-h-[46px] cursor-pointer items-center gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition hover:border-[#b9d8ef]">
                     <input
                       type="radio"
                       name="offer_type"
@@ -283,7 +286,7 @@ export function NewOfferModal({
                   name="title"
                   required
                   placeholder="Např. Pronájem DA 250kVA / 200kW"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className={glassInputClass}
                 />
               </div>
 
@@ -300,15 +303,15 @@ export function NewOfferModal({
                     onBlur={handleCompanyBlur}
                     placeholder="Začni psát název klienta"
                     className={[
-                      'w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2',
+                      glassInputClass,
                       showCompanyError
                         ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                        : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200',
+                        : '',
                     ].join(' ')}
                   />
 
                   {suggestions.length > 0 ? (
-                    <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
+                    <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.97)_0%,rgba(243,248,252,0.94)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_20px_36px_rgba(15,23,42,0.16)]">
                       {suggestions.map((client) => (
                         <button
                           key={client.id}
@@ -322,7 +325,7 @@ export function NewOfferModal({
                             setCompanyTouched(true)
                             setCompanyHasFocus(false)
                           }}
-                          className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50"
+                          className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-[#eef6fd]"
                         >
                           {client.name}
                         </button>
@@ -351,7 +354,13 @@ export function NewOfferModal({
                       id="client_contact_select"
                       value={selectedContactId}
                       onChange={(event) => handleContactChange(event.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                      className={glassSelectClass}
+                      style={{
+                        backgroundImage:
+                          "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%20fill='none'%20stroke='%23111827'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M6%208l4%204%204-4'/%3E%3C/svg%3E\")",
+                        backgroundPosition: 'right 0.95rem center',
+                        backgroundSize: '16px 16px',
+                      }}
                     >
                       <option value="">Bez konkrétní osoby</option>
                       {selectedClientContacts.map((contact) => (
@@ -370,7 +379,7 @@ export function NewOfferModal({
                     value={contactPerson}
                     onChange={(event) => setContactPerson(event.target.value)}
                     placeholder="Kontaktní osoba zákazníka"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                    className={glassInputClass}
                   />
                 )}
               </div>
@@ -386,12 +395,12 @@ export function NewOfferModal({
                   id="realization_address"
                   name="realization_address"
                   placeholder="Místo realizace"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                  className={glassInputClass}
                 />
               </div>
 
               {state.error ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(127,29,29,0.10)]">
                   {state.error}
                 </div>
               ) : null}
@@ -405,6 +414,7 @@ export function NewOfferModal({
                 submitLabel="VYTVOŘIT NABÍDKU"
                 pendingSubmitLabel="VYTVÁŘÍM NABÍDKU..."
                 submitDisabled={!companySelectionIsValid}
+                visualStyle="blaster"
               />
             </div>
           </form>
@@ -412,4 +422,10 @@ export function NewOfferModal({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }

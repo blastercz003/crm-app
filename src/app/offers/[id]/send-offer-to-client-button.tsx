@@ -15,10 +15,10 @@ export function SendOfferToClientButton({ isSent }: SendOfferToClientButtonProps
       type="submit"
       disabled={isLocked}
       className={[
-        'inline-flex min-h-10 w-full items-center justify-center rounded-xl px-4 text-sm font-medium transition disabled:cursor-not-allowed',
+        'inline-flex min-h-10 w-full items-center justify-center rounded-xl border px-4 text-sm font-medium transition duration-200 disabled:cursor-not-allowed',
         isLocked
-          ? 'bg-zinc-400 text-white'
-          : 'bg-black text-white hover:bg-gray-800',
+          ? 'border-zinc-300 bg-zinc-300 text-zinc-600'
+          : 'border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800',
       ].join(' ')}
     >
       {isLocked ? 'ODESLÁNO KLIENTOVI' : 'ODESLAT KLIENTOVI'}

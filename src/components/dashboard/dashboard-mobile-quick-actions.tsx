@@ -303,7 +303,7 @@ export function DashboardMobileQuickActions({
           />
 
           <div
-            className={`absolute overflow-hidden rounded-[28px] border border-zinc-200/80 bg-white/97 p-3 transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`absolute overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.9)_42%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetOpen
                 ? 'translate-x-0 translate-y-0 scale-100 opacity-100 shadow-[0_46px_112px_rgba(15,23,42,0.24)]'
                 : 'translate-x-4 translate-y-5 scale-[0.72] opacity-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
@@ -317,7 +317,7 @@ export function DashboardMobileQuickActions({
               transformOrigin: 'bottom right',
               transitionDelay: isSheetOpen ? '34ms' : '0ms',
               background:
-                'linear-gradient(180deg, rgba(255,255,255,0.985) 0%, rgba(251,253,255,0.97) 100%)',
+                'linear-gradient(168deg, rgba(255,255,255,0.96) 0%, rgba(247,250,253,0.9) 42%, rgba(241,245,249,0.84) 100%)',
             }}
           >
             <div
@@ -342,7 +342,7 @@ export function DashboardMobileQuickActions({
                   key={action.key}
                   type="button"
                   onClick={() => handleActionSelect(action.key)}
-                  className={`flex items-center justify-between rounded-[22px] border border-zinc-200 bg-[#F4F7FA] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-zinc-300 hover:bg-[#EEF3F7] ${
+                  className={`flex items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
                     isDesktopViewport ? 'min-h-[56px] py-3.5 text-[15px]' : 'min-h-[52px] py-3 text-[15px]'
                   } ${
                     isSheetOpen ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.96] opacity-0'

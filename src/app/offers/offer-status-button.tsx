@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import { setOfferStatusFromList } from '@/app/offers/actions'
 import type { OfferStatus } from '@/lib/offers/types'
 import {
@@ -22,14 +23,28 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
 }
 
 function getStatusClass(status: OfferStatus) {
-  if (status === 'ordered') return 'bg-emerald-600 text-white'
-  if (status === 'rejected') return 'bg-rose-600 text-white'
-  if (status === 'in_progress') return 'bg-orange-500 text-white'
-  if (status === 'sent_to_client') return 'border border-black bg-white text-black'
-  if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'submitted') return 'bg-[#2980B9]/10 text-[#236f9f]'
-  if (status === 'changes_requested') return 'bg-amber-100 text-amber-700'
-  return 'bg-zinc-100 text-zinc-600'
+  if (status === 'ordered') {
+    return 'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
+  }
+  if (status === 'rejected') {
+    return 'border border-rose-500/85 bg-[linear-gradient(155deg,#e6527f_0%,#dc3f71_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(225,29,72,0.22)]'
+  }
+  if (status === 'in_progress') {
+    return 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
+  }
+  if (status === 'sent_to_client') {
+    return 'border border-zinc-900 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(247,247,248,0.9)_100%)] text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_16px_rgba(24,24,27,0.08)]'
+  }
+  if (status === 'approved') {
+    return 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.95)_0%,rgba(209,250,229,0.88)_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_16px_rgba(16,185,129,0.14)]'
+  }
+  if (status === 'submitted') {
+    return 'border border-[#8dbfe0] bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(41,128,185,0.14)]'
+  }
+  if (status === 'changes_requested') {
+    return 'border border-amber-300/90 bg-[linear-gradient(155deg,rgba(255,251,235,0.96)_0%,rgba(254,243,199,0.9)_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(217,119,6,0.14)]'
+  }
+  return 'border border-zinc-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]'
 }
 
 function getAllowedTargets(currentStatus: OfferStatus, isAdmin: boolean) {
@@ -108,7 +123,7 @@ export function OfferStatusButton({
       <button
         type="button"
         onClick={() => (canEdit ? setIsOpen(true) : undefined)}
-        className={`inline-flex h-8 ${badgeWidthClass} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition ${statusMetaClass} ${canEdit ? 'hover:opacity-95' : 'cursor-default'}`}
+        className={`inline-flex h-8 ${badgeWidthClass} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition duration-200 ${statusMetaClass} ${canEdit ? 'hover:-translate-y-[1px]' : 'cursor-default'}`}
       >
         <span className="truncate">{STATUS_LABELS[currentStatus]}</span>
       </button>
@@ -142,6 +157,13 @@ function StatusModal({
   onClose: () => void
   onChangeStatus: (status: OfferStatus) => void
 }) {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+    return () => setIsMounted(false)
+  }, [])
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -150,9 +172,11 @@ function StatusModal({
     }
   }, [])
 
-  return (
+  if (!isMounted) return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -162,27 +186,30 @@ function StatusModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-5 shadow-2xl">
-          <div className="mb-4 flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
+          <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <div className="flex flex-col items-start">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900">
                 Změnit stav nabídky:
               </h2>
-              <div className="mt-1.5 inline-flex items-center rounded-full border border-[#2980B9] bg-[#2980B9] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white">
+              <div className="mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
                 {offerNumber}
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)]"
               aria-label="Zavřít"
             >
               ✕
             </button>
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#2980B9] bg-[#2980B9] px-3 py-3 text-sm text-white">
+          <div className="relative flex items-center justify-between gap-3 rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-3 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(41,128,185,0.24)]">
             <span className="font-semibold text-white">Aktuální stav:</span>
             <span
               className={`inline-flex h-8 ${STATUS_BADGE_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${getStatusClass(currentStatus)}`}
@@ -197,7 +224,7 @@ function StatusModal({
 
           <div className="mt-3 space-y-2">
             {targets.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-white px-3 py-3 text-sm text-gray-500">
+              <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
                 Pro aktuální stav není dostupná žádná změna.
               </div>
             ) : (
@@ -207,7 +234,7 @@ function StatusModal({
                   type="button"
                   disabled={isPending}
                   onClick={() => onChangeStatus(status)}
-                  className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_24px_rgba(15,23,42,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <span className="font-medium text-gray-900">{STATUS_LABELS[status]}</span>
                   <span
@@ -221,6 +248,7 @@ function StatusModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

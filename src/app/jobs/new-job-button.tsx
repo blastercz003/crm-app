@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createJobAction, type CreateJobActionState } from './actions'
 import { buildJobCreatedToast } from '@/components/ui/action-feedback-messages'
 import {
@@ -74,7 +75,7 @@ export function NewJobButton({
 
   const resolvedClassName =
     className ??
-    'inline-flex items-center justify-center rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800'
+    'inline-flex items-center justify-center rounded-2xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_26px_rgba(9,48,82,0.32)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#1f5f8e] hover:bg-[linear-gradient(160deg,rgba(56,125,177,0.95)_0%,rgba(37,109,163,0.96)_45%,rgba(22,86,138,0.98)_100%)]'
 
   return (
     <>
@@ -202,7 +203,6 @@ function JobFormShell({
   const showCompanyError = companyTouched && !companySelectionIsValid
 
   const title = 'Nová zakázka'
-  const description = 'Vyber existující firmu a vyplň základní údaje k nové realizaci.'
   const submitLabel = 'ULOŽIT ZAKÁZKU'
 
   useBodyScrollLock(true)
@@ -312,7 +312,7 @@ function JobFormShell({
     const trimmedValue = companyName.trim()
 
     if (!trimmedValue) {
-      return 'Začni psát název firmy ze seznamu klientů.'
+      return ''
     }
 
     if (companySelectionIsValid) {
@@ -329,9 +329,9 @@ function JobFormShell({
         ? 'text-red-600'
         : 'text-gray-500'
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 p-4 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -345,24 +345,23 @@ function JobFormShell({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
-          className="flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl"
+          className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             maxHeight:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
           }}
         >
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 {title}
               </h2>
-              <p className="mt-1 text-sm text-gray-500">{description}</p>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
               aria-label="Zavřít"
             >
               ✕
@@ -380,14 +379,11 @@ function JobFormShell({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
-                <section className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/60 p-4 sm:overflow-visible">
+                <section className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Základ zakázky
                     </h3>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      Firma, osoba a obchodník.
-                    </p>
                   </div>
 
                   <div className="grid gap-3">
@@ -409,16 +405,16 @@ function JobFormShell({
                         onChange={(event) => handleCompanyChange(event.target.value)}
                         onFocus={handleCompanyFocus}
                         onBlur={handleCompanyBlur}
-                        className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                        className={`h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 ${
                           showCompanyError
                             ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
                             : companySelectionIsValid && !companyHasFocus
                               ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
-                              : 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+                              : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
                         }`}
                       />
 
-                      <div className="mt-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5">
+                      <div className="mt-2 rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                           Vybraná firma
                         </div>
@@ -453,7 +449,7 @@ function JobFormShell({
                             id={`${mode}-client_contact_id`}
                             value={selectedContactId}
                             onChange={(event) => handleContactChange(event.target.value)}
-                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                            className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                           >
                             <option value="">Bez konkrétní osoby</option>
                             {selectedClientContacts.map((contact) => (
@@ -473,7 +469,7 @@ function JobFormShell({
                           value={contactPerson}
                           onChange={(event) => setContactPerson(event.target.value)}
                           placeholder="Kontaktní osoba"
-                          className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                          className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                         />
                       )}
                     </div>
@@ -489,7 +485,7 @@ function JobFormShell({
                         id={`${mode}-sales_owner`}
                         name="sales_owner"
                         defaultValue={job?.sales_owner ?? 'JIŘÍ'}
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       >
                         <option value="JIŘÍ">JIŘÍ</option>
                         <option value="MICHAL">MICHAL</option>
@@ -499,14 +495,11 @@ function JobFormShell({
                   </div>
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/60 p-4 sm:overflow-visible">
+                <section className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Termín a místo
                     </h3>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      Začátek, konec a adresa realizace.
-                    </p>
                   </div>
 
                   <div className="grid gap-3">
@@ -523,7 +516,7 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job?.start_at)}
-                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
@@ -540,7 +533,7 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job?.end_at)}
-                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
@@ -557,7 +550,7 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.site_address ?? ''}
                         placeholder="Adresa realizace"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
@@ -574,20 +567,17 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.store_number ?? ''}
                         placeholder="Např. 154"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+                <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Realizace
                     </h3>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      Technik, agregát a interní info.
-                    </p>
                   </div>
 
                   <div className="grid gap-3">
@@ -604,7 +594,7 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.technician_name ?? ''}
                         placeholder="Odpovědný pracovník"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
@@ -621,7 +611,7 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.generator_name ?? ''}
                         placeholder="Např. Aggreko 250 kVA"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
@@ -638,7 +628,7 @@ function JobFormShell({
                         rows={6}
                         defaultValue={job?.info_note ?? ''}
                         placeholder="Libovolná interní poznámka k zakázce"
-                        className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="w-full resize-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
                   </div>
@@ -663,6 +653,12 @@ function JobFormShell({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }
 
 function toDateTimeLocalValue(value: string | null | undefined) {

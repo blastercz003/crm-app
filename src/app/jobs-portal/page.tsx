@@ -4,6 +4,8 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { JobsPortalTable } from './jobs-portal-table'
+import { JobsPortalFilterSubmitButton } from './jobs-portal-filter-submit-button'
+import { JobsPortalFilterResetLink } from './jobs-portal-filter-reset-link'
 
 export const metadata: Metadata = {
   title: 'Portál zakázek',
@@ -43,12 +45,12 @@ type ProfilePermissionRow = {
 }
 
 type JobsPortalSearchParams = {
-  q?: string
-  status?: string
-  view?: string
-  sort?: string
-  date_from?: string
-  date_to?: string
+  q?: string | string[]
+  status?: string | string[]
+  view?: string | string[]
+  sort?: string | string[]
+  date_from?: string | string[]
+  date_to?: string | string[]
 }
 
 const JOB_STATUS_OPTIONS: JobStatus[] = [
@@ -58,6 +60,13 @@ const JOB_STATUS_OPTIONS: JobStatus[] = [
   'ukoncena',
   'storno',
 ]
+
+function getSingleParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? ''
+  }
+  return value ?? ''
+}
 
 function buildSearchFilter(search: string) {
   const escaped = search.replaceAll(',', ' ').trim()
@@ -189,12 +198,19 @@ export default async function JobsPortalPage({
 }) {
   const params = searchParams ? await searchParams : undefined
 
-  const query = params?.q?.trim() ?? ''
-  const jobStatus = isJobStatus(params?.status) ? params?.status : ''
-  const view = isViewMode(params?.view) ? params?.view : 'all'
-  const sort = isSortMode(params?.sort) ? params?.sort : 'job_number_desc'
-  const dateFrom = params?.date_from?.trim() ?? ''
-  const dateTo = params?.date_to?.trim() ?? ''
+  const queryParam = getSingleParam(params?.q)
+  const statusParam = getSingleParam(params?.status)
+  const viewParam = getSingleParam(params?.view)
+  const sortParam = getSingleParam(params?.sort)
+  const dateFromParam = getSingleParam(params?.date_from)
+  const dateToParam = getSingleParam(params?.date_to)
+
+  const query = queryParam.trim()
+  const jobStatus = isJobStatus(statusParam) ? statusParam : ''
+  const view = isViewMode(viewParam) ? viewParam : 'all'
+  const sort = isSortMode(sortParam) ? sortParam : 'job_number_desc'
+  const dateFrom = dateFromParam.trim()
+  const dateTo = dateToParam.trim()
 
   const todayRange = getTodayRange()
   const thisWeekRange = getWeekRange(0)
@@ -325,9 +341,17 @@ export default async function JobsPortalPage({
   )
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+      />
+      <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-center lg:justify-start">
               <Image
@@ -357,12 +381,12 @@ export default async function JobsPortalPage({
                   name="q"
                   defaultValue={query}
                   placeholder="Hledat adresu, technika, firmu"
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
+                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
 
                 <button
                   type="submit"
-                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                 >
                   HLEDAT
                 </button>
@@ -370,7 +394,7 @@ export default async function JobsPortalPage({
 
               <Link
                 href="/dashboard"
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 sm:w-auto"
               >
                 ZPĚT NA DASHBOARD
               </Link>
@@ -378,11 +402,136 @@ export default async function JobsPortalPage({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+        <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-4">
           <form action="/jobs-portal" method="get" className="space-y-3">
             <input type="hidden" name="q" value={query} />
 
-            <div className="grid gap-2 xl:grid-cols-5">
+            <details className="group w-full lg:hidden">
+              <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+                <span className="inline-flex items-center gap-2">
+                  FILTRY
+                  {hasActiveFilters ? (
+                    <span className="inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.07em] text-[#236f9f]">
+                      FILTR AKTIVNÍ
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-xs text-zinc-500 transition group-open:rotate-180">
+                  ⌄
+                </span>
+              </summary>
+
+              <div className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                <div className="grid gap-2">
+                  <div className="min-w-0">
+                    <label
+                      htmlFor="status-mobile"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Stav zakázky
+                    </label>
+                    <select
+                      id="status-mobile"
+                      name="status"
+                      defaultValue={jobStatus}
+                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    >
+                      <option value="">Všechny</option>
+                      <option value="nova">Nová</option>
+                      <option value="k_reseni">V řešení</option>
+                      <option value="realizace">Realizace</option>
+                      <option value="ukoncena">Ukončená</option>
+                      <option value="storno">Storno</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="view-mobile"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Zobrazení
+                    </label>
+                    <select
+                      id="view-mobile"
+                      name="view"
+                      defaultValue={view}
+                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    >
+                      <option value="all">Vše</option>
+                      <option value="active">Aktivní</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="sort-mobile"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Řazení
+                    </label>
+                    <select
+                      id="sort-mobile"
+                      name="sort"
+                      defaultValue={sort}
+                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    >
+                      <option value="job_number_desc">Dle čísla zakázky</option>
+                      <option value="start_nearest">
+                        Dle data od (nejbližší)
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="date_from-mobile"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Od dne
+                    </label>
+                    <input
+                      id="date_from-mobile"
+                      name="date_from"
+                      type="date"
+                      defaultValue={dateFrom}
+                      className="h-9 w-full max-w-full min-w-0 appearance-none rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label
+                      htmlFor="date_to-mobile"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Do dne
+                    </label>
+                    <input
+                      id="date_to-mobile"
+                      name="date_to"
+                      type="date"
+                      defaultValue={dateTo}
+                      className="h-9 w-full max-w-full min-w-0 appearance-none rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-3">
+                  <JobsPortalFilterResetLink
+                    href="/jobs-portal"
+                    className="inline-flex h-9 min-w-[132px] items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                  >
+                    RESET
+                  </JobsPortalFilterResetLink>
+
+                  <JobsPortalFilterSubmitButton className="inline-flex h-9 min-w-[132px] items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                    POUŽÍT FILTRY
+                  </JobsPortalFilterSubmitButton>
+                </div>
+              </div>
+            </details>
+
+            <div className="hidden gap-2 lg:grid xl:grid-cols-5">
               <div className="min-w-0">
                 <label
                   htmlFor="status"
@@ -394,7 +543,7 @@ export default async function JobsPortalPage({
                   id="status"
                   name="status"
                   defaultValue={jobStatus}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 >
                   <option value="">Všechny</option>
                   <option value="nova">Nová</option>
@@ -416,7 +565,7 @@ export default async function JobsPortalPage({
                   id="view"
                   name="view"
                   defaultValue={view}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 >
                   <option value="all">Vše</option>
                   <option value="active">Aktivní</option>
@@ -434,7 +583,7 @@ export default async function JobsPortalPage({
                   id="sort"
                   name="sort"
                   defaultValue={sort}
-                  className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 >
                   <option value="job_number_desc">Dle čísla zakázky</option>
                   <option value="start_nearest">Dle data od (nejbližší)</option>
@@ -453,7 +602,7 @@ export default async function JobsPortalPage({
                   name="date_from"
                   type="date"
                   defaultValue={dateFrom}
-                  className="h-9 w-full max-w-full min-w-0 appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full max-w-full min-w-0 appearance-none rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 />
               </div>
 
@@ -469,21 +618,21 @@ export default async function JobsPortalPage({
                   name="date_to"
                   type="date"
                   defaultValue={dateTo}
-                  className="h-9 w-full max-w-full min-w-0 appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200"
+                  className="h-9 w-full max-w-full min-w-0 appearance-none rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 />
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="hidden flex-col gap-2 border-t border-gray-100 pt-3 lg:flex xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   Řazení:{' '}
                   <span className="ml-1 font-medium text-gray-900">
                     {getSortLabel(sort)}
                   </span>
                 </span>
 
-                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   Zobrazení:{' '}
                   <span className="ml-1 font-medium text-gray-900">
                     {getViewLabel(view)}
@@ -491,7 +640,7 @@ export default async function JobsPortalPage({
                 </span>
 
                 {query ? (
-                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                  <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Hledání:{' '}
                     <span className="ml-1 font-medium text-gray-900">
                       {query}
@@ -500,7 +649,7 @@ export default async function JobsPortalPage({
                 ) : null}
 
                 {dateFrom ? (
-                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                  <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Od:{' '}
                     <span className="ml-1 font-medium text-gray-900">
                       {dateFrom}
@@ -509,7 +658,7 @@ export default async function JobsPortalPage({
                 ) : null}
 
                 {dateTo ? (
-                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
+                  <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Do:{' '}
                     <span className="ml-1 font-medium text-gray-900">
                       {dateTo}
@@ -522,14 +671,14 @@ export default async function JobsPortalPage({
                 <div className="flex flex-wrap items-center gap-2 sm:contents">
                   <button
                     type="submit"
-                    className="inline-flex h-9 items-center justify-center rounded-xl bg-black px-4 text-sm font-medium uppercase text-white transition hover:bg-gray-800 sm:order-4"
+                    className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:order-4"
                   >
                     POUŽÍT FILTRY
                   </button>
 
                   <Link
                     href="/jobs-portal"
-                    className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 transition hover:bg-gray-50 sm:order-5"
+                    className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] sm:order-5"
                   >
                     RESET
                   </Link>
@@ -538,10 +687,10 @@ export default async function JobsPortalPage({
                 <div className="flex flex-wrap items-center gap-2 sm:contents">
                   <Link
                     href={todayHref}
-                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition sm:order-1 ${
+                    className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-1 ${
                       isTodayActive
-                        ? 'bg-[#236f9f] shadow-sm'
-                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                        ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                        : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
                     }`}
                   >
                     DNES
@@ -549,10 +698,10 @@ export default async function JobsPortalPage({
 
                   <Link
                     href={thisWeekHref}
-                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition sm:order-2 ${
+                    className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-2 ${
                       isThisWeekActive
-                        ? 'bg-[#236f9f] shadow-sm'
-                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                        ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                        : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
                     }`}
                   >
                     TENTO TÝDEN
@@ -560,10 +709,10 @@ export default async function JobsPortalPage({
 
                   <Link
                     href={nextWeekHref}
-                    className={`inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition sm:order-3 ${
+                    className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-3 ${
                       isNextWeekActive
-                        ? 'bg-[#236f9f] shadow-sm'
-                        : 'bg-[#2980B9] hover:bg-[#236f9f]'
+                        ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                        : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
                     }`}
                   >
                     PŘÍŠTÍ TÝDEN
@@ -571,11 +720,46 @@ export default async function JobsPortalPage({
                 </div>
               </div>
             </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1 lg:hidden">
+              <Link
+                href={todayHref}
+                className={`inline-flex h-9 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl border px-3 text-[11px] font-medium uppercase transition duration-200 hover:-translate-y-[1px] ${
+                  isTodayActive
+                    ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                    : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
+                }`}
+              >
+                DNES
+              </Link>
+
+              <Link
+                href={thisWeekHref}
+                className={`inline-flex h-9 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl border px-3 text-[11px] font-medium uppercase transition duration-200 hover:-translate-y-[1px] ${
+                  isThisWeekActive
+                    ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                    : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
+                }`}
+              >
+                TENTO TÝDEN
+              </Link>
+
+              <Link
+                href={nextWeekHref}
+                className={`inline-flex h-9 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl border px-3 text-[11px] font-medium uppercase transition duration-200 hover:-translate-y-[1px] ${
+                  isNextWeekActive
+                    ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                    : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
+                }`}
+              >
+                PŘÍŠTÍ TÝDEN
+              </Link>
+            </div>
           </form>
         </section>
 
         {typedJobs.length === 0 ? (
-          <section className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
+          <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="mx-auto max-w-xl space-y-3">
               <h2 className="text-lg font-semibold text-gray-900">
                 {hasActiveFilters

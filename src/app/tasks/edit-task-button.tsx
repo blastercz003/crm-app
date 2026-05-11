@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   deleteTask,
   updateTaskModalAction,
@@ -65,10 +66,15 @@ export default function EditTaskButton({
 }: EditTaskButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
+  const [isMounted, setIsMounted] = useState(false)
 
   const updateAction = useMemo(() => {
     return updateTaskModalAction.bind(null, task.id)
   }, [task.id])
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   function openModal() {
     setFormKey((current) => current + 1)
@@ -93,17 +99,20 @@ export default function EditTaskButton({
         {label}
       </button>
 
-      {isOpen ? (
-        <EditTaskModal
-          key={formKey}
-          task={task}
-          users={users}
-          clients={clients}
-          contacts={contacts}
-          action={updateAction}
-          onClose={closeModal}
-        />
-      ) : null}
+      {isOpen && isMounted
+        ? createPortal(
+            <EditTaskModal
+              key={formKey}
+              task={task}
+              users={users}
+              clients={clients}
+              contacts={contacts}
+              action={updateAction}
+              onClose={closeModal}
+            />,
+            document.body
+          )
+        : null}
     </>
   )
 }
@@ -146,7 +155,7 @@ function EditTaskModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/45 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -156,7 +165,19 @@ function EditTaskModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+        <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-3xl border border-white/65"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -left-[36%] top-0 hidden h-full w-[32%] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/26 to-transparent lg:block lg:[animation:modal_glass_sweep_5.2s_ease-in-out_infinite]"
+          />
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
@@ -171,7 +192,7 @@ function EditTaskModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
               aria-label="Zavřít"
             >
               ✕
@@ -193,7 +214,7 @@ function EditTaskModal({
                 <button
                   type="submit"
                   formAction={deleteTaskAction}
-                  className="rounded-lg border border-red-200 bg-white px-5 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                  className="rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-5 py-3 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
                 >
                   SMAZAT
                 </button>
@@ -202,6 +223,14 @@ function EditTaskModal({
           </div>
         </div>
       </div>
+      <style jsx>{`
+        @keyframes modal_glass_sweep {
+          0% { transform: translateX(-180%) skewX(-18deg); opacity: 0; }
+          16% { opacity: 0.42; }
+          55% { opacity: 0.22; }
+          100% { transform: translateX(440%) skewX(-18deg); opacity: 0; }
+        }
+      `}</style>
     </div>
   )
 }
