@@ -131,7 +131,7 @@ function ContentSection({
   emptyText,
 }: {
   title: string
-  description: string
+  description?: string
   value: string | null | undefined
   emptyText: string
 }) {
@@ -139,7 +139,9 @@ function ContentSection({
     <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
       <div className="mb-5">
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        {description ? (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
@@ -164,7 +166,7 @@ function FollowUpTaskSection({
   taskDueDate,
 }: {
   title: string
-  description: string
+  description?: string
   taskTitle: string | null | undefined
   taskNote: string | null | undefined
   taskPriority: string | null | undefined
@@ -177,7 +179,9 @@ function FollowUpTaskSection({
     <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
       <div className="mb-5">
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        {description ? (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
@@ -328,9 +332,6 @@ export default async function MeetingDetailPage({
                 {hasTask ? <MeetingTaskBadge /> : null}
               </div>
 
-              <p className="text-sm text-gray-500">
-                {meeting.company_name ?? 'Bez firmy'} · {formatDateTime(meeting.meeting_datetime)}
-              </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
@@ -339,7 +340,7 @@ export default async function MeetingDetailPage({
                   <input type="hidden" name="id" value={meeting.id} />
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-100"
+                    className="inline-flex items-center justify-center rounded-2xl border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(190,24,93,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_14px_28px_rgba(190,24,93,0.3)]"
                   >
                     SMAZAT SCHŮZKU
                   </button>
@@ -355,8 +356,7 @@ export default async function MeetingDetailPage({
 
               <Link
                 href="/meetings"
-                className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white transition hover:opacity-90"
-                style={{ backgroundColor: '#2980B9' }}
+                className="inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
               >
                 ZPĚT NA SCHŮZKY
               </Link>
@@ -371,9 +371,6 @@ export default async function MeetingDetailPage({
                 <h2 className="text-lg font-semibold text-gray-900">
                   Základní informace
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Přehled hlavních údajů o schůzce a kontaktních informací.
-                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -394,14 +391,11 @@ export default async function MeetingDetailPage({
           </div>
 
           <div className="lg:col-span-1">
-            <div className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+            <div className="h-full rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Shrnutí
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Rychlý přehled stavu a navazujících informací.
-                </p>
               </div>
 
               <div className="space-y-3">
@@ -430,21 +424,18 @@ export default async function MeetingDetailPage({
 
         <ContentSection
           title="Poznámka před schůzkou"
-          description="Příprava, očekávání a interní poznámky před samotnou schůzkou."
           value={meeting.pre_meeting_note}
           emptyText="Zatím bez poznámky před schůzkou."
         />
 
         <ContentSection
           title="Výsledek schůzky"
-          description="Shrnutí průběhu, závěrů a navazujících domluv."
           value={meeting.result_note}
           emptyText="Výsledek schůzky zatím nebyl doplněn."
         />
 
         <FollowUpTaskSection
           title="Navazující úkol"
-          description="Navazující krok ze schůzky včetně názvu úkolu a doplňující poznámky."
           taskTitle={meeting.follow_up_task}
           taskNote={meeting.follow_up_task_note}
           taskPriority={meeting.follow_up_task_priority}

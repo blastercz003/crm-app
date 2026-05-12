@@ -36,11 +36,11 @@ export function getStatusBadgeClass(status: string | null | undefined) {
 export function getPriorityBadgeClass(priority: string | null | undefined) {
   switch (priority) {
     case 'low':
-      return 'border border-slate-300/80 bg-[linear-gradient(155deg,#f3f7fb_0%,#e8eef6_100%)] text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(51,65,85,0.08)]'
+      return 'border border-[#9ebfdb]/85 bg-[linear-gradient(155deg,#6ea4cf_0%,#4f8fbe_55%,#3a79a8_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(42,95,136,0.22)]'
     case 'medium':
-      return 'border border-amber-300/85 bg-[linear-gradient(155deg,#fff8e7_0%,#ffefc9_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(180,83,9,0.1)]'
+      return 'border border-[#f3c58a]/85 bg-[linear-gradient(155deg,#f2a344_0%,#e68a20_55%,#cd7212_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(180,83,9,0.24)]'
     case 'high':
-      return 'border border-rose-300/85 bg-[linear-gradient(155deg,#fff1f3_0%,#ffe0e6_100%)] text-rose-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(190,24,93,0.1)]'
+      return 'border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(190,24,93,0.24)]'
     default:
       return 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]'
   }

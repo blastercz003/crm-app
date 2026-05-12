@@ -235,20 +235,6 @@ export default async function TaskDetailPage({
                   {typedTask.title}
                 </h1>
 
-                <span
-                  className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(typedTask.status)}`}
-                >
-                  {getStatusLabel(typedTask.status)}
-                </span>
-
-                {typedTask.priority ? (
-                  <span
-                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(typedTask.priority)}`}
-                  >
-                    Priorita: {getPriorityLabel(typedTask.priority)}
-                  </span>
-                ) : null}
-
                 <RepeatTaskBadge repeatInterval={typedTask.repeat_interval} />
 
               </div>
@@ -271,10 +257,6 @@ export default async function TaskDetailPage({
                       </button>
                     </form>
                   ) : null}
-
-                  <form action={markTaskDoneAction}>
-                    <TaskCompleteButton className="inline-flex whitespace-nowrap items-center justify-center rounded-2xl border border-emerald-500/90 bg-[linear-gradient(155deg,#11a36b_0%,#089861_55%,#067f51_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(167,243,208,0.42),0_12px_24px_rgba(5,150,105,0.3)] transition duration-200 hover:-translate-y-[1px] hover:border-emerald-600 hover:shadow-[inset_0_1px_0_rgba(167,243,208,0.5),0_16px_28px_rgba(5,150,105,0.36)] [animation:task-complete-glow_2.2s_ease-in-out_infinite]" />
-                  </form>
                 </>
               ) : null}
 
@@ -302,9 +284,6 @@ export default async function TaskDetailPage({
                 <h2 className="text-lg font-semibold text-gray-900">
                   Základní informace
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Přehled hlavních údajů o úkolu a jeho odpovědnosti.
-                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -332,15 +311,12 @@ export default async function TaskDetailPage({
             </div>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="flex h-full flex-col justify-between gap-4 lg:col-span-1">
             <div className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Shrnutí
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Rychlý přehled toho nejdůležitějšího.
-                </p>
               </div>
 
               <div className="space-y-3">
@@ -348,9 +324,13 @@ export default async function TaskDetailPage({
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                     Stav
                   </p>
-                  <p className="mt-2 text-sm font-medium text-gray-900">
-                    {getStatusLabel(typedTask.status)}
-                  </p>
+                  <div className="mt-2">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(typedTask.status)}`}
+                    >
+                      {getStatusLabel(typedTask.status)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">
@@ -375,7 +355,14 @@ export default async function TaskDetailPage({
                   </p>
                 </div>
               </div>
+
             </div>
+
+            {canUpdateStatus && typedTask.status !== 'done' ? (
+              <form action={markTaskDoneAction} className="mt-auto">
+                <TaskCompleteButton className="inline-flex w-full items-center justify-center rounded-2xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)] transition duration-200 hover:-translate-y-[1px]" />
+              </form>
+            ) : null}
           </div>
         </section>
 
@@ -384,9 +371,6 @@ export default async function TaskDetailPage({
             <h2 className="text-lg font-semibold text-gray-900">
               Zadání úkolu
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Detailní popis, kontext a interní doplnění k úkolu.
-            </p>
           </div>
 
           <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.10)]">

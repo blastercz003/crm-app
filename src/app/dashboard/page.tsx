@@ -680,12 +680,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
   return (
     <div
-      className={[
-        'relative rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200',
-        isOverdue
-          ? 'border-red-300/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(254,242,242,0.86)_100%)] hover:border-red-400/90'
-          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] hover:border-white/90',
-      ].join(' ')}
+      className="relative rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]"
     >
       <Link
         href={`/tasks/${task.id}`}
@@ -697,7 +692,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1 pr-2">
             <div
-              className="relative z-10 line-clamp-2 min-h-10 break-words text-sm font-semibold leading-5 text-zinc-900"
+              className="line-clamp-2 min-h-10 break-words text-sm font-semibold leading-5 text-zinc-900"
               title={task.title}
             >
               {task.title}
@@ -717,7 +712,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
             <div className="min-h-[1.75rem]">
               {isOverdue ? (
-                <span className="inline-flex items-center rounded-full border border-red-200 bg-red-600 px-2.5 py-1 text-xs font-medium text-white task-overdue-badge">
+                <span className="inline-flex items-center rounded-full border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] px-2.5 py-1 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(190,24,93,0.24)] task-overdue-badge">
                   Po termínu
                 </span>
               ) : null}
@@ -725,17 +720,14 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
           </div>
         </div>
 
-        <div className="relative z-10 flex min-w-0 flex-wrap items-end justify-between gap-2">
-          <RepeatTaskBadge repeatInterval={task.repeat_interval} />
+        <div className="flex min-w-0 flex-wrap items-end justify-between gap-2">
+          {task.repeat_interval ? (
+            <div className="relative z-10">
+              <RepeatTaskBadge repeatInterval={task.repeat_interval} />
+            </div>
+          ) : null}
 
-          <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-2">
-            <Link
-              href={`/tasks/${task.id}`}
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
-            >
-              DETAIL
-            </Link>
-
+          <div className="relative z-10 ml-auto flex min-w-0 flex-wrap justify-end gap-2">
             {task.status !== 'done' ? (
               <>
                 {task.repeat_interval ? (
@@ -751,7 +743,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
                 <form action={markTaskDoneAction}>
                   <TaskCompleteButton
-                    className="inline-flex items-center justify-center rounded-xl border border-emerald-500/90 bg-[linear-gradient(155deg,#11a36b_0%,#089861_55%,#067f51_100%)] px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(167,243,208,0.42),0_12px_24px_rgba(5,150,105,0.3)] transition duration-200 hover:-translate-y-[1px] hover:border-emerald-600 hover:shadow-[inset_0_1px_0_rgba(167,243,208,0.5),0_16px_28px_rgba(5,150,105,0.36)] [animation:task-complete-glow_2.2s_ease-in-out_infinite]"
+                    className="inline-flex h-8 items-center justify-center rounded-xl border border-emerald-400/90 bg-[linear-gradient(155deg,#16a46f_0%,#0e9a68_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_18px_rgba(16,185,129,0.2)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(16,185,129,0.24)]"
                   />
                 </form>
               </>
@@ -770,7 +762,7 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
   return (
     <Link
       href={`/meetings/${meeting.id}`}
-      className="block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:border-white/90"
+      className="block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]"
     >
       <div className="flex items-start gap-3">
         <div className="flex w-[64px] shrink-0 flex-col items-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">

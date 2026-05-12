@@ -133,22 +133,16 @@ export default function TaskCard({
 
   const { isToday, isOverdue } = getDueDateState(task.due_date, task.status)
 
-  const cardClassName = [
-    'min-w-0 overflow-hidden rounded-2xl border px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.97),inset_0_-1px_0_rgba(255,255,255,0.64),inset_18px_18px_36px_rgba(59,130,246,0.05),inset_-18px_-18px_36px_rgba(255,255,255,0.58),0_12px_24px_rgba(15,23,42,0.1)] transition duration-200 ease-out',
-    isOverdue
-      ? 'border-red-300/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(255,244,246,0.94)_45%,rgba(255,238,241,0.9)_100%)] hover:border-red-400/90 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.99),inset_0_-1px_0_rgba(255,255,255,0.68),inset_20px_20px_40px_rgba(248,113,113,0.08),inset_-20px_-20px_40px_rgba(255,255,255,0.62),0_14px_28px_rgba(239,68,68,0.16)]'
-      : isToday
-        ? 'border-orange-300/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(255,248,236,0.94)_45%,rgba(255,242,225,0.9)_100%)] hover:border-orange-400/90 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.99),inset_0_-1px_0_rgba(255,255,255,0.68),inset_20px_20px_40px_rgba(251,191,36,0.08),inset_-20px_-20px_40px_rgba(255,255,255,0.62),0_14px_28px_rgba(249,115,22,0.16)]'
-        : 'border-zinc-200/90 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(248,250,253,0.94)_45%,rgba(241,245,250,0.9)_100%)] hover:border-zinc-300 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.99),inset_0_-1px_0_rgba(255,255,255,0.68),inset_20px_20px_40px_rgba(59,130,246,0.07),inset_-20px_-20px_40px_rgba(255,255,255,0.62),0_14px_28px_rgba(15,23,42,0.14)]',
-  ].join(' ')
+  const cardClassName =
+    'min-w-0 overflow-hidden rounded-2xl border border-zinc-200/90 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(248,250,253,0.94)_45%,rgba(241,245,250,0.9)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.97),inset_0_-1px_0_rgba(255,255,255,0.64),inset_18px_18px_36px_rgba(59,130,246,0.05),inset_-18px_-18px_36px_rgba(255,255,255,0.58),0_12px_24px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.99),inset_0_-1px_0_rgba(255,255,255,0.68),inset_20px_20px_40px_rgba(59,130,246,0.07),inset_-20px_-20px_40px_rgba(255,255,255,0.62),0_14px_28px_rgba(15,23,42,0.14)]'
 
   const dueBadgeClassName = [
     'inline-flex min-w-0 shrink items-center rounded-full px-2 py-1 text-[10px] font-medium sm:px-2.5 sm:text-xs',
     isOverdue
-      ? 'border border-rose-300/85 bg-[linear-gradient(155deg,#fff1f3_0%,#ffe0e6_100%)] text-rose-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(190,24,93,0.1)]'
+      ? 'border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(190,24,93,0.24)]'
       : isToday
-        ? 'border border-amber-300/85 bg-[linear-gradient(155deg,#fff8e7_0%,#ffefc9_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(180,83,9,0.1)]'
-        : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]',
+        ? 'border border-[#f3c58a]/85 bg-[linear-gradient(155deg,#f2a344_0%,#e68a20_55%,#cd7212_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(180,83,9,0.24)]'
+        : 'border border-[#9ebfdb]/85 bg-[linear-gradient(155deg,#6ea4cf_0%,#4f8fbe_55%,#3a79a8_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(42,95,136,0.22)]',
   ].join(' ')
 
   const actionButtonClassName =
@@ -201,12 +195,12 @@ export default function TaskCard({
               <span className="truncate">{getStatusLabel(task.status)}</span>
             </span>
             {isOverdue ? (
-              <span className="inline-flex min-w-0 max-w-[76px] shrink items-center rounded-full border border-rose-300/85 bg-[linear-gradient(155deg,#fff1f3_0%,#ffe0e6_100%)] px-2 py-1 text-[10px] font-medium text-rose-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(190,24,93,0.1)] sm:max-w-none sm:px-2.5 sm:text-xs">
+              <span className="inline-flex min-w-0 max-w-[76px] shrink items-center rounded-full border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] px-2 py-1 text-[10px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(190,24,93,0.24)] sm:max-w-none sm:px-2.5 sm:text-xs">
                 <span className="truncate">Po termínu</span>
               </span>
             ) : null}
             {isToday ? (
-              <span className="inline-flex min-w-0 shrink items-center rounded-full border border-amber-300/85 bg-[linear-gradient(155deg,#fff8e7_0%,#ffefc9_100%)] px-2 py-1 text-[10px] font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(180,83,9,0.1)] sm:px-2.5 sm:text-xs">
+              <span className="inline-flex min-w-0 shrink items-center rounded-full border border-[#f3c58a]/85 bg-[linear-gradient(155deg,#f2a344_0%,#e68a20_55%,#cd7212_100%)] px-2 py-1 text-[10px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(180,83,9,0.24)] sm:px-2.5 sm:text-xs">
                 <span className="truncate">Dnes</span>
               </span>
             ) : null}

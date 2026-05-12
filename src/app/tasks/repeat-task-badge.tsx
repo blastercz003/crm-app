@@ -16,7 +16,7 @@ export function RepeatTaskBadge({
   return (
     <span
       className={[
-        'inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-full border border-violet-300/80 bg-[linear-gradient(155deg,#f7f2ff_0%,#ece3ff_100%)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-violet-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(109,40,217,0.1)] sm:text-xs',
+        'inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-full border border-[#9f8ce6]/85 bg-[linear-gradient(155deg,#7b5fd0_0%,#6648c2_55%,#5739b2_100%)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(91,51,191,0.24)] sm:text-xs',
         className,
       ].join(' ')}
       title={`Opakování: ${label}`}
