@@ -403,10 +403,11 @@ export default async function JobsPortalPage({
         </section>
 
         <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-4">
-          <form action="/jobs-portal" method="get" className="space-y-3">
-            <input type="hidden" name="q" value={query} />
+          <div className="space-y-3">
+            <form action="/jobs-portal" method="get" className="lg:hidden">
+              <input type="hidden" name="q" value={query} />
 
-            <details className="group w-full lg:hidden">
+              <details className="group w-full">
               <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                 <span className="inline-flex items-center gap-2">
                   FILTRY
@@ -529,9 +530,13 @@ export default async function JobsPortalPage({
                   </JobsPortalFilterSubmitButton>
                 </div>
               </div>
-            </details>
+              </details>
+            </form>
 
-            <div className="hidden gap-2 lg:grid xl:grid-cols-5">
+            <form action="/jobs-portal" method="get" className="hidden lg:block">
+              <input type="hidden" name="q" value={query} />
+
+              <div className="hidden gap-2 lg:grid xl:grid-cols-5">
               <div className="min-w-0">
                 <label
                   htmlFor="status"
@@ -621,10 +626,10 @@ export default async function JobsPortalPage({
                   className="h-9 w-full max-w-full min-w-0 appearance-none rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                 />
               </div>
-            </div>
+              </div>
 
-            <div className="hidden flex-col gap-2 border-t border-gray-100 pt-3 lg:flex xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+              <div className="hidden flex-col gap-2 border-t border-gray-100 pt-3 lg:flex xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
                 <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   Řazení:{' '}
                   <span className="ml-1 font-medium text-gray-900">
@@ -665,10 +670,10 @@ export default async function JobsPortalPage({
                     </span>
                   </span>
                 ) : null}
-              </div>
+                </div>
 
-              <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:border-t-0 sm:pt-0">
-                <div className="flex flex-wrap items-center gap-2 sm:contents">
+                <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:border-t-0 sm:pt-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:contents">
                   <button
                     type="submit"
                     className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:order-4"
@@ -682,9 +687,9 @@ export default async function JobsPortalPage({
                   >
                     RESET
                   </Link>
-                </div>
+                  </div>
 
-                <div className="flex flex-wrap items-center gap-2 sm:contents">
+                  <div className="flex flex-wrap items-center gap-2 sm:contents">
                   <Link
                     href={todayHref}
                     className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-1 ${
@@ -717,9 +722,10 @@ export default async function JobsPortalPage({
                   >
                     PŘÍŠTÍ TÝDEN
                   </Link>
+                  </div>
                 </div>
               </div>
-            </div>
+            </form>
 
             <div className="flex flex-wrap items-center gap-2 pt-1 lg:hidden">
               <Link
@@ -755,7 +761,7 @@ export default async function JobsPortalPage({
                 PŘÍŠTÍ TÝDEN
               </Link>
             </div>
-          </form>
+          </div>
         </section>
 
         {typedJobs.length === 0 ? (

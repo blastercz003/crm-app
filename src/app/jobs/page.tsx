@@ -530,10 +530,10 @@ export default async function JobsPage({
           </section>
 
           <section className="print-header rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-4">
-            <form action="/jobs" method="get" className="space-y-3">
-              <input type="hidden" name="q" value={query} />
-
-              <details className="group print-hidden w-full lg:hidden">
+            <div className="space-y-3">
+              <form action="/jobs" method="get" className="print-hidden lg:hidden">
+                <input type="hidden" name="q" value={query} />
+                <details className="group w-full">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                   <span className="inline-flex items-center gap-2">
                     FILTRY
@@ -656,7 +656,8 @@ export default async function JobsPage({
                     </JobFilterResetLink>
                   </div>
                 </div>
-              </details>
+                </details>
+              </form>
 
               <div className="print-hidden mt-2 grid grid-cols-[auto_1fr_1fr_1fr] gap-2 lg:hidden">
                 <PrintJobsButton />
@@ -695,28 +696,30 @@ export default async function JobsPage({
                 </Link>
               </div>
 
-              <div className="print-hidden hidden gap-2 xl:grid-cols-5 lg:grid">
-                <div>
-                  <label
-                    htmlFor="status"
-                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
-                  >
-                    Stav zakázky
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    defaultValue={jobStatus}
-                    className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  >
-                    <option value="">Všechny</option>
-                    <option value="nova">Nová</option>
-                    <option value="k_reseni">V řešení</option>
-                    <option value="realizace">Realizace</option>
-                    <option value="ukoncena">Ukončená</option>
-                    <option value="storno">Storno</option>
-                  </select>
-                </div>
+              <form action="/jobs" method="get" className="print-hidden hidden lg:block">
+                <input type="hidden" name="q" value={query} />
+                <div className="hidden gap-2 xl:grid-cols-5 lg:grid">
+                  <div>
+                    <label
+                      htmlFor="status"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Stav zakázky
+                    </label>
+                    <select
+                      id="status"
+                      name="status"
+                      defaultValue={jobStatus}
+                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    >
+                      <option value="">Všechny</option>
+                      <option value="nova">Nová</option>
+                      <option value="k_reseni">V řešení</option>
+                      <option value="realizace">Realizace</option>
+                      <option value="ukoncena">Ukončená</option>
+                      <option value="storno">Storno</option>
+                    </select>
+                  </div>
 
                 <div>
                   <label
@@ -789,10 +792,10 @@ export default async function JobsPage({
                     />
                   </div>
                 </div>
-              </div>
+                </div>
 
-              <div className="hidden flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between lg:flex">
-                <div className="print-filters-summary flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <div className="hidden flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between lg:flex">
+                  <div className="print-filters-summary flex flex-wrap items-center gap-2 text-xs text-gray-600">
                   <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Řazení:{' '}
                     <span className="ml-1 font-medium text-gray-900">
@@ -833,10 +836,10 @@ export default async function JobsPage({
                       </span>
                     </span>
                   ) : null}
-                </div>
+                  </div>
 
-                <div className="print-hidden flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                  <div className="h-px bg-gray-100 sm:hidden" />
+                  <div className="print-hidden flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="h-px bg-gray-100 sm:hidden" />
 
                   <div className="flex flex-wrap items-center gap-2 sm:contents">
                     <PrintJobsButton />
@@ -888,8 +891,9 @@ export default async function JobsPage({
                     </Link>
                   </div>
                 </div>
-              </div>
-            </form>
+                </div>
+              </form>
+            </div>
           </section>
 
           {typedJobs.length === 0 ? (
