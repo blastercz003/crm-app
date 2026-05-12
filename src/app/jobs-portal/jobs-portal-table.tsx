@@ -38,7 +38,7 @@ export function JobsPortalTable({ jobs }: JobsPortalTableProps) {
     <>
       <section className="hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
         <table className="w-full table-fixed border-separate border-spacing-y-2">
-          <thead className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_100%)] shadow-[0_1px_0_0_#e5e7eb]">
+          <thead className="bg-transparent shadow-[0_1px_0_0_#e5e7eb]">
             <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
               <th className="w-[74px] px-2 py-2">Zakázka</th>
               <th className="w-[112px] px-2 py-2">Firma</th>

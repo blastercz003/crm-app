@@ -174,10 +174,6 @@ function EditTaskModal({
             aria-hidden
             className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent"
           />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -left-[36%] top-0 hidden h-full w-[32%] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/26 to-transparent lg:block lg:[animation:modal_glass_sweep_5.2s_ease-in-out_infinite]"
-          />
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
@@ -223,14 +219,6 @@ function EditTaskModal({
           </div>
         </div>
       </div>
-      <style jsx>{`
-        @keyframes modal_glass_sweep {
-          0% { transform: translateX(-180%) skewX(-18deg); opacity: 0; }
-          16% { opacity: 0.42; }
-          55% { opacity: 0.22; }
-          100% { transform: translateX(440%) skewX(-18deg); opacity: 0; }
-        }
-      `}</style>
     </div>
   )
 }

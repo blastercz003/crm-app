@@ -11,6 +11,7 @@ type MobileModalActionsProps = {
   cancelHref?: string
   submitDisabled?: boolean
   visualStyle?: 'default' | 'blaster'
+  disableAmbientGlow?: boolean
 }
 
 export function MobileModalActions({
@@ -21,6 +22,7 @@ export function MobileModalActions({
   cancelHref,
   submitDisabled = false,
   visualStyle = 'default',
+  disableAmbientGlow = false,
 }: MobileModalActionsProps) {
   const { pending } = useFormStatus()
   const isSubmitDisabled = pending || submitDisabled
@@ -68,8 +70,8 @@ export function MobileModalActions({
         aria-busy={pending}
         className={`inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium uppercase text-white sm:h-11 sm:min-w-[208px] sm:flex-none disabled:cursor-not-allowed disabled:opacity-60 ${
           isBlaster
-            ? 'primary-ambient-glow--blue border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]'
-            : 'primary-ambient-glow--blue bg-[#2980B9] transition hover:bg-[#236f9f]'
+            ? `${disableAmbientGlow ? '' : 'primary-ambient-glow--blue '}border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]`
+            : `${disableAmbientGlow ? '' : 'primary-ambient-glow--blue '}bg-[#2980B9] transition hover:bg-[#236f9f]`
         }`}
       >
         {pending ? (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 export type ActionFeedbackToastValue = {
   title: string
@@ -24,27 +25,27 @@ function ActionFeedbackToastCard({
     <div
       className={`relative overflow-hidden rounded-2xl border px-4 py-3.5 backdrop-blur-[12px] transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
         isSuccess
-          ? 'border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(237,247,255,0.9)_56%,rgba(229,242,252,0.86)_100%)] text-zinc-900'
-          : 'border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(254,242,242,0.9)_56%,rgba(254,226,226,0.84)_100%)] text-zinc-900'
+          ? 'border-transparent bg-[linear-gradient(155deg,rgba(77,144,197,0.94)_0%,rgba(47,119,175,0.9)_58%,rgba(35,102,155,0.86)_100%)] text-white'
+          : 'border-transparent bg-[linear-gradient(155deg,rgba(230,57,70,0.95)_0%,rgba(220,38,38,0.91)_58%,rgba(185,28,28,0.88)_100%)] text-white'
       } ${
         isVisible
-          ? 'scale-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_20px_44px_rgba(15,23,42,0.18)]'
-          : 'scale-[0.96] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(15,23,42,0.10)]'
+          ? isSuccess
+            ? 'scale-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_22px_46px_rgba(24,78,129,0.34)]'
+            : 'scale-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_22px_46px_rgba(153,27,27,0.34)]'
+          : isSuccess
+            ? 'scale-[0.96] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_24px_rgba(24,78,129,0.18)]'
+            : 'scale-[0.96] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_24px_rgba(153,27,27,0.18)]'
       }`}
     >
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute left-0 top-0 h-full w-1.5 ${
-          isSuccess ? 'bg-[#2f80b9]' : 'bg-[#c0392b]'
-        }`}
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent"
+        className={`pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent ${
+          isSuccess ? 'via-white/70' : 'via-white/72'
+        } to-transparent`}
       />
       <div
-        className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          isSuccess ? 'text-[#2a6f9f]' : 'text-[#a8352a]'
+        className={`flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isSuccess ? 'font-extrabold text-white' : 'font-extrabold text-white'
         } ${
           isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
         }`}
@@ -52,14 +53,16 @@ function ActionFeedbackToastCard({
       >
         <span
           className={`h-2 w-2 rounded-full ${
-            isSuccess ? 'bg-[#2f80b9]' : 'bg-[#c0392b]'
+            isSuccess ? 'bg-white' : 'bg-white'
           }`}
         />
         {toast.title}
       </div>
 
       <p
-        className={`mt-1.5 text-[14px] leading-5 text-zinc-800 transition duration-[460ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`mt-1.5 text-[14px] leading-5 transition duration-[460ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isSuccess ? 'font-semibold text-white' : 'font-semibold text-white'
+        } ${
           isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
         }`}
         style={{ transitionDelay: isVisible ? '185ms' : '0ms' }}
@@ -77,10 +80,19 @@ export function ActionFeedbackToast({
   toast: ActionFeedbackToastValue
   isVisible: boolean
 }) {
-  return (
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+    return () => setIsMounted(false)
+  }, [])
+
+  if (!isMounted) return null
+
+  return createPortal(
     <>
       <div
-        className={`fixed left-1/2 z-[90] -translate-x-1/2 transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
+        className={`fixed left-1/2 z-[220] -translate-x-1/2 transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
           isVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
         }`}
         style={{ top: 'calc(env(safe-area-inset-top, 0px) + 10px)' }}
@@ -93,7 +105,7 @@ export function ActionFeedbackToast({
       </div>
 
       <div
-        className={`fixed right-6 top-5 z-[90] hidden transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
+        className={`fixed right-6 top-5 z-[220] hidden transition duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
           isVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
         }`}
         role="status"
@@ -103,7 +115,8 @@ export function ActionFeedbackToast({
           <ActionFeedbackToastCard toast={toast} isVisible={isVisible} />
         </div>
       </div>
-    </>
+    </>,
+    document.body
   )
 }
 

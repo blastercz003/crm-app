@@ -126,7 +126,7 @@ function getStatusClass(status: OfferStatus) {
     return 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
   }
   if (status === 'sent_to_client') {
-    return 'border border-zinc-900 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(247,247,248,0.9)_100%)] text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_16px_rgba(24,24,27,0.08)]'
+    return 'border border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.9)_48%,rgba(234,241,248,0.84)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_20px_rgba(15,23,42,0.12)]'
   }
   if (status === 'approved') {
     return 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.95)_0%,rgba(209,250,229,0.88)_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_16px_rgba(16,185,129,0.14)]'
@@ -141,11 +141,11 @@ function getStatusClass(status: OfferStatus) {
 }
 
 function inputClassName() {
-  return 'h-9 w-full rounded-xl border border-[#c7d1de] bg-[linear-gradient(165deg,rgba(242,247,252,0.97)_0%,rgba(234,241,249,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_2px_6px_rgba(148,163,184,0.18),inset_0_1px_0_rgba(255,255,255,0.62)] transition focus:border-[#8fc0e3] focus:ring-2 focus:ring-[#b9d8ef]'
+  return 'h-9 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]'
 }
 
 function textareaClassName() {
-  return 'w-full rounded-xl border border-[#c7d1de] bg-[linear-gradient(165deg,rgba(242,247,252,0.97)_0%,rgba(234,241,249,0.94)_100%)] px-3 py-2 text-sm text-gray-900 outline-none shadow-[inset_0_2px_6px_rgba(148,163,184,0.18),inset_0_1px_0_rgba(255,255,255,0.62)] transition focus:border-[#8fc0e3] focus:ring-2 focus:ring-[#b9d8ef]'
+  return 'w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]'
 }
 
 function offerItemLabelClassName() {
@@ -454,7 +454,7 @@ export function OfferDetailLayout({
               action={updateOfferDetails.bind(null, offer.id)}
               className="flex flex-1 flex-col gap-4"
             >
-              <div className="overflow-hidden rounded-2xl border border-[#d7e1ec] bg-[linear-gradient(165deg,rgba(248,251,255,0.94)_0%,rgba(238,244,251,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(148,163,184,0.12)] sm:overflow-visible">
+              <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Nabídka a termín
                 </div>
@@ -499,7 +499,7 @@ export function OfferDetailLayout({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#d7e1ec] bg-[linear-gradient(165deg,rgba(248,251,255,0.94)_0%,rgba(238,244,251,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(148,163,184,0.12)]">
+              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Realizace a kontakt
                 </div>
@@ -546,7 +546,7 @@ export function OfferDetailLayout({
               <input type="hidden" name="valid_until" value={offer.valid_until ?? ''} />
               <input type="hidden" name="intro_note" value={offer.intro_note ?? ''} />
 
-              <div className="rounded-2xl border border-[#d7e1ec] bg-[linear-gradient(165deg,rgba(248,251,255,0.94)_0%,rgba(238,244,251,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(148,163,184,0.12)]">
+              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Zpracovatel
                 </div>
@@ -574,7 +574,7 @@ export function OfferDetailLayout({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#d7e1ec] bg-[linear-gradient(165deg,rgba(248,251,255,0.94)_0%,rgba(238,244,251,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(148,163,184,0.12)]">
+              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Poznámka (interní)
                 </div>
@@ -644,7 +644,7 @@ export function OfferDetailLayout({
                   <button
                     type="button"
                     disabled
-                    className="inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-zinc-900 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(247,247,248,0.9)_100%)] px-4 text-sm font-medium text-black opacity-85 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_16px_rgba(24,24,27,0.08)]"
+                    className="inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-4 text-sm font-medium text-zinc-700 opacity-80 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)]"
                   >
                     ODESLÁNO KLIENTOVI
                   </button>
@@ -896,9 +896,6 @@ export function OfferDetailLayout({
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                   DEPO
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Vyber depo pro realizaci
-                </p>
               </div>
 
               <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">

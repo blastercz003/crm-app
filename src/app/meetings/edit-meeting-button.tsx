@@ -157,10 +157,6 @@ function EditMeetingModal({
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]"
           />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -left-[36%] top-0 hidden h-full w-[32%] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/26 to-transparent lg:block lg:[animation:modal_glass_sweep_5.2s_ease-in-out_infinite]"
-          />
           <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
@@ -200,31 +196,5 @@ function EditMeetingModal({
     return null
   }
 
-  return createPortal(
-    <>
-      {modalContent}
-      <style jsx global>{`
-        @media (hover: hover) and (pointer: fine) {
-          @keyframes modal_glass_sweep {
-            0% {
-              transform: translateX(0%);
-              opacity: 0;
-            }
-            16% {
-              opacity: 0.72;
-            }
-            46% {
-              transform: translateX(420%);
-              opacity: 0;
-            }
-            100% {
-              transform: translateX(420%);
-              opacity: 0;
-            }
-          }
-        }
-      `}</style>
-    </>,
-    document.body
-  )
+  return createPortal(modalContent, document.body)
 }

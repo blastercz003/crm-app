@@ -83,7 +83,7 @@ export function NewJobButton({
         type="button"
         onClick={openModal}
         aria-disabled={!isAdmin}
-        className={`${resolvedClassName} primary-ambient-glow--blue ${!isAdmin ? 'cursor-not-allowed' : ''}`}
+        className={`${resolvedClassName} ${!isAdmin ? 'cursor-not-allowed' : ''}`}
       >
         NOVÁ ZAKÁZKA
       </button>
@@ -379,7 +379,7 @@ function JobFormShell({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
-                <section className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
+                <section className="overflow-hidden rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Základ zakázky
@@ -405,16 +405,16 @@ function JobFormShell({
                         onChange={(event) => handleCompanyChange(event.target.value)}
                         onFocus={handleCompanyFocus}
                         onBlur={handleCompanyBlur}
-                        className={`h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 ${
+                        className={`h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:ring-2 ${
                           showCompanyError
                             ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
                             : companySelectionIsValid && !companyHasFocus
                               ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
-                              : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                              : 'focus:border-[#c2cfdd] focus:ring-[#dbe5ef]'
                         }`}
                       />
 
-                      <div className="mt-2 rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      <div className="mt-2 rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)]">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                           Vybraná firma
                         </div>
@@ -449,7 +449,7 @@ function JobFormShell({
                             id={`${mode}-client_contact_id`}
                             value={selectedContactId}
                             onChange={(event) => handleContactChange(event.target.value)}
-                            className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                            className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                           >
                             <option value="">Bez konkrétní osoby</option>
                             {selectedClientContacts.map((contact) => (
@@ -469,7 +469,7 @@ function JobFormShell({
                           value={contactPerson}
                           onChange={(event) => setContactPerson(event.target.value)}
                           placeholder="Kontaktní osoba"
-                          className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                          className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                         />
                       )}
                     </div>
@@ -485,7 +485,7 @@ function JobFormShell({
                         id={`${mode}-sales_owner`}
                         name="sales_owner"
                         defaultValue={job?.sales_owner ?? 'JIŘÍ'}
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="h-10 w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       >
                         <option value="JIŘÍ">JIŘÍ</option>
                         <option value="MICHAL">MICHAL</option>
@@ -495,7 +495,7 @@ function JobFormShell({
                   </div>
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
+                <section className="overflow-hidden rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Termín a místo
@@ -516,7 +516,7 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job?.start_at)}
-                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
 
@@ -533,7 +533,7 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job?.end_at)}
-                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
 
@@ -550,7 +550,7 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.site_address ?? ''}
                         placeholder="Adresa realizace"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
 
@@ -567,13 +567,13 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.store_number ?? ''}
                         placeholder="Např. 154"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
+                <section className="rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)]">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Realizace
@@ -594,7 +594,7 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.technician_name ?? ''}
                         placeholder="Odpovědný pracovník"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
 
@@ -611,7 +611,7 @@ function JobFormShell({
                         type="text"
                         defaultValue={job?.generator_name ?? ''}
                         placeholder="Např. Aggreko 250 kVA"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
 
@@ -628,7 +628,7 @@ function JobFormShell({
                         rows={6}
                         defaultValue={job?.info_note ?? ''}
                         placeholder="Libovolná interní poznámka k zakázce"
-                        className="w-full resize-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="w-full resize-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2.5 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
                   </div>
@@ -647,6 +647,7 @@ function JobFormShell({
               submitLabel={submitLabel}
               pendingSubmitLabel="UKLÁDÁM..."
               submitDisabled={!companySelectionIsValid}
+              disableAmbientGlow
             />
           </form>
         </div>

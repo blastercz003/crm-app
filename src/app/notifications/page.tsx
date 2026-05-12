@@ -60,12 +60,12 @@ const STATUS_LABELS: Record<NotificationStatusFilter, string> = {
 function StatCard({ label, value, variant = 'neutral' }: StatCardProps) {
   const className =
     variant === 'primary'
-      ? 'border-[#2980B9] bg-[#2980B9] text-white'
+      ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_10px_20px_rgba(41,128,185,0.24)]'
       : variant === 'dark'
-        ? 'border-zinc-800 bg-zinc-800 text-white'
+        ? 'border-zinc-800/90 bg-[linear-gradient(155deg,#3f3f46_0%,#18181b_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_20px_rgba(24,24,27,0.24)]'
         : variant === 'success'
-          ? 'border-green-100 bg-green-100 text-green-800'
-          : 'border-zinc-200 bg-white text-zinc-950'
+          ? 'border-emerald-500/80 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_22px_rgba(16,185,129,0.24)]'
+          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
 
   const labelClassName =
     variant === 'neutral'
@@ -75,7 +75,7 @@ function StatCard({ label, value, variant = 'neutral' }: StatCardProps) {
         : 'text-white'
 
   return (
-    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${className}`}>
+    <div className={`rounded-2xl border px-4 py-3 ${className}`}>
       <div className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>
         {label}
       </div>
@@ -99,10 +99,10 @@ function FilterTab({
     <Link
       href={href}
       className={[
-        'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition',
+        'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition duration-200',
         active
-          ? 'bg-zinc-900 text-white shadow-sm'
-          : 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900',
+          ? 'border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(41,128,185,0.22)]'
+          : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.07)] hover:-translate-y-[1px] hover:text-zinc-900',
       ].join(' ')}
     >
       {label}
@@ -112,7 +112,7 @@ function FilterTab({
 
 function InfoChip({ label }: { label: string }) {
   return (
-    <div className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-500">
+    <div className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3 py-1.5 text-xs text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.07)]">
       {label}
     </div>
   )
@@ -127,6 +127,7 @@ function isCategoryFilter(value: string | undefined): value is NotificationCateg
     value === 'all' ||
     value === 'tasks' ||
     value === 'meetings' ||
+    value === 'jobs' ||
     value === 'offers' ||
     value === 'system'
   )
@@ -164,12 +165,20 @@ function NotificationCard({
 }) {
   const isUnread = !notification.read_at
   const isArchived = Boolean(notification.archived_at)
+  const priorityChipClassName =
+    notification.priority === 'high'
+      ? 'border-red-300/90 bg-red-50/90 text-red-700'
+      : notification.priority === 'medium'
+        ? 'border-amber-300/90 bg-amber-50/90 text-amber-700'
+        : 'border-emerald-300/90 bg-emerald-50/90 text-emerald-700'
 
   return (
     <article
       className={[
-        'rounded-[24px] border bg-white p-5 shadow-sm',
-        isUnread ? 'border-[#2980B9]/35' : 'border-zinc-200',
+        'rounded-[24px] border p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)] backdrop-blur-[12px]',
+        isUnread
+          ? 'border-[#d8e8f6]/92 bg-[linear-gradient(160deg,rgba(247,252,255,0.95)_0%,rgba(233,244,252,0.9)_48%,rgba(241,249,255,0.88)_100%)]'
+          : 'border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)]',
         isArchived ? 'opacity-70' : '',
       ].join(' ')}
     >
@@ -180,16 +189,16 @@ function NotificationCard({
               className={[
                 'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
                 isUnread
-                  ? 'bg-[#2980B9] text-white'
-                  : 'border border-zinc-200 bg-zinc-50 text-zinc-500',
+                  ? 'border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]'
+                  : 'border border-zinc-200/90 bg-zinc-50/90 text-zinc-500',
               ].join(' ')}
             >
-              {isUnread ? 'Nová' : isArchived ? 'Archiv' : 'Přečtená'}
+              {isUnread ? 'NOVÁ' : isArchived ? 'Archiv' : 'Přečtená'}
             </span>
-            <span className="text-xs font-medium text-zinc-400">
+            <span className="inline-flex items-center rounded-full border border-[#8dbfe0]/70 bg-[#2980B9]/12 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#1f5f8f] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
               {CATEGORY_LABELS[notification.category]}
             </span>
-            <span className="text-xs text-zinc-400">
+            <span className="ml-auto text-right text-xs text-zinc-400">
               {formatNotificationDate(notification.created_at)}
             </span>
           </div>
@@ -210,18 +219,30 @@ function NotificationCard({
           ) : null}
 
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
-            {notification.actor_name ? <span>Od: {notification.actor_name}</span> : null}
-            {notification.recipient_name ? <span>Pro: {notification.recipient_name}</span> : null}
-            {notification.priority === 'high' ? <span>Vysoká priorita</span> : null}
+            {notification.actor_name ? (
+              <span className="inline-flex items-center rounded-full border border-zinc-200/90 bg-zinc-100/85 px-2.5 py-1 text-[11px] font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+                Od: <span className="ml-1 font-semibold text-zinc-800">{notification.actor_name}</span>
+              </span>
+            ) : null}
+            {notification.recipient_name ? (
+              <span className="inline-flex items-center rounded-full border border-zinc-200/90 bg-zinc-100/85 px-2.5 py-1 text-[11px] font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+                Pro: <span className="ml-1 font-semibold text-zinc-800">{notification.recipient_name}</span>
+              </span>
+            ) : null}
+            {notification.priority ? (
+              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] ${priorityChipClassName}`}>
+                Priorita: <span className="ml-1 font-semibold">{notification.priority === 'high' ? 'Vysoká' : notification.priority === 'medium' ? 'Střední' : 'Nízká'}</span>
+              </span>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+        <div className="grid shrink-0 grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-end">
           {notification.href ? (
-            <form action={openNotification.bind(null, notification.id, notification.href)}>
+            <form className="w-full md:w-auto" action={openNotification.bind(null, notification.id, notification.href)}>
               <button
                 type="submit"
-                className="inline-flex min-h-10 items-center rounded-xl bg-zinc-900 px-4 text-xs font-medium text-white transition hover:bg-zinc-800"
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 md:w-auto"
               >
                 OTEVŘÍT
               </button>
@@ -229,10 +250,10 @@ function NotificationCard({
           ) : null}
 
           {isUnread ? (
-            <form action={markNotificationRead.bind(null, notification.id)}>
+            <form className="w-full md:w-auto" action={markNotificationRead.bind(null, notification.id)}>
               <button
                 type="submit"
-                className="inline-flex min-h-10 items-center rounded-xl border border-zinc-200 bg-white px-4 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900"
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-xs font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 md:w-auto"
               >
                 PŘEČTENO
               </button>
@@ -240,10 +261,10 @@ function NotificationCard({
           ) : null}
 
           {!isArchived ? (
-            <form action={archiveNotification.bind(null, notification.id)}>
+            <form className="w-full md:w-auto" action={archiveNotification.bind(null, notification.id)}>
               <button
                 type="submit"
-                className="inline-flex min-h-10 items-center rounded-xl border border-zinc-200 bg-white px-4 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900"
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-xs font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 md:w-auto"
               >
                 ARCHIVOVAT
               </button>
@@ -251,10 +272,10 @@ function NotificationCard({
           ) : null}
 
           {isAdmin ? (
-            <form action={deleteNotificationAsAdmin.bind(null, notification.id)}>
+            <form className="w-full md:w-auto" action={deleteNotificationAsAdmin.bind(null, notification.id)}>
               <button
                 type="submit"
-                className="inline-flex min-h-10 items-center rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-medium text-red-700 transition hover:bg-red-100"
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-4 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(153,27,27,0.14)] transition duration-200 hover:-translate-y-[1px] hover:bg-[linear-gradient(155deg,rgba(254,242,242,0.98)_0%,rgba(254,226,226,0.94)_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(153,27,27,0.20)] md:w-auto"
               >
                 SMAZAT
               </button>
@@ -303,12 +324,26 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
   ])
 
   const isAdmin = profile.role === 'admin'
+  const hasActiveMobileFilters = status !== 'unread' || category !== 'all'
+  const mobileResetHref = getNotificationsHref({
+    search,
+    status: 'unread',
+    category: 'all',
+  })
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+      />
       <AppBadgeSync count={stats.unread} />
-      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-end">
               <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
@@ -327,14 +362,14 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
                   name="search"
                   defaultValue={search}
                   placeholder="Název, text, typ notifikace..."
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-200 sm:w-56 lg:w-72"
+                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
                 <input type="hidden" name="status" value={status} />
                 <input type="hidden" name="category" value={category} />
 
                 <button
                   type="submit"
-                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                 >
                   HLEDAT
                 </button>
@@ -342,7 +377,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
@@ -350,10 +385,10 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
           </div>
         </section>
 
-        <section className="rounded-[26px] border border-zinc-200 bg-white shadow-sm">
+        <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="p-4 md:p-5">
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
-              <div className="min-w-0">
+              <div className="min-w-0 hidden lg:block">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                   Zobrazení
                 </div>
@@ -379,7 +414,91 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <details className="group print-hidden w-full lg:hidden">
+                <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+                  <span className="inline-flex items-center gap-2">
+                    FILTRY
+                    {hasActiveMobileFilters ? (
+                      <span className="inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.07em] text-[#236f9f]">
+                        FILTR AKTIVNÍ
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-xs text-zinc-500 transition group-open:rotate-180">⌄</span>
+                </summary>
+
+                <form
+                  action="/notifications"
+                  method="get"
+                  className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                >
+                  <input type="hidden" name="search" value={search} />
+
+                  <div>
+                    <label
+                      htmlFor="status-mobile"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Zobrazení
+                    </label>
+                    <select
+                      id="status-mobile"
+                      name="status"
+                      defaultValue={status}
+                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    >
+                      {(['unread', 'today', 'active', 'archive'] as NotificationStatusFilter[]).map(
+                        (item) => (
+                          <option key={item} value={item}>
+                            {STATUS_LABELS[item]}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="category-mobile"
+                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    >
+                      Kategorie
+                    </label>
+                    <select
+                      id="category-mobile"
+                      name="category"
+                      defaultValue={category}
+                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    >
+                      {(['all', 'tasks', 'meetings', 'jobs', 'offers', 'system'] as NotificationCategoryFilter[]).map(
+                        (item) => (
+                          <option key={item} value={item}>
+                            {CATEGORY_LABELS[item]}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+                    <button
+                      type="submit"
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+                    >
+                      POUŽÍT FILTRY
+                    </button>
+
+                    <Link
+                      href={mobileResetHref}
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                    >
+                      RESET
+                    </Link>
+                  </div>
+                </form>
+              </details>
+
+              <div className="hidden space-y-3 lg:block">
                 <div className="grid grid-cols-4 gap-2">
                   <StatCard label="Nové" value={stats.unread} variant="primary" />
                   <StatCard label="Dnes" value={stats.today} variant="dark" />
@@ -389,7 +508,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-100 pt-4">
+            <div className="mt-4 hidden flex-wrap gap-2 border-t border-white/70 pt-4 lg:flex">
               {(['all', 'tasks', 'meetings', 'jobs', 'offers', 'system'] as NotificationCategoryFilter[]).map(
                 (item) => (
                   <FilterTab
@@ -402,11 +521,11 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
               )}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-3 border-t border-zinc-100 pt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3 pt-4 lg:border-t lg:border-white/70">
               <form action={markAllNotificationsRead}>
                 <button
                   type="submit"
-                  className="inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl bg-[#2980B9] px-2 text-[11px] font-medium text-white transition hover:bg-[#236f9f] sm:h-9 sm:px-4 sm:text-sm"
+                  className="inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-2 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] sm:h-9 sm:px-4 sm:text-sm"
                 >
                   OZNAČIT VŠE JAKO PŘEČTENÉ
                 </button>
@@ -415,7 +534,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
               <form action={archiveAllReadNotifications}>
                 <button
                   type="submit"
-                  className="inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-gray-200 bg-white px-2 text-[11px] font-medium uppercase text-gray-700 transition hover:bg-gray-50 sm:h-9 sm:px-4 sm:text-sm"
+                  className="inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 text-[11px] font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] sm:h-9 sm:px-4 sm:text-sm"
                 >
                   ARCHIVOVAT PŘEČTENÉ
                 </button>

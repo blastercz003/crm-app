@@ -60,9 +60,6 @@ export function OfferServicesModal({
             <h2 className="text-xl font-semibold tracking-tight text-gray-900">
               SLUŽBY
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Vyber služby pro klienta
-            </p>
           </div>
 
           <button

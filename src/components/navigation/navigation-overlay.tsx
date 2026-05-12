@@ -143,13 +143,7 @@ function LoadingDot({ delay }: { delay: string }) {
   return (
     <span
       className="h-4 w-4 rounded-full bg-[#2980B9] shadow-[0_0_18px_rgba(41,128,185,0.35)]"
-      style={{
-        animationName: 'navigation-overlay-pulse',
-        animationDuration: '0.95s',
-        animationTimingFunction: 'ease-in-out',
-        animationIterationCount: 'infinite',
-        animationDelay: delay,
-      }}
+      style={{ transitionDelay: delay }}
     />
   )
 }

@@ -345,6 +345,8 @@ export function OfferItemsEditor({
       : 'minmax(170px,1fr) minmax(220px,1.35fr) 130px 80px 168px'
   const useCompactClassicMobileCards = showQuantityAndTotal && itemSection !== 'bsafe_service'
   const showSectionTotalBadge = showQuantityAndTotal && itemSection !== 'bsafe_service' && !showPlannedPrice
+  const rowInputBaseClass =
+    'w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] outline-none transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]'
   const rightAlignUnitPriceHeader = true
   const activePresetKey = presets.some((preset) => preset.key === selectedPresetKey)
     ? selectedPresetKey
@@ -472,9 +474,6 @@ export function OfferItemsEditor({
             <h2 className="text-xl font-semibold tracking-tight text-gray-900">
               {title}
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Položky vložíš a upravíš kliknutím na tlačítko vpravo.
-            </p>
           </div>
 
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
@@ -891,7 +890,7 @@ export function OfferItemsEditor({
                               <input
                                 value={row.description}
                                 onChange={(event) => updateRow(row.id, 'description', event.target.value)}
-                                className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                                className={`h-10 px-3 ${rowInputBaseClass}`}
                                 placeholder="Položka"
                               />
                             </label>
@@ -902,7 +901,7 @@ export function OfferItemsEditor({
                               <input
                                 value={row.specification}
                                 onChange={(event) => updateRow(row.id, 'specification', event.target.value)}
-                                className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                                className={`h-10 px-3 ${rowInputBaseClass}`}
                                 placeholder="Specifikace / popis"
                               />
                             </label>
@@ -916,7 +915,7 @@ export function OfferItemsEditor({
                                   value={row.unitPrice}
                                   onChange={(event) => updateRow(row.id, 'unitPrice', event.target.value)}
                                   className={[
-                                    'w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]',
+                                    `${rowInputBaseClass} text-right`,
                                     useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
                                   ].join(' ')}
                                   placeholder="0"
@@ -930,7 +929,7 @@ export function OfferItemsEditor({
                                   <input
                                     value={row.plannedUnitPrice}
                                     onChange={(event) => updateRow(row.id, 'plannedUnitPrice', event.target.value)}
-                                    className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                                    className={`h-10 px-3 text-right ${rowInputBaseClass}`}
                                     placeholder="0"
                                   />
                                 </label>
@@ -943,7 +942,7 @@ export function OfferItemsEditor({
                                   value={row.unit}
                                   onChange={(event) => updateRow(row.id, 'unit', event.target.value)}
                                   className={[
-                                    'w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]',
+                                    `${rowInputBaseClass} text-right`,
                                     useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
                                   ].join(' ')}
                                   placeholder="ks"
@@ -958,7 +957,7 @@ export function OfferItemsEditor({
                                     value={row.quantity}
                                     onChange={(event) => updateRow(row.id, 'quantity', event.target.value)}
                                     className={[
-                                      'w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]',
+                                      `${rowInputBaseClass} text-right`,
                                       useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
                                     ].join(' ')}
                                     placeholder="1"
@@ -974,7 +973,7 @@ export function OfferItemsEditor({
                                     value={row.discountPercent}
                                     onChange={(event) => updateRow(row.id, 'discountPercent', event.target.value)}
                                     className={[
-                                      'w-full rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]',
+                                      `${rowInputBaseClass} text-right`,
                                       useCompactClassicMobileCards ? 'h-9 px-1.5 text-xs' : 'h-10 px-3',
                                     ].join(' ')}
                                     placeholder="-"
@@ -1049,40 +1048,40 @@ export function OfferItemsEditor({
                         <input
                           value={row.description}
                           onChange={(event) => updateRow(row.id, 'description', event.target.value)}
-                          className="h-10 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                          className={`h-10 px-3 ${rowInputBaseClass}`}
                           placeholder="Položka"
                         />
                         <input
                           value={row.specification}
                           onChange={(event) => updateRow(row.id, 'specification', event.target.value)}
-                          className="h-10 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                          className={`h-10 px-3 ${rowInputBaseClass}`}
                           placeholder="Specifikace / popis"
                         />
                         <input
                           value={row.unitPrice}
                           onChange={(event) => updateRow(row.id, 'unitPrice', event.target.value)}
-                          className="h-10 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                          className={`h-10 px-3 text-right ${rowInputBaseClass}`}
                           placeholder="0"
                         />
                         {showPlannedPrice ? (
                           <input
                             value={row.plannedUnitPrice}
                             onChange={(event) => updateRow(row.id, 'plannedUnitPrice', event.target.value)}
-                            className="h-10 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                            className={`h-10 px-3 text-right ${rowInputBaseClass}`}
                             placeholder="0"
                           />
                         ) : null}
                         <input
                           value={row.unit}
                           onChange={(event) => updateRow(row.id, 'unit', event.target.value)}
-                          className="h-10 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                          className={`h-10 px-3 ${rowInputBaseClass}`}
                           placeholder="ks"
                         />
                         {showQuantityAndTotal ? (
                           <input
                             value={row.quantity}
                             onChange={(event) => updateRow(row.id, 'quantity', event.target.value)}
-                            className="h-10 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                            className={`h-10 px-3 text-right ${rowInputBaseClass}`}
                             placeholder="1"
                           />
                         ) : null}
@@ -1090,7 +1089,7 @@ export function OfferItemsEditor({
                           <input
                             value={row.discountPercent}
                             onChange={(event) => updateRow(row.id, 'discountPercent', event.target.value)}
-                            className="h-10 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-right text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                            className={`h-10 px-3 text-right ${rowInputBaseClass}`}
                             placeholder="-"
                           />
                         ) : (
@@ -1156,7 +1155,7 @@ export function OfferItemsEditor({
                     value={draftSectionNote}
                     onChange={(event) => setDraftSectionNote(event.target.value)}
                     rows={2}
-                    className="min-h-[52px] w-full resize-none rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    className="min-h-[52px] w-full resize-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] outline-none transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                     placeholder="Poznámka k této sekci"
                   />
                 </div>

@@ -712,7 +712,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
 
             <div className="min-h-[1.75rem]">
               {isOverdue ? (
-                <span className="inline-flex items-center rounded-full border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] px-2.5 py-1 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(190,24,93,0.24)] task-overdue-badge">
+                <span className="inline-flex items-center rounded-full border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] px-2.5 py-1 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(190,24,93,0.24)]">
                   Po termínu
                 </span>
               ) : null}

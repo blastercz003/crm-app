@@ -56,7 +56,7 @@ export function NewClientButton({
       <button
         type="button"
         onClick={openModal}
-        className={`${resolvedClassName} primary-ambient-glow--blue`}
+        className={resolvedClassName}
       >
         {label}
       </button>
@@ -354,6 +354,7 @@ function ClientFormActions({
         submitLabel={submitLabel}
         pendingSubmitLabel={pendingSubmitLabel}
         visualStyle="blaster"
+        disableAmbientGlow
       />
     </>
   )

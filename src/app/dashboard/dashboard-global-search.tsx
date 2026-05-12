@@ -192,7 +192,9 @@ function SectionResults({ section, query }: { section: GlobalSearchSectionResult
   const getOfferStatusBadgeClass = (statusLabel: string | null | undefined) => {
     if (statusLabel === 'Objednáno') return 'bg-green-600 text-white border-transparent'
     if (statusLabel === 'Zamítnuto') return 'bg-red-100 text-red-700 border-red-200'
-    if (statusLabel === 'Odeslaná') return 'bg-white text-black border-black'
+    if (statusLabel === 'Odeslaná') {
+      return 'border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.9)_48%,rgba(234,241,248,0.84)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_16px_rgba(15,23,42,0.10)]'
+    }
     if (statusLabel === 'Schválená') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
     if (statusLabel === 'Ke schválení') return 'bg-[#2980B9]/10 text-[#236f9f] border-[#2980B9]/30'
     if (statusLabel === 'K úpravě') return 'bg-amber-100 text-amber-700 border-amber-200'

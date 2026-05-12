@@ -668,6 +668,7 @@ function MeetingFormActions({
           submitLabel={submitLabel}
           pendingSubmitLabel={pendingSubmitLabel}
           visualStyle="blaster"
+          disableAmbientGlow
         />
       ) : (
         <div

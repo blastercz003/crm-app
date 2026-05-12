@@ -123,7 +123,7 @@ export function FakturyInteractiveTable({
               <col className="w-[120px]" />
               <col className="w-[120px]" />
             </colgroup>
-            <thead className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_100%)] shadow-[0_1px_0_0_#e5e7eb]">
+            <thead className="bg-transparent shadow-[0_1px_0_0_#e5e7eb]">
               <tr className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                 <th className="w-[60px] px-1.5 py-2 text-center">Zakázka</th>
                 <th className="w-[72px] px-1.5 py-2 pr-3 text-left">Obchodník</th>

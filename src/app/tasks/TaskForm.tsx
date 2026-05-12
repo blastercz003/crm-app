@@ -541,6 +541,7 @@ function TaskFormActions({
           submitLabel={submitLabel}
           pendingSubmitLabel={pendingSubmitLabel}
           visualStyle="blaster"
+          disableAmbientGlow
         />
       ) : (
         <div className={`flex flex-wrap gap-3 ${pending ? 'cursor-wait' : ''}`}>

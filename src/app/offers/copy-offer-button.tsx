@@ -383,6 +383,7 @@ function CopyOfferModal({
                 pendingSubmitLabel="VYTVÁŘÍM KOPII..."
                 submitDisabled={!companySelectionIsValid}
                 visualStyle="blaster"
+                disableAmbientGlow
               />
             </div>
           </form>
