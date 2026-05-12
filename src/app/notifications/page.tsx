@@ -168,7 +168,7 @@ function NotificationCard({
   const priorityChipClassName =
     notification.priority === 'high'
       ? 'border-red-300/90 bg-red-50/90 text-red-700'
-      : notification.priority === 'medium'
+      : notification.priority === 'normal'
         ? 'border-amber-300/90 bg-amber-50/90 text-amber-700'
         : 'border-emerald-300/90 bg-emerald-50/90 text-emerald-700'
 
@@ -231,7 +231,7 @@ function NotificationCard({
             ) : null}
             {notification.priority ? (
               <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] ${priorityChipClassName}`}>
-                Priorita: <span className="ml-1 font-semibold">{notification.priority === 'high' ? 'Vysoká' : notification.priority === 'medium' ? 'Střední' : 'Nízká'}</span>
+                Priorita: <span className="ml-1 font-semibold">{notification.priority === 'high' ? 'Vysoká' : notification.priority === 'normal' ? 'Střední' : 'Nízká'}</span>
               </span>
             ) : null}
           </div>
