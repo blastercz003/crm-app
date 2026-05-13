@@ -6,6 +6,7 @@ type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const SEND_WINDOW_START_HOUR = 8
 const SEND_WINDOW_END_HOUR = 20
+const RECEIVED_INVOICE_REMINDER_HOUR = 13
 
 function getPragueDateParts(now: Date) {
   const formatter = new Intl.DateTimeFormat('en-GB', {
@@ -104,6 +105,7 @@ type AutomationRunResult = {
     tasksOverdue: number
     jobsMissingPp: number
     unreadOlderThan6h: number
+    receivedInvoicesDue: number
   }
 }
 
@@ -141,6 +143,13 @@ type RecipientRow = {
 
 type AdminRow = {
   id: string
+}
+
+type ReceivedInvoiceDueRow = {
+  id: string
+  file_name: string
+  due_date: string | null
+  status: 'unpaid' | 'paid'
 }
 
 async function sendMeetingOverdue24hNotifications(
@@ -343,6 +352,82 @@ async function sendUnreadNotificationReminder(supabase: ServiceClient, now: Date
   return recipientIds.length
 }
 
+async function sendReceivedInvoiceDueNotifications(
+  supabase: ServiceClient,
+  now: Date
+) {
+  const pragueParts = getPragueDateParts(now)
+  const pragueDateKey = getPragueDateKey(now)
+
+  if (pragueParts.hour !== RECEIVED_INVOICE_REMINDER_HOUR) {
+    return 0
+  }
+
+  const [{ data: dueRows, error: dueError }, { data: admins, error: adminsError }] =
+    await Promise.all([
+      supabase
+        .from('received_invoices')
+        .select('id, file_name, due_date, status')
+        .eq('status', 'unpaid')
+        .not('due_date', 'is', null)
+        .lte('due_date', pragueDateKey),
+      supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin'),
+    ])
+
+  if (dueError) {
+    throw new Error(`Automatické notifikace (přijaté faktury) selhaly: ${dueError.message}`)
+  }
+
+  if (adminsError) {
+    throw new Error(`Automatické notifikace (admin) selhaly: ${adminsError.message}`)
+  }
+
+  const invoices = (dueRows ?? []) as ReceivedInvoiceDueRow[]
+  const adminIds = ((admins ?? []) as AdminRow[]).map((admin) => admin.id).filter(Boolean)
+
+  if (invoices.length === 0 || adminIds.length === 0) {
+    return 0
+  }
+
+  let sent = 0
+
+  for (const invoice of invoices) {
+    const dueDate = String(invoice.due_date ?? '')
+    const isOverdue = dueDate < pragueDateKey
+    const title = isOverdue
+      ? 'PŘIJATÁ FAKTURA PO SPLATNOSTI'
+      : 'DNES SPLATNÁ PŘIJATÁ FAKTURA'
+    const message = isOverdue
+      ? `Faktura "${invoice.file_name}" je po splatnosti (${dueDate}) a je stále nezaplacená.`
+      : `Faktura "${invoice.file_name}" má dnes splatnost (${dueDate}) a je stále nezaplacená.`
+
+    for (const adminId of adminIds) {
+      await createNotification({
+        supabase,
+        recipientUserId: adminId,
+        actorUserId: null,
+        category: 'system',
+        type: 'received_invoice_due_daily',
+        title,
+        message,
+        entityType: 'received_invoice',
+        entityId: invoice.id,
+        href: '/dashboard',
+        priority: 'high',
+        dedupeKey: `received_invoice_due_daily:${invoice.id}:${adminId}:${pragueDateKey}`,
+        skipSelfNotification: false,
+      })
+
+      sent += 1
+    }
+  }
+
+  return sent
+}
+
 export async function runNotificationAutomations(now = new Date()): Promise<AutomationRunResult> {
   if (!isWithinSendWindow(now)) {
     return {
@@ -353,6 +438,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
         tasksOverdue: 0,
         jobsMissingPp: 0,
         unreadOlderThan6h: 0,
+        receivedInvoicesDue: 0,
       },
     }
   }
@@ -363,22 +449,29 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
     throw new Error('Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro automatické notifikace.')
   }
 
-  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, unreadOlderThan6h] =
+  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, unreadOlderThan6h, receivedInvoicesDue] =
     await Promise.all([
       sendMeetingOverdue24hNotifications(supabase, now),
       sendTaskOverdueNotifications(supabase, now),
       sendJobMissingPpNotifications(supabase, now),
       sendUnreadNotificationReminder(supabase, now),
+      sendReceivedInvoiceDueNotifications(supabase, now),
     ])
 
   return {
-    sent: meetingsOverdue24h + tasksOverdue + jobsMissingPp + unreadOlderThan6h,
+    sent:
+      meetingsOverdue24h +
+      tasksOverdue +
+      jobsMissingPp +
+      unreadOlderThan6h +
+      receivedInvoicesDue,
     skippedOutsideWindow: false,
     details: {
       meetingsOverdue24h,
       tasksOverdue,
       jobsMissingPp,
       unreadOlderThan6h,
+      receivedInvoicesDue,
     },
   }
 }

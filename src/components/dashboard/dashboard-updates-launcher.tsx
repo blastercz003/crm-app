@@ -7,14 +7,17 @@ import type { NotificationRow } from '@/lib/notifications/types'
 type DashboardUpdatesLauncherProps = {
   notifications: NotificationRow[]
   unreadCount: number
+  receivedInvoicesDueCount?: number
   variant?: 'desktop' | 'mobile'
 }
 
 export function DashboardUpdatesLauncher({
   notifications,
   unreadCount,
+  receivedInvoicesDueCount = 0,
   variant = 'desktop',
 }: DashboardUpdatesLauncherProps) {
+  void receivedInvoicesDueCount
   const [isOpen, setIsOpen] = useState(false)
   const [optimisticUnreadCount, setOptimisticUnreadCount] = useState(unreadCount)
 

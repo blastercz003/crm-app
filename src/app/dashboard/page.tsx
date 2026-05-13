@@ -28,6 +28,7 @@ import {
 } from '@/lib/notifications/getNotifications'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
+import { getReceivedInvoiceBadgeCount } from '@/lib/received-invoices/service'
 import {
   DashboardGlobalSearchBody,
   DashboardGlobalSearchInput,
@@ -1211,7 +1212,7 @@ export default async function DashboardPage() {
 
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
-  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse] =
+  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse, receivedInvoicesDueCount] =
     await Promise.all([
     getCurrentUserNotificationStats(),
     getCurrentUserNotifications({ status: 'active', limit: 30 }),
@@ -1222,6 +1223,7 @@ export default async function DashboardPage() {
       .select('id, client_id, name, phone, email, is_primary')
       .order('is_primary', { ascending: false })
       .order('name', { ascending: true }),
+    isAdmin ? getReceivedInvoiceBadgeCount() : Promise.resolve(0),
     ])
 
   if (clientsResponse.error) {
@@ -1343,6 +1345,7 @@ export default async function DashboardPage() {
                 <DashboardUpdatesLauncher
                   notifications={modalNotifications}
                   unreadCount={notificationStats.unread}
+                  receivedInvoicesDueCount={receivedInvoicesDueCount}
                   variant="desktop"
                 />
 
@@ -1360,6 +1363,7 @@ export default async function DashboardPage() {
             <DashboardUpdatesLauncher
               notifications={modalNotifications}
               unreadCount={notificationStats.unread}
+              receivedInvoicesDueCount={receivedInvoicesDueCount}
               variant="mobile"
             />
           </div>
@@ -1501,6 +1505,7 @@ export default async function DashboardPage() {
           contacts={quickActionContacts}
           canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
           canCreateJobs={isAdmin}
+          receivedInvoicesDueCount={receivedInvoicesDueCount}
         />
           </div>
         </main>
