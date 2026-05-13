@@ -620,7 +620,7 @@ export function ReceivedInvoicesModal({
                   </form>
                 </div>
               ) : (
-                <div className="min-h-0">
+                <div className="flex h-full min-h-0 flex-col">
                   <div className="mb-2 grid grid-cols-2 gap-2 lg:hidden">
                     <button
                       type="button"
@@ -682,11 +682,14 @@ export function ReceivedInvoicesModal({
                   <div
                     className={
                       mobileViewPanel === 'preview'
-                        ? 'hidden lg:block lg:max-h-[56vh] lg:overflow-y-auto'
-                        : 'max-h-[42vh] overflow-y-auto lg:max-h-[56vh]'
+                        ? 'hidden lg:block lg:min-h-0 lg:flex-1 lg:overflow-y-auto'
+                        : 'min-h-0 flex-1 overflow-y-auto'
                     }
                   >
-                    <div className="grid gap-2">
+                    <div
+                      className="grid gap-2 pb-24 lg:pb-4"
+                      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.5rem)' }}
+                    >
                       {rows.map((row) => (
                         <div
                           key={row.id}
@@ -707,8 +710,8 @@ export function ReceivedInvoicesModal({
                           tabIndex={0}
                           className={`w-full rounded-xl border px-3 py-2 text-left transition ${
                             selectedId === row.id
-                              ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,rgba(234,243,251,0.98)_0%,rgba(220,236,248,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_20px_rgba(41,128,185,0.14)]'
-                              : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
+                              ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,rgba(234,243,251,0.98)_0%,rgba(220,236,248,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),inset_0_-1px_0_rgba(41,128,185,0.08)]'
+                              : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(148,163,184,0.12)] hover:-translate-y-[1px]'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">

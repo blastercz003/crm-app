@@ -101,60 +101,88 @@ function DesktopRow({ job }: { job: PortalJobRow }) {
 }
 
 function MobileCard({ job }: { job: PortalJobRow }) {
+  const [isActionsOpen, setIsActionsOpen] = useState(false)
+
   return (
     <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 w-0 flex-1">
           <p className="text-sm font-semibold leading-tight text-gray-900">
             {job.job_number}
           </p>
-          <p className="mt-0.5 truncate text-sm text-gray-700">
+          <p className="mt-0.5 block truncate text-[12px] font-medium leading-5 text-gray-900">
             {job.company_name}
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5">
-          <JobStatusBadge status={job.job_status} compact />
-          <InfoButton job={job} compact />
-        </div>
+        <JobStatusBadge status={job.job_status} compact />
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Osoba:</span>{' '}
-          <span className="break-words">{job.contact_person || '—'}</span>
-        </div>
-
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Prodejna:</span>{' '}
-          <span className="break-words">{job.store_number || '—'}</span>
-        </div>
-
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Začátek:</span>{' '}
-          <span className="break-words">{formatDateTime(job.start_at)}</span>
-        </div>
-
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Konec:</span>{' '}
-          <span className="break-words">{formatDateTime(job.end_at)}</span>
-        </div>
-
-        <div className="col-span-2 min-w-0">
+      <div className="mt-0 grid grid-cols-1 gap-x-2 gap-y-0 text-[12px] leading-5 text-gray-600 min-[300px]:grid-cols-[17.5ch_minmax(12ch,1fr)]">
+        <div className="min-w-0 min-[300px]:col-span-2">
           <span className="font-medium text-gray-900">Adresa:</span>{' '}
           <span className="break-words">{job.site_address || '—'}</span>
         </div>
 
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Technik:</span>{' '}
-          <span className="break-words">{job.technician_name || '—'}</span>
+        <div className="min-w-0 mt-1">
+          <span className="font-semibold text-gray-900">Začátek:</span>{' '}
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
+            {formatDateTimeMobile(job.start_at)}
+          </span>
         </div>
 
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Agregát:</span>{' '}
-          <span className="break-words">{job.generator_name || '—'}</span>
+        <div className="min-w-0 mt-1">
+          <span className="font-semibold text-gray-900">Konec:</span>{' '}
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
+            {formatDateTimeMobile(job.end_at)}
+          </span>
         </div>
+
+        <div className="min-w-0 max-w-[12.5rem]">
+          <span className="font-medium text-gray-900">Technik:</span>{' '}
+          <span className="inline-block max-w-[7.5rem] truncate align-bottom whitespace-nowrap">
+            {job.technician_name || '—'}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 whitespace-nowrap">
+            <span className="font-medium text-gray-900">Agregát:</span>{' '}
+            <span className="inline-block max-w-[7rem] truncate align-bottom whitespace-nowrap">
+              {job.generator_name || '—'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsActionsOpen((current) => !current)}
+            aria-expanded={isActionsOpen}
+            aria-label="Akce zakázky"
+            className={`hidden min-[300px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+          >
+            ⋯
+          </button>
+        </div>
+
       </div>
+
+      <div className="mt-0 flex justify-end min-[300px]:hidden">
+        <button
+          type="button"
+          onClick={() => setIsActionsOpen((current) => !current)}
+          aria-expanded={isActionsOpen}
+          aria-label="Akce zakázky"
+          className={`inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+        >
+          ⋯
+        </button>
+      </div>
+
+      {isActionsOpen ? (
+        <div className="mt-0 flex justify-end">
+          <InfoButton job={job} compact />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -408,4 +436,25 @@ function formatDateTime(value: string | null) {
     timeStyle: 'short',
     timeZone: PRAGUE_TIME_ZONE,
   }).format(new Date(value))
+}
+
+function formatDateTimeMobile(value: string | null) {
+  if (!value) return '—'
+
+  const parts = new Intl.DateTimeFormat('cs-CZ', {
+    day: 'numeric',
+    month: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).formatToParts(new Date(value))
+
+  const day = parts.find((part) => part.type === 'day')?.value ?? ''
+  const month = parts.find((part) => part.type === 'month')?.value ?? ''
+  const hour = parts.find((part) => part.type === 'hour')?.value ?? ''
+  const minute = parts.find((part) => part.type === 'minute')?.value ?? ''
+
+  if (!day || !month || !hour || !minute) return '—'
+
+  return `${day}.${month}. ${hour}:${minute}`
 }
