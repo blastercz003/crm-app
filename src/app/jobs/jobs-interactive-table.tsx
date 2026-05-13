@@ -314,29 +314,29 @@ function MobileCard({
         <JobStatusButton job={job} canEdit />
       </div>
 
-      <div className="mt-0 grid grid-cols-1 gap-x-10 gap-y-0 text-[12px] leading-5 text-gray-600 min-[380px]:grid-cols-[minmax(14ch,max-content)_minmax(12ch,1fr)]">
-        <div className="min-w-0 min-[380px]:col-span-2">
+      <div className="mt-0 grid grid-cols-1 gap-x-2 gap-y-0 text-[12px] leading-5 text-gray-600 min-[300px]:grid-cols-[17.5ch_minmax(12ch,1fr)]">
+        <div className="min-w-0 min-[300px]:col-span-2">
           <span className="font-medium text-gray-900">Adresa:</span>{' '}
           <span className="break-words">{job.site_address || '—'}</span>
         </div>
 
         <div className="min-w-0 mt-1">
           <span className="font-semibold text-gray-900">Začátek:</span>{' '}
-          <span className="whitespace-nowrap font-semibold text-gray-900">
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
             {formatDateTimeMobile(job.start_at)}
           </span>
         </div>
 
         <div className="min-w-0 mt-1">
           <span className="font-semibold text-gray-900">Konec:</span>{' '}
-          <span className="whitespace-nowrap font-semibold text-gray-900">
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
             {formatDateTimeMobile(job.end_at)}
           </span>
         </div>
 
         <div className="min-w-0 max-w-[12.5rem]">
           <span className="font-medium text-gray-900">Technik:</span>{' '}
-          <span className="inline-block max-w-[8.25rem] truncate align-bottom whitespace-nowrap">
+          <span className="inline-block max-w-[7.5rem] truncate align-bottom whitespace-nowrap">
             {job.technician_name || '—'}
           </span>
         </div>
@@ -344,7 +344,7 @@ function MobileCard({
         <div className="min-w-0 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1 whitespace-nowrap">
             <span className="font-medium text-gray-900">Agregát:</span>{' '}
-            <span className="inline-block max-w-[7.5rem] truncate align-bottom">
+            <span className="inline-block max-w-[7rem] truncate align-bottom whitespace-nowrap">
               {job.generator_name || '—'}
             </span>
           </div>
@@ -354,14 +354,14 @@ function MobileCard({
             onClick={() => setIsActionsOpen((current) => !current)}
             aria-expanded={isActionsOpen}
             aria-label="Akce zakázky"
-            className={`hidden min-[380px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+            className={`hidden min-[300px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
           >
             ⋯
           </button>
         </div>
       </div>
 
-      <div className="mt-0 flex justify-end min-[380px]:hidden">
+      <div className="mt-0 flex justify-end min-[300px]:hidden">
         <button
           type="button"
           onClick={() => setIsActionsOpen((current) => !current)}
@@ -1422,13 +1422,22 @@ function formatDateTime(value: string | null) {
 function formatDateTimeMobile(value: string | null) {
   if (!value) return '—'
 
-  return new Intl.DateTimeFormat('cs-CZ', {
+  const parts = new Intl.DateTimeFormat('cs-CZ', {
     day: 'numeric',
     month: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
     timeZone: PRAGUE_TIME_ZONE,
-  }).format(new Date(value))
+  }).formatToParts(new Date(value))
+
+  const day = parts.find((part) => part.type === 'day')?.value ?? ''
+  const month = parts.find((part) => part.type === 'month')?.value ?? ''
+  const hour = parts.find((part) => part.type === 'hour')?.value ?? ''
+  const minute = parts.find((part) => part.type === 'minute')?.value ?? ''
+
+  if (!day || !month || !hour || !minute) return '—'
+
+  return `${day}.${month}. ${hour}:${minute}`
 }
 
 function toDateTimeLocalValue(value: string | null | undefined) {
