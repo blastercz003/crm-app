@@ -32,29 +32,121 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
-function formatDate(value: string | null) {
-  if (!value) return 'Bez splatnosti'
-  return new Intl.DateTimeFormat('cs-CZ', {
-    dateStyle: 'medium',
-    timeZone: 'Europe/Prague',
-  }).format(new Date(`${value}T00:00:00`))
-}
-
 function isImageMimeType(mimeType: string) {
   return String(mimeType ?? '').toLowerCase().startsWith('image/')
+}
+
+function MobilePdfCanvasPreview({ previewUrl }: { previewUrl: string }) {
+  const [pages, setPages] = useState<Array<{ src: string; width: number; height: number }>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function renderPdfToImages() {
+      setLoading(true)
+      setError(null)
+      setPages([])
+
+      try {
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+          import.meta.url
+        ).toString()
+
+        const loadingTask = pdfjs.getDocument(previewUrl)
+        const pdf = await loadingTask.promise
+        if (cancelled) return
+
+        const renderedPages: Array<{ src: string; width: number; height: number }> = []
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          const page = await pdf.getPage(pageNumber)
+          if (cancelled) return
+
+          const viewport = page.getViewport({ scale: 1.35 })
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          if (!context) {
+            throw new Error('Nepodařilo se vykreslit stránku PDF.')
+          }
+
+          canvas.width = Math.floor(viewport.width)
+          canvas.height = Math.floor(viewport.height)
+
+          const renderTask = page.render({ canvasContext: context, viewport })
+          await renderTask.promise
+          if (cancelled) return
+
+          renderedPages.push({
+            src: canvas.toDataURL('image/png'),
+            width: canvas.width,
+            height: canvas.height,
+          })
+        }
+
+        if (!cancelled) {
+          setPages(renderedPages)
+          setLoading(false)
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Náhled PDF se nepodařilo vykreslit.')
+          setLoading(false)
+        }
+      }
+    }
+
+    void renderPdfToImages()
+
+    return () => {
+      cancelled = true
+    }
+  }, [previewUrl])
+
+  if (loading) {
+    return <div className="flex h-full items-center justify-center text-sm text-zinc-500">Načítám náhled...</div>
+  }
+
+  if (error) {
+    return <div className="flex h-full items-center justify-center text-sm text-zinc-500">{error}</div>
+  }
+
+  return (
+    <div className="h-full overflow-y-auto p-2">
+      <div className="space-y-2">
+        {pages.map((page, index) => (
+          <Image
+            key={`${index + 1}-${page.src.length}`}
+            src={page.src}
+            alt={`PDF strana ${index + 1}`}
+            width={page.width}
+            height={page.height}
+            unoptimized
+            className="w-full rounded-lg border border-zinc-200 bg-white"
+          />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const InvoicePreviewPane = memo(function InvoicePreviewPane({
   previewUrl,
   mimeType,
   fileName,
+  isMobileViewport,
 }: {
   previewUrl: string | null
   mimeType: string
   fileName: string
+  isMobileViewport: boolean
 }) {
+  const isPdf = String(mimeType ?? '').toLowerCase() === 'application/pdf'
+
   return (
-    <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/75 bg-white/85">
+    <div className="h-[46vh] min-h-[320px] flex-none overflow-hidden rounded-2xl border border-white/75 bg-white/85 lg:h-full lg:min-h-0 lg:flex-1">
       {previewUrl ? (
         isImageMimeType(mimeType) ? (
           <Image
@@ -64,8 +156,11 @@ const InvoicePreviewPane = memo(function InvoicePreviewPane({
             height={1800}
             className="h-full w-full object-contain"
           />
+        ) : isMobileViewport && isPdf ? (
+          <MobilePdfCanvasPreview previewUrl={previewUrl} />
         ) : (
           <iframe
+            key={previewUrl}
             src={previewUrl}
             title={fileName}
             className="h-full w-full"
@@ -99,8 +194,21 @@ export function ReceivedInvoicesModal({
   const [multipleFiles, setMultipleFiles] = useState<File[]>([])
   const [dueDateDraft, setDueDateDraft] = useState('')
   const [mobileViewPanel, setMobileViewPanel] = useState<MobileViewPanel>('list')
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; fileName: string } | null>(null)
 
   useBodyScrollLock(isOpen)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const media = window.matchMedia('(max-width: 1023px)')
+    const updateViewport = () => setIsMobileViewport(media.matches)
+    updateViewport()
+
+    media.addEventListener('change', updateViewport)
+    return () => media.removeEventListener('change', updateViewport)
+  }, [])
 
   useEffect(() => {
     if (!isOpen) return
@@ -143,19 +251,29 @@ export function ReceivedInvoicesModal({
   const selectedInvoiceId = selectedInvoice?.id ?? null
 
   useEffect(() => {
-    if (!selectedInvoiceId) return
+    if (!selectedInvoiceId || !isOpen || mode !== 'view') return
+    if (mobileViewPanel !== 'preview' && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return
+    }
+
+    let cancelled = false
 
     startTransition(async () => {
       const result = await getReceivedInvoicePreviewUrlAction(selectedInvoiceId)
+      if (cancelled) return
+
       if (!result.success) {
-        setPreviewUrl(null)
         setError(result.error ?? 'Nepodařilo se načíst náhled.')
         return
       }
 
       setPreviewUrl(result.signedUrl)
     })
-  }, [selectedInvoiceId])
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedInvoiceId, isOpen, mode, mobileViewPanel])
 
   function refreshData() {
     startTransition(async () => {
@@ -274,21 +392,23 @@ export function ReceivedInvoicesModal({
     })
   }
 
-  function handleDelete() {
-    if (!selectedInvoice) return
-    const confirmed = window.confirm(`Opravdu smazat soubor "${selectedInvoice.file_name}"?`)
-    if (!confirmed) return
-
+  function performDelete(invoiceId: string) {
     startTransition(async () => {
       setError(null)
-      const result = await deleteReceivedInvoiceAction(selectedInvoice.id)
+      const result = await deleteReceivedInvoiceAction(invoiceId)
       if (!result.success) {
         setError(result.error ?? 'Smazání faktury selhalo.')
         return
       }
 
+      setPendingDelete(null)
       refreshData()
     })
+  }
+
+  function handleDelete() {
+    if (!selectedInvoice) return
+    setPendingDelete({ id: selectedInvoice.id, fileName: selectedInvoice.file_name })
   }
 
   function handleToggleStatus(nextStatus: 'unpaid' | 'paid') {
@@ -389,13 +509,18 @@ export function ReceivedInvoicesModal({
             </button>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
-            <aside className="min-h-0 border-b border-white/70 p-4 lg:border-b-0 lg:border-r lg:border-white/70">
+          <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[360px_minmax(0,1fr)]">
+            <aside
+              className={`min-h-0 border-b-0 px-4 pt-4 lg:border-b-0 lg:border-r lg:border-white/70 ${
+                mode === 'view' && mobileViewPanel === 'preview' ? 'pb-2' : 'pb-4'
+              }`}
+            >
               <div className="mb-3 grid grid-cols-2 gap-2">
-                  <button
+                <button
                   type="button"
                   onClick={() => {
                     setMode('upload')
+                    setMobileViewPanel('list')
                   }}
                   className={`inline-flex h-9 items-center justify-center rounded-xl border text-xs font-semibold uppercase transition ${
                     mode === 'upload'
@@ -502,8 +627,8 @@ export function ReceivedInvoicesModal({
                       onClick={() => setMobileViewPanel('list')}
                       className={`inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
                         mobileViewPanel === 'list'
-                          ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]'
-                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
+                          ? 'border-zinc-700/90 bg-[linear-gradient(155deg,rgba(63,63,70,0.98)_0%,rgba(39,39,42,0.96)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_20px_rgba(24,24,27,0.34)]'
+                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
                       }`}
                     >
                       Seznam
@@ -513,66 +638,109 @@ export function ReceivedInvoicesModal({
                       onClick={() => setMobileViewPanel('preview')}
                       className={`inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
                         mobileViewPanel === 'preview'
-                          ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]'
-                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
+                          ? 'border-zinc-700/90 bg-[linear-gradient(155deg,rgba(63,63,70,0.98)_0%,rgba(39,39,42,0.96)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_20px_rgba(24,24,27,0.34)]'
+                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
                       }`}
                     >
                       Náhled
                     </button>
                   </div>
 
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    {FILTERS.map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setFilter(item.key)}
-                        className={`inline-flex h-8 items-center justify-center rounded-full border px-3 text-xs font-medium ${
-                          filter === item.key
-                            ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]'
-                            : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                  <div
+                    className={`mb-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
+                      mobileViewPanel === 'preview' ? 'hidden lg:block' : 'block'
+                    }`}
+                  >
+                    <div className="grid grid-cols-3 gap-1">
+                      {FILTERS.map((item) => {
+                        const isActive = filter === item.key
+                        const activeClass =
+                          item.key === 'paid'
+                            ? 'border-emerald-300/90 bg-[linear-gradient(155deg,rgba(16,185,129,0.9)_0%,rgba(5,150,105,0.9)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(5,150,105,0.24)]'
+                            : item.key === 'unpaid'
+                              ? 'border-red-300/90 bg-[linear-gradient(155deg,rgba(239,68,68,0.88)_0%,rgba(220,38,38,0.9)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_8px_16px_rgba(220,38,38,0.24)]'
+                              : 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]'
+
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setFilter(item.key)}
+                            className={`inline-flex h-8 items-center justify-center rounded-xl border px-2 text-xs font-semibold uppercase transition ${
+                              isActive
+                                ? activeClass
+                                : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
                   <div
-                    className={`max-h-[42vh] overflow-y-auto lg:max-h-[56vh] ${
-                      mobileViewPanel === 'preview' ? 'hidden lg:block' : ''
-                    }`}
+                    className={
+                      mobileViewPanel === 'preview'
+                        ? 'hidden lg:block lg:max-h-[56vh] lg:overflow-y-auto'
+                        : 'max-h-[42vh] overflow-y-auto lg:max-h-[56vh]'
+                    }
                   >
                     <div className="grid gap-2">
                       {rows.map((row) => (
-                        <button
+                        <div
                           key={row.id}
-                          type="button"
                           onClick={() => {
                             setSelectedId(row.id)
                             setDueDateDraft(row.due_date ?? '')
                             setMobileViewPanel('preview')
                           }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setSelectedId(row.id)
+                              setDueDateDraft(row.due_date ?? '')
+                              setMobileViewPanel('preview')
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
                           className={`w-full rounded-xl border px-3 py-2 text-left transition ${
                             selectedId === row.id
                               ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,rgba(234,243,251,0.98)_0%,rgba(220,236,248,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_20px_rgba(41,128,185,0.14)]'
                               : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
                           }`}
                         >
-                          <div className="truncate text-sm font-medium text-zinc-900">{row.file_name}</div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 truncate text-sm font-medium text-zinc-900" title={row.file_name}>
+                              {row.file_name}
+                            </div>
+                            {row.status === 'paid' ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setPendingDelete({ id: row.id, fileName: row.file_name })
+                                }}
+                                className="inline-flex h-6 shrink-0 items-center justify-center rounded-md border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(153,27,27,0.12)]"
+                              >
+                                SMAZAT
+                              </button>
+                            ) : null}
+                          </div>
                           <div className="mt-1 flex items-center justify-between text-xs text-zinc-500">
                             <span>{formatFileSize(row.file_size)}</span>
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${
                                 row.status === 'paid'
                                   ? 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700'
                                   : 'border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700'
                               }`}
                             >
-                              {row.status === 'paid' ? 'UHRAZENÁ' : 'NEUHRAZENÁ'}
+                              {row.status === 'paid' ? 'ZAPLACENÁ' : 'NEZAPLACENÁ'}
                             </span>
                           </div>
-                        </button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -581,19 +749,24 @@ export function ReceivedInvoicesModal({
             </aside>
 
             <section
-              className={`min-h-0 p-4 ${mobileViewPanel === 'list' ? 'hidden lg:block' : ''}`}
+              className={`min-h-0 px-4 pb-4 ${
+                mode === 'upload' || mobileViewPanel === 'list' ? 'hidden lg:block' : ''
+              } ${mobileViewPanel === 'preview' ? 'pt-2 lg:pt-4' : 'pt-4'}`}
             >
               {selectedInvoice ? (
                 <div className="flex h-full min-h-0 flex-col gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-900">
+                  <div className="flex flex-nowrap items-center gap-2">
+                    <div
+                      className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-900"
+                      title={selectedInvoice.file_name}
+                    >
                       {selectedInvoice.file_name}
                     </div>
                     <button
                       type="button"
                       onClick={handleDownload}
                       disabled={isPending}
-                      className="inline-flex h-9 items-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_24px_rgba(41,128,185,0.3)] disabled:opacity-60"
+                      className="inline-flex h-9 w-[126px] shrink-0 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_24px_rgba(41,128,185,0.3)] disabled:opacity-60"
                     >
                       STÁHNOUT
                     </button>
@@ -601,62 +774,59 @@ export function ReceivedInvoicesModal({
                       type="button"
                       onClick={handleDelete}
                       disabled={isPending}
-                      className="inline-flex h-9 items-center rounded-xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(153,27,27,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      className="inline-flex h-9 w-[108px] shrink-0 items-center justify-center rounded-xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(153,27,27,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       SMAZAT
                     </button>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStatus('unpaid')}
-                      disabled={isPending}
-                      className={`inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium ${
-                        selectedInvoice.status === 'unpaid'
-                          ? 'border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
-                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px]'
-                      }`}
-                    >
-                      NEUHRAZENÁ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStatus('paid')}
-                      disabled={isPending}
-                      className={`inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium ${
-                        selectedInvoice.status === 'paid'
-                          ? 'border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
-                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px]'
-                      }`}
-                    >
-                      UHRAZENÁ
-                    </button>
+                  <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] lg:flex lg:flex-wrap lg:items-center">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus('unpaid')}
+                        disabled={isPending}
+                        className={`inline-flex h-8 w-full items-center justify-center rounded-lg border px-3 text-xs font-medium lg:w-auto ${
+                          selectedInvoice.status === 'unpaid'
+                            ? 'border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
+                            : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px]'
+                        }`}
+                      >
+                        NEZAPLACENÁ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus('paid')}
+                        disabled={isPending}
+                        className={`inline-flex h-8 w-full items-center justify-center rounded-lg border px-3 text-xs font-medium lg:w-auto ${
+                          selectedInvoice.status === 'paid'
+                            ? 'border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
+                            : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px]'
+                        }`}
+                      >
+                        {selectedInvoice.status === 'paid' ? 'ZAPLACENÁ' : 'ZAPLATIT'}
+                      </button>
 
                     <input
                       type="date"
                       value={dueDateDraft}
                       onChange={(event) => setDueDateDraft(event.target.value)}
-                      className="ml-auto h-8 rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-xs text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      className="h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-xs text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] lg:ml-auto lg:w-auto"
                     />
                     <button
                       type="button"
                       onClick={handleSaveDueDate}
                       disabled={isPending}
-                      className="inline-flex h-8 items-center rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60 lg:w-auto"
                     >
-                      ULOŽIT SPLATNOST
+                      UPRAV SPLATNOST
                     </button>
-                  </div>
-
-                  <div className="text-xs text-zinc-500">
-                    Splatnost: <span className="font-medium text-zinc-700">{formatDate(selectedInvoice.due_date)}</span>
                   </div>
 
                   <InvoicePreviewPane
                     previewUrl={previewUrl}
                     mimeType={selectedInvoice.mime_type}
                     fileName={selectedInvoice.file_name}
+                    isMobileViewport={isMobileViewport}
                   />
                 </div>
               ) : (
@@ -670,6 +840,34 @@ export function ReceivedInvoicesModal({
           {error ? (
             <div className="border-t border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
               {error}
+            </div>
+          ) : null}
+
+          {pendingDelete ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-4">
+              <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-red-200 bg-[linear-gradient(155deg,rgba(254,242,242,0.98)_0%,rgba(255,228,230,0.96)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_16px_32px_rgba(153,27,27,0.18)]">
+                <div className="text-xs font-semibold uppercase tracking-[0.04em] text-red-700">
+                  Opravdu smazat soubor?
+                </div>
+                <div className="mt-0.5 truncate text-sm text-zinc-700">{pendingDelete.fileName}</div>
+                <div className="mt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPendingDelete(null)}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-zinc-700"
+                  >
+                    ZRUŠIT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => performDelete(pendingDelete.id)}
+                    disabled={isPending}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-red-300/90 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.92)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white disabled:opacity-60"
+                  >
+                    SMAZAT
+                  </button>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>
