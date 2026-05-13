@@ -13,6 +13,7 @@ type InfoNoteButtonProps = {
   jobNumber: string
   infoNote: string | null
   variant?: 'table' | 'mobile'
+  compact?: boolean
 }
 
 const initialState: UpdateJobInfoActionState = {
@@ -25,6 +26,7 @@ export function InfoNoteButton({
   jobNumber,
   infoNote,
   variant = 'table',
+  compact = false,
 }: InfoNoteButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
@@ -43,7 +45,9 @@ export function InfoNoteButton({
 
   const className =
     variant === 'mobile'
-      ? `inline-flex min-w-[88px] items-center justify-center rounded-xl px-3 py-2 text-xs font-medium transition duration-200 ${
+      ? `inline-flex items-center justify-center rounded-xl font-medium transition duration-200 ${
+          compact ? 'h-8 min-w-0 w-full px-2 text-[11px]' : 'min-w-[88px] px-3 py-2 text-xs'
+        } ${
           infoNote
             ? 'border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800'
             : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'

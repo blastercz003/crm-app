@@ -291,6 +291,8 @@ function MobileCard({
   clientContacts: ClientContactOption[]
   isAdmin: boolean
 }) {
+  const [isActionsOpen, setIsActionsOpen] = useState(false)
+
   return (
     <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
@@ -304,7 +306,7 @@ function MobileCard({
           >
             {job.job_number}
           </EditJobButton>
-          <p className="mt-0.5 block truncate text-sm text-gray-700">
+          <p className="mt-0.5 block truncate text-[12px] font-medium leading-5 text-gray-900">
             {job.company_name}
           </p>
         </div>
@@ -312,47 +314,84 @@ function MobileCard({
         <JobStatusButton job={job} canEdit />
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Začátek:</span>{' '}
-          <span className="break-words">{formatDateTime(job.start_at)}</span>
-        </div>
-
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Konec:</span>{' '}
-          <span className="break-words">{formatDateTime(job.end_at)}</span>
-        </div>
-
-        <div className="col-span-2 min-w-0">
+      <div className="mt-0 grid grid-cols-1 gap-x-10 gap-y-0 text-[12px] leading-5 text-gray-600 min-[380px]:grid-cols-[minmax(14ch,max-content)_minmax(12ch,1fr)]">
+        <div className="min-w-0 min-[380px]:col-span-2">
           <span className="font-medium text-gray-900">Adresa:</span>{' '}
           <span className="break-words">{job.site_address || '—'}</span>
         </div>
 
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Technik:</span>{' '}
-          <span className="break-words">{job.technician_name || '—'}</span>
+        <div className="min-w-0 mt-1">
+          <span className="font-semibold text-gray-900">Začátek:</span>{' '}
+          <span className="whitespace-nowrap font-semibold text-gray-900">
+            {formatDateTimeMobile(job.start_at)}
+          </span>
         </div>
 
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Agregát:</span>{' '}
-          <span className="break-words">{job.generator_name || '—'}</span>
+        <div className="min-w-0 mt-1">
+          <span className="font-semibold text-gray-900">Konec:</span>{' '}
+          <span className="whitespace-nowrap font-semibold text-gray-900">
+            {formatDateTimeMobile(job.end_at)}
+          </span>
+        </div>
+
+        <div className="min-w-0 max-w-[12.5rem]">
+          <span className="font-medium text-gray-900">Technik:</span>{' '}
+          <span className="inline-block max-w-[8.25rem] truncate align-bottom whitespace-nowrap">
+            {job.technician_name || '—'}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 whitespace-nowrap">
+            <span className="font-medium text-gray-900">Agregát:</span>{' '}
+            <span className="inline-block max-w-[7.5rem] truncate align-bottom">
+              {job.generator_name || '—'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsActionsOpen((current) => !current)}
+            aria-expanded={isActionsOpen}
+            aria-label="Akce zakázky"
+            className={`hidden min-[380px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+          >
+            ⋯
+          </button>
         </div>
       </div>
 
-      <div className="mt-2 flex items-end justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="mt-0 flex justify-end min-[380px]:hidden">
+        <button
+          type="button"
+          onClick={() => setIsActionsOpen((current) => !current)}
+          aria-expanded={isActionsOpen}
+          aria-label="Akce zakázky"
+          className={`inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+        >
+          ⋯
+        </button>
+      </div>
+
+      {isActionsOpen ? (
+        <div className="mt-0 grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-1.5 min-[420px]:gap-2">
           <HandoverProtocolButton job={job} />
           <InfoNoteButton
             jobId={job.id}
             jobNumber={job.job_number}
             infoNote={job.info_note}
             variant="mobile"
+            compact
           />
-          <EvidenceStatusButton job={job} compact canEdit />
+          <EvidenceStatusButton
+            job={job}
+            compact
+            compactClassName="min-w-0 w-full px-2 text-[11px]"
+            canEdit
+          />
+          <MobileAssignmentButton job={job} canEdit compact />
         </div>
-
-        <MobileAssignmentButton job={job} canEdit />
-      </div>
+      ) : null}
     </div>
   )
 }
@@ -360,9 +399,11 @@ function MobileCard({
 function MobileAssignmentButton({
   job,
   canEdit,
+  compact = false,
 }: {
   job: JobRow
   canEdit: boolean
+  compact?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [technicianValue, setTechnicianValue] = useState(job.technician_name ?? '')
@@ -435,7 +476,9 @@ function MobileAssignmentButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 min-w-[96px] items-center justify-center px-3 text-[11px] font-bold uppercase ${GLASS_SECONDARY_BUTTON_CLASS}`}
+        className={`inline-flex h-8 items-center justify-center font-bold uppercase ${
+          compact ? 'min-w-0 w-full px-2 text-[11px]' : 'min-w-[96px] px-3 text-[11px]'
+        } ${GLASS_SECONDARY_BUTTON_CLASS}`}
       >
         UPRAVIT
       </button>
@@ -1059,10 +1102,12 @@ function JobStatusModal({
 function EvidenceStatusButton({
   job,
   compact = false,
+  compactClassName,
   canEdit,
 }: {
   job: JobRow
   compact?: boolean
+  compactClassName?: string
   canEdit: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -1103,8 +1148,12 @@ function EvidenceStatusButton({
         type="button"
         onClick={() => setIsOpen(true)}
         className={`inline-flex h-8 ${
-          compact ? 'min-w-[96px]' : EVIDENCE_BUTTON_WIDTH_CLASS
-        } max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] ${meta.className}`}
+          compact
+            ? compactClassName ?? 'min-w-[96px]'
+            : EVIDENCE_BUTTON_WIDTH_CLASS
+        } max-w-full items-center justify-center rounded-xl ${
+          compact ? '' : 'px-3'
+        } text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
@@ -1366,6 +1415,18 @@ function formatDateTime(value: string | null) {
   return new Intl.DateTimeFormat('cs-CZ', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(new Date(value))
+}
+
+function formatDateTimeMobile(value: string | null) {
+  if (!value) return '—'
+
+  return new Intl.DateTimeFormat('cs-CZ', {
+    day: 'numeric',
+    month: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
     timeZone: PRAGUE_TIME_ZONE,
   }).format(new Date(value))
 }
