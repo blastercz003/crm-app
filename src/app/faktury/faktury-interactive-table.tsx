@@ -1243,6 +1243,8 @@ function CostItemsModal({
   const [addPresetKey, setAddPresetKey] = useState(DEFAULT_OPTIONAL_PRESET_KEY)
   const [savedSnapshot, setSavedSnapshot] = useState('')
   const [hasLoadedData, setHasLoadedData] = useState(false)
+  const rowInputBaseClass =
+    'rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] outline-none transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]'
 
   function shouldCloseWithoutSaving() {
     if (!hasUnsavedChanges(rows, savedSnapshot)) {
@@ -1611,10 +1613,10 @@ function CostItemsModal({
                                       handleRowChange(row.id, 'label', event.target.value)
                                     }
                                     placeholder="Název položky"
-                                    className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                    className={`h-10 w-full px-3 disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass} ${
                                       rowErrors.label
                                         ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                        : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                        : ''
                                     }`}
                                   />
                                   {rowErrors.label ? (
@@ -1636,7 +1638,7 @@ function CostItemsModal({
                                   handleRowChange(row.id, 'supplier', event.target.value)
                                 }
                                 placeholder="Dodavatel"
-                                className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60"
+                                className={`h-10 w-full px-3 disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass}`}
                               />
                             </div>
                           </div>
@@ -1655,10 +1657,10 @@ function CostItemsModal({
                                   handleRowChange(row.id, 'unitPrice', event.target.value)
                                 }
                                 placeholder="0"
-                                className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                className={`h-10 w-full px-3 text-right disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass} ${
                                   rowErrors.unitPrice
                                     ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                    : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                    : ''
                                 }`}
                               />
                               {rowErrors.unitPrice ? (
@@ -1678,10 +1680,10 @@ function CostItemsModal({
                                   handleRowChange(row.id, 'quantity', event.target.value)
                                 }
                                 placeholder="0"
-                                className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                className={`h-10 w-full px-3 text-right disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass} ${
                                   rowErrors.quantity
                                     ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                    : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                    : ''
                                 }`}
                               />
                               {rowErrors.quantity ? (
@@ -1844,10 +1846,10 @@ function CostItemsModal({
                                       handleRowChange(row.id, 'label', event.target.value)
                                     }
                                     placeholder="Název položky"
-                                    className={`h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                    className={`h-10 w-full px-3 disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass} ${
                                       rowErrors.label
                                         ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                        : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                        : ''
                                     }`}
                                   />
                                   {rowErrors.label ? (
@@ -1868,7 +1870,7 @@ function CostItemsModal({
                                   handleRowChange(row.id, 'supplier', event.target.value)
                                 }
                                 placeholder="Dodavatel"
-                                className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60"
+                                className={`h-10 w-full px-3 disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass}`}
                               />
                             </td>
 
@@ -1883,10 +1885,10 @@ function CostItemsModal({
                                     handleRowChange(row.id, 'unitPrice', event.target.value)
                                   }
                                   placeholder="0"
-                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  className={`ml-auto h-10 px-3 text-right disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass} w-[88px] ${
                                     rowErrors.unitPrice
                                       ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                      : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                      : ''
                                   }`}
                                 />
                                 {rowErrors.unitPrice ? (
@@ -1908,10 +1910,10 @@ function CostItemsModal({
                                     handleRowChange(row.id, 'quantity', event.target.value)
                                   }
                                   placeholder="0"
-                                  className={`ml-auto h-10 w-[88px] rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-right text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  className={`ml-auto h-10 px-3 text-right disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass} w-[88px] ${
                                     rowErrors.quantity
                                       ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                                      : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
+                                      : ''
                                   }`}
                                 />
                                 {rowErrors.quantity ? (
