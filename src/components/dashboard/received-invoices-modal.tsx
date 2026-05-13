@@ -75,7 +75,7 @@ function MobilePdfCanvasPreview({ previewUrl }: { previewUrl: string }) {
           canvas.width = Math.floor(viewport.width)
           canvas.height = Math.floor(viewport.height)
 
-          const renderTask = page.render({ canvasContext: context, viewport })
+          const renderTask = page.render({ canvas, canvasContext: context, viewport })
           await renderTask.promise
           if (cancelled) return
 
