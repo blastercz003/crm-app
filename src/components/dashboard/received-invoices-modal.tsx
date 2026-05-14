@@ -32,6 +32,25 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
+function formatDayMonthFromDateOnly(value: string | null) {
+  if (!value) return null
+  const [year, month, day] = value.split('-').map((part) => Number(part))
+  if (!year || !month || !day) return null
+  return `${day}.${month}.`
+}
+
+function formatDayMonthFromIso(value: string | null) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+
+  return new Intl.DateTimeFormat('cs-CZ', {
+    day: 'numeric',
+    month: 'numeric',
+    timeZone: 'Europe/Prague',
+  }).format(date)
+}
+
 function isImageMimeType(mimeType: string) {
   return String(mimeType ?? '').toLowerCase().startsWith('image/')
 }
@@ -733,15 +752,22 @@ export function ReceivedInvoicesModal({
                           </div>
                           <div className="mt-1 flex items-center justify-between text-xs text-zinc-500">
                             <span>{formatFileSize(row.file_size)}</span>
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${
-                                row.status === 'paid'
-                                  ? 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700'
-                                  : 'border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700'
-                              }`}
-                            >
-                              {row.status === 'paid' ? 'ZAPLACENÁ' : 'NEZAPLACENÁ'}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="shrink-0 rounded-full border border-zinc-300/85 bg-[linear-gradient(155deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.9)_100%)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                                {row.status === 'paid'
+                                  ? (formatDayMonthFromIso(row.updated_at) ?? '--')
+                                  : (formatDayMonthFromDateOnly(row.due_date) ?? '--')}
+                              </span>
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${
+                                  row.status === 'paid'
+                                    ? 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700'
+                                    : 'border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700'
+                                }`}
+                              >
+                                {row.status === 'paid' ? 'ZAPLACENÁ' : 'NEZAPLACENÁ'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))}

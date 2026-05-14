@@ -229,7 +229,37 @@ export async function getReceivedInvoices(params?: {
     throw new Error(`Nepodařilo se načíst přijaté faktury: ${error.message}`)
   }
 
-  return (data ?? []) as ReceivedInvoiceRow[]
+  const rows = (data ?? []) as ReceivedInvoiceRow[]
+
+  const getDueKey = (row: ReceivedInvoiceRow) => row.due_date ?? '9999-12-31'
+  const getCreatedTime = (row: ReceivedInvoiceRow) => Date.parse(row.created_at ?? '') || 0
+  const getUpdatedTime = (row: ReceivedInvoiceRow) => Date.parse(row.updated_at ?? '') || 0
+
+  if (filter === 'unpaid') {
+    return rows.sort((a, b) => {
+      const byDue = getDueKey(a).localeCompare(getDueKey(b))
+      if (byDue !== 0) return byDue
+      return getCreatedTime(b) - getCreatedTime(a)
+    })
+  }
+
+  if (filter === 'paid') {
+    return rows.sort((a, b) => getUpdatedTime(b) - getUpdatedTime(a))
+  }
+
+  return rows.sort((a, b) => {
+    if (a.status !== b.status) {
+      return a.status === 'unpaid' ? -1 : 1
+    }
+
+    if (a.status === 'unpaid') {
+      const byDue = getDueKey(a).localeCompare(getDueKey(b))
+      if (byDue !== 0) return byDue
+      return getCreatedTime(b) - getCreatedTime(a)
+    }
+
+    return getUpdatedTime(b) - getUpdatedTime(a)
+  })
 }
 
 export async function getReceivedInvoiceBadgeCount() {
