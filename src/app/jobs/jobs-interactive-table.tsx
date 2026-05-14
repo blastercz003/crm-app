@@ -334,17 +334,17 @@ function MobileCard({
           </span>
         </div>
 
-        <div className="min-w-0 max-w-[12.5rem]">
-          <span className="font-medium text-gray-900">Technik:</span>{' '}
-          <span className="inline-block max-w-[7.5rem] truncate align-bottom whitespace-nowrap">
+        <div className="min-w-0 max-w-[12.5rem] flex items-baseline gap-1">
+          <span className="shrink-0 font-medium text-gray-900">Technik:</span>
+          <span className="min-w-0 truncate whitespace-nowrap">
             {job.technician_name || '—'}
           </span>
         </div>
 
         <div className="min-w-0 flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1 whitespace-nowrap">
-            <span className="font-medium text-gray-900">Agregát:</span>{' '}
-            <span className="inline-block max-w-[7rem] truncate align-bottom whitespace-nowrap">
+          <div className="min-w-0 flex flex-1 items-baseline gap-1 whitespace-nowrap">
+            <span className="shrink-0 font-medium text-gray-900">Agregát:</span>
+            <span className="min-w-0 truncate whitespace-nowrap">
               {job.generator_name || '—'}
             </span>
           </div>
