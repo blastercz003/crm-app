@@ -530,18 +530,21 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     >
                       STAV NABÍDKY
                     </label>
-                    <select
-                      id="status"
-                      name="status"
-                      defaultValue={status}
-                      className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                    >
-                      {statusOptions.map((option) => (
-                        <option key={option.value || 'all'} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                      <select
+                        id="status"
+                        name="status"
+                        defaultValue={status}
+                        className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option.value || 'all'} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                    </div>
                   </div>
 
                   {isAdmin ? (
@@ -552,19 +555,22 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       >
                         UŽIVATEL
                       </label>
-                      <select
-                        id="author"
-                        name="author"
-                        defaultValue={authorSelectValue}
-                        className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                      >
-                        <option value="all">Všichni uživatelé</option>
-                        {authorOptions.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name ?? 'Neznámý uživatel'}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                        <select
+                          id="author"
+                          name="author"
+                          defaultValue={authorSelectValue}
+                          className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                        >
+                          <option value="all">Všichni uživatelé</option>
+                          {authorOptions.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name ?? 'Neznámý uživatel'}
+                            </option>
+                          ))}
+                        </select>
+                        <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                      </div>
                     </div>
                   ) : null}
 
@@ -575,18 +581,21 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     >
                       ŘAZENÍ
                     </label>
-                    <select
-                      id="sort"
-                      name="sort"
-                      defaultValue={sort}
-                      className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                    >
-                      {SORT_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                      <select
+                        id="sort"
+                        name="sort"
+                        defaultValue={sort}
+                        className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                      >
+                        {SORT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                    </div>
                   </div>
                 </div>
 

@@ -260,6 +260,46 @@ input[type="reset"]:not(:disabled) {
     color 0.2s ease;
 }
 
+/* Normalize vertical alignment of native date text in styled filter inputs. */
+.filter-date-input {
+  line-height: normal;
+}
+
+.filter-date-input::-webkit-date-and-time-value {
+  min-height: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  text-align: left;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-date-input::-webkit-datetime-edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-date-input::-webkit-datetime-edit-fields-wrapper {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-date-input::-webkit-datetime-edit-text,
+.filter-date-input::-webkit-datetime-edit-day-field,
+.filter-date-input::-webkit-datetime-edit-month-field,
+.filter-date-input::-webkit-datetime-edit-year-field {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .calendar-shell .fc .fc-button-primary {
   background: #ffffff;
   border-color: rgb(228 228 231);

@@ -234,9 +234,8 @@ function StatusModal({
                   type="button"
                   disabled={isPending}
                   onClick={() => onChangeStatus(status)}
-                  className="flex w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_24px_rgba(15,23,42,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex w-full items-center justify-end rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_24px_rgba(15,23,42,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <span className="font-medium text-gray-900">{STATUS_LABELS[status]}</span>
                   <span
                     className={`inline-flex h-8 ${STATUS_BADGE_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${getStatusClass(status)}`}
                   >

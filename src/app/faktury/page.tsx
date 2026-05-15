@@ -924,7 +924,7 @@ export default async function FakturyPage({
                         name="date_from"
                         type="date"
                         defaultValue={dateFrom}
-                        className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none"
+                        className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none"
                       />
                     </div>
                   </div>
@@ -942,7 +942,7 @@ export default async function FakturyPage({
                         name="date_to"
                         type="date"
                         defaultValue={dateTo}
-                        className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none"
+                        className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none"
                       />
                     </div>
                   </div>
@@ -990,19 +990,22 @@ export default async function FakturyPage({
                   >
                     Obchodník
                   </label>
-                  <select
-                    id="sales"
-                    name="sales"
-                    defaultValue={salesOwner}
-                    className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  >
-                    <option value="">Všichni</option>
-                    {SALES_OWNER_OPTIONS.map((owner) => (
-                      <option key={owner} value={owner}>
-                        {owner}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                    <select
+                      id="sales"
+                      name="sales"
+                      defaultValue={salesOwner}
+                      className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                    >
+                      <option value="">Všichni</option>
+                      {SALES_OWNER_OPTIONS.map((owner) => (
+                        <option key={owner} value={owner}>
+                          {owner}
+                        </option>
+                      ))}
+                    </select>
+                    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                  </div>
                 </div>
 
                 <div>
@@ -1012,16 +1015,19 @@ export default async function FakturyPage({
                   >
                     Řazení
                   </label>
-                  <select
-                    id="sort"
-                    name="sort"
-                    defaultValue={sort}
-                    className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  >
-                    <option value="job_number_desc">Dle čísla zakázky</option>
-                    <option value="start_nearest">Dle data od (nejbližší)</option>
-                    <option value="sale_desc">Dle prodeje</option>
-                  </select>
+                  <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                    <select
+                      id="sort"
+                      name="sort"
+                      defaultValue={sort}
+                      className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                    >
+                      <option value="job_number_desc">Dle čísla zakázky</option>
+                      <option value="start_nearest">Dle data od (nejbližší)</option>
+                      <option value="sale_desc">Dle prodeje</option>
+                    </select>
+                    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                  </div>
                 </div>
 
                 <div>
@@ -1031,16 +1037,19 @@ export default async function FakturyPage({
                   >
                     Faktura
                   </label>
-                  <select
-                    id="invoiced"
-                    name="invoiced"
-                    defaultValue={invoiced}
-                    className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  >
-                    <option value="">Všechny</option>
-                    <option value="yes">Jen s číslem faktury</option>
-                    <option value="no">Jen bez čísla faktury</option>
-                  </select>
+                  <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                    <select
+                      id="invoiced"
+                      name="invoiced"
+                      defaultValue={invoiced}
+                      className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                    >
+                      <option value="">Všechny</option>
+                      <option value="yes">Jen s číslem faktury</option>
+                      <option value="no">Jen bez čísla faktury</option>
+                    </select>
+                    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                  </div>
                 </div>
 
                 <div className="min-w-0">
@@ -1056,7 +1065,7 @@ export default async function FakturyPage({
                       name="date_from"
                       type="date"
                       defaultValue={dateFrom}
-                      className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                      className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
                     />
                   </div>
                 </div>
@@ -1074,7 +1083,7 @@ export default async function FakturyPage({
                       name="date_to"
                       type="date"
                       defaultValue={dateTo}
-                      className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                      className="block h-10 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
                     />
                   </div>
                 </div>

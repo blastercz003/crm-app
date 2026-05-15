@@ -625,7 +625,7 @@ export default async function JobsPage({
                           name="date_from"
                           type="date"
                           defaultValue={dateFrom}
-                          className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none"
+                          className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none"
                         />
                       </div>
                     </div>
@@ -643,7 +643,7 @@ export default async function JobsPage({
                           name="date_to"
                           type="date"
                           defaultValue={dateTo}
-                          className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none"
+                          className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none"
                         />
                       </div>
                     </div>
@@ -714,19 +714,22 @@ export default async function JobsPage({
                     >
                       Stav zakázky
                     </label>
-                    <select
-                      id="status"
-                      name="status"
-                      defaultValue={jobStatus}
-                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                    >
-                      <option value="">Všechny</option>
-                      <option value="nova">Nová</option>
-                      <option value="k_reseni">V řešení</option>
-                      <option value="realizace">Realizace</option>
-                      <option value="ukoncena">Ukončená</option>
-                      <option value="storno">Storno</option>
-                    </select>
+                    <div className="relative min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                      <select
+                        id="status"
+                        name="status"
+                        defaultValue={jobStatus}
+                        className="block h-9 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none sm:rounded-xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                      >
+                        <option value="">Všechny</option>
+                        <option value="nova">Nová</option>
+                        <option value="k_reseni">V řešení</option>
+                        <option value="realizace">Realizace</option>
+                        <option value="ukoncena">Ukončená</option>
+                        <option value="storno">Storno</option>
+                      </select>
+                      <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                    </div>
                   </div>
 
                 <div>
@@ -736,15 +739,18 @@ export default async function JobsPage({
                   >
                     Zobrazení
                   </label>
-                  <select
-                    id="view"
-                    name="view"
-                    defaultValue={view}
-                    className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  >
-                    <option value="all">Vše</option>
-                    <option value="active">Aktivní</option>
-                  </select>
+                  <div className="relative min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                    <select
+                      id="view"
+                      name="view"
+                      defaultValue={view}
+                      className="block h-9 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none sm:rounded-xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                    >
+                      <option value="all">Vše</option>
+                      <option value="active">Aktivní</option>
+                    </select>
+                    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                  </div>
                 </div>
 
                 <div>
@@ -754,15 +760,18 @@ export default async function JobsPage({
                   >
                     Řazení
                   </label>
-                  <select
-                    id="sort"
-                    name="sort"
-                    defaultValue={sort}
-                    className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  >
-                    <option value="job_number_desc">Dle čísla zakázky</option>
-                    <option value="start_nearest">Dle data od (nejbližší)</option>
-                  </select>
+                  <div className="relative min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] sm:overflow-visible sm:border-0 sm:bg-transparent sm:shadow-none sm:focus-within:border-0 sm:focus-within:ring-0">
+                    <select
+                      id="sort"
+                      name="sort"
+                      defaultValue={sort}
+                      className="block h-9 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none sm:rounded-xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                    >
+                      <option value="job_number_desc">Dle čísla zakázky</option>
+                      <option value="start_nearest">Dle data od (nejbližší)</option>
+                    </select>
+                    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
+                  </div>
                 </div>
 
                 <div className="min-w-0">
@@ -778,7 +787,7 @@ export default async function JobsPage({
                       name="date_from"
                       type="date"
                       defaultValue={dateFrom}
-                      className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                      className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none sm:rounded-xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
                     />
                   </div>
                 </div>
@@ -796,7 +805,7 @@ export default async function JobsPage({
                       name="date_to"
                       type="date"
                       defaultValue={dateTo}
-                      className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm text-gray-900 outline-none sm:rounded-xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
+                      className="block h-9 min-w-0 w-full max-w-full border-0 bg-transparent px-3 text-sm filter-date-input text-gray-900 outline-none sm:rounded-xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
                     />
                   </div>
                 </div>
