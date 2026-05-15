@@ -236,8 +236,10 @@ export async function getJobsChangesModalDataAction(): Promise<
       }
     }
 
-    const newJobs = ((newJobsResponse.data ?? []) as NewJobRow[])
+    const newJobs: ChangesNewJobItem[] = ((newJobsResponse.data ?? []) as NewJobRow[])
       .map((row) => ({
+        evidenceStatus:
+          row.evidence_status === 'zapsano' ? ('zapsano' as const) : ('nove' as const),
         jobId: row.id,
         jobNumber: row.job_number?.trim() || '—',
         companyName: row.company_name?.trim() || '—',
@@ -246,7 +248,6 @@ export async function getJobsChangesModalDataAction(): Promise<
         endAt: row.end_at ?? null,
         generatorName: row.generator_name?.trim() || '—',
         technicianName: row.technician_name?.trim() || '—',
-        evidenceStatus: row.evidence_status === 'zapsano' ? 'zapsano' : 'nove',
         updatedAt: row.updated_at,
       }))
 
