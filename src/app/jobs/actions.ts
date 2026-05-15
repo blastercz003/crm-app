@@ -2,6 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/lib/notifications/createNotification'
+import {
+  upsertJobChangeQueueEntry,
+  type ChangedValues,
+} from '@/lib/jobs/changes-queue'
 import { createClient } from '@/lib/supabase/server'
 
 export type CreateJobActionState = {
@@ -80,6 +84,24 @@ type ClientContactRow = {
   id: string
   client_id: string
   name: string | null
+}
+
+type JobQueueSourceRow = {
+  id: string
+  job_number: string | null
+  company_name: string | null
+  contact_person: string | null
+  sales_owner: string | null
+  start_at: string | null
+  end_at: string | null
+  site_address: string | null
+  store_number: string | null
+  technician_name: string | null
+  generator_name: string | null
+  info_note: string | null
+  job_status: string | null
+  invoice_status: string | null
+  evidence_status: string | null
 }
 
 const SALES_OWNER_VALUES = ['JIŘÍ', 'MICHAL', 'LÍDA'] as const
@@ -321,6 +343,133 @@ async function requireJobsAccess() {
 function revalidateAllRelatedPaths() {
   revalidatePath('/jobs')
   revalidatePath('/faktury')
+}
+
+async function getJobQueueSource(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select(
+      'id, job_number, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, technician_name, generator_name, info_note, job_status, invoice_status, evidence_status'
+    )
+    .eq('id', jobId)
+    .single()
+
+  if (error || !data) {
+    throw new Error('Nepodařilo se načíst zakázku pro frontu změn.')
+  }
+
+  return data as JobQueueSourceRow
+}
+
+function buildChangedValuesSnapshot({
+  source,
+  fields,
+}: {
+  source: JobQueueSourceRow
+  fields: string[]
+}) {
+  const values: ChangedValues = {}
+
+  for (const field of fields) {
+    switch (field) {
+      case 'company_name':
+        values[field] = source.company_name
+        break
+      case 'contact_person':
+        values[field] = source.contact_person
+        break
+      case 'sales_owner':
+        values[field] = source.sales_owner
+        break
+      case 'start_at':
+        values[field] = source.start_at
+        break
+      case 'end_at':
+        values[field] = source.end_at
+        break
+      case 'site_address':
+        values[field] = source.site_address
+        break
+      case 'store_number':
+        values[field] = source.store_number
+        break
+      case 'technician_name':
+        values[field] = source.technician_name
+        break
+      case 'generator_name':
+        values[field] = source.generator_name
+        break
+      case 'info_note':
+        values[field] = source.info_note
+        break
+      case 'job_status':
+        values[field] = source.job_status
+        break
+      case 'invoice_status':
+        values[field] = source.invoice_status
+        break
+      default:
+        values[field] = null
+        break
+    }
+  }
+
+  return values
+}
+
+async function enqueueNewJobChange({
+  supabase,
+  jobId,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  jobId: string
+}) {
+  const source = await getJobQueueSource(supabase, jobId)
+
+  await upsertJobChangeQueueEntry({
+    supabase,
+    job: {
+      id: source.id,
+      job_number: source.job_number,
+      start_at: source.start_at,
+    },
+    kind: 'new_job',
+    nextFields: [],
+  })
+}
+
+async function enqueueUpdatedJobChangeIfWritten({
+  supabase,
+  jobId,
+  fields,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  jobId: string
+  fields: string[]
+}) {
+  const source = await getJobQueueSource(supabase, jobId)
+
+  if (source.evidence_status !== 'zapsano') {
+    return
+  }
+
+  await upsertJobChangeQueueEntry({
+    supabase,
+    job: {
+      id: source.id,
+      job_number: source.job_number,
+      start_at: source.start_at,
+    },
+    kind: 'updated_job',
+    nextFields: fields,
+    nextValues: buildChangedValuesSnapshot({
+      source,
+      fields,
+    }),
+  })
 }
 
 function formatJobNotificationDate(value: string | null) {
@@ -646,6 +795,18 @@ export async function createJobAction(
   }
 
   try {
+    await enqueueNewJobChange({
+      supabase,
+      jobId: createdJobId,
+    })
+  } catch (queueError) {
+    console.error(
+      'Nepodařilo se uložit novou zakázku do fronty změn.',
+      queueError
+    )
+  }
+
+  try {
     await notifyUsersAboutCreatedJob({
       supabase,
       actorUserId: user.id,
@@ -729,6 +890,29 @@ export async function updateJobAction(
     }
   }
 
+  try {
+    await enqueueUpdatedJobChangeIfWritten({
+      supabase,
+      jobId: normalizedJobId,
+      fields: [
+        'company_name',
+        'contact_person',
+        'sales_owner',
+        'start_at',
+        'end_at',
+        'site_address',
+        'store_number',
+        'technician_name',
+        'generator_name',
+        'info_note',
+        'job_status',
+        'invoice_status',
+      ],
+    })
+  } catch (queueError) {
+    console.error('Nepodařilo se zapsat změnu zakázky do fronty změn.', queueError)
+  }
+
   revalidateAllRelatedPaths()
 
   return {
@@ -774,6 +958,16 @@ export async function updateJobInfoAction(
       success: false,
       error: 'Info k zakázce se nepodařilo uložit.',
     }
+  }
+
+  try {
+    await enqueueUpdatedJobChangeIfWritten({
+      supabase,
+      jobId: normalizedJobId,
+      fields: ['info_note'],
+    })
+  } catch (queueError) {
+    console.error('Nepodařilo se zapsat změnu info do fronty změn.', queueError)
   }
 
   revalidateAllRelatedPaths()
@@ -832,6 +1026,16 @@ export async function updateJobStatusAction(
       success: false,
       error: 'Stav zakázky se nepodařilo uložit.',
     }
+  }
+
+  try {
+    await enqueueUpdatedJobChangeIfWritten({
+      supabase,
+      jobId: normalizedJobId,
+      fields: ['job_status'],
+    })
+  } catch (queueError) {
+    console.error('Nepodařilo se zapsat změnu stavu do fronty změn.', queueError)
   }
 
   revalidateAllRelatedPaths()
@@ -904,6 +1108,19 @@ export async function updateJobInvoiceStatusAction(
     }
   }
 
+  try {
+    await enqueueUpdatedJobChangeIfWritten({
+      supabase,
+      jobId: normalizedJobId,
+      fields: ['invoice_status'],
+    })
+  } catch (queueError) {
+    console.error(
+      'Nepodařilo se zapsat změnu fakturace do fronty změn.',
+      queueError
+    )
+  }
+
   revalidateAllRelatedPaths()
 
   return {
@@ -972,6 +1189,19 @@ export async function updateJobSalesOwnerAction(
       success: false,
       error: 'Obchodníka se nepodařilo uložit.',
     }
+  }
+
+  try {
+    await enqueueUpdatedJobChangeIfWritten({
+      supabase,
+      jobId: normalizedJobId,
+      fields: ['sales_owner'],
+    })
+  } catch (queueError) {
+    console.error(
+      'Nepodařilo se zapsat změnu obchodníka do fronty změn.',
+      queueError
+    )
   }
 
   revalidateAllRelatedPaths()
@@ -1126,6 +1356,16 @@ export async function updateJobInlineFieldAction(
       }
     }
 
+    try {
+      await enqueueUpdatedJobChangeIfWritten({
+        supabase,
+        jobId: normalizedJobId,
+        fields: ['company_name', 'contact_person'],
+      })
+    } catch (queueError) {
+      console.error('Nepodařilo se zapsat změnu firmy do fronty změn.', queueError)
+    }
+
     revalidateAllRelatedPaths()
 
     return {
@@ -1196,6 +1436,16 @@ export async function updateJobInlineFieldAction(
       }
     }
 
+    try {
+      await enqueueUpdatedJobChangeIfWritten({
+        supabase,
+        jobId: normalizedJobId,
+        fields: [field],
+      })
+    } catch (queueError) {
+      console.error('Nepodařilo se zapsat změnu termínu do fronty změn.', queueError)
+    }
+
     revalidateAllRelatedPaths()
 
     return {
@@ -1222,6 +1472,16 @@ export async function updateJobInlineFieldAction(
       }
     }
 
+    try {
+      await enqueueUpdatedJobChangeIfWritten({
+        supabase,
+        jobId: normalizedJobId,
+        fields: ['contact_person'],
+      })
+    } catch (queueError) {
+      console.error('Nepodařilo se zapsat změnu osoby do fronty změn.', queueError)
+    }
+
     revalidateAllRelatedPaths()
 
     return {
@@ -1242,6 +1502,16 @@ export async function updateJobInlineFieldAction(
       success: false,
       error: 'Změnu se nepodařilo uložit.',
     }
+  }
+
+  try {
+    await enqueueUpdatedJobChangeIfWritten({
+      supabase,
+      jobId: normalizedJobId,
+      fields: [field],
+    })
+  } catch (queueError) {
+    console.error('Nepodařilo se zapsat inline změnu do fronty změn.', queueError)
   }
 
   revalidateAllRelatedPaths()

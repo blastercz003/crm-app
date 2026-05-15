@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/server'
 import { NewJobButton } from './new-job-button'
 import { JobsInteractiveTable } from './jobs-interactive-table'
 import { PrintJobsButton } from './print-jobs-button'
+import { ChangesLauncher } from './changes-launcher'
 import { JobFilterSubmitButton } from './job-filter-submit-button'
 import { JobFilterResetLink } from './job-filter-reset-link'
+import { getJobsChangesModalDataAction } from './changes-actions'
 
 export const metadata: Metadata = {
   title: 'Zakázky',
@@ -397,6 +399,10 @@ export default async function JobsPage({
   }
 
   const typedJobs = (jobs ?? []) as JobRow[]
+  const jobChangesData = await getJobsChangesModalDataAction()
+  const jobChangesCount = jobChangesData.success
+    ? (jobChangesData.data?.badgeCount ?? 0)
+    : 0
 
   const clientContacts = ((clientContactsData ?? []) as ClientContactOption[])
     .map((item) => ({
@@ -654,13 +660,15 @@ export default async function JobsPage({
                     >
                       RESET
                     </JobFilterResetLink>
+
+                    <PrintJobsButton />
                   </div>
                 </div>
                 </details>
               </form>
 
               <div className="print-hidden mt-2 grid grid-cols-[auto_1fr_1fr_1fr] gap-2 lg:hidden">
-                <PrintJobsButton />
+                <ChangesLauncher initialCount={jobChangesCount} />
 
                 <Link
                   href={todayHref}
@@ -842,6 +850,7 @@ export default async function JobsPage({
                     <div className="h-px bg-gray-100 sm:hidden" />
 
                   <div className="flex flex-wrap items-center gap-2 sm:contents">
+                    <ChangesLauncher initialCount={jobChangesCount} />
                     <PrintJobsButton />
 
                     <JobFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:order-4">
