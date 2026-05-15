@@ -27,7 +27,7 @@ function getStatusClass(status: OfferStatus) {
     return 'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
   }
   if (status === 'rejected') {
-    return 'border border-rose-500/85 bg-[linear-gradient(155deg,#e6527f_0%,#dc3f71_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(225,29,72,0.22)]'
+    return 'border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(220,38,38,0.24)]'
   }
   if (status === 'in_progress') {
     return 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'

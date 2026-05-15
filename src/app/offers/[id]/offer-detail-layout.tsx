@@ -120,7 +120,7 @@ function getStatusClass(status: OfferStatus) {
     return 'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
   }
   if (status === 'rejected') {
-    return 'border border-rose-500/85 bg-[linear-gradient(155deg,#e6527f_0%,#dc3f71_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(225,29,72,0.22)]'
+    return 'border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(220,38,38,0.24)]'
   }
   if (status === 'in_progress') {
     return 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
@@ -732,7 +732,7 @@ export function OfferDetailLayout({
                     <form action={setOfferClientOutcome.bind(null, offer.id, 'rejected')}>
                       <button
                         type="submit"
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-rose-300/90 bg-[linear-gradient(155deg,rgba(255,241,242,0.96)_0%,rgba(255,228,230,0.9)_100%)] px-4 text-sm font-medium text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_20px_rgba(225,29,72,0.14)] transition duration-200 hover:-translate-y-[1px]"
+                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)] transition duration-200 hover:-translate-y-[1px]"
                       >
                         ZAMÍTNUTO
                       </button>
@@ -756,7 +756,7 @@ export function OfferDetailLayout({
                   <button
                     type="button"
                     disabled
-                    className="inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-rose-300/90 bg-[linear-gradient(155deg,rgba(255,241,242,0.96)_0%,rgba(255,228,230,0.9)_100%)] px-4 text-sm font-medium text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_20px_rgba(225,29,72,0.14)]"
+                    className="inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)]"
                   >
                     ZAMÍTNUTO
                   </button>

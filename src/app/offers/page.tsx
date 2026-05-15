@@ -7,6 +7,7 @@ import { NewOfferButton } from './new-offer-button'
 import { CopyOfferButton } from './copy-offer-button'
 import { OfferNoteInput } from './offer-note-input'
 import { OfferStatusButton } from './offer-status-button'
+import { OfferStatusCommentsHover } from './offer-status-comments-hover'
 import { OfferFilterSubmitButton } from './offer-filter-submit-button'
 import { OfferFilterResetLink } from './offer-filter-reset-link'
 
@@ -791,7 +792,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                           {formatCurrency(total, offer.currency)}
                         </div>
                         <div className="min-w-0 px-2 py-2">
-                          <OfferStatusButton
+                          <OfferStatusCommentsHover
                             offerId={offer.id}
                             offerNumber={offer.offer_number}
                             currentStatus={offer.status}
