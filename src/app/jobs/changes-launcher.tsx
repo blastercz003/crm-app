@@ -39,6 +39,7 @@ export function ChangesLauncher({
     ...INITIAL_DATA,
     badgeCount: initialCount,
   })
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [pinnedNewJobs, setPinnedNewJobs] = useState<Record<string, ChangesNewJobItem>>({})
   const [error, setError] = useState<string | null>(null)
 
@@ -155,9 +156,6 @@ export function ChangesLauncher({
   }
 
   async function handleAcknowledgeAll() {
-    const confirmed = window.confirm('Opravdu mas zapsane vsechny nove zakazky?')
-    if (!confirmed) return
-
     startSaving(async () => {
       let result: Awaited<ReturnType<typeof acknowledgeAllJobChangesAction>>
 
@@ -181,7 +179,10 @@ export function ChangesLauncher({
       } catch (requestError) {
         console.error('Nepodařilo se obnovit data modalu změn.', requestError)
         setError('Potvrzení proběhlo, ale nepodařilo se obnovit data modalu změn.')
+        return
       }
+
+      setIsOpen(false)
     })
   }
 
@@ -272,6 +273,12 @@ export function ChangesLauncher({
                           </div>
                           <div
                             className="mt-0.5 min-w-0 truncate whitespace-nowrap text-[10px] min-[340px]:text-[11px] font-medium text-gray-700 sm:hidden"
+                            title={getCityFromAddress(job.siteAddress)}
+                          >
+                            {getCityFromAddress(job.siteAddress)}
+                          </div>
+                          <div
+                            className="mt-0.5 min-w-0 truncate whitespace-nowrap text-[10px] min-[340px]:text-[11px] font-medium text-gray-700 sm:hidden"
                             title={`${job.generatorName} · ${job.technicianName}`}
                           >
                             {job.generatorName} · {job.technicianName}
@@ -279,9 +286,9 @@ export function ChangesLauncher({
 
                           <div
                             className="hidden min-w-0 truncate whitespace-nowrap text-[13px] font-medium text-gray-900 sm:block"
-                            title={`${job.jobNumber} · ${formatDateRange(job.startAt, job.endAt)} · ${job.companyName} · ${job.generatorName} · ${job.technicianName}`}
+                            title={`${job.jobNumber} · ${formatDateRange(job.startAt, job.endAt)} · ${job.companyName} · ${getCityFromAddress(job.siteAddress)} · ${job.generatorName} · ${job.technicianName}`}
                           >
-                            <span className="font-bold">{job.jobNumber}</span> · {formatDateRange(job.startAt, job.endAt)} · {job.companyName} · {job.generatorName} · {job.technicianName}
+                            <span className="font-bold">{job.jobNumber}</span> · {formatDateRange(job.startAt, job.endAt)} · {job.companyName} · {getCityFromAddress(job.siteAddress)} · {job.generatorName} · {job.technicianName}
                           </div>
                         </div>
 
@@ -348,7 +355,7 @@ export function ChangesLauncher({
             <button
               type="button"
               disabled={pending}
-              onClick={handleAcknowledgeAll}
+              onClick={() => setIsConfirmOpen(true)}
               className="inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="sm:hidden">{pending ? 'UKLÁDÁM…' : 'ULOŽIT'}</span>
@@ -366,6 +373,49 @@ export function ChangesLauncher({
 
       {modalContent && typeof document !== 'undefined'
         ? createPortal(modalContent, document.body)
+        : null}
+      {isConfirmOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/42 p-4 backdrop-blur-[4px]"
+              role="dialog"
+              aria-modal="true"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) {
+                  setIsConfirmOpen(false)
+                }
+              }}
+            >
+              <div className="w-full max-w-sm rounded-2xl border border-zinc-200/90 bg-[linear-gradient(168deg,rgba(255,255,255,0.92)_0%,rgba(249,250,251,0.86)_50%,rgba(244,244,245,0.8)_100%)] p-4 shadow-[0_24px_56px_rgba(24,24,27,0.28)] sm:p-5">
+                <div className="text-base font-semibold text-gray-900">Potvrzení</div>
+                <p className="mt-2 text-sm text-gray-700">
+                  Opravdu máš zapsané všechny nové zakázky?
+                </p>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => setIsConfirmOpen(false)}
+                    className="inline-flex h-10 min-w-[104px] items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    ZRUŠIT
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => {
+                      setIsConfirmOpen(false)
+                      void handleAcknowledgeAll()
+                    }}
+                    className="inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSaving ? 'UKLÁDÁM…' : 'POTVRDIT'}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
         : null}
     </>
   )
@@ -394,6 +444,14 @@ function formatDateRange(startAt: string | null, endAt: string | null) {
   }
 
   return `${getDayOnly(start)} - ${getDayMonth(end)}`
+}
+
+function getCityFromAddress(address: string | null) {
+  const value = String(address ?? '').trim()
+  if (!value) return '—'
+
+  const firstPart = value.split(',')[0]?.trim()
+  return firstPart || value
 }
 
 function getDayMonth(value: Date) {
