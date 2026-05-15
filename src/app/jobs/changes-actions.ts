@@ -29,11 +29,34 @@ type UpdatedJobQueueRow = {
   job_id: string
   changed_fields_label: string | null
   updated_at: string
-  jobs: Array<{
-    id: string
-    job_number: string | null
-    evidence_status: string | null
-  }> | null
+  jobs:
+    | {
+        id: string
+        job_number: string | null
+        evidence_status: string | null
+      }
+    | Array<{
+        id: string
+        job_number: string | null
+        evidence_status: string | null
+      }>
+    | null
+}
+
+type UpdatedJobRelation = {
+  id: string
+  job_number: string | null
+  evidence_status: string | null
+}
+
+function getUpdatedJobRelation(value: UpdatedJobQueueRow['jobs']): UpdatedJobRelation | null {
+  if (!value) return null
+
+  if (Array.isArray(value)) {
+    return value[0] ?? null
+  }
+
+  return value
 }
 
 export type ChangesNewJobItem = {
@@ -252,12 +275,16 @@ export async function getJobsChangesModalDataAction(): Promise<
       }))
 
     const updatedJobs = ((updatedJobsResponse.data ?? []) as UpdatedJobQueueRow[])
-      .filter((row) => Array.isArray(row.jobs) && row.jobs.length > 0)
       .map((row) => ({
-        jobId: row.job_id,
-        jobNumber: row.jobs?.[0]?.job_number?.trim() || '—',
-        changedFieldsLabel: row.changed_fields_label?.trim() || 'Bez detailu',
-        updatedAt: row.updated_at,
+        row,
+        jobRelation: getUpdatedJobRelation(row.jobs),
+      }))
+      .filter((entry) => entry.jobRelation !== null)
+      .map((row) => ({
+        jobId: row.row.job_id,
+        jobNumber: row.jobRelation?.job_number?.trim() || '—',
+        changedFieldsLabel: row.row.changed_fields_label?.trim() || 'Bez detailu',
+        updatedAt: row.row.updated_at,
       }))
 
     return {

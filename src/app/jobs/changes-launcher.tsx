@@ -43,7 +43,15 @@ export function ChangesLauncher({
   const [error, setError] = useState<string | null>(null)
 
   async function reloadData(pinnedSnapshot?: Record<string, ChangesNewJobItem>) {
-    const result = await getJobsChangesModalDataAction()
+    let result: Awaited<ReturnType<typeof getJobsChangesModalDataAction>>
+
+    try {
+      result = await getJobsChangesModalDataAction()
+    } catch (requestError) {
+      console.error('Nepodařilo se načíst data změn.', requestError)
+      setError('Nepodařilo se načíst data modalu změn.')
+      return
+    }
 
     if (!result.success || !result.data) {
       setError(result.error ?? 'Nepodařilo se načíst změny.')
@@ -151,7 +159,15 @@ export function ChangesLauncher({
     if (!confirmed) return
 
     startSaving(async () => {
-      const result = await acknowledgeAllJobChangesAction()
+      let result: Awaited<ReturnType<typeof acknowledgeAllJobChangesAction>>
+
+      try {
+        result = await acknowledgeAllJobChangesAction()
+      } catch (requestError) {
+        console.error('Nepodařilo se potvrdit zaevidování změn.', requestError)
+        setError('Nepodařilo se potvrdit zaevidování změn.')
+        return
+      }
 
       if (!result.success) {
         setError(result.error ?? 'Nepodařilo se potvrdit zaevidování změn.')
@@ -159,7 +175,13 @@ export function ChangesLauncher({
       }
 
       setPinnedNewJobs({})
-      await reloadData()
+
+      try {
+        await reloadData()
+      } catch (requestError) {
+        console.error('Nepodařilo se obnovit data modalu změn.', requestError)
+        setError('Potvrzení proběhlo, ale nepodařilo se obnovit data modalu změn.')
+      }
     })
   }
 
