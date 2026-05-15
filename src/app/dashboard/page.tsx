@@ -1505,6 +1505,7 @@ export default async function DashboardPage() {
           contacts={quickActionContacts}
           canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
           canCreateJobs={isAdmin}
+          isAdmin={isAdmin}
           receivedInvoicesDueCount={receivedInvoicesDueCount}
         />
           </div>

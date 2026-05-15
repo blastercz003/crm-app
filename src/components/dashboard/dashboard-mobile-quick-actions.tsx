@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { CreateClientModal } from '@/app/clients/new-client-button'
 import { CreateMeetingModal } from '@/app/meetings/new-meeting-button'
 import { CreateJobModal } from '@/app/jobs/new-job-button'
@@ -60,6 +61,7 @@ type DashboardMobileQuickActionsProps = {
   contacts: ClientContactOption[]
   canViewOffers: boolean
   canCreateJobs: boolean
+  isAdmin: boolean
   receivedInvoicesDueCount?: number
 }
 
@@ -77,13 +79,25 @@ export function DashboardMobileQuickActions({
   contacts,
   canViewOffers,
   canCreateJobs,
+  isAdmin,
   receivedInvoicesDueCount = 0,
 }: DashboardMobileQuickActionsProps) {
+  const isHydrated = useSyncExternalStore(
+    (callback) => {
+      if (typeof window === 'undefined') return () => {}
+      const frameId = window.requestAnimationFrame(() => callback())
+      return () => window.cancelAnimationFrame(frameId)
+    },
+    () => true,
+    () => false
+  )
+
   const router = useRouter()
   const [activeAction, setActiveAction] = useState<QuickActionKey | null>(null)
   const [isSheetMounted, setIsSheetMounted] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isDesktopViewport, setIsDesktopViewport] = useState(false)
+  const [viewportBottomOffset, setViewportBottomOffset] = useState(0)
   const [, startTransition] = useTransition()
   const closeTimerRef = useRef<number | null>(null)
   const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
@@ -101,6 +115,33 @@ export function DashboardMobileQuickActions({
 
     return () => {
       mediaQuery.removeEventListener('change', syncDesktopViewport)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)').matches === true ||
+      (typeof navigator !== 'undefined' && 'standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
+
+    if (!isStandalone || !window.visualViewport) return
+
+    const viewport = window.visualViewport
+    const syncBottomOffset = () => {
+      const nextOffset = Math.max(0, Math.round(window.innerHeight - (viewport.height + viewport.offsetTop)))
+      setViewportBottomOffset(nextOffset)
+    }
+
+    syncBottomOffset()
+    viewport.addEventListener('resize', syncBottomOffset)
+    viewport.addEventListener('scroll', syncBottomOffset)
+    window.addEventListener('orientationchange', syncBottomOffset)
+
+    return () => {
+      viewport.removeEventListener('resize', syncBottomOffset)
+      viewport.removeEventListener('scroll', syncBottomOffset)
+      window.removeEventListener('orientationchange', syncBottomOffset)
     }
   }, [])
 
@@ -212,56 +253,58 @@ export function DashboardMobileQuickActions({
     },
   ].filter((action) => action.visible)
 
-  return (
+  const floatingLayer = (
     <>
       {toast ? <ActionFeedbackToast toast={toast} isVisible={isToastVisible} /> : null}
 
-      <button
-        type="button"
-        aria-label="Přijaté faktury"
-        title="Přijaté faktury"
-        onClick={() => {
-          triggerHaptic(10)
-          setActiveAction('received_invoices')
-        }}
-        className={`fixed z-[70] flex items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
-          activeAction
-            ? 'pointer-events-none opacity-0 scale-[0.92]'
-            : isSheetMounted
-            ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(214,219,227,0.30),0_24px_50px_rgba(30,41,59,0.46)]'
-            : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_14px_34px_rgba(30,41,59,0.36)]'
-        }`}
-        style={{
-          right: '84px',
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
-          width: '60px',
-          height: '60px',
-          minWidth: '60px',
-          minHeight: '60px',
-          borderRadius: '999px',
-        }}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="h-6 w-6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
+      {isAdmin ? (
+        <button
+          type="button"
+          aria-label="Přijaté faktury"
+          title="Přijaté faktury"
+          onClick={() => {
+            triggerHaptic(10)
+            setActiveAction('received_invoices')
+          }}
+          className={`fixed z-[70] flex items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+            activeAction
+              ? 'pointer-events-none opacity-0 scale-[0.92]'
+              : isSheetMounted
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(214,219,227,0.30),0_24px_50px_rgba(30,41,59,0.46)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_14px_34px_rgba(30,41,59,0.36)]'
+          }`}
+          style={{
+            right: '84px',
+            bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
+            width: '60px',
+            height: '60px',
+            minWidth: '60px',
+            minHeight: '60px',
+            borderRadius: '999px',
+          }}
         >
-          <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-          <path d="M14 3v5h5" />
-          <path d="M8 14h8" />
-          <path d="M8 18h6" />
-        </svg>
-        {receivedInvoicesDueCount > 0 ? (
-          <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
-            {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
-          </span>
-        ) : null}
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+            <path d="M14 3v5h5" />
+            <path d="M8 14h8" />
+            <path d="M8 18h6" />
+          </svg>
+          {receivedInvoicesDueCount > 0 ? (
+            <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
+              {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
+            </span>
+          ) : null}
+        </button>
+      ) : null}
 
       <button
         type="button"
@@ -283,7 +326,7 @@ export function DashboardMobileQuickActions({
         }`}
         style={{
           right: '16px',
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
           width: '60px',
           height: '60px',
           minWidth: '60px',
@@ -300,52 +343,54 @@ export function DashboardMobileQuickActions({
         </span>
       </button>
 
-      <button
-        type="button"
-        aria-label="Přijaté faktury"
-        title="Přijaté faktury"
-        onClick={() => {
-          triggerHaptic(10)
-          setActiveAction('received_invoices')
-        }}
-        className={`fixed z-[70] hidden items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1e293b] hover:shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_38px_rgba(30,41,59,0.6)] lg:flex ${
-          activeAction
-            ? 'pointer-events-none opacity-0 scale-[0.94]'
-            : isSheetMounted
-            ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_42px_rgba(30,41,59,0.5)]'
-            : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_12px_28px_rgba(30,41,59,0.38)]'
-        }`}
-        style={{
-          right: '104px',
-          bottom: '28px',
-          width: '68px',
-          height: '68px',
-          minWidth: '68px',
-          minHeight: '68px',
-          borderRadius: '999px',
-        }}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="h-7 w-7"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
+      {isAdmin ? (
+        <button
+          type="button"
+          aria-label="Přijaté faktury"
+          title="Přijaté faktury"
+          onClick={() => {
+            triggerHaptic(10)
+            setActiveAction('received_invoices')
+          }}
+          className={`fixed z-[70] hidden items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1e293b] hover:shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_38px_rgba(30,41,59,0.6)] lg:flex ${
+            activeAction
+              ? 'pointer-events-none opacity-0 scale-[0.94]'
+              : isSheetMounted
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_42px_rgba(30,41,59,0.5)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_12px_28px_rgba(30,41,59,0.38)]'
+          }`}
+          style={{
+            right: '104px',
+            bottom: '28px',
+            width: '68px',
+            height: '68px',
+            minWidth: '68px',
+            minHeight: '68px',
+            borderRadius: '999px',
+          }}
         >
-          <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-          <path d="M14 3v5h5" />
-          <path d="M8 14h8" />
-          <path d="M8 18h6" />
-        </svg>
-        {receivedInvoicesDueCount > 0 ? (
-          <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
-            {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
-          </span>
-        ) : null}
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-7 w-7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+            <path d="M14 3v5h5" />
+            <path d="M8 14h8" />
+            <path d="M8 18h6" />
+          </svg>
+          {receivedInvoicesDueCount > 0 ? (
+            <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
+              {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
+            </span>
+          ) : null}
+        </button>
+      ) : null}
 
       <button
         type="button"
@@ -522,7 +567,7 @@ export function DashboardMobileQuickActions({
         />
       ) : null}
 
-      {activeAction === 'received_invoices' ? (
+      {isAdmin && activeAction === 'received_invoices' ? (
         <ReceivedInvoicesModal
           isOpen
           onClose={() => setActiveAction(null)}
@@ -530,4 +575,7 @@ export function DashboardMobileQuickActions({
       ) : null}
     </>
   )
+
+  if (!isHydrated || typeof document === 'undefined') return null
+  return createPortal(floatingLayer, document.body)
 }
