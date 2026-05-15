@@ -275,15 +275,7 @@ function MeetingListItem({
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
 
   return (
-    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-[linear-gradient(158deg,rgba(252,254,255,0.96)_0%,rgba(240,247,255,0.94)_40%,rgba(228,238,250,0.92)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),inset_0_-1px_0_rgba(148,163,184,0.18),inset_30px_0_44px_-30px_rgba(148,163,184,0.42),inset_-26px_-12px_36px_-34px_rgba(191,219,254,0.42)] transition duration-200 ease-out hover:border-zinc-300 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.62),inset_0_-1px_0_rgba(148,163,184,0.24),inset_36px_0_52px_-30px_rgba(148,163,184,0.5),inset_-32px_-14px_42px_-34px_rgba(191,219,254,0.52)]">
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-8 top-1 h-8 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.42),transparent_72%)]"
-      />
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]">
       <div className="flex min-w-0 flex-col gap-3">
         <div className="flex min-w-0 items-center gap-2.5 text-sm">
           <div
@@ -339,7 +331,7 @@ function MeetingSection({
   isAdminView,
   clients,
   contacts,
-  scrollClassName,
+  initialVisibleCount,
 }: {
   eyebrow: string
   title: string
@@ -350,7 +342,7 @@ function MeetingSection({
   isAdminView: boolean
   clients: ClientOption[]
   contacts: ClientContactOption[]
-  scrollClassName?: string
+  initialVisibleCount?: number
 }) {
   const countClassName =
     countVariant === 'primary'
@@ -361,9 +353,14 @@ function MeetingSection({
           ? 'border-transparent bg-emerald-600 text-white'
           : 'border-zinc-200 bg-zinc-50 text-zinc-600'
 
+  const shouldLimitMeetings =
+    typeof initialVisibleCount === 'number' && meetings.length > initialVisibleCount
+  const visibleMeetings = shouldLimitMeetings ? meetings.slice(0, initialVisibleCount) : meetings
+  const hiddenMeetings = shouldLimitMeetings ? meetings.slice(initialVisibleCount) : []
+
   return (
-    <section className="min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(245,249,254,0.94)_45%,rgba(236,242,250,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),inset_0_-1px_0_rgba(148,163,184,0.08),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <section className="min-w-0 rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_32px_rgba(15,23,42,0.1)]">
+      <div className="mb-0 flex items-center justify-between gap-4 border-b border-zinc-200/80 px-4 py-4 md:px-5">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
             {eyebrow}
@@ -380,25 +377,45 @@ function MeetingSection({
         </span>
       </div>
 
+      <div className="p-4 md:p-5">
       {meetings.length === 0 ? (
         <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
           {emptyText}
         </div>
       ) : (
-        <div className={`min-w-0 overflow-x-hidden rounded-2xl bg-transparent ${scrollClassName ?? ''}`}>
-          <div className="grid min-w-0 gap-3">
-            {meetings.map((meeting) => (
-              <MeetingListItem
-                key={meeting.id}
-                meeting={meeting}
-                isAdminView={isAdminView}
-                clients={clients}
-                contacts={contacts}
-              />
-            ))}
-          </div>
+        <div className="grid min-w-0 gap-3">
+          {visibleMeetings.map((meeting) => (
+            <MeetingListItem
+              key={meeting.id}
+              meeting={meeting}
+              isAdminView={isAdminView}
+              clients={clients}
+              contacts={contacts}
+            />
+          ))}
+
+          {hiddenMeetings.length > 0 ? (
+            <details className="group grid gap-3">
+              <summary className="inline-flex min-h-10 cursor-pointer list-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
+                ZOBRAZIT VŠE
+              </summary>
+
+              <div className="grid gap-3">
+                {hiddenMeetings.map((meeting) => (
+                  <MeetingListItem
+                    key={meeting.id}
+                    meeting={meeting}
+                    isAdminView={isAdminView}
+                    clients={clients}
+                    contacts={contacts}
+                  />
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       )}
+      </div>
     </section>
   )
 }
@@ -927,7 +944,7 @@ export default async function MeetingsPage({
               isAdminView={isAdminTeamView}
               clients={clientOptions}
               contacts={contactOptions}
-              scrollClassName="xl:max-h-[960px] xl:overflow-y-auto"
+              initialVisibleCount={5}
             />
 
             <MeetingSection
@@ -940,7 +957,7 @@ export default async function MeetingsPage({
               isAdminView={isAdminTeamView}
               clients={clientOptions}
               contacts={contactOptions}
-              scrollClassName="xl:max-h-[960px] xl:overflow-y-auto"
+              initialVisibleCount={5}
             />
 
             <MeetingSection
@@ -953,7 +970,7 @@ export default async function MeetingsPage({
               isAdminView={isAdminTeamView}
               clients={clientOptions}
               contacts={contactOptions}
-              scrollClassName="xl:max-h-[960px] xl:overflow-y-auto"
+              initialVisibleCount={5}
             />
           </div>
         ) : null}

@@ -46,6 +46,54 @@ export function getPriorityBadgeClass(priority: string | null | undefined) {
   }
 }
 
+function parseDateOnly(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+
+  const [, year, month, day] = match
+  return {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+  }
+}
+
+export function formatTaskDueDateShort(value: string | null | undefined) {
+  if (!value) return 'BEZ TERMÍNU'
+
+  const parsed = parseDateOnly(value)
+  if (!parsed) return 'BEZ TERMÍNU'
+
+  const day = String(parsed.day).padStart(2, '0')
+  const month = String(parsed.month).padStart(2, '0')
+
+  return `${day}.${month}.`
+}
+
+export function getTaskDueBadgeClass({
+  hasDueDate,
+  isToday,
+  isOverdue,
+}: {
+  hasDueDate: boolean
+  isToday: boolean
+  isOverdue: boolean
+}) {
+  if (!hasDueDate) {
+    return 'border border-[#b8c8d8]/90 bg-[linear-gradient(155deg,#DCE6F1_0%,#C7D6E6_100%)] text-[#3F5368] shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_16px_rgba(63,83,104,0.12)]'
+  }
+
+  if (isOverdue) {
+    return 'border border-[#ef4444]/90 bg-[#dc2626] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(220,38,38,0.25)]'
+  }
+
+  if (isToday) {
+    return 'border border-[#f3c58a]/85 bg-[linear-gradient(155deg,#F2A344_0%,#CD7212_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(180,83,9,0.24)]'
+  }
+
+  return getStatusBadgeClass('todo')
+}
+
 export type TaskRepeatInterval = 'daily' | 'weekly' | 'monthly'
 
 export function getRepeatIntervalShortLabel(

@@ -9,8 +9,10 @@ import { endTaskRecurrence, updateTaskStatus } from '@/app/tasks/actions'
 import { TaskCompleteButton } from '@/app/tasks/task-complete-button'
 import { RepeatTaskBadge } from '@/app/tasks/repeat-task-badge'
 import {
+  formatTaskDueDateShort,
   getPriorityBadgeClass,
   getPriorityLabel,
+  getTaskDueBadgeClass,
 } from '@/app/tasks/taskUi'
 import {
   MeetingStatusBadge,
@@ -674,6 +676,8 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
   const markTaskDoneAction = updateTaskStatus.bind(null, task.id, 'done')
   const endTaskRecurrenceAction = endTaskRecurrence.bind(null, task.id)
   const dueDate = task.due_date
+  const hasDueDate = Boolean(dueDate)
+  const isToday = dueDate !== null && dueDate === todayDateKeyInPrague
   const isOverdue =
     task.status !== 'done' &&
     dueDate !== null &&
@@ -700,24 +704,26 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
             </div>
           </div>
 
-          <div className="relative z-10 flex min-h-[1.75rem] w-44 shrink-0 flex-wrap justify-end gap-1">
-            <div className="min-h-[1.75rem]">
-              {task.priority ? (
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
-                >
-                  {getPriorityLabel(task.priority)}
-                </span>
-              ) : null}
-            </div>
+          <div className="relative z-10 flex min-h-[1.75rem] w-44 shrink-0 flex-wrap justify-end gap-1.5">
+            {hasDueDate ? (
+              <span
+                className={`inline-flex h-6 w-[74px] shrink-0 items-center justify-center rounded-full px-2.5 py-1 text-xs font-medium ${getTaskDueBadgeClass({
+                  hasDueDate,
+                  isToday,
+                  isOverdue,
+                })}`}
+              >
+                <span className="text-center">{formatTaskDueDateShort(dueDate)}</span>
+              </span>
+            ) : null}
 
-            <div className="min-h-[1.75rem]">
-              {isOverdue ? (
-                <span className="inline-flex items-center rounded-full border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] px-2.5 py-1 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(190,24,93,0.24)]">
-                  Po termínu
-                </span>
-              ) : null}
-            </div>
+            {task.priority ? (
+              <span
+                className={`inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}
+              >
+                {getPriorityLabel(task.priority)}
+              </span>
+            ) : null}
           </div>
         </div>
 
