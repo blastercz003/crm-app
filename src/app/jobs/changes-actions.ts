@@ -29,11 +29,11 @@ type UpdatedJobQueueRow = {
   job_id: string
   changed_fields_label: string | null
   updated_at: string
-  jobs: {
+  jobs: Array<{
     id: string
     job_number: string | null
     evidence_status: string | null
-  } | null
+  }> | null
 }
 
 export type ChangesNewJobItem = {
@@ -251,10 +251,10 @@ export async function getJobsChangesModalDataAction(): Promise<
       }))
 
     const updatedJobs = ((updatedJobsResponse.data ?? []) as UpdatedJobQueueRow[])
-      .filter((row) => row.jobs)
+      .filter((row) => Array.isArray(row.jobs) && row.jobs.length > 0)
       .map((row) => ({
         jobId: row.job_id,
-        jobNumber: row.jobs?.job_number?.trim() || '—',
+        jobNumber: row.jobs?.[0]?.job_number?.trim() || '—',
         changedFieldsLabel: row.changed_fields_label?.trim() || 'Bez detailu',
         updatedAt: row.updated_at,
       }))
