@@ -141,6 +141,22 @@ const NON_ADMIN_ALLOWED_INLINE_FIELDS = [
 ] as const
 
 type InlineEditableField = (typeof INLINE_EDITABLE_FIELDS)[number]
+type TrackedChangeField =
+  | 'company_name'
+  | 'start_at'
+  | 'end_at'
+  | 'site_address'
+  | 'technician_name'
+  | 'generator_name'
+
+const TRACKED_CHANGE_FIELDS = new Set<TrackedChangeField>([
+  'company_name',
+  'start_at',
+  'end_at',
+  'site_address',
+  'technician_name',
+  'generator_name',
+])
 
 function normalizeText(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
@@ -450,6 +466,14 @@ async function enqueueUpdatedJobChangeIfWritten({
   jobId: string
   fields: string[]
 }) {
+  const trackedFields = fields.filter((field): field is TrackedChangeField =>
+    TRACKED_CHANGE_FIELDS.has(field as TrackedChangeField)
+  )
+
+  if (trackedFields.length === 0) {
+    return
+  }
+
   const source = await getJobQueueSource(supabase, jobId)
 
   if (source.evidence_status !== 'zapsano') {
@@ -464,10 +488,10 @@ async function enqueueUpdatedJobChangeIfWritten({
       start_at: source.start_at,
     },
     kind: 'updated_job',
-    nextFields: fields,
+    nextFields: trackedFields,
     nextValues: buildChangedValuesSnapshot({
       source,
-      fields,
+      fields: trackedFields,
     }),
   })
 }
