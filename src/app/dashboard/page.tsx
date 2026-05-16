@@ -1519,7 +1519,38 @@ export default async function DashboardPage() {
 
         <footer className="border-t border-white/12 bg-zinc-950 px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] sm:px-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
-            <div>B-ENERGY APP | coding by blaster</div>
+            <div className="flex items-center gap-3">
+              <span>B-ENERGY APP | coding by blaster</span>
+              <Link
+                href="/snake"
+                aria-label="Otevřít hru Snake"
+                title="Snake"
+                className="inline-flex h-4 w-4 items-center justify-center text-white/70 transition hover:text-white"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 scale-[1.42]"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M8.1 8.2h7.8c1.6 0 2.6.9 3 2.3l.9 3.1c.4 1.6-.6 3.1-2.2 3.1-.8 0-1.5-.4-1.9-1l-1-1.5h-5.4l-1 1.5c-.4.6-1.1 1-1.9 1-1.6 0-2.7-1.5-2.2-3.1l.9-3.1c.4-1.4 1.4-2.3 3-2.3Z"
+                    stroke="currentColor"
+                    strokeWidth="1.65"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9 11.4v2.2M7.9 12.5h2.2"
+                    stroke="currentColor"
+                    strokeWidth="1.55"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="15.3" cy="11.8" r="0.85" fill="currentColor" />
+                  <circle cx="17.1" cy="13.2" r="0.85" fill="currentColor" />
+                </svg>
+              </Link>
+            </div>
             <div>v2.1.1</div>
           </div>
         </footer>

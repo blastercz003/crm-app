@@ -1,0 +1,52 @@
+import { DIFFICULTY_CONFIGS, THEMES } from '@/lib/snake/constants'
+import type { Difficulty, ThemeName } from '@/lib/snake/types'
+import styles from './snake.module.css'
+
+type SnakeSettingsProps = {
+  difficulty: Difficulty
+  themeName: ThemeName
+  disabled: boolean
+  onDifficultyChange: (value: Difficulty) => void
+  onThemeChange: (value: ThemeName) => void
+}
+
+export function SnakeSettings(props: SnakeSettingsProps) {
+  return (
+    <section className={`${styles.card} ${styles.panelCard} p-4`}>
+      <h2 className={styles.sectionTitle}>Nastavení</h2>
+      <div className="mt-3 space-y-3">
+        <label className="block text-sm">
+          <span className="mb-1 block text-slate-200">Obtížnost</span>
+          <select
+            className={`${styles.select} w-full px-3 py-2 text-sm`}
+            value={props.difficulty}
+            disabled={props.disabled}
+            onChange={(event) => props.onDifficultyChange(event.target.value as Difficulty)}
+          >
+            {DIFFICULTY_CONFIGS.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm">
+          <span className="mb-1 block text-slate-200">Téma</span>
+          <select
+            className={`${styles.select} w-full px-3 py-2 text-sm`}
+            value={props.themeName}
+            disabled={props.disabled}
+            onChange={(event) => props.onThemeChange(event.target.value as ThemeName)}
+          >
+            {THEMES.map((theme) => (
+              <option key={theme.name} value={theme.name}>
+                {theme.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </section>
+  )
+}
