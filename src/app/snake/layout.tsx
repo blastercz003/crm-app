@@ -2,19 +2,18 @@ import type { ReactNode } from 'react'
 import type { Metadata, Viewport } from 'next'
 
 export const metadata: Metadata = {
+  manifest: '/snake-manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Snake',
+    title: 'B-SNAKE',
   },
 }
 
 export const viewport: Viewport = {
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#0c1528' },
-    { media: '(prefers-color-scheme: dark)', color: '#0c1528' },
-  ],
+  themeColor: '#0c1528',
+  colorScheme: 'dark',
 }
 
 export default function SnakeLayout({ children }: { children: ReactNode }) {
