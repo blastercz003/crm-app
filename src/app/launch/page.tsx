@@ -1,18 +1,23 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 const FADE_OUT_MS = 320
 
 export default function LaunchPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [isFading, setIsFading] = useState(false)
   const hasNavigatedRef = useRef(false)
-  const nextPath = searchParams.get('next') || '/dashboard'
+  const nextPathRef = useRef('/dashboard')
 
   useEffect(() => {
+    const currentUrl = new URL(window.location.href)
+    const nextFromQuery = currentUrl.searchParams.get('next')
+    if (nextFromQuery) {
+      nextPathRef.current = nextFromQuery
+    }
+
     const video = document.getElementById('launch-video') as HTMLVideoElement | null
     if (!video) return
 
@@ -25,21 +30,21 @@ export default function LaunchPage() {
       hasNavigatedRef.current = true
       setIsFading(true)
       window.setTimeout(() => {
-        router.replace(nextPath)
+        router.replace(nextPathRef.current)
       }, FADE_OUT_MS)
     }, 6_000)
 
     return () => {
       window.clearTimeout(fallback)
     }
-  }, [nextPath, router])
+  }, [router])
 
   function navigateToApp() {
     if (hasNavigatedRef.current) return
     hasNavigatedRef.current = true
     setIsFading(true)
     window.setTimeout(() => {
-      router.replace(nextPath)
+      router.replace(nextPathRef.current)
     }, FADE_OUT_MS)
   }
 
