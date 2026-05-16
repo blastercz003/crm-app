@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { NavigationOverlay } from '../components/navigation/navigation-overlay'
 import { ServiceWorkerRegistration } from '../components/pwa/service-worker-registration'
-import { LaunchGate } from '../components/pwa/launch-gate'
 import { APP_TITLE } from '@/lib/pageTitles'
 
 const geistSans = Geist({
@@ -60,7 +59,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
-        <LaunchGate />
         {children}
         <Suspense fallback={null}>
           <NavigationOverlay />

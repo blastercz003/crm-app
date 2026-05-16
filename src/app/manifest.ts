@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'B-ENERGY APP',
     short_name: 'B-ENERGY',
     description: 'CRM aplikace pro správu klientů, schůzek a úkolů',
-    start_url: '/launch',
+    start_url: '/',
     scope: '/',
     display: 'standalone',
     background_color: '#ffffff',
