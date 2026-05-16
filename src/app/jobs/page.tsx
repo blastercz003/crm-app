@@ -255,7 +255,6 @@ export default async function JobsPage({
     dateFrom === thisWeekRange.from && dateTo === thisWeekRange.to
   const isNextWeekActive =
     dateFrom === nextWeekRange.from && dateTo === nextWeekRange.to
-
   const todayHref = buildWeekFilterHref({
     query,
     jobStatus,
@@ -352,12 +351,18 @@ export default async function JobsPage({
     request = request.in('job_status', ['nova', 'k_reseni', 'realizace'])
   }
 
-  if (dateFrom) {
-    request = request.gte('start_at', `${dateFrom}T00:00:00`)
-  }
+  if (dateFrom && dateTo) {
+    request = request
+      .lte('start_at', `${dateTo}T23:59:59`)
+      .gte('end_at', `${dateFrom}T00:00:00`)
+  } else {
+    if (dateFrom) {
+      request = request.gte('start_at', `${dateFrom}T00:00:00`)
+    }
 
-  if (dateTo) {
-    request = request.lte('start_at', `${dateTo}T23:59:59`)
+    if (dateTo) {
+      request = request.lte('start_at', `${dateTo}T23:59:59`)
+    }
   }
 
   if (sort === 'start_nearest') {
