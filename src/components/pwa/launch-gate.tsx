@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 const LAUNCH_SESSION_KEY = 'benergy_launch_seen'
 
@@ -20,7 +20,6 @@ function isStandaloneMode() {
 export function LaunchGate() {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const hasCheckedRef = useRef(false)
 
   useEffect(() => {
@@ -35,10 +34,10 @@ export function LaunchGate() {
 
     sessionStorage.setItem(LAUNCH_SESSION_KEY, '1')
 
-    const query = searchParams.toString()
+    const query = typeof window === 'undefined' ? '' : window.location.search.slice(1)
     const nextPath = query ? `${pathname}?${query}` : pathname
     router.replace(`/launch?next=${encodeURIComponent(nextPath)}`)
-  }, [pathname, router, searchParams])
+  }, [pathname, router])
 
   return null
 }
