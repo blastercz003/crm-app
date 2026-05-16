@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Difficulty } from '@/lib/snake/types'
-import { parseDifficultyFilter, parsePeriodFilter } from '@/lib/snake/validation'
+import { normalizeGameMode, parseDifficultyFilter, parsePeriodFilter } from '@/lib/snake/validation'
 
 function getPeriodStartIso(period: 'today' | 'week' | 'all') {
   if (period === 'all') return null
@@ -30,21 +30,29 @@ export async function GET(request: Request) {
 
   const periodStart = getPeriodStartIso(period)
 
-  let query = supabase
-    .from('snake_scores')
-    .select('id, user_id, anonymous_player_id, display_name, score, level, difficulty, created_at')
+  const runQuery = async (withGameMode: boolean) => {
+    let query = supabase.from('snake_scores').select(
+      withGameMode
+        ? 'id, user_id, anonymous_player_id, display_name, score, level, difficulty, game_mode, metadata, created_at'
+        : 'id, user_id, anonymous_player_id, display_name, score, level, difficulty, metadata, created_at'
+    )
 
-  if (difficulty !== 'all') {
-    query = query.eq('difficulty', difficulty)
-  }
-  if (periodStart) {
-    query = query.gte('created_at', periodStart)
+    if (difficulty !== 'all') {
+      query = query.eq('difficulty', difficulty)
+    }
+    if (periodStart) {
+      query = query.gte('created_at', periodStart)
+    }
+
+    return query.order('score', { ascending: false }).order('created_at', { ascending: true }).limit(100)
   }
 
-  const { data, error } = await query
-    .order('score', { ascending: false })
-    .order('created_at', { ascending: true })
-    .limit(100)
+  let { data, error } = await runQuery(true)
+  if (error && (error.message.includes('game_mode') || error.message.includes('column'))) {
+    const fallback = await runQuery(false)
+    data = fallback.data
+    error = fallback.error
+  }
 
   if (error) {
     return NextResponse.json({ error: `Načtení leaderboardu selhalo: ${error.message}` }, { status: 500 })
@@ -58,6 +66,9 @@ export async function GET(request: Request) {
     score: entry.score,
     level: entry.level,
     difficulty: entry.difficulty as Difficulty,
+    gameMode:
+      normalizeGameMode((entry as { game_mode?: string | null }).game_mode) ??
+      normalizeGameMode((entry as { metadata?: { gameMode?: string } | null }).metadata?.gameMode),
     createdAt: entry.created_at,
     isCurrentPlayer: Boolean(user?.id && entry.user_id === user.id),
   }))

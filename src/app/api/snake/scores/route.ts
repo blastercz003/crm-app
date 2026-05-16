@@ -66,19 +66,41 @@ export async function POST(request: Request) {
     score: body.score,
     level: body.level,
     difficulty: body.difficulty,
+    game_mode: body.gameMode,
     duration_ms: body.durationMs,
     food_eaten: body.foodEaten,
     theme_name: body.themeName,
     metadata: {
       submittedAt: new Date().toISOString(),
+      gameMode: body.gameMode,
     },
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('snake_scores')
     .insert(insertPayload)
-    .select('id, score, level, difficulty, created_at, display_name')
+    .select('id, score, level, difficulty, game_mode, created_at, display_name')
     .single()
+
+  if (error && (error.message.includes('game_mode') || error.message.includes('column'))) {
+    const fallbackPayload = {
+      ...insertPayload,
+      metadata: {
+        ...insertPayload.metadata,
+        modeStoredInMetadata: true,
+      },
+    }
+    delete (fallbackPayload as { game_mode?: string }).game_mode
+
+    const fallback = await supabase
+      .from('snake_scores')
+      .insert(fallbackPayload)
+      .select('id, score, level, difficulty, created_at, display_name')
+      .single()
+
+    data = fallback.data
+    error = fallback.error
+  }
 
   if (error) {
     return NextResponse.json({ error: `Uložení skóre selhalo: ${error.message}` }, { status: 500 })

@@ -20,13 +20,13 @@ export function SnakeLeaderboard({
 }) {
   return (
     <section className={`${styles.card} ${styles.panelCard} flex h-[300px] flex-col p-4 sm:h-[340px] lg:h-auto lg:min-h-0 lg:flex-1`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-0.5">
         <h2 className={styles.sectionTitle}>ŽEBŘÍČEK</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-0.5">
           <select
             value={difficulty}
             onChange={(event) => onDifficultyChange(event.target.value as DifficultyFilter)}
-            className={`${styles.select} px-2 py-1 text-xs`}
+            className={`${styles.select} h-6 px-1 py-0 text-[9px]`}
           >
             <option value="all">VŠE</option>
             <option value="easy">LEHKÁ</option>
@@ -37,7 +37,7 @@ export function SnakeLeaderboard({
           <select
             value={period}
             onChange={(event) => onPeriodChange(event.target.value as PeriodFilter)}
-            className={`${styles.select} px-2 py-1 text-xs`}
+            className={`${styles.select} h-6 px-1 py-0 text-[9px]`}
           >
             <option value="today">DNES</option>
             <option value="week">TENTO TÝDEN</option>
@@ -46,17 +46,25 @@ export function SnakeLeaderboard({
         </div>
       </div>
 
-      {loading ? <p className="mt-3 text-sm text-slate-300">Načítám leaderboard…</p> : null}
-      {error ? <p className="mt-3 text-sm text-amber-700">{error}</p> : null}
+      {loading ? <p className="mt-1 text-[10px] text-slate-300">Načítám leaderboard…</p> : null}
+      {error ? <p className="mt-1 text-[10px] text-amber-700">{error}</p> : null}
 
-      <div className="mt-3 min-h-0 flex-1 overflow-auto">
-        <table className="w-full border-collapse text-left text-sm">
+      <div className="mt-1 min-h-0 flex-1 overflow-auto overflow-x-hidden">
+        <table className="w-full table-fixed border-collapse text-left text-[10px]">
+          <colgroup>
+            <col className="w-[9%]" />
+            <col className="w-[31%]" />
+            <col className="w-[23%]" />
+            <col className="w-[15%]" />
+            <col className="w-[22%]" />
+          </colgroup>
           <thead>
-            <tr className="border-b border-slate-700 text-xs uppercase tracking-[0.07em] text-slate-300">
-              <th className="py-2 pr-2">#</th>
-              <th className="py-2 pr-2">Jméno</th>
-              <th className="py-2 pr-2">Score</th>
-              <th className="py-2 pr-2">Lvl</th>
+            <tr className="border-b border-slate-700 text-[9px] uppercase tracking-[0.04em] text-slate-300">
+              <th className="py-0.5 pr-1">#</th>
+              <th className="py-0.5 pr-1">Jméno</th>
+              <th className="py-0.5 pr-1">Score</th>
+              <th className="py-0.5 pr-1">Lvl</th>
+              <th className="py-0.5 pr-0">Mód</th>
             </tr>
           </thead>
           <tbody>
@@ -65,25 +73,35 @@ export function SnakeLeaderboard({
                 key={`${entry.rank}-${entry.displayName}-${entry.createdAt}`}
                 className={`border-b border-slate-800 ${entry.isCurrentPlayer ? 'bg-blue-950/50' : ''}`}
               >
-                <td className="py-2 pr-2 font-medium text-slate-200">{entry.rank}</td>
-                <td className="py-2 pr-2">
-                  <p className="font-medium text-slate-100">{entry.displayName}</p>
-                  <p className="text-xs text-slate-400">{entry.difficulty}</p>
+                <td className="py-0.5 pr-1 font-medium text-slate-200">{entry.rank}</td>
+                <td className="truncate py-0.5 pr-1 text-[11px] font-medium leading-tight text-slate-100">
+                  {entry.displayName}
                 </td>
-                <td className="py-2 pr-2 font-semibold text-slate-100">{entry.score}</td>
-                <td className="py-2 pr-2 text-slate-200">{entry.level}</td>
+                <td className="py-0.5 pr-1 text-[11px] font-semibold text-slate-100">{entry.score}</td>
+                <td className="py-0.5 pr-1 text-[11px] text-slate-200">{entry.level}</td>
+                <td className="truncate py-0.5 pr-0 text-[9px] uppercase tracking-[0.02em] text-slate-300">
+                  {formatModeShort(entry.gameMode)}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         {data.entries.length === 0 ? (
-          <p className="py-4 text-sm text-slate-400">Zatím žádné výsledky.</p>
+          <p className="py-2 text-[10px] text-slate-400">Zatím žádné výsledky.</p>
         ) : null}
       </div>
 
-      <p className="mt-2 text-xs text-slate-300">
+      <p className="mt-0.5 text-[10px] text-slate-300">
         Tvé nejlepší skóre: {data.currentPlayerBest ? `#${data.currentPlayerBest.rank} (${data.currentPlayerBest.score})` : '-'}
       </p>
     </section>
   )
+}
+
+function formatModeShort(mode: string | null) {
+  if (mode === 'classic') return 'Classic'
+  if (mode === 'arcade-chaos') return 'Chaos'
+  if (mode === 'zen') return 'Zen'
+  if (mode === 'enemy-hunt') return 'Hunt'
+  return '-'
 }

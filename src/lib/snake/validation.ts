@@ -1,14 +1,16 @@
 import { z } from 'zod'
 import { getDifficultyConfig } from './gameLogic'
 import { calculateScore } from './scoring'
-import type { Difficulty } from './types'
+import type { Difficulty, GameMode } from './types'
 
 const DIFFICULTIES = ['easy', 'normal', 'hard', 'expert'] as const
+const GAME_MODES = ['classic', 'arcade-chaos', 'zen', 'enemy-hunt'] as const
 
 export const scorePayloadSchema = z.object({
   score: z.number().int().nonnegative(),
   level: z.number().int().min(1).max(99),
   difficulty: z.enum(DIFFICULTIES),
+  gameMode: z.enum(GAME_MODES),
   durationMs: z.number().int().min(500).max(1000 * 60 * 60),
   foodEaten: z.number().int().min(1).max(5000),
   displayName: z.string().min(1).max(32),
@@ -51,4 +53,10 @@ export function parseDifficultyFilter(value: string | null) {
 export function parsePeriodFilter(value: string | null) {
   if (value === 'today' || value === 'week' || value === 'all') return value
   return 'all'
+}
+
+export function normalizeGameMode(value: unknown): GameMode | null {
+  if (typeof value !== 'string') return null
+  if (GAME_MODES.includes(value as (typeof GAME_MODES)[number])) return value as GameMode
+  return null
 }

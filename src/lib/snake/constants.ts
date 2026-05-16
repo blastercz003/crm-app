@@ -1,4 +1,4 @@
-import type { DifficultyConfig, SnakeTheme } from './types'
+import type { DifficultyConfig, GameMode, SnakeTheme } from './types'
 
 export const SNAKE_GRID_SIZE = 24
 export const SNAKE_CELL_SIZE = 14
@@ -108,4 +108,11 @@ export const DIFFICULTY_CONFIGS: DifficultyConfig[] = [
     scoreMultiplier: 2,
     baseObstacleCount: 4,
   },
+]
+
+export const GAME_MODES: Array<{ key: GameMode; label: string }> = [
+  { key: 'classic', label: 'Classic' },
+  { key: 'arcade-chaos', label: 'Arcade Chaos' },
+  { key: 'zen', label: 'Zen Mode' },
+  { key: 'enemy-hunt', label: 'Enemy Hunt' },
 ]

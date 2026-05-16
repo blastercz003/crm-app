@@ -13,7 +13,6 @@ import {
   isDirectionChangeAllowed,
   moveSnake,
   recalculateLevelFromFood,
-  shouldSpawnBonusFood,
   spawnBonusFood,
   spawnFood,
 } from '@/lib/snake/gameLogic'
@@ -53,8 +52,16 @@ type SnakeGameProps = {
 
 type RunStatus = 'ready' | 'countdown' | 'running' | 'paused' | 'game-over'
 
+type EnemyState = {
+  active: boolean
+  position: { x: number; y: number } | null
+  foodsRemaining: number
+  lastMoveAtMs: number
+}
+
 const DEFAULT_SETTINGS: SnakeSettingsState = {
   difficulty: 'normal',
+  gameMode: 'classic',
   themeName: 'classic-green',
   soundEnabled: true,
   customSnakeColor: null,
@@ -69,6 +76,12 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
   const loopRef = useRef<number | null>(null)
   const lastTickRef = useRef(0)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const enemyRef = useRef<EnemyState>({
+    active: false,
+    position: null,
+    foodsRemaining: 0,
+    lastMoveAtMs: 0,
+  })
   const soundRef = useRef(createSnakeSoundEngine())
   const lastTurnSoundAtRef = useRef(0)
 
@@ -91,6 +104,9 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
+  const [specialNotice, setSpecialNotice] = useState<string | null>(null)
+  const [enemyFoodsLeft, setEnemyFoodsLeft] = useState(0)
+  const [gameOverReason, setGameOverReason] = useState<string | null>(null)
 
   const theme = useMemo(() => {
     const base = getThemeByName(settings.themeName)
@@ -172,6 +188,44 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     []
   )
 
+  const showSpecialNotice = useCallback((message: string) => {
+    setSpecialNotice(message)
+    window.setTimeout(() => {
+      setSpecialNotice((current) => (current === message ? null : current))
+    }, 1200)
+  }, [])
+
+  const applyModeToNextHead = useCallback(
+    (nextHead: { x: number; y: number }) => {
+      if (settings.gameMode !== 'zen') return nextHead
+      return {
+        x: (nextHead.x + SNAKE_GRID_SIZE) % SNAKE_GRID_SIZE,
+        y: (nextHead.y + SNAKE_GRID_SIZE) % SNAKE_GRID_SIZE,
+      }
+    },
+    [settings.gameMode]
+  )
+
+  const getBonusSpawnChance = useCallback(() => {
+    if (settings.gameMode === 'arcade-chaos') return 0.38
+    if (settings.gameMode === 'zen') return 0.12
+    return 0.18
+  }, [settings.gameMode])
+
+  const spawnEnemyStartPoint = useCallback((head: { x: number; y: number }) => {
+    const corners = [
+      { x: 1, y: 1 },
+      { x: SNAKE_GRID_SIZE - 2, y: 1 },
+      { x: 1, y: SNAKE_GRID_SIZE - 2 },
+      { x: SNAKE_GRID_SIZE - 2, y: SNAKE_GRID_SIZE - 2 },
+    ]
+    return corners.sort((a, b) => {
+      const da = Math.abs(a.x - head.x) + Math.abs(a.y - head.y)
+      const db = Math.abs(b.x - head.x) + Math.abs(b.y - head.y)
+      return db - da
+    })[0]
+  }, [])
+
   const resetState = useCallback(() => {
     const now = Date.now()
     const next = createInitialGameState(now)
@@ -182,11 +236,20 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       expiresAtMs: null,
     }
     stateRef.current = next
+    enemyRef.current = {
+      active: false,
+      position: null,
+      foodsRemaining: 0,
+      lastMoveAtMs: 0,
+    }
     setScore(0)
     setLevel(1)
     setFoodEaten(0)
     setSubmitState('')
     setIsNewLocalBest(false)
+    setEnemyFoodsLeft(0)
+    setGameOverReason(null)
+    setSpecialNotice(null)
   }, [settings.difficulty])
 
   const beginCountdown = useCallback(() => {
@@ -289,6 +352,28 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       Math.PI * 2
     )
     context.fill()
+
+    const enemy = enemyRef.current
+    if (enemy.active && enemy.position) {
+      const ex = enemy.position.x * cellWidth + cellWidth / 2
+      const ey = enemy.position.y * cellHeight + cellHeight / 2
+      const radius = Math.min(cellWidth, cellHeight) / 2.5
+
+      context.beginPath()
+      context.fillStyle = 'rgba(248, 113, 113, 0.16)'
+      context.arc(ex, ey, radius * 1.8, 0, Math.PI * 2)
+      context.fill()
+
+      context.beginPath()
+      context.fillStyle = '#f87171'
+      context.arc(ex, ey, radius, 0, Math.PI * 2)
+      context.fill()
+
+      context.beginPath()
+      context.fillStyle = '#fee2e2'
+      context.arc(ex - radius * 0.2, ey - radius * 0.2, radius * 0.25, 0, Math.PI * 2)
+      context.fill()
+    }
   }, [theme])
 
   const submitScore = useCallback(async () => {
@@ -309,6 +394,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
           score: endState.score,
           level: endState.level,
           difficulty: settings.difficulty,
+          gameMode: settings.gameMode,
           durationMs,
           foodEaten: endState.foodEaten,
           displayName,
@@ -324,7 +410,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     } catch {
       setSubmitState('Skóre se nepodařilo odeslat, ale lokální výsledek zůstal.')
     }
-  }, [defaultDisplayName, fetchLeaderboard, isAuthenticated, settings.difficulty, settings.themeName])
+  }, [defaultDisplayName, fetchLeaderboard, isAuthenticated, settings.difficulty, settings.gameMode, settings.themeName])
 
   const tick = useCallback(() => {
     const state = stateRef.current
@@ -334,15 +420,18 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     state.direction = activeDirection
 
     const head = state.snake[0]
-    const nextHead = getNextHeadPosition(head, activeDirection)
+    const rawNextHead = getNextHeadPosition(head, activeDirection)
+    const nextHead = applyModeToNextHead(rawNextHead)
+    const wallHit = settings.gameMode === 'zen' ? false : detectWallCollision(nextHead)
 
     if (
-      detectWallCollision(nextHead) ||
+      wallHit ||
       detectSelfCollision(state.snake, nextHead) ||
       detectObstacleCollision(state.obstacles, nextHead)
     ) {
       playSound('gameOver')
       state.endedAtMs = Date.now()
+      setGameOverReason(wallHit ? 'Náraz do stěny' : 'Kolize')
       setRunStatus('game-over')
       if (state.score > localBest) {
         saveLocalBest(state.score)
@@ -361,16 +450,40 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     if (ateFood) {
       playSound(state.food.kind === 'bonus' ? 'bonusFood' : 'food')
       state.foodEaten += 1
+      const previousLevel = state.level
       state.level = recalculateLevelFromFood(state.foodEaten)
       state.score += calculateScore(settings.difficulty, state.level, state.food.kind)
 
-      if (shouldSpawnBonusFood(state.level)) {
+      if (settings.gameMode === 'enemy-hunt' && enemyRef.current.active) {
+        enemyRef.current.foodsRemaining = Math.max(0, enemyRef.current.foodsRemaining - 1)
+        setEnemyFoodsLeft(enemyRef.current.foodsRemaining)
+        if (enemyRef.current.foodsRemaining === 0) {
+          enemyRef.current.active = false
+          enemyRef.current.position = null
+          showSpecialNotice('HUNTER OFFLINE')
+        }
+      }
+
+      if (state.level > previousLevel && settings.gameMode === 'enemy-hunt') {
+        enemyRef.current = {
+          active: true,
+          position: spawnEnemyStartPoint(nextHead),
+          foodsRemaining: 2,
+          lastMoveAtMs: 0,
+        }
+        setEnemyFoodsLeft(2)
+        showSpecialNotice('HUNTER ONLINE')
+      }
+
+      const canSpawnBonus = state.level >= 4 && Math.random() < getBonusSpawnChance()
+      if (canSpawnBonus) {
         state.food = spawnBonusFood(Date.now(), state.snake, state.obstacles)
       } else {
         state.food = { position: spawnFood(state.snake, state.obstacles), kind: 'normal', expiresAtMs: null }
       }
 
-      const nextObstacles = getObstaclesForLevel(state.level, settings.difficulty)
+      const nextObstacles =
+        settings.gameMode === 'zen' ? [] : getObstaclesForLevel(state.level, settings.difficulty)
       if (nextObstacles.length > state.obstacles.length) {
         playSound('obstacleRise')
       }
@@ -384,13 +497,77 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     if (state.food.kind === 'bonus' && state.food.expiresAtMs && Date.now() > state.food.expiresAtMs) {
       state.food = { position: spawnFood(state.snake, state.obstacles), kind: 'normal', expiresAtMs: null }
     }
-  }, [localBest, playSound, settings.difficulty, submitScore])
+
+    if (settings.gameMode === 'enemy-hunt' && enemyRef.current.active && enemyRef.current.position) {
+      const now = Date.now()
+      const speed = getSpeedForLevel(state.level, settings.difficulty)
+      const enemyStepInterval = Math.max(140, Math.floor(speed * 1.45))
+
+      if (now - enemyRef.current.lastMoveAtMs >= enemyStepInterval) {
+        enemyRef.current.lastMoveAtMs = now
+        const enemy = enemyRef.current.position
+        const headNow = state.snake[0]
+        const dx = headNow.x - enemy.x
+        const dy = headNow.y - enemy.y
+
+        const horizontal =
+          Math.abs(dx) >= Math.abs(dy) ? { x: enemy.x + Math.sign(dx), y: enemy.y } : null
+        const vertical =
+          Math.abs(dy) >= Math.abs(dx) ? { x: enemy.x, y: enemy.y + Math.sign(dy) } : null
+        const candidates = [horizontal, vertical].filter(
+          (point): point is { x: number; y: number } => Boolean(point)
+        )
+        const validMove = candidates.find(
+          (candidate) =>
+            candidate.x >= 0 &&
+            candidate.y >= 0 &&
+            candidate.x < SNAKE_GRID_SIZE &&
+            candidate.y < SNAKE_GRID_SIZE &&
+            !detectObstacleCollision(state.obstacles, candidate)
+        )
+
+        enemyRef.current.position = validMove ?? enemy
+
+        if (
+          enemyRef.current.position.x === headNow.x &&
+          enemyRef.current.position.y === headNow.y
+        ) {
+          playSound('gameOver')
+          state.endedAtMs = Date.now()
+          setGameOverReason('Chytil tě nepřítel')
+          setRunStatus('game-over')
+          if (state.score > localBest) {
+            saveLocalBest(state.score)
+            setLocalBest(state.score)
+            setIsNewLocalBest(true)
+          }
+          submitScore()
+        }
+      }
+    }
+  }, [
+    applyModeToNextHead,
+    getBonusSpawnChance,
+    localBest,
+    playSound,
+    settings.difficulty,
+    settings.gameMode,
+    showSpecialNotice,
+    spawnEnemyStartPoint,
+    submitScore,
+  ])
 
   const loop = useCallback(
     (time: number) => {
       if (runStatus !== 'running') return
       const state = stateRef.current
-      const speed = getSpeedForLevel(state.level, settings.difficulty)
+      const baseSpeed = getSpeedForLevel(state.level, settings.difficulty)
+      const speed =
+        settings.gameMode === 'arcade-chaos'
+          ? Math.max(45, Math.floor(baseSpeed * 0.88))
+          : settings.gameMode === 'zen'
+            ? Math.floor(baseSpeed * 1.22)
+            : baseSpeed
 
       if (time - lastTickRef.current >= speed) {
         lastTickRef.current = time
@@ -400,7 +577,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       draw()
       loopRef.current = window.requestAnimationFrame(loop)
     },
-    [draw, runStatus, settings.difficulty, tick]
+    [draw, runStatus, settings.difficulty, settings.gameMode, tick]
   )
 
   useEffect(() => {
@@ -436,7 +613,13 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
 
       if (runStatus !== 'running' || !isTouchDevice) return
 
-      const speed = getSpeedForLevel(state.level, settings.difficulty)
+      const baseSpeed = getSpeedForLevel(state.level, settings.difficulty)
+      const speed =
+        settings.gameMode === 'arcade-chaos'
+          ? Math.max(45, Math.floor(baseSpeed * 0.88))
+          : settings.gameMode === 'zen'
+            ? Math.floor(baseSpeed * 1.22)
+            : baseSpeed
 
       if (now - lastTickRef.current >= speed * 0.35) {
         lastTickRef.current = now
@@ -444,7 +627,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
         draw()
       }
     },
-    [draw, isTouchDevice, playSound, runStatus, settings.difficulty, tick, unlockAudio]
+    [draw, isTouchDevice, playSound, runStatus, settings.difficulty, settings.gameMode, tick, unlockAudio]
   )
 
   useEffect(() => {
@@ -556,9 +739,15 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
                 level={level}
                 foodEaten={foodEaten}
                 isNewLocalBest={isNewLocalBest}
-                submitState={submitState || 'Připraveno'}
+                submitState={gameOverReason ? `${gameOverReason}. ${submitState || 'Připraveno'}` : submitState || 'Připraveno'}
                 onPlayAgain={beginCountdown}
               />
+            ) : null}
+
+            {specialNotice ? (
+              <div className={styles.specialNotice} aria-live="polite">
+                {specialNotice}
+              </div>
             ) : null}
           </div>
 
@@ -593,6 +782,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
 
           <SnakeSettings
             difficulty={settings.difficulty}
+            gameMode={settings.gameMode}
             themeName={settings.themeName}
             soundEnabled={settings.soundEnabled}
             disabled={runStatus === 'running' || runStatus === 'countdown'}
@@ -600,6 +790,12 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
               setSettings((prev) => ({
                 ...prev,
                 difficulty: value,
+              }))
+            }
+            onGameModeChange={(value) =>
+              setSettings((prev) => ({
+                ...prev,
+                gameMode: value,
               }))
             }
             onThemeChange={(value) =>
@@ -621,7 +817,14 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
               <HudItem label="Score" value={String(score)} />
               <HudItem label="Level" value={String(level)} />
               <HudItem label="Local best" value={String(localBest)} />
-              <HudItem label="Online rank" value={onlineRank ? `#${onlineRank}` : '-'} />
+              <HudItem label="Rank" value={onlineRank ? `#${onlineRank}` : '-'} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {settings.gameMode === 'enemy-hunt' ? (
+                <span className={styles.modeBadge}>
+                  ENEMY: {enemyFoodsLeft > 0 ? `ACTIVE (${enemyFoodsLeft}/2)` : 'OFFLINE'}
+                </span>
+              ) : null}
             </div>
           </div>
 

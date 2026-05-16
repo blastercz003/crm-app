@@ -2,6 +2,8 @@ export type Direction = 'up' | 'down' | 'left' | 'right'
 
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'expert'
 
+export type GameMode = 'classic' | 'arcade-chaos' | 'zen' | 'enemy-hunt'
+
 export type DifficultyFilter = Difficulty | 'all'
 
 export type PeriodFilter = 'today' | 'week' | 'all'
@@ -65,6 +67,7 @@ export type LeaderboardEntry = {
   score: number
   level: number
   difficulty: Difficulty
+  gameMode: GameMode | null
   createdAt: string
   isCurrentPlayer: boolean
 }
