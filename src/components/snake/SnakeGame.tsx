@@ -16,7 +16,7 @@ import {
   spawnBonusFood,
   spawnFood,
 } from '@/lib/snake/gameLogic'
-import { SNAKE_GRID_SIZE } from '@/lib/snake/constants'
+import { DIFFICULTY_CONFIGS, GAME_MODES, SNAKE_GRID_SIZE } from '@/lib/snake/constants'
 import { calculateScore } from '@/lib/snake/scoring'
 import { createSnakeSoundEngine } from '@/lib/snake/sound'
 import {
@@ -59,9 +59,27 @@ type EnemyState = {
   lastMoveAtMs: number
 }
 
+type FxParticle = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  ttl: number
+  size: number
+  color: string
+}
+
+type TrailPoint = {
+  x: number
+  y: number
+  life: number
+}
+
 const DEFAULT_SETTINGS: SnakeSettingsState = {
   difficulty: 'normal',
   gameMode: 'classic',
+  visualSkin: 'classic-arcade',
   themeName: 'classic-green',
   soundEnabled: true,
   customSnakeColor: null,
@@ -76,6 +94,10 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
   const loopRef = useRef<number | null>(null)
   const lastTickRef = useRef(0)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const timePhaseRef = useRef(0)
+  const particlesRef = useRef<FxParticle[]>([])
+  const trailRef = useRef<TrailPoint[]>([])
+  const lastHeadRef = useRef<{ x: number; y: number } | null>(null)
   const enemyRef = useRef<EnemyState>({
     active: false,
     position: null,
@@ -107,6 +129,10 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
   const [specialNotice, setSpecialNotice] = useState<string | null>(null)
   const [enemyFoodsLeft, setEnemyFoodsLeft] = useState(0)
   const [gameOverReason, setGameOverReason] = useState<string | null>(null)
+  const [scoreBumpTick, setScoreBumpTick] = useState(0)
+  const [levelFlashActive, setLevelFlashActive] = useState(false)
+  const isHyperHd = settings.visualSkin === 'hyper-hd'
+  const previousScoreRef = useRef(0)
 
   const theme = useMemo(() => {
     const base = getThemeByName(settings.themeName)
@@ -177,6 +203,15 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     soundRef.current.setEnabled(settings.soundEnabled)
   }, [settings.soundEnabled])
 
+  useEffect(() => {
+    if (score <= previousScoreRef.current) {
+      previousScoreRef.current = score
+      return
+    }
+    previousScoreRef.current = score
+    setScoreBumpTick((value) => value + 1)
+  }, [score])
+
   const unlockAudio = useCallback(() => {
     soundRef.current.unlock()
   }, [])
@@ -225,6 +260,29 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       return db - da
     })[0]
   }, [])
+
+  const emitParticles = useCallback(
+    (x: number, y: number, count: number, color: string) => {
+      if (settings.visualSkin !== 'hyper-hd') return
+      const next: FxParticle[] = []
+      for (let i = 0; i < count; i += 1) {
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5
+        const speed = 0.04 + Math.random() * 0.12
+        next.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0,
+          ttl: 16 + Math.floor(Math.random() * 12),
+          size: 2 + Math.random() * 2.5,
+          color,
+        })
+      }
+      particlesRef.current = [...particlesRef.current, ...next].slice(-80)
+    },
+    [settings.visualSkin]
+  )
 
   const resetState = useCallback(() => {
     const now = Date.now()
@@ -300,58 +358,241 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     context.setTransform(1, 0, 0, 1, 0, 0)
     context.scale(dpr, dpr)
 
+    const state = stateRef.current
     const cellWidth = viewWidth / SNAKE_GRID_SIZE
     const cellHeight = viewHeight / SNAKE_GRID_SIZE
+    timePhaseRef.current += 0.016
+    const phase = timePhaseRef.current
+    const isHyperHd = settings.visualSkin === 'hyper-hd'
 
-    context.fillStyle = theme.boardColor
-    context.fillRect(0, 0, viewWidth, viewHeight)
+    if (!isHyperHd) {
+      context.fillStyle = theme.boardColor
+      context.fillRect(0, 0, viewWidth, viewHeight)
 
-    context.strokeStyle = 'rgba(255,255,255,0.06)'
-    context.lineWidth = 1
-    for (let i = 0; i <= SNAKE_GRID_SIZE; i += 1) {
-      const x = i * cellWidth
-      const y = i * cellHeight
+      context.strokeStyle = 'rgba(255,255,255,0.06)'
+      context.lineWidth = 1
+      for (let i = 0; i <= SNAKE_GRID_SIZE; i += 1) {
+        const x = i * cellWidth
+        const y = i * cellHeight
+        context.beginPath()
+        context.moveTo(x, 0)
+        context.lineTo(x, viewHeight)
+        context.stroke()
+        context.beginPath()
+        context.moveTo(0, y)
+        context.lineTo(viewWidth, y)
+        context.stroke()
+      }
+
+      for (const obstacle of state.obstacles) {
+        context.fillStyle = 'rgba(241,245,249,0.24)'
+        context.fillRect(
+          obstacle.x * cellWidth + 2,
+          obstacle.y * cellHeight + 2,
+          Math.max(2, cellWidth - 4),
+          Math.max(2, cellHeight - 4)
+        )
+      }
+
+      state.snake.forEach((part, index) => {
+        context.fillStyle = index === 0 ? theme.snakeHeadColor : theme.snakeColor
+        context.fillRect(
+          part.x * cellWidth + 2,
+          part.y * cellHeight + 2,
+          Math.max(2, cellWidth - 4),
+          Math.max(2, cellHeight - 4)
+        )
+      })
+
+      const food = state.food
+      context.fillStyle = food.kind === 'bonus' ? theme.bonusFoodColor : theme.foodColor
       context.beginPath()
-      context.moveTo(x, 0)
-      context.lineTo(x, viewHeight)
-      context.stroke()
+      context.arc(
+        food.position.x * cellWidth + cellWidth / 2,
+        food.position.y * cellHeight + cellHeight / 2,
+        Math.min(cellWidth, cellHeight) / 2.7,
+        0,
+        Math.PI * 2
+      )
+      context.fill()
+    } else {
+      const animatedGlow = 0.12 + Math.sin(phase * 0.8) * 0.04
+      const bg = context.createLinearGradient(0, 0, viewWidth, viewHeight)
+      bg.addColorStop(0, '#050917')
+      bg.addColorStop(0.5, '#091632')
+      bg.addColorStop(1, '#090d1f')
+      context.fillStyle = bg
+      context.fillRect(0, 0, viewWidth, viewHeight)
+
+      const light = context.createRadialGradient(
+        viewWidth * (0.25 + Math.sin(phase * 0.2) * 0.08),
+        viewHeight * (0.22 + Math.cos(phase * 0.16) * 0.08),
+        20,
+        viewWidth * 0.35,
+        viewHeight * 0.35,
+        viewWidth * 0.82
+      )
+      light.addColorStop(0, 'rgba(35,216,255,0.18)')
+      light.addColorStop(0.55, 'rgba(144,86,255,0.09)')
+      light.addColorStop(1, 'rgba(0,0,0,0)')
+      context.fillStyle = light
+      context.fillRect(0, 0, viewWidth, viewHeight)
+
+      context.strokeStyle = `rgba(85, 184, 255, ${0.08 + animatedGlow * 0.35})`
+      context.lineWidth = 1
+      for (let i = 0; i <= SNAKE_GRID_SIZE; i += 1) {
+        const x = i * cellWidth
+        const y = i * cellHeight
+        context.beginPath()
+        context.moveTo(x, 0)
+        context.lineTo(x, viewHeight)
+        context.stroke()
+        context.beginPath()
+        context.moveTo(0, y)
+        context.lineTo(viewWidth, y)
+        context.stroke()
+      }
+
+      const vignette = context.createRadialGradient(
+        viewWidth * 0.5,
+        viewHeight * 0.5,
+        viewWidth * 0.18,
+        viewWidth * 0.5,
+        viewHeight * 0.5,
+        viewWidth * 0.82
+      )
+      vignette.addColorStop(0, 'rgba(0,0,0,0)')
+      vignette.addColorStop(1, 'rgba(0,0,0,0.42)')
+      context.fillStyle = vignette
+      context.fillRect(0, 0, viewWidth, viewHeight)
+
+      for (const obstacle of state.obstacles) {
+        const x = obstacle.x * cellWidth + 2
+        const y = obstacle.y * cellHeight + 2
+        const w = Math.max(2, cellWidth - 4)
+        const h = Math.max(2, cellHeight - 4)
+        const gradient = context.createLinearGradient(x, y, x + w, y + h)
+        gradient.addColorStop(0, 'rgba(148,163,184,0.85)')
+        gradient.addColorStop(1, 'rgba(71,85,105,0.85)')
+        context.fillStyle = gradient
+        context.fillRect(x, y, w, h)
+        context.strokeStyle = 'rgba(148, 197, 255, 0.52)'
+        context.strokeRect(x + 0.5, y + 0.5, Math.max(1, w - 1), Math.max(1, h - 1))
+      }
+
+      const head = state.snake[0]
+      const lastHead = lastHeadRef.current
+      if (lastHead && (lastHead.x !== head.x || lastHead.y !== head.y)) {
+        trailRef.current.push({ x: lastHead.x, y: lastHead.y, life: 1 })
+      }
+      lastHeadRef.current = { x: head.x, y: head.y }
+      trailRef.current = trailRef.current
+        .map((item) => ({ ...item, life: item.life - 0.12 }))
+        .filter((item) => item.life > 0)
+        .slice(-10)
+
+      for (const item of trailRef.current) {
+        const alpha = Math.max(0, item.life) * 0.22
+        context.fillStyle = `rgba(106, 240, 155, ${alpha})`
+        context.fillRect(
+          item.x * cellWidth + 3,
+          item.y * cellHeight + 3,
+          Math.max(2, cellWidth - 6),
+          Math.max(2, cellHeight - 6)
+        )
+      }
+
+      const pulse = 0.9 + Math.sin(phase * 3.2) * 0.06
+      state.snake.forEach((part, index) => {
+        const x = part.x * cellWidth + 2
+        const y = part.y * cellHeight + 2
+        const w = Math.max(2, cellWidth - 4)
+        const h = Math.max(2, cellHeight - 4)
+        const radius = Math.max(2, Math.min(w, h) * 0.22)
+        const body = context.createLinearGradient(x, y, x + w, y + h)
+        if (index === 0) {
+          body.addColorStop(0, '#d9fff0')
+          body.addColorStop(1, '#39d98a')
+          context.shadowBlur = 18 * pulse
+          context.shadowColor = 'rgba(91, 255, 184, 0.48)'
+        } else {
+          body.addColorStop(0, '#52eab3')
+          body.addColorStop(1, '#1db06f')
+          context.shadowBlur = 10 * pulse
+          context.shadowColor = 'rgba(91, 255, 184, 0.25)'
+        }
+        context.fillStyle = body
+        context.beginPath()
+        context.roundRect(x, y, w, h, radius)
+        context.fill()
+        context.shadowBlur = 0
+      })
+
+      const food = state.food
+      const fx = food.position.x * cellWidth + cellWidth / 2
+      const fy = food.position.y * cellHeight + cellHeight / 2
+      const baseRadius = Math.min(cellWidth, cellHeight) / 3
+      const breath = 1 + Math.sin(phase * 4.6) * 0.08
+      const orbRadius = baseRadius * breath
+
       context.beginPath()
-      context.moveTo(0, y)
-      context.lineTo(viewWidth, y)
-      context.stroke()
+      context.fillStyle =
+        food.kind === 'bonus' ? 'rgba(255,211,110,0.24)' : 'rgba(255,103,145,0.2)'
+      context.arc(fx, fy, orbRadius * (food.kind === 'bonus' ? 2.6 : 2.1), 0, Math.PI * 2)
+      context.fill()
+
+      const orb = context.createRadialGradient(fx - orbRadius * 0.3, fy - orbRadius * 0.35, 1, fx, fy, orbRadius)
+      if (food.kind === 'bonus') {
+        orb.addColorStop(0, '#fff7cf')
+        orb.addColorStop(0.45, '#ffd166')
+        orb.addColorStop(1, '#f59e0b')
+      } else {
+        orb.addColorStop(0, '#ffe6ef')
+        orb.addColorStop(0.4, '#ff7a8f')
+        orb.addColorStop(1, '#e11d48')
+      }
+      context.fillStyle = orb
+      context.beginPath()
+      context.arc(fx, fy, orbRadius, 0, Math.PI * 2)
+      context.fill()
+
+      if (food.kind === 'bonus' && food.expiresAtMs) {
+        const remaining = Math.max(0, food.expiresAtMs - Date.now())
+        const ratio = Math.min(1, remaining / 6000)
+        context.strokeStyle = `rgba(255, 225, 145, ${0.35 + (1 - ratio) * 0.4})`
+        context.lineWidth = 2
+        context.beginPath()
+        context.arc(fx, fy, orbRadius * 1.65, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio)
+        context.stroke()
+      }
+
+      particlesRef.current = particlesRef.current
+        .map((particle) => ({
+          ...particle,
+          x: particle.x + particle.vx,
+          y: particle.y + particle.vy,
+          life: particle.life + 1,
+        }))
+        .filter((particle) => particle.life < particle.ttl)
+
+      for (const particle of particlesRef.current) {
+        const alpha = 1 - particle.life / particle.ttl
+        context.fillStyle = particle.color.replace('ALPHA', alpha.toFixed(3))
+        context.beginPath()
+        context.arc(
+          particle.x * cellWidth + cellWidth / 2,
+          particle.y * cellHeight + cellHeight / 2,
+          particle.size * alpha,
+          0,
+          Math.PI * 2
+        )
+        context.fill()
+      }
+
+      context.strokeStyle = 'rgba(116, 220, 255, 0.36)'
+      context.lineWidth = 2
+      context.strokeRect(1, 1, viewWidth - 2, viewHeight - 2)
     }
-
-    for (const obstacle of stateRef.current.obstacles) {
-      context.fillStyle = 'rgba(241,245,249,0.24)'
-      context.fillRect(
-        obstacle.x * cellWidth + 2,
-        obstacle.y * cellHeight + 2,
-        Math.max(2, cellWidth - 4),
-        Math.max(2, cellHeight - 4)
-      )
-    }
-
-    stateRef.current.snake.forEach((part, index) => {
-      context.fillStyle = index === 0 ? theme.snakeHeadColor : theme.snakeColor
-      context.fillRect(
-        part.x * cellWidth + 2,
-        part.y * cellHeight + 2,
-        Math.max(2, cellWidth - 4),
-        Math.max(2, cellHeight - 4)
-      )
-    })
-
-    const food = stateRef.current.food
-    context.fillStyle = food.kind === 'bonus' ? theme.bonusFoodColor : theme.foodColor
-    context.beginPath()
-    context.arc(
-      food.position.x * cellWidth + cellWidth / 2,
-      food.position.y * cellHeight + cellHeight / 2,
-      Math.min(cellWidth, cellHeight) / 2.7,
-      0,
-      Math.PI * 2
-    )
-    context.fill()
 
     const enemy = enemyRef.current
     if (enemy.active && enemy.position) {
@@ -360,7 +601,8 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       const radius = Math.min(cellWidth, cellHeight) / 2.5
 
       context.beginPath()
-      context.fillStyle = 'rgba(248, 113, 113, 0.16)'
+      context.fillStyle =
+        settings.visualSkin === 'hyper-hd' ? 'rgba(248, 113, 113, 0.22)' : 'rgba(248, 113, 113, 0.16)'
       context.arc(ex, ey, radius * 1.8, 0, Math.PI * 2)
       context.fill()
 
@@ -374,7 +616,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       context.arc(ex - radius * 0.2, ey - radius * 0.2, radius * 0.25, 0, Math.PI * 2)
       context.fill()
     }
-  }, [theme])
+  }, [settings.visualSkin, theme])
 
   const submitScore = useCallback(async () => {
     const endState = stateRef.current
@@ -449,6 +691,12 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
 
     if (ateFood) {
       playSound(state.food.kind === 'bonus' ? 'bonusFood' : 'food')
+      emitParticles(
+        state.food.position.x,
+        state.food.position.y,
+        state.food.kind === 'bonus' ? 18 : 10,
+        state.food.kind === 'bonus' ? 'rgba(255, 219, 135, ALPHA)' : 'rgba(255, 142, 184, ALPHA)'
+      )
       state.foodEaten += 1
       const previousLevel = state.level
       state.level = recalculateLevelFromFood(state.foodEaten)
@@ -472,7 +720,15 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
           lastMoveAtMs: 0,
         }
         setEnemyFoodsLeft(2)
-        showSpecialNotice('HUNTER ONLINE')
+        showSpecialNotice('LEVEL UP • HUNTER ONLINE')
+      }
+      if (state.level > previousLevel) {
+        setLevelFlashActive(true)
+        window.setTimeout(() => setLevelFlashActive(false), 340)
+        if (settings.gameMode !== 'enemy-hunt') {
+          showSpecialNotice('LEVEL UP')
+        }
+        emitParticles(nextHead.x, nextHead.y, 14, 'rgba(129, 228, 255, ALPHA)')
       }
 
       const canSpawnBonus = state.level >= 4 && Math.random() < getBonusSpawnChance()
@@ -547,6 +803,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     }
   }, [
     applyModeToNextHead,
+    emitParticles,
     getBonusSpawnChance,
     localBest,
     playSound,
@@ -686,23 +943,31 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
   }, [runStatus])
 
   return (
-    <section className={styles.shell}>
+    <section className={`${styles.shell} ${isHyperHd ? styles.hyperHdShell : ''}`}>
       <header className={`${styles.logoSlot} flex items-center justify-center lg:hidden`}>
         <SnakeLogoArcade />
       </header>
 
       <div className={styles.layout}>
-        <section className={`${styles.card} ${styles.gameCard} p-3 sm:p-4`}>
-          <div className={styles.canvasWrap} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <section className={`${styles.card} ${styles.gameCard} ${isHyperHd ? styles.hyperHdGameCard : ''} p-3 sm:p-4`}>
+          <div className={`${styles.canvasWrap} ${isHyperHd ? styles.hyperHdCanvasWrap : ''} ${levelFlashActive ? styles.levelFlash : ''}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             <SnakeCanvas ref={canvasRef} />
 
             {runStatus === 'ready' && !isTouchDevice ? (
-              <SnakeStartScreen onStart={beginCountdown} />
+              <SnakeStartScreen
+                onStart={beginCountdown}
+                isHyperHd={isHyperHd}
+                modeLabel={GAME_MODES.find((mode) => mode.key === settings.gameMode)?.label ?? settings.gameMode}
+                difficultyLabel={
+                  DIFFICULTY_CONFIGS.find((difficulty) => difficulty.key === settings.difficulty)?.label ??
+                  settings.difficulty
+                }
+              />
             ) : null}
 
             {runStatus === 'countdown' ? (
               <div className={styles.overlay}>
-                <div className={`${styles.overlayCard} text-center`}>
+                <div className={`${styles.overlayCard} ${isHyperHd ? styles.hyperHdOverlayCard : ''} text-center`}>
                   <p className="text-sm text-slate-200">Start za</p>
                   <p className="text-4xl font-bold">{countdown}</p>
                 </div>
@@ -711,12 +976,12 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
 
             {runStatus === 'paused' ? (
               <div className={styles.overlay}>
-                <div className={styles.overlayCard}>
+                <div className={`${styles.overlayCard} ${isHyperHd ? styles.hyperHdOverlayCard : ''}`}>
                   <h2 className="text-lg font-semibold">Pauza</h2>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      className={`${styles.button} ${styles.buttonPrimary} px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em]`}
+                      className={`${styles.button} ${styles.buttonPrimary} ${isHyperHd ? styles.hyperHdPrimaryButton : ''} px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em]`}
                       onClick={() => setRunStatus('running')}
                     >
                       POKRAČOVAT
@@ -741,11 +1006,12 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
                 isNewLocalBest={isNewLocalBest}
                 submitState={gameOverReason ? `${gameOverReason}. ${submitState || 'Připraveno'}` : submitState || 'Připraveno'}
                 onPlayAgain={beginCountdown}
+                isHyperHd={isHyperHd}
               />
             ) : null}
 
             {specialNotice ? (
-              <div className={styles.specialNotice} aria-live="polite">
+              <div className={`${styles.specialNotice} ${isHyperHd ? styles.hyperHdSpecialNotice : ''}`} aria-live="polite">
                 {specialNotice}
               </div>
             ) : null}
@@ -758,7 +1024,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
           <div className={`${styles.desktopNoShrink} mt-3 grid grid-cols-2 gap-2`}>
             <button
               type="button"
-              className={`${styles.button} ${styles.buttonPrimary} w-full px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.05em] sm:px-4 sm:text-sm sm:tracking-[0.06em] focus:outline-2 focus:outline-offset-2 focus:outline-blue-500`}
+              className={`${styles.button} ${styles.buttonPrimary} ${isHyperHd ? styles.hyperHdPrimaryButton : ''} w-full px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.05em] sm:px-4 sm:text-sm sm:tracking-[0.06em] focus:outline-2 focus:outline-offset-2 focus:outline-blue-500`}
               onClick={beginCountdown}
               disabled={runStatus === 'running' || runStatus === 'countdown'}
             >
@@ -783,6 +1049,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
           <SnakeSettings
             difficulty={settings.difficulty}
             gameMode={settings.gameMode}
+            visualSkin={settings.visualSkin}
             themeName={settings.themeName}
             soundEnabled={settings.soundEnabled}
             disabled={runStatus === 'running' || runStatus === 'countdown'}
@@ -796,6 +1063,12 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
               setSettings((prev) => ({
                 ...prev,
                 gameMode: value,
+              }))
+            }
+            onVisualSkinChange={(value) =>
+              setSettings((prev) => ({
+                ...prev,
+                visualSkin: value,
               }))
             }
             onThemeChange={(value) =>
@@ -812,9 +1085,9 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
             }
           />
 
-          <div className={`${styles.card} ${styles.panelCard} p-3`}>
+          <div className={`${styles.card} ${styles.panelCard} ${isHyperHd ? styles.hyperHdHudPanel : ''} p-3`}>
             <div className={styles.hudGrid}>
-              <HudItem label="Score" value={String(score)} />
+              <HudItem label="Score" value={String(score)} pulseKey={scoreBumpTick} isHyperHd={isHyperHd} />
               <HudItem label="Level" value={String(level)} />
               <HudItem label="Local best" value={String(localBest)} />
               <HudItem label="Rank" value={onlineRank ? `#${onlineRank}` : '-'} />
@@ -858,11 +1131,27 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
   )
 }
 
-function HudItem({ label, value }: { label: string; value: string }) {
+function HudItem({
+  label,
+  value,
+  pulseKey,
+  isHyperHd,
+}: {
+  label: string
+  value: string
+  pulseKey?: number
+  isHyperHd?: boolean
+}) {
+  const pulseClass = typeof pulseKey === 'number' ? styles.scoreBump : ''
   return (
     <div className={styles.hudCard}>
       <p className={styles.hudLabel}>{label}</p>
-      <p className={styles.hudValue}>{value}</p>
+      <p
+        key={pulseKey}
+        className={`${styles.hudValue} ${pulseClass} ${isHyperHd ? styles.hyperHdHudValue : ''}`}
+      >
+        {value}
+      </p>
     </div>
   )
 }

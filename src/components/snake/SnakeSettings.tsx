@@ -1,15 +1,17 @@
-import { DIFFICULTY_CONFIGS, GAME_MODES, THEMES } from '@/lib/snake/constants'
-import type { Difficulty, GameMode, ThemeName } from '@/lib/snake/types'
+import { DIFFICULTY_CONFIGS, GAME_MODES, THEMES, VISUAL_SKINS } from '@/lib/snake/constants'
+import type { Difficulty, GameMode, ThemeName, VisualSkin } from '@/lib/snake/types'
 import styles from './snake.module.css'
 
 type SnakeSettingsProps = {
   difficulty: Difficulty
   gameMode: GameMode
+  visualSkin: VisualSkin
   themeName: ThemeName
   soundEnabled: boolean
   disabled: boolean
   onDifficultyChange: (value: Difficulty) => void
   onGameModeChange: (value: GameMode) => void
+  onVisualSkinChange: (value: VisualSkin) => void
   onThemeChange: (value: ThemeName) => void
   onSoundEnabledChange: (value: boolean) => void
 }
@@ -53,6 +55,22 @@ export function SnakeSettings(props: SnakeSettingsProps) {
             onChange={(event) => props.onGameModeChange(event.target.value as GameMode)}
           >
             {GAME_MODES.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm">
+          <span className="mb-1 block text-slate-200">Vizuální styl</span>
+          <select
+            className={`${styles.select} w-full px-3 py-2 text-sm`}
+            value={props.visualSkin}
+            disabled={props.disabled}
+            onChange={(event) => props.onVisualSkinChange(event.target.value as VisualSkin)}
+          >
+            {VISUAL_SKINS.map((entry) => (
               <option key={entry.key} value={entry.key}>
                 {entry.label}
               </option>

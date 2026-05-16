@@ -6,6 +6,13 @@
   color: #dbeafe;
 }
 
+.hyperHdShell {
+  --snake-panel-bg: linear-gradient(165deg, #060d1d 0%, #0a1630 52%, #0a1128 100%);
+  --snake-border: rgba(73, 192, 255, 0.36);
+  --snake-shadow: 0 20px 52px rgba(4, 10, 28, 0.54);
+  --snake-soft-shadow: 0 10px 24px rgba(3, 8, 23, 0.4);
+}
+
 .layout {
   display: grid;
   gap: 16px;
@@ -31,6 +38,13 @@
     radial-gradient(circle at 12% 18%, rgba(34, 211, 238, 0.14), transparent 34%),
     radial-gradient(circle at 88% 82%, rgba(244, 114, 182, 0.12), transparent 38%),
     linear-gradient(165deg, rgba(8, 14, 30, 0.96), rgba(10, 19, 40, 0.95));
+}
+
+.hyperHdGameCard {
+  background:
+    radial-gradient(circle at 12% 14%, rgba(34, 211, 238, 0.2), transparent 36%),
+    radial-gradient(circle at 88% 86%, rgba(217, 70, 239, 0.17), transparent 36%),
+    linear-gradient(168deg, rgba(4, 10, 24, 0.98), rgba(8, 17, 37, 0.96));
 }
 
 .panelCard {
@@ -89,6 +103,14 @@
     0 0 0 1px rgba(30, 64, 175, 0.28);
 }
 
+.hyperHdCanvasWrap {
+  border-color: rgba(102, 219, 255, 0.52);
+  box-shadow:
+    inset 0 1px 0 rgba(199, 244, 255, 0.28),
+    0 26px 46px rgba(4, 7, 24, 0.48),
+    0 0 26px rgba(56, 189, 248, 0.22);
+}
+
 .canvas {
   display: block;
   width: 100%;
@@ -113,6 +135,17 @@
   color: #f8fafc;
   padding: 20px;
   box-shadow: 0 18px 46px rgba(2, 6, 23, 0.34);
+}
+
+.hyperHdOverlayCard {
+  border-color: rgba(120, 226, 255, 0.36);
+  background:
+    radial-gradient(circle at 84% 20%, rgba(46, 174, 255, 0.16), transparent 48%),
+    linear-gradient(160deg, rgba(6, 15, 33, 0.9), rgba(14, 28, 56, 0.82));
+  box-shadow:
+    0 22px 54px rgba(2, 8, 24, 0.5),
+    inset 0 1px 0 rgba(210, 244, 255, 0.24);
+  backdrop-filter: blur(10px);
 }
 
 .select,
@@ -149,6 +182,14 @@
     0 0 18px rgba(56, 189, 248, 0.26);
 }
 
+.hyperHdPrimaryButton {
+  background: linear-gradient(135deg, #102447 0%, #1b68d1 52%, #38d7ff 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 12px 24px rgba(29, 78, 216, 0.5),
+    0 0 22px rgba(56, 189, 248, 0.28);
+}
+
 .buttonPrimary:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
@@ -171,6 +212,13 @@
   min-width: 0;
 }
 
+.hyperHdHudPanel .hudCard {
+  border-color: rgba(116, 220, 255, 0.34);
+  background:
+    radial-gradient(circle at 84% 18%, rgba(59, 130, 246, 0.18), transparent 40%),
+    linear-gradient(160deg, rgba(7, 18, 38, 0.84), rgba(18, 34, 64, 0.78));
+}
+
 .hudLabel {
   font-size: 9px;
   line-height: 1;
@@ -191,6 +239,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.hyperHdHudValue {
+  text-shadow: 0 0 12px rgba(125, 211, 252, 0.28);
+}
+
+.scoreBump {
+  animation: scoreBump 280ms ease-out;
 }
 
 .sectionTitle {
@@ -219,6 +275,23 @@
   justify-content: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+.hyperHdShell .mobileControlButton {
+  border-color: rgba(102, 219, 255, 0.44);
+  background:
+    radial-gradient(circle at 24% 18%, rgba(56, 189, 248, 0.18), transparent 50%),
+    linear-gradient(160deg, rgba(7, 17, 38, 0.9), rgba(18, 34, 65, 0.82));
+  box-shadow:
+    inset 0 1px 0 rgba(212, 245, 255, 0.22),
+    0 8px 18px rgba(2, 8, 23, 0.34);
+}
+
+.hyperHdShell .mobileControlButton:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(212, 245, 255, 0.15),
+    0 4px 12px rgba(2, 8, 23, 0.26);
 }
 
 .mobileControlIcon {
@@ -300,6 +373,14 @@
     0 0 18px rgba(56, 189, 248, 0.38);
 }
 
+.hyperHdSpecialNotice {
+  border-color: rgba(102, 219, 255, 0.58);
+  background: linear-gradient(150deg, rgba(4, 14, 35, 0.92), rgba(21, 86, 168, 0.86));
+  box-shadow:
+    inset 0 1px 0 rgba(225, 248, 255, 0.22),
+    0 0 20px rgba(56, 189, 248, 0.42);
+}
+
 .modeBadge {
   border-radius: 9999px;
   border: 1px solid rgba(125, 211, 252, 0.38);
@@ -321,9 +402,39 @@
   }
 }
 
+@keyframes scoreBump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes hyperHdShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 120% 50%;
+  }
+}
+
+.hyperHdGameCard,
+.hyperHdOverlayCard {
+  background-size: 140% 140%;
+  animation: hyperHdShimmer 18s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pulse,
-  .levelFlash {
+  .levelFlash,
+  .scoreBump,
+  .hyperHdGameCard,
+  .hyperHdOverlayCard {
     animation: none !important;
   }
 }

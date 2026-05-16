@@ -1,4 +1,4 @@
-import type { DifficultyConfig, GameMode, SnakeTheme } from './types'
+import type { DifficultyConfig, GameMode, SnakeTheme, VisualSkin } from './types'
 
 export const SNAKE_GRID_SIZE = 24
 export const SNAKE_CELL_SIZE = 14
@@ -115,4 +115,9 @@ export const GAME_MODES: Array<{ key: GameMode; label: string }> = [
   { key: 'arcade-chaos', label: 'Arcade Chaos' },
   { key: 'zen', label: 'Zen Mode' },
   { key: 'enemy-hunt', label: 'Enemy Hunt' },
+]
+
+export const VISUAL_SKINS: Array<{ key: VisualSkin; label: string }> = [
+  { key: 'classic-arcade', label: 'Classic Arcade' },
+  { key: 'hyper-hd', label: 'Hyper HD režim' },
 ]

@@ -1,9 +1,10 @@
 import { LOCAL_STORAGE_KEYS } from './constants'
-import type { Difficulty, GameMode, ThemeName } from './types'
+import type { Difficulty, GameMode, ThemeName, VisualSkin } from './types'
 
 export type SnakeSettings = {
   difficulty: Difficulty
   gameMode: GameMode
+  visualSkin: VisualSkin
   themeName: ThemeName
   soundEnabled: boolean
   customSnakeColor: string | null
@@ -21,6 +22,7 @@ export function loadSnakeSettings(): SnakeSettings | null {
     return {
       difficulty: parsed.difficulty,
       gameMode: (parsed.gameMode as GameMode) ?? 'classic',
+      visualSkin: (parsed.visualSkin as VisualSkin) ?? 'classic-arcade',
       themeName: parsed.themeName,
       soundEnabled: parsed.soundEnabled ?? true,
       customSnakeColor: parsed.customSnakeColor ?? null,

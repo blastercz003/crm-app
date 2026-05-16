@@ -3,6 +3,7 @@ export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'expert'
 
 export type GameMode = 'classic' | 'arcade-chaos' | 'zen' | 'enemy-hunt'
+export type VisualSkin = 'classic-arcade' | 'hyper-hd'
 
 export type DifficultyFilter = Difficulty | 'all'
 
