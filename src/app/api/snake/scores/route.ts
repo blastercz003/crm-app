@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isPossibleScore, sanitizeDisplayName, scorePayloadSchema } from '@/lib/snake/validation'
 
+type ScoreInsertResponseRow = {
+  id: string
+  score: number
+  level: number
+  difficulty: string
+  game_mode?: string | null
+  created_at: string
+  display_name: string
+}
+
 export async function POST(request: Request) {
   let parsedBody: unknown
 
@@ -76,11 +86,14 @@ export async function POST(request: Request) {
     },
   }
 
-  let { data, error } = await supabase
+  const primaryInsert = await supabase
     .from('snake_scores')
     .insert(insertPayload)
     .select('id, score, level, difficulty, game_mode, created_at, display_name')
     .single()
+
+  let data = primaryInsert.data as ScoreInsertResponseRow | null
+  let error = primaryInsert.error
 
   if (error && (error.message.includes('game_mode') || error.message.includes('column'))) {
     const fallbackPayload = {
@@ -98,7 +111,7 @@ export async function POST(request: Request) {
       .select('id, score, level, difficulty, created_at, display_name')
       .single()
 
-    data = fallback.data
+    data = fallback.data as ScoreInsertResponseRow | null
     error = fallback.error
   }
 
