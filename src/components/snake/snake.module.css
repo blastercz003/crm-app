@@ -207,8 +207,17 @@
   border: 1px solid rgba(125, 211, 252, 0.3);
   background: linear-gradient(160deg, rgba(15, 23, 42, 0.7), rgba(30, 41, 59, 0.62));
   color: #e2e8f0;
-  font-size: 18px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobileControlIcon {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 6px rgba(147, 197, 253, 0.25));
 }
 
 @media (min-width: 1024px) {

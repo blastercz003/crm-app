@@ -19,6 +19,7 @@ import {
 } from '@/lib/snake/gameLogic'
 import { SNAKE_GRID_SIZE } from '@/lib/snake/constants'
 import { calculateScore } from '@/lib/snake/scoring'
+import { createSnakeSoundEngine } from '@/lib/snake/sound'
 import {
   getOrCreateGuestPlayerId,
   loadGuestDisplayName,
@@ -55,6 +56,7 @@ type RunStatus = 'ready' | 'countdown' | 'running' | 'paused' | 'game-over'
 const DEFAULT_SETTINGS: SnakeSettingsState = {
   difficulty: 'normal',
   themeName: 'classic-green',
+  soundEnabled: true,
   customSnakeColor: null,
   customFoodColor: null,
   customBoardColor: null,
@@ -67,6 +69,8 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
   const loopRef = useRef<number | null>(null)
   const lastTickRef = useRef(0)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const soundRef = useRef(createSnakeSoundEngine())
+  const lastTurnSoundAtRef = useRef(0)
 
   const [runStatus, setRunStatus] = useState<RunStatus>('ready')
   const [countdown, setCountdown] = useState(3)
@@ -153,6 +157,21 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     saveSnakeSettings(settings)
   }, [settings])
 
+  useEffect(() => {
+    soundRef.current.setEnabled(settings.soundEnabled)
+  }, [settings.soundEnabled])
+
+  const unlockAudio = useCallback(() => {
+    soundRef.current.unlock()
+  }, [])
+
+  const playSound = useCallback(
+    (event: Parameters<(typeof soundRef.current)['play']>[0]) => {
+      soundRef.current.play(event)
+    },
+    []
+  )
+
   const resetState = useCallback(() => {
     const now = Date.now()
     const next = createInitialGameState(now)
@@ -172,10 +191,11 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
 
   const beginCountdown = useCallback(() => {
     if (runStatus === 'running' || runStatus === 'countdown') return
+    unlockAudio()
     resetState()
     setRunStatus('countdown')
     setCountdown(3)
-  }, [resetState, runStatus])
+  }, [resetState, runStatus, unlockAudio])
 
   useEffect(() => {
     if (runStatus !== 'countdown') return
@@ -184,15 +204,17 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       setCountdown((prev) => {
         if (prev <= 1) {
           window.clearInterval(id)
+          playSound('countdownGo')
           setRunStatus('running')
           return 0
         }
+        playSound('countdownTick')
         return prev - 1
       })
     }, 1000)
 
     return () => window.clearInterval(id)
-  }, [runStatus])
+  }, [playSound, runStatus])
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -319,6 +341,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
       detectSelfCollision(state.snake, nextHead) ||
       detectObstacleCollision(state.obstacles, nextHead)
     ) {
+      playSound('gameOver')
       state.endedAtMs = Date.now()
       setRunStatus('game-over')
       if (state.score > localBest) {
@@ -336,6 +359,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     state.snake = moveSnake(state.snake, nextHead, ateFood)
 
     if (ateFood) {
+      playSound(state.food.kind === 'bonus' ? 'bonusFood' : 'food')
       state.foodEaten += 1
       state.level = recalculateLevelFromFood(state.foodEaten)
       state.score += calculateScore(settings.difficulty, state.level, state.food.kind)
@@ -346,7 +370,11 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
         state.food = { position: spawnFood(state.snake, state.obstacles), kind: 'normal', expiresAtMs: null }
       }
 
-      state.obstacles = getObstaclesForLevel(state.level, settings.difficulty)
+      const nextObstacles = getObstaclesForLevel(state.level, settings.difficulty)
+      if (nextObstacles.length > state.obstacles.length) {
+        playSound('obstacleRise')
+      }
+      state.obstacles = nextObstacles
 
       setScore(state.score)
       setLevel(state.level)
@@ -356,7 +384,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     if (state.food.kind === 'bonus' && state.food.expiresAtMs && Date.now() > state.food.expiresAtMs) {
       state.food = { position: spawnFood(state.snake, state.obstacles), kind: 'normal', expiresAtMs: null }
     }
-  }, [localBest, settings.difficulty, submitScore])
+  }, [localBest, playSound, settings.difficulty, submitScore])
 
   const loop = useCallback(
     (time: number) => {
@@ -393,11 +421,31 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
     }
   }, [loop, runStatus])
 
-  const setDirection = useCallback((next: Direction) => {
-    const current = stateRef.current.direction
-    if (!isDirectionChangeAllowed(current, next)) return
-    stateRef.current.queuedDirection = next
-  }, [])
+  const setDirection = useCallback(
+    (next: Direction) => {
+      const state = stateRef.current
+      const current = state.queuedDirection || state.direction
+      if (!isDirectionChangeAllowed(current, next)) return
+      state.queuedDirection = next
+      unlockAudio()
+      const now = performance.now()
+      if (now - lastTurnSoundAtRef.current > 60) {
+        playSound('turn')
+        lastTurnSoundAtRef.current = now
+      }
+
+      if (runStatus !== 'running' || !isTouchDevice) return
+
+      const speed = getSpeedForLevel(state.level, settings.difficulty)
+
+      if (now - lastTickRef.current >= speed * 0.35) {
+        lastTickRef.current = now
+        tick()
+        draw()
+      }
+    },
+    [draw, isTouchDevice, playSound, runStatus, settings.difficulty, tick, unlockAudio]
+  )
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -546,6 +594,7 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
           <SnakeSettings
             difficulty={settings.difficulty}
             themeName={settings.themeName}
+            soundEnabled={settings.soundEnabled}
             disabled={runStatus === 'running' || runStatus === 'countdown'}
             onDifficultyChange={(value) =>
               setSettings((prev) => ({
@@ -557,6 +606,12 @@ export function SnakeGame({ isAuthenticated, defaultDisplayName }: SnakeGameProp
               setSettings((prev) => ({
                 ...prev,
                 themeName: value,
+              }))
+            }
+            onSoundEnabledChange={(value) =>
+              setSettings((prev) => ({
+                ...prev,
+                soundEnabled: value,
               }))
             }
           />

@@ -4,6 +4,7 @@ import type { Difficulty, ThemeName } from './types'
 export type SnakeSettings = {
   difficulty: Difficulty
   themeName: ThemeName
+  soundEnabled: boolean
   customSnakeColor: string | null
   customFoodColor: string | null
   customBoardColor: string | null
@@ -14,7 +15,17 @@ export function loadSnakeSettings(): SnakeSettings | null {
   try {
     const raw = window.localStorage.getItem(LOCAL_STORAGE_KEYS.settings)
     if (!raw) return null
-    return JSON.parse(raw) as SnakeSettings
+    const parsed = JSON.parse(raw) as Partial<SnakeSettings>
+    if (!parsed.difficulty || !parsed.themeName) return null
+    return {
+      difficulty: parsed.difficulty,
+      themeName: parsed.themeName,
+      soundEnabled: parsed.soundEnabled ?? true,
+      customSnakeColor: parsed.customSnakeColor ?? null,
+      customFoodColor: parsed.customFoodColor ?? null,
+      customBoardColor: parsed.customBoardColor ?? null,
+      customAccentColor: parsed.customAccentColor ?? null,
+    }
   } catch {
     return null
   }
