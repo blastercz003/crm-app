@@ -279,16 +279,16 @@ export function ChangesLauncher({
                           </div>
                           <div
                             className="mt-0.5 min-w-0 truncate whitespace-nowrap text-[10px] min-[340px]:text-[11px] font-medium text-gray-700 sm:hidden"
-                            title={`${job.generatorName} · ${job.technicianName}`}
+                            title={`${job.technicianName} · ${job.generatorName}`}
                           >
-                            {job.generatorName} · {job.technicianName}
+                            {job.technicianName} · {job.generatorName}
                           </div>
 
                           <div
                             className="hidden min-w-0 truncate whitespace-nowrap text-[13px] font-medium text-gray-900 sm:block"
-                            title={`${job.jobNumber} · ${formatDateRange(job.startAt, job.endAt)} · ${job.companyName} · ${getCityFromAddress(job.siteAddress)} · ${job.generatorName} · ${job.technicianName}`}
+                            title={`${job.jobNumber} · ${formatDateRange(job.startAt, job.endAt)} · ${job.companyName} · ${getCityFromAddress(job.siteAddress)} · ${job.technicianName} · ${job.generatorName}`}
                           >
-                            <span className="font-bold">{job.jobNumber}</span> · {formatDateRange(job.startAt, job.endAt)} · {job.companyName} · {getCityFromAddress(job.siteAddress)} · {job.generatorName} · {job.technicianName}
+                            <span className="font-bold">{job.jobNumber}</span> · {formatDateRange(job.startAt, job.endAt)} · {job.companyName} · {getCityFromAddress(job.siteAddress)} · {job.technicianName} · {job.generatorName}
                           </div>
                         </div>
 
