@@ -621,3 +621,80 @@ input[type="reset"]:not(:disabled) {
     height: 2.1rem;
   }
 }
+
+#pwa-startup-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding:
+    calc(32px + env(safe-area-inset-top))
+    calc(24px + env(safe-area-inset-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(24px + env(safe-area-inset-left));
+  background: #ffffff;
+  color: #0f172a;
+  opacity: 1;
+  transition: opacity 250ms ease;
+}
+
+#pwa-startup-screen.is-hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pwa-startup-screen__content {
+  width: min(78vw, 360px);
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.pwa-startup-screen__logo {
+  width: min(52vw, 220px);
+  height: auto;
+}
+
+.pwa-startup-screen__text {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: clamp(0.88rem, 2.1vw, 1rem);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+  text-transform: uppercase;
+}
+
+.pwa-startup-screen__cursor {
+  display: inline-block;
+  margin-left: 2px;
+  opacity: 1;
+  animation: pwa-startup-cursor-blink 1s steps(1, end) infinite;
+}
+
+@keyframes pwa-startup-cursor-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pwa-startup-screen {
+    transition: none;
+  }
+
+  .pwa-startup-screen__cursor {
+    animation: none;
+    opacity: 1;
+  }
+}
