@@ -347,8 +347,14 @@ export function NotificationsModal({
             disabled={isPending || unreadCount === 0}
             className="inline-flex min-h-[46px] min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-2xl border border-[#2980B9] bg-[#2980B9] px-4 py-3 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.48),0_14px_30px_rgba(24,95,145,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#2471A3] hover:bg-[#2471A3] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.52),0_18px_36px_rgba(24,95,145,0.40)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <span className="sm:hidden">VŠE PŘEČTENO</span>
-            <span className="hidden sm:inline">OZNAČIT VŠE JAKO PŘEČTENÉ</span>
+            {isPending ? (
+              <span>UKLÁDÁM...</span>
+            ) : (
+              <>
+                <span className="sm:hidden">VŠE PŘEČTENO</span>
+                <span className="hidden sm:inline">OZNAČIT VŠE JAKO PŘEČTENÉ</span>
+              </>
+            )}
           </button>
         </div>
       </div>
