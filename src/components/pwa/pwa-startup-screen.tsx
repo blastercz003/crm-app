@@ -1,15 +1,18 @@
 'use client'
 
 import { useEffect } from 'react'
+import Image from 'next/image'
 
 const STARTUP_SCREEN_ID = 'pwa-startup-screen'
 const STARTUP_TEXT_ID = 'pwa-startup-screen-text'
 const STARTUP_FINISHED_KEY = 'pwaStartupFinished'
 const STARTUP_ACTIVE_KEY = 'pwaStartupActive'
+const DASHBOARD_READY_KEY = 'pwaDashboardReady'
 const STARTUP_FADE_MS = 250
-const DESKTOP_STARTUP_DELAY_MS = 140
-const STARTUP_FAILSAFE_HIDE_MS = 10_000
+const STARTUP_MIN_VISIBLE_MS = 4_000
+const STARTUP_FAILSAFE_HIDE_MS = 15_000
 const TYPEWRITER_STEP_MS = 42
+const DASHBOARD_READY_EVENT = 'pwa-startup:dashboard-ready'
 
 const STARTUP_MESSAGES = [
   'Načítám aplikaci...',
@@ -57,32 +60,6 @@ function shouldShowStartupScreen() {
   return sessionStorage.getItem(STARTUP_FINISHED_KEY) !== 'true'
 }
 
-function ensureStartupScreen() {
-  if (typeof document === 'undefined') return
-  if (document.getElementById(STARTUP_SCREEN_ID)) return
-
-  const element = document.createElement('div')
-  element.id = STARTUP_SCREEN_ID
-  element.setAttribute('aria-hidden', 'true')
-  element.innerHTML = `
-    <div class="pwa-startup-screen__content">
-      <img
-        class="pwa-startup-screen__logo"
-        src="/launch/startup-logo.png"
-        alt="B-ENERGY"
-        width="220"
-        height="220"
-      />
-      <p class="pwa-startup-screen__text">
-        <span id="${STARTUP_TEXT_ID}"></span><span class="pwa-startup-screen__cursor" aria-hidden="true">|</span>
-      </p>
-    </div>
-  `
-
-  document.body.appendChild(element)
-  startTypewriterMessage()
-}
-
 function startTypewriterMessage() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
 
@@ -117,12 +94,14 @@ function startTypewriterMessage() {
   }, TYPEWRITER_STEP_MS)
 }
 
-function hideStartupScreen() {
+function hideStartupScreen(markFinished = true) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
 
   const el = document.getElementById(STARTUP_SCREEN_ID)
 
-  sessionStorage.setItem(STARTUP_FINISHED_KEY, 'true')
+  if (markFinished) {
+    sessionStorage.setItem(STARTUP_FINISHED_KEY, 'true')
+  }
   sessionStorage.setItem(STARTUP_ACTIVE_KEY, 'false')
 
   if (typewriterTimerId) {
@@ -135,51 +114,110 @@ function hideStartupScreen() {
   el.classList.add('is-hiding')
 
   window.setTimeout(() => {
-    el.remove()
+    el.setAttribute('hidden', 'true')
+    el.classList.remove('is-hiding')
   }, STARTUP_FADE_MS)
+}
+
+function showStartupScreen() {
+  if (typeof document === 'undefined') return
+
+  const el = document.getElementById(STARTUP_SCREEN_ID)
+  if (!el) return
+
+  el.removeAttribute('hidden')
+  startTypewriterMessage()
 }
 
 export function markDashboardStartupReady() {
   if (typeof window === 'undefined') return
 
-  if (sessionStorage.getItem(STARTUP_ACTIVE_KEY) !== 'true') return
-
-  hideStartupScreen()
+  sessionStorage.setItem(DASHBOARD_READY_KEY, 'true')
+  window.dispatchEvent(new Event(DASHBOARD_READY_EVENT))
 }
 
 export function PwaStartupScreenController() {
   useEffect(() => {
-    if (!shouldShowStartupScreen()) {
+    const shouldShow = shouldShowStartupScreen()
+    const startupShownAt = performance.now()
+
+    if (!shouldShow) {
       sessionStorage.setItem(STARTUP_ACTIVE_KEY, 'false')
+      hideStartupScreen(false)
       return
     }
 
-    const isDesktopStartup = !isStandalonePwa() && !isMobileDevice()
-
     sessionStorage.setItem(STARTUP_ACTIVE_KEY, 'true')
+    sessionStorage.setItem(DASHBOARD_READY_KEY, 'false')
+    showStartupScreen()
 
-    const showTimerId = window.setTimeout(
-      () => {
-        ensureStartupScreen()
-      },
-      isDesktopStartup ? DESKTOP_STARTUP_DELAY_MS : 0
-    )
-
+    let hideTimerId: number | null = null
     const failSafeTimerId = window.setTimeout(() => {
       hideStartupScreen()
     }, STARTUP_FAILSAFE_HIDE_MS)
 
+    function scheduleHide() {
+      const elapsedMs = performance.now() - startupShownAt
+      const remainingMs = Math.max(0, STARTUP_MIN_VISIBLE_MS - elapsedMs)
+
+      if (hideTimerId) {
+        window.clearTimeout(hideTimerId)
+      }
+
+      hideTimerId = window.setTimeout(() => {
+        hideStartupScreen()
+      }, remainingMs)
+    }
+
+    function onDashboardReady() {
+      if (sessionStorage.getItem(STARTUP_ACTIVE_KEY) !== 'true') return
+      scheduleHide()
+    }
+
+    window.addEventListener(DASHBOARD_READY_EVENT, onDashboardReady)
+
+    if (sessionStorage.getItem(DASHBOARD_READY_KEY) === 'true') {
+      onDashboardReady()
+    }
+
     return () => {
-      window.clearTimeout(showTimerId)
+      window.removeEventListener(DASHBOARD_READY_EVENT, onDashboardReady)
       window.clearTimeout(failSafeTimerId)
+      if (hideTimerId) {
+        window.clearTimeout(hideTimerId)
+      }
     }
   }, [])
 
   return null
 }
 
+export function PwaStartupScreenShell() {
+  return (
+    <div id={STARTUP_SCREEN_ID} aria-hidden="true">
+      <div className="pwa-startup-screen__content">
+        <Image
+          className="pwa-startup-screen__logo"
+          src="/launch/startup-logo.png"
+          alt="B-ENERGY"
+          width={220}
+          height={220}
+        />
+        <p className="pwa-startup-screen__text">
+          <span id={STARTUP_TEXT_ID} />
+          <span className="pwa-startup-screen__cursor" aria-hidden="true">
+            |
+          </span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export function DashboardStartupReadyBridge() {
   useEffect(() => {
+    if (sessionStorage.getItem(STARTUP_ACTIVE_KEY) !== 'true') return
+
     markDashboardStartupReady()
   }, [])
 

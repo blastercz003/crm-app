@@ -4,7 +4,10 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { NavigationOverlay } from '../components/navigation/navigation-overlay'
 import { ServiceWorkerRegistration } from '../components/pwa/service-worker-registration'
-import { PwaStartupScreenController } from '../components/pwa/pwa-startup-screen'
+import {
+  PwaStartupScreenController,
+  PwaStartupScreenShell,
+} from '../components/pwa/pwa-startup-screen'
 import { APP_TITLE } from '@/lib/pageTitles'
 
 const geistSans = Geist({
@@ -60,6 +63,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
+        <PwaStartupScreenShell />
         <PwaStartupScreenController />
         {children}
         <Suspense fallback={null}>
