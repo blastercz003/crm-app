@@ -200,8 +200,8 @@ export function PwaStartupScreenShell() {
           className="pwa-startup-screen__logo"
           src="/launch/startup-logo.png"
           alt="B-ENERGY"
-          width={220}
-          height={220}
+          width={110}
+          height={110}
         />
         <p className="pwa-startup-screen__text">
           <span id={STARTUP_TEXT_ID} />
