@@ -206,17 +206,26 @@ async function loadOfferForAction(offerId: string) {
   return { supabase, profile, isAdmin, offer: data }
 }
 
-async function touchOfferVersion(offerId: string, editorId: string) {
+function isApprovalLockedStatus(status: OfferStatus) {
+  return ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected'].includes(status)
+}
+
+async function touchOfferVersion(
+  offerId: string,
+  editorId: string,
+  options?: { requiresApprovalReset?: boolean }
+) {
   const { supabase, offer } = await loadOfferForAction(offerId)
-  const nextStatus = ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected'].includes(offer.status)
-    ? 'draft'
-    : offer.status
+  const requiresApprovalReset = options?.requiresApprovalReset ?? true
+  const shouldResetApproval = requiresApprovalReset && isApprovalLockedStatus(offer.status)
+  const shouldBumpVersion = shouldResetApproval || !isApprovalLockedStatus(offer.status)
+  const nextStatus = shouldResetApproval ? 'draft' : offer.status
 
   const { error } = await supabase
     .from('offers')
     .update({
       status: nextStatus,
-      current_version: offer.current_version + 1,
+      current_version: shouldBumpVersion ? offer.current_version + 1 : offer.current_version,
       last_edited_by: editorId,
       updated_at: new Date().toISOString(),
     })
@@ -349,10 +358,15 @@ export async function updateOfferDetails(offerId: string, formData: FormData) {
     throw new Error('Název nabídky je povinný.')
   }
 
-  const nextVersion = offer.current_version + 1
-  const nextStatus = ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected'].includes(offer.status)
-    ? 'draft'
-    : offer.status
+  const shouldResetApproval = false
+  const nextVersion =
+    isApprovalLockedStatus(offer.status) && !shouldResetApproval
+      ? offer.current_version
+      : offer.current_version + 1
+  const nextStatus =
+    isApprovalLockedStatus(offer.status) && shouldResetApproval
+      ? 'draft'
+      : offer.status
   const resolvedContact = await resolveOfferContact({
     supabase,
     clientId: offer.client_id,
@@ -823,7 +837,7 @@ export async function addOfferServiceItem(offerId: string, formData: FormData) {
     throw new Error(`Nepodařilo se přidat službu: ${error.message}`)
   }
 
-  await touchOfferVersion(offerId, profile.id)
+  await touchOfferVersion(offerId, profile.id, { requiresApprovalReset: false })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -859,7 +873,7 @@ export async function updateOfferServiceItem(itemId: string, formData: FormData)
     throw new Error(`Nepodařilo se upravit službu: ${error.message}`)
   }
 
-  await touchOfferVersion(offerId, profile.id)
+  await touchOfferVersion(offerId, profile.id, { requiresApprovalReset: false })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -967,7 +981,7 @@ export async function toggleOfferPresetItem(offerId: string, formData: FormData)
     }
   }
 
-  await touchOfferVersion(offerId, profile.id)
+  await touchOfferVersion(offerId, profile.id, { requiresApprovalReset: false })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -1035,7 +1049,7 @@ export async function setOfferPresetChoice(offerId: string, formData: FormData) 
     throw new Error(`Nepodařilo se uložit výběr nabídky: ${insertError.message}`)
   }
 
-  await touchOfferVersion(offerId, profile.id)
+  await touchOfferVersion(offerId, profile.id, { requiresApprovalReset: false })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -1061,7 +1075,7 @@ export async function deleteOfferServiceItem(itemId: string, formData: FormData)
     throw new Error(`Nepodařilo se odstranit službu: ${error.message}`)
   }
 
-  await touchOfferVersion(offerId, profile.id)
+  await touchOfferVersion(offerId, profile.id, { requiresApprovalReset: false })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -1378,7 +1392,11 @@ export async function sendOfferToClient(offerId: string) {
   revalidatePath('/notifications')
 }
 
-export async function setOfferClientOutcome(offerId: string, status: 'ordered' | 'rejected') {
+export async function setOfferClientOutcome(
+  offerId: string,
+  status: 'ordered' | 'rejected',
+  rejectionComment?: string
+) {
   const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
 
   if (
@@ -1392,10 +1410,18 @@ export async function setOfferClientOutcome(offerId: string, status: 'ordered' |
     )
   }
 
+  const normalizedRejectionComment =
+    status === 'rejected' ? String(rejectionComment ?? '').trim() : ''
+
+  if (status === 'rejected' && !normalizedRejectionComment) {
+    throw new Error('Důvod zamítnutí je povinný.')
+  }
+
   const { error } = await supabase
     .from('offers')
     .update({
       status,
+      rejection_comment: status === 'rejected' ? normalizedRejectionComment : null,
       last_edited_by: profile.id,
       updated_at: new Date().toISOString(),
     })
@@ -1431,7 +1457,11 @@ export async function setOfferClientOutcome(offerId: string, status: 'ordered' |
   revalidatePath('/notifications')
 }
 
-export async function setOfferStatusFromList(offerId: string, nextStatus: OfferStatus) {
+export async function setOfferStatusFromList(
+  offerId: string,
+  nextStatus: OfferStatus,
+  rejectionComment?: string
+) {
   const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
   const isOwner = offer.created_by === profile.id
 
@@ -1449,6 +1479,8 @@ export async function setOfferStatusFromList(offerId: string, nextStatus: OfferS
   }
 
   const now = new Date().toISOString()
+  const normalizedRejectionComment =
+    nextStatus === 'rejected' ? String(rejectionComment ?? '').trim() : ''
   const patch: Partial<OfferRow> & { status: OfferStatus; updated_at: string; last_edited_by: string } = {
     status: nextStatus,
     updated_at: now,
@@ -1470,6 +1502,13 @@ export async function setOfferStatusFromList(offerId: string, nextStatus: OfferS
 
   if (nextStatus === 'draft') {
     patch.rejection_comment = null
+  }
+
+  if (nextStatus === 'rejected') {
+    if (!normalizedRejectionComment) {
+      throw new Error('Důvod zamítnutí je povinný.')
+    }
+    patch.rejection_comment = normalizedRejectionComment
   }
 
   const { error } = await supabase.from('offers').update(patch).eq('id', offerId)

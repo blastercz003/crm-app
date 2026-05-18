@@ -88,6 +88,9 @@ export function OfferStatusButton({
   badgeWidthClass?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isRejectOpen, setIsRejectOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectError, setRejectError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const { toast, isVisible, showToast } = useAnimatedActionToast()
   const canEdit = isAdmin || isOwner
@@ -99,6 +102,13 @@ export function OfferStatusButton({
 
   function changeStatus(nextStatus: OfferStatus) {
     if (!canEdit) return
+    if (nextStatus === 'rejected') {
+      setRejectReason('')
+      setRejectError(null)
+      setIsRejectOpen(true)
+      return
+    }
+
     startTransition(async () => {
       try {
         await setOfferStatusFromList(offerId, nextStatus)
@@ -113,6 +123,31 @@ export function OfferStatusButton({
               : 'Stav nabídky se nepodařilo změnit.',
           tone: 'error',
         })
+      }
+    })
+  }
+
+  function confirmRejected() {
+    const text = rejectReason.trim()
+    if (!text) {
+      setRejectError('Důvod zamítnutí je povinný.')
+      return
+    }
+
+    setRejectError(null)
+    startTransition(async () => {
+      try {
+        await setOfferStatusFromList(offerId, 'rejected', text)
+        showToast(buildStatusChangedToast(currentStatus, 'rejected'))
+        setIsRejectOpen(false)
+        setIsOpen(false)
+        setRejectReason('')
+      } catch (error) {
+        setRejectError(
+          error instanceof Error
+            ? error.message
+            : 'Stav nabídky se nepodařilo změnit.'
+        )
       }
     })
   }
@@ -138,6 +173,22 @@ export function OfferStatusButton({
           onChangeStatus={changeStatus}
         />
       ) : null}
+
+      {isRejectOpen ? (
+        <RejectReasonModal
+          value={rejectReason}
+          error={rejectError}
+          isPending={isPending}
+          onChange={setRejectReason}
+          onClose={() => {
+            if (isPending) return
+            setIsRejectOpen(false)
+            setRejectReason('')
+            setRejectError(null)
+          }}
+          onConfirm={confirmRejected}
+        />
+      ) : null}
     </>
   )
 }
@@ -157,13 +208,6 @@ function StatusModal({
   onClose: () => void
   onChangeStatus: (status: OfferStatus) => void
 }) {
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-    return () => setIsMounted(false)
-  }, [])
-
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -172,7 +216,7 @@ function StatusModal({
     }
   }, [])
 
-  if (!isMounted) return null
+  if (typeof document === 'undefined') return null
 
   return createPortal(
     <div
@@ -244,6 +288,101 @@ function StatusModal({
                 </button>
               ))
             )}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+function RejectReasonModal({
+  value,
+  error,
+  isPending,
+  onChange,
+  onClose,
+  onConfirm,
+}: {
+  value: string
+  error: string | null
+  isPending: boolean
+  onChange: (value: string) => void
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[110] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="flex h-full items-center justify-center">
+        <div className="relative w-full max-w-lg overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+          <div aria-hidden className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
+          <div aria-hidden className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
+          <div aria-hidden className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
+
+          <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+            <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+              Proč to nevyšlo?
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Zavřít"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="relative">
+            <textarea
+              rows={4}
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder="Doplň důvod zamítnutí..."
+              className="w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
+            />
+            {error ? (
+              <div className="mt-2 text-sm font-medium text-red-700">{error}</div>
+            ) : null}
+          </div>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              ZRUŠIT
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isPending}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPending ? 'Ukládám…' : 'ZAMÍTNUTO'}
+            </button>
           </div>
         </div>
       </div>

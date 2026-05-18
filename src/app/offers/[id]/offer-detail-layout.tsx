@@ -54,6 +54,7 @@ import { OfferUnsavedChangesGuard } from './offer-unsaved-changes-guard'
 import { SendOfferToClientButton } from './send-offer-to-client-button'
 import { SubmitOfferApprovalButton } from './submit-offer-approval-button'
 import { SaveOfferButton } from './save-offer-button'
+import { RejectOfferWithReasonButton } from '@/app/offers/reject-offer-with-reason-button'
 
 type OfferDetailPageProps = {
   params: Promise<{ id: string }>
@@ -422,7 +423,7 @@ export function OfferDetailLayout({
           </section>
         ) : null}
 
-        {offer.rejection_comment ? (
+        {offer.status === 'changes_requested' && offer.rejection_comment ? (
           <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(243,247,251,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_16px_32px_rgba(15,23,42,0.12)]">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
               Komentář ke vrácení
@@ -729,14 +730,7 @@ export function OfferDetailLayout({
                         OBJEDNÁNO
                       </button>
                     </form>
-                    <form action={setOfferClientOutcome.bind(null, offer.id, 'rejected')}>
-                      <button
-                        type="submit"
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)] transition duration-200 hover:-translate-y-[1px]"
-                      >
-                        ZAMÍTNUTO
-                      </button>
-                    </form>
+                    <RejectOfferWithReasonButton offerId={offer.id} />
                   </div>
                 </div>
               </section>
@@ -761,6 +755,17 @@ export function OfferDetailLayout({
                     ZAMÍTNUTO
                   </button>
                 )}
+
+                {offer.status === 'rejected' && offer.rejection_comment ? (
+                  <div className="mt-3 rounded-xl border border-red-300/85 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_20px_rgba(220,38,38,0.14)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-red-700">
+                      Proč to nevyšlo
+                    </div>
+                    <div className="mt-1 whitespace-pre-wrap text-sm text-red-900">
+                      {offer.rejection_comment}
+                    </div>
+                  </div>
+                ) : null}
 
                 {progressNotes.length > 0 ? (
                   <div className="mt-3 border-t border-gray-100 pt-3">
