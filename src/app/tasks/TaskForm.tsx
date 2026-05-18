@@ -339,7 +339,7 @@ export default function TaskForm({
               value={contactPerson}
               onChange={(event) => setContactPerson(event.target.value)}
               className={inputClassName}
-              placeholder="Např. Jan Novák"
+              placeholder="Např. Kvído Kýbl"
             />
           )}
         </div>

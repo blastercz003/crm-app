@@ -343,19 +343,40 @@ async function insertClientRecord(formData: FormData) {
     contactEmail,
   })
 
-  const { error } = await supabase.from('clients').insert({
-    name,
-    ico: ico || null,
-    contact_person: contactPerson || null,
-    contact_phone: contactPhone || null,
-    contact_email: contactEmail || null,
-    address: address || null,
-    note: note || null,
-    created_by: user.id,
-  })
+  const { data: createdClient, error } = await supabase
+    .from('clients')
+    .insert({
+      name,
+      ico: ico || null,
+      contact_person: contactPerson || null,
+      contact_phone: contactPhone || null,
+      contact_email: contactEmail || null,
+      address: address || null,
+      note: note || null,
+      created_by: user.id,
+    })
+    .select('id')
+    .single<{ id: string }>()
 
-  if (error) {
+  if (error || !createdClient) {
     throw new Error('Nepodařilo se vytvořit klienta.')
+  }
+
+  if (contactPerson) {
+    const { error: contactInsertError } = await supabase
+      .from('client_contacts')
+      .insert({
+        client_id: createdClient.id,
+        name: contactPerson,
+        phone: contactPhone || null,
+        email: contactEmail || null,
+        is_primary: true,
+        created_by: user.id,
+      })
+
+    if (contactInsertError) {
+      throw new Error('Nepodařilo se vytvořit hlavní kontaktní osobu.')
+    }
   }
 
   revalidatePath('/clients')

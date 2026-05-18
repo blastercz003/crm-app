@@ -163,7 +163,7 @@ export function DashboardGlobalSearchInput({ className }: { className: string })
       <input
         type="text"
         aria-label="HLEDAT"
-        placeholder="HLEDAT"
+        placeholder="Hledej napříč celou appkou, cokoliv"
         autoComplete="off"
         disabled
         className={className}
@@ -177,7 +177,7 @@ export function DashboardGlobalSearchInput({ className }: { className: string })
       id="dashboard-global-search"
       type="text"
       aria-label="HLEDAT"
-      placeholder="HLEDAT"
+      placeholder="Hledej napříč celou appkou, cokoliv"
       autoComplete="off"
       value={query}
       onChange={(event) => setQuery(event.target.value)}

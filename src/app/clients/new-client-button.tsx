@@ -180,7 +180,7 @@ export function CreateClientModal({
                     name="name"
                     type="text"
                     required
-                    placeholder="Např. ABC Stavby s.r.o."
+                    placeholder="Např. Když Vypadne Proud s.r.o."
                     className={glassInputClass}
                   />
                 </div>
@@ -203,19 +203,37 @@ export function CreateClientModal({
 
                 <div className="space-y-2">
                   <label
+                    htmlFor="address"
+                    className="text-sm font-medium text-gray-900"
+                  >
+                    Adresa
+                  </label>
+                  <input
+                    id="address"
+                    name="address"
+                    type="text"
+                    placeholder="Např. Bezvýpadková 1"
+                    className={glassInputClass}
+                  />
+                </div>
+
+                <div className="space-y-2 sm:col-start-1">
+                  <label
                     htmlFor="contact_person"
                     className="text-sm font-medium text-gray-900"
                   >
-                    Kontaktní osoba
+                    Hlavní kontakt firmy
                   </label>
                   <input
                     id="contact_person"
                     name="contact_person"
                     type="text"
-                    placeholder="Např. Jan Novák"
+                    placeholder="Např. Kvído Kýbl"
                     className={glassInputClass}
                   />
                 </div>
+
+                <div aria-hidden="true" className="hidden sm:block" />
 
                 <div className="space-y-2">
                   <label
@@ -244,23 +262,7 @@ export function CreateClientModal({
                     id="contact_email"
                     name="contact_email"
                     type="email"
-                    placeholder="Např. novak@firma.cz"
-                    className={glassInputClass}
-                  />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <label
-                    htmlFor="address"
-                    className="text-sm font-medium text-gray-900"
-                  >
-                    Adresa
-                  </label>
-                  <input
-                    id="address"
-                    name="address"
-                    type="text"
-                    placeholder="Např. Ulice 123, 110 00 Praha"
+                    placeholder="Např. kvido@kybl.cz"
                     className={glassInputClass}
                   />
                 </div>

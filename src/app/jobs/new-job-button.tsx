@@ -610,7 +610,7 @@ function JobFormShell({
                         name="generator_name"
                         type="text"
                         defaultValue={job?.generator_name ?? ''}
-                        placeholder="Např. Aggreko 250 kVA"
+                        placeholder="250kVA"
                         className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>

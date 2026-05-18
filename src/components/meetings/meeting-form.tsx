@@ -367,7 +367,7 @@ export function MeetingForm({
               type="text"
               value={contactPerson}
               onChange={(event) => setContactPerson(event.target.value)}
-              placeholder="Např. Jan Novák"
+              placeholder="Např. Kvído Kýbl"
               className={glassFieldClass}
             />
           )}
@@ -404,7 +404,7 @@ export function MeetingForm({
             type="email"
             value={contactEmail}
             onChange={(event) => setContactEmail(event.target.value)}
-            placeholder="Např. novak@firma.cz"
+            placeholder="Např. kvido@kybl.cz"
             className={glassFieldClass}
           />
         </div>
@@ -421,7 +421,7 @@ export function MeetingForm({
             name="address"
             type="text"
             defaultValue={initialValues?.address ?? ''}
-            placeholder="Např. Ulice 123, Praha"
+            placeholder="Např. Bezvýpadková 1, Praha"
             className={glassFieldClass}
           />
         </div>
