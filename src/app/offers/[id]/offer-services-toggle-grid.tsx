@@ -6,8 +6,8 @@ import { OFFER_SERVICE_GROUP_LABEL } from '@/lib/offers/presets'
 
 type OfferServicesToggleGridProps = {
   offerId: string
-  services: string[]
-  selectedServices: string[]
+  services: readonly string[]
+  selectedServices: readonly string[]
 }
 
 function offerPresetButtonClassName(isActive: boolean, isDisabled = false) {
