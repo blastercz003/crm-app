@@ -112,7 +112,9 @@ export function DashboardMyOffersModule({
   currentUserId: string
   isAdmin: boolean
 }) {
-  const [filter, setFilter] = useState<FilterKey>('in_progress')
+  const [filter, setFilter] = useState<FilterKey>(() =>
+    isAdmin ? 'submitted' : 'in_progress'
+  )
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [commentOffer, setCommentOffer] = useState<DashboardOfferPreview | null>(null)
   const [detailOffer, setDetailOffer] = useState<DashboardOfferPreview | null>(null)
