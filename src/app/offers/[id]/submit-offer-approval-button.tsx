@@ -40,7 +40,7 @@ export function SubmitOfferApprovalButton({
         return
       }
 
-      router.refresh()
+      router.push(`/offers/${offerId}?submitted=1`)
     })
   }
 

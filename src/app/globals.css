@@ -222,6 +222,134 @@ input[type="reset"]:not(:disabled) {
   }
 }
 
+@keyframes offer-status-glow-success {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 10px 20px rgba(15, 23, 42, 0.08);
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 16px 30px rgba(16, 185, 129, 0.26),
+      0 0 0 1px rgba(16, 185, 129, 0.24);
+    transform: translateY(-1px) scale(1.006);
+  }
+}
+
+@keyframes offer-status-glow-warning {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 10px 20px rgba(15, 23, 42, 0.08);
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 16px 30px rgba(41, 128, 185, 0.32),
+      0 0 0 1px rgba(159, 202, 232, 0.4);
+    transform: translateY(-1px) scale(1.006);
+  }
+}
+
+@keyframes offer-status-glow-note {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 10px 20px rgba(15, 23, 42, 0.08);
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 16px 30px rgba(217, 119, 6, 0.26),
+      0 0 0 1px rgba(245, 158, 11, 0.3);
+    transform: translateY(-1px) scale(1.006);
+  }
+}
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .offer-status-card-glow--success {
+    animation: offer-status-glow-success 2.6s ease-in-out infinite;
+    will-change: box-shadow, transform;
+  }
+
+  .offer-status-card-glow--warning {
+    animation: offer-status-glow-warning 2.6s ease-in-out infinite;
+    will-change: box-shadow, transform;
+  }
+
+  .offer-status-card-glow--note {
+    animation: offer-status-glow-note 2.6s ease-in-out infinite;
+    will-change: box-shadow, transform;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-status-card-glow--success,
+  .offer-status-card-glow--warning,
+  .offer-status-card-glow--note {
+    animation: none !important;
+    transform: none !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 10px 20px rgba(15, 23, 42, 0.08) !important;
+  }
+}
+
+@keyframes offer-status-fade-in-glass {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(1.8px) saturate(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0) saturate(1);
+  }
+}
+
+@keyframes offer-status-fade-out-glass {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0) saturate(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-2px);
+    filter: blur(1.8px) saturate(0.92);
+  }
+}
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .offer-status-card-fade-in {
+    animation: offer-status-fade-in-glass 280ms ease-out both;
+    will-change: opacity, transform, filter;
+  }
+
+  .offer-status-card-fade-out {
+    animation: offer-status-fade-out-glass 240ms ease-in both;
+    will-change: opacity, transform, filter;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-status-card-fade-in,
+  .offer-status-card-fade-out {
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+  }
+}
+
 .calendar-shell .fc {
   --fc-border-color: rgb(232 232 232);
   --fc-page-bg-color: #ffffff;
@@ -296,6 +424,48 @@ input[type="reset"]:not(:disabled) {
 .filter-date-input::-webkit-datetime-edit-day-field,
 .filter-date-input::-webkit-datetime-edit-month-field,
 .filter-date-input::-webkit-datetime-edit-year-field {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Normalize vertical alignment for datetime-local fields in offer detail. */
+.filter-datetime-input {
+  line-height: normal;
+}
+
+.filter-datetime-input::-webkit-date-and-time-value {
+  min-height: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  text-align: left;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-datetime-input::-webkit-datetime-edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-datetime-input::-webkit-datetime-edit-fields-wrapper {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-datetime-input::-webkit-datetime-edit-text,
+.filter-datetime-input::-webkit-datetime-edit-day-field,
+.filter-datetime-input::-webkit-datetime-edit-month-field,
+.filter-datetime-input::-webkit-datetime-edit-year-field,
+.filter-datetime-input::-webkit-datetime-edit-hour-field,
+.filter-datetime-input::-webkit-datetime-edit-minute-field {
   padding-top: 0;
   padding-bottom: 0;
 }

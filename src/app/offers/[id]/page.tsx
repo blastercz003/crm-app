@@ -16,7 +16,7 @@ import { ClassicOfferDetail } from './classic-offer-detail'
 
 type OfferDetailPageProps = {
   params: Promise<{ id: string }>
-  searchParams?: Promise<{ saved?: string }>
+  searchParams?: Promise<{ saved?: string; submitted?: string }>
 }
 
 export async function generateMetadata({
@@ -135,6 +135,7 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
     profile,
     isAdmin,
     saved: resolvedSearchParams?.saved === '1',
+    submitted: resolvedSearchParams?.submitted === '1',
   }
 
   if (offer.offer_type === 'bsafe24') {

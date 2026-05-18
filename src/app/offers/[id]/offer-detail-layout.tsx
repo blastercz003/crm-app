@@ -49,12 +49,13 @@ import { DieselPriceBadge } from './diesel-price-badge'
 import { GuardedOfferLink } from './guarded-offer-link'
 import { ApproveOfferButton } from './approve-offer-button'
 import { OfferItemsEditor } from './offer-items-modal'
-import { OfferServicesModal } from './offer-services-modal'
 import { OfferUnsavedChangesGuard } from './offer-unsaved-changes-guard'
 import { SendOfferToClientButton } from './send-offer-to-client-button'
 import { SubmitOfferApprovalButton } from './submit-offer-approval-button'
 import { SaveOfferButton } from './save-offer-button'
 import { RejectOfferWithReasonButton } from '@/app/offers/reject-offer-with-reason-button'
+import { OfferInfoCards } from './offer-info-cards'
+import { OfferServicesToggleGrid } from './offer-services-toggle-grid'
 
 type OfferDetailPageProps = {
   params: Promise<{ id: string }>
@@ -284,6 +285,7 @@ export type OfferDetailLayoutProps = {
   profile: OfferProfile
   isAdmin: boolean
   saved?: boolean
+  submitted?: boolean
 }
 
 export function OfferDetailLayout({
@@ -297,6 +299,7 @@ export function OfferDetailLayout({
   profile,
   isAdmin,
   saved = false,
+  submitted = false,
 }: OfferDetailLayoutProps) {
   const selectedServices = new Set(
     serviceItems
@@ -408,32 +411,6 @@ export function OfferDetailLayout({
           message="Nejprve si prosím ulož práci tlačítkem ULOŽIT NABÍDKU."
         />
 
-        {saved ? (
-          <section className="rounded-[26px] border border-emerald-300/80 bg-[linear-gradient(155deg,rgba(236,253,245,0.96)_0%,rgba(209,250,229,0.9)_100%)] px-5 py-4 text-center text-sm font-semibold uppercase tracking-[0.08em] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_14px_28px_rgba(16,185,129,0.16)]">
-            Nabídka byla uložena.
-          </section>
-        ) : null}
-
-        {staleSubmitted ? (
-          <section className="rounded-[26px] border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-5 py-4 text-center text-sm font-medium uppercase tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_16px_30px_rgba(41,128,185,0.24)]">
-            Nabídka byla upravena po odeslání ke schválení.{' '}
-            <span className="font-bold">
-              Odešli ji znovu, aby admin schvaloval aktuální verzi.
-            </span>
-          </section>
-        ) : null}
-
-        {offer.status === 'changes_requested' && offer.rejection_comment ? (
-          <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(243,247,251,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_16px_32px_rgba(15,23,42,0.12)]">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-              Komentář ke vrácení
-            </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
-              {offer.rejection_comment}
-            </p>
-          </section>
-        ) : null}
-
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch">
           <section className="flex min-w-0 flex-col rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="mb-5 flex flex-nowrap items-center justify-between gap-3">
@@ -487,13 +464,13 @@ export function OfferDetailLayout({
                         <label htmlFor="realization_starts_at" className="mb-2 block text-sm font-medium text-gray-700">
                           Termín realizace od
                         </label>
-                        <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={`${inputClassName()} block min-w-0 max-w-full appearance-none`} />
+                        <input id="realization_starts_at" name="realization_starts_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_starts_at)} className={`${inputClassName()} block min-w-0 max-w-full appearance-none filter-datetime-input`} />
                       </div>
                       <div className="min-w-0">
                         <label htmlFor="realization_ends_at" className="mb-2 block text-sm font-medium text-gray-700">
                           Termín realizace do
                         </label>
-                        <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={`${inputClassName()} block min-w-0 max-w-full appearance-none`} />
+                        <input id="realization_ends_at" name="realization_ends_at" type="datetime-local" defaultValue={formatDateTimeInput(offer.realization_ends_at)} className={`${inputClassName()} block min-w-0 max-w-full appearance-none filter-datetime-input`} />
                       </div>
                     </>
                   )}
@@ -795,6 +772,13 @@ export function OfferDetailLayout({
               </section>
             ) : null}
 
+            <OfferInfoCards
+              showSaved={saved}
+              showSubmitted={submitted}
+              showStaleSubmitted={staleSubmitted}
+              rejectionComment={offer.status === 'changes_requested' ? offer.rejection_comment : null}
+            />
+
             <div className="mt-auto grid gap-3">
               <Link
                 href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
@@ -890,11 +874,19 @@ export function OfferDetailLayout({
           </div>
         ) : (
           <div className="grid min-w-0 gap-5 lg:grid-cols-2">
-            <OfferServicesModal
-              offerId={offer.id}
-              services={OFFER_SERVICE_PRESETS}
-              selectedServices={[...selectedServices]}
-            />
+            <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold tracking-tight text-gray-900">
+                  SLUŽBY
+                </h2>
+              </div>
+
+              <OfferServicesToggleGrid
+                offerId={offer.id}
+                services={OFFER_SERVICE_PRESETS}
+                selectedServices={[...selectedServices]}
+              />
+            </section>
 
             <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
@@ -903,7 +895,7 @@ export function OfferDetailLayout({
                 </h2>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+              <div className="grid grid-cols-3 justify-items-center gap-2 sm:flex sm:flex-wrap sm:justify-center">
                 {OFFER_DEPOT_PRESETS.map((depot) => {
                   const isActive = selectedDepots.has(depot)
                   const isDisabled = !isActive && selectedDepots.size >= OFFER_DEPOT_SELECTION_LIMIT

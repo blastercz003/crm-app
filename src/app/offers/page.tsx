@@ -156,7 +156,7 @@ function getStatusLabel(status: string) {
 }
 
 function getSortLabel(sort: OfferSort) {
-  return SORT_OPTIONS.find((option) => option.value === sort)?.label ?? 'Dle poslední úpravy'
+  return SORT_OPTIONS.find((option) => option.value === sort)?.label ?? 'Dle čísla nabídky'
 }
 
 function getOfferHref(params: { q: string; status: string; authorId: string; sort: OfferSort }) {
@@ -164,7 +164,7 @@ function getOfferHref(params: { q: string; status: string; authorId: string; sor
   if (params.q) query.set('q', params.q)
   if (params.status) query.set('status', params.status)
   if (params.authorId) query.set('author', params.authorId)
-  if (params.sort !== 'updated_desc') query.set('sort', params.sort)
+  if (params.sort !== 'offer_number_desc') query.set('sort', params.sort)
   const search = query.toString()
   return search ? `/offers?${search}` : '/offers'
 }
@@ -181,7 +181,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const params = searchParams ? await searchParams : undefined
   const q = params?.q?.trim() ?? ''
   const requestedAuthorId = params?.author?.trim() ?? ''
-  const sort = isOfferSort(params?.sort) ? params.sort : 'updated_desc'
+  const sort = isOfferSort(params?.sort) ? params.sort : 'offer_number_desc'
 
   const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
   const statusOptions = isAdmin
@@ -205,7 +205,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const hasActiveFilters =
     q.length > 0 ||
     status.length > 0 ||
-    sort !== 'updated_desc' ||
+    sort !== 'offer_number_desc' ||
     (isAdmin && requestedAuthorId.length > 0 && requestedAuthorId !== profile.id)
 
   let offersQuery = supabase.from('offers').select('*')
