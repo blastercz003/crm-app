@@ -62,6 +62,33 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function () {
+  try {
+    var el = document.getElementById('pwa-startup-screen');
+    if (!el) return;
+
+    var pathname = window.location.pathname;
+    var allowedPath = pathname === '/' || pathname === '/dashboard';
+    if (!allowedPath) return;
+
+    var ua = navigator.userAgent || '';
+    var isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+    var isStandalone =
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches === true) ||
+      ('standalone' in navigator && Boolean(navigator.standalone));
+
+    var shouldShow = sessionStorage.getItem('pwaStartupFinished') !== 'true' &&
+      ((isStandalone && isMobile) || (!isStandalone && !isMobile));
+
+    if (shouldShow) {
+      el.removeAttribute('hidden');
+    }
+  } catch (_) {}
+})();`,
+          }}
+        />
         <ServiceWorkerRegistration />
         <PwaStartupScreenShell />
         <PwaStartupScreenController />

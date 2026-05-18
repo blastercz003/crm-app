@@ -197,7 +197,7 @@ export function PwaStartupScreenController() {
 
 export function PwaStartupScreenShell() {
   return (
-    <div id={STARTUP_SCREEN_ID} aria-hidden="true">
+    <div id={STARTUP_SCREEN_ID} aria-hidden="true" hidden>
       <div className="pwa-startup-screen__content">
         <Image
           className="pwa-startup-screen__logo"
