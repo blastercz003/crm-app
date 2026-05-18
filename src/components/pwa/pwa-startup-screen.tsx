@@ -49,11 +49,14 @@ function isMobileDevice() {
 function shouldShowStartupScreen() {
   if (typeof window === 'undefined') return false
 
+  const allowedStartupPath =
+    window.location.pathname === '/' || window.location.pathname === '/dashboard'
+  if (!allowedStartupPath) return false
+
   const mobilePwaStartup = isStandalonePwa() && isMobileDevice()
   const desktopBrowserStartup =
     !isStandalonePwa() &&
-    !isMobileDevice() &&
-    (window.location.pathname === '/' || window.location.pathname === '/dashboard')
+    !isMobileDevice()
 
   if (!mobilePwaStartup && !desktopBrowserStartup) return false
 
