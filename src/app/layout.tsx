@@ -61,17 +61,17 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `(function () {
   try {
-    var el = document.getElementById('pwa-startup-screen');
-    if (!el) return;
-
     var pathname = window.location.pathname;
     var allowedPath = pathname === '/' || pathname === '/dashboard';
-    if (!allowedPath) return;
+    if (!allowedPath) {
+      document.documentElement.setAttribute('data-startup-overlay', 'hide');
+      return;
+    }
 
     var ua = navigator.userAgent || '';
     var isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
@@ -82,13 +82,15 @@ export default function RootLayout({
     var shouldShow = sessionStorage.getItem('pwaStartupFinished') !== 'true' &&
       ((isStandalone && isMobile) || (!isStandalone && !isMobile));
 
-    if (shouldShow) {
-      el.removeAttribute('hidden');
-    }
-  } catch (_) {}
+    document.documentElement.setAttribute('data-startup-overlay', shouldShow ? 'show' : 'hide');
+  } catch (_) {
+    document.documentElement.setAttribute('data-startup-overlay', 'hide');
+  }
 })();`,
           }}
         />
+      </head>
+      <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
         <PwaStartupScreenShell />
         <PwaStartupScreenController />

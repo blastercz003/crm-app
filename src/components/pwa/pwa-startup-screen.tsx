@@ -117,7 +117,7 @@ function hideStartupScreen(markFinished = true) {
   el.classList.add('is-hiding')
 
   window.setTimeout(() => {
-    el.setAttribute('hidden', 'true')
+    document.documentElement.setAttribute('data-startup-overlay', 'hide')
     el.classList.remove('is-hiding')
   }, STARTUP_FADE_MS)
 }
@@ -128,7 +128,7 @@ function showStartupScreen() {
   const el = document.getElementById(STARTUP_SCREEN_ID)
   if (!el) return
 
-  el.removeAttribute('hidden')
+  document.documentElement.setAttribute('data-startup-overlay', 'show')
   startTypewriterMessage()
 }
 
@@ -197,7 +197,7 @@ export function PwaStartupScreenController() {
 
 export function PwaStartupScreenShell() {
   return (
-    <div id={STARTUP_SCREEN_ID} aria-hidden="true" hidden>
+    <div id={STARTUP_SCREEN_ID} aria-hidden="true">
       <div className="pwa-startup-screen__content">
         <Image
           className="pwa-startup-screen__logo"
