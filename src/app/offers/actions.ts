@@ -1395,7 +1395,7 @@ export async function sendOfferToClient(offerId: string) {
 export async function setOfferClientOutcome(
   offerId: string,
   status: 'ordered' | 'rejected',
-  rejectionComment?: string
+  rejectionInput?: FormData | string
 ) {
   const { supabase, profile, isAdmin, offer } = await loadOfferForAction(offerId)
 
@@ -1410,8 +1410,13 @@ export async function setOfferClientOutcome(
     )
   }
 
+  const rejectionCommentValue =
+    rejectionInput instanceof FormData
+      ? String(rejectionInput.get('rejection_comment') ?? '')
+      : String(rejectionInput ?? '')
+
   const normalizedRejectionComment =
-    status === 'rejected' ? String(rejectionComment ?? '').trim() : ''
+    status === 'rejected' ? rejectionCommentValue.trim() : ''
 
   if (status === 'rejected' && !normalizedRejectionComment) {
     throw new Error('Důvod zamítnutí je povinný.')
