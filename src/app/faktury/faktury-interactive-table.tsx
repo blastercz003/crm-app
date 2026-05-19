@@ -71,6 +71,8 @@ const EDITABLE_CELL_COMPACT_CLASS = 'h-7 py-1'
 const EMPTY_ACTION_BADGE_CLASS =
   'flex h-full w-full items-center justify-center rounded-lg border border-[#76a9d3]/65 bg-[linear-gradient(155deg,rgba(79,146,203,0.14)_0%,rgba(58,126,184,0.1)_100%)] text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2f78b1] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] transition duration-200 hover:border-[#76a9d3]/85 hover:bg-[linear-gradient(155deg,rgba(79,146,203,0.2)_0%,rgba(58,126,184,0.14)_100%)]'
 const EMPTY_ACTION_BADGE_COMPACT_CLASS = 'text-[9px] tracking-[0.1em]'
+const GLASS_SECONDARY_BUTTON_CLASS =
+  'rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)]'
 
 const BASE_COST_PRESETS: CostPreset[] = [
   { key: 'doprava', label: 'Doprava', defaultUnitPrice: 19 },
@@ -294,6 +296,8 @@ function MobileCard({
   row: FakturaRow
   clientSuggestions: ClientOption[]
 }) {
+  const [isFinanceOpen, setIsFinanceOpen] = useState(false)
+
   return (
     <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
@@ -358,61 +362,75 @@ function MobileCard({
         </div>
       </div>
 
-      <div className="mt-3 divide-y divide-white/70 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-        <MobileFinanceRow label="Faktura">
-          <FinanceEditableCell
-            financeId={row.id}
-            field="invoice_number"
-            value={row.invoice_number}
-            type="text"
-            emptyLabel="DOPLNIT"
-            align="right"
-            formatter={(value) => (typeof value === 'string' ? value : '')}
-            compact
-            title={row.invoice_number ?? 'Doplnit'}
-            filledVariant="invoice"
-            emptyVariant="action"
-          />
-        </MobileFinanceRow>
+      {isFinanceOpen ? (
+        <div className="mt-3 divide-y divide-white/70 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+          <MobileFinanceRow label="Faktura">
+            <FinanceEditableCell
+              financeId={row.id}
+              field="invoice_number"
+              value={row.invoice_number}
+              type="text"
+              emptyLabel="DOPLNIT"
+              align="right"
+              formatter={(value) => (typeof value === 'string' ? value : '')}
+              compact
+              title={row.invoice_number ?? 'Doplnit'}
+              filledVariant="invoice"
+              emptyVariant="action"
+            />
+          </MobileFinanceRow>
 
-        <MobileFinanceRow label="Prodej">
-          <FinanceEditableCell
-            financeId={row.id}
-            field="sale_amount"
-            value={row.sale_amount}
-            type="number"
-            emptyLabel="DOPLNIT"
-            align="right"
-            formatter={(value) =>
-              typeof value === 'number' ? formatMoney(value) : ''
-            }
-            compact
-            title={
-              typeof row.sale_amount === 'number'
-                ? formatMoney(row.sale_amount)
-                : 'Doplnit'
-            }
-            filledVariant="strong"
-            emptyVariant="action"
-          />
-        </MobileFinanceRow>
+          <MobileFinanceRow label="Prodej">
+            <FinanceEditableCell
+              financeId={row.id}
+              field="sale_amount"
+              value={row.sale_amount}
+              type="number"
+              emptyLabel="DOPLNIT"
+              align="right"
+              formatter={(value) =>
+                typeof value === 'number' ? formatMoney(value) : ''
+              }
+              compact
+              title={
+                typeof row.sale_amount === 'number'
+                  ? formatMoney(row.sale_amount)
+                  : 'Doplnit'
+              }
+              filledVariant="strong"
+              emptyVariant="action"
+            />
+          </MobileFinanceRow>
 
-        <MobileFinanceRow label="Náklad">
-          <CostAmountCell
-            financeId={row.id}
-            jobNumber={row.job_number}
-            value={row.cost_amount}
-            compact
-          />
-        </MobileFinanceRow>
+          <MobileFinanceRow label="Náklad">
+            <CostAmountCell
+              financeId={row.id}
+              jobNumber={row.job_number}
+              value={row.cost_amount}
+              compact
+            />
+          </MobileFinanceRow>
 
-        <MobileFinanceRow label="Zisk">
-          <ProfitText
-            saleAmount={row.sale_amount}
-            costAmount={row.cost_amount}
-            compact
-          />
-        </MobileFinanceRow>
+          <MobileFinanceRow label="Zisk">
+            <ProfitText
+              saleAmount={row.sale_amount}
+              costAmount={row.cost_amount}
+              compact
+            />
+          </MobileFinanceRow>
+        </div>
+      ) : null}
+
+      <div className="mt-2 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setIsFinanceOpen((current) => !current)}
+          aria-expanded={isFinanceOpen}
+          aria-label={isFinanceOpen ? 'Skrýt fakturační data' : 'Zobrazit fakturační data'}
+          className={`inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+        >
+          ⋯
+        </button>
       </div>
     </div>
   )

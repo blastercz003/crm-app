@@ -901,7 +901,11 @@ export function OfferDetailLayout({
                   const isDisabled = !isActive && selectedDepots.size >= OFFER_DEPOT_SELECTION_LIMIT
 
                   return (
-                    <form key={depot} action={toggleOfferPresetItem.bind(null, offer.id)}>
+                    <form
+                      key={depot}
+                      action={toggleOfferPresetItem.bind(null, offer.id)}
+                      className="w-full sm:w-auto"
+                    >
                       <input type="hidden" name="group" value={OFFER_DEPOT_GROUP_LABEL} />
                       <input type="hidden" name="value" value={depot} />
                       <DepotToggleButton
