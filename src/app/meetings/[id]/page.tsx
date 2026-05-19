@@ -340,7 +340,7 @@ export default async function MeetingDetailPage({
                   <input type="hidden" name="id" value={meeting.id} />
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center rounded-2xl border border-[#e69ab2]/85 bg-[linear-gradient(155deg,#d65b82_0%,#c8426c_55%,#b4335d_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(190,24,93,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_14px_28px_rgba(190,24,93,0.3)]"
+                    className="inline-flex items-center justify-center rounded-2xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 py-2.5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(220,38,38,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_14px_28px_rgba(220,38,38,0.3)]"
                   >
                     SMAZAT SCHŮZKU
                   </button>
