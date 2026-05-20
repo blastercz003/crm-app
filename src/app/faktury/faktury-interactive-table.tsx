@@ -177,8 +177,19 @@ function DesktopRow({
   row: FakturaRow
   clientSuggestions: ClientOption[]
 }) {
+  const isFinanceCompleted =
+    Boolean(row.invoice_number?.trim()) &&
+    typeof row.sale_amount === 'number' &&
+    typeof row.cost_amount === 'number'
+
   return (
-    <tr className="group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
+    <tr
+      className={`group transition duration-200 hover:-translate-y-[1px] ${
+        isFinanceCompleted
+          ? '[background:linear-gradient(160deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
+          : '[background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
+      }`}
+    >
       <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <EditJobButton
           job={row}
@@ -297,9 +308,19 @@ function MobileCard({
   clientSuggestions: ClientOption[]
 }) {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false)
+  const isFinanceCompleted =
+    Boolean(row.invoice_number?.trim()) &&
+    typeof row.sale_amount === 'number' &&
+    typeof row.cost_amount === 'number'
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
+    <div
+      className={`overflow-hidden rounded-2xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)] ${
+        isFinanceCompleted
+          ? 'border-[#95c4e6]/95 bg-[linear-gradient(155deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
+          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">

@@ -657,7 +657,7 @@ export default async function FakturyPage({
   if (sort === 'start_nearest') {
     rows = [...rows].sort((a, b) => {
       const dateDiff =
-        new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+        new Date(b.start_at).getTime() - new Date(a.start_at).getTime()
 
       if (dateDiff !== 0) {
         return dateDiff
@@ -887,7 +887,7 @@ export default async function FakturyPage({
                       className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     >
                       <option value="job_number_desc">Dle čísla zakázky</option>
-                      <option value="start_nearest">Dle data od (nejbližší)</option>
+                      <option value="start_nearest">Dle data od (nejstarší)</option>
                       <option value="sale_desc">Dle prodeje</option>
                     </select>
                   </div>
@@ -1023,7 +1023,7 @@ export default async function FakturyPage({
                       className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none sm:rounded-2xl sm:border sm:border-white/75 sm:bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:transition sm:focus:border-[#9dc7e5] sm:focus:ring-2 sm:focus:ring-[#b9d8ef]"
                     >
                       <option value="job_number_desc">Dle čísla zakázky</option>
-                      <option value="start_nearest">Dle data od (nejbližší)</option>
+                      <option value="start_nearest">Dle data od (nejstarší)</option>
                       <option value="sale_desc">Dle prodeje</option>
                     </select>
                     <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">⌄</span>
@@ -1102,7 +1102,7 @@ export default async function FakturyPage({
                     href="/faktury"
                     className="inline-flex h-10 w-[calc((100%-1rem)/3)] min-w-0 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] sm:order-2 sm:w-auto"
                   >
-                    UPDATE
+                    RESET
                   </Link>
                 </div>
 
