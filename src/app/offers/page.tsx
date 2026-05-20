@@ -193,12 +193,12 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
       ? params.status
       : ''
   const authorId = isAdmin
-    ? requestedAuthorId === 'all'
+    ? requestedAuthorId === 'all' || requestedAuthorId.length === 0
       ? ''
-      : requestedAuthorId || profile.id
+      : requestedAuthorId
     : ''
   const authorSelectValue = isAdmin
-    ? requestedAuthorId === 'all'
+    ? requestedAuthorId === 'all' || requestedAuthorId.length === 0
       ? 'all'
       : authorId
     : ''
