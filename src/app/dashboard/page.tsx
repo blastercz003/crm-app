@@ -1553,7 +1553,7 @@ export default async function DashboardPage() {
                 </svg>
               </Link>
             </div>
-            <div>v2.1.1</div>
+            <div>v2.1.2</div>
           </div>
         </footer>
       </div>

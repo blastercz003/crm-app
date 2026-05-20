@@ -9,6 +9,11 @@ import { CreateJobModal } from '@/app/jobs/new-job-button'
 import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
+import {
+  getPresenceOverviewForAdminAction,
+  getUserActivityForAdminAction,
+  trackUserPresenceAction,
+} from '@/app/dashboard/online-presence-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   ActionFeedbackToast,
@@ -65,6 +70,38 @@ type DashboardMobileQuickActionsProps = {
   receivedInvoicesDueCount?: number
 }
 
+type PresenceUser = {
+  id: string
+  name: string
+  lastSeenAt: string
+  lastRoute: string | null
+  lastSection: string | null
+  lastAction: string | null
+  lastActionAt: string | null
+  isOnline: boolean
+}
+
+type ActivityItem = {
+  id: string
+  user_id: string
+  route: string | null
+  section: string | null
+  action: string | null
+  created_at: string
+}
+
+function formatActivityTime(value: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('cs-CZ', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+  }).format(date)
+}
+
 function triggerHaptic(pattern: number | number[]) {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
     return
@@ -98,6 +135,13 @@ export function DashboardMobileQuickActions({
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isDesktopViewport, setIsDesktopViewport] = useState(false)
   const [viewportBottomOffset, setViewportBottomOffset] = useState(0)
+  const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([])
+  const [onlineNames, setOnlineNames] = useState<string[]>([])
+  const [onlineCount, setOnlineCount] = useState(0)
+  const [isPresenceModalOpen, setIsPresenceModalOpen] = useState(false)
+  const [selectedPresenceUserId, setSelectedPresenceUserId] = useState<string | null>(null)
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>([])
+  const [isActivityLoading, setIsActivityLoading] = useState(false)
   const [, startTransition] = useTransition()
   const closeTimerRef = useRef<number | null>(null)
   const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
@@ -117,6 +161,123 @@ export function DashboardMobileQuickActions({
       mediaQuery.removeEventListener('change', syncDesktopViewport)
     }
   }, [])
+
+  useEffect(() => {
+    if (!isHydrated) return
+
+    let shouldStopHeartbeat = false
+
+    const runHeartbeat = async () => {
+      if (shouldStopHeartbeat) return
+
+      let result:
+        | Awaited<ReturnType<typeof trackUserPresenceAction>>
+        | null = null
+
+      try {
+        result = await trackUserPresenceAction({
+          route: '/dashboard',
+          section: 'Dashboard',
+        })
+      } catch {
+        shouldStopHeartbeat = true
+        return
+      }
+
+      if (result && !result.success) {
+        const errorMessage = String(result.error ?? '')
+
+        if (errorMessage.includes('Chybí tabulka user_presence')) {
+          shouldStopHeartbeat = true
+          return
+        }
+      }
+    }
+
+    void runHeartbeat()
+    const intervalId = window.setInterval(() => {
+      void runHeartbeat()
+    }, 30_000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [isHydrated])
+
+  useEffect(() => {
+    if (!isHydrated || !isAdmin || !isDesktopViewport) return
+
+    let isCancelled = false
+
+    const refreshPresenceOverview = async () => {
+      const result = await getPresenceOverviewForAdminAction()
+
+      if (isCancelled) return
+
+      if (!result.success) {
+        console.error(result.error)
+        setPresenceUsers([])
+        setOnlineNames([])
+        setOnlineCount(0)
+        return
+      }
+
+      const allUsers = result.usersActiveToday as PresenceUser[]
+      const onlineUsers = allUsers.filter((item) => item.isOnline)
+      const nextNames = onlineUsers
+        .map((item) => item.name.trim())
+        .filter(Boolean)
+
+      setPresenceUsers(allUsers)
+      setOnlineNames(nextNames)
+      setOnlineCount(onlineUsers.length)
+
+      if (!selectedPresenceUserId && allUsers.length > 0) {
+        setSelectedPresenceUserId(allUsers[0]?.id ?? null)
+      }
+      if (selectedPresenceUserId && !allUsers.some((item) => item.id === selectedPresenceUserId)) {
+        setSelectedPresenceUserId(allUsers[0]?.id ?? null)
+      }
+    }
+
+    void refreshPresenceOverview()
+    const intervalId = window.setInterval(() => {
+      void refreshPresenceOverview()
+    }, 30_000)
+
+    return () => {
+      isCancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [isAdmin, isDesktopViewport, isHydrated, selectedPresenceUserId])
+
+  useEffect(() => {
+    if (!isHydrated || !isAdmin || !isDesktopViewport || !selectedPresenceUserId) return
+
+    let isCancelled = false
+
+    const loadActivity = async () => {
+      setIsActivityLoading(true)
+      const result = await getUserActivityForAdminAction(selectedPresenceUserId, 30)
+      if (isCancelled) return
+
+      if (!result.success) {
+        console.error(result.error)
+        setActivityItems([])
+        setIsActivityLoading(false)
+        return
+      }
+
+      setActivityItems((result.items ?? []) as ActivityItem[])
+      setIsActivityLoading(false)
+    }
+
+    void loadActivity()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [isAdmin, isDesktopViewport, isHydrated, selectedPresenceUserId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -194,6 +355,12 @@ export function DashboardMobileQuickActions({
   function handleActionSelect(action: QuickActionKey) {
     setActiveAction(action)
     closeSheet()
+    void trackUserPresenceAction({
+      route: '/dashboard',
+      section: 'Dashboard',
+      action: `Spustil rychlou akci: ${action}`,
+      addActivityLog: true,
+    })
   }
 
   function handleActionSuccess(toastValue: ActionFeedbackToastValue) {
@@ -253,9 +420,86 @@ export function DashboardMobileQuickActions({
     },
   ].filter((action) => action.visible)
 
+  const selectedPresenceUser = presenceUsers.find((item) => item.id === selectedPresenceUserId) ?? null
+
+  async function openPresenceModal() {
+    if (!isAdmin || !isDesktopViewport) return
+    triggerHaptic(10)
+    setIsPresenceModalOpen(true)
+    const result = await trackUserPresenceAction({
+      route: '/dashboard',
+      section: 'Dashboard',
+      action: 'Otevřel sledovač online stavu',
+      addActivityLog: true,
+    })
+
+    if (!result.success) {
+      console.error(result.error)
+    }
+  }
+
   const floatingLayer = (
     <>
       {toast ? <ActionFeedbackToast toast={toast} isVisible={isToastVisible} /> : null}
+
+      {isAdmin ? (
+        <button
+          type="button"
+          aria-label="Otevřít sledovač online stavu"
+          onClick={() => {
+            void openPresenceModal()
+          }}
+          className={`fixed z-[70] hidden overflow-hidden border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] text-zinc-900 backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
+            activeAction
+              ? 'pointer-events-none opacity-0 scale-[0.94]'
+              : isSheetMounted
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_42px_rgba(15,23,42,0.26)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(15,23,42,0.2)] hover:-translate-y-0.5'
+          }`}
+          style={{
+            right: '184px',
+            bottom: '28px',
+            width: '286px',
+            height: '68px',
+            minWidth: '286px',
+            minHeight: '68px',
+            borderRadius: '20px',
+          }}
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
+          />
+
+          <div className="flex h-full flex-col justify-center px-[18px]">
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+                <span>ONLINE</span>
+                <span className="relative inline-flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 blur-[2px]" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full border border-emerald-200/90 bg-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.95)]" />
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-1 w-full truncate text-left text-[12px] font-medium leading-4 text-zinc-800">
+              {onlineCount === 0
+                ? 'Nikdo další není online'
+                : (() => {
+                    const visibleNames = onlineNames.slice(0, 4)
+                    const remaining = onlineCount - visibleNames.length
+                    const base = visibleNames.join(', ')
+
+                    if (remaining > 0) {
+                      return `${base} +${remaining}`
+                    }
+
+                    return base
+                  })()}
+            </div>
+          </div>
+        </button>
+      ) : null}
 
       {isAdmin ? (
         <button
@@ -565,6 +809,130 @@ export function DashboardMobileQuickActions({
           contacts={contacts}
           onClose={() => setActiveAction(null)}
         />
+      ) : null}
+
+      {isAdmin && isDesktopViewport && isPresenceModalOpen ? (
+        <div className="fixed inset-0 z-[100] hidden lg:block">
+          <button
+            type="button"
+            aria-label="Zavřít sledovač online stavu"
+            className="absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
+            onClick={() => setIsPresenceModalOpen(false)}
+          />
+
+          <div className="absolute inset-0 overflow-y-auto p-4">
+            <div className="mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
+              <div className="mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight text-gray-900">ONLINE LOG</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Online teď: {onlineCount} • Aktivní dnes: {presenceUsers.length}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPresenceModalOpen(false)}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+                  aria-label="Zavřít"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+                <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                    Uživatelé (dnes aktivní)
+                  </div>
+
+                  <div className="max-h-[58vh] space-y-2 overflow-y-auto pr-1">
+                    {presenceUsers.length === 0 ? (
+                      <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                        Zatím nikdo další nebyl dnes aktivní.
+                      </div>
+                    ) : (
+                      presenceUsers.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedPresenceUserId(item.id)}
+                          className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                            selectedPresenceUserId === item.id
+                              ? 'border-[#7cb3d8] bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(210,234,247,0.88)_100%)]'
+                              : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] hover:-translate-y-[1px]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="truncate text-sm font-semibold text-zinc-900">{item.name}</div>
+                            <span
+                              className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold uppercase ${
+                                item.isOnline ? 'bg-emerald-500 text-white' : 'bg-zinc-200 text-zinc-700'
+                              }`}
+                            >
+                              {item.isOnline ? 'ONLINE' : 'OFFLINE'}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-[12px] text-zinc-600">
+                            Naposledy online: {formatActivityTime(item.lastSeenAt)}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  {selectedPresenceUser ? (
+                    <>
+                      <div className="rounded-xl border border-white/75 bg-white/70 p-3">
+                        <div className="text-sm font-semibold text-zinc-900">{selectedPresenceUser.name}</div>
+                        <div className="mt-1 text-[12px] text-zinc-600">
+                          Sekce: {selectedPresenceUser.lastSection ?? '—'} • Route: {selectedPresenceUser.lastRoute ?? '—'}
+                        </div>
+                        <div className="mt-1 text-[12px] text-zinc-600">
+                          Poslední akce: {selectedPresenceUser.lastAction ?? '—'} ({formatActivityTime(selectedPresenceUser.lastActionAt)})
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                        Historie aktivit
+                      </div>
+
+                      <div className="mt-2 max-h-[48vh] space-y-2 overflow-y-auto pr-1">
+                        {isActivityLoading ? (
+                          <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                            Načítám historii…
+                          </div>
+                        ) : activityItems.length === 0 ? (
+                          <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                            Zatím bez záznamu aktivit.
+                          </div>
+                        ) : (
+                          activityItems.map((item) => (
+                            <div
+                              key={item.id}
+                              className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-2.5"
+                            >
+                              <div className="text-sm font-medium text-zinc-900">{item.action ?? 'Bez popisu akce'}</div>
+                              <div className="mt-1 text-[12px] text-zinc-600">
+                                {formatActivityTime(item.created_at)} • {item.section ?? '—'} • {item.route ?? '—'}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                      Vyber uživatele vlevo pro detail.
+                    </div>
+                  )}
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {isAdmin && activeAction === 'received_invoices' ? (
