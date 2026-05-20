@@ -1522,6 +1522,107 @@ export async function setOfferStatusFromList(
     throw new Error(`Nepodařilo se změnit stav nabídky: ${error.message}`)
   }
 
+  if (nextStatus === 'submitted') {
+    const approver = await getOfferApprover({ supabase })
+
+    await createNotification({
+      supabase,
+      recipientUserId: approver.id,
+      actorUserId: profile.id,
+      category: 'offers',
+      type: 'offer_approval_requested',
+      title: 'Nabídka ke schválení',
+      message: `${profile.name ?? 'Uživatel'} odeslal nabídku ${offer.offer_number} ke schválení.`,
+      entityType: 'offer',
+      entityId: offerId,
+      href: `/offers/${offerId}`,
+      priority: 'high',
+      dedupeKey: `offer_approval_requested:${offerId}:${offer.current_version}`,
+    })
+  }
+
+  if (nextStatus === 'approved') {
+    await createNotification({
+      supabase,
+      recipientUserId: offer.created_by,
+      actorUserId: profile.id,
+      category: 'offers',
+      type: 'offer_approved',
+      title: 'Nabídka schválena',
+      message: `Nabídka ${offer.offer_number} byla schválena.`,
+      entityType: 'offer',
+      entityId: offerId,
+      href: `/offers/${offerId}`,
+      priority: 'normal',
+      dedupeKey: `offer_approved:${offerId}:${offer.current_version}`,
+    })
+  }
+
+  if (nextStatus === 'sent_to_client') {
+    try {
+      const approver = await getOfferApprover({ supabase })
+
+      await createNotification({
+        supabase,
+        recipientUserId: approver.id,
+        actorUserId: profile.id,
+        category: 'offers',
+        type: 'offer_sent_to_client',
+        title: 'Nabídka odeslána klientovi',
+        message: `Uživatel ${profile.name ?? 'Neznámý uživatel'} odeslal nabídku ${offer.offer_number} klientovi.`,
+        entityType: 'offer',
+        entityId: offerId,
+        href: `/offers/${offerId}`,
+        priority: 'normal',
+        dedupeKey: `offer_sent_to_client:${offerId}`,
+      })
+    } catch (notificationError) {
+      console.error('Nepodařilo se vytvořit notifikaci o odeslání nabídky klientovi.', notificationError)
+    }
+  }
+
+  if (nextStatus === 'in_progress') {
+    try {
+      const approver = await getOfferApprover({ supabase })
+
+      await createNotification({
+        supabase,
+        recipientUserId: approver.id,
+        actorUserId: profile.id,
+        category: 'offers',
+        type: 'offer_in_progress',
+        title: 'Nabídka ve stavu V řešení',
+        message: `Uživatel ${profile.name ?? 'Neznámý uživatel'} přepnul nabídku ${offer.offer_number} do stavu V řešení.`,
+        entityType: 'offer',
+        entityId: offerId,
+        href: `/offers/${offerId}`,
+        priority: 'normal',
+        dedupeKey: `offer_in_progress:${offerId}:${now}`,
+      })
+    } catch (notificationError) {
+      console.error('Nepodařilo se vytvořit notifikaci pro stav V řešení.', notificationError)
+    }
+  }
+
+  if (nextStatus === 'ordered' && !isAdmin) {
+    const approver = await getOfferApprover({ supabase })
+
+    await createNotification({
+      supabase,
+      recipientUserId: approver.id,
+      actorUserId: profile.id,
+      category: 'offers',
+      type: 'offer_ordered',
+      title: 'Nabídka objednána',
+      message: `Uživatel ${profile.name ?? 'Neznámý uživatel'} označil nabídku ${offer.offer_number} jako objednanou.`,
+      entityType: 'offer',
+      entityId: offerId,
+      href: `/offers/${offerId}`,
+      priority: 'high',
+      dedupeKey: `offer_ordered:${offerId}`,
+    })
+  }
+
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
   revalidatePath(`/clients/${offer.client_id}`)
