@@ -180,6 +180,20 @@ function getTodayRange() {
   }
 }
 
+function getTomorrowRange() {
+  const today = getPragueTodayParts()
+  const pragueDateAsUtc = new Date(
+    Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0)
+  )
+  const tomorrow = addDaysUtc(pragueDateAsUtc, 1)
+  const date = toDateOnly(tomorrow)
+
+  return {
+    from: date,
+    to: date,
+  }
+}
+
 function getWeekRange(offsetWeeks = 0) {
   const today = getPragueTodayParts()
   const pragueDateAsUtc = new Date(
@@ -246,21 +260,33 @@ export default async function JobsPage({
   const dateTo = dateToParam.trim()
 
   const todayRange = getTodayRange()
+  const tomorrowRange = getTomorrowRange()
   const thisWeekRange = getWeekRange(0)
   const nextWeekRange = getWeekRange(1)
 
   const isTodayActive =
     dateFrom === todayRange.from && dateTo === todayRange.to
+  const isTomorrowActive =
+    dateFrom === tomorrowRange.from && dateTo === tomorrowRange.to
   const isThisWeekActive =
     dateFrom === thisWeekRange.from && dateTo === thisWeekRange.to
   const isNextWeekActive =
     dateFrom === nextWeekRange.from && dateTo === nextWeekRange.to
+
   const todayHref = buildWeekFilterHref({
     query,
     jobStatus,
     view,
     dateFrom: todayRange.from,
     dateTo: todayRange.to,
+  })
+
+  const tomorrowHref = buildWeekFilterHref({
+    query,
+    jobStatus,
+    view,
+    dateFrom: tomorrowRange.from,
+    dateTo: tomorrowRange.to,
   })
 
   const thisWeekHref = buildWeekFilterHref({
@@ -672,12 +698,12 @@ export default async function JobsPage({
                 </details>
               </form>
 
-              <div className="print-hidden mt-2 grid grid-cols-[auto_1fr_1fr_1fr] gap-2 lg:hidden">
+              <div className="print-hidden mt-2 grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 lg:hidden">
                 <ChangesLauncher initialCount={jobChangesCount} />
 
                 <Link
                   href={todayHref}
-                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-1 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
                     isTodayActive
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                       : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -687,25 +713,36 @@ export default async function JobsPage({
                 </Link>
 
                 <Link
+                  href={tomorrowHref}
+                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                    isTomorrowActive
+                      ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                      : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
+                  }`}
+                >
+                  ZÍTRA
+                </Link>
+
+                <Link
                   href={thisWeekHref}
-                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-1 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
                     isThisWeekActive
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                       : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
                   }`}
                 >
-                  TENTO TÝDEN
+                  TENTO T.
                 </Link>
 
                 <Link
                   href={nextWeekHref}
-                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-1 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
                     isNextWeekActive
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                       : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
                   }`}
                 >
-                  PŘÍŠTÍ TÝDEN
+                  PŘÍŠTÍ T.
                 </Link>
               </div>
 
@@ -892,8 +929,19 @@ export default async function JobsPage({
                     </Link>
 
                     <Link
-                      href={thisWeekHref}
+                      href={tomorrowHref}
                       className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-2 ${
+                        isTomorrowActive
+                          ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+                          : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
+                      }`}
+                    >
+                      ZÍTRA
+                    </Link>
+
+                    <Link
+                      href={thisWeekHref}
+                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-3 ${
                         isThisWeekActive
                           ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                           : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -904,7 +952,7 @@ export default async function JobsPage({
 
                     <Link
                       href={nextWeekHref}
-                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-3 ${
+                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-4 ${
                         isNextWeekActive
                           ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                           : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
