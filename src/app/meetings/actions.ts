@@ -659,7 +659,7 @@ export async function updateMeetingModalAction(
 }
 
 export async function deleteMeeting(formData: FormData) {
-  const { supabase, role } = await getCurrentUserWithRole()
+  const { supabase, role, user } = await getCurrentUserWithRole()
 
   const id = normalizeText(formData.get('id'))
 
