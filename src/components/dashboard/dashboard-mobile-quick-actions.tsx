@@ -90,6 +90,8 @@ type ActivityItem = {
   created_at: string
 }
 
+type PresencePeriod = 'today' | '7d' | '30d'
+
 function formatActivityTime(value: string | null) {
   if (!value) return '—'
   const date = new Date(value)
@@ -136,6 +138,7 @@ export function DashboardMobileQuickActions({
   const [isDesktopViewport, setIsDesktopViewport] = useState(false)
   const [viewportBottomOffset, setViewportBottomOffset] = useState(0)
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([])
+  const [presencePeriod, setPresencePeriod] = useState<PresencePeriod>('today')
   const [onlineNames, setOnlineNames] = useState<string[]>([])
   const [onlineCount, setOnlineCount] = useState(0)
   const [isPresenceModalOpen, setIsPresenceModalOpen] = useState(false)
@@ -210,7 +213,7 @@ export function DashboardMobileQuickActions({
     let isCancelled = false
 
     const refreshPresenceOverview = async () => {
-      const result = await getPresenceOverviewForAdminAction()
+      const result = await getPresenceOverviewForAdminAction(presencePeriod)
 
       if (isCancelled) return
 
@@ -222,7 +225,7 @@ export function DashboardMobileQuickActions({
         return
       }
 
-      const allUsers = result.usersActiveToday as PresenceUser[]
+      const allUsers = result.usersInPeriod as PresenceUser[]
       const onlineUsers = allUsers.filter((item) => item.isOnline)
       const nextNames = onlineUsers
         .map((item) => item.name.trim())
@@ -249,7 +252,7 @@ export function DashboardMobileQuickActions({
       isCancelled = true
       window.clearInterval(intervalId)
     }
-  }, [isAdmin, isDesktopViewport, isHydrated, selectedPresenceUserId])
+  }, [isAdmin, isDesktopViewport, isHydrated, selectedPresenceUserId, presencePeriod])
 
   useEffect(() => {
     if (!isHydrated || !isAdmin || !isDesktopViewport || !selectedPresenceUserId) return
@@ -258,7 +261,7 @@ export function DashboardMobileQuickActions({
 
     const loadActivity = async () => {
       setIsActivityLoading(true)
-      const result = await getUserActivityForAdminAction(selectedPresenceUserId, 30)
+      const result = await getUserActivityForAdminAction(selectedPresenceUserId, 30, presencePeriod)
       if (isCancelled) return
 
       if (!result.success) {
@@ -277,7 +280,7 @@ export function DashboardMobileQuickActions({
     return () => {
       isCancelled = true
     }
-  }, [isAdmin, isDesktopViewport, isHydrated, selectedPresenceUserId])
+  }, [isAdmin, isDesktopViewport, isHydrated, selectedPresenceUserId, presencePeriod])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -826,8 +829,43 @@ export function DashboardMobileQuickActions({
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-gray-900">ONLINE LOG</h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    Online teď: {onlineCount} • Aktivní dnes: {presenceUsers.length}
+                    Online teď: {onlineCount} • Aktivní v období: {presenceUsers.length}
                   </p>
+                  <div className="mt-2 inline-flex items-center gap-1 rounded-xl border border-white/75 bg-white/65 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setPresencePeriod('today')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
+                        presencePeriod === 'today'
+                          ? 'bg-[#2f77af] text-white'
+                          : 'text-zinc-600 hover:bg-white/70'
+                      }`}
+                    >
+                      Dnes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPresencePeriod('7d')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
+                        presencePeriod === '7d'
+                          ? 'bg-[#2f77af] text-white'
+                          : 'text-zinc-600 hover:bg-white/70'
+                      }`}
+                    >
+                      7 dní
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPresencePeriod('30d')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
+                        presencePeriod === '30d'
+                          ? 'bg-[#2f77af] text-white'
+                          : 'text-zinc-600 hover:bg-white/70'
+                      }`}
+                    >
+                      30 dní
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -843,13 +881,13 @@ export function DashboardMobileQuickActions({
               <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
                 <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                    Uživatelé (dnes aktivní)
+                    Uživatelé v období
                   </div>
 
                   <div className="max-h-[58vh] space-y-2 overflow-y-auto pr-1">
                     {presenceUsers.length === 0 ? (
-                      <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
-                        Zatím nikdo další nebyl dnes aktivní.
+                        <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                        V tomto období nebyl nikdo další aktivní.
                       </div>
                     ) : (
                       presenceUsers.map((item) => (

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 const ONLINE_WINDOW_MINUTES = 2
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
+type PresencePeriod = 'today' | '7d' | '30d'
 
 type PresenceRow = {
   user_id: string
@@ -43,6 +44,12 @@ function getPragueStartOfTodayIso() {
 
   const noonUtcCarrier = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
   return `${noonUtcCarrier.getUTCFullYear()}-${String(noonUtcCarrier.getUTCMonth() + 1).padStart(2, '0')}-${String(noonUtcCarrier.getUTCDate()).padStart(2, '0')}T00:00:00`
+}
+
+function getPeriodStartIso(period: PresencePeriod) {
+  if (period === 'today') return getPragueStartOfTodayIso()
+  const days = period === '7d' ? 7 : 30
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 }
 
 function isMissingTableError(error: { code?: string; message?: string } | null, table: string) {
@@ -143,7 +150,7 @@ export async function trackUserPresenceAction(input?: {
   }
 }
 
-export async function getPresenceOverviewForAdminAction() {
+export async function getPresenceOverviewForAdminAction(period: PresencePeriod = 'today') {
   try {
     const { supabase, user, error: accessError } = await requireAdmin()
     if (!user) {
@@ -151,15 +158,15 @@ export async function getPresenceOverviewForAdminAction() {
         success: false,
         error: accessError,
         onlineUsers: [],
-        usersActiveToday: [],
+        usersInPeriod: [],
       }
     }
 
-    const todayStartIso = getPragueStartOfTodayIso()
+    const periodStartIso = getPeriodStartIso(period)
     const { data: presenceRows, error: presenceError } = await supabase
       .from('user_presence')
       .select('user_id, last_seen_at, last_route, last_section, last_action, last_action_at')
-      .gte('last_seen_at', todayStartIso)
+      .gte('last_seen_at', periodStartIso)
       .neq('user_id', user.id)
       .order('last_seen_at', { ascending: false })
 
@@ -169,7 +176,7 @@ export async function getPresenceOverviewForAdminAction() {
           success: false,
           error: 'Chybí tabulka user_presence.',
           onlineUsers: [],
-          usersActiveToday: [],
+          usersInPeriod: [],
         }
       }
 
@@ -177,7 +184,7 @@ export async function getPresenceOverviewForAdminAction() {
         success: false,
         error: 'Nepodařilo se načíst online uživatele.',
         onlineUsers: [],
-        usersActiveToday: [],
+        usersInPeriod: [],
       }
     }
 
@@ -189,7 +196,7 @@ export async function getPresenceOverviewForAdminAction() {
         success: true,
         error: null,
         onlineUsers: [],
-        usersActiveToday: [],
+        usersInPeriod: [],
       }
     }
 
@@ -203,7 +210,7 @@ export async function getPresenceOverviewForAdminAction() {
         success: false,
         error: 'Nepodařilo se načíst jména uživatelů.',
         onlineUsers: [],
-        usersActiveToday: [],
+        usersInPeriod: [],
       }
     }
 
@@ -213,7 +220,7 @@ export async function getPresenceOverviewForAdminAction() {
       ((profileRows ?? []) as ProfileRow[]).map((row) => [row.id, row.name?.trim() || 'Uživatel'])
     )
 
-    const usersActiveToday = typedPresenceRows.map((row) => ({
+    const usersInPeriod = typedPresenceRows.map((row) => ({
       id: row.user_id,
       name: profileMap.get(row.user_id) ?? 'Uživatel',
       lastSeenAt: row.last_seen_at,
@@ -224,25 +231,29 @@ export async function getPresenceOverviewForAdminAction() {
       isOnline: new Date(row.last_seen_at).getTime() >= onlineThresholdMs,
     }))
 
-    const onlineUsers = usersActiveToday.filter((item) => item.isOnline)
+    const onlineUsers = usersInPeriod.filter((item) => item.isOnline)
 
     return {
       success: true,
       error: null,
       onlineUsers,
-      usersActiveToday,
+      usersInPeriod,
     }
   } catch {
     return {
       success: false,
       error: 'Nepodařilo se načíst online přehled.',
       onlineUsers: [],
-      usersActiveToday: [],
+      usersInPeriod: [],
     }
   }
 }
 
-export async function getUserActivityForAdminAction(userId: string, limit = 30) {
+export async function getUserActivityForAdminAction(
+  userId: string,
+  limit = 30,
+  period: PresencePeriod = 'today'
+) {
   try {
     const { supabase, user, error: accessError } = await requireAdmin()
     if (!user) {
@@ -256,10 +267,13 @@ export async function getUserActivityForAdminAction(userId: string, limit = 30) 
 
     const safeLimit = Math.max(5, Math.min(80, Number(limit) || 30))
 
+    const periodStartIso = getPeriodStartIso(period)
+
     const { data, error } = await supabase
       .from('user_activity_log')
       .select('id, user_id, route, section, action, created_at')
       .eq('user_id', normalizedUserId)
+      .gte('created_at', periodStartIso)
       .order('created_at', { ascending: false })
       .limit(safeLimit)
 
