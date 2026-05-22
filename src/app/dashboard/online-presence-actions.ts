@@ -96,17 +96,28 @@ export async function trackUserPresenceAction(input?: {
     const section = String(input?.section ?? '').trim() || null
     const action = String(input?.action ?? '').trim() || null
 
-    const { error } = await supabase.from('user_presence').upsert(
-      {
-        user_id: user.id,
-        last_seen_at: nowIso,
-        last_route: route,
-        last_section: section,
-        last_action: action,
-        last_action_at: action ? nowIso : null,
-      },
-      { onConflict: 'user_id' }
-    )
+    const presencePatch: {
+      user_id: string
+      last_seen_at: string
+      last_route: string | null
+      last_section: string | null
+      last_action?: string | null
+      last_action_at?: string | null
+    } = {
+      user_id: user.id,
+      last_seen_at: nowIso,
+      last_route: route,
+      last_section: section,
+    }
+
+    if (action) {
+      presencePatch.last_action = action
+      presencePatch.last_action_at = nowIso
+    }
+
+    const { error } = await supabase
+      .from('user_presence')
+      .upsert(presencePatch, { onConflict: 'user_id' })
 
     if (error) {
       if (isMissingTableError(error, 'user_presence')) {

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { EditClientButton } from './edit-client-button'
 import { NewClientButton } from './new-client-button'
+import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 
 type ClientRow = {
   id: string
@@ -92,6 +93,7 @@ export default async function ClientsPage({
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <PresenceSectionTracker section="Klienti" route="/clients" />
       <div
         aria-hidden
         className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"

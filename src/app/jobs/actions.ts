@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/lib/notifications/createNotification'
+import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 import {
   upsertJobChangeQueueEntry,
   type ChangedValues,
@@ -843,6 +844,13 @@ export async function createJobAction(
     )
   }
 
+  await logUserActivity({
+    action: `Vytvořil zakázku ${createdJob.job_number ?? createdJobId}`,
+    section: 'Zakázky',
+    route: '/jobs',
+    userId: user.id,
+  })
+
   revalidateAllRelatedPaths()
   revalidatePath('/dashboard')
   revalidatePath('/notifications')
@@ -1062,6 +1070,13 @@ export async function updateJobStatusAction(
     console.error('Nepodařilo se zapsat změnu stavu do fronty změn.', queueError)
   }
 
+  await logUserActivity({
+    action: `Změnil stav zakázky na ${jobStatusRaw}`,
+    section: 'Zakázky',
+    route: '/jobs',
+    userId: user.id,
+  })
+
   revalidateAllRelatedPaths()
 
   return {
@@ -1144,6 +1159,13 @@ export async function updateJobInvoiceStatusAction(
       queueError
     )
   }
+
+  await logUserActivity({
+    action: `Změnil stav fakturace zakázky na ${invoiceStatusRaw}`,
+    section: 'Zakázky',
+    route: '/jobs',
+    userId: user.id,
+  })
 
   revalidateAllRelatedPaths()
 
@@ -1228,6 +1250,13 @@ export async function updateJobSalesOwnerAction(
     )
   }
 
+  await logUserActivity({
+    action: `Změnil obchodníka zakázky na ${salesOwnerRaw}`,
+    section: 'Zakázky',
+    route: '/jobs',
+    userId: user.id,
+  })
+
   revalidateAllRelatedPaths()
 
   return {
@@ -1287,6 +1316,13 @@ export async function updateJobEvidenceStatusAction(
       error: 'Stav evidence se nepodařilo uložit.',
     }
   }
+
+  await logUserActivity({
+    action: `Změnil stav evidence zakázky na ${evidenceStatusRaw}`,
+    section: 'Zakázky',
+    route: '/jobs',
+    userId: user.id,
+  })
 
   revalidateAllRelatedPaths()
 
@@ -1390,6 +1426,13 @@ export async function updateJobInlineFieldAction(
       console.error('Nepodařilo se zapsat změnu firmy do fronty změn.', queueError)
     }
 
+    await logUserActivity({
+      action: 'Upravil firmu u zakázky',
+      section: 'Zakázky',
+      route: '/jobs',
+      userId: user.id,
+    })
+
     revalidateAllRelatedPaths()
 
     return {
@@ -1470,6 +1513,13 @@ export async function updateJobInlineFieldAction(
       console.error('Nepodařilo se zapsat změnu termínu do fronty změn.', queueError)
     }
 
+    await logUserActivity({
+      action: field === 'start_at' ? 'Upravil začátek zakázky' : 'Upravil konec zakázky',
+      section: 'Zakázky',
+      route: '/jobs',
+      userId: user.id,
+    })
+
     revalidateAllRelatedPaths()
 
     return {
@@ -1506,6 +1556,13 @@ export async function updateJobInlineFieldAction(
       console.error('Nepodařilo se zapsat změnu osoby do fronty změn.', queueError)
     }
 
+    await logUserActivity({
+      action: 'Upravil kontaktní osobu u zakázky',
+      section: 'Zakázky',
+      route: '/jobs',
+      userId: user.id,
+    })
+
     revalidateAllRelatedPaths()
 
     return {
@@ -1537,6 +1594,13 @@ export async function updateJobInlineFieldAction(
   } catch (queueError) {
     console.error('Nepodařilo se zapsat inline změnu do fronty změn.', queueError)
   }
+
+  await logUserActivity({
+    action: `Upravil pole zakázky: ${field}`,
+    section: 'Zakázky',
+    route: '/jobs',
+    userId: user.id,
+  })
 
   revalidateAllRelatedPaths()
 
@@ -1602,6 +1666,13 @@ export async function deleteJobAction(
       error: 'Zakázku se nepodařilo smazat.',
     }
   }
+
+  await logUserActivity({
+    action: `Smazal zakázku ${normalizedJobId}`,
+    section: 'Zakázky',
+    route: '/jobs',
+    userId: user.id,
+  })
 
   revalidateAllRelatedPaths()
 

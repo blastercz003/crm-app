@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 
 export type ClientFormActionState = {
   success: boolean
@@ -260,12 +261,19 @@ async function createClientContactValues(formData: FormData) {
   await ensurePrimaryContact(clientId)
   await syncPrimaryContactSnapshot(clientId)
 
+  await logUserActivity({
+    action: `Vytvořil kontaktní osobu klienta: ${name}`,
+    section: 'Klienti',
+    route: `/clients/${clientId}`,
+    userId: user.id,
+  })
+
   revalidatePath('/clients')
   revalidatePath(`/clients/${clientId}`)
 }
 
 async function updateClientContactValues(formData: FormData) {
-  const { supabase } = await requireUser()
+  const { supabase, user } = await requireUser()
 
   const id = getString(formData, 'id')
   const clientId = getString(formData, 'client_id')
@@ -315,6 +323,13 @@ async function updateClientContactValues(formData: FormData) {
 
   await ensurePrimaryContact(clientId)
   await syncPrimaryContactSnapshot(clientId)
+
+  await logUserActivity({
+    action: `Upravil kontaktní osobu klienta: ${name}`,
+    section: 'Klienti',
+    route: `/clients/${clientId}`,
+    userId: user.id,
+  })
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${clientId}`)
@@ -379,6 +394,13 @@ async function insertClientRecord(formData: FormData) {
     }
   }
 
+  await logUserActivity({
+    action: `Vytvořil klienta: ${name}`,
+    section: 'Klienti',
+    route: '/clients',
+    userId: user.id,
+  })
+
   revalidatePath('/clients')
 
   return {
@@ -423,6 +445,13 @@ async function updateClientValues(formData: FormData) {
   if (error) {
     throw new Error('Nepodařilo se upravit klienta.')
   }
+
+  await logUserActivity({
+    action: `Upravil klienta: ${name}`,
+    section: 'Klienti',
+    route: `/clients/${id}`,
+    userId: user.id,
+  })
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${id}`)
@@ -517,6 +546,13 @@ export async function deleteClientRecord(formData: FormData) {
     throw new Error('Nepodařilo se smazat klienta.')
   }
 
+  await logUserActivity({
+    action: `Smazal klienta ${id}`,
+    section: 'Klienti',
+    route: '/clients',
+    userId: user.id,
+  })
+
   revalidatePath('/clients')
   redirect('/clients')
 }
@@ -603,7 +639,7 @@ export async function setPrimaryClientContact(formData: FormData) {
 }
 
 export async function deleteClientContact(formData: FormData) {
-  const { supabase } = await requireUser()
+  const { supabase, user } = await requireUser()
 
   const id = getString(formData, 'id')
   const clientId = getString(formData, 'client_id')
@@ -623,6 +659,13 @@ export async function deleteClientContact(formData: FormData) {
   }
 
   await ensurePrimaryContact(clientId)
+
+  await logUserActivity({
+    action: `Smazal kontaktní osobu klienta ${clientId}`,
+    section: 'Klienti',
+    route: `/clients/${clientId}`,
+    userId: user.id,
+  })
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${clientId}`)

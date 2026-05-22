@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createNotification } from '@/lib/notifications/createNotification'
+import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 import { getOfferApprover, getOfferRuntimeContext } from '@/lib/offers/permissions'
 import {
   BSAFE24_BACKUP_LOCATION_COUNT_GROUP_LABEL,
@@ -1152,6 +1153,13 @@ export async function submitOfferForApproval(offerId: string) {
     dedupeKey: `offer_approval_requested:${offerId}:${offer.current_version}`,
   })
 
+  await logUserActivity({
+    action: `Odeslal nabídku ${offer.offer_number} ke schválení`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
+
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
   revalidatePath('/dashboard')
@@ -1232,6 +1240,13 @@ export async function submitOfferForApprovalWithAutosave(
       dedupeKey: `offer_approval_requested:${offerId}:${nextVersion}`,
     })
 
+    await logUserActivity({
+      action: `Odeslal nabídku ${offer.offer_number} ke schválení (s autosave)`,
+      section: 'Nabídky',
+      route: `/offers/${offerId}`,
+      userId: profile.id,
+    })
+
     revalidatePath('/offers')
     revalidatePath(`/offers/${offerId}`)
     revalidatePath(`/clients/${offer.client_id}`)
@@ -1287,6 +1302,13 @@ export async function approveOffer(offerId: string) {
     dedupeKey: `offer_approved:${offerId}:${offer.current_version}`,
   })
 
+  await logUserActivity({
+    action: `Schválil nabídku ${offer.offer_number}`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
+
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
   revalidatePath('/dashboard')
@@ -1338,6 +1360,13 @@ export async function rejectOffer(offerId: string, formData: FormData) {
     dedupeKey: `offer_rejected:${offerId}:${offer.current_version}:${now}`,
   })
 
+  await logUserActivity({
+    action: `Vrácena nabídka ${offer.offer_number} k úpravě`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
+
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
   revalidatePath('/dashboard')
@@ -1384,6 +1413,13 @@ export async function sendOfferToClient(offerId: string) {
   } catch (error) {
     console.error('Nepodařilo se vytvořit notifikaci o odeslání nabídky klientovi.', error)
   }
+
+  await logUserActivity({
+    action: `Odeslal nabídku ${offer.offer_number} klientovi`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -1454,6 +1490,16 @@ export async function setOfferClientOutcome(
       dedupeKey: `offer_ordered:${offerId}`,
     })
   }
+
+  await logUserActivity({
+    action:
+      status === 'ordered'
+        ? `Nastavil výsledek nabídky ${offer.offer_number}: objednáno`
+        : `Nastavil výsledek nabídky ${offer.offer_number}: zamítnuto`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -1623,6 +1669,13 @@ export async function setOfferStatusFromList(
     })
   }
 
+  await logUserActivity({
+    action: `Změnil stav nabídky ${offer.offer_number} na ${nextStatus}`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
+
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
   revalidatePath(`/clients/${offer.client_id}`)
@@ -1674,6 +1727,13 @@ export async function markOfferInProgress(offerId: string) {
   } catch (notificationError) {
     console.error('Nepodařilo se vytvořit notifikaci pro stav V řešení.', notificationError)
   }
+
+  await logUserActivity({
+    action: `Přepnul nabídku ${offer.offer_number} do stavu V řešení`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)
@@ -1751,6 +1811,13 @@ export async function addOfferProgressNote(offerId: string, formData: FormData) 
       console.error('Nepodařilo se vytvořit notifikaci k progres komentáři.', notificationError)
     }
   }
+
+  await logUserActivity({
+    action: `Přidal komentář k nabídce ${offer.offer_number}`,
+    section: 'Nabídky',
+    route: `/offers/${offerId}`,
+    userId: profile.id,
+  })
 
   revalidatePath('/offers')
   revalidatePath(`/offers/${offerId}`)

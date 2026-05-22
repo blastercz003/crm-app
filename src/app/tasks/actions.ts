@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/getCurrentProfile'
 import { createNotification } from '@/lib/notifications/createNotification'
+import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 
 export type TaskFormActionState = {
   success: boolean
@@ -395,6 +396,13 @@ async function createTaskRecord(formData: FormData) {
     })
   }
 
+  await logUserActivity({
+    action: `Vytvořil úkol: ${title}`,
+    section: 'Úkoly',
+    route: '/tasks',
+    userId: currentProfile.id,
+  })
+
   revalidatePath('/tasks')
   revalidatePath('/dashboard')
   revalidatePath('/notifications')
@@ -593,6 +601,13 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
       },
     })
   }
+
+  await logUserActivity({
+    action: `Upravil úkol: ${title}`,
+    section: 'Úkoly',
+    route: `/tasks/${taskId}`,
+    userId: currentProfile.id,
+  })
 
   revalidatePath('/tasks')
   revalidatePath(`/tasks/${taskId}`)
@@ -794,6 +809,16 @@ async function updateTaskStatusRecord(
     })
   }
 
+  await logUserActivity({
+    action:
+      normalizedStatus === 'done'
+        ? `Označil úkol jako hotový: ${existingTask.title}`
+        : `Přepnul úkol na aktivní: ${existingTask.title}`,
+    section: 'Úkoly',
+    route: `/tasks/${taskId}`,
+    userId: currentProfile.id,
+  })
+
   revalidatePath('/tasks')
   revalidatePath(`/tasks/${taskId}`)
   revalidatePath('/dashboard')
@@ -845,6 +870,13 @@ export async function deleteTask(taskId: string) {
   if (error) {
     throw new Error(`Nepodařilo se smazat úkol: ${error.message}`)
   }
+
+  await logUserActivity({
+    action: `Smazal úkol ${taskId}`,
+    section: 'Úkoly',
+    route: '/tasks',
+    userId: currentProfile.id,
+  })
 
   revalidatePath('/tasks')
   revalidatePath('/clients')

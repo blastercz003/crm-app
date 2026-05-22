@@ -10,6 +10,7 @@ import { OfferStatusButton } from './offer-status-button'
 import { OfferStatusCommentsHover } from './offer-status-comments-hover'
 import { OfferFilterSubmitButton } from './offer-filter-submit-button'
 import { OfferFilterResetLink } from './offer-filter-reset-link'
+import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 
 export const metadata: Metadata = {
   title: 'Nabídky',
@@ -352,6 +353,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <PresenceSectionTracker section="Nabídky" route="/offers" />
       <div
         aria-hidden
         className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"

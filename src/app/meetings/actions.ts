@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createNotificationsForAdmins } from '@/lib/notifications/createNotification'
+import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 
 export type MeetingFormActionState = {
   success: boolean
@@ -448,6 +449,13 @@ async function createMeetingRecord(formData: FormData) {
     dedupeKey: `meeting_created:${data.id}`,
   })
 
+  await logUserActivity({
+    action: `Vytvořil schůzku: ${companyName}`,
+    section: 'Schůzky',
+    route: `/meetings/${data.id}`,
+    userId: user.id,
+  })
+
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
   revalidatePath('/notifications')
@@ -569,6 +577,13 @@ async function updateMeetingRecord(formData: FormData) {
     createdByUserId: data.created_by,
   })
 
+  await logUserActivity({
+    action: `Upravil schůzku: ${companyName}`,
+    section: 'Schůzky',
+    route: `/meetings/${id}`,
+    userId: user.id,
+  })
+
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
   revalidatePath(`/meetings/${id}`)
@@ -677,6 +692,13 @@ export async function deleteMeeting(formData: FormData) {
   if (error) {
     throw new Error(`Nepodařilo se smazat schůzku: ${error.message}`)
   }
+
+  await logUserActivity({
+    action: `Smazal schůzku ${id}`,
+    section: 'Schůzky',
+    route: '/meetings',
+    userId: user.id,
+  })
 
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
