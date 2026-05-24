@@ -10,6 +10,10 @@ import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
 import {
+  getManualNotificationHistoryForAdminAction,
+  sendManualNotificationForAdminAction,
+} from '@/app/dashboard/manual-notifications-actions'
+import {
   getPresenceOverviewForAdminAction,
   getUserActivityForAdminAction,
   trackUserPresenceAction,
@@ -58,6 +62,7 @@ type QuickActionKey =
   | 'offer'
   | 'job'
   | 'client'
+  | 'manual_notifications'
   | 'received_invoices'
 
 type DashboardMobileQuickActionsProps = {
@@ -92,6 +97,16 @@ type ActivityItem = {
 
 type PresencePeriod = 'today' | '7d' | '30d'
 
+type ManualNotificationHistoryItem = {
+  batchId: string
+  createdAt: string
+  title: string
+  message: string | null
+  recipientUserIds: string[]
+  recipientNames: string[]
+  recipientCount: number
+}
+
 function formatActivityTime(value: string | null) {
   if (!value) return '—'
   const date = new Date(value)
@@ -104,12 +119,261 @@ function formatActivityTime(value: string | null) {
   }).format(date)
 }
 
+function formatManualHistoryTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('cs-CZ', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function triggerHaptic(pattern: number | number[]) {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
     return
   }
 
   navigator.vibrate(pattern)
+}
+
+function ManualNotificationModal({
+  users,
+  historyItems,
+  historyLoading,
+  onClose,
+  onSent,
+  onResent,
+}: {
+  users: UserOption[]
+  historyItems: ManualNotificationHistoryItem[]
+  historyLoading: boolean
+  onClose: () => void
+  onSent: (sentCount: number) => Promise<void> | void
+  onResent: (sentCount: number) => Promise<void> | void
+}) {
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  const [title, setTitle] = useState('')
+  const [message, setMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submittingBatchId, setSubmittingBatchId] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const sortedUsers = [...users].sort((a, b) =>
+    (a.name ?? 'Uživatel').localeCompare(b.name ?? 'Uživatel', 'cs', { sensitivity: 'base' })
+  )
+
+  function toggleUser(userId: string) {
+    setSelectedUserIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]
+    )
+  }
+
+  async function sendCurrentNotification() {
+    setErrorMessage(null)
+    setIsSubmitting(true)
+    const result = await sendManualNotificationForAdminAction({
+      recipientUserIds: selectedUserIds,
+      title,
+      message,
+    })
+    setIsSubmitting(false)
+
+    if (!result.success) {
+      setErrorMessage(result.error ?? 'Notifikaci se nepodařilo odeslat.')
+      return
+    }
+
+    await onSent(result.sentCount ?? 0)
+    onClose()
+  }
+
+  async function resendFromHistory(item: ManualNotificationHistoryItem) {
+    setErrorMessage(null)
+    setSubmittingBatchId(item.batchId)
+    const result = await sendManualNotificationForAdminAction({
+      recipientUserIds: item.recipientUserIds,
+      title: item.title,
+      message: item.message ?? '',
+    })
+    setSubmittingBatchId(null)
+
+    if (!result.success) {
+      setErrorMessage(result.error ?? 'Notifikaci se nepodařilo odeslat znovu.')
+      return
+    }
+
+    await onResent(result.sentCount ?? 0)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[110] hidden lg:block">
+      <button
+        type="button"
+        aria-label="Zavřít ruční notifikace"
+        className="absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
+        onClick={onClose}
+      />
+
+      <div className="absolute inset-0 overflow-y-auto p-4">
+        <div className="mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
+          <div className="mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-gray-900">Ruční notifikace</h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+              aria-label="Zavřít"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                    Příjemci
+                  </label>
+                  <div className="max-h-[230px] space-y-1.5 overflow-y-auto rounded-xl border border-white/75 bg-white/70 p-2">
+                    {sortedUsers.map((user) => {
+                      const isChecked = selectedUserIds.includes(user.id)
+                      return (
+                        <label
+                          key={user.id}
+                          className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-800 transition hover:bg-white/80"
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-zinc-300 text-[#2f77af] focus:ring-[#2f77af]"
+                            checked={isChecked}
+                            onChange={() => toggleUser(user.id)}
+                          />
+                          <span className="truncate">{user.name?.trim() || 'Uživatel'}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="manual-notification-title"
+                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500"
+                  >
+                    Nadpis (max 120)
+                  </label>
+                  <input
+                    id="manual-notification-title"
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value.slice(0, 120))}
+                    maxLength={120}
+                    className="h-11 w-full rounded-xl border border-white/75 bg-white/80 px-3 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none ring-[#2f77af]/40 transition focus:ring-2"
+                    placeholder="Např. Důležité oznámení"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="manual-notification-message"
+                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500"
+                  >
+                    Text (volitelné, max 500)
+                  </label>
+                  <textarea
+                    id="manual-notification-message"
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value.slice(0, 500))}
+                    maxLength={500}
+                    rows={4}
+                    className="w-full resize-none rounded-xl border border-white/75 bg-white/80 px-3 py-2 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none ring-[#2f77af]/40 transition focus:ring-2"
+                    placeholder="Volitelný text notifikace…"
+                  />
+                </div>
+
+                {errorMessage ? (
+                  <div className="rounded-xl border border-red-200/85 bg-red-50/80 px-3 py-2 text-sm text-red-700">
+                    {errorMessage}
+                  </div>
+                ) : null}
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void sendCurrentNotification()
+                    }}
+                    disabled={isSubmitting}
+                    className="inline-flex min-h-11 items-center rounded-xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_24px_rgba(9,48,82,0.38)] transition hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSubmitting ? 'ODESÍLÁM…' : 'ODESLAT NOTIFIKACI'}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                Historie odeslaných
+              </div>
+
+              <div className="max-h-[62vh] space-y-2 overflow-y-auto pr-1">
+                {historyLoading ? (
+                  <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                    Načítám historii…
+                  </div>
+                ) : historyItems.length === 0 ? (
+                  <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                    Zatím bez odeslaných ručních notifikací.
+                  </div>
+                ) : (
+                  historyItems.map((item) => (
+                    <div
+                      key={item.batchId}
+                      className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-zinc-900">{item.title}</div>
+                          <div className="mt-1 text-[12px] text-zinc-600">
+                            {formatManualHistoryTime(item.createdAt)} • Příjemců: {item.recipientCount}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void resendFromHistory(item)
+                          }}
+                          disabled={submittingBatchId === item.batchId}
+                          className="inline-flex min-h-9 shrink-0 items-center rounded-xl border border-[#2b6f9f]/85 bg-[#2f77af]/10 px-3 text-xs font-semibold uppercase tracking-[0.04em] text-[#1f5f8f] transition hover:bg-[#2f77af]/18 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {submittingBatchId === item.batchId ? 'ODESÍLÁM…' : 'ODESLAT ZNOVU'}
+                        </button>
+                      </div>
+
+                      {item.message ? (
+                        <div className="mt-1.5 text-sm text-zinc-700">{item.message}</div>
+                      ) : null}
+
+                      <div className="mt-2 text-[12px] text-zinc-600">
+                        Komu: {item.recipientNames.join(', ')}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function DashboardMobileQuickActions({
@@ -142,6 +406,8 @@ export function DashboardMobileQuickActions({
   const [onlineNames, setOnlineNames] = useState<string[]>([])
   const [onlineCount, setOnlineCount] = useState(0)
   const [isPresenceModalOpen, setIsPresenceModalOpen] = useState(false)
+  const [manualHistory, setManualHistory] = useState<ManualNotificationHistoryItem[]>([])
+  const [isManualHistoryLoading, setIsManualHistoryLoading] = useState(false)
   const [selectedPresenceUserId, setSelectedPresenceUserId] = useState<string | null>(null)
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([])
   const [isActivityLoading, setIsActivityLoading] = useState(false)
@@ -395,6 +661,21 @@ export function DashboardMobileQuickActions({
     showToast(buildErrorToast(message))
   }
 
+  function handleManualNotificationSent(sentCount: number) {
+    triggerHaptic([12, 20, 12])
+    showToast({
+      title: 'NOTIFIKACE ODESLÁNA',
+      message:
+        sentCount <= 1
+          ? 'Notifikace byla odeslána.'
+          : 'Notifikace byla odeslána vybraným uživatelům.',
+      tone: 'success',
+    })
+    startTransition(() => {
+      router.refresh()
+    })
+  }
+
   const actions = [
     {
       key: 'client' as const,
@@ -424,6 +705,28 @@ export function DashboardMobileQuickActions({
   ].filter((action) => action.visible)
 
   const selectedPresenceUser = presenceUsers.find((item) => item.id === selectedPresenceUserId) ?? null
+
+  async function refreshManualHistory() {
+    if (!isAdmin || !isDesktopViewport) return
+    setIsManualHistoryLoading(true)
+    const result = await getManualNotificationHistoryForAdminAction(20)
+    if (!result.success) {
+      console.error(result.error)
+      setManualHistory([])
+      setIsManualHistoryLoading(false)
+      return
+    }
+
+    setManualHistory((result.items ?? []) as ManualNotificationHistoryItem[])
+    setIsManualHistoryLoading(false)
+  }
+
+  useEffect(() => {
+    if (activeAction !== 'manual_notifications') return
+    void refreshManualHistory()
+    // intentionally bound to modal open/close only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAction])
 
   async function openPresenceModal() {
     if (!isAdmin || !isDesktopViewport) return
@@ -460,7 +763,7 @@ export function DashboardMobileQuickActions({
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(15,23,42,0.2)] hover:-translate-y-0.5'
           }`}
           style={{
-            right: '184px',
+            right: '256px',
             bottom: '28px',
             width: '286px',
             height: '68px',
@@ -550,6 +853,50 @@ export function DashboardMobileQuickActions({
               {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
             </span>
           ) : null}
+        </button>
+      ) : null}
+
+      {isAdmin ? (
+        <button
+          type="button"
+          aria-label="Ruční notifikace"
+          title="Ruční notifikace"
+          onClick={() => {
+            triggerHaptic(10)
+            setActiveAction('manual_notifications')
+          }}
+          className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+            activeAction
+              ? 'pointer-events-none opacity-0 scale-[0.94]'
+              : isSheetMounted
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+          }`}
+          style={{
+            right: '180px',
+            bottom: '28px',
+            width: '68px',
+            height: '68px',
+            minWidth: '68px',
+            minHeight: '68px',
+            borderRadius: '999px',
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-7 w-7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 17h5" />
+            <path d="M17.5 14.5v5" />
+            <path d="M18 8a6 6 0 1 0-12 0c0 3-1 4.5-2 6h10" />
+            <path d="M10.2 20a2 2 0 0 0 3.6 0" />
+          </svg>
         </button>
       ) : null}
 
@@ -977,6 +1324,23 @@ export function DashboardMobileQuickActions({
         <ReceivedInvoicesModal
           isOpen
           onClose={() => setActiveAction(null)}
+        />
+      ) : null}
+
+      {isAdmin && isDesktopViewport && activeAction === 'manual_notifications' ? (
+        <ManualNotificationModal
+          users={users}
+          historyItems={manualHistory}
+          historyLoading={isManualHistoryLoading}
+          onClose={() => setActiveAction(null)}
+          onSent={async (sentCount) => {
+            handleManualNotificationSent(sentCount)
+            await refreshManualHistory()
+          }}
+          onResent={async (sentCount) => {
+            handleManualNotificationSent(sentCount)
+            await refreshManualHistory()
+          }}
         />
       ) : null}
     </>

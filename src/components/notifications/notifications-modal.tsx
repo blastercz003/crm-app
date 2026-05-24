@@ -131,7 +131,7 @@ function NotificationItem({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            {notification.href ? (
+            {notification.href && notification.type !== 'manual_admin' ? (
               <button
                 type="button"
                 onClick={() => onOpen(notification)}
