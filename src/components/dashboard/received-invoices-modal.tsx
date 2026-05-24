@@ -734,7 +734,14 @@ export function ReceivedInvoicesModal({
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 truncate text-sm font-medium text-zinc-900" title={row.file_name}>
+                            <div
+                              className={`min-w-0 truncate text-sm font-medium text-zinc-900 ${
+                                row.status === 'paid'
+                                  ? 'flex-1 max-w-[140px] lg:max-w-[170px]'
+                                  : ''
+                              }`}
+                              title={row.file_name}
+                            >
                               {row.file_name}
                             </div>
                             {row.status === 'paid' ? (
