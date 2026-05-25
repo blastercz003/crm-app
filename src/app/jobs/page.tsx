@@ -10,6 +10,7 @@ import { ChangesLauncher } from './changes-launcher'
 import { JobFilterSubmitButton } from './job-filter-submit-button'
 import { JobFilterResetLink } from './job-filter-reset-link'
 import { getJobsChangesModalDataAction } from './changes-actions'
+import { JobsForegroundRefresh } from './jobs-foreground-refresh'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 
 export const metadata: Metadata = {
@@ -501,6 +502,7 @@ export default async function JobsPage({
       </style>
 
       <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+        <JobsForegroundRefresh />
         <PresenceSectionTracker section="Zakázky" route="/jobs" />
         <div
           aria-hidden
