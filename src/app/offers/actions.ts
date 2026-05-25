@@ -1510,7 +1510,7 @@ export async function setOfferClientOutcome(
     action:
       status === 'ordered'
         ? `Nastavil výsledek nabídky ${offer.offer_number}: objednáno`
-        : `Nastavil výsledek nabídky ${offer.offer_number}: zamítnuto`,
+        : `Nastavil výsledek nabídky ${offer.offer_number}: zamítnuto (${normalizedRejectionComment})`,
     section: 'Nabídky',
     route: `/offers/${offerId}`,
     userId: profile.id,

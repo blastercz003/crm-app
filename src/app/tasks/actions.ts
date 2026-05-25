@@ -76,6 +76,40 @@ function normalizeContactId(value: FormDataEntryValue | null): string | null {
   return str.length ? str : null
 }
 
+function getTaskStatusLabel(value: string | null | undefined) {
+  return value === 'done' ? 'Hotový' : 'Aktivní'
+}
+
+function getTaskPriorityLabel(value: string | null | undefined) {
+  const map: Record<string, string> = {
+    low: 'Nízká',
+    medium: 'Střední',
+    high: 'Vysoká',
+  }
+  return map[String(value ?? '')] ?? 'Střední'
+}
+
+function getTaskRepeatLabel(value: string | null | undefined) {
+  const map: Record<string, string> = {
+    daily: 'Denně',
+    weekly: 'Týdně',
+    monthly: 'Měsíčně',
+  }
+  return map[String(value ?? '')] ?? 'Bez opakování'
+}
+
+function formatTaskDueDateLabel(value: string | null | undefined) {
+  if (!value) return '—'
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return value
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+  return new Intl.DateTimeFormat('cs-CZ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+}
+
 function parseDateOnly(value: string) {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
 
@@ -602,8 +636,37 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
     })
   }
 
+  const changeParts: string[] = []
+  if (existingTask.title !== title) {
+    changeParts.push(`Název na ${title}`)
+  }
+  if ((existingTask.status ?? 'todo') !== status) {
+    changeParts.push(`Stav na ${getTaskStatusLabel(status)}`)
+  }
+  if ((existingTask.priority ?? 'medium') !== priority) {
+    changeParts.push(`Priorita na ${getTaskPriorityLabel(priority)}`)
+  }
+  if ((existingTask.due_date ?? null) !== (due_date ?? null)) {
+    changeParts.push(`Termín na ${formatTaskDueDateLabel(due_date)}`)
+  }
+  if ((existingTask.repeat_interval ?? null) !== (repeat_interval ?? null)) {
+    changeParts.push(`Opakování na ${getTaskRepeatLabel(repeat_interval)}`)
+  }
+  if ((existingTask.company_name ?? null) !== (resolvedFields.companyName ?? null)) {
+    changeParts.push(`Firma na ${resolvedFields.companyName ?? '—'}`)
+  }
+  if ((existingTask.contact_person ?? null) !== (resolvedFields.contactPerson ?? null)) {
+    changeParts.push(`Kontakt na ${resolvedFields.contactPerson ?? '—'}`)
+  }
+  if ((existingTask.assigned_to ?? null) !== (nextAssignedTo ?? null)) {
+    changeParts.push('Přiřazení změněno')
+  }
+
   await logUserActivity({
-    action: `Upravil úkol: ${title}`,
+    action:
+      changeParts.length > 0
+        ? `Upravil úkol: ${title} (${changeParts.slice(0, 4).join(' • ')})`
+        : `Upravil úkol: ${title}`,
     section: 'Úkoly',
     route: `/tasks/${taskId}`,
     userId: currentProfile.id,
