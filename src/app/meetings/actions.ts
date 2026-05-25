@@ -694,7 +694,7 @@ export async function deleteMeeting(formData: FormData) {
   }
 
   await logUserActivity({
-    action: `Smazal schůzku ${id}`,
+    action: `Smazal schůzku ${meeting.id}`,
     section: 'Schůzky',
     route: '/meetings',
     userId: user.id,

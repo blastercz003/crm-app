@@ -537,6 +537,16 @@ export async function deleteClientRecord(formData: FormData) {
     throw new Error('Klienta může smazat pouze administrátor.')
   }
 
+  const { data: clientForLog } = await supabase
+    .from('clients')
+    .select('name')
+    .eq('id', id)
+    .maybeSingle()
+
+  const clientNameForLog = String(
+    (clientForLog as { name?: string | null } | null)?.name ?? ''
+  ).trim()
+
   const { error } = await supabase
     .from('clients')
     .delete()
@@ -547,7 +557,7 @@ export async function deleteClientRecord(formData: FormData) {
   }
 
   await logUserActivity({
-    action: `Smazal klienta ${id}`,
+    action: `Smazal klienta: ${clientNameForLog || id}`,
     section: 'Klienti',
     route: '/clients',
     userId: user.id,
@@ -648,6 +658,17 @@ export async function deleteClientContact(formData: FormData) {
     throw new Error('Chybí ID kontaktní osoby.')
   }
 
+  const { data: contactForLog } = await supabase
+    .from('client_contacts')
+    .select('name')
+    .eq('id', id)
+    .eq('client_id', clientId)
+    .maybeSingle()
+
+  const contactNameForLog = String(
+    (contactForLog as { name?: string | null } | null)?.name ?? ''
+  ).trim()
+
   const { error } = await supabase
     .from('client_contacts')
     .delete()
@@ -661,7 +682,7 @@ export async function deleteClientContact(formData: FormData) {
   await ensurePrimaryContact(clientId)
 
   await logUserActivity({
-    action: `Smazal kontaktní osobu klienta ${clientId}`,
+    action: `Smazal kontaktní osobu klienta ${clientId}: ${contactNameForLog || id}`,
     section: 'Klienti',
     route: `/clients/${clientId}`,
     userId: user.id,

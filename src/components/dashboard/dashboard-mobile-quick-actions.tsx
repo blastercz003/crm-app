@@ -119,6 +119,59 @@ function formatActivityTime(value: string | null) {
   }).format(date)
 }
 
+function humanizeOfferStatus(value: string) {
+  const normalized = value.trim().toLowerCase()
+  const map: Record<string, string> = {
+    draft: 'Rozpracováno',
+    submitted: 'Ke schválení',
+    changes_requested: 'Vráceno k úpravě',
+    approved: 'Schváleno',
+    sent_to_client: 'Odesláno klientovi',
+    in_progress: 'V řešení',
+    ordered: 'Objednáno',
+    rejected: 'Zamítnuto',
+  }
+  return map[normalized] ?? value
+}
+
+function formatOnlineActionText(action: string | null) {
+  if (!action) return '—'
+
+  let next = action
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\btechnician_name\b/g, 'Technik'],
+    [/\bgenerator_name\b/g, 'Agregát'],
+    [/\bsite_address\b/g, 'Adresa'],
+    [/\bstore_number\b/g, 'Prodejna'],
+    [/\bcompany_name\b/g, 'Firma'],
+    [/\bcontact_person\b/g, 'Kontaktní osoba'],
+    [/\bstart_at\b/g, 'Začátek'],
+    [/\bend_at\b/g, 'Konec'],
+  ]
+
+  for (const [pattern, label] of replacements) {
+    next = next.replace(pattern, label)
+  }
+
+  next = next.replace(
+    /( na )([a-z_]+)\b/gi,
+    (_match, prefix: string, code: string) => `${prefix}${humanizeOfferStatus(code)}`
+  )
+
+  return next
+}
+
+function formatOnlineRoute(route: string | null) {
+  if (!route) return '—'
+  if (route.startsWith('/offers/')) return '/offers/detail'
+  if (route.startsWith('/tasks/')) return '/tasks/detail'
+  if (route.startsWith('/jobs/')) return '/jobs/detail'
+  if (route.startsWith('/meetings/')) return '/meetings/detail'
+  if (route.startsWith('/clients/')) return '/clients/detail'
+  return route
+}
+
 function formatManualHistoryTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
@@ -1273,10 +1326,10 @@ export function DashboardMobileQuickActions({
                       <div className="rounded-xl border border-white/75 bg-white/70 p-3">
                         <div className="text-sm font-semibold text-zinc-900">{selectedPresenceUser.name}</div>
                         <div className="mt-1 text-[12px] text-zinc-600">
-                          Sekce: {selectedPresenceUser.lastSection ?? '—'} • Route: {selectedPresenceUser.lastRoute ?? '—'}
+                          Sekce: {selectedPresenceUser.lastSection ?? '—'} • Route: {formatOnlineRoute(selectedPresenceUser.lastRoute)}
                         </div>
                         <div className="mt-1 text-[12px] text-zinc-600">
-                          Poslední akce: {selectedPresenceUser.lastAction ?? '—'} ({formatActivityTime(selectedPresenceUser.lastActionAt)})
+                          Poslední akce: {formatOnlineActionText(selectedPresenceUser.lastAction)} ({formatActivityTime(selectedPresenceUser.lastActionAt)})
                         </div>
                       </div>
 
@@ -1299,9 +1352,9 @@ export function DashboardMobileQuickActions({
                               key={item.id}
                               className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-2.5"
                             >
-                              <div className="text-sm font-medium text-zinc-900">{item.action ?? 'Bez popisu akce'}</div>
+                              <div className="text-sm font-medium text-zinc-900">{formatOnlineActionText(item.action) || 'Bez popisu akce'}</div>
                               <div className="mt-1 text-[12px] text-zinc-600">
-                                {formatActivityTime(item.created_at)} • {item.section ?? '—'} • {item.route ?? '—'}
+                                {formatActivityTime(item.created_at)} • {item.section ?? '—'} • {formatOnlineRoute(item.route)}
                               </div>
                             </div>
                           ))

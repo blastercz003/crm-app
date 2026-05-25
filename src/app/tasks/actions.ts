@@ -847,7 +847,7 @@ export async function deleteTask(taskId: string) {
 
   const { data: existingTask, error: loadError } = await supabase
     .from('tasks')
-    .select('id, created_by, assigned_to, client_id')
+    .select('id, title, created_by, assigned_to, client_id')
     .eq('id', taskId)
     .single()
 
@@ -872,7 +872,7 @@ export async function deleteTask(taskId: string) {
   }
 
   await logUserActivity({
-    action: `Smazal úkol ${taskId}`,
+    action: `Smazal úkol: ${existingTask.title}`,
     section: 'Úkoly',
     route: '/tasks',
     userId: currentProfile.id,

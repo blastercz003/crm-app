@@ -211,6 +211,21 @@ function isApprovalLockedStatus(status: OfferStatus) {
   return ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected'].includes(status)
 }
 
+function getOfferStatusActivityLabel(status: OfferStatus) {
+  const map: Record<OfferStatus, string> = {
+    draft: 'Rozpracováno',
+    submitted: 'Ke schválení',
+    changes_requested: 'Vráceno k úpravě',
+    approved: 'Schváleno',
+    sent_to_client: 'Odesláno klientovi',
+    in_progress: 'V řešení',
+    ordered: 'Objednáno',
+    rejected: 'Zamítnuto',
+  }
+
+  return map[status] ?? status
+}
+
 async function touchOfferVersion(
   offerId: string,
   editorId: string,
@@ -1670,7 +1685,7 @@ export async function setOfferStatusFromList(
   }
 
   await logUserActivity({
-    action: `Změnil stav nabídky ${offer.offer_number} na ${nextStatus}`,
+    action: `Změnil stav nabídky ${offer.offer_number} na ${getOfferStatusActivityLabel(nextStatus)}`,
     section: 'Nabídky',
     route: `/offers/${offerId}`,
     userId: profile.id,

@@ -159,6 +159,73 @@ const TRACKED_CHANGE_FIELDS = new Set<TrackedChangeField>([
   'generator_name',
 ])
 
+function getJobFieldActivityLabel(field: InlineEditableField) {
+  const map: Record<InlineEditableField, string> = {
+    company_name: 'Firma',
+    contact_person: 'Kontaktní osoba',
+    start_at: 'Začátek',
+    end_at: 'Konec',
+    site_address: 'Adresa',
+    store_number: 'Prodejna',
+    technician_name: 'Technik',
+    generator_name: 'Agregát',
+  }
+
+  return map[field] ?? field
+}
+
+function getJobStatusActivityLabel(status: string) {
+  const map: Record<string, string> = {
+    nova: 'Nová',
+    k_reseni: 'V řešení',
+    realizace: 'Realizace',
+    ukoncena: 'Ukončená',
+    storno: 'Storno',
+  }
+  return map[status] ?? status
+}
+
+function getInvoiceStatusActivityLabel(status: string) {
+  const map: Record<string, string> = {
+    bez_faktury: 'Bez faktury',
+    k_fakturaci: 'K fakturaci',
+    vyfakturovano: 'Vyfakturováno',
+  }
+  return map[status] ?? status
+}
+
+function getEvidenceStatusActivityLabel(status: string) {
+  const map: Record<string, string> = {
+    nove: 'Zapsat',
+    zapsano: 'Zapsáno',
+  }
+  return map[status] ?? status
+}
+
+function formatPragueDateTimeForLog(value: string | null | undefined) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: 'Europe/Prague',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+async function getJobNumberForLog(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data } = await supabase
+    .from('jobs')
+    .select('job_number')
+    .eq('id', jobId)
+    .maybeSingle()
+
+  return String((data as { job_number?: string | null } | null)?.job_number ?? '').trim()
+}
+
 function normalizeText(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
   return text.length > 0 ? text : null
@@ -1033,6 +1100,8 @@ export async function updateJobStatusAction(
     }
   }
 
+  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
+
   const jobStatusRaw = String(formData.get('job_status') ?? '').trim()
 
   if (
@@ -1071,7 +1140,7 @@ export async function updateJobStatusAction(
   }
 
   await logUserActivity({
-    action: `Změnil stav zakázky na ${jobStatusRaw}`,
+    action: `Změnil stav zakázky ${jobNumberForLog || normalizedJobId} na ${getJobStatusActivityLabel(jobStatusRaw)}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -1120,6 +1189,8 @@ export async function updateJobInvoiceStatusAction(
     }
   }
 
+  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
+
   const invoiceStatusRaw = String(formData.get('invoice_status') ?? '').trim()
 
   if (
@@ -1161,7 +1232,7 @@ export async function updateJobInvoiceStatusAction(
   }
 
   await logUserActivity({
-    action: `Změnil stav fakturace zakázky na ${invoiceStatusRaw}`,
+    action: `Změnil stav fakturace zakázky ${jobNumberForLog || normalizedJobId} na ${getInvoiceStatusActivityLabel(invoiceStatusRaw)}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -1223,6 +1294,8 @@ export async function updateJobSalesOwnerAction(
     }
   }
 
+  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
+
   const { error } = await supabase
     .from('jobs')
     .update({
@@ -1251,7 +1324,7 @@ export async function updateJobSalesOwnerAction(
   }
 
   await logUserActivity({
-    action: `Změnil obchodníka zakázky na ${salesOwnerRaw}`,
+    action: `Změnil obchodníka zakázky ${jobNumberForLog || normalizedJobId} na ${salesOwnerRaw}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -1303,6 +1376,8 @@ export async function updateJobEvidenceStatusAction(
     }
   }
 
+  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
+
   const { error } = await supabase
     .from('jobs')
     .update({
@@ -1318,7 +1393,7 @@ export async function updateJobEvidenceStatusAction(
   }
 
   await logUserActivity({
-    action: `Změnil stav evidence zakázky na ${evidenceStatusRaw}`,
+    action: `Změnil stav evidence zakázky ${jobNumberForLog || normalizedJobId} na ${getEvidenceStatusActivityLabel(evidenceStatusRaw)}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -1359,6 +1434,8 @@ export async function updateJobInlineFieldAction(
       error: 'Chybí ID zakázky.',
     }
   }
+
+  const inlineJobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
 
   const field = String(formData.get('field') ?? '').trim()
   const value = formData.get('value')
@@ -1427,7 +1504,7 @@ export async function updateJobInlineFieldAction(
     }
 
     await logUserActivity({
-      action: 'Upravil firmu u zakázky',
+      action: `Upravil firmu u zakázky ${inlineJobNumberForLog || normalizedJobId} na ${client.name}`,
       section: 'Zakázky',
       route: '/jobs',
       userId: user.id,
@@ -1514,7 +1591,10 @@ export async function updateJobInlineFieldAction(
     }
 
     await logUserActivity({
-      action: field === 'start_at' ? 'Upravil začátek zakázky' : 'Upravil konec zakázky',
+      action:
+        field === 'start_at'
+          ? `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: Začátek na ${formatPragueDateTimeForLog(parsedDate)}`
+          : `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: Konec na ${formatPragueDateTimeForLog(parsedDate)}`,
       section: 'Zakázky',
       route: '/jobs',
       userId: user.id,
@@ -1557,7 +1637,7 @@ export async function updateJobInlineFieldAction(
     }
 
     await logUserActivity({
-      action: 'Upravil kontaktní osobu u zakázky',
+      action: `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: Kontaktní osoba na ${normalizedValue ?? '—'}`,
       section: 'Zakázky',
       route: '/jobs',
       userId: user.id,
@@ -1596,7 +1676,7 @@ export async function updateJobInlineFieldAction(
   }
 
   await logUserActivity({
-    action: `Upravil pole zakázky: ${field}`,
+    action: `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: ${getJobFieldActivityLabel(field)} na ${normalizedValue ?? '—'}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
