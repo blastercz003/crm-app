@@ -3,6 +3,11 @@
 import { useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { updatePortalJobInfoAction } from './actions'
+import {
+  deleteJobInfoAttachmentAction,
+  getJobInfoAttachmentsAction,
+  uploadJobInfoAttachmentAction,
+} from '@/app/jobs/info-note-attachments-actions'
 
 type PortalJobRow = {
   id: string
@@ -24,6 +29,15 @@ type JobsPortalTableProps = {
 }
 
 type JobStatus = 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
+type JobInfoAttachmentItem = {
+  id: string
+  jobId: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  createdAt: string
+  signedUrl: string | null
+}
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const STATUS_BADGE_WIDTH_CLASS = 'min-w-[100px]'
@@ -276,10 +290,77 @@ function InfoButton({
   const [isOpen, setIsOpen] = useState(false)
   const [draftValue, setDraftValue] = useState(job.info_note ?? '')
   const [isPending, startTransition] = useTransition()
+  const [attachments, setAttachments] = useState<JobInfoAttachmentItem[]>([])
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false)
+  const [attachmentsError, setAttachmentsError] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [previewAttachment, setPreviewAttachment] =
+    useState<JobInfoAttachmentItem | null>(null)
 
   useEffect(() => {
     setDraftValue(job.info_note ?? '')
   }, [job.info_note])
+
+  useEffect(() => {
+    if (!isOpen) return
+    void reloadAttachments()
+    // bound to modal open only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
+  async function reloadAttachments() {
+    setAttachmentsLoading(true)
+    setAttachmentsError(null)
+
+    const result = await getJobInfoAttachmentsAction(job.id)
+    if (!result.success) {
+      setAttachments([])
+      setAttachmentsError(result.error ?? 'Nepodařilo se načíst fotky.')
+      setAttachmentsLoading(false)
+      return
+    }
+
+    setAttachments((result.items ?? []) as JobInfoAttachmentItem[])
+    setAttachmentsLoading(false)
+  }
+
+  async function handleUpload(files: File[]) {
+    if (files.length === 0) return
+
+    setIsUploading(true)
+    setAttachmentsError(null)
+
+    const uploadFormData = new FormData()
+    for (const file of files) {
+      uploadFormData.append('photos', file)
+    }
+
+    const result = await uploadJobInfoAttachmentAction(job.id, uploadFormData)
+    setIsUploading(false)
+
+    if (!result.success) {
+      setAttachmentsError(result.error ?? 'Fotku se nepodařilo nahrát.')
+      return
+    }
+
+    await reloadAttachments()
+  }
+
+  async function handleDelete(attachmentId: string) {
+    setDeletingId(attachmentId)
+    setAttachmentsError(null)
+
+    const result = await deleteJobInfoAttachmentAction(job.id, attachmentId)
+    setDeletingId(null)
+
+    if (!result.success) {
+      setAttachmentsError(result.error ?? 'Fotku se nepodařilo smazat.')
+      return
+    }
+
+    await reloadAttachments()
+  }
 
   function saveInfo() {
     startTransition(async () => {
@@ -333,11 +414,94 @@ function InfoButton({
               placeholder="Sem napiš libovolný delší text k zakázce"
             />
 
+            <div className="mt-4 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <label className="inline-flex h-8 cursor-pointer items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60">
+                  {isUploading ? 'Nahrávám…' : 'Přidat fotku'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={isUploading}
+                    className="hidden"
+                    onChange={(event) => {
+                      const files = Array.from(event.target.files ?? [])
+                      event.currentTarget.value = ''
+                      void handleUpload(files)
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div className="mt-3 max-h-40 overflow-y-auto pr-1">
+                {attachmentsLoading ? (
+                  <div className="rounded-xl border border-white/75 bg-white/70 px-3 py-2 text-sm text-zinc-500">
+                    Načítám fotky…
+                  </div>
+                ) : attachments.length === 0 ? (
+                  <div className="rounded-xl border border-white/75 bg-white/70 px-3 py-2 text-sm text-zinc-500">
+                    Zatím bez fotek, přidej max. 5 fotek, 1 MB / ks.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {attachments.map((item) => (
+                      <div
+                        key={item.id}
+                        className="overflow-hidden rounded-xl border border-white/75 bg-white/80"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setPreviewAttachment(item)}
+                          className="block w-full"
+                        >
+                          {item.signedUrl ? (
+                            <img
+                              src={item.signedUrl}
+                              alt={item.fileName}
+                              className="h-20 w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-20 items-center justify-center bg-zinc-100 text-xs text-zinc-500">
+                              Náhled
+                            </div>
+                          )}
+                        </button>
+                        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                          <div
+                            className="min-w-0 truncate text-[11px] text-zinc-600"
+                            title={item.fileName}
+                          >
+                            {item.fileName}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={deletingId === item.id}
+                            onClick={() => {
+                              void handleDelete(item.id)
+                            }}
+                            className="inline-flex h-6 items-center justify-center rounded-lg border border-red-200/90 px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {deletingId === item.id ? '…' : 'Smazat'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {attachmentsError ? (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {attachmentsError}
+              </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="inline-flex h-10 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
+                className="inline-flex h-10 items-center justify-center rounded-2xl border border-red-400/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(185,28,28,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_22px_rgba(185,28,28,0.3)]"
               >
                 ZRUŠIT
               </button>
@@ -348,11 +512,64 @@ function InfoButton({
                 disabled={isPending}
                 className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPending ? 'UKLÁDÁM…' : 'ULOŽIT INFO'}
+                {isPending ? 'UKLÁDÁM…' : 'ULOŽIT'}
               </button>
             </div>
           </>
         </ModalShell>
+      ) : null}
+
+      {previewAttachment && previewAttachment.signedUrl ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-[2px]">
+          <button
+            type="button"
+            aria-label="Zavřít náhled fotky"
+            className="absolute inset-0"
+            onClick={() => setPreviewAttachment(null)}
+          />
+
+          <div className="relative z-[131] w-full max-w-4xl overflow-hidden rounded-2xl border border-white/30 bg-zinc-950/70 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between gap-3 border-b border-white/15 px-4 py-3">
+              <div className="min-w-0 truncate text-sm font-medium text-white" title={previewAttachment.fileName}>
+                {previewAttachment.fileName}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewAttachment(null)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-white transition hover:bg-white/20"
+                aria-label="Zavřít"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex max-h-[70vh] items-center justify-center bg-black/30 p-3">
+              <img
+                src={previewAttachment.signedUrl}
+                alt={previewAttachment.fileName}
+                className="max-h-[66vh] w-auto max-w-full rounded-lg object-contain"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/15 px-4 py-3">
+              <a
+                href={previewAttachment.signedUrl}
+                download={previewAttachment.fileName}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition hover:-translate-y-[1px]"
+              >
+                STÁHNOUT
+              </a>
+              <a
+                href={previewAttachment.signedUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-white/30 bg-white/10 px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(0,0,0,0.24)] transition hover:-translate-y-[1px] hover:bg-white/20 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_22px_rgba(0,0,0,0.3)]"
+              >
+                OTEVŘÍT ORIGINÁL
+              </a>
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   )

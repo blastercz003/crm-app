@@ -265,7 +265,7 @@ function InfoNoteModal({
                   </div>
                 ) : attachments.length === 0 ? (
                   <div className="rounded-xl border border-white/75 bg-white/70 px-3 py-2 text-sm text-zinc-500">
-                    Zatím bez fotek. Přidej max. 5 fotek, max. 1 MB / soubor.
+                    Zatím bez fotek, přidej max. 5 fotek, 1 MB / ks.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

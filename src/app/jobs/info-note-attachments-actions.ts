@@ -12,6 +12,7 @@ const MAX_ATTACHMENTS_PER_JOB = 5
 type ProfileAccessRow = {
   role: string | null
   can_view_jobs: boolean | null
+  can_view_jobs_portal: boolean | null
 }
 
 type AttachmentRow = {
@@ -59,7 +60,7 @@ async function requireJobsAccess() {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, can_view_jobs')
+    .select('role, can_view_jobs, can_view_jobs_portal')
     .eq('id', user.id)
     .single()
 
@@ -73,7 +74,9 @@ async function requireJobsAccess() {
 
   const typedProfile = profile as ProfileAccessRow
   const hasAccess =
-    typedProfile.role === 'admin' || typedProfile.can_view_jobs === true
+    typedProfile.role === 'admin' ||
+    typedProfile.can_view_jobs === true ||
+    typedProfile.can_view_jobs_portal === true
 
   if (!hasAccess) {
     return {
