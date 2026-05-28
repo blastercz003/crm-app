@@ -65,6 +65,7 @@ const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
   { value: 'approved', label: 'Schválené' },
   { value: 'sent_to_client', label: 'Odeslané klientovi' },
   { value: 'in_progress', label: 'V řešení' },
+  { value: 'realizace', label: 'Realizace' },
   { value: 'ordered', label: 'Objednané' },
   { value: 'rejected', label: 'Zamítnuté' },
 ]
@@ -86,6 +87,7 @@ function isOfferStatus(value: string | undefined): value is OfferStatus {
     value === 'approved' ||
     value === 'sent_to_client' ||
     value === 'in_progress' ||
+    value === 'realizace' ||
     value === 'ordered' ||
     value === 'rejected'
   )

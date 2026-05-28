@@ -197,6 +197,7 @@ function getOfferStatusLabel(status: string | null) {
   if (status === 'approved') return 'Schválená'
   if (status === 'sent_to_client') return 'Odeslaná'
   if (status === 'in_progress') return 'V řešení'
+  if (status === 'realizace') return 'Realizace'
   if (status === 'ordered') return 'Objednáno'
   if (status === 'rejected') return 'Zamítnuto'
   return status

@@ -20,9 +20,13 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
   in_progress: 'V řešení',
   ordered: 'Objednáno',
   rejected: 'Zamítnuto',
+  realizace: 'Realizace',
 }
 
 function getStatusClass(status: OfferStatus) {
+  if (status === 'realizace') {
+    return 'border border-[#6fa9d1]/90 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
+  }
   if (status === 'ordered') {
     return 'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
   }
@@ -33,18 +37,21 @@ function getStatusClass(status: OfferStatus) {
     return 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
   }
   if (status === 'sent_to_client') {
-    return 'border border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.9)_48%,rgba(234,241,248,0.84)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_20px_rgba(15,23,42,0.12)]'
+    return 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
   }
   if (status === 'approved') {
-    return 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.95)_0%,rgba(209,250,229,0.88)_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_16px_rgba(16,185,129,0.14)]'
+    return 'border border-emerald-300/90 bg-[linear-gradient(155deg,#ecfdf5_0%,#d1fae5_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(16,185,129,0.2)]'
   }
   if (status === 'submitted') {
-    return 'border border-[#8dbfe0] bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(41,128,185,0.14)]'
+    return 'border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,#e5f4fc_0%,#cce7f7_100%)] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(41,128,185,0.2)]'
   }
   if (status === 'changes_requested') {
-    return 'border border-amber-300/90 bg-[linear-gradient(155deg,rgba(255,251,235,0.96)_0%,rgba(254,243,199,0.9)_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(217,119,6,0.14)]'
+    return 'border border-amber-300/90 bg-[linear-gradient(155deg,#fffbeb_0%,#fef3c7_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(217,119,6,0.2)]'
   }
-  return 'border border-zinc-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]'
+  if (status === 'draft') {
+    return 'border border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(240,244,249,0.97)_0%,rgba(223,231,240,0.94)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_18px_rgba(15,23,42,0.1)]'
+  }
+  return 'border border-zinc-300/85 bg-[linear-gradient(155deg,#ffffff_0%,#f1f5fa_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(15,23,42,0.16)]'
 }
 
 function getAllowedTargets(currentStatus: OfferStatus, isAdmin: boolean) {
@@ -52,11 +59,12 @@ function getAllowedTargets(currentStatus: OfferStatus, isAdmin: boolean) {
     draft: ['submitted'],
     submitted: ['draft'],
     changes_requested: ['draft', 'submitted', 'in_progress'],
-    approved: ['sent_to_client', 'draft'],
-    sent_to_client: ['in_progress', 'ordered', 'rejected', 'draft'],
-    in_progress: ['sent_to_client', 'ordered', 'rejected', 'draft'],
-    ordered: ['in_progress', 'sent_to_client', 'draft', 'rejected'],
-    rejected: ['in_progress', 'sent_to_client', 'draft', 'ordered'],
+    approved: ['sent_to_client', 'draft', 'realizace'],
+    sent_to_client: ['in_progress', 'ordered', 'rejected', 'draft', 'realizace'],
+    in_progress: ['sent_to_client', 'ordered', 'rejected', 'draft', 'realizace'],
+    ordered: ['in_progress', 'sent_to_client', 'draft', 'rejected', 'realizace'],
+    rejected: ['in_progress', 'sent_to_client', 'draft', 'ordered', 'realizace'],
+    realizace: ['draft'],
   }
 
   const options = (baseMap[currentStatus] ?? []).filter((status) => status !== 'changes_requested')
@@ -89,6 +97,7 @@ export function OfferStatusButton({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isRejectOpen, setIsRejectOpen] = useState(false)
+  const [isRealizaceConfirmOpen, setIsRealizaceConfirmOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rejectError, setRejectError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -106,6 +115,10 @@ export function OfferStatusButton({
       setRejectReason('')
       setRejectError(null)
       setIsRejectOpen(true)
+      return
+    }
+    if (nextStatus === 'realizace') {
+      setIsRealizaceConfirmOpen(true)
       return
     }
 
@@ -152,6 +165,26 @@ export function OfferStatusButton({
     })
   }
 
+  function confirmRealizace() {
+    startTransition(async () => {
+      try {
+        await setOfferStatusFromList(offerId, 'realizace')
+        showToast(buildStatusChangedToast(currentStatus, 'realizace'))
+        setIsRealizaceConfirmOpen(false)
+        setIsOpen(false)
+      } catch (error) {
+        showToast({
+          title: 'CHYBA',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Stav nabídky se nepodařilo změnit.',
+          tone: 'error',
+        })
+      }
+    })
+  }
+
   return (
     <>
       {toast ? <ActionFeedbackToast toast={toast} isVisible={isVisible} /> : null}
@@ -187,6 +220,17 @@ export function OfferStatusButton({
             setRejectError(null)
           }}
           onConfirm={confirmRejected}
+        />
+      ) : null}
+
+      {isRealizaceConfirmOpen ? (
+        <RealizaceConfirmModal
+          isPending={isPending}
+          onClose={() => {
+            if (isPending) return
+            setIsRealizaceConfirmOpen(false)
+          }}
+          onConfirm={confirmRealizace}
         />
       ) : null}
     </>
@@ -288,6 +332,71 @@ function StatusModal({
                 </button>
               ))
             )}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+function RealizaceConfirmModal({
+  isPending,
+  onClose,
+  onConfirm,
+}: {
+  isPending: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[220] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="flex h-full items-center justify-center">
+        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+          <div aria-hidden className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
+          <div aria-hidden className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
+          <div aria-hidden className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
+
+          <h3 className="relative text-lg font-semibold tracking-tight text-gray-900">
+            Opravdu chceš manuálně přepnout stav?
+          </h3>
+
+          <div className="relative mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isPending}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              ANO
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              ZRUŠIT
+            </button>
           </div>
         </div>
       </div>

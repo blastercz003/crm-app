@@ -7,6 +7,7 @@ export type OfferStatus =
   | 'in_progress'
   | 'ordered'
   | 'rejected'
+  | 'realizace'
 
 export type OfferType = 'classic' | 'bsafe24'
 

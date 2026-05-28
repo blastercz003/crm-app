@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 export type CreateJobActionState = {
   success: boolean
   error: string | null
+  warning?: string | null
   jobNumber?: string | null
   companyName?: string | null
 }
@@ -85,6 +86,13 @@ type ClientContactRow = {
   id: string
   client_id: string
   name: string | null
+}
+
+type OfferForJobRow = {
+  id: string
+  client_id: string
+  offer_type: string | null
+  status: string | null
 }
 
 type JobQueueSourceRow = {
@@ -798,6 +806,7 @@ async function getJobPayload(
     error: null,
     payload: {
       client_id: client.id,
+      offer_id: null as string | null,
       client_contact_id: contactId,
       company_name: client.name,
       contact_person: contactPerson,
@@ -850,6 +859,48 @@ export async function createJobAction(
       success: false,
       error: validationError ?? 'Zakázku se nepodařilo připravit.',
     }
+  }
+
+  const selectedOfferId = normalizeUuid(formData.get('offer_id'))
+
+  if (selectedOfferId) {
+    const { data: offerData, error: offerError } = await supabase
+      .from('offers')
+      .select('id, client_id, offer_type, status')
+      .eq('id', selectedOfferId)
+      .single()
+
+    if (offerError || !offerData) {
+      return {
+        success: false,
+        error: 'Vybranou nabídku se nepodařilo ověřit.',
+      }
+    }
+
+    const typedOffer = offerData as OfferForJobRow
+
+    if (typedOffer.client_id !== payload.client_id) {
+      return {
+        success: false,
+        error: 'Vybraná nabídka nepatří k zadanému klientovi.',
+      }
+    }
+
+    if (typedOffer.offer_type !== 'classic') {
+      return {
+        success: false,
+        error: 'K zakázce lze navázat pouze klasickou nabídku.',
+      }
+    }
+
+    if (typedOffer.status === 'realizace') {
+      return {
+        success: false,
+        error: 'Vybraná nabídka je již ve stavu REALIZACE.',
+      }
+    }
+
+    payload.offer_id = selectedOfferId
   }
 
   const { data: createdJob, error: createJobError } = await supabase
@@ -911,6 +962,37 @@ export async function createJobAction(
     )
   }
 
+  let offerSyncWarning: string | null = null
+
+  if (payload.offer_id) {
+    const now = new Date().toISOString()
+    const { data: updatedOfferRows, error: offerSyncError } = await supabase
+      .from('offers')
+      .update({
+        status: 'realizace',
+        rejection_comment: null,
+        last_edited_by: user.id,
+        updated_at: now,
+      })
+      .eq('id', payload.offer_id)
+      .eq('client_id', payload.client_id)
+      .eq('offer_type', 'classic')
+      .neq('status', 'realizace')
+      .select('id')
+
+    if (offerSyncError) {
+      offerSyncWarning =
+        'Zakázka byla vytvořena, ale nepodařilo se automaticky přepnout navázanou nabídku do stavu REALIZACE. Proveď změnu ručně v Nabídkách.'
+      console.error('Nepodařilo se přepnout nabídku do stavu realizace po vytvoření zakázky.', offerSyncError)
+    } else if (!updatedOfferRows || updatedOfferRows.length === 0) {
+      offerSyncWarning =
+        'Zakázka byla vytvořena, ale navázaná nabídka už nešla automaticky přepnout do stavu REALIZACE (pravděpodobně změna stavu mezitím). Proveď změnu ručně v Nabídkách.'
+    } else {
+      revalidatePath('/offers')
+      revalidatePath(`/offers/${payload.offer_id}`)
+    }
+  }
+
   await logUserActivity({
     action: `Vytvořil zakázku ${createdJob.job_number ?? createdJobId}`,
     section: 'Zakázky',
@@ -925,6 +1007,7 @@ export async function createJobAction(
   return {
     success: true,
     error: null,
+    warning: offerSyncWarning,
     jobNumber: createdJob.job_number ?? null,
     companyName: createdJob.company_name ?? null,
   }

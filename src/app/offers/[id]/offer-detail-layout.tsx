@@ -70,6 +70,7 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
   in_progress: 'V řešení',
   ordered: 'Objednáno',
   rejected: 'Zamítnuto',
+  realizace: 'Realizace',
 }
 
 const STATUS_BADGE_WIDTH_CLASS = 'w-[150px]'
@@ -118,6 +119,9 @@ function formatDateTimeInput(value: string | null) {
 }
 
 function getStatusClass(status: OfferStatus) {
+  if (status === 'realizace') {
+    return 'border border-[#6fa9d1]/90 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
+  }
   if (status === 'ordered') {
     return 'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
   }
@@ -128,18 +132,21 @@ function getStatusClass(status: OfferStatus) {
     return 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
   }
   if (status === 'sent_to_client') {
-    return 'border border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.9)_48%,rgba(234,241,248,0.84)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_20px_rgba(15,23,42,0.12)]'
+    return 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
   }
   if (status === 'approved') {
-    return 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.95)_0%,rgba(209,250,229,0.88)_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_16px_rgba(16,185,129,0.14)]'
+    return 'border border-emerald-300/90 bg-[linear-gradient(155deg,#ecfdf5_0%,#d1fae5_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(16,185,129,0.2)]'
   }
   if (status === 'submitted') {
-    return 'border border-[#8dbfe0] bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(41,128,185,0.14)]'
+    return 'border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,#e5f4fc_0%,#cce7f7_100%)] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(41,128,185,0.2)]'
   }
   if (status === 'changes_requested') {
-    return 'border border-amber-300/90 bg-[linear-gradient(155deg,rgba(255,251,235,0.96)_0%,rgba(254,243,199,0.9)_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(217,119,6,0.14)]'
+    return 'border border-amber-300/90 bg-[linear-gradient(155deg,#fffbeb_0%,#fef3c7_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(217,119,6,0.2)]'
   }
-  return 'border border-zinc-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]'
+  if (status === 'draft') {
+    return 'border border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(240,244,249,0.97)_0%,rgba(223,231,240,0.94)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_18px_rgba(15,23,42,0.1)]'
+  }
+  return 'border border-zinc-300/85 bg-[linear-gradient(155deg,#ffffff_0%,#f1f5fa_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(15,23,42,0.16)]'
 }
 
 function inputClassName() {

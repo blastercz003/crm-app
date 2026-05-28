@@ -74,6 +74,13 @@ type ClientContactOption = {
   is_primary: boolean
 }
 
+type JobOfferOption = {
+  id: string
+  client_id: string
+  offer_number: string
+  title: string
+}
+
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
   role: string | null
@@ -421,7 +428,17 @@ export default async function JobsPage({
   const [
     { data: jobs, error },
     { data: clientContactsData, error: contactsError },
-  ] = await Promise.all([request, contactsRequest])
+    { data: offerSuggestionsData, error: offerSuggestionsError },
+  ] = await Promise.all([
+    request,
+    contactsRequest,
+    supabase
+      .from('offers')
+      .select('id, client_id, offer_number, title, offer_type, status')
+      .eq('offer_type', 'classic')
+      .neq('status', 'realizace')
+      .order('offer_number', { ascending: false }),
+  ])
 
   if (error) {
     throw new Error('Nepodařilo se načíst zakázky.')
@@ -429,6 +446,10 @@ export default async function JobsPage({
 
   if (contactsError) {
     throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
+  }
+
+  if (offerSuggestionsError) {
+    throw new Error('Nepodařilo se načíst nabídky pro založení zakázky.')
   }
 
   const typedJobs = (jobs ?? []) as JobRow[]
@@ -445,6 +466,13 @@ export default async function JobsPage({
       is_primary: Boolean(item.is_primary),
     }))
     .filter((item) => Boolean(item.id) && Boolean(item.client_id) && Boolean(item.name))
+  const offerSuggestions = ((offerSuggestionsData ?? []) as JobOfferOption[]).filter(
+    (item) =>
+      Boolean(String(item.id ?? '').trim()) &&
+      Boolean(String(item.client_id ?? '').trim()) &&
+      Boolean(String(item.offer_number ?? '').trim()) &&
+      Boolean(String(item.title ?? '').trim())
+  )
 
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo
@@ -564,6 +592,7 @@ export default async function JobsPage({
                 <NewJobButton
                   clientSuggestions={clientOptions}
                   clientContacts={clientContacts}
+                  offerSuggestions={offerSuggestions}
                   isAdmin={isAdmin}
                 />
               </div>

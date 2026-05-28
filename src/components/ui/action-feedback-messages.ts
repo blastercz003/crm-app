@@ -49,6 +49,16 @@ export function buildMeetingCreatedToast(
 export function buildJobCreatedToast(
   state: CreateJobActionState
 ): ActionFeedbackToastValue {
+  if (state.warning) {
+    return {
+      title: 'ZAKÁZKA ULOŽENA S VAROVÁNÍM',
+      message: `Zakázka ${state.jobNumber ?? 'bez čísla'} pro „${
+        state.companyName ?? 'Nová firma'
+      }“ byla vytvořena. ${state.warning}`,
+      tone: 'error',
+    }
+  }
+
   return {
     title: 'ZAKÁZKA ULOŽENA',
     message: `Zakázka ${state.jobNumber ?? 'bez čísla'} pro „${

@@ -56,6 +56,13 @@ type ClientContactOption = {
   is_primary: boolean
 }
 
+type OfferOption = {
+  id: string
+  client_id: string
+  offer_number: string
+  title: string
+}
+
 type QuickActionKey =
   | 'meeting'
   | 'task'
@@ -69,6 +76,7 @@ type DashboardMobileQuickActionsProps = {
   users: UserOption[]
   clients: ClientOption[]
   contacts: ClientContactOption[]
+  offers: OfferOption[]
   canViewOffers: boolean
   canCreateJobs: boolean
   isAdmin: boolean
@@ -128,6 +136,7 @@ function humanizeOfferStatus(value: string) {
     approved: 'Schváleno',
     sent_to_client: 'Odesláno klientovi',
     in_progress: 'V řešení',
+    realizace: 'Realizace',
     ordered: 'Objednáno',
     rejected: 'Zamítnuto',
   }
@@ -433,6 +442,7 @@ export function DashboardMobileQuickActions({
   users,
   clients,
   contacts,
+  offers,
   canViewOffers,
   canCreateJobs,
   isAdmin,
@@ -1201,6 +1211,7 @@ export function DashboardMobileQuickActions({
         <CreateJobModal
           clientSuggestions={clients}
           clientContacts={contacts}
+          offerSuggestions={offers}
           onClose={() => setActiveAction(null)}
           onSuccess={handleJobSuccess}
         />

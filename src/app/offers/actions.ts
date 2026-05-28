@@ -94,11 +94,12 @@ function getAllowedManualStatusTargets(
     draft: ['submitted'],
     submitted: ['draft'],
     changes_requested: ['draft', 'submitted', 'in_progress'],
-    approved: ['sent_to_client', 'draft'],
-    sent_to_client: ['in_progress', 'ordered', 'rejected', 'draft'],
-    in_progress: ['sent_to_client', 'ordered', 'rejected', 'draft'],
-    ordered: ['in_progress', 'sent_to_client', 'draft', 'rejected'],
-    rejected: ['in_progress', 'sent_to_client', 'draft', 'ordered'],
+    approved: ['sent_to_client', 'draft', 'realizace'],
+    sent_to_client: ['in_progress', 'ordered', 'rejected', 'draft', 'realizace'],
+    in_progress: ['sent_to_client', 'ordered', 'rejected', 'draft', 'realizace'],
+    ordered: ['in_progress', 'sent_to_client', 'draft', 'rejected', 'realizace'],
+    rejected: ['in_progress', 'sent_to_client', 'draft', 'ordered', 'realizace'],
+    realizace: ['draft'],
   }
 
   const targets = baseMap[currentStatus] ?? []
@@ -208,7 +209,7 @@ async function loadOfferForAction(offerId: string) {
 }
 
 function isApprovalLockedStatus(status: OfferStatus) {
-  return ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected'].includes(status)
+  return ['approved', 'sent_to_client', 'in_progress', 'ordered', 'rejected', 'realizace'].includes(status)
 }
 
 function getOfferStatusActivityLabel(status: OfferStatus) {
@@ -221,6 +222,7 @@ function getOfferStatusActivityLabel(status: OfferStatus) {
     in_progress: 'V řešení',
     ordered: 'Objednáno',
     rejected: 'Zamítnuto',
+    realizace: 'Realizace',
   }
 
   return map[status] ?? status
@@ -1544,6 +1546,25 @@ export async function setOfferStatusFromList(
     throw new Error('Tento přechod stavu nabídky není povolený.')
   }
 
+  if (nextStatus === 'realizace') {
+    if (!isAdmin) {
+      throw new Error('Do stavu REALIZACE může nabídku přepnout pouze admin.')
+    }
+
+    const { count, error: offerBindingError } = await supabase
+      .from('jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('offer_id', offerId)
+
+    if (offerBindingError) {
+      throw new Error(`Nepodařilo se ověřit vazbu nabídky na zakázku: ${offerBindingError.message}`)
+    }
+
+    if ((count ?? 0) === 0) {
+      throw new Error('Nabídku lze ručně přepnout do stavu REALIZACE pouze při existující vazbě na zakázku.')
+    }
+  }
+
   const now = new Date().toISOString()
   const normalizedRejectionComment =
     nextStatus === 'rejected' ? String(rejectionComment ?? '').trim() : ''
@@ -1567,6 +1588,10 @@ export async function setOfferStatusFromList(
   }
 
   if (nextStatus === 'draft') {
+    patch.rejection_comment = null
+  }
+
+  if (nextStatus === 'realizace') {
     patch.rejection_comment = null
   }
 

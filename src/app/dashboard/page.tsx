@@ -103,6 +103,13 @@ type DashboardClientContactOption = {
   is_primary: boolean
 }
 
+type DashboardOfferOption = {
+  id: string
+  client_id: string
+  offer_number: string
+  title: string
+}
+
 type DashboardTask = {
   id: string
   title: string
@@ -1219,7 +1226,7 @@ export default async function DashboardPage() {
 
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
-  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse, receivedInvoicesDueCount] =
+  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse, offerSuggestionsResponse, receivedInvoicesDueCount] =
     await Promise.all([
     getCurrentUserNotificationStats(),
     getCurrentUserNotifications({ status: 'active', limit: 30 }),
@@ -1230,6 +1237,12 @@ export default async function DashboardPage() {
       .select('id, client_id, name, phone, email, is_primary')
       .order('is_primary', { ascending: false })
       .order('name', { ascending: true }),
+    supabase
+      .from('offers')
+      .select('id, client_id, offer_number, title, offer_type, status')
+      .eq('offer_type', 'classic')
+      .neq('status', 'realizace')
+      .order('offer_number', { ascending: false }),
     isAdmin ? getReceivedInvoiceBadgeCount() : Promise.resolve(0),
     ])
 
@@ -1245,9 +1258,22 @@ export default async function DashboardPage() {
     )
   }
 
+  if (offerSuggestionsResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst nabídky pro rychlé akce: ${offerSuggestionsResponse.error.message}`
+    )
+  }
+
   const quickActionClients = (clientsResponse.data ?? []) as DashboardClientOption[]
   const quickActionContacts =
     (contactsResponse.data ?? []) as DashboardClientContactOption[]
+  const quickActionOffers = ((offerSuggestionsResponse.data ?? []) as DashboardOfferOption[]).filter(
+    (item) =>
+      Boolean(String(item.id ?? '').trim()) &&
+      Boolean(String(item.client_id ?? '').trim()) &&
+      Boolean(String(item.offer_number ?? '').trim()) &&
+      Boolean(String(item.title ?? '').trim())
+  )
   const clientNameById = new Map(quickActionClients.map((client) => [client.id, client.name]))
 
   const offerIds = dashboardOffers.map((offer) => offer.id)
@@ -1511,6 +1537,7 @@ export default async function DashboardPage() {
           users={assignableUsers}
           clients={quickActionClients}
           contacts={quickActionContacts}
+          offers={quickActionOffers}
           canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
           canCreateJobs={isAdmin}
           isAdmin={isAdmin}

@@ -25,6 +25,13 @@ type ClientContactOption = {
   is_primary: boolean
 }
 
+type OfferOption = {
+  id: string
+  client_id: string
+  offer_number: string
+  title: string
+}
+
 type JobFormValues = {
   id: string
   company_name: string
@@ -44,6 +51,7 @@ type JobFormValues = {
 type NewJobButtonProps = {
   clientSuggestions: ClientOption[]
   clientContacts?: ClientContactOption[]
+  offerSuggestions?: OfferOption[]
   className?: string
   isAdmin?: boolean
 }
@@ -56,6 +64,7 @@ const initialCreateState: CreateJobActionState = {
 export function NewJobButton({
   clientSuggestions,
   clientContacts = [],
+  offerSuggestions = [],
   className,
   isAdmin = true,
 }: NewJobButtonProps) {
@@ -93,6 +102,7 @@ export function NewJobButton({
           key={formKey}
           clientSuggestions={clientSuggestions}
           clientContacts={clientContacts}
+          offerSuggestions={offerSuggestions}
           onClose={closeModal}
           onSuccess={(state) => showToast(buildJobCreatedToast(state))}
         />
@@ -106,11 +116,13 @@ export function NewJobButton({
 export function CreateJobModal({
   clientSuggestions,
   clientContacts,
+  offerSuggestions,
   onClose,
   onSuccess,
 }: {
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  offerSuggestions: OfferOption[]
   onClose: () => void
   onSuccess?: (state: CreateJobActionState) => void
 }) {
@@ -128,6 +140,7 @@ export function CreateJobModal({
       mode="create"
       clientSuggestions={clientSuggestions}
       clientContacts={clientContacts}
+      offerSuggestions={offerSuggestions}
       onClose={onClose}
       error={state.error}
       formAction={formAction}
@@ -139,6 +152,7 @@ function JobFormShell({
   mode,
   clientSuggestions,
   clientContacts,
+  offerSuggestions,
   onClose,
   error,
   formAction,
@@ -147,6 +161,7 @@ function JobFormShell({
   mode: 'create'
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  offerSuggestions: OfferOption[]
   onClose: () => void
   error: string | null
   formAction: (payload: FormData) => void
@@ -184,6 +199,7 @@ function JobFormShell({
   const [companyName, setCompanyName] = useState(job?.company_name ?? '')
   const [selectedClientId, setSelectedClientId] = useState(job?.client_id ?? '')
   const [selectedContactId, setSelectedContactId] = useState(job?.client_contact_id ?? '')
+  const [selectedOfferId, setSelectedOfferId] = useState('')
   const [contactPerson, setContactPerson] = useState(job?.contact_person ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
@@ -193,6 +209,9 @@ function JobFormShell({
   }, [companyOptions, selectedClientId])
   const selectedClientContacts = clientContacts.filter(
     (contact) => contact.client_id === selectedClientId
+  )
+  const selectedClientOffers = offerSuggestions.filter(
+    (offer) => offer.client_id === selectedClientId
   )
 
   const companySelectionIsValid =
@@ -224,6 +243,7 @@ function JobFormShell({
       setCompanyName('')
       setSelectedClientId('')
       setSelectedContactId('')
+      setSelectedOfferId('')
       setContactPerson('')
       return
     }
@@ -237,6 +257,7 @@ function JobFormShell({
       setCompanyName(exactMatch.name)
       setSelectedClientId(exactMatch.id)
       setSelectedContactId('')
+      setSelectedOfferId('')
       setContactPerson('')
       return
     }
@@ -252,6 +273,7 @@ function JobFormShell({
       setCompanyName(completedName)
       setSelectedClientId(matchedClient.id)
       setSelectedContactId('')
+      setSelectedOfferId('')
       setContactPerson('')
 
       setAutocompleteSelection(nextRawValue.length, completedName.length)
@@ -261,6 +283,7 @@ function JobFormShell({
     setCompanyName(nextRawValue)
     setSelectedClientId('')
     setSelectedContactId('')
+    setSelectedOfferId('')
     setContactPerson('')
   }
 
@@ -279,6 +302,7 @@ function JobFormShell({
       setCompanyName('')
       setSelectedClientId('')
       setSelectedContactId('')
+      setSelectedOfferId('')
       setContactPerson('')
       return
     }
@@ -291,11 +315,13 @@ function JobFormShell({
     if (exactMatch) {
       setCompanyName(exactMatch.name)
       setSelectedClientId(exactMatch.id)
+      setSelectedOfferId('')
       return
     }
 
     setSelectedClientId('')
     setSelectedContactId('')
+    setSelectedOfferId('')
     setContactPerson('')
   }
 
@@ -328,6 +354,11 @@ function JobFormShell({
       : companyName.trim()
         ? 'text-red-600'
         : 'text-gray-500'
+
+  function truncateOfferTitle(title: string) {
+    if (title.length <= 20) return title
+    return `${title.slice(0, 20)}...`
+  }
 
   const modalContent = (
     <div
@@ -371,6 +402,7 @@ function JobFormShell({
           <form action={formAction} className="flex min-h-0 flex-1 flex-col">
             <input type="hidden" name="client_id" value={selectedClientId} />
             <input type="hidden" name="client_contact_id" value={selectedContactId} />
+            <input type="hidden" name="offer_id" value={selectedOfferId} />
             <input
               type="hidden"
               name="company_name"
@@ -410,30 +442,14 @@ function JobFormShell({
                             ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
                             : companySelectionIsValid && !companyHasFocus
                               ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
-                              : 'focus:border-[#c2cfdd] focus:ring-[#dbe5ef]'
+                            : 'focus:border-[#c2cfdd] focus:ring-[#dbe5ef]'
                         }`}
                       />
-
-                      <div className="mt-2 rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)]">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                          Vybraná firma
-                        </div>
-                        <div className="mt-1 text-sm text-gray-900">
-                          {companySelectionIsValid
-                            ? companyName.trim()
-                            : 'Žádná firma není vybraná'}
-                        </div>
-                      </div>
 
                       <p className={`mt-2 text-sm ${companyStatusClassName}`}>
                         {companyStatusText}
                       </p>
 
-                      {showCompanyError ? (
-                        <p className="mt-2 text-sm text-red-600">
-                          Pro založení zakázky musíš zadat existující firmu ze seznamu klientů.
-                        </p>
-                      ) : null}
                     </div>
 
                     <div>
@@ -449,7 +465,7 @@ function JobFormShell({
                             id={`${mode}-client_contact_id`}
                             value={selectedContactId}
                             onChange={(event) => handleContactChange(event.target.value)}
-                            className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
+                            className="h-10 w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                           >
                             <option value="">Bez konkrétní osoby</option>
                             {selectedClientContacts.map((contact) => (
@@ -472,6 +488,32 @@ function JobFormShell({
                           className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                         />
                       )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor={`${mode}-offer_id`}
+                        className="mb-1 block text-sm font-medium text-gray-700"
+                      >
+                        Číslo nabídky
+                      </label>
+                      <select
+                        id={`${mode}-offer_id`}
+                        value={selectedOfferId}
+                        onChange={(event) => setSelectedOfferId(event.target.value)}
+                        disabled={!selectedClientId}
+                        className="h-10 w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="">Bez nabídky</option>
+                        {selectedClientOffers.map((offer) => (
+                          <option key={offer.id} value={offer.id}>
+                            {`${offer.offer_number} - ${truncateOfferTitle(offer.title)}`}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Volitelné pole.
+                      </p>
                     </div>
 
                     <div>
