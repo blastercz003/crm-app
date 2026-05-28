@@ -94,6 +94,19 @@ function isSortMode(value: string | undefined): value is SortMode {
   return value === 'job_number_desc' || value === 'start_nearest'
 }
 
+function getEffectiveJobStatus(job: Pick<PortalJobRow, 'job_status' | 'end_at'>): JobStatus {
+  if (job.job_status !== 'realizace' && job.job_status !== 'ukoncena') {
+    return job.job_status ?? 'nova'
+  }
+
+  const endAt = new Date(job.end_at)
+  if (Number.isNaN(endAt.getTime())) {
+    return job.job_status ?? 'nova'
+  }
+
+  return endAt.getTime() < Date.now() ? 'ukoncena' : 'realizace'
+}
+
 function getSortLabel(sort: SortMode) {
   return sort === 'start_nearest' ? 'Dle začátku' : 'Dle čísla zakázky'
 }
@@ -307,14 +320,6 @@ export default async function JobsPortalPage({
     request = request.or(buildSearchFilter(query))
   }
 
-  if (jobStatus) {
-    request = request.eq('job_status', jobStatus)
-  }
-
-  if (view === 'active') {
-    request = request.in('job_status', ['nova', 'k_reseni', 'realizace'])
-  }
-
   if (dateFrom) {
     request = request.gte('start_at', `${dateFrom}T00:00:00`)
   }
@@ -336,6 +341,23 @@ export default async function JobsPortalPage({
   }
 
   const typedJobs = (jobs ?? []) as PortalJobRow[]
+  const filteredJobs = typedJobs.filter((job) => {
+    const effectiveStatus = getEffectiveJobStatus(job)
+
+    if (jobStatus && effectiveStatus !== jobStatus) {
+      return false
+    }
+
+    if (view === 'active') {
+      return (
+        effectiveStatus === 'nova' ||
+        effectiveStatus === 'k_reseni' ||
+        effectiveStatus === 'realizace'
+      )
+    }
+
+    return true
+  })
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo
   )
@@ -791,7 +813,7 @@ export default async function JobsPortalPage({
           </section>
         ) : (
           <div>
-            <JobsPortalTable jobs={typedJobs} />
+              <JobsPortalTable jobs={filteredJobs} />
           </div>
         )}
       </div>

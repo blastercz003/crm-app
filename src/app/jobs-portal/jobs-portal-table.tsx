@@ -47,6 +47,19 @@ const GLASS_SECONDARY_BUTTON_CLASS =
 const GLASS_DARK_BUTTON_CLASS =
   'rounded-xl border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:bg-zinc-800 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.17),0_11px_16px_rgba(24,24,27,0.22)]'
 
+function getEffectiveJobStatus(job: Pick<PortalJobRow, 'job_status' | 'end_at'>): JobStatus {
+  if (job.job_status !== 'realizace' && job.job_status !== 'ukoncena') {
+    return job.job_status ?? 'nova'
+  }
+
+  const endAt = new Date(job.end_at)
+  if (Number.isNaN(endAt.getTime())) {
+    return job.job_status ?? 'nova'
+  }
+
+  return endAt.getTime() < Date.now() ? 'ukoncena' : 'realizace'
+}
+
 export function JobsPortalTable({ jobs }: JobsPortalTableProps) {
   return (
     <>
@@ -108,7 +121,7 @@ function DesktopRow({ job }: { job: PortalJobRow }) {
       </td>
 
       <td className="rounded-r-2xl border border-l-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
-        <JobStatusBadge status={job.job_status} />
+        <JobStatusBadge status={getEffectiveJobStatus(job)} />
       </td>
     </tr>
   )
@@ -129,7 +142,7 @@ function MobileCard({ job }: { job: PortalJobRow }) {
           </p>
         </div>
 
-        <JobStatusBadge status={job.job_status} compact />
+        <JobStatusBadge status={getEffectiveJobStatus(job)} compact />
       </div>
 
       <div className="mt-0 grid grid-cols-1 gap-x-2 gap-y-0 text-[12px] leading-5 text-gray-600 min-[300px]:grid-cols-[17.5ch_minmax(12ch,1fr)]">
