@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import {
-  createTestCrmNotification,
   deletePushSubscription,
   savePushSubscription,
-  sendTestPushNotification,
 } from './push-actions'
 
 type PushStatus = 'checking' | 'unsupported' | 'not-configured' | 'ready' | 'enabled'
@@ -47,14 +45,10 @@ function urlBase64ToUint8Array(value: string) {
 
 export function PushNotificationsPanel() {
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
-  const showTestControls =
-    process.env.NEXT_PUBLIC_PUSH_TEST_CONTROLS_ENABLED === 'true'
   const [status, setStatus] = useState<PushStatus>('checking')
   const [message, setMessage] = useState('')
   const [isPending, startTransition] = useTransition()
   const [isRemoving, startRemovingTransition] = useTransition()
-  const [isSendingTest, startSendingTestTransition] = useTransition()
-  const [isCreatingCrmTest, startCreatingCrmTestTransition] = useTransition()
   const [diagnostics, setDiagnostics] = useState<BadgeDiagnostics | null>(null)
 
   const buttonLabel = useMemo(() => {
@@ -191,23 +185,6 @@ export function PushNotificationsPanel() {
     })
   }
 
-  function sendTestNotification() {
-    setMessage('')
-
-    startSendingTestTransition(async () => {
-      const result = await sendTestPushNotification()
-
-      if (!result.success) {
-        setMessage(result.error ?? 'Testovací notifikaci se nepodařilo odeslat.')
-        return
-      }
-
-      setMessage(
-        `Testovací notifikace byla odeslána (${result.sentCount} zařízení).`
-      )
-    })
-  }
-
   async function disableNotifications() {
     setMessage('')
 
@@ -248,26 +225,9 @@ export function PushNotificationsPanel() {
 
   const isBusy = isPending || isRemoving
 
-  function createCrmTestNotification() {
-    setMessage('')
-
-    startCreatingCrmTestTransition(async () => {
-      const result = await createTestCrmNotification()
-
-      if (!result.success) {
-        setMessage(
-          result.error ?? 'Testovací CRM notifikaci se nepodařilo vytvořit.'
-        )
-        return
-      }
-
-      setMessage('Testovací CRM notifikace byla vytvořena.')
-    })
-  }
-
   return (
-    <section className="rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
-      <div className="max-w-2xl space-y-5">
+    <section className="rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
+      <div className="space-y-4">
         <div>
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
             Push notifikace
@@ -303,7 +263,7 @@ export function PushNotificationsPanel() {
               status === 'not-configured' ||
               status === 'enabled'
             }
-            className="inline-flex items-center justify-center rounded-[18px] border border-[#66aee4] bg-[linear-gradient(135deg,#5ea8df_0%,#2f76b7_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-white shadow-[0_18px_30px_rgba(46,123,183,0.22),inset_0_1px_0_rgba(255,255,255,0.34)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100"
+            className="inline-flex items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 py-2.5 text-sm font-semibold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)]"
           >
             {buttonLabel}
           </button>
@@ -312,32 +272,11 @@ export function PushNotificationsPanel() {
             type="button"
             onClick={disableNotifications}
             disabled={isBusy || status !== 'enabled'}
-            className="inline-flex items-center justify-center rounded-[18px] border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.86)_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-zinc-700 shadow-[0_12px_26px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            className="inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-2.5 text-sm font-semibold tracking-[0.01em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {isRemoving ? 'ODEBÍRÁM...' : 'ODEBRAT NOTIFIKACE'}
           </button>
 
-          {showTestControls ? (
-            <>
-              <button
-                type="button"
-                onClick={sendTestNotification}
-                disabled={isSendingTest || status !== 'enabled'}
-                className="inline-flex items-center justify-center rounded-[18px] border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.86)_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-zinc-700 shadow-[0_12px_26px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-              >
-                {isSendingTest ? 'ODESÍLÁM...' : 'POSLAT TEST'}
-              </button>
-
-              <button
-                type="button"
-                onClick={createCrmTestNotification}
-                disabled={isCreatingCrmTest || status !== 'enabled'}
-                className="inline-flex items-center justify-center rounded-[18px] border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.86)_100%)] px-6 py-3 text-sm font-semibold tracking-[0.01em] text-zinc-700 shadow-[0_12px_26px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-              >
-                {isCreatingCrmTest ? 'VYTVÁŘÍM...' : 'CRM TEST'}
-              </button>
-            </>
-          ) : null}
         </div>
 
         <BadgeDiagnosticsPanel diagnostics={diagnostics} status={status} />

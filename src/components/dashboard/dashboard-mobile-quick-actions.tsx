@@ -10,6 +10,11 @@ import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
 import {
+  getMyDashboardQuickNoteAction,
+  clearMyDashboardQuickNoteAction,
+  upsertMyDashboardQuickNoteAction,
+} from '@/app/dashboard/quick-notes-actions'
+import {
   getManualNotificationHistoryForAdminAction,
   sendManualNotificationForAdminAction,
 } from '@/app/dashboard/manual-notifications-actions'
@@ -19,6 +24,10 @@ import {
   trackUserPresenceAction,
 } from '@/app/dashboard/online-presence-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import {
+  readDashboardQuickCreateEnabled,
+  readDashboardQuickNotesEnabled,
+} from '@/lib/dashboard/widget-preferences'
 import {
   ActionFeedbackToast,
   type ActionFeedbackToastValue,
@@ -69,6 +78,7 @@ type QuickActionKey =
   | 'offer'
   | 'job'
   | 'client'
+  | 'quick_notes'
   | 'manual_notifications'
   | 'received_invoices'
 
@@ -113,6 +123,138 @@ type ManualNotificationHistoryItem = {
   recipientUserIds: string[]
   recipientNames: string[]
   recipientCount: number
+}
+
+const QUICK_NOTE_MAX_LENGTH = 1000
+
+function QuickNotesModal({
+  isDesktopViewport,
+  viewportBottomOffset,
+  isOpen,
+  text,
+  isSaving,
+  lastSavedAtLabel,
+  onChangeText,
+  onRequestClose,
+  onClearRequest,
+}: {
+  isDesktopViewport: boolean
+  viewportBottomOffset: number
+  isOpen: boolean
+  text: string
+  isSaving: boolean
+  lastSavedAtLabel: string | null
+  onChangeText: (value: string) => void
+  onRequestClose: () => void
+  onClearRequest: () => void
+}) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onRequestClose()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onRequestClose])
+
+  return (
+    <div className="fixed inset-0 z-[75]">
+      <button
+        type="button"
+        aria-label="Zavřít poznámky"
+        onClick={onRequestClose}
+        className={`absolute inset-0 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isOpen ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          backgroundColor: isDesktopViewport
+            ? 'rgba(15, 23, 42, 0.08)'
+            : 'rgba(24, 24, 27, 0.30)',
+          backdropFilter: isOpen
+            ? isDesktopViewport
+              ? 'blur(2px)'
+              : 'blur(3px)'
+            : 'blur(0px)',
+        }}
+      />
+
+      <div
+        className={`absolute overflow-hidden rounded-[28px] border border-[#8dbfe0]/80 bg-[linear-gradient(165deg,rgba(61,129,184,0.94)_0%,rgba(44,113,170,0.9)_48%,rgba(32,91,145,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(198,228,250,0.5)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isOpen
+            ? 'translate-x-0 translate-y-0 scale-100 opacity-100 shadow-[0_46px_112px_rgba(9,48,82,0.42)]'
+            : 'translate-x-4 translate-y-5 scale-[0.72] opacity-0 shadow-[0_12px_28px_rgba(9,48,82,0.14)]'
+        }`}
+        style={{
+          right: isDesktopViewport ? '28px' : '16px',
+          bottom: isDesktopViewport
+            ? '104px'
+            : `calc(env(safe-area-inset-bottom, 0px) + 86px + ${viewportBottomOffset}px)`,
+          width: isDesktopViewport ? '340px' : 'min(290px, calc(100vw - 2rem))',
+          transformOrigin: 'bottom right',
+          transitionDelay: isOpen ? '34ms' : '0ms',
+        }}
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-90"
+        />
+
+        <div
+          className={`px-2 pb-2 pt-1 transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isOpen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+          }`}
+          style={{ transitionDelay: isOpen ? '86ms' : '0ms' }}
+        >
+          <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-white/95">
+            Poznámky
+          </div>
+        </div>
+
+        <div
+          className={`space-y-2.5 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isOpen ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.96] opacity-0'
+          }`}
+          style={{ transitionDelay: isOpen ? '110ms' : '0ms' }}
+        >
+          <textarea
+            value={text}
+            onChange={(event) => onChangeText(event.target.value.slice(0, QUICK_NOTE_MAX_LENGTH))}
+            maxLength={QUICK_NOTE_MAX_LENGTH}
+            rows={12}
+            placeholder="Rychlá poznámka..."
+            className="w-full resize-none rounded-2xl border border-white/55 bg-white/12 px-3 py-2.5 text-sm leading-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_22px_rgba(9,48,82,0.16)] outline-none placeholder:text-white/65 focus:border-white/75 focus:ring-2 focus:ring-white/35"
+          />
+
+          <div className="flex items-start justify-between gap-3 pt-0.5">
+            <div>
+              <div className="text-[10px] text-white/75">
+                {text.length}/{QUICK_NOTE_MAX_LENGTH}
+              </div>
+              <div className="mt-1 text-[10px] leading-4 text-white/65">
+                {isSaving
+                  ? 'Ukládám...'
+                  : lastSavedAtLabel
+                    ? `Naposledy uloženo ${lastSavedAtLabel}`
+                    : 'Zatím neuloženo'}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClearRequest}
+              className="inline-flex h-8 items-center justify-center rounded-xl border border-red-300/80 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(127,29,29,0.24)] transition duration-200 hover:-translate-y-[1px]"
+            >
+              Vymazat
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function formatActivityTime(value: string | null) {
@@ -462,8 +604,20 @@ export function DashboardMobileQuickActions({
   const [activeAction, setActiveAction] = useState<QuickActionKey | null>(null)
   const [isSheetMounted, setIsSheetMounted] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [isQuickNotesMounted, setIsQuickNotesMounted] = useState(false)
+  const [isQuickNotesOpen, setIsQuickNotesOpen] = useState(false)
   const [isDesktopViewport, setIsDesktopViewport] = useState(false)
   const [viewportBottomOffset, setViewportBottomOffset] = useState(0)
+  const [isQuickCreateVisible, setIsQuickCreateVisible] = useState(true)
+  const [isQuickNotesVisible, setIsQuickNotesVisible] = useState(true)
+  const [quickNotesText, setQuickNotesText] = useState('')
+  const [isQuickNotesSaving, setIsQuickNotesSaving] = useState(false)
+  const [quickNotesLoaded, setQuickNotesLoaded] = useState(false)
+  const [quickNotesLastSavedAt, setQuickNotesLastSavedAt] = useState<string | null>(null)
+  const [quickNotesSaveError, setQuickNotesSaveError] = useState<string | null>(null)
+  const [isQuickNotesClearConfirmOpen, setIsQuickNotesClearConfirmOpen] = useState(false)
+  const latestQuickNotesTextRef = useRef('')
+  const quickNotesLastSavedTextRef = useRef('')
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([])
   const [presencePeriod, setPresencePeriod] = useState<PresencePeriod>('today')
   const [onlineNames, setOnlineNames] = useState<string[]>([])
@@ -476,6 +630,7 @@ export function DashboardMobileQuickActions({
   const [isActivityLoading, setIsActivityLoading] = useState(false)
   const [, startTransition] = useTransition()
   const closeTimerRef = useRef<number | null>(null)
+  const quickNotesCloseTimerRef = useRef<number | null>(null)
   const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
 
   useBodyScrollLock(isSheetMounted && !isDesktopViewport)
@@ -639,9 +794,67 @@ export function DashboardMobileQuickActions({
   }, [])
 
   useEffect(() => {
+    if (!isHydrated) return
+
+    const syncVisibility = () => {
+      setIsQuickCreateVisible(readDashboardQuickCreateEnabled())
+      setIsQuickNotesVisible(readDashboardQuickNotesEnabled())
+    }
+
+    syncVisibility()
+    window.addEventListener('storage', syncVisibility)
+    window.addEventListener('dashboard-widget-settings-changed', syncVisibility)
+
+    return () => {
+      window.removeEventListener('storage', syncVisibility)
+      window.removeEventListener('dashboard-widget-settings-changed', syncVisibility)
+    }
+  }, [isHydrated])
+
+  useEffect(() => {
+    if (isQuickCreateVisible) return
+    if (!isSheetMounted) return
+    closeSheet()
+  }, [isQuickCreateVisible, isSheetMounted])
+
+  useEffect(() => {
+    if (isQuickNotesVisible) return
+    if (activeAction !== 'quick_notes') return
+    setIsQuickNotesMounted(false)
+    setIsQuickNotesOpen(false)
+    setActiveAction(null)
+  }, [isQuickNotesVisible, activeAction])
+
+  useEffect(() => {
+    if (activeAction !== 'quick_notes') return
+    if (quickNotesLoaded) return
+
+    let isCancelled = false
+    ;(async () => {
+      const result = await getMyDashboardQuickNoteAction()
+      if (isCancelled) return
+      if (result.success) {
+        const initialContent = result.content ?? ''
+        setQuickNotesText(initialContent)
+        latestQuickNotesTextRef.current = initialContent
+        quickNotesLastSavedTextRef.current = initialContent
+        setQuickNotesLastSavedAt(result.updatedAt ?? null)
+      }
+      setQuickNotesLoaded(true)
+    })()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeAction, quickNotesLoaded])
+
+  useEffect(() => {
     return () => {
       if (closeTimerRef.current) {
         window.clearTimeout(closeTimerRef.current)
+      }
+      if (quickNotesCloseTimerRef.current) {
+        window.clearTimeout(quickNotesCloseTimerRef.current)
       }
     }
   }, [])
@@ -666,6 +879,100 @@ export function DashboardMobileQuickActions({
       setIsSheetMounted(false)
       closeTimerRef.current = null
     }, 180)
+  }
+
+  function openQuickNotes() {
+    if (quickNotesCloseTimerRef.current) {
+      window.clearTimeout(quickNotesCloseTimerRef.current)
+      quickNotesCloseTimerRef.current = null
+    }
+
+    setActiveAction('quick_notes')
+    setIsQuickNotesMounted(true)
+    requestAnimationFrame(() => {
+      setIsQuickNotesOpen(true)
+    })
+    triggerHaptic(10)
+  }
+
+  function closeQuickNotesWithAnimation() {
+    setIsQuickNotesOpen(false)
+    quickNotesCloseTimerRef.current = window.setTimeout(() => {
+      setIsQuickNotesMounted(false)
+      setActiveAction((current) => (current === 'quick_notes' ? null : current))
+      quickNotesCloseTimerRef.current = null
+    }, 180)
+  }
+
+  async function persistQuickNotes(currentText?: string) {
+    if (isQuickNotesSaving) return
+    const textToSave = typeof currentText === 'string' ? currentText : latestQuickNotesTextRef.current
+    if (textToSave === quickNotesLastSavedTextRef.current) return
+
+    setIsQuickNotesSaving(true)
+    setQuickNotesSaveError(null)
+    const result = await upsertMyDashboardQuickNoteAction({
+      content: textToSave,
+    })
+    if (!result.success) {
+      setQuickNotesSaveError(result.error ?? 'Poznámku se nepodařilo uložit.')
+      setIsQuickNotesSaving(false)
+      return
+    }
+    quickNotesLastSavedTextRef.current = textToSave
+    setQuickNotesLastSavedAt(result.updatedAt ?? new Date().toISOString())
+    setIsQuickNotesSaving(false)
+  }
+
+  async function persistQuickNotesAndClose() {
+    await persistQuickNotes()
+    closeQuickNotesWithAnimation()
+  }
+
+  useEffect(() => {
+    latestQuickNotesTextRef.current = quickNotesText
+  }, [quickNotesText])
+
+  useEffect(() => {
+    if (activeAction !== 'quick_notes') return
+    if (!quickNotesLoaded) return
+
+    const intervalId = window.setInterval(() => {
+      void persistQuickNotes()
+    }, 5_000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [activeAction, quickNotesLoaded, isQuickNotesSaving])
+
+  function formatLastSavedLabel(value: string | null) {
+    if (!value) return null
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return null
+    return new Intl.DateTimeFormat('cs-CZ', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(date)
+  }
+
+  async function clearQuickNotes() {
+    setIsQuickNotesClearConfirmOpen(false)
+    setIsQuickNotesSaving(true)
+    setQuickNotesSaveError(null)
+    const result = await clearMyDashboardQuickNoteAction()
+    setIsQuickNotesSaving(false)
+
+    if (!result.success) {
+      setQuickNotesSaveError(result.error ?? 'Poznámku se nepodařilo smazat.')
+      return
+    }
+
+    setQuickNotesText('')
+    latestQuickNotesTextRef.current = ''
+    quickNotesLastSavedTextRef.current = ''
+    setQuickNotesLastSavedAt(new Date().toISOString())
   }
 
   useEffect(() => {
@@ -807,6 +1114,22 @@ export function DashboardMobileQuickActions({
     }
   }
 
+  const mobileQuickCreateRight = 16
+  const mobileQuickNotesRight = isAdmin ? 84 : 84
+  const mobileInvoicesRight = isAdmin
+    ? isQuickNotesVisible
+      ? 152
+      : 84
+    : 84
+
+  const desktopQuickCreateRight = 28
+  const desktopQuickNotesRight = 104
+  const desktopInvoicesRight = isQuickNotesVisible ? 180 : 104
+  const desktopManualNotificationsRight = isQuickNotesVisible ? 256 : 180
+  const desktopOnlinePanelRight = isQuickNotesVisible ? 332 : 256
+  const shouldHideFloatingControls = Boolean(activeAction && activeAction !== 'quick_notes')
+  const blurredFloatingClass = isQuickNotesOpen ? 'opacity-55 saturate-[0.75]' : ''
+
   const floatingLayer = (
     <>
       {toast ? <ActionFeedbackToast toast={toast} isVisible={isToastVisible} /> : null}
@@ -819,14 +1142,14 @@ export function DashboardMobileQuickActions({
             void openPresenceModal()
           }}
           className={`fixed z-[70] hidden overflow-hidden border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] text-zinc-900 backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
-            activeAction
+            shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetMounted
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_42px_rgba(15,23,42,0.26)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(15,23,42,0.2)] hover:-translate-y-0.5'
-          }`}
+          } ${blurredFloatingClass}`}
           style={{
-            right: '256px',
+            right: `${desktopOnlinePanelRight}px`,
             bottom: '28px',
             width: '286px',
             height: '68px',
@@ -880,14 +1203,14 @@ export function DashboardMobileQuickActions({
             setActiveAction('received_invoices')
           }}
           className={`fixed z-[70] flex items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
-            activeAction
+            shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
               : isSheetMounted
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(214,219,227,0.30),0_24px_50px_rgba(30,41,59,0.46)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_14px_34px_rgba(30,41,59,0.36)]'
-          }`}
+          } ${blurredFloatingClass}`}
           style={{
-            right: '84px',
+            right: `${mobileInvoicesRight}px`,
             bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
             width: '60px',
             height: '60px',
@@ -929,14 +1252,14 @@ export function DashboardMobileQuickActions({
             setActiveAction('manual_notifications')
           }}
           className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
-            activeAction
+            shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetMounted
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
-          }`}
+          } ${blurredFloatingClass}`}
           style={{
-            right: '180px',
+            right: `${desktopManualNotificationsRight}px`,
             bottom: '28px',
             width: '68px',
             height: '68px',
@@ -963,42 +1286,92 @@ export function DashboardMobileQuickActions({
         </button>
       ) : null}
 
-      <button
-        type="button"
-        aria-label="Rychlé vytvoření"
-        onClick={() => {
-          if (isSheetMounted) {
-            closeSheet()
-            return
-          }
+      {isQuickNotesVisible ? (
+        <button
+          type="button"
+          aria-label="Poznámky"
+          title="Poznámky"
+          onClick={() => {
+            if (isQuickNotesOpen) {
+              void persistQuickNotesAndClose()
+              return
+            }
+            openQuickNotes()
+          }}
+          className={`fixed z-[70] flex items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+            shouldHideFloatingControls
+              ? 'pointer-events-none opacity-0 scale-[0.92]'
+              : isSheetMounted
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,245,196,0.7),0_24px_52px_rgba(145,112,17,0.35)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.66),0_14px_34px_rgba(145,112,17,0.3)]'
+          } ${isQuickNotesOpen ? 'z-[80]' : ''}`}
+          style={{
+            right: `${mobileQuickNotesRight}px`,
+            bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
+            width: '60px',
+            height: '60px',
+            minWidth: '60px',
+            minHeight: '60px',
+            borderRadius: '999px',
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="5" y="3" width="14" height="18" rx="2.5" />
+            <path d="M9 3v3" />
+            <path d="M15 3v3" />
+            <path d="M8.5 10h7" />
+            <path d="M8.5 14h7" />
+          </svg>
+        </button>
+      ) : null}
 
-          openSheet()
-        }}
-        className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
-          activeAction
-            ? 'pointer-events-none opacity-0 scale-[0.92]'
-            : isSheetMounted
-            ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
-            : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
-        }`}
-        style={{
-          right: '16px',
-          bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
-          width: '60px',
-          height: '60px',
-          minWidth: '60px',
-          minHeight: '60px',
-          borderRadius: '999px',
-        }}
-        >
-        <span
-          className={`text-[30px] font-semibold leading-none transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isSheetMounted ? 'rotate-45' : 'rotate-0'
-          }`}
-        >
-          +
-        </span>
-      </button>
+      {isQuickCreateVisible ? (
+        <button
+          type="button"
+          aria-label="Rychlé vytvoření"
+          onClick={() => {
+            if (isSheetMounted) {
+              closeSheet()
+              return
+            }
+
+            openSheet()
+          }}
+          className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+            shouldHideFloatingControls
+              ? 'pointer-events-none opacity-0 scale-[0.92]'
+              : isSheetMounted
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
+          } ${blurredFloatingClass}`}
+          style={{
+            right: `${mobileQuickCreateRight}px`,
+            bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
+            width: '60px',
+            height: '60px',
+            minWidth: '60px',
+            minHeight: '60px',
+            borderRadius: '999px',
+          }}
+          >
+          <span
+            className={`text-[30px] font-semibold leading-none transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isSheetMounted ? 'rotate-45' : 'rotate-0'
+            }`}
+          >
+            +
+          </span>
+        </button>
+      ) : null}
 
       {isAdmin ? (
         <button
@@ -1010,14 +1383,14 @@ export function DashboardMobileQuickActions({
             setActiveAction('received_invoices')
           }}
           className={`fixed z-[70] hidden items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1e293b] hover:shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_38px_rgba(30,41,59,0.6)] lg:flex ${
-            activeAction
+            shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetMounted
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_42px_rgba(30,41,59,0.5)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_12px_28px_rgba(30,41,59,0.38)]'
-          }`}
+          } ${blurredFloatingClass}`}
           style={{
-            right: '104px',
+            right: `${desktopInvoicesRight}px`,
             bottom: '28px',
             width: '68px',
             height: '68px',
@@ -1049,44 +1422,94 @@ export function DashboardMobileQuickActions({
         </button>
       ) : null}
 
-      <button
-        type="button"
-        aria-label="Rychlé vytvoření"
-        onClick={() => {
-          if (isSheetMounted) {
-            closeSheet()
-            return
-          }
-
-          openSheet()
-        }}
-        className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
-          activeAction
-            ? 'pointer-events-none opacity-0 scale-[0.94]'
-            : isSheetMounted
-            ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
-            : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
-        }`}
-        style={{
-          right: '28px',
-          bottom: '28px',
-          width: '68px',
-          height: '68px',
-          minWidth: '68px',
-          minHeight: '68px',
-          borderRadius: '999px',
-        }}
-      >
-        <span
-          className={`text-[34px] font-semibold leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isSheetMounted ? 'rotate-45' : 'rotate-0'
-          }`}
+      {isQuickNotesVisible ? (
+        <button
+          type="button"
+          aria-label="Poznámky"
+          title="Poznámky"
+          onClick={() => {
+            if (isQuickNotesOpen) {
+              void persistQuickNotesAndClose()
+              return
+            }
+            openQuickNotes()
+          }}
+          className={`fixed z-[70] hidden items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#c6aa47] hover:shadow-[inset_0_1px_0_rgba(255,245,196,0.78),0_20px_38px_rgba(145,112,17,0.44)] lg:flex ${
+            shouldHideFloatingControls
+              ? 'pointer-events-none opacity-0 scale-[0.94]'
+              : isSheetMounted
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,245,196,0.74),0_18px_42px_rgba(145,112,17,0.4)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.68),0_12px_28px_rgba(145,112,17,0.34)]'
+          } ${isQuickNotesOpen ? 'z-[80]' : ''}`}
+          style={{
+            right: `${desktopQuickNotesRight}px`,
+            bottom: '28px',
+            width: '68px',
+            height: '68px',
+            minWidth: '68px',
+            minHeight: '68px',
+            borderRadius: '999px',
+          }}
         >
-          +
-        </span>
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-7 w-7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="5" y="3" width="14" height="18" rx="2.5" />
+            <path d="M9 3v3" />
+            <path d="M15 3v3" />
+            <path d="M8.5 10h7" />
+            <path d="M8.5 14h7" />
+          </svg>
+        </button>
+      ) : null}
 
-      {isSheetMounted ? (
+      {isQuickCreateVisible ? (
+        <button
+          type="button"
+          aria-label="Rychlé vytvoření"
+          onClick={() => {
+            if (isSheetMounted) {
+              closeSheet()
+              return
+            }
+
+            openSheet()
+          }}
+          className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+            shouldHideFloatingControls
+              ? 'pointer-events-none opacity-0 scale-[0.94]'
+              : isSheetMounted
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+        } ${blurredFloatingClass}`}
+          style={{
+            right: `${desktopQuickCreateRight}px`,
+            bottom: '28px',
+            width: '68px',
+            height: '68px',
+            minWidth: '68px',
+            minHeight: '68px',
+            borderRadius: '999px',
+          }}
+        >
+          <span
+            className={`text-[34px] font-semibold leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isSheetMounted ? 'rotate-45' : 'rotate-0'
+            }`}
+          >
+            +
+          </span>
+        </button>
+      ) : null}
+
+      {isQuickCreateVisible && isSheetMounted ? (
         <div className="fixed inset-0 z-[65]" aria-hidden="true">
           <button
             type="button"
@@ -1223,6 +1646,77 @@ export function DashboardMobileQuickActions({
           contacts={contacts}
           onClose={() => setActiveAction(null)}
         />
+      ) : null}
+
+      {isQuickNotesMounted && isQuickNotesVisible ? (
+        <>
+          <QuickNotesModal
+            isDesktopViewport={isDesktopViewport}
+            viewportBottomOffset={viewportBottomOffset}
+            isOpen={isQuickNotesOpen}
+            text={quickNotesText}
+            isSaving={isQuickNotesSaving}
+            lastSavedAtLabel={formatLastSavedLabel(quickNotesLastSavedAt)}
+            onChangeText={(value) => {
+              setQuickNotesText(value)
+              setQuickNotesSaveError(null)
+            }}
+            onRequestClose={() => {
+              void persistQuickNotesAndClose()
+            }}
+            onClearRequest={() => {
+              setIsQuickNotesClearConfirmOpen(true)
+            }}
+          />
+
+          {quickNotesSaveError ? (
+            <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+18px)] left-1/2 z-[90] w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border border-red-300/85 bg-[linear-gradient(135deg,rgba(127,29,29,0.96)_0%,rgba(153,27,27,0.94)_100%)] px-3 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(127,29,29,0.34)]">
+              {quickNotesSaveError}
+            </div>
+          ) : null}
+
+          {isQuickNotesClearConfirmOpen ? (
+            <div className="fixed inset-0 z-[95]">
+              <button
+                type="button"
+                aria-label="Zavřít potvrzení mazání poznámky"
+                onClick={() => setIsQuickNotesClearConfirmOpen(false)}
+                className="absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
+              />
+
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <div className="relative w-full max-w-sm overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+                  <div aria-hidden className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
+                  <div aria-hidden className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
+                  <div aria-hidden className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
+
+                  <p className="relative text-sm font-medium leading-6 text-gray-900">
+                    Opravdu chceš nevratně smazat veškerý text?
+                  </p>
+
+                  <div className="relative mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void clearQuickNotes()
+                      }}
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-3 text-xs font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px]"
+                    >
+                      Ano
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickNotesClearConfirmOpen(false)}
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-3 text-xs font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)] transition duration-200 hover:-translate-y-[1px]"
+                    >
+                      Zrušit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {isAdmin && isDesktopViewport && isPresenceModalOpen ? (
