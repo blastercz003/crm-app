@@ -39,6 +39,23 @@ type JobInfoAttachmentItem = {
   signedUrl: string | null
 }
 
+async function forceDownloadFile(url: string, fileName: string) {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error('Nepodařilo se stáhnout soubor.')
+  }
+
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(objectUrl)
+}
+
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const STATUS_BADGE_WIDTH_CLASS = 'min-w-[100px]'
 const STATUS_BADGE_COMPACT_WIDTH_CLASS = 'min-w-[88px]'
@@ -375,6 +392,19 @@ function InfoButton({
     await reloadAttachments()
   }
 
+  async function handleDownload(item: JobInfoAttachmentItem) {
+    if (!item.signedUrl) {
+      setAttachmentsError('Fotku se nepodařilo stáhnout.')
+      return
+    }
+
+    try {
+      await forceDownloadFile(item.signedUrl, item.fileName)
+    } catch {
+      window.open(item.signedUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
   function saveInfo() {
     startTransition(async () => {
       const formData = new FormData()
@@ -480,13 +510,15 @@ function InfoButton({
                           )}
                         </button>
                         <div className="flex items-center justify-end gap-2 px-2 py-1.5">
-                          <a
-                            href={item.signedUrl ?? undefined}
-                            download={item.fileName}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleDownload(item)
+                            }}
                             className="inline-flex h-6 items-center justify-center rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_14px_rgba(24,78,129,0.24)] transition hover:-translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
                           >
                             STÁHNOUT
-                          </a>
+                          </button>
                           <button
                             type="button"
                             disabled={deletingId === item.id}
