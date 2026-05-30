@@ -100,6 +100,132 @@ export default function ChangePasswordPage() {
 
         <section className="grid gap-4 xl:grid-cols-3">
           <section className="h-full rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+              WIDGETY
+            </div>
+            <div className="mt-3 space-y-4">
+              <p className="text-sm text-zinc-500">
+                Zde můžeš zapnout nebo vypnout widgety na Dashboardu.
+              </p>
+
+              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-900">
+                      Tlačítko Rychlých akcí "+"
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-zinc-600">
+                      {quickCreateEnabled ? 'Aktivní' : 'Neaktivní'}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={quickCreateEnabled}
+                      onClick={() => {
+                        const nextValue = !quickCreateEnabled
+                        setQuickCreateEnabled(nextValue)
+                        writeDashboardQuickCreateEnabled(nextValue)
+                      }}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
+                        quickCreateEnabled
+                          ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
+                          : 'border-zinc-300 bg-zinc-200/90'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
+                          quickCreateEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-900">
+                      Tlačítko Rychlé poznámky
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-zinc-600">
+                      {quickNotesEnabled ? 'Aktivní' : 'Neaktivní'}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={quickNotesEnabled}
+                      onClick={() => {
+                        const nextValue = !quickNotesEnabled
+                        setQuickNotesEnabled(nextValue)
+                        writeDashboardQuickNotesEnabled(nextValue)
+                      }}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
+                        quickNotesEnabled
+                          ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
+                          : 'border-zinc-300 bg-zinc-200/90'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
+                          quickNotesEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-900">
+                      Tlačítko Dnešní zakázky
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-zinc-600">
+                      {todayJobsEnabled ? 'Aktivní' : 'Neaktivní'}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={todayJobsEnabled}
+                      onClick={() => {
+                        const nextValue = !todayJobsEnabled
+                        setTodayJobsEnabled(nextValue)
+                        writeDashboardTodayJobsEnabled(nextValue)
+                      }}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
+                        todayJobsEnabled
+                          ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
+                          : 'border-zinc-300 bg-zinc-200/90'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
+                          todayJobsEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="h-full">
+            <PushNotificationsPanel />
+          </div>
+
+          <section className="h-full rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
             <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
               Změna hesla
             </div>
@@ -175,105 +301,6 @@ export default function ChangePasswordPage() {
                 </Link>
               </div>
             </form>
-          </section>
-
-          <div className="h-full">
-            <PushNotificationsPanel />
-          </div>
-
-          <section className="h-full rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-              WIDGETY
-            </div>
-            <div className="mt-3 space-y-4">
-              <p className="text-sm text-zinc-500">
-                Zde můžeš zapnout nebo vypnout widgety na Dashboardu.
-              </p>
-
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-zinc-900">
-                      Tlačítko rychlých akcí "+"
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={quickCreateEnabled}
-                    onClick={() => {
-                      const nextValue = !quickCreateEnabled
-                      setQuickCreateEnabled(nextValue)
-                      writeDashboardQuickCreateEnabled(nextValue)
-                    }}
-                    className={`inline-flex h-9 min-w-[108px] items-center justify-center rounded-xl border px-3 text-xs font-semibold uppercase tracking-[0.03em] transition duration-200 ${
-                      quickCreateEnabled
-                        ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
-                        : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)]'
-                    }`}
-                  >
-                    {quickCreateEnabled ? 'Zapnuto' : 'Vypnuto'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-zinc-900">
-                      Tlačítko rychlé poznámky
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={quickNotesEnabled}
-                    onClick={() => {
-                      const nextValue = !quickNotesEnabled
-                      setQuickNotesEnabled(nextValue)
-                      writeDashboardQuickNotesEnabled(nextValue)
-                    }}
-                    className={`inline-flex h-9 min-w-[108px] items-center justify-center rounded-xl border px-3 text-xs font-semibold uppercase tracking-[0.03em] transition duration-200 ${
-                      quickNotesEnabled
-                        ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
-                        : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)]'
-                    }`}
-                  >
-                    {quickNotesEnabled ? 'Zapnuto' : 'Vypnuto'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-zinc-900">
-                      Dnešní zakázky
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={todayJobsEnabled}
-                    onClick={() => {
-                      const nextValue = !todayJobsEnabled
-                      setTodayJobsEnabled(nextValue)
-                      writeDashboardTodayJobsEnabled(nextValue)
-                    }}
-                    className={`inline-flex h-9 min-w-[108px] items-center justify-center rounded-xl border px-3 text-xs font-semibold uppercase tracking-[0.03em] transition duration-200 ${
-                      todayJobsEnabled
-                        ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
-                        : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)]'
-                    }`}
-                  >
-                    {todayJobsEnabled ? 'Zapnuto' : 'Vypnuto'}
-                  </button>
-                </div>
-              </div>
-            </div>
           </section>
         </section>
       </div>

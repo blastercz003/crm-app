@@ -1333,7 +1333,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] hidden overflow-hidden border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] text-zinc-900 backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_42px_rgba(15,23,42,0.26)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(15,23,42,0.2)] hover:-translate-y-0.5'
           } ${getFloatingBlurClass('other')}`}
@@ -1396,7 +1396,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] flex items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(214,219,227,0.30),0_24px_50px_rgba(30,41,59,0.46)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_14px_34px_rgba(30,41,59,0.36)]'
           } ${getFloatingBlurClass('other')}`}
@@ -1449,7 +1449,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
           } ${getFloatingBlurClass('other')}`}
@@ -1499,7 +1499,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
           } ${isTodayJobsOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('today_jobs')}`}
@@ -1555,7 +1555,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] flex items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,245,196,0.7),0_24px_52px_rgba(145,112,17,0.35)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.66),0_14px_34px_rgba(145,112,17,0.3)]'
           } ${isQuickNotesOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_notes')}`}
@@ -1622,7 +1622,7 @@ export function DashboardMobileQuickActions({
           >
           <span
             className={`text-[30px] font-semibold leading-none transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              isSheetMounted ? 'rotate-45' : 'rotate-0'
+              isSheetOpen ? 'rotate-45' : 'rotate-0'
             } ${spinningIcon === 'quick_create' ? 'animate-[spin_.45s_ease-in-out_1]' : ''}`}
           >
             +
@@ -1644,7 +1644,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] hidden items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1e293b] hover:shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_38px_rgba(30,41,59,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_42px_rgba(30,41,59,0.5)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_12px_28px_rgba(30,41,59,0.38)]'
           } ${getFloatingBlurClass('other')}`}
@@ -1699,7 +1699,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
           } ${isTodayJobsOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('today_jobs')}`}
@@ -1755,7 +1755,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] hidden items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#c6aa47] hover:shadow-[inset_0_1px_0_rgba(255,245,196,0.78),0_20px_38px_rgba(145,112,17,0.44)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted && !isQuickCreateActive
+              : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,245,196,0.74),0_18px_42px_rgba(145,112,17,0.4)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.68),0_12px_28px_rgba(145,112,17,0.34)]'
           } ${isQuickNotesOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_notes')}`}
@@ -1822,7 +1822,7 @@ export function DashboardMobileQuickActions({
         >
           <span
             className={`text-[34px] font-semibold leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              isSheetMounted ? 'rotate-45' : 'rotate-0'
+              isSheetOpen ? 'rotate-45' : 'rotate-0'
             } ${spinningIcon === 'quick_create' ? 'animate-[spin_.45s_ease-in-out_1]' : ''}`}
           >
             +

@@ -252,7 +252,7 @@ export function PushNotificationsPanel() {
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-nowrap items-center gap-2">
           <button
             type="button"
             onClick={enableNotifications}
@@ -263,7 +263,7 @@ export function PushNotificationsPanel() {
               status === 'not-configured' ||
               status === 'enabled'
             }
-            className="inline-flex items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 py-2.5 text-sm font-semibold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)]"
+            className="inline-flex min-w-0 flex-1 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-2 text-[12px] font-semibold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)]"
           >
             {buttonLabel}
           </button>
@@ -272,7 +272,7 @@ export function PushNotificationsPanel() {
             type="button"
             onClick={disableNotifications}
             disabled={isBusy || status !== 'enabled'}
-            className="inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-2.5 text-sm font-semibold tracking-[0.01em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            className="inline-flex min-w-0 flex-1 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[12px] font-semibold tracking-[0.01em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {isRemoving ? 'ODEBÍRÁM...' : 'ODEBRAT NOTIFIKACE'}
           </button>
