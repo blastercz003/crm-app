@@ -660,6 +660,9 @@ export function DashboardMobileQuickActions({
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([])
   const [isActivityLoading, setIsActivityLoading] = useState(false)
   const [spinningIcon, setSpinningIcon] = useState<SpinnableIconKey | null>(null)
+  const [spinningIconDirection, setSpinningIconDirection] = useState<'normal' | 'reverse'>(
+    'normal'
+  )
   const [, startTransition] = useTransition()
   const closeTimerRef = useRef<number | null>(null)
   const todayJobsCloseTimerRef = useRef<number | null>(null)
@@ -952,16 +955,24 @@ export function DashboardMobileQuickActions({
     }
   }, [])
 
-  function triggerIconSpin(icon: SpinnableIconKey) {
+  function triggerIconSpin(icon: SpinnableIconKey, direction: 'normal' | 'reverse' = 'normal') {
     if (iconSpinResetTimerRef.current) {
       window.clearTimeout(iconSpinResetTimerRef.current)
     }
 
+    setSpinningIconDirection(direction)
     setSpinningIcon(icon)
     iconSpinResetTimerRef.current = window.setTimeout(() => {
       setSpinningIcon(null)
       iconSpinResetTimerRef.current = null
     }, 460)
+  }
+
+  function getIconSpinClass(icon: SpinnableIconKey) {
+    if (spinningIcon !== icon) return ''
+    return spinningIconDirection === 'reverse'
+      ? 'animate-[spin_.45s_ease-in-out_1_reverse]'
+      : 'animate-[spin_.45s_ease-in-out_1]'
   }
 
   function openSheet() {
@@ -1299,6 +1310,10 @@ export function DashboardMobileQuickActions({
     activeAction && activeAction !== 'quick_notes' && activeAction !== 'today_jobs'
   )
   const FLOATING_INACTIVE_CLASS = 'blur-[6px] lg:blur-[5px]'
+  const FLOATING_BLUE_BUTTON_CLASS =
+    'border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white'
+  const FLOATING_BLUE_BUTTON_ACTIVE_CLASS =
+    'scale-[0.97] shadow-[inset_0_3px_8px_rgba(7,38,64,0.42),inset_0_1px_0_rgba(170,217,247,0.25),0_10px_22px_rgba(9,48,82,0.34)]'
   const activeFloatingModal: 'quick_create' | 'quick_notes' | 'today_jobs' | null =
     isQuickNotesOpen
       ? 'quick_notes'
@@ -1388,17 +1403,22 @@ export function DashboardMobileQuickActions({
           aria-label="Přijaté faktury"
           title="Přijaté faktury"
           onClick={() => {
+            if (activeAction === 'received_invoices') {
+              triggerIconSpin('invoices', 'reverse')
+              setActiveAction(null)
+              return
+            }
             closeTodayJobsImmediately()
             triggerHaptic(10)
             triggerIconSpin('invoices')
             setActiveAction('received_invoices')
           }}
-          className={`fixed z-[70] flex items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+          className={`fixed z-[70] flex items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(214,219,227,0.30),0_24px_50px_rgba(30,41,59,0.46)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_14px_34px_rgba(30,41,59,0.36)]'
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
           } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${mobileInvoicesRight}px`,
@@ -1412,9 +1432,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-6 w-6 ${
-              spinningIcon === 'invoices' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
-            }`}
+            className={`h-6 w-6 ${getIconSpinClass('invoices')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1441,12 +1459,17 @@ export function DashboardMobileQuickActions({
           aria-label="Ruční notifikace"
           title="Ruční notifikace"
           onClick={() => {
+            if (activeAction === 'manual_notifications') {
+              triggerIconSpin('manual_notifications', 'reverse')
+              setActiveAction(null)
+              return
+            }
             closeTodayJobsImmediately()
             triggerHaptic(10)
             triggerIconSpin('manual_notifications')
             setActiveAction('manual_notifications')
           }}
-          className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
@@ -1465,9 +1488,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-7 w-7 ${
-              spinningIcon === 'manual_notifications' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
-            }`}
+            className={`h-7 w-7 ${getIconSpinClass('manual_notifications')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1490,19 +1511,20 @@ export function DashboardMobileQuickActions({
           title="Dnešní zakázky"
           onClick={() => {
             if (isTodayJobsOpen) {
+              triggerIconSpin('today_jobs', 'reverse')
               closeTodayJobs()
               return
             }
             triggerIconSpin('today_jobs')
             openTodayJobs()
           }}
-          className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+          className={`fixed z-[70] flex items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
               : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
-          } ${isTodayJobsOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('today_jobs')}`}
+          } ${isTodayJobsOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('today_jobs')}`}
           style={{
             right: `${mobileTodayJobsRight}px`,
             bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
@@ -1515,9 +1537,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-7 w-7 ${
-              spinningIcon === 'today_jobs' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
-            }`}
+            className={`h-7 w-7 ${getIconSpinClass('today_jobs')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.3"
@@ -1546,19 +1566,20 @@ export function DashboardMobileQuickActions({
           title="Poznámky"
           onClick={() => {
             if (isQuickNotesOpen) {
+              triggerIconSpin('quick_notes', 'reverse')
               void persistQuickNotesAndClose()
               return
             }
             triggerIconSpin('quick_notes')
             openQuickNotes()
           }}
-          className={`fixed z-[70] flex items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+          className={`fixed z-[70] flex items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,245,196,0.7),0_24px_52px_rgba(145,112,17,0.35)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.66),0_14px_34px_rgba(145,112,17,0.3)]'
-          } ${isQuickNotesOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_notes')}`}
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
+          } ${isQuickNotesOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_notes')}`}
           style={{
             right: `${mobileQuickNotesRight}px`,
             bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
@@ -1571,9 +1592,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-6 w-6 ${
-              spinningIcon === 'quick_notes' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
-            }`}
+            className={`h-6 w-6 ${getIconSpinClass('quick_notes')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1596,6 +1615,7 @@ export function DashboardMobileQuickActions({
           aria-label="Rychlé vytvoření"
           onClick={() => {
             if (isSheetMounted) {
+              triggerIconSpin('quick_create', 'reverse')
               closeSheet()
               return
             }
@@ -1603,13 +1623,11 @@ export function DashboardMobileQuickActions({
             triggerIconSpin('quick_create')
             openSheet()
           }}
-          className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+          className={`fixed z-[70] flex items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetMounted
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
-          } ${isSheetOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_create')}`}
+          } ${isSheetOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_create')}`}
           style={{
             right: `${mobileQuickCreateRight}px`,
             bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
@@ -1623,7 +1641,7 @@ export function DashboardMobileQuickActions({
           <span
             className={`text-[30px] font-semibold leading-none transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetOpen ? 'rotate-45' : 'rotate-0'
-            } ${spinningIcon === 'quick_create' ? 'animate-[spin_.45s_ease-in-out_1]' : ''}`}
+            } ${getIconSpinClass('quick_create')}`}
           >
             +
           </span>
@@ -1636,17 +1654,22 @@ export function DashboardMobileQuickActions({
           aria-label="Přijaté faktury"
           title="Přijaté faktury"
           onClick={() => {
+            if (activeAction === 'received_invoices') {
+              triggerIconSpin('invoices', 'reverse')
+              setActiveAction(null)
+              return
+            }
             closeTodayJobsImmediately()
             triggerHaptic(10)
             triggerIconSpin('invoices')
             setActiveAction('received_invoices')
           }}
-          className={`fixed z-[70] hidden items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1e293b] hover:shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_38px_rgba(30,41,59,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_42px_rgba(30,41,59,0.5)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_12px_28px_rgba(30,41,59,0.38)]'
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
           } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${desktopInvoicesRight}px`,
@@ -1660,9 +1683,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-7 w-7 ${
-              spinningIcon === 'invoices' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
-            }`}
+            className={`h-7 w-7 ${getIconSpinClass('invoices')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1690,19 +1711,20 @@ export function DashboardMobileQuickActions({
           title="Dnešní zakázky"
           onClick={() => {
             if (isTodayJobsOpen) {
+              triggerIconSpin('today_jobs', 'reverse')
               closeTodayJobs()
               return
             }
             triggerIconSpin('today_jobs')
             openTodayJobs()
           }}
-          className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
-          } ${isTodayJobsOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('today_jobs')}`}
+          } ${isTodayJobsOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('today_jobs')}`}
           style={{
             right: `${desktopTodayJobsRight}px`,
             bottom: '28px',
@@ -1715,9 +1737,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-8 w-8 ${
-              spinningIcon === 'today_jobs' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
-            }`}
+            className={`h-8 w-8 ${getIconSpinClass('today_jobs')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.3"
@@ -1746,19 +1766,20 @@ export function DashboardMobileQuickActions({
           title="Poznámky"
           onClick={() => {
             if (isQuickNotesOpen) {
+              triggerIconSpin('quick_notes', 'reverse')
               void persistQuickNotesAndClose()
               return
             }
             triggerIconSpin('quick_notes')
             openQuickNotes()
           }}
-          className={`fixed z-[70] hidden items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#c6aa47] hover:shadow-[inset_0_1px_0_rgba(255,245,196,0.78),0_20px_38px_rgba(145,112,17,0.44)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,245,196,0.74),0_18px_42px_rgba(145,112,17,0.4)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.68),0_12px_28px_rgba(145,112,17,0.34)]'
-          } ${isQuickNotesOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_notes')}`}
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+          } ${isQuickNotesOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_notes')}`}
           style={{
             right: `${desktopQuickNotesRight}px`,
             bottom: '28px',
@@ -1771,9 +1792,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-7 w-7 ${
-              spinningIcon === 'quick_notes' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
-            }`}
+            className={`h-7 w-7 ${getIconSpinClass('quick_notes')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1796,6 +1815,7 @@ export function DashboardMobileQuickActions({
           aria-label="Rychlé vytvoření"
           onClick={() => {
             if (isSheetMounted) {
+              triggerIconSpin('quick_create', 'reverse')
               closeSheet()
               return
             }
@@ -1803,13 +1823,13 @@ export function DashboardMobileQuickActions({
             triggerIconSpin('quick_create')
             openSheet()
           }}
-          className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetMounted
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
-        } ${isSheetOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_create')}`}
+        } ${isSheetOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_create')}`}
           style={{
             right: `${desktopQuickCreateRight}px`,
             bottom: '28px',
@@ -1823,7 +1843,7 @@ export function DashboardMobileQuickActions({
           <span
             className={`text-[34px] font-semibold leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetOpen ? 'rotate-45' : 'rotate-0'
-            } ${spinningIcon === 'quick_create' ? 'animate-[spin_.45s_ease-in-out_1]' : ''}`}
+            } ${getIconSpinClass('quick_create')}`}
           >
             +
           </span>
