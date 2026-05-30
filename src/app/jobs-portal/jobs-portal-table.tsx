@@ -479,20 +479,21 @@ function InfoButton({
                             </div>
                           )}
                         </button>
-                        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-                          <div
-                            className="min-w-0 truncate text-[11px] text-zinc-600"
-                            title={item.fileName}
+                        <div className="flex items-center justify-end gap-2 px-2 py-1.5">
+                          <a
+                            href={item.signedUrl ?? undefined}
+                            download={item.fileName}
+                            className="inline-flex h-6 items-center justify-center rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_14px_rgba(24,78,129,0.24)] transition hover:-translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
                           >
-                            {item.fileName}
-                          </div>
+                            STÁHNOUT
+                          </a>
                           <button
                             type="button"
                             disabled={deletingId === item.id}
                             onClick={() => {
                               void handleDelete(item.id)
                             }}
-                            className="inline-flex h-6 items-center justify-center rounded-lg border border-red-200/90 px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-6 items-center justify-center rounded-lg border border-red-200/90 px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_6px_12px_rgba(220,38,38,0.12)] transition hover:-translate-y-[1px] hover:bg-red-50 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.78),0_8px_14px_rgba(220,38,38,0.16)] disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {deletingId === item.id ? '…' : 'Smazat'}
                           </button>
