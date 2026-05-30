@@ -8,8 +8,10 @@ import { buildPageTitle } from '@/lib/pageTitles'
 import {
   readDashboardQuickCreateEnabled,
   readDashboardQuickNotesEnabled,
+  readDashboardTodayJobsEnabled,
   writeDashboardQuickCreateEnabled,
   writeDashboardQuickNotesEnabled,
+  writeDashboardTodayJobsEnabled,
 } from '@/lib/dashboard/widget-preferences'
 
 export default function ChangePasswordPage() {
@@ -22,11 +24,13 @@ export default function ChangePasswordPage() {
   const [success, setSuccess] = useState('')
   const [quickCreateEnabled, setQuickCreateEnabled] = useState(true)
   const [quickNotesEnabled, setQuickNotesEnabled] = useState(true)
+  const [todayJobsEnabled, setTodayJobsEnabled] = useState(true)
 
   useEffect(() => {
     document.title = buildPageTitle('Nastavení')
     setQuickCreateEnabled(readDashboardQuickCreateEnabled())
     setQuickNotesEnabled(readDashboardQuickNotesEnabled())
+    setTodayJobsEnabled(readDashboardTodayJobsEnabled())
   }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -238,6 +242,34 @@ export default function ChangePasswordPage() {
                     }`}
                   >
                     {quickNotesEnabled ? 'Zapnuto' : 'Vypnuto'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-900">
+                      Dnešní zakázky
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={todayJobsEnabled}
+                    onClick={() => {
+                      const nextValue = !todayJobsEnabled
+                      setTodayJobsEnabled(nextValue)
+                      writeDashboardTodayJobsEnabled(nextValue)
+                    }}
+                    className={`inline-flex h-9 min-w-[108px] items-center justify-center rounded-xl border px-3 text-xs font-semibold uppercase tracking-[0.03em] transition duration-200 ${
+                      todayJobsEnabled
+                        ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
+                        : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)]'
+                    }`}
+                  >
+                    {todayJobsEnabled ? 'Zapnuto' : 'Vypnuto'}
                   </button>
                 </div>
               </div>

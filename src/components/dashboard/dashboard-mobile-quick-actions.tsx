@@ -23,10 +23,12 @@ import {
   getUserActivityForAdminAction,
   trackUserPresenceAction,
 } from '@/app/dashboard/online-presence-actions'
+import { getTodayJobsForDashboardAction } from '@/app/dashboard/today-jobs-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   readDashboardQuickCreateEnabled,
   readDashboardQuickNotesEnabled,
+  readDashboardTodayJobsEnabled,
 } from '@/lib/dashboard/widget-preferences'
 import {
   ActionFeedbackToast,
@@ -79,6 +81,7 @@ type QuickActionKey =
   | 'job'
   | 'client'
   | 'quick_notes'
+  | 'today_jobs'
   | 'manual_notifications'
   | 'received_invoices'
 
@@ -87,6 +90,7 @@ type DashboardMobileQuickActionsProps = {
   clients: ClientOption[]
   contacts: ClientContactOption[]
   offers: OfferOption[]
+  canViewJobs: boolean
   canViewOffers: boolean
   canCreateJobs: boolean
   isAdmin: boolean
@@ -125,7 +129,19 @@ type ManualNotificationHistoryItem = {
   recipientCount: number
 }
 
+type TodayJobItem = {
+  id: string
+  jobNumber: string
+  companyName: string
+  startAt: string
+  endAt: string
+  technicianName: string | null
+  generatorName: string | null
+}
+
 const QUICK_NOTE_MAX_LENGTH = 1000
+const DASHBOARD_MODAL_BACKDROP_BLUR_DESKTOP = 'blur(5px)'
+const DASHBOARD_MODAL_BACKDROP_BLUR_MOBILE = 'blur(6px)'
 
 function QuickNotesModal({
   isDesktopViewport,
@@ -176,8 +192,8 @@ function QuickNotesModal({
             : 'rgba(24, 24, 27, 0.30)',
           backdropFilter: isOpen
             ? isDesktopViewport
-              ? 'blur(2px)'
-              : 'blur(3px)'
+              ? DASHBOARD_MODAL_BACKDROP_BLUR_DESKTOP
+              : DASHBOARD_MODAL_BACKDROP_BLUR_MOBILE
             : 'blur(0px)',
         }}
       />
@@ -585,11 +601,19 @@ export function DashboardMobileQuickActions({
   clients,
   contacts,
   offers,
+  canViewJobs,
   canViewOffers,
   canCreateJobs,
   isAdmin,
   receivedInvoicesDueCount = 0,
 }: DashboardMobileQuickActionsProps) {
+  type SpinnableIconKey =
+    | 'invoices'
+    | 'manual_notifications'
+    | 'today_jobs'
+    | 'quick_notes'
+    | 'quick_create'
+
   const isHydrated = useSyncExternalStore(
     (callback) => {
       if (typeof window === 'undefined') return () => {}
@@ -604,12 +628,19 @@ export function DashboardMobileQuickActions({
   const [activeAction, setActiveAction] = useState<QuickActionKey | null>(null)
   const [isSheetMounted, setIsSheetMounted] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [isTodayJobsMounted, setIsTodayJobsMounted] = useState(false)
+  const [isTodayJobsOpen, setIsTodayJobsOpen] = useState(false)
   const [isQuickNotesMounted, setIsQuickNotesMounted] = useState(false)
   const [isQuickNotesOpen, setIsQuickNotesOpen] = useState(false)
   const [isDesktopViewport, setIsDesktopViewport] = useState(false)
   const [viewportBottomOffset, setViewportBottomOffset] = useState(0)
   const [isQuickCreateVisible, setIsQuickCreateVisible] = useState(true)
   const [isQuickNotesVisible, setIsQuickNotesVisible] = useState(true)
+  const [isTodayJobsVisible, setIsTodayJobsVisible] = useState(true)
+  const [todayJobs, setTodayJobs] = useState<TodayJobItem[]>([])
+  const [todayJobsLoading, setTodayJobsLoading] = useState(false)
+  const [todayJobsError, setTodayJobsError] = useState<string | null>(null)
+  const [todayJobsLoaded, setTodayJobsLoaded] = useState(false)
   const [quickNotesText, setQuickNotesText] = useState('')
   const [isQuickNotesSaving, setIsQuickNotesSaving] = useState(false)
   const [quickNotesLoaded, setQuickNotesLoaded] = useState(false)
@@ -628,9 +659,12 @@ export function DashboardMobileQuickActions({
   const [selectedPresenceUserId, setSelectedPresenceUserId] = useState<string | null>(null)
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([])
   const [isActivityLoading, setIsActivityLoading] = useState(false)
+  const [spinningIcon, setSpinningIcon] = useState<SpinnableIconKey | null>(null)
   const [, startTransition] = useTransition()
   const closeTimerRef = useRef<number | null>(null)
+  const todayJobsCloseTimerRef = useRef<number | null>(null)
   const quickNotesCloseTimerRef = useRef<number | null>(null)
+  const iconSpinResetTimerRef = useRef<number | null>(null)
   const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
 
   useBodyScrollLock(isSheetMounted && !isDesktopViewport)
@@ -799,6 +833,7 @@ export function DashboardMobileQuickActions({
     const syncVisibility = () => {
       setIsQuickCreateVisible(readDashboardQuickCreateEnabled())
       setIsQuickNotesVisible(readDashboardQuickNotesEnabled())
+      setIsTodayJobsVisible(readDashboardTodayJobsEnabled())
     }
 
     syncVisibility()
@@ -824,6 +859,58 @@ export function DashboardMobileQuickActions({
     setIsQuickNotesOpen(false)
     setActiveAction(null)
   }, [isQuickNotesVisible, activeAction])
+
+  useEffect(() => {
+    if (isTodayJobsVisible) return
+    if (activeAction !== 'today_jobs') return
+    closeTodayJobs()
+  }, [isTodayJobsVisible, activeAction])
+
+  useEffect(() => {
+    if (canViewJobs && isTodayJobsVisible) return
+    if (activeAction === 'today_jobs') {
+      closeTodayJobs()
+    }
+  }, [activeAction, canViewJobs, isTodayJobsVisible])
+
+  async function loadTodayJobs(options?: { showLoading: boolean }) {
+    const showLoading = options?.showLoading ?? false
+    if (showLoading) {
+      setTodayJobsLoading(true)
+    }
+    setTodayJobsError(null)
+
+    const result = await getTodayJobsForDashboardAction()
+    if (!result.success) {
+      setTodayJobs([])
+      setTodayJobsError(result.error ?? 'Nepodařilo se načíst dnešní zakázky.')
+      setTodayJobsLoading(false)
+      setTodayJobsLoaded(false)
+      return
+    }
+
+    setTodayJobs((result.items ?? []) as TodayJobItem[])
+    setTodayJobsLoading(false)
+    setTodayJobsLoaded(true)
+  }
+
+  useEffect(() => {
+    if (!isHydrated || !canViewJobs || !isTodayJobsVisible) return
+    if (todayJobsLoaded || todayJobsLoading) return
+    void loadTodayJobs({ showLoading: false })
+  }, [
+    canViewJobs,
+    isHydrated,
+    isTodayJobsVisible,
+    todayJobsLoaded,
+    todayJobsLoading,
+  ])
+
+  useEffect(() => {
+    if (activeAction !== 'today_jobs') return
+    if (todayJobsLoaded) return
+    void loadTodayJobs({ showLoading: true })
+  }, [activeAction, todayJobsLoaded])
 
   useEffect(() => {
     if (activeAction !== 'quick_notes') return
@@ -853,13 +940,33 @@ export function DashboardMobileQuickActions({
       if (closeTimerRef.current) {
         window.clearTimeout(closeTimerRef.current)
       }
+      if (todayJobsCloseTimerRef.current) {
+        window.clearTimeout(todayJobsCloseTimerRef.current)
+      }
       if (quickNotesCloseTimerRef.current) {
         window.clearTimeout(quickNotesCloseTimerRef.current)
+      }
+      if (iconSpinResetTimerRef.current) {
+        window.clearTimeout(iconSpinResetTimerRef.current)
       }
     }
   }, [])
 
+  function triggerIconSpin(icon: SpinnableIconKey) {
+    if (iconSpinResetTimerRef.current) {
+      window.clearTimeout(iconSpinResetTimerRef.current)
+    }
+
+    setSpinningIcon(icon)
+    iconSpinResetTimerRef.current = window.setTimeout(() => {
+      setSpinningIcon(null)
+      iconSpinResetTimerRef.current = null
+    }, 460)
+  }
+
   function openSheet() {
+    closeTodayJobsImmediately()
+
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current)
       closeTimerRef.current = null
@@ -882,6 +989,8 @@ export function DashboardMobileQuickActions({
   }
 
   function openQuickNotes() {
+    closeTodayJobsImmediately()
+
     if (quickNotesCloseTimerRef.current) {
       window.clearTimeout(quickNotesCloseTimerRef.current)
       quickNotesCloseTimerRef.current = null
@@ -893,6 +1002,40 @@ export function DashboardMobileQuickActions({
       setIsQuickNotesOpen(true)
     })
     triggerHaptic(10)
+  }
+
+  function openTodayJobs() {
+    if (todayJobsCloseTimerRef.current) {
+      window.clearTimeout(todayJobsCloseTimerRef.current)
+      todayJobsCloseTimerRef.current = null
+    }
+
+    setActiveAction('today_jobs')
+    setIsTodayJobsMounted(true)
+    requestAnimationFrame(() => {
+      setIsTodayJobsOpen(true)
+    })
+    triggerHaptic(10)
+  }
+
+  function closeTodayJobs() {
+    setIsTodayJobsOpen(false)
+    triggerHaptic(8)
+    todayJobsCloseTimerRef.current = window.setTimeout(() => {
+      setIsTodayJobsMounted(false)
+      setActiveAction((current) => (current === 'today_jobs' ? null : current))
+      todayJobsCloseTimerRef.current = null
+    }, 180)
+  }
+
+  function closeTodayJobsImmediately() {
+    if (todayJobsCloseTimerRef.current) {
+      window.clearTimeout(todayJobsCloseTimerRef.current)
+      todayJobsCloseTimerRef.current = null
+    }
+    setIsTodayJobsOpen(false)
+    setIsTodayJobsMounted(false)
+    setActiveAction((current) => (current === 'today_jobs' ? null : current))
   }
 
   function closeQuickNotesWithAnimation() {
@@ -957,6 +1100,17 @@ export function DashboardMobileQuickActions({
     }).format(date)
   }
 
+  function formatJobDateTime(value: string) {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return '—'
+    return new Intl.DateTimeFormat('cs-CZ', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date)
+  }
+
   async function clearQuickNotes() {
     setIsQuickNotesClearConfirmOpen(false)
     setIsQuickNotesSaving(true)
@@ -992,6 +1146,7 @@ export function DashboardMobileQuickActions({
   }, [isSheetMounted])
 
   function handleActionSelect(action: QuickActionKey) {
+    closeTodayJobsImmediately()
     setActiveAction(action)
     closeSheet()
     void trackUserPresenceAction({
@@ -1100,6 +1255,7 @@ export function DashboardMobileQuickActions({
 
   async function openPresenceModal() {
     if (!isAdmin || !isDesktopViewport) return
+    closeTodayJobsImmediately()
     triggerHaptic(10)
     setIsPresenceModalOpen(true)
     const result = await trackUserPresenceAction({
@@ -1114,21 +1270,54 @@ export function DashboardMobileQuickActions({
     }
   }
 
-  const mobileQuickCreateRight = 16
-  const mobileQuickNotesRight = isAdmin ? 84 : 84
-  const mobileInvoicesRight = isAdmin
-    ? isQuickNotesVisible
-      ? 152
-      : 84
-    : 84
+  const isTodayJobsButtonVisible = canViewJobs && isTodayJobsVisible
 
-  const desktopQuickCreateRight = 28
-  const desktopQuickNotesRight = 104
-  const desktopInvoicesRight = isQuickNotesVisible ? 180 : 104
-  const desktopManualNotificationsRight = isQuickNotesVisible ? 256 : 180
-  const desktopOnlinePanelRight = isQuickNotesVisible ? 332 : 256
-  const shouldHideFloatingControls = Boolean(activeAction && activeAction !== 'quick_notes')
-  const blurredFloatingClass = isQuickNotesOpen ? 'opacity-55 saturate-[0.75]' : ''
+  const mobileBaseRight = 16
+  const mobileStep = 68
+  const mobileQuickCreateRight = mobileBaseRight
+  const mobileTodayJobsRight =
+    mobileQuickCreateRight + (isQuickCreateVisible ? mobileStep : 0)
+  const mobileQuickNotesRight =
+    mobileTodayJobsRight + (isTodayJobsButtonVisible ? mobileStep : 0)
+  const mobileInvoicesRight =
+    mobileQuickNotesRight + (isQuickNotesVisible ? mobileStep : 0)
+
+  const desktopBaseRight = 28
+  const desktopStep = 76
+  const desktopQuickCreateRight = desktopBaseRight
+  const desktopTodayJobsRight =
+    desktopQuickCreateRight + (isQuickCreateVisible ? desktopStep : 0)
+  const desktopQuickNotesRight =
+    desktopTodayJobsRight + (isTodayJobsButtonVisible ? desktopStep : 0)
+  const desktopInvoicesRight =
+    desktopQuickNotesRight + (isQuickNotesVisible ? desktopStep : 0)
+  const desktopManualNotificationsRight =
+    desktopInvoicesRight + (isAdmin ? desktopStep : 0)
+  const desktopOnlinePanelRight =
+    desktopManualNotificationsRight + (isAdmin ? desktopStep : 0)
+  const shouldHideFloatingControls = Boolean(
+    activeAction && activeAction !== 'quick_notes' && activeAction !== 'today_jobs'
+  )
+  const FLOATING_INACTIVE_CLASS = 'blur-[6px] lg:blur-[5px]'
+  const activeFloatingModal: 'quick_create' | 'quick_notes' | 'today_jobs' | null =
+    isQuickNotesOpen
+      ? 'quick_notes'
+      : isTodayJobsOpen
+      ? 'today_jobs'
+      : isSheetOpen
+      ? 'quick_create'
+      : null
+  const isQuickCreateActive = activeFloatingModal === 'quick_create'
+
+  const getFloatingBlurClass = (
+    activeFloatingButton: 'quick_create' | 'quick_notes' | 'today_jobs' | 'other'
+  ) => {
+    if (!activeFloatingModal) return ''
+    if (activeFloatingButton === activeFloatingModal) return ''
+    if (activeFloatingButton === 'other') return FLOATING_INACTIVE_CLASS
+    if (activeFloatingButton !== activeFloatingModal) return FLOATING_INACTIVE_CLASS
+    return ''
+  }
 
   const floatingLayer = (
     <>
@@ -1144,10 +1333,10 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] hidden overflow-hidden border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] text-zinc-900 backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted
+              : isSheetMounted && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_42px_rgba(15,23,42,0.26)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(15,23,42,0.2)] hover:-translate-y-0.5'
-          } ${blurredFloatingClass}`}
+          } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${desktopOnlinePanelRight}px`,
             bottom: '28px',
@@ -1199,16 +1388,18 @@ export function DashboardMobileQuickActions({
           aria-label="Přijaté faktury"
           title="Přijaté faktury"
           onClick={() => {
+            closeTodayJobsImmediately()
             triggerHaptic(10)
+            triggerIconSpin('invoices')
             setActiveAction('received_invoices')
           }}
           className={`fixed z-[70] flex items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetMounted
+              : isSheetMounted && !isQuickCreateActive
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(214,219,227,0.30),0_24px_50px_rgba(30,41,59,0.46)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_14px_34px_rgba(30,41,59,0.36)]'
-          } ${blurredFloatingClass}`}
+          } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${mobileInvoicesRight}px`,
             bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
@@ -1221,7 +1412,9 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-6 w-6"
+            className={`h-6 w-6 ${
+              spinningIcon === 'invoices' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
+            }`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1248,16 +1441,18 @@ export function DashboardMobileQuickActions({
           aria-label="Ruční notifikace"
           title="Ruční notifikace"
           onClick={() => {
+            closeTodayJobsImmediately()
             triggerHaptic(10)
+            triggerIconSpin('manual_notifications')
             setActiveAction('manual_notifications')
           }}
           className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted
+              : isSheetMounted && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
-          } ${blurredFloatingClass}`}
+          } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${desktopManualNotificationsRight}px`,
             bottom: '28px',
@@ -1270,7 +1465,9 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-7 w-7"
+            className={`h-7 w-7 ${
+              spinningIcon === 'manual_notifications' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
+            }`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1286,6 +1483,62 @@ export function DashboardMobileQuickActions({
         </button>
       ) : null}
 
+      {isTodayJobsButtonVisible ? (
+        <button
+          type="button"
+          aria-label="Dnešní zakázky"
+          title="Dnešní zakázky"
+          onClick={() => {
+            if (isTodayJobsOpen) {
+              closeTodayJobs()
+              return
+            }
+            triggerIconSpin('today_jobs')
+            openTodayJobs()
+          }}
+          className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
+            shouldHideFloatingControls
+              ? 'pointer-events-none opacity-0 scale-[0.92]'
+              : isSheetMounted && !isQuickCreateActive
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
+          } ${isTodayJobsOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('today_jobs')}`}
+          style={{
+            right: `${mobileTodayJobsRight}px`,
+            bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
+            width: '60px',
+            height: '60px',
+            minWidth: '60px',
+            minHeight: '60px',
+            borderRadius: '999px',
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className={`h-7 w-7 ${
+              spinningIcon === 'today_jobs' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
+            }`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M2.8 14.7h12.4" />
+            <rect x="3.4" y="8" width="10.9" height="5.9" rx="1.4" />
+            <path d="M14.3 12h2.1" />
+            <path d="M16.4 12h1.4v1.5" />
+            <circle cx="6.1" cy="16.8" r="1.3" />
+            <circle cx="11.6" cy="16.8" r="1.3" />
+            <rect x="14.7" y="3.5" width="6.8" height="6.8" rx="1.5" />
+            <path d="M16.3 2.8v1.5" />
+            <path d="M19.9 2.8v1.5" />
+            <path d="M14.7 6h6.8" />
+          </svg>
+        </button>
+      ) : null}
+
       {isQuickNotesVisible ? (
         <button
           type="button"
@@ -1296,15 +1549,16 @@ export function DashboardMobileQuickActions({
               void persistQuickNotesAndClose()
               return
             }
+            triggerIconSpin('quick_notes')
             openQuickNotes()
           }}
           className={`fixed z-[70] flex items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetMounted
+              : isSheetMounted && !isQuickCreateActive
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,245,196,0.7),0_24px_52px_rgba(145,112,17,0.35)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.66),0_14px_34px_rgba(145,112,17,0.3)]'
-          } ${isQuickNotesOpen ? 'z-[80]' : ''}`}
+          } ${isQuickNotesOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_notes')}`}
           style={{
             right: `${mobileQuickNotesRight}px`,
             bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
@@ -1317,7 +1571,9 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-6 w-6"
+            className={`h-6 w-6 ${
+              spinningIcon === 'quick_notes' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
+            }`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1344,6 +1600,7 @@ export function DashboardMobileQuickActions({
               return
             }
 
+            triggerIconSpin('quick_create')
             openSheet()
           }}
           className={`fixed z-[70] flex items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
@@ -1352,7 +1609,7 @@ export function DashboardMobileQuickActions({
               : isSheetMounted
               ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
-          } ${blurredFloatingClass}`}
+          } ${isSheetOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_create')}`}
           style={{
             right: `${mobileQuickCreateRight}px`,
             bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
@@ -1366,7 +1623,7 @@ export function DashboardMobileQuickActions({
           <span
             className={`text-[30px] font-semibold leading-none transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetMounted ? 'rotate-45' : 'rotate-0'
-            }`}
+            } ${spinningIcon === 'quick_create' ? 'animate-[spin_.45s_ease-in-out_1]' : ''}`}
           >
             +
           </span>
@@ -1379,16 +1636,18 @@ export function DashboardMobileQuickActions({
           aria-label="Přijaté faktury"
           title="Přijaté faktury"
           onClick={() => {
+            closeTodayJobsImmediately()
             triggerHaptic(10)
+            triggerIconSpin('invoices')
             setActiveAction('received_invoices')
           }}
           className={`fixed z-[70] hidden items-center justify-center border border-[#334155]/95 bg-[linear-gradient(160deg,rgba(81,94,112,0.96)_0%,rgba(71,85,105,0.97)_45%,rgba(51,65,85,0.99)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1e293b] hover:shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_38px_rgba(30,41,59,0.6)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted
+              : isSheetMounted && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(214,219,227,0.34),0_20px_42px_rgba(30,41,59,0.5)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(214,219,227,0.28),0_12px_28px_rgba(30,41,59,0.38)]'
-          } ${blurredFloatingClass}`}
+          } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${desktopInvoicesRight}px`,
             bottom: '28px',
@@ -1401,7 +1660,9 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-7 w-7"
+            className={`h-7 w-7 ${
+              spinningIcon === 'invoices' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
+            }`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1422,6 +1683,62 @@ export function DashboardMobileQuickActions({
         </button>
       ) : null}
 
+      {isTodayJobsButtonVisible ? (
+        <button
+          type="button"
+          aria-label="Dnešní zakázky"
+          title="Dnešní zakázky"
+          onClick={() => {
+            if (isTodayJobsOpen) {
+              closeTodayJobs()
+              return
+            }
+            triggerIconSpin('today_jobs')
+            openTodayJobs()
+          }}
+          className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+            shouldHideFloatingControls
+              ? 'pointer-events-none opacity-0 scale-[0.94]'
+              : isSheetMounted && !isQuickCreateActive
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+          } ${isTodayJobsOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('today_jobs')}`}
+          style={{
+            right: `${desktopTodayJobsRight}px`,
+            bottom: '28px',
+            width: '68px',
+            height: '68px',
+            minWidth: '68px',
+            minHeight: '68px',
+            borderRadius: '999px',
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className={`h-8 w-8 ${
+              spinningIcon === 'today_jobs' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
+            }`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M2.8 14.7h12.4" />
+            <rect x="3.4" y="8" width="10.9" height="5.9" rx="1.4" />
+            <path d="M14.3 12h2.1" />
+            <path d="M16.4 12h1.4v1.5" />
+            <circle cx="6.1" cy="16.8" r="1.3" />
+            <circle cx="11.6" cy="16.8" r="1.3" />
+            <rect x="14.7" y="3.5" width="6.8" height="6.8" rx="1.5" />
+            <path d="M16.3 2.8v1.5" />
+            <path d="M19.9 2.8v1.5" />
+            <path d="M14.7 6h6.8" />
+          </svg>
+        </button>
+      ) : null}
+
       {isQuickNotesVisible ? (
         <button
           type="button"
@@ -1432,15 +1749,16 @@ export function DashboardMobileQuickActions({
               void persistQuickNotesAndClose()
               return
             }
+            triggerIconSpin('quick_notes')
             openQuickNotes()
           }}
           className={`fixed z-[70] hidden items-center justify-center border border-[#d2b85a]/95 bg-[linear-gradient(160deg,rgba(247,219,116,0.96)_0%,rgba(236,204,94,0.97)_45%,rgba(220,185,72,0.99)_100%)] text-[#5a4707] backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#c6aa47] hover:shadow-[inset_0_1px_0_rgba(255,245,196,0.78),0_20px_38px_rgba(145,112,17,0.44)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetMounted
+              : isSheetMounted && !isQuickCreateActive
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,245,196,0.74),0_18px_42px_rgba(145,112,17,0.4)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,245,196,0.68),0_12px_28px_rgba(145,112,17,0.34)]'
-          } ${isQuickNotesOpen ? 'z-[80]' : ''}`}
+          } ${isQuickNotesOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_notes')}`}
           style={{
             right: `${desktopQuickNotesRight}px`,
             bottom: '28px',
@@ -1453,7 +1771,9 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-7 w-7"
+            className={`h-7 w-7 ${
+              spinningIcon === 'quick_notes' ? 'animate-[spin_.45s_ease-in-out_1]' : ''
+            }`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.9"
@@ -1480,6 +1800,7 @@ export function DashboardMobileQuickActions({
               return
             }
 
+            triggerIconSpin('quick_create')
             openSheet()
           }}
           className={`fixed z-[70] hidden items-center justify-center border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
@@ -1488,7 +1809,7 @@ export function DashboardMobileQuickActions({
               : isSheetMounted
               ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
               : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
-        } ${blurredFloatingClass}`}
+        } ${isSheetOpen ? 'z-[80]' : ''} ${getFloatingBlurClass('quick_create')}`}
           style={{
             right: `${desktopQuickCreateRight}px`,
             bottom: '28px',
@@ -1502,7 +1823,7 @@ export function DashboardMobileQuickActions({
           <span
             className={`text-[34px] font-semibold leading-none transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetMounted ? 'rotate-45' : 'rotate-0'
-            }`}
+            } ${spinningIcon === 'quick_create' ? 'animate-[spin_.45s_ease-in-out_1]' : ''}`}
           >
             +
           </span>
@@ -1524,8 +1845,8 @@ export function DashboardMobileQuickActions({
                 : 'rgba(24, 24, 27, 0.30)',
               backdropFilter: isSheetOpen
                 ? isDesktopViewport
-                  ? 'blur(2px)'
-                  : 'blur(3px)'
+                  ? DASHBOARD_MODAL_BACKDROP_BLUR_DESKTOP
+                  : DASHBOARD_MODAL_BACKDROP_BLUR_MOBILE
                 : 'blur(0px)',
             }}
           />
@@ -1566,21 +1887,141 @@ export function DashboardMobileQuickActions({
 
             <div className={`mt-1 grid ${isDesktopViewport ? 'gap-2.5' : 'gap-2'}`}>
               {actions.map((action, index) => (
-                <button
+                <div
                   key={action.key}
-                  type="button"
-                  onClick={() => handleActionSelect(action.key)}
-                  className={`flex items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
-                    isDesktopViewport ? 'min-h-[56px] py-3.5 text-[15px]' : 'min-h-[52px] py-3 text-[15px]'
-                  } ${
+                  className={`transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
                     isSheetOpen ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.96] opacity-0'
                   }`}
                   style={{ transitionDelay: isSheetOpen ? `${110 + index * 24}ms` : '0ms' }}
                 >
-                  <span>{action.label}</span>
-                  <span className="text-[24px] font-bold leading-none text-[#2980B9]">+</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleActionSelect(action.key)}
+                    className={`flex w-full items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[180ms] ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
+                      isDesktopViewport ? 'min-h-[56px] py-3.5 text-[15px]' : 'min-h-[52px] py-3 text-[15px]'
+                    }`}
+                  >
+                    <span>{action.label}</span>
+                    <span className="text-[24px] font-bold leading-none text-[#2980B9]">+</span>
+                  </button>
+                </div>
               ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isTodayJobsMounted ? (
+        <div className="fixed inset-0 z-[65]" aria-hidden="true">
+          <button
+            type="button"
+            aria-label="Zavřít dnešní zakázky"
+            onClick={closeTodayJobs}
+            className={`absolute inset-0 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isTodayJobsOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{
+              backgroundColor: isDesktopViewport
+                ? 'rgba(15, 23, 42, 0.08)'
+                : 'rgba(24, 24, 27, 0.30)',
+              backdropFilter: isTodayJobsOpen
+                ? isDesktopViewport
+                  ? DASHBOARD_MODAL_BACKDROP_BLUR_DESKTOP
+                  : DASHBOARD_MODAL_BACKDROP_BLUR_MOBILE
+                : 'blur(0px)',
+            }}
+          />
+
+          <div
+            className={`absolute overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.9)_42%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isTodayJobsOpen
+                ? 'translate-x-0 translate-y-0 scale-100 opacity-100 shadow-[0_46px_112px_rgba(15,23,42,0.24)]'
+                : 'translate-x-4 translate-y-5 scale-[0.72] opacity-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
+            }`}
+            style={{
+              right: isDesktopViewport ? '28px' : '16px',
+              bottom: isDesktopViewport
+                ? '104px'
+                : `calc(env(safe-area-inset-bottom, 0px) + 86px + ${viewportBottomOffset}px)`,
+              width: isDesktopViewport ? '340px' : 'min(290px, calc(100vw - 2rem))',
+              transformOrigin: 'bottom right',
+              transitionDelay: isTodayJobsOpen ? '34ms' : '0ms',
+              background:
+                'linear-gradient(168deg, rgba(255,255,255,0.96) 0%, rgba(247,250,253,0.9) 42%, rgba(241,245,249,0.84) 100%)',
+            }}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90"
+            />
+
+            <div
+              className={`px-2 pb-2 pt-1 transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                isTodayJobsOpen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+              }`}
+              style={{ transitionDelay: isTodayJobsOpen ? '86ms' : '0ms' }}
+            >
+              <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-[#2980B9]">
+                DNEŠNÍ ZAKÁZKY
+              </div>
+            </div>
+
+            <div
+              className={`mt-1 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                isTodayJobsOpen ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.96] opacity-0'
+              }`}
+              style={{ transitionDelay: isTodayJobsOpen ? '110ms' : '0ms' }}
+            >
+              {todayJobsLoading ? (
+                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-3 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  Načítám dnešní zakázky…
+                </div>
+              ) : todayJobsError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {todayJobsError}
+                </div>
+              ) : todayJobs.length === 0 ? (
+                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-3 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  Dnes žádné zakázky.
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {todayJobs.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[11px] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]"
+                      title={`${item.jobNumber} | ${item.companyName} | ${formatJobDateTime(item.startAt)} - ${formatJobDateTime(item.endAt)} | Technik: ${item.technicianName ?? '—'} | Agregát: ${item.generatorName ?? '—'}`}
+                    >
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[10px] font-semibold tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_14px_rgba(24,78,129,0.24)]">
+                          {item.jobNumber}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate font-medium">{item.companyName}</span>
+                      </div>
+
+                      <div className="mt-1 grid grid-cols-2 gap-2 whitespace-nowrap text-zinc-600">
+                        <span className="min-w-0 truncate font-semibold text-zinc-900">Začátek: {formatJobDateTime(item.startAt)}</span>
+                        <span className="min-w-0 truncate font-semibold text-zinc-900">Konec: {formatJobDateTime(item.endAt)}</span>
+                      </div>
+
+                      <div className="mt-1 grid grid-cols-2 gap-2 whitespace-nowrap text-zinc-600">
+                        <span className="min-w-0 truncate">
+                          Technik:{' '}
+                          <span className={item.technicianName ? 'font-semibold text-zinc-900' : ''}>
+                            {item.technicianName ?? '—'}
+                          </span>
+                        </span>
+                        <span className="min-w-0 truncate">
+                          Agregát:{' '}
+                          <span className={item.generatorName ? 'font-semibold text-zinc-900' : ''}>
+                            {item.generatorName ?? '—'}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

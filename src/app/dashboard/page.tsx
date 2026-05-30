@@ -1538,6 +1538,7 @@ export default async function DashboardPage() {
           clients={quickActionClients}
           contacts={quickActionContacts}
           offers={quickActionOffers}
+          canViewJobs={Boolean(profile?.can_view_jobs)}
           canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
           canCreateJobs={isAdmin}
           isAdmin={isAdmin}
