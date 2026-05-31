@@ -1114,12 +1114,14 @@ export function DashboardMobileQuickActions({
   function formatJobDateTime(value: string) {
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return '—'
-    return new Intl.DateTimeFormat('cs-CZ', {
-      day: '2-digit',
-      month: '2-digit',
+    const day = date.getDate()
+    const month = date.getMonth() + 1
+    const time = new Intl.DateTimeFormat('cs-CZ', {
       hour: '2-digit',
       minute: '2-digit',
     }).format(date)
+
+    return `${day}.${month}. ${time}`
   }
 
   async function clearQuickNotes() {
