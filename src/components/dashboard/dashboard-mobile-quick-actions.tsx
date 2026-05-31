@@ -1313,9 +1313,9 @@ export function DashboardMobileQuickActions({
   )
   const FLOATING_INACTIVE_CLASS = 'blur-[6px] lg:blur-[5px]'
   const FLOATING_BLUE_BUTTON_CLASS =
-    'border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white'
+    'border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white hover:border-[#3a3a3a] hover:bg-[linear-gradient(160deg,rgba(48,48,48,0.96)_0%,rgba(28,28,28,0.97)_45%,rgba(12,12,12,0.99)_100%)]'
   const FLOATING_BLUE_BUTTON_ACTIVE_CLASS =
-    'scale-[0.97] shadow-[inset_0_3px_8px_rgba(7,38,64,0.42),inset_0_1px_0_rgba(170,217,247,0.25),0_10px_22px_rgba(9,48,82,0.34)]'
+    'scale-[0.97] bg-[linear-gradient(160deg,rgba(52,52,52,0.97)_0%,rgba(32,32,32,0.98)_45%,rgba(14,14,14,0.99)_100%)] shadow-[inset_0_3px_8px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(0,0,0,0.46)]'
   const activeFloatingModal: 'quick_create' | 'quick_notes' | 'today_jobs' | null =
     isQuickNotesOpen
       ? 'quick_notes'
@@ -1419,8 +1419,8 @@ export function DashboardMobileQuickActions({
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_24px_52px_rgba(0,0,0,0.48)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_34px_rgba(0,0,0,0.42)]'
           } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${mobileInvoicesRight}px`,
@@ -1471,12 +1471,12 @@ export function DashboardMobileQuickActions({
             triggerIconSpin('manual_notifications')
             setActiveAction('manual_notifications')
           }}
-          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_42px_rgba(0,0,0,0.46)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_28px_rgba(0,0,0,0.42)]'
           } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${desktopManualNotificationsRight}px`,
@@ -1524,8 +1524,8 @@ export function DashboardMobileQuickActions({
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_24px_52px_rgba(0,0,0,0.48)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_34px_rgba(0,0,0,0.42)]'
           } ${isTodayJobsOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('today_jobs')}`}
           style={{
             right: `${mobileTodayJobsRight}px`,
@@ -1579,8 +1579,8 @@ export function DashboardMobileQuickActions({
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_24px_52px_rgba(9,48,82,0.55)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_24px_52px_rgba(0,0,0,0.48)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_34px_rgba(0,0,0,0.42)]'
           } ${isQuickNotesOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_notes')}`}
           style={{
             right: `${mobileQuickNotesRight}px`,
@@ -1628,7 +1628,7 @@ export function DashboardMobileQuickActions({
           className={`fixed z-[70] flex items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_14px_34px_rgba(9,48,82,0.44)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_34px_rgba(0,0,0,0.42)]'
           } ${isSheetOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_create')}`}
           style={{
             right: `${mobileQuickCreateRight}px`,
@@ -1666,12 +1666,12 @@ export function DashboardMobileQuickActions({
             triggerIconSpin('invoices')
             setActiveAction('received_invoices')
           }}
-          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_42px_rgba(0,0,0,0.46)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_28px_rgba(0,0,0,0.42)]'
           } ${getFloatingBlurClass('other')}`}
           style={{
             right: `${desktopInvoicesRight}px`,
@@ -1720,12 +1720,12 @@ export function DashboardMobileQuickActions({
             triggerIconSpin('today_jobs')
             openTodayJobs()
           }}
-          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_42px_rgba(0,0,0,0.46)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_28px_rgba(0,0,0,0.42)]'
           } ${isTodayJobsOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('today_jobs')}`}
           style={{
             right: `${desktopTodayJobsRight}px`,
@@ -1775,12 +1775,12 @@ export function DashboardMobileQuickActions({
             triggerIconSpin('quick_notes')
             openQuickNotes()
           }}
-          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_42px_rgba(0,0,0,0.46)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_28px_rgba(0,0,0,0.42)]'
           } ${isQuickNotesOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_notes')}`}
           style={{
             right: `${desktopQuickNotesRight}px`,
@@ -1825,12 +1825,12 @@ export function DashboardMobileQuickActions({
             triggerIconSpin('quick_create')
             openSheet()
           }}
-          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#1f5f8e] hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_20px_38px_rgba(9,48,82,0.6)] lg:flex ${
+          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetMounted
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_18px_42px_rgba(9,48,82,0.52)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_28px_rgba(9,48,82,0.44)]'
+              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_42px_rgba(0,0,0,0.46)]'
+              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_28px_rgba(0,0,0,0.42)]'
         } ${isSheetOpen ? `z-[80] ${FLOATING_BLUE_BUTTON_ACTIVE_CLASS}` : ''} ${getFloatingBlurClass('quick_create')}`}
           style={{
             right: `${desktopQuickCreateRight}px`,
