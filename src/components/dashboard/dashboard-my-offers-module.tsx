@@ -260,7 +260,7 @@ export function DashboardMyOffersModule({
             <span>Moje nabídky</span>
             <span
               aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_8px_16px_rgba(9,48,82,0.34)] transition duration-200 ease-out group-hover:-translate-y-[1px] group-hover:border-[#1f5f8e] group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_20px_rgba(9,48,82,0.42)]"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_6px_12px_rgba(0,0,0,0.26)] transition duration-200 ease-out group-hover:-translate-y-[1px] group-hover:border-[#1f5f8e] group-hover:bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.36),0_9px_16px_rgba(9,48,82,0.30)]"
             >
               <span className="-translate-y-[1px] text-[18px] leading-none">›</span>
             </span>
