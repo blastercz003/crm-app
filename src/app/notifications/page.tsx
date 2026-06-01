@@ -553,7 +553,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
               />
             ))
           ) : (
-            <div className="rounded-[24px] border border-dashed border-zinc-300 bg-white px-5 py-10 text-sm text-zinc-500">
+            <div className="rounded-[24px] border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.9)_52%,rgba(242,247,252,0.86)_100%)] px-5 py-10 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_26px_rgba(15,23,42,0.08)] backdrop-blur-[10px]">
               Pro vybraný filtr tu nejsou žádné notifikace.
             </div>
           )}
