@@ -1226,7 +1226,7 @@ export default async function DashboardPage() {
 
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
-  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse, offerSuggestionsResponse, receivedInvoicesDueCount] =
+  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse, offerSuggestionsResponse, receivedInvoicesDueCount, orderedOffersCountResponse] =
     await Promise.all([
     getCurrentUserNotificationStats(),
     getCurrentUserNotifications({ status: 'active', limit: 30 }),
@@ -1244,6 +1244,12 @@ export default async function DashboardPage() {
       .neq('status', 'realizace')
       .order('offer_number', { ascending: false }),
     isAdmin ? getReceivedInvoiceBadgeCount() : Promise.resolve(0),
+    isAdmin
+      ? supabase
+          .from('offers')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'ordered')
+      : Promise.resolve({ count: 0, error: null }),
     ])
 
   if (clientsResponse.error) {
@@ -1263,6 +1269,14 @@ export default async function DashboardPage() {
       `Nepodařilo se načíst nabídky pro rychlé akce: ${offerSuggestionsResponse.error.message}`
     )
   }
+
+  if (orderedOffersCountResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst počet objednaných nabídek: ${orderedOffersCountResponse.error.message}`
+    )
+  }
+
+  const orderedOffersCount = Number(orderedOffersCountResponse.count ?? 0)
 
   const quickActionClients = (clientsResponse.data ?? []) as DashboardClientOption[]
   const quickActionContacts =
@@ -1408,6 +1422,7 @@ export default async function DashboardPage() {
           canViewJobsPortal={Boolean(profile?.can_view_jobs_portal)}
           canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
           isAdmin={isAdmin}
+          offersOrderedCount={orderedOffersCount}
         />
 
         <DashboardGlobalSearchBody>

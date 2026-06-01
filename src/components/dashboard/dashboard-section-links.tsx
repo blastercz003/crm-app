@@ -9,6 +9,7 @@ type SectionLink = {
   label: string
   visible: boolean
   icon: React.ReactNode
+  badgeCount?: number
 }
 
 function IconClients() {
@@ -78,22 +79,31 @@ export function DashboardSectionLinks({
   canViewJobsPortal,
   canViewOffers,
   isAdmin,
+  offersOrderedCount,
 }: {
   canViewJobs: boolean
   canViewJobsPortal: boolean
   canViewOffers: boolean
   isAdmin: boolean
+  offersOrderedCount: number
 }) {
   const items = useMemo<SectionLink[]>(
     () => [
       { key: 'clients', href: '/clients', label: 'Klienti', visible: true, icon: <IconClients /> },
       { key: 'jobs', href: '/jobs', label: 'Zakázky', visible: canViewJobs, icon: <IconJobs /> },
       { key: 'jobs-portal', href: '/jobs-portal', label: 'Portál zakázek', visible: canViewJobsPortal, icon: <IconPortal /> },
-      { key: 'offers', href: '/offers', label: 'Nabídky', visible: canViewOffers, icon: <IconOffers /> },
+      {
+        key: 'offers',
+        href: '/offers',
+        label: 'Nabídky',
+        visible: canViewOffers,
+        icon: <IconOffers />,
+        badgeCount: isAdmin ? offersOrderedCount : 0,
+      },
       { key: 'finance', href: '/faktury', label: 'Finance', visible: isAdmin, icon: <IconFinance /> },
       { key: 'files', href: '/soubory', label: 'Soubory', visible: isAdmin, icon: <IconFiles /> },
     ].filter((item) => item.visible),
-    [canViewJobs, canViewJobsPortal, canViewOffers, isAdmin]
+    [canViewJobs, canViewJobsPortal, canViewOffers, isAdmin, offersOrderedCount]
   )
 
   return (
@@ -109,6 +119,11 @@ export function DashboardSectionLinks({
               className="relative inline-flex h-[74px] w-[74px] items-center justify-center rounded-[18px] border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.35),0_10px_22px_rgba(9,48,82,0.28)] backdrop-blur-xl transition-all duration-200 ease-out lg:h-[82px] lg:w-[82px] lg:group-hover:-translate-y-[2px]"
             >
               {item.icon}
+              {item.badgeCount && item.badgeCount > 0 ? (
+                <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
+                  {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                </span>
+              ) : null}
             </span>
             <span className="truncate text-[13px] font-semibold uppercase tracking-[0.01em] leading-tight lg:text-[15px]">
               {item.label}
