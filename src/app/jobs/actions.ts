@@ -75,6 +75,7 @@ type CreatedJobNotificationRow = {
   sales_owner: string | null
   start_at: string | null
   end_at: string | null
+  site_address: string | null
 }
 
 type ClientRow = {
@@ -632,9 +633,10 @@ async function notifyUsersAboutCreatedJob({
 
   const jobNumber = job.job_number ?? String(job.id)
   const companyName = job.company_name?.trim() || 'neuvedený klient'
+  const city = job.site_address?.split(',')[0]?.trim() || 'neuvedeno'
   const startAt = formatJobNotificationDate(job.start_at)
   const endAt = formatJobNotificationDate(job.end_at)
-  const message = `Byla vytvořena nová zakázka ${jobNumber} pro klienta: ${companyName}, termín ${startAt} - ${endAt}.`
+  const message = `Vytvořena nová zakázka ${jobNumber} pro klienta: ${companyName}, město: ${city}, termín ${startAt} - ${endAt}.`
 
   await Promise.all(
     recipientIds.map((recipientUserId) =>
@@ -909,7 +911,7 @@ export async function createJobAction(
       ...payload,
       evidence_status: 'nove',
     })
-    .select('id, job_number, company_name, sales_owner, start_at, end_at')
+    .select('id, job_number, company_name, sales_owner, start_at, end_at, site_address')
     .single()
 
   if (createJobError || !createdJob?.id) {
