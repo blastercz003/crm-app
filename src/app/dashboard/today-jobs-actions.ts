@@ -71,7 +71,7 @@ export async function getTodayJobsForDashboardAction() {
     const { data, error } = await supabase
       .from('jobs')
       .select(
-        'id, job_number, company_name, start_at, end_at, technician_name, generator_name'
+        'id, job_number, company_name, site_address, start_at, end_at, technician_name, generator_name'
       )
       .lte('start_at', dayEndIso)
       .gte('end_at', dayStartIso)
@@ -89,6 +89,7 @@ export async function getTodayJobsForDashboardAction() {
         id: item.id,
         jobNumber: item.job_number,
         companyName: item.company_name,
+        siteAddress: item.site_address,
         startAt: item.start_at,
         endAt: item.end_at,
         technicianName: item.technician_name,

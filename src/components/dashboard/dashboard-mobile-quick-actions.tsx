@@ -133,6 +133,7 @@ type TodayJobItem = {
   id: string
   jobNumber: string
   companyName: string
+  siteAddress: string | null
   startAt: string
   endAt: string
   technicianName: string | null
@@ -1124,6 +1125,15 @@ export function DashboardMobileQuickActions({
     return `${day}.${month}. ${time}`
   }
 
+  function formatJobCity(value: string | null) {
+    const raw = String(value ?? '').trim()
+    if (!raw) return '—'
+
+    const [cityPart] = raw.split(',')
+    const city = String(cityPart ?? '').trim()
+    return city || raw
+  }
+
   async function clearQuickNotes() {
     setIsQuickNotesClearConfirmOpen(false)
     setIsQuickNotesSaving(true)
@@ -1442,10 +1452,13 @@ export function DashboardMobileQuickActions({
             strokeLinejoin="round"
             aria-hidden="true"
           >
-            <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-            <path d="M14 3v5h5" />
-            <path d="M8 14h8" />
-            <path d="M8 18h6" />
+            <rect x="0.8" y="3.5" width="22.4" height="16.6" rx="3.3" />
+            <rect x="2.9" y="5.3" width="18.2" height="13" rx="2.3" />
+            <circle cx="12" cy="11.8" r="3.1" />
+            <path d="M13.9 9.9c-1.5 0-2.55.76-3.05 1.9" />
+            <path d="M10.35 11.35h3.85" />
+            <path d="M10.15 12.35h3.65" />
+            <path d="M10.95 12.95c.5 1.08 1.55 1.75 3 1.75" />
           </svg>
           {receivedInvoicesDueCount > 0 ? (
             <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
@@ -1539,7 +1552,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-7 w-7 ${getIconSpinClass('today_jobs')}`}
+            className={`h-8 w-8 translate-x-[2.5px] ${getIconSpinClass('today_jobs')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.3"
@@ -1547,16 +1560,12 @@ export function DashboardMobileQuickActions({
             strokeLinejoin="round"
             aria-hidden="true"
           >
-            <path d="M2.8 14.7h12.4" />
-            <rect x="3.4" y="8" width="10.9" height="5.9" rx="1.4" />
-            <path d="M14.3 12h2.1" />
-            <path d="M16.4 12h1.4v1.5" />
-            <circle cx="6.1" cy="16.8" r="1.3" />
-            <circle cx="11.6" cy="16.8" r="1.3" />
-            <rect x="14.7" y="3.5" width="6.8" height="6.8" rx="1.5" />
-            <path d="M16.3 2.8v1.5" />
-            <path d="M19.9 2.8v1.5" />
-            <path d="M14.7 6h6.8" />
+            <path d="M2.4 15.2h14.8" />
+            <rect x="3" y="7.1" width="12.9" height="7.1" rx="1.7" />
+            <path d="M15.9 11h2.6" />
+            <path d="M18.5 11h1.8v1.9" />
+            <circle cx="6.1" cy="17.7" r="1.5" />
+            <circle cx="12.5" cy="17.7" r="1.5" />
           </svg>
         </button>
       ) : null}
@@ -1693,10 +1702,13 @@ export function DashboardMobileQuickActions({
             strokeLinejoin="round"
             aria-hidden="true"
           >
-            <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-            <path d="M14 3v5h5" />
-            <path d="M8 14h8" />
-            <path d="M8 18h6" />
+            <rect x="0.8" y="3.5" width="22.4" height="16.6" rx="3.3" />
+            <rect x="2.9" y="5.3" width="18.2" height="13" rx="2.3" />
+            <circle cx="12" cy="11.8" r="3.1" />
+            <path d="M13.9 9.9c-1.5 0-2.55.76-3.05 1.9" />
+            <path d="M10.35 11.35h3.85" />
+            <path d="M10.15 12.35h3.65" />
+            <path d="M10.95 12.95c.5 1.08 1.55 1.75 3 1.75" />
           </svg>
           {receivedInvoicesDueCount > 0 ? (
             <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
@@ -1739,7 +1751,7 @@ export function DashboardMobileQuickActions({
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-8 w-8 ${getIconSpinClass('today_jobs')}`}
+            className={`h-9 w-9 translate-x-[2.5px] ${getIconSpinClass('today_jobs')}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.3"
@@ -1747,16 +1759,12 @@ export function DashboardMobileQuickActions({
             strokeLinejoin="round"
             aria-hidden="true"
           >
-            <path d="M2.8 14.7h12.4" />
-            <rect x="3.4" y="8" width="10.9" height="5.9" rx="1.4" />
-            <path d="M14.3 12h2.1" />
-            <path d="M16.4 12h1.4v1.5" />
-            <circle cx="6.1" cy="16.8" r="1.3" />
-            <circle cx="11.6" cy="16.8" r="1.3" />
-            <rect x="14.7" y="3.5" width="6.8" height="6.8" rx="1.5" />
-            <path d="M16.3 2.8v1.5" />
-            <path d="M19.9 2.8v1.5" />
-            <path d="M14.7 6h6.8" />
+            <path d="M2.4 15.2h14.8" />
+            <rect x="3" y="7.1" width="12.9" height="7.1" rx="1.7" />
+            <path d="M15.9 11h2.6" />
+            <path d="M18.5 11h1.8v1.9" />
+            <circle cx="6.1" cy="17.7" r="1.5" />
+            <circle cx="12.5" cy="17.7" r="1.5" />
           </svg>
         </button>
       ) : null}
@@ -1989,10 +1997,13 @@ export function DashboardMobileQuickActions({
             </div>
 
             <div
-              className={`mt-1 transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              className={`mt-1 overflow-y-auto transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
                 isTodayJobsOpen ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.96] opacity-0'
               }`}
-              style={{ transitionDelay: isTodayJobsOpen ? '110ms' : '0ms' }}
+              style={{
+                transitionDelay: isTodayJobsOpen ? '110ms' : '0ms',
+                maxHeight: isDesktopViewport ? 'min(62vh, 520px)' : 'min(56vh, 420px)',
+              }}
             >
               {todayJobsLoading ? (
                 <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-3 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
@@ -2011,7 +2022,7 @@ export function DashboardMobileQuickActions({
                   {todayJobs.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[11px] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]"
+                      className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[11px] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                       title={`${item.jobNumber} | ${item.companyName} | ${formatJobDateTime(item.startAt)} - ${formatJobDateTime(item.endAt)} | Technik: ${item.technicianName ?? '—'} | Agregát: ${item.generatorName ?? '—'}`}
                     >
                       <div className="flex items-center gap-2 whitespace-nowrap">
@@ -2019,6 +2030,11 @@ export function DashboardMobileQuickActions({
                           {item.jobNumber}
                         </span>
                         <span className="min-w-0 flex-1 truncate font-medium">{item.companyName}</span>
+                      </div>
+
+                      <div className="mt-1 text-zinc-600">
+                        <span>Adresa:</span>{' '}
+                        <span className="break-words text-zinc-900">{formatJobCity(item.siteAddress)}</span>
                       </div>
 
                       <div className="mt-1 grid grid-cols-2 gap-2 whitespace-nowrap text-zinc-600">
