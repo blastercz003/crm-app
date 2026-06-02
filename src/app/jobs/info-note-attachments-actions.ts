@@ -4,6 +4,10 @@ import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
+import {
+  getPersistedJobInfoAlert,
+  normalizeJobInfoText,
+} from './info-note-shared'
 
 const JOB_INFO_MEDIA_BUCKET = 'job-info-media'
 const MAX_IMAGE_SIZE_BYTES = 1 * 1024 * 1024
@@ -46,6 +50,49 @@ async function getJobNumberForLog(
     .maybeSingle()
 
   return String((data as { job_number?: string | null } | null)?.job_number ?? '').trim()
+}
+
+async function syncJobInfoAlertState(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const [{ data: jobData, error: jobError }, { count, error: countError }] =
+    await Promise.all([
+      supabase
+        .from('jobs')
+        .select('info_note, info_alert_enabled')
+        .eq('id', jobId)
+        .maybeSingle(),
+      supabase
+        .from('job_info_attachments')
+        .select('id', { count: 'exact', head: true })
+        .eq('job_id', jobId),
+    ])
+
+  if (jobError || countError || !jobData) {
+    return
+  }
+
+  const infoNote = normalizeJobInfoText(
+    (jobData as { info_note?: string | null }).info_note
+  )
+  const infoAlertEnabled = Boolean(
+    (jobData as { info_alert_enabled?: boolean | null }).info_alert_enabled
+  )
+  const nextAlertEnabled = getPersistedJobInfoAlert({
+    requestedAlertEnabled: infoAlertEnabled,
+    infoNote,
+    hasAttachments: (count ?? 0) > 0,
+  })
+
+  if (nextAlertEnabled === infoAlertEnabled) {
+    return
+  }
+
+  await supabase
+    .from('jobs')
+    .update({ info_alert_enabled: nextAlertEnabled })
+    .eq('id', jobId)
 }
 
 async function requireJobsAccess() {
@@ -237,6 +284,7 @@ export async function uploadJobInfoAttachmentAction(jobId: string, formData: For
   })
 
   revalidatePath('/jobs')
+  revalidatePath('/jobs-portal')
   revalidatePath('/dashboard')
 
   return { success: true, error: null }
@@ -286,6 +334,8 @@ export async function deleteJobInfoAttachmentAction(jobId: string, attachmentId:
     return { success: false, error: 'Fotku se nepodařilo smazat.' }
   }
 
+  await syncJobInfoAlertState(supabase, normalizedJobId)
+
   await logUserActivity({
     action: `Smazal fotku z info zakázky ${jobNumberForLog || normalizedJobId}: ${fileName || normalizedAttachmentId}`,
     section: 'Zakázky',
@@ -294,6 +344,7 @@ export async function deleteJobInfoAttachmentAction(jobId: string, attachmentId:
   })
 
   revalidatePath('/jobs')
+  revalidatePath('/jobs-portal')
   revalidatePath('/dashboard')
 
   return { success: true, error: null }

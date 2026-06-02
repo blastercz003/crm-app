@@ -12,6 +12,7 @@ import { JobFilterResetLink } from './job-filter-reset-link'
 import { getJobsChangesModalDataAction } from './changes-actions'
 import { JobsForegroundRefresh } from './jobs-foreground-refresh'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
+import { hasJobInfoContent } from './info-note-shared'
 
 export const metadata: Metadata = {
   title: 'Zakázky',
@@ -50,6 +51,9 @@ export type JobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  info_alert_enabled?: boolean | null
+  has_info_attachments?: boolean
+  has_info_content?: boolean
   job_status: JobStatus
   invoice_status: InvoiceStatus
   evidence_status: EvidenceStatus
@@ -453,6 +457,35 @@ export default async function JobsPage({
   }
 
   const typedJobs = (jobs ?? []) as JobRow[]
+  const jobIds = typedJobs.map((job) => job.id)
+  const { data: infoAttachmentRows, error: infoAttachmentsError } =
+    jobIds.length > 0
+      ? await supabase
+          .from('job_info_attachments')
+          .select('job_id')
+          .in('job_id', jobIds)
+      : { data: [], error: null }
+
+  if (infoAttachmentsError) {
+    throw new Error('Nepodařilo se načíst fotky k info zakázek.')
+  }
+
+  const jobsWithInfoState = typedJobs.map((job) => {
+    const hasAttachments = (infoAttachmentRows ?? []).some(
+      (row) => String((row as { job_id?: string | null }).job_id ?? '') === job.id
+    )
+
+    return {
+      ...job,
+      has_info_attachments: hasAttachments,
+      has_info_content: hasJobInfoContent({
+        infoNote: job.info_note,
+        hasAttachments,
+      }),
+      info_alert_enabled: Boolean(job.info_alert_enabled),
+    }
+  })
+
   const jobChangesData = await getJobsChangesModalDataAction()
   const jobChangesCount = jobChangesData.success
     ? (jobChangesData.data?.badgeCount ?? 0)
@@ -1019,7 +1052,7 @@ export default async function JobsPage({
           ) : (
             <div className="print-table-section">
               <JobsInteractiveTable
-                jobs={typedJobs}
+                jobs={jobsWithInfoState}
                 clientSuggestions={clientOptions}
                 clientContacts={clientContacts}
                 isAdmin={isAdmin}

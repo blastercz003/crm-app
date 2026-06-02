@@ -2,12 +2,19 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
-import { updatePortalJobInfoAction } from './actions'
+import {
+  updatePortalJobInfoAction,
+  updatePortalJobInfoAlertAction,
+} from './actions'
 import {
   deleteJobInfoAttachmentAction,
   getJobInfoAttachmentsAction,
   uploadJobInfoAttachmentAction,
 } from '@/app/jobs/info-note-attachments-actions'
+import {
+  hasJobInfoContent,
+  type JobInfoAttachmentItem,
+} from '@/app/jobs/info-note-shared'
 
 type PortalJobRow = {
   id: string
@@ -21,6 +28,9 @@ type PortalJobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  info_alert_enabled?: boolean | null
+  has_info_attachments?: boolean
+  has_info_content?: boolean
   job_status: JobStatus | null
 }
 
@@ -29,16 +39,6 @@ type JobsPortalTableProps = {
 }
 
 type JobStatus = 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
-type JobInfoAttachmentItem = {
-  id: string
-  jobId: string
-  fileName: string
-  mimeType: string
-  sizeBytes: number
-  createdAt: string
-  signedUrl: string | null
-}
-
 async function forceDownloadFile(url: string, fileName: string) {
   const response = await fetch(url)
   if (!response.ok) {
@@ -318,6 +318,13 @@ function InfoButton({
   compact?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [persistedInfoNote, setPersistedInfoNote] = useState(job.info_note)
+  const [persistedHasAttachments, setPersistedHasAttachments] = useState(
+    Boolean(job.has_info_attachments)
+  )
+  const [persistedAlertEnabled, setPersistedAlertEnabled] = useState(
+    Boolean(job.info_alert_enabled)
+  )
   const [draftValue, setDraftValue] = useState(job.info_note ?? '')
   const [isPending, startTransition] = useTransition()
   const [attachments, setAttachments] = useState<JobInfoAttachmentItem[]>([])
@@ -327,10 +334,46 @@ function InfoButton({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [previewAttachment, setPreviewAttachment] =
     useState<JobInfoAttachmentItem | null>(null)
+  const [isAlertEnabled, setIsAlertEnabled] = useState(
+    Boolean(job.info_alert_enabled)
+  )
+
+  const currentHasInfoContent = hasJobInfoContent({
+    infoNote: persistedInfoNote,
+    hasAttachments: persistedHasAttachments,
+  })
+  const modalHasInfoContent = hasJobInfoContent({
+    infoNote: draftValue,
+    attachmentsCount: attachments.length,
+  })
+  const effectiveAlertEnabled = modalHasInfoContent && isAlertEnabled
 
   useEffect(() => {
+    setPersistedInfoNote(job.info_note)
     setDraftValue(job.info_note ?? '')
   }, [job.info_note])
+
+  useEffect(() => {
+    setPersistedHasAttachments(Boolean(job.has_info_attachments))
+  }, [job.has_info_attachments])
+
+  useEffect(() => {
+    setPersistedAlertEnabled(Boolean(job.info_alert_enabled))
+    setIsAlertEnabled(Boolean(job.info_alert_enabled))
+  }, [job.info_alert_enabled])
+
+  useEffect(() => {
+    if (!modalHasInfoContent && isAlertEnabled) {
+      setIsAlertEnabled(false)
+    }
+  }, [isAlertEnabled, modalHasInfoContent])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDraftValue(persistedInfoNote ?? '')
+      setIsAlertEnabled(persistedAlertEnabled)
+    }
+  }, [isOpen, persistedAlertEnabled, persistedInfoNote])
 
   useEffect(() => {
     if (!isOpen) return
@@ -351,7 +394,17 @@ function InfoButton({
       return
     }
 
-    setAttachments((result.items ?? []) as JobInfoAttachmentItem[])
+    const nextAttachments = (result.items ?? []) as JobInfoAttachmentItem[]
+    setAttachments(nextAttachments)
+    setPersistedHasAttachments(nextAttachments.length > 0)
+    if (
+      !hasJobInfoContent({
+        infoNote: persistedInfoNote,
+        hasAttachments: nextAttachments.length > 0,
+      })
+    ) {
+      setPersistedAlertEnabled(false)
+    }
     setAttachmentsLoading(false)
   }
 
@@ -375,6 +428,7 @@ function InfoButton({
     }
 
     await reloadAttachments()
+    setPersistedHasAttachments(true)
   }
 
   async function handleDelete(attachmentId: string) {
@@ -390,6 +444,18 @@ function InfoButton({
     }
 
     await reloadAttachments()
+
+    const nextHasAttachments = attachments.some((item) => item.id !== attachmentId)
+    setPersistedHasAttachments(nextHasAttachments)
+    if (
+      !hasJobInfoContent({
+        infoNote: draftValue,
+        hasAttachments: nextHasAttachments,
+      })
+    ) {
+      setPersistedAlertEnabled(false)
+      setIsAlertEnabled(false)
+    }
   }
 
   async function handleDownload(item: JobInfoAttachmentItem) {
@@ -405,10 +471,45 @@ function InfoButton({
     }
   }
 
+  function handleAlertToggle() {
+    if (!modalHasInfoContent || isPending) return
+
+    const nextAlertEnabled = !effectiveAlertEnabled
+    const nextInfoNote = draftValue.trim() || null
+
+    setIsAlertEnabled(nextAlertEnabled)
+
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.set('info_note', draftValue)
+      formData.set('info_alert_enabled', nextAlertEnabled ? '1' : '0')
+
+      const result = await updatePortalJobInfoAlertAction(
+        job.id,
+        { success: false, error: null },
+        formData
+      )
+
+      if (!result.success) {
+        setIsAlertEnabled(effectiveAlertEnabled)
+        setAttachmentsError(
+          result.error ?? 'Alert info zakázky se nepodařilo uložit.'
+        )
+        return
+      }
+
+      setPersistedInfoNote(nextInfoNote)
+      setPersistedHasAttachments(attachments.length > 0)
+      setPersistedAlertEnabled(nextAlertEnabled)
+      setAttachmentsError(null)
+    })
+  }
+
   function saveInfo() {
     startTransition(async () => {
       const formData = new FormData()
       formData.set('info_note', draftValue)
+      formData.set('info_alert_enabled', effectiveAlertEnabled ? '1' : '0')
 
       const result = await updatePortalJobInfoAction(
         job.id,
@@ -421,6 +522,8 @@ function InfoButton({
         return
       }
 
+      setPersistedInfoNote(draftValue.trim() || null)
+      setPersistedAlertEnabled(effectiveAlertEnabled)
       setIsOpen(false)
     })
   }
@@ -430,15 +533,18 @@ function InfoButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 items-center justify-center px-3 text-[11px] font-bold uppercase ${
+        className={`relative inline-flex h-8 items-center justify-center px-3 text-[11px] font-bold uppercase ${
           compact ? STATUS_BADGE_COMPACT_WIDTH_CLASS : STATUS_BADGE_WIDTH_CLASS
         } ${
-          job.info_note
+          currentHasInfoContent
             ? GLASS_DARK_BUTTON_CLASS
             : GLASS_SECONDARY_BUTTON_CLASS
         }`}
       >
-        {job.info_note ? 'ZOBRAZIT' : 'PŘIDAT'}
+        {currentHasInfoContent && persistedAlertEnabled ? (
+          <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+        ) : null}
+        {currentHasInfoContent ? 'ZOBRAZIT' : 'PŘIDAT'}
       </button>
 
       {isOpen ? (
@@ -446,6 +552,38 @@ function InfoButton({
           title="Info k zakázce"
           description={job.job_number}
           descriptionAsBadge
+          headerActions={
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs font-bold tracking-[0.14em] ${
+                  effectiveAlertEnabled ? 'text-[#2f8fd4]' : 'text-zinc-900'
+                }`}
+              >
+                {effectiveAlertEnabled ? 'ALERT ON' : 'ALERT OFF'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={effectiveAlertEnabled}
+                aria-label={
+                  effectiveAlertEnabled ? 'Vypnout alert info zakázky' : 'Zapnout alert info zakázky'
+                }
+                disabled={!modalHasInfoContent || isPending}
+                onClick={handleAlertToggle}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full border px-0.5 transition duration-200 ${
+                  effectiveAlertEnabled
+                    ? 'border-[#76a9d3]/85 bg-[linear-gradient(135deg,#1f7fe4_0%,#49a8ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_18px_rgba(24,78,129,0.22)]'
+                    : 'border-white/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(226,232,240,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_16px_rgba(15,23,42,0.08)]'
+                } ${!modalHasInfoContent || isPending ? 'cursor-not-allowed opacity-55' : 'hover:-translate-y-[1px]'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-[22px] w-[22px] rounded-full bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(246,248,251,0.96)_100%)] shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition duration-200 ${
+                    effectiveAlertEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          }
           onClose={() => setIsOpen(false)}
         >
           <>
@@ -625,12 +763,14 @@ function ModalShell({
   title,
   description,
   descriptionAsBadge = false,
+  headerActions,
   onClose,
   children,
 }: {
   title: string
   description?: string
   descriptionAsBadge?: boolean
+  headerActions?: React.ReactNode
   onClose: () => void
   children: React.ReactNode
 }) {
@@ -656,7 +796,7 @@ function ModalShell({
     >
       <div className="flex h-full items-center justify-center">
         <div className="relative w-full max-w-xl overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
-          <div className="flex items-center justify-between border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-5 py-4">
+          <div className="flex items-center justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-5 py-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 {title}
@@ -671,15 +811,17 @@ function ModalShell({
                 )
               ) : null}
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
-              aria-label="Zavřít"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-3">
+              {headerActions}
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
+                aria-label="Zavřít"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <div className="px-5 py-4">{children}</div>

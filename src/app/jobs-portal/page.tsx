@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { JobsPortalTable } from './jobs-portal-table'
 import { JobsPortalFilterSubmitButton } from './jobs-portal-filter-submit-button'
 import { JobsPortalFilterResetLink } from './jobs-portal-filter-reset-link'
+import { hasJobInfoContent } from '@/app/jobs/info-note-shared'
 
 export const metadata: Metadata = {
   title: 'Portál zakázek',
@@ -34,6 +35,9 @@ type PortalJobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  info_alert_enabled?: boolean | null
+  has_info_attachments?: boolean
+  has_info_content?: boolean
   sales_owner: SalesOwner
   job_status: JobStatus | null
 }
@@ -311,6 +315,7 @@ export default async function JobsPortalPage({
       technician_name,
       generator_name,
       info_note,
+      info_alert_enabled,
       sales_owner,
       job_status
     `)
@@ -341,7 +346,35 @@ export default async function JobsPortalPage({
   }
 
   const typedJobs = (jobs ?? []) as PortalJobRow[]
-  const filteredJobs = typedJobs.filter((job) => {
+  const jobIds = typedJobs.map((job) => job.id)
+  const { data: infoAttachmentRows, error: infoAttachmentsError } =
+    jobIds.length > 0
+      ? await supabase
+          .from('job_info_attachments')
+          .select('job_id')
+          .in('job_id', jobIds)
+      : { data: [], error: null }
+
+  if (infoAttachmentsError) {
+    throw new Error('Nepodařilo se načíst fotky k info zakázek.')
+  }
+
+  const jobsWithInfoState = typedJobs.map((job) => {
+    const hasAttachments = (infoAttachmentRows ?? []).some(
+      (row) => String((row as { job_id?: string | null }).job_id ?? '') === job.id
+    )
+
+    return {
+      ...job,
+      has_info_attachments: hasAttachments,
+      has_info_content: hasJobInfoContent({
+        infoNote: job.info_note,
+        hasAttachments,
+      }),
+      info_alert_enabled: Boolean(job.info_alert_enabled),
+    }
+  })
+  const filteredJobs = jobsWithInfoState.filter((job) => {
     const effectiveStatus = getEffectiveJobStatus(job)
 
     if (jobStatus && effectiveStatus !== jobStatus) {

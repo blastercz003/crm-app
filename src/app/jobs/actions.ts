@@ -8,6 +8,10 @@ import {
   type ChangedValues,
 } from '@/lib/jobs/changes-queue'
 import { createClient } from '@/lib/supabase/server'
+import {
+  getPersistedJobInfoAlert,
+  parseJobInfoAlertValue,
+} from './info-note-shared'
 
 export type CreateJobActionState = {
   success: boolean
@@ -23,6 +27,11 @@ export type UpdateJobActionState = {
 }
 
 export type UpdateJobInfoActionState = {
+  success: boolean
+  error: string | null
+}
+
+export type UpdateJobInfoAlertActionState = {
   success: boolean
   error: string | null
 }
@@ -435,7 +444,24 @@ async function requireJobsAccess() {
 
 function revalidateAllRelatedPaths() {
   revalidatePath('/jobs')
+  revalidatePath('/jobs-portal')
   revalidatePath('/faktury')
+}
+
+async function jobHasInfoAttachments(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { count, error } = await supabase
+    .from('job_info_attachments')
+    .select('id', { count: 'exact', head: true })
+    .eq('job_id', jobId)
+
+  if (error) {
+    throw new Error('Nepodařilo se ověřit fotky v info zakázky.')
+  }
+
+  return (count ?? 0) > 0
 }
 
 async function getJobQueueSource(
@@ -1129,11 +1155,31 @@ export async function updateJobInfoAction(
   }
 
   const infoNote = normalizeText(formData.get('info_note'))
+  const requestedAlertEnabled = parseJobInfoAlertValue(
+    formData.get('info_alert_enabled')
+  )
+  let hasAttachments = false
+
+  try {
+    hasAttachments = await jobHasInfoAttachments(supabase, normalizedJobId)
+  } catch {
+    return {
+      success: false,
+      error: 'Nepodařilo se ověřit obsah info zakázky.',
+    }
+  }
+
+  const infoAlertEnabled = getPersistedJobInfoAlert({
+    requestedAlertEnabled,
+    infoNote,
+    hasAttachments,
+  })
 
   const { error } = await supabase
     .from('jobs')
     .update({
       info_note: infoNote,
+      info_alert_enabled: infoAlertEnabled,
     })
     .eq('id', normalizedJobId)
 
@@ -1152,6 +1198,74 @@ export async function updateJobInfoAction(
     })
   } catch (queueError) {
     console.error('Nepodařilo se zapsat změnu info do fronty změn.', queueError)
+  }
+
+  revalidateAllRelatedPaths()
+
+  return {
+    success: true,
+    error: null,
+  }
+}
+
+export async function updateJobInfoAlertAction(
+  jobId: string,
+  _prevState: UpdateJobInfoAlertActionState,
+  formData: FormData
+): Promise<UpdateJobInfoAlertActionState> {
+  const { supabase, user, error: accessError } = await requireJobsAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+    }
+  }
+
+  const normalizedJobId = String(jobId ?? '').trim()
+
+  if (!normalizedJobId) {
+    return {
+      success: false,
+      error: 'Chybí ID zakázky.',
+    }
+  }
+
+  const infoNote = normalizeText(formData.get('info_note'))
+  const requestedAlertEnabled = parseJobInfoAlertValue(
+    formData.get('info_alert_enabled')
+  )
+
+  let hasAttachments = false
+
+  try {
+    hasAttachments = await jobHasInfoAttachments(supabase, normalizedJobId)
+  } catch {
+    return {
+      success: false,
+      error: 'Nepodařilo se ověřit obsah info zakázky.',
+    }
+  }
+
+  const infoAlertEnabled = getPersistedJobInfoAlert({
+    requestedAlertEnabled,
+    infoNote,
+    hasAttachments,
+  })
+
+  const { error } = await supabase
+    .from('jobs')
+    .update({
+      info_note: infoNote,
+      info_alert_enabled: infoAlertEnabled,
+    })
+    .eq('id', normalizedJobId)
+
+  if (error) {
+    return {
+      success: false,
+      error: 'Alert info zakázky se nepodařilo uložit.',
+    }
   }
 
   revalidateAllRelatedPaths()

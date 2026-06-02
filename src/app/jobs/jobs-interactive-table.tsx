@@ -48,6 +48,9 @@ type JobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  info_alert_enabled?: boolean | null
+  has_info_attachments?: boolean
+  has_info_content?: boolean
   job_status: JobStatus
   evidence_status: EvidenceStatus
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
@@ -269,6 +272,8 @@ function DesktopRow({
             jobId={job.id}
             jobNumber={job.job_number}
             infoNote={job.info_note}
+            hasInfoAttachments={job.has_info_attachments}
+            infoAlertEnabled={Boolean(job.info_alert_enabled)}
           />
         </div>
       </td>
@@ -380,6 +385,8 @@ function MobileCard({
             jobId={job.id}
             jobNumber={job.job_number}
             infoNote={job.info_note}
+            hasInfoAttachments={job.has_info_attachments}
+            infoAlertEnabled={Boolean(job.info_alert_enabled)}
             variant="mobile"
             compact
           />

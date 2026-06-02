@@ -1,10 +1,12 @@
 'use client'
 
-import { useActionState, useEffect, useMemo, useState } from 'react'
+import { useActionState, useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
 import {
+  updateJobInfoAlertAction,
   updateJobInfoAction,
+  type UpdateJobInfoAlertActionState,
   type UpdateJobInfoActionState,
 } from './actions'
 import {
@@ -12,11 +14,17 @@ import {
   getJobInfoAttachmentsAction,
   uploadJobInfoAttachmentAction,
 } from './info-note-attachments-actions'
+import {
+  hasJobInfoContent,
+  type JobInfoAttachmentItem,
+} from './info-note-shared'
 
 type InfoNoteButtonProps = {
   jobId: string
   jobNumber: string
   infoNote: string | null
+  hasInfoAttachments?: boolean
+  infoAlertEnabled?: boolean
   variant?: 'table' | 'mobile'
   compact?: boolean
 }
@@ -26,14 +34,9 @@ const initialState: UpdateJobInfoActionState = {
   error: null,
 }
 
-type JobInfoAttachmentItem = {
-  id: string
-  jobId: string
-  fileName: string
-  mimeType: string
-  sizeBytes: number
-  createdAt: string
-  signedUrl: string | null
+const initialAlertState: UpdateJobInfoAlertActionState = {
+  success: false,
+  error: null,
 }
 
 async function forceDownloadFile(url: string, fileName: string) {
@@ -57,11 +60,71 @@ export function InfoNoteButton({
   jobId,
   jobNumber,
   infoNote,
+  hasInfoAttachments = false,
+  infoAlertEnabled = false,
   variant = 'table',
   compact = false,
 }: InfoNoteButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
+  const [persistedInfoNote, setPersistedInfoNote] = useState(infoNote)
+  const [persistedHasAttachments, setPersistedHasAttachments] = useState(
+    hasInfoAttachments
+  )
+  const [persistedAlertEnabled, setPersistedAlertEnabled] = useState(
+    infoAlertEnabled
+  )
+
+  useEffect(() => {
+    setPersistedInfoNote(infoNote)
+  }, [infoNote])
+
+  useEffect(() => {
+    setPersistedHasAttachments(hasInfoAttachments)
+  }, [hasInfoAttachments])
+
+  useEffect(() => {
+    setPersistedAlertEnabled(infoAlertEnabled)
+  }, [infoAlertEnabled])
+
+  const currentHasInfoContent = hasJobInfoContent({
+    infoNote: persistedInfoNote,
+    hasAttachments: persistedHasAttachments,
+  })
+  const shouldShowAlertDot = currentHasInfoContent && persistedAlertEnabled
+  const handlePersistedStateChange = useCallback(
+    ({
+      infoNote: nextInfoNote,
+      hasAttachments,
+    }: {
+      infoNote: string | null
+      hasAttachments: boolean
+    }) => {
+      setPersistedInfoNote(nextInfoNote)
+      setPersistedHasAttachments(hasAttachments)
+
+      if (!hasJobInfoContent({ infoNote: nextInfoNote, hasAttachments })) {
+        setPersistedAlertEnabled(false)
+      }
+    },
+    []
+  )
+  const handleSaveSuccess = useCallback(
+    ({
+      infoNote: nextInfoNote,
+      hasAttachments,
+      infoAlertEnabled: nextAlertEnabled,
+    }: {
+      infoNote: string | null
+      hasAttachments: boolean
+      infoAlertEnabled: boolean
+    }) => {
+      setPersistedInfoNote(nextInfoNote)
+      setPersistedHasAttachments(hasAttachments)
+      setPersistedAlertEnabled(nextAlertEnabled)
+    },
+    []
+  )
 
   function openModal() {
     setFormKey((current) => current + 1)
@@ -72,27 +135,34 @@ export function InfoNoteButton({
     setIsOpen(false)
   }
 
-  const buttonLabel = infoNote ? 'ZOBRAZIT' : 'PŘIDAT'
-  const mobileButtonLabel = infoNote ? 'ZOBRAZIT' : 'PŘIDAT'
+  const buttonLabel = currentHasInfoContent ? 'ZOBRAZIT' : 'PŘIDAT'
+  const mobileButtonLabel = currentHasInfoContent ? 'ZOBRAZIT' : 'PŘIDAT'
 
   const className =
     variant === 'mobile'
       ? `inline-flex items-center justify-center rounded-xl font-medium transition duration-200 ${
           compact ? 'h-8 min-w-0 w-full px-2 text-[11px]' : 'min-w-[88px] px-3 py-2 text-xs'
         } ${
-          infoNote
+          currentHasInfoContent
             ? 'border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800'
             : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
         }`
       : `inline-flex min-w-[88px] items-center justify-center rounded-xl px-3 py-2 text-xs font-medium transition duration-200 ${
-          infoNote
+          currentHasInfoContent
             ? 'border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800'
             : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
         }`
 
   return (
     <>
-      <button type="button" onClick={openModal} className={className}>
+      <button
+        type="button"
+        onClick={openModal}
+        className={`relative ${className}`}
+      >
+        {shouldShowAlertDot ? (
+          <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+        ) : null}
         {variant === 'mobile' ? mobileButtonLabel : buttonLabel}
       </button>
 
@@ -101,7 +171,11 @@ export function InfoNoteButton({
           key={formKey}
           jobId={jobId}
           jobNumber={jobNumber}
-          initialValue={infoNote}
+          initialValue={persistedInfoNote}
+          initialHasAttachments={persistedHasAttachments}
+          initialAlertEnabled={persistedAlertEnabled}
+          onPersistedStateChange={handlePersistedStateChange}
+          onSaveSuccess={handleSaveSuccess}
           onClose={closeModal}
         />
       ) : null}
@@ -113,11 +187,26 @@ function InfoNoteModal({
   jobId,
   jobNumber,
   initialValue,
+  initialHasAttachments,
+  initialAlertEnabled,
+  onPersistedStateChange,
+  onSaveSuccess,
   onClose,
 }: {
   jobId: string
   jobNumber: string
   initialValue: string | null
+  initialHasAttachments: boolean
+  initialAlertEnabled: boolean
+  onPersistedStateChange: (state: {
+    infoNote: string | null
+    hasAttachments: boolean
+  }) => void
+  onSaveSuccess: (state: {
+    infoNote: string | null
+    hasAttachments: boolean
+    infoAlertEnabled: boolean
+  }) => void
   onClose: () => void
 }) {
   const boundAction = useMemo(
@@ -133,12 +222,33 @@ function InfoNoteModal({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [previewAttachment, setPreviewAttachment] =
     useState<JobInfoAttachmentItem | null>(null)
+  const [draftValue, setDraftValue] = useState(initialValue ?? '')
+  const [isAlertEnabled, setIsAlertEnabled] = useState(initialAlertEnabled)
+  const [isAlertPending, startAlertTransition] = useTransition()
+
+  const modalHasInfoContent = hasJobInfoContent({
+    infoNote: draftValue,
+    attachmentsCount: attachments.length,
+  })
+  const effectiveAlertEnabled = modalHasInfoContent && isAlertEnabled
 
   useEffect(() => {
     if (state.success) {
+      onSaveSuccess({
+        infoNote: draftValue.trim() || null,
+        hasAttachments: attachments.length > 0,
+        infoAlertEnabled: effectiveAlertEnabled,
+      })
       onClose()
     }
-  }, [onClose, state.success])
+  }, [
+    attachments.length,
+    draftValue,
+    effectiveAlertEnabled,
+    onClose,
+    onSaveSuccess,
+    state.success,
+  ])
 
   useEffect(() => {
     let cancelled = false
@@ -158,7 +268,14 @@ function InfoNoteModal({
         return
       }
 
-      setAttachments((result.items ?? []) as JobInfoAttachmentItem[])
+      const nextAttachments = (result.items ?? []) as JobInfoAttachmentItem[]
+      setAttachments(nextAttachments)
+      if ((nextAttachments.length > 0) !== initialHasAttachments) {
+        onPersistedStateChange({
+          infoNote: initialValue,
+          hasAttachments: nextAttachments.length > 0,
+        })
+      }
       setAttachmentsLoading(false)
     }
 
@@ -167,7 +284,7 @@ function InfoNoteModal({
     return () => {
       cancelled = true
     }
-  }, [jobId])
+  }, [initialHasAttachments, initialValue, jobId, onPersistedStateChange])
 
   async function reloadAttachments() {
     setAttachmentsLoading(true)
@@ -205,6 +322,11 @@ function InfoNoteModal({
     }
 
     await reloadAttachments()
+    const hasAttachments = attachments.length + files.length > 0
+    onPersistedStateChange({
+      infoNote: initialValue,
+      hasAttachments,
+    })
   }
 
   async function handleDelete(attachmentId: string) {
@@ -220,6 +342,16 @@ function InfoNoteModal({
     }
 
     await reloadAttachments()
+
+    const nextHasAttachments = attachments.some((item) => item.id !== attachmentId)
+    onPersistedStateChange({
+      infoNote: initialValue,
+      hasAttachments: nextHasAttachments,
+    })
+
+    if (!hasJobInfoContent({ infoNote: draftValue, hasAttachments: nextHasAttachments })) {
+      setIsAlertEnabled(false)
+    }
   }
 
   async function handleDownload(item: JobInfoAttachmentItem) {
@@ -235,6 +367,40 @@ function InfoNoteModal({
     }
   }
 
+  function handleAlertToggle() {
+    if (!modalHasInfoContent || isAlertPending) return
+
+    const nextAlertEnabled = !effectiveAlertEnabled
+    const nextInfoNote = draftValue.trim() || null
+
+    setIsAlertEnabled(nextAlertEnabled)
+
+    startAlertTransition(async () => {
+      const formData = new FormData()
+      formData.set('info_note', draftValue)
+      formData.set('info_alert_enabled', nextAlertEnabled ? '1' : '0')
+
+      const result = await updateJobInfoAlertAction(jobId, initialAlertState, formData)
+
+      if (!result.success) {
+        setIsAlertEnabled(effectiveAlertEnabled)
+        setAttachmentsError(result.error ?? 'Alert info zakázky se nepodařilo uložit.')
+        return
+      }
+
+      onPersistedStateChange({
+        infoNote: nextInfoNote,
+        hasAttachments: attachments.length > 0,
+      })
+      onSaveSuccess({
+        infoNote: nextInfoNote,
+        hasAttachments: attachments.length > 0,
+        infoAlertEnabled: nextAlertEnabled,
+      })
+      setAttachmentsError(null)
+    })
+  }
+
   const modalContent = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/38 px-4 py-6 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
       <div className="relative w-full max-w-xl overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
@@ -248,14 +414,47 @@ function InfoNoteModal({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
-            aria-label="Zavřít"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs font-bold tracking-[0.14em] ${
+                  effectiveAlertEnabled ? 'text-[#2f8fd4]' : 'text-zinc-900'
+                }`}
+              >
+                {effectiveAlertEnabled ? 'ALERT ON' : 'ALERT OFF'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={effectiveAlertEnabled}
+                aria-label={
+                  effectiveAlertEnabled ? 'Vypnout alert info zakázky' : 'Zapnout alert info zakázky'
+                }
+                disabled={!modalHasInfoContent || isAlertPending}
+                onClick={handleAlertToggle}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full border px-0.5 transition duration-200 ${
+                  effectiveAlertEnabled
+                    ? 'border-[#76a9d3]/85 bg-[linear-gradient(135deg,#1f7fe4_0%,#49a8ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_18px_rgba(24,78,129,0.22)]'
+                    : 'border-white/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(226,232,240,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_16px_rgba(15,23,42,0.08)]'
+                } ${!modalHasInfoContent || isAlertPending ? 'cursor-not-allowed opacity-55' : 'hover:-translate-y-[1px]'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-[22px] w-[22px] rounded-full bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(246,248,251,0.96)_100%)] shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition duration-200 ${
+                    effectiveAlertEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
+              aria-label="Zavřít"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <form action={formAction} className="flex flex-col">
@@ -264,9 +463,27 @@ function InfoNoteModal({
                 id="job-info-note"
                 name="info_note"
                 rows={6}
-                defaultValue={initialValue ?? ''}
+                value={draftValue}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setDraftValue(nextValue)
+
+                  if (
+                    !hasJobInfoContent({
+                      infoNote: nextValue,
+                      attachmentsCount: attachments.length,
+                    })
+                  ) {
+                    setIsAlertEnabled(false)
+                  }
+                }}
                 placeholder="Sem napiš libovolný delší text k zakázce"
                 className="w-full resize-y rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+              />
+              <input
+                type="hidden"
+                name="info_alert_enabled"
+                value={effectiveAlertEnabled ? '1' : '0'}
               />
 
             <div className="mt-4 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
