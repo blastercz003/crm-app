@@ -146,6 +146,7 @@ function DesktopRow({ job }: { job: PortalJobRow }) {
 
 function MobileCard({ job }: { job: PortalJobRow }) {
   const [isActionsOpen, setIsActionsOpen] = useState(false)
+  const showInfoAlertDot = Boolean(job.info_alert_enabled) && Boolean(job.has_info_content)
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
@@ -202,8 +203,11 @@ function MobileCard({ job }: { job: PortalJobRow }) {
             onClick={() => setIsActionsOpen((current) => !current)}
             aria-expanded={isActionsOpen}
             aria-label="Akce zakázky"
-            className={`hidden min-[300px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+            className={`relative hidden min-[300px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
           >
+            {showInfoAlertDot ? (
+              <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+            ) : null}
             ⋯
           </button>
         </div>
@@ -216,8 +220,11 @@ function MobileCard({ job }: { job: PortalJobRow }) {
           onClick={() => setIsActionsOpen((current) => !current)}
           aria-expanded={isActionsOpen}
           aria-label="Akce zakázky"
-          className={`inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+          className={`relative inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
         >
+          {showInfoAlertDot ? (
+            <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+          ) : null}
           ⋯
         </button>
       </div>
