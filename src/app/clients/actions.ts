@@ -14,6 +14,31 @@ export type ClientFormActionState = {
 export type CreateClientActionState = ClientFormActionState
 export type UpdateClientActionState = ClientFormActionState
 export type ClientContactActionState = ClientFormActionState
+export type ChangeClientOwnerActionState = {
+  success: boolean
+  error: string | null
+  ownerName?: string
+}
+
+type CurrentProfile = {
+  id: string
+  role: string | null
+  name: string | null
+}
+
+type ClientOwnerProfileRow = {
+  id: string
+  name: string | null
+}
+
+const CLIENT_OWNER_FIXED_IDS = {
+  MICHAL: '46c40df2-04d7-41e9-ad6d-51cc2ee76019',
+  'LÍDA': '735d158c-667a-42c0-8af0-6ee12a9c1f11',
+} as const
+const CLIENT_OWNER_FIXED_LABELS = {
+  MICHAL: 'Michal',
+  'LÍDA': 'Lída',
+} as const
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -47,6 +72,75 @@ async function requireUser() {
   }
 
   return { supabase, user }
+}
+
+async function getCurrentProfile(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  userId: string
+}) {
+  const { supabase, userId } = params
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('id, role, name')
+    .eq('id', userId)
+    .single<CurrentProfile>()
+
+  if (error || !profile) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
+
+  return profile
+}
+
+async function getAllowedClientOwnerProfiles(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  currentAdminProfile: CurrentProfile
+) {
+  const allowedIds = [
+    currentAdminProfile.id,
+    CLIENT_OWNER_FIXED_IDS.MICHAL,
+    CLIENT_OWNER_FIXED_IDS['LÍDA'],
+  ]
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', allowedIds)
+
+  if (error) {
+    throw new Error('Nepodařilo se načíst uživatele pro změnu majitele klienta.')
+  }
+
+  return ((data ?? []) as ClientOwnerProfileRow[])
+    .map((profile) => {
+      if (profile.id === currentAdminProfile.id) {
+        return {
+          ...profile,
+          name: 'Jiří',
+        }
+      }
+
+      if (profile.id === CLIENT_OWNER_FIXED_IDS.MICHAL) {
+        return {
+          ...profile,
+          name: CLIENT_OWNER_FIXED_LABELS.MICHAL,
+        }
+      }
+
+      if (profile.id === CLIENT_OWNER_FIXED_IDS['LÍDA']) {
+        return {
+          ...profile,
+          name: CLIENT_OWNER_FIXED_LABELS['LÍDA'],
+        }
+      }
+
+      return profile
+    })
+    .sort((a, b) =>
+      String(a.name ?? '').localeCompare(String(b.name ?? ''), 'cs', {
+        sensitivity: 'base',
+      })
+    )
 }
 
 async function assertNoDuplicateClientOnCreate(params: {
@@ -410,6 +504,8 @@ async function insertClientRecord(formData: FormData) {
 
 async function updateClientValues(formData: FormData) {
   const { supabase, user } = await requireUser()
+  const profile = await getCurrentProfile({ supabase, userId: user.id })
+  const isAdmin = profile.role === 'admin'
 
   const id = getString(formData, 'id')
   const name = getString(formData, 'name')
@@ -428,19 +524,22 @@ async function updateClientValues(formData: FormData) {
     throw new Error('Název klienta je povinný.')
   }
 
-  const { error } = await supabase
-    .from('clients')
-    .update({
-      name,
-      ico: ico || null,
-      contact_person: contactPerson || null,
-      contact_phone: contactPhone || null,
-      contact_email: contactEmail || null,
-      address: address || null,
-      note: note || null,
-    })
-    .eq('id', id)
-    .eq('created_by', user.id)
+  let query = supabase.from('clients').update({
+    name,
+    ico: ico || null,
+    contact_person: contactPerson || null,
+    contact_phone: contactPhone || null,
+    contact_email: contactEmail || null,
+    address: address || null,
+    note: note || null,
+  })
+  .eq('id', id)
+
+  if (!isAdmin) {
+    query = query.eq('created_by', user.id)
+  }
+
+  const { error } = await query
 
   if (error) {
     throw new Error('Nepodařilo se upravit klienta.')
@@ -514,6 +613,87 @@ export async function updateClientModalAction(
   }
 }
 
+export async function changeClientOwnerAction(
+  _prevState: ChangeClientOwnerActionState,
+  formData: FormData
+): Promise<ChangeClientOwnerActionState> {
+  try {
+    const { supabase, user } = await requireUser()
+    const profile = await getCurrentProfile({ supabase, userId: user.id })
+
+    if (profile.role !== 'admin') {
+      throw new Error('Majitele klienta může měnit pouze administrátor.')
+    }
+
+    const clientId = getString(formData, 'client_id')
+    const nextOwnerId = getString(formData, 'owner_user_id')
+
+    if (!clientId || !nextOwnerId) {
+      throw new Error('Chybí klient nebo nový majitel.')
+    }
+
+    const allowedOwners = await getAllowedClientOwnerProfiles(supabase, profile)
+    const nextOwner = allowedOwners.find((owner) => owner.id === nextOwnerId)
+
+    if (!nextOwner) {
+      throw new Error('Vybraný uživatel nemůže být majitelem klienta.')
+    }
+
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('id, name, created_by')
+      .eq('id', clientId)
+      .maybeSingle<{ id: string; name: string | null; created_by: string | null }>()
+
+    if (clientError || !client) {
+      throw new Error('Klient nebyl nalezen.')
+    }
+
+    if (client.created_by === nextOwnerId) {
+      return {
+        success: true,
+        error: null,
+        ownerName: nextOwner.name?.trim() || 'Neuvedeno',
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from('clients')
+      .update({ created_by: nextOwnerId })
+      .eq('id', clientId)
+
+    if (updateError) {
+      throw new Error('Nepodařilo se změnit majitele klienta.')
+    }
+
+    await logUserActivity({
+      action: `Změnil majitele klienta ${client.name?.trim() || clientId} na ${nextOwner.name?.trim() || nextOwnerId}`,
+      section: 'Klienti',
+      route: `/clients/${clientId}`,
+      userId: user.id,
+    })
+
+    revalidatePath('/clients')
+    revalidatePath(`/clients/${clientId}`)
+    revalidatePath('/jobs')
+    revalidatePath('/offers')
+
+    return {
+      success: true,
+      error: null,
+      ownerName: nextOwner.name?.trim() || 'Neuvedeno',
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se změnit majitele klienta.',
+    }
+  }
+}
+
 export async function deleteClientRecord(formData: FormData) {
   const { supabase, user } = await requireUser()
 
@@ -523,15 +703,7 @@ export async function deleteClientRecord(formData: FormData) {
     throw new Error('Chybí ID klienta.')
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single<{ role: string | null }>()
-
-  if (profileError) {
-    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
-  }
+  const profile = await getCurrentProfile({ supabase, userId: user.id })
 
   if (profile?.role !== 'admin') {
     throw new Error('Klienta může smazat pouze administrátor.')

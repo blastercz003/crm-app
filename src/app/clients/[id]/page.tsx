@@ -15,6 +15,7 @@ import {
 import { ClientActivityTabs } from '../client-activity-tabs'
 import { deleteClientContact, setPrimaryClientContact } from '../actions'
 import { EditClientButton } from '../edit-client-button'
+import { ClientOwnerChangeButton } from '../client-owner-change-button'
 
 type ClientRow = {
   id: string
@@ -25,7 +26,13 @@ type ClientRow = {
   contact_email: string | null
   address: string | null
   note: string | null
+  created_by: string | null
   created_at: string
+}
+
+type ClientOwnerOption = {
+  id: string
+  name: string
 }
 
 export async function generateMetadata({
@@ -514,6 +521,7 @@ export default async function ClientDetailPage({
     tasksResponse,
     offersResponse,
     jobsResponse,
+    ownerProfilesResponse,
   ] = await Promise.all([
     clientRequest.single(),
     supabase
@@ -552,6 +560,16 @@ export default async function ClientDetailPage({
       .eq('client_id', id)
       .order('updated_at', { ascending: false }),
     jobsRequest,
+    isAdmin
+      ? supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', [
+            user.id,
+            '46c40df2-04d7-41e9-ad6d-51cc2ee76019',
+            '735d158c-667a-42c0-8af0-6ee12a9c1f11',
+          ])
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   const { data: client, error: clientError } = clientResponse
@@ -560,6 +578,7 @@ export default async function ClientDetailPage({
   const { data: tasks, error: tasksError } = tasksResponse
   const { data: offers, error: offersError } = offersResponse
   const { data: jobs, error: jobsError } = jobsResponse
+  const { data: ownerProfiles, error: ownerProfilesError } = ownerProfilesResponse
 
   if (clientError || !client) {
     notFound()
@@ -585,12 +604,36 @@ export default async function ClientDetailPage({
     throw new Error('Nepodařilo se načíst zakázky klienta.')
   }
 
+  if (isAdmin && ownerProfilesError) {
+    throw new Error('Nepodařilo se načíst uživatele pro změnu majitele klienta.')
+  }
+
   const typedClient = client as ClientRow
   const typedContacts = (contacts ?? []) as ClientContactRow[]
   const typedMeetings = (meetings ?? []) as ClientMeetingRow[]
   const typedTasks = (tasks ?? []) as ClientTaskRow[]
   const typedOffers = (offers ?? []) as ClientOfferRow[]
   const typedJobs = (jobs ?? []) as ClientJobRow[]
+  const ownerOptions = ((ownerProfiles ?? []) as ClientOwnerOption[])
+    .map((profile) => ({
+      id: profile.id,
+      name:
+        profile.id === user.id
+          ? 'Jiří'
+          : profile.id === '46c40df2-04d7-41e9-ad6d-51cc2ee76019'
+            ? 'Michal'
+            : profile.id === '735d158c-667a-42c0-8af0-6ee12a9c1f11'
+              ? 'Lída'
+              : String(profile.name ?? '').trim(),
+    }))
+    .sort((a, b) =>
+      a.name.localeCompare(b.name, 'cs', {
+        sensitivity: 'base',
+      })
+    )
+  const currentOwnerName =
+    ownerOptions.find((option) => option.id === typedClient.created_by)?.name ??
+    'Neuvedeno'
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
@@ -681,10 +724,26 @@ export default async function ClientDetailPage({
                   </Link>
                 </div>
 
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-gray-900">Vytvořeno:</span>{' '}
-                  {formatDate(typedClient.created_at)}
-                </p>
+                <div className="flex flex-col items-end gap-1">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium text-gray-900">Vytvořeno:</span>{' '}
+                    {formatDate(typedClient.created_at)}
+                  </p>
+
+                  {isAdmin ? (
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium text-gray-900">Patří:</span>{' '}
+                        {currentOwnerName}
+                      </p>
+                      <ClientOwnerChangeButton
+                        clientId={typedClient.id}
+                        currentOwnerName={currentOwnerName}
+                        ownerOptions={ownerOptions}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
