@@ -1587,7 +1587,7 @@ export default async function DashboardPage() {
         <footer className="dashboard-footer border-t border-white/12 bg-zinc-950 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] sm:px-6 lg:px-8">
           <div className="dashboard-footer__content mx-auto flex w-full max-w-[1920px] flex-col gap-1 text-xs text-white/70 md:flex-row md:items-center md:justify-between md:gap-3">
             <div className="flex items-center gap-3 whitespace-nowrap">
-              {isAdmin ? <DashboardThemeToggle initialThemePreferences={initialThemePreferences} /> : null}
+              <DashboardThemeToggle initialThemePreferences={initialThemePreferences} />
               <Link
                 href="/snake"
                 aria-label="Otevřít hru Snake"
