@@ -1,18 +1,14 @@
 import Link from 'next/link'
 import {
-  addOfferItem,
   approveOffer,
   addOfferProgressNote,
-  deleteOfferItem,
   markOfferInProgress,
-  moveOfferItem,
   rejectOffer,
   sendOfferToClient,
   setOfferClientOutcome,
   setOfferPresetChoice,
   toggleOfferPresetItem,
   updateOfferDetails,
-  updateOfferItem,
 } from '@/app/offers/actions'
 import {
   BSAFE24_BACKUP_LOCATION_COUNT_GROUP_LABEL,
@@ -29,8 +25,6 @@ import {
 } from '@/lib/offers/presets'
 import {
   formatCurrency,
-  formatNumber,
-  getOfferItemNetTotal,
   getOfferTotals,
 } from '@/lib/offers/calculations'
 import type {
@@ -42,8 +36,11 @@ import type {
   OfferRow,
   OfferServiceItemRow,
   OfferStatus,
-  OfferType,
 } from '@/lib/offers/types'
+import {
+  OFFER_TYPE_LABELS,
+  getOfferTypeBadgeClass,
+} from '../offer-type-badge'
 import { DepotToggleButton } from './depot-toggle-button'
 import { DieselPriceBadge } from './diesel-price-badge'
 import { GuardedOfferLink } from './guarded-offer-link'
@@ -56,10 +53,6 @@ import { SaveOfferButton } from './save-offer-button'
 import { RejectOfferWithReasonButton } from '@/app/offers/reject-offer-with-reason-button'
 import { OfferInfoCards } from './offer-info-cards'
 import { OfferServicesToggleGrid } from './offer-services-toggle-grid'
-
-type OfferDetailPageProps = {
-  params: Promise<{ id: string }>
-}
 
 const STATUS_LABELS: Record<OfferStatus, string> = {
   draft: 'Rozpracovaná',
@@ -75,28 +68,7 @@ const STATUS_LABELS: Record<OfferStatus, string> = {
 
 const STATUS_BADGE_WIDTH_CLASS = 'w-[150px]'
 
-const OFFER_TYPE_LABELS: Record<OfferType, string> = {
-  classic: 'KLASICKÁ',
-  bsafe24: 'B-SAFE 24',
-}
-
-function getOfferTypeClass(type: OfferType) {
-  if (type === 'bsafe24') {
-    return 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_18px_rgba(24,78,129,0.24)]'
-  }
-
-  return 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]'
-}
-
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
-
-function formatDate(value: string | null) {
-  if (!value) return 'Bez data'
-
-  return new Intl.DateTimeFormat('cs-CZ', {
-    dateStyle: 'medium',
-  }).format(new Date(value))
-}
 
 function formatDateTime(value: string | null) {
   if (!value) return 'Bez data'
@@ -120,33 +92,33 @@ function formatDateTimeInput(value: string | null) {
 
 function getStatusClass(status: OfferStatus) {
   if (status === 'realizace') {
-    return 'border border-[#6fa9d1]/90 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
+    return 'offer-status-button offer-status-button--realizace border border-[#6fa9d1]/90 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)]'
   }
   if (status === 'ordered') {
-    return 'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
+    return 'offer-status-button offer-status-button--ordered border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
   }
   if (status === 'rejected') {
-    return 'border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(220,38,38,0.24)]'
+    return 'offer-status-button offer-status-button--rejected border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(220,38,38,0.24)]'
   }
   if (status === 'in_progress') {
-    return 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
+    return 'offer-status-button offer-status-button--in_progress border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
   }
   if (status === 'sent_to_client') {
-    return 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
+    return 'offer-status-button offer-status-button--sent_to_client border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
   }
   if (status === 'approved') {
-    return 'border border-emerald-300/90 bg-[linear-gradient(155deg,#ecfdf5_0%,#d1fae5_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(16,185,129,0.2)]'
+    return 'offer-status-button offer-status-button--approved border border-emerald-300/90 bg-[linear-gradient(155deg,#ecfdf5_0%,#d1fae5_100%)] text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(16,185,129,0.2)]'
   }
   if (status === 'submitted') {
-    return 'border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,#e5f4fc_0%,#cce7f7_100%)] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(41,128,185,0.2)]'
+    return 'offer-status-button offer-status-button--submitted border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,#e5f4fc_0%,#cce7f7_100%)] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(41,128,185,0.2)]'
   }
   if (status === 'changes_requested') {
-    return 'border border-amber-300/90 bg-[linear-gradient(155deg,#fffbeb_0%,#fef3c7_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(217,119,6,0.2)]'
+    return 'offer-status-button offer-status-button--changes_requested border border-amber-300/90 bg-[linear-gradient(155deg,#fffbeb_0%,#fef3c7_100%)] text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(217,119,6,0.2)]'
   }
   if (status === 'draft') {
-    return 'border border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(240,244,249,0.97)_0%,rgba(223,231,240,0.94)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_18px_rgba(15,23,42,0.1)]'
+    return 'offer-status-button offer-status-button--draft border border-[#cfd8e3]/90 bg-[linear-gradient(155deg,rgba(240,244,249,0.97)_0%,rgba(223,231,240,0.94)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_18px_rgba(15,23,42,0.1)]'
   }
-  return 'border border-zinc-300/85 bg-[linear-gradient(155deg,#ffffff_0%,#f1f5fa_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(15,23,42,0.16)]'
+  return 'offer-status-button border border-zinc-300/85 bg-[linear-gradient(155deg,#ffffff_0%,#f1f5fa_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_16px_rgba(15,23,42,0.16)]'
 }
 
 function inputClassName() {
@@ -155,10 +127,6 @@ function inputClassName() {
 
 function textareaClassName() {
   return 'w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]'
-}
-
-function offerItemLabelClassName() {
-  return 'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500'
 }
 
 function canShowResubmitNotice(offer: OfferRow) {
@@ -254,30 +222,30 @@ function isOfferApprovedCurrentVersion(offer: OfferRow) {
 
 function offerPresetButtonClassName(isActive: boolean, isDisabled = false) {
   return [
-    'inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] uppercase tracking-[0.02em] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
+    'offers-detail-page__depot-toggle inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] uppercase tracking-[0.02em] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
     isActive
-      ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] font-semibold text-white hover:-translate-y-[1px]'
+      ? 'offers-detail-page__depot-toggle--active border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] font-semibold text-white hover:-translate-y-[1px]'
       : isDisabled
-        ? 'cursor-not-allowed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-400 opacity-60'
-      : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-900 hover:-translate-y-[1px]',
+        ? 'offers-detail-page__depot-toggle--inactive cursor-not-allowed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-400 opacity-60'
+      : 'offers-detail-page__depot-toggle--inactive border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-900 hover:-translate-y-[1px]',
   ].join(' ')
 }
 
 function compactOfferPresetButtonClassName(isActive: boolean) {
   return [
-    'inline-flex h-10 w-full items-center justify-center rounded-xl border px-2 text-center text-sm uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200',
+    'offers-detail-page__bsafe24-backup-toggle inline-flex h-10 w-full items-center justify-center rounded-xl border px-2 text-center text-sm uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200',
     isActive
-      ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] font-semibold text-white hover:-translate-y-[1px]'
-      : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-900 hover:-translate-y-[1px]',
+      ? 'offers-detail-page__bsafe24-backup-toggle--active border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] font-semibold text-white hover:-translate-y-[1px]'
+      : 'offers-detail-page__bsafe24-backup-toggle--inactive border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-900 hover:-translate-y-[1px]',
   ].join(' ')
 }
 
 function locationCountButtonClassName(isActive: boolean) {
   return [
-    'inline-flex h-10 w-full items-center justify-center rounded-xl border px-1 text-center text-xs uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200',
+    'offers-detail-page__bsafe24-backup-toggle inline-flex h-10 w-full items-center justify-center rounded-xl border px-1 text-center text-xs uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200',
     isActive
-      ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] font-semibold text-white hover:-translate-y-[1px]'
-      : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-900 hover:-translate-y-[1px]',
+      ? 'offers-detail-page__bsafe24-backup-toggle--active border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] font-semibold text-white hover:-translate-y-[1px]'
+      : 'offers-detail-page__bsafe24-backup-toggle--inactive border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] font-normal text-gray-900 hover:-translate-y-[1px]',
   ].join(' ')
 }
 
@@ -371,17 +339,19 @@ export function OfferDetailLayout({
 
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+    <main
+      className={`offers-detail-page offers-detail-page--${offer.offer_type} relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]`}
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        className="offers-detail-page__glow offers-detail-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
       />
       <div className="relative z-10 mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="min-w-0 rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="offers-detail-page__hero min-w-0 rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="flex min-w-0 flex-nowrap items-center justify-between gap-2 sm:justify-start">
@@ -405,7 +375,7 @@ export function OfferDetailLayout({
               <GuardedOfferLink
                 href="/offers"
                 message="Nejprve si prosím ulož práci tlačítkem ULOŽIT NABÍDKU."
-                className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+                className="offers-detail-page__back-link offers-detail-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
               >
                 ZPĚT NA NABÍDKY
               </GuardedOfferLink>
@@ -419,7 +389,7 @@ export function OfferDetailLayout({
         />
 
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch">
-          <section className="flex min-w-0 flex-col rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="offers-detail-page__primary-panel flex min-w-0 flex-col rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="mb-5 flex flex-nowrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                 ZÁKLAD NABÍDKY
@@ -428,7 +398,7 @@ export function OfferDetailLayout({
                 <div className="hidden sm:block">
                   <DieselPriceBadge />
                 </div>
-                <span className={`inline-flex h-8 w-[132px] shrink-0 items-center justify-center rounded-xl border px-3 text-xs font-bold uppercase transition sm:w-[150px] sm:text-sm ${getOfferTypeClass(offer.offer_type)}`}>
+                <span className={`inline-flex h-8 w-[132px] shrink-0 items-center justify-center rounded-xl border px-3 text-xs font-bold uppercase transition sm:w-[150px] sm:text-sm ${getOfferTypeBadgeClass(offer.offer_type)}`}>
                   {OFFER_TYPE_LABELS[offer.offer_type]}
                 </span>
               </div>
@@ -439,7 +409,7 @@ export function OfferDetailLayout({
               action={updateOfferDetails.bind(null, offer.id)}
               className="flex flex-1 flex-col gap-4"
             >
-              <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
+              <div className="offers-detail-page__classic-subpanel offers-detail-page__classic-subpanel--offer-time overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Nabídka a termín
                 </div>
@@ -484,7 +454,7 @@ export function OfferDetailLayout({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
+              <div className="offers-detail-page__classic-subpanel offers-detail-page__classic-subpanel--contact rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Realizace a kontakt
                 </div>
@@ -498,7 +468,7 @@ export function OfferDetailLayout({
 
               <div>
                 <label htmlFor="contact_person" className="mb-2 block text-sm font-medium text-gray-700">
-                  Kontaktní osoba
+                  Kontakt
                 </label>
                 {contacts.length > 0 ? (
                   <>
@@ -531,7 +501,7 @@ export function OfferDetailLayout({
               <input type="hidden" name="valid_until" value={offer.valid_until ?? ''} />
               <input type="hidden" name="intro_note" value={offer.intro_note ?? ''} />
 
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
+              <div className="offers-detail-page__classic-subpanel offers-detail-page__classic-subpanel--prepared-by rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Zpracovatel
                 </div>
@@ -559,7 +529,7 @@ export function OfferDetailLayout({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
+              <div className="offers-detail-page__classic-subpanel offers-detail-page__classic-subpanel--internal-note rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.985)_0%,rgba(250,252,254,0.96)_48%,rgba(246,249,252,0.93)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(148,163,184,0.1)]">
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900">
                   Poznámka (interní)
                 </div>
@@ -575,9 +545,9 @@ export function OfferDetailLayout({
             </form>
           </section>
 
-          <aside className="flex min-w-0 h-full flex-col gap-5">
+          <aside className="offers-detail-page__sidebar flex min-w-0 h-full flex-col gap-5">
             {showApprovalBox ? (
-              <section className="min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+              <section className="offers-detail-page__sidebar-panel min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
                   Schvalování
                 </div>
@@ -612,7 +582,7 @@ export function OfferDetailLayout({
                         />
                         <button
                           type="submit"
-                          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-amber-300/90 bg-[linear-gradient(155deg,rgba(255,251,235,0.96)_0%,rgba(254,243,199,0.9)_100%)] px-4 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_20px_rgba(217,119,6,0.14)] transition duration-200 hover:-translate-y-[1px]"
+                          className="offers-detail-page__approval-button offers-detail-page__approval-button--return inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-amber-300/90 bg-[linear-gradient(155deg,rgba(255,251,235,0.96)_0%,rgba(254,243,199,0.9)_100%)] px-4 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_20px_rgba(217,119,6,0.14)] transition duration-200 hover:-translate-y-[1px]"
                         >
                           VRÁTIT K ÚPRAVĚ
                         </button>
@@ -624,19 +594,19 @@ export function OfferDetailLayout({
             ) : null}
 
             {canShowInProgressEntryBox ? (
-              <section className="min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+              <section className="offers-detail-page__sidebar-panel min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
                 <div className="space-y-3">
                   <button
                     type="button"
                     disabled
-                    className="inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-4 text-sm font-medium text-zinc-700 opacity-80 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)]"
+                    className="offers-detail-page__approval-button offers-detail-page__approval-button--locked inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-4 text-sm font-medium text-zinc-700 opacity-80 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)]"
                   >
                     ODESLÁNO KLIENTOVI
                   </button>
                   <form action={markOfferInProgress.bind(null, offer.id)}>
                     <button
                       type="submit"
-                      className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(249,115,22,0.24)] transition duration-200 hover:-translate-y-[1px]"
+                      className="offers-detail-page__approval-button offers-detail-page__approval-button--in-progress inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(249,115,22,0.24)] transition duration-200 hover:-translate-y-[1px]"
                     >
                       <span>
                         PŘEPNOUT NA <span className="font-bold">V ŘEŠENÍ</span>
@@ -649,7 +619,7 @@ export function OfferDetailLayout({
 
             {canShowInProgressDetailBox ? (
               <section
-                className={`min-w-0 rounded-3xl border p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_42px_rgba(15,23,42,0.12)] ${
+                className={`offers-detail-page__progress-panel min-w-0 rounded-3xl border p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_42px_rgba(15,23,42,0.12)] ${
                   offer.status === 'in_progress'
                     ? 'border-orange-300/80 bg-[linear-gradient(155deg,rgba(255,216,179,0.92)_0%,rgba(255,201,138,0.85)_100%)]'
                     : 'border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)]'
@@ -666,19 +636,19 @@ export function OfferDetailLayout({
                         name="progress_note"
                         rows={3}
                         placeholder="Komentář k průběhu..."
-                        className="w-full rounded-xl border border-orange-300/80 bg-[linear-gradient(155deg,rgba(255,244,230,0.95)_0%,rgba(255,232,201,0.88)_100%)] px-3 py-2 text-sm text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_8px_16px_rgba(249,115,22,0.12)] outline-none transition placeholder:text-black/70 focus:border-orange-400 focus:ring-2 focus:ring-orange-300"
+                        className="offers-detail-page__progress-note-input w-full rounded-xl border border-orange-300/80 bg-[linear-gradient(155deg,rgba(255,244,230,0.95)_0%,rgba(255,232,201,0.88)_100%)] px-3 py-2 text-sm text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_8px_16px_rgba(249,115,22,0.12)] outline-none transition placeholder:text-black/70 focus:border-orange-400 focus:ring-2 focus:ring-orange-300"
                       />
                       <button
                         type="submit"
                         disabled={offer.status !== 'in_progress'}
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(249,115,22,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="offers-detail-page__approval-button offers-detail-page__approval-button--in-progress inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(249,115,22,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         PŘIDAT KOMENTÁŘ
                       </button>
                     </form>
                   ) : null}
 
-                  <div className="space-y-2 border-t border-orange-300 pt-3">
+                  <div className="offers-detail-page__progress-note-list space-y-2 border-t border-orange-300 pt-3">
                     {progressNotes.length > 0 ? (
                       <div className="max-h-[228px] space-y-2 overflow-y-auto pr-1">
                         {progressNotes.map((note) => {
@@ -686,12 +656,12 @@ export function OfferDetailLayout({
                           return (
                             <div
                               key={note.id}
-                              className="rounded-xl border border-orange-300/80 bg-[linear-gradient(155deg,rgba(255,244,230,0.95)_0%,rgba(255,232,201,0.88)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_8px_16px_rgba(249,115,22,0.12)]"
+                              className="offers-detail-page__progress-note-card rounded-xl border border-orange-300/80 bg-[linear-gradient(155deg,rgba(255,244,230,0.95)_0%,rgba(255,232,201,0.88)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_8px_16px_rgba(249,115,22,0.12)]"
                             >
-                              <div className="text-xs font-semibold uppercase tracking-[0.08em] text-black/70">
+                              <div className="offers-detail-page__progress-note-meta text-xs font-semibold uppercase tracking-[0.08em] text-black/70">
                                 {(noteAuthor?.name ?? 'Uživatel')} · {formatDateTime(note.created_at)}
                               </div>
-                              <div className="mt-1 whitespace-pre-wrap text-sm text-black">
+                              <div className="offers-detail-page__progress-note-body mt-1 whitespace-pre-wrap text-sm text-black">
                                 {note.note}
                               </div>
                             </div>
@@ -699,7 +669,7 @@ export function OfferDetailLayout({
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-orange-300/80 bg-[linear-gradient(155deg,rgba(255,244,230,0.95)_0%,rgba(255,232,201,0.88)_100%)] px-3 py-3 text-sm text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_8px_16px_rgba(249,115,22,0.12)]">
+                      <div className="offers-detail-page__progress-note-empty rounded-xl border border-orange-300/80 bg-[linear-gradient(155deg,rgba(255,244,230,0.95)_0%,rgba(255,232,201,0.88)_100%)] px-3 py-3 text-sm text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_8px_16px_rgba(249,115,22,0.12)]">
                         Zatím nejsou zapsány žádné průběžné komentáře.
                       </div>
                     )}
@@ -709,7 +679,7 @@ export function OfferDetailLayout({
                     <form action={setOfferClientOutcome.bind(null, offer.id, 'ordered')}>
                       <button
                         type="submit"
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px]"
+                        className="offers-detail-page__approval-button offers-detail-page__approval-button--ordered inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px]"
                       >
                         OBJEDNÁNO
                       </button>
@@ -721,12 +691,12 @@ export function OfferDetailLayout({
             ) : null}
 
             {isFinalClientOutcome ? (
-              <section className="min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+              <section className="offers-detail-page__final-panel min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
                 {offer.status === 'ordered' ? (
                   <button
                     type="button"
                     disabled
-                    className="inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)]"
+                    className="offers-detail-page__approval-button offers-detail-page__approval-button--ordered inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)]"
                   >
                     OBJEDNÁNO
                   </button>
@@ -734,7 +704,7 @@ export function OfferDetailLayout({
                   <button
                     type="button"
                     disabled
-                    className="inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)]"
+                    className="offers-detail-page__approval-button offers-detail-page__approval-button--rejected inline-flex min-h-10 w-full cursor-default items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)]"
                   >
                     ZAMÍTNUTO
                   </button>
@@ -786,13 +756,13 @@ export function OfferDetailLayout({
               rejectionComment={offer.status === 'changes_requested' ? offer.rejection_comment : null}
             />
 
-            <div className="mt-auto grid gap-3">
+            <div className="offers-detail-page__footer-actions mt-auto grid gap-3">
               <Link
                 href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
                 target="_blank"
                 rel="noreferrer"
                 data-offer-unsaved-guard="true"
-                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+                className="offers-detail-page__footer-pdf-button inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
               >
                 GENEROVAT PDF
               </Link>
@@ -804,7 +774,7 @@ export function OfferDetailLayout({
 
         {offer.offer_type === 'bsafe24' ? (
           <div className="grid min-w-0 gap-5 lg:grid-cols-2">
-            <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+            <section className="offers-detail-page__variant-panel offers-detail-page__depot-panel min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                   SOUČASNÁ ZÁLOHA LOKALIT
@@ -862,14 +832,14 @@ export function OfferDetailLayout({
               </div>
             </section>
 
-            <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+            <section className="offers-detail-page__variant-panel min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                   DEPO
                 </h2>
               </div>
 
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+              <div className="offers-detail-page__depot-summary rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
                   Pevně nastaveno
                 </div>
@@ -881,7 +851,7 @@ export function OfferDetailLayout({
           </div>
         ) : (
           <div className="grid min-w-0 gap-5 lg:grid-cols-2">
-            <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+            <section className="offers-detail-page__variant-panel min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                   SLUŽBY
@@ -895,7 +865,7 @@ export function OfferDetailLayout({
               />
             </section>
 
-            <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+            <section className="offers-detail-page__depot-panel min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mb-5">
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">
                   DEPO
@@ -985,7 +955,7 @@ export function OfferDetailLayout({
         )}
 
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="flex min-w-0 flex-1 flex-col rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="offers-detail-page__terms-panel flex min-w-0 flex-1 flex-col rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
               OBCHODNÍ PODMÍNKY
             </div>
@@ -1007,8 +977,8 @@ export function OfferDetailLayout({
           {offer.offer_type === 'bsafe24' ? (
             <div aria-hidden="true" />
           ) : (
-            <section className="w-full rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:w-[360px]">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900 sm:tracking-[0.18em]">
+            <section className="offers-detail-page__summary-panel offers-detail-page__classic-summary-panel w-full rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:w-[360px]">
+              <div className="offers-detail-page__classic-summary-title text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-900 sm:tracking-[0.18em]">
                 SOUHRN CENOVÉ NABÍDKY
               </div>
               <div className="mt-3 space-y-1.5 text-sm sm:mt-4 sm:space-y-3">

@@ -44,7 +44,7 @@ export function ChangesButton({
       </svg>
 
       {hasBadge ? (
-        <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border border-white/90 bg-red-600 px-1 text-[10px] font-semibold leading-none text-white shadow-[0_6px_14px_rgba(220,38,38,0.38)]">
+        <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border border-red-600 bg-red-600 px-1 text-[10px] font-semibold leading-none text-white shadow-[0_6px_14px_rgba(220,38,38,0.38)]">
           {badgeLabel}
         </span>
       ) : null}

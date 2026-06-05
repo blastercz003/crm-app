@@ -53,7 +53,7 @@ export function PushNotificationsPanel() {
 
   const buttonLabel = useMemo(() => {
     if (isPending) return 'ZAPÍNÁM...'
-    if (status === 'enabled') return 'NOTIFIKACE JSOU ZAPNUTÉ'
+    if (status === 'enabled') return 'NOTIFIKACE ZAPNUTY'
     return 'ZAPNOUT NOTIFIKACE'
   }, [isPending, status])
 
@@ -226,28 +226,28 @@ export function PushNotificationsPanel() {
   const isBusy = isPending || isRemoving
 
   return (
-    <section className="rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
+    <section className="password-page__panel password-page__push-panel rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
       <div className="space-y-4">
         <div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+          <h2 className="password-page__eyebrow text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
             Push notifikace
           </h2>
         </div>
 
         {status === 'unsupported' ? (
-          <div className="rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(255,251,235,0.92)_100%)] px-4 py-3 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(245,158,11,0.1)]">
+          <div className="password-page__alert password-page__alert--warn rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(255,251,235,0.92)_100%)] px-4 py-3 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(245,158,11,0.1)]">
             Tento prohlížeč nepodporuje Web Push notifikace.
           </div>
         ) : null}
 
         {status === 'not-configured' ? (
-          <div className="rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(255,251,235,0.92)_100%)] px-4 py-3 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(245,158,11,0.1)]">
+          <div className="password-page__alert password-page__alert--warn rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(255,251,235,0.92)_100%)] px-4 py-3 text-sm font-medium text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(245,158,11,0.1)]">
             Chybí konfigurace VAPID public key.
           </div>
         ) : null}
 
         {message ? (
-          <div className="rounded-2xl border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.9)_100%)] px-4 py-3 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_20px_rgba(15,23,42,0.08)]">
+          <div className="password-page__alert password-page__alert--neutral rounded-2xl border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(248,250,252,0.9)_100%)] px-4 py-3 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_20px_rgba(15,23,42,0.08)]">
             {message}
           </div>
         ) : null}
@@ -263,7 +263,7 @@ export function PushNotificationsPanel() {
               status === 'not-configured' ||
               status === 'enabled'
             }
-            className="inline-flex min-w-0 flex-1 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-2 text-[12px] font-semibold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)]"
+            className="password-page__primary-button inline-flex min-w-0 flex-1 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-2 text-[12px] font-semibold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)]"
           >
             {buttonLabel}
           </button>
@@ -272,7 +272,7 @@ export function PushNotificationsPanel() {
             type="button"
             onClick={disableNotifications}
             disabled={isBusy || status !== 'enabled'}
-            className="inline-flex min-w-0 flex-1 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[12px] font-semibold tracking-[0.01em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            className="password-page__secondary-button inline-flex min-w-0 flex-1 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[12px] font-semibold tracking-[0.01em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {isRemoving ? 'ODEBÍRÁM...' : 'ODEBRAT NOTIFIKACE'}
           </button>
@@ -317,19 +317,19 @@ function BadgeDiagnosticsPanel({
     diagnostics?.hasNotifications === true
 
   return (
-    <div className="rounded-2xl border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.86)_0%,rgba(244,248,252,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_14px_28px_rgba(15,23,42,0.08)]">
+    <div className="password-page__diagnostics rounded-2xl border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.86)_0%,rgba(244,248,252,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_14px_28px_rgba(15,23,42,0.08)]">
       <div className="flex flex-col items-center gap-2 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
         <div className="w-full sm:w-auto">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          <h3 className="password-page__diagnostics-title text-sm font-semibold uppercase tracking-[0.14em] text-zinc-500">
             Diagnostika
           </h3>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="password-page__diagnostics-subtitle mt-1 text-sm text-zinc-600">
             Analyzuje aktuální prohlížeč.
           </p>
         </div>
 
         <span
-          className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+          className={`password-page__diagnostics-badge inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${
             badgeReady
               ? 'bg-emerald-100 text-emerald-700'
               : 'bg-amber-100 text-amber-800'
@@ -410,10 +410,10 @@ function DiagnosticsRow({
           : 'bg-sky-500'
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(246,249,252,0.88)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-      <span className="text-zinc-500">{label}</span>
-      <span className="inline-flex items-center gap-2 text-right font-medium text-zinc-800">
-        <span className={`h-2 w-2 rounded-full ${dotClass}`} />
+    <div className="password-page__diagnostics-row flex items-center justify-between gap-3 rounded-xl border border-white/85 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(246,249,252,0.88)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+      <span className="password-page__diagnostics-label text-zinc-500">{label}</span>
+      <span className="password-page__diagnostics-value inline-flex items-center gap-2 text-right font-medium text-zinc-800">
+        <span className={`password-page__diagnostics-dot h-2 w-2 rounded-full ${dotClass}`} />
         {value}
       </span>
     </div>

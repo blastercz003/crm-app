@@ -18,6 +18,7 @@ type JobProtocolButtonJob = {
 type HandoverProtocolButtonProps = {
   job: JobProtocolButtonJob
   compact?: boolean
+  className?: string
 }
 
 type DraftState = {
@@ -73,6 +74,7 @@ function sanitizeDraft(state: DraftState) {
 export function HandoverProtocolButton({
   job,
   compact = false,
+  className = '',
 }: HandoverProtocolButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -83,7 +85,7 @@ export function HandoverProtocolButton({
         onClick={() => setIsOpen(true)}
         title="Předávací protokol"
         aria-label="Předávací protokol"
-        className={`inline-flex h-8 items-center justify-center rounded-xl border border-[#6fa9d1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] ${
+        className={`inline-flex h-8 items-center justify-center rounded-xl border border-[#6fa9d1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] ${className} ${
           compact
             ? 'min-w-[78px] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)]'
             : 'w-8 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)]'
@@ -331,21 +333,21 @@ function HandoverProtocolModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-2 sm:items-center sm:py-3">
-        <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100dvh-1.5rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+        <div className="jobs-page__modal-shell jobs-page__handover-modal flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100dvh-1.5rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
+          <div className="jobs-page__handover-header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 flex-col items-start">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 Předávací protokol
               </h2>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
+                <div className="jobs-page__handover-job-badge inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
                   ZAKÁZKA {job.job_number}
                 </div>
                 <button
                   type="button"
                   disabled={isLoading || isSaving}
                   onClick={() => toggleSentState(!draft.is_sent)}
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(24,24,27,0.2)] transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`jobs-page__handover-sent-badge inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(24,24,27,0.2)] transition disabled:cursor-not-allowed disabled:opacity-60 ${
                     draft.is_sent
                       ? 'bg-emerald-600 hover:bg-emerald-700'
                       : 'bg-red-600 hover:bg-red-700'
@@ -401,7 +403,7 @@ function HandoverProtocolModal({
                 {draft.devices.map((device, index) => (
                   <div
                     key={device.id ?? `device-${index}`}
-                    className="grid gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] md:grid-cols-[minmax(0,1fr)_auto]"
+                    className="jobs-page__handover-row grid gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] md:grid-cols-[minmax(0,1fr)_auto]"
                   >
                     <Field
                       label="Název / kód zařízení"
@@ -412,7 +414,7 @@ function HandoverProtocolModal({
                       <button
                         type="button"
                         onClick={() => removeDevice(index)}
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
+                        className="jobs-page__handover-remove inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
                       >
                         ODEBRAT
                       </button>
@@ -429,7 +431,7 @@ function HandoverProtocolModal({
                 {draft.accessories.map((item, index) => (
                   <div
                     key={item.id ?? `accessory-${index}`}
-                    className="grid gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] md:grid-cols-[minmax(0,1fr)_auto]"
+                    className="jobs-page__handover-row grid gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] md:grid-cols-[minmax(0,1fr)_auto]"
                   >
                     <Field
                       label="Název / kód příslušenství"
@@ -440,7 +442,7 @@ function HandoverProtocolModal({
                       <button
                         type="button"
                         onClick={() => removeAccessory(index)}
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
+                        className="jobs-page__handover-remove inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
                       >
                         ODEBRAT
                       </button>
@@ -463,12 +465,12 @@ function HandoverProtocolModal({
             </div>
           </div>
 
-          <div className="border-t border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:px-5 sm:py-3">
+          <div className="jobs-page__handover-footer border-t border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:px-5 sm:py-3">
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-5 py-3 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
+                className="jobs-page__handover-cancel rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-5 py-3 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
               >
                 ZRUŠIT
               </button>
@@ -478,7 +480,7 @@ function HandoverProtocolModal({
                   type="button"
                   disabled={isLoading || isSaving}
                   onClick={() => persistDraft('save')}
-                  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__handover-save rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   ULOŽIT DO ZAKÁZKY
                 </button>
@@ -486,7 +488,7 @@ function HandoverProtocolModal({
                   type="button"
                   disabled={isLoading || isSaving || !canPreview}
                   onClick={() => persistDraft('preview')}
-                  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__handover-preview rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   NÁHLED
                 </button>
@@ -494,7 +496,7 @@ function HandoverProtocolModal({
                   type="button"
                   disabled={isLoading || isSaving || !canPreview}
                   onClick={() => persistDraft('generate')}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__handover-generate inline-flex items-center justify-center gap-2 rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   GENEROVAT PP
                 </button>
@@ -525,7 +527,7 @@ function EditableRowsSection({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
+    <section className="jobs-page__handover-section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold tracking-tight text-gray-900">{title}</h3>
@@ -534,7 +536,7 @@ function EditableRowsSection({
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+          className="jobs-page__handover-add inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
         >
           {addLabel}
         </button>
@@ -557,7 +559,7 @@ function Field({
   readOnly?: boolean
 }) {
   const baseInputClass =
-    'h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition'
+    'jobs-page__handover-input h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition'
 
   return (
     <div>

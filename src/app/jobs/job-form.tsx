@@ -174,7 +174,7 @@ export function JobForm({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div className="jobs-page__modal-shell flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div className="flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4 sm:px-6">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-gray-900">
@@ -446,12 +446,12 @@ export function JobForm({
               ) : null}
             </div>
 
-            <div className="border-t border-white/70 px-5 py-4 sm:px-6">
+            <div className="jobs-page__modal-footer border-t border-white/70 px-5 py-4 sm:px-6">
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
+                  className="jobs-page__modal-cancel inline-flex h-11 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
                 >
                   Zrušit
                 </button>
@@ -459,7 +459,7 @@ export function JobForm({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3] bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__modal-submit inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3] bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isPending ? 'Ukládám…' : submitLabel}
                 </button>

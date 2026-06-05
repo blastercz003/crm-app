@@ -130,7 +130,7 @@ export function OfferInfoCards({
   if (cards.length === 0) return null
 
   return (
-    <div className="hidden space-y-3 lg:block">
+    <div className="offers-detail-page__info-cards hidden space-y-3 lg:block">
       {cards.map((entry) => (
         <article
           key={entry.key}

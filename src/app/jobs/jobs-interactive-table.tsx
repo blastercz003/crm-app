@@ -10,6 +10,7 @@ import {
 import { EditJobButton } from './edit-job-button'
 import { HandoverProtocolButton } from './handover-protocol-button'
 import { InfoNoteButton } from './info-note-button'
+import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 
 type JobStatus =
   | 'nova'
@@ -76,11 +77,6 @@ type JobsInteractiveTableProps = {
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const STATUS_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
 const EVIDENCE_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
-const GLASS_SECONDARY_BUTTON_CLASS =
-  'rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)]'
-const GLASS_DARK_BUTTON_CLASS =
-  'rounded-xl border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:bg-zinc-800 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.17),0_11px_16px_rgba(24,24,27,0.22)]'
-
 function getEffectiveJobStatus(job: JobRow): JobStatus {
   if (job.job_status !== 'realizace' && job.job_status !== 'ukoncena') {
     return job.job_status
@@ -113,7 +109,7 @@ export function JobsInteractiveTable({
     <>
       <section className="print-header print:block hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
         <div className="print:max-h-none print:overflow-visible">
-        <table className="w-full table-fixed border-separate border-spacing-y-2 print:border-collapse print:border-spacing-y-0">
+        <table className="jobs-page__table w-full table-fixed border-separate border-spacing-y-2 print:border-collapse print:border-spacing-y-0">
           <thead className="bg-transparent shadow-[0_1px_0_0_#e5e7eb]">
             <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 print:text-[9px]">
               <th className="w-[76px] px-2 py-2 print:w-[70px] print:px-1.5 print:py-1.5">
@@ -151,7 +147,7 @@ export function JobsInteractiveTable({
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="jobs-page__table-body">
             {jobs.map((job) => (
               <DesktopRow
                 key={job.id}
@@ -193,13 +189,14 @@ function DesktopRow({
   isAdmin: boolean
 }) {
   return (
-    <tr className="group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
+    <tr className="jobs-page__table-row group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
       <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
         <EditJobButton
           job={job}
           clientSuggestions={clientSuggestions}
           clientContacts={clientContacts}
           isAdmin={isAdmin}
+          className="jobs-page__job-edit-button jobs-page__job-number-button inline-flex items-center justify-start px-1 py-1 text-[12px] font-bold leading-tight"
         >
           <span className="block truncate print:text-[11px]">
             {job.job_number}
@@ -267,13 +264,17 @@ function DesktopRow({
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
         <div className="flex items-center justify-center gap-2">
-          <HandoverProtocolButton job={job} />
+          <HandoverProtocolButton
+            job={job}
+            className="jobs-page__handover-button"
+          />
           <InfoNoteButton
             jobId={job.id}
             jobNumber={job.job_number}
             infoNote={job.info_note}
             hasInfoAttachments={job.has_info_attachments}
             infoAlertEnabled={Boolean(job.info_alert_enabled)}
+            className="jobs-page__info-button"
           />
         </div>
       </td>
@@ -300,14 +301,14 @@ function MobileCard({
   const showInfoAlertDot = Boolean(job.info_alert_enabled) && Boolean(job.has_info_content)
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
+    <div className="jobs-page__mobile-card overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 w-0 flex-1">
           <EditJobButton
             job={job}
             clientSuggestions={clientSuggestions}
             clientContacts={clientContacts}
-            className="text-sm font-semibold leading-tight text-gray-900 hover:underline"
+            className="jobs-page__job-edit-button text-sm font-semibold leading-tight text-gray-900 hover:underline"
             isAdmin={isAdmin}
           >
             {job.job_number}
@@ -387,7 +388,10 @@ function MobileCard({
 
       {isActionsOpen ? (
         <div className="mt-0 grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-1.5 min-[420px]:gap-2">
-          <HandoverProtocolButton job={job} />
+          <HandoverProtocolButton
+            job={job}
+            className="jobs-page__handover-button"
+          />
           <InfoNoteButton
             jobId={job.id}
             jobNumber={job.job_number}
@@ -396,6 +400,7 @@ function MobileCard({
             infoAlertEnabled={Boolean(job.info_alert_enabled)}
             variant="mobile"
             compact
+            className="jobs-page__info-button"
           />
           <EvidenceStatusButton
             job={job}
@@ -545,7 +550,7 @@ function MobileAssignmentButton({
                   type="button"
                   onClick={saveAssignments}
                   disabled={isPending}
-                  className={`inline-flex h-10 items-center justify-center px-4 text-sm font-medium uppercase tracking-[0.04em] ${GLASS_DARK_BUTTON_CLASS} disabled:cursor-not-allowed disabled:opacity-60`}
+                  className="jobs-page__mobile-modal-submit inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isPending ? 'UKLÁDÁM…' : 'ULOŽIT'}
                 </button>
@@ -685,7 +690,7 @@ function EditableCell({
     return (
       <td className={cellClassName}>
         <div
-          className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
+          className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
           title={displayValue}
         >
           <span className="block truncate">
@@ -703,7 +708,7 @@ function EditableCell({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
+        className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title={displayValue}
       >
         <span className="block truncate">
@@ -911,7 +916,7 @@ function EditableCompanyCell({
     return (
       <td className={cellClassName}>
         <div
-          className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
+          className="jobs-page__company-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-900 print:px-0 print:py-0 print:text-[11px]"
           title={displayValue}
         >
           <span className="block truncate">{displayValue}</span>
@@ -925,7 +930,7 @@ function EditableCompanyCell({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
+        className="jobs-page__company-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-900 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title={displayValue}
       >
         <span className="block truncate">{displayValue}</span>
@@ -980,7 +985,8 @@ function JobStatusButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] print:min-w-0 print:px-2 print:text-[10px] ${meta.className}`}
+        data-status={meta.value}
+        className={`jobs-page__job-status-button inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] print:min-w-0 print:px-2 print:text-[10px] ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
@@ -1031,14 +1037,14 @@ function JobStatusModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
 
-          <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+          <div className="jobs-page__status-modal__header relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <div className="flex flex-col items-start">
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+              <h2 className="jobs-page__status-modal__title text-lg font-semibold tracking-tight text-gray-900">
                 {title}
               </h2>
               <div className="mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
@@ -1059,7 +1065,9 @@ function JobStatusModal({
           <div className="relative flex items-center justify-between gap-3 rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-3 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(41,128,185,0.24)]">
             <span className="font-semibold text-white">Aktuální stav:</span>
             <span
-              className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${currentMeta.className}`}
+              data-status={currentMeta.value}
+              data-active="true"
+              className={`jobs-page__status-chip inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${currentMeta.className}`}
             >
               {currentMeta.label}
             </span>
@@ -1078,10 +1086,13 @@ function JobStatusModal({
                     type="button"
                     disabled={isPending}
                     onClick={() => onSaveStatus(option.value)}
-                    className="flex w-full items-center justify-end rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
+                    data-status={option.value}
+                    className="jobs-page__status-option flex w-full items-center justify-end rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span
-                      className={`inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
+                      data-active="false"
+                      data-status={option.value}
+                      className={`jobs-page__status-chip inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${option.className}`}
                     >
                       {option.label}
                     </span>
@@ -1160,13 +1171,14 @@ function EvidenceStatusButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
+        data-status={meta.value}
         className={`inline-flex h-8 ${
           compact
             ? compactClassName ?? 'min-w-[96px]'
             : EVIDENCE_BUTTON_WIDTH_CLASS
         } max-w-full items-center justify-center rounded-xl ${
           compact ? '' : 'px-3'
-        } text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] ${meta.className}`}
+        } text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] jobs-page__job-evidence-button ${meta.className}`}
       >
         <span className="truncate">{meta.label}</span>
       </button>
@@ -1214,7 +1226,7 @@ function EvidenceStatusModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
@@ -1248,7 +1260,8 @@ function EvidenceStatusModal({
                     type="button"
                     disabled={isPending}
                     onClick={() => onSaveEvidenceStatus(option.value)}
-                    className="flex w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
+                    data-status={option.value}
+                    className="jobs-page__evidence-option flex w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span className="font-medium text-gray-900">{option.label}</span>
                     <span
@@ -1319,9 +1332,9 @@ function ModalShell({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-5 shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)]">
+        <div className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-5 shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)]">
           <div
-            className={`mb-4 flex items-start justify-between gap-4 ${
+            className={`jobs-page__modal-header mb-4 flex items-start justify-between gap-4 ${
               showHeaderDivider ? 'border-b border-gray-100 pb-4' : ''
             }`}
           >
@@ -1331,7 +1344,7 @@ function ModalShell({
               </h2>
               {description ? (
                 descriptionAsBadge ? (
-                  <div className="mt-1.5 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
+                  <div className="jobs-page__mobile-modal-badge mt-1.5 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
                     {description}
                   </div>
                 ) : (
@@ -1391,7 +1404,7 @@ function getJobStatusMeta(status: JobStatus) {
         value: 'ukoncena' as JobStatus,
         label: 'UKONČENÁ',
         className:
-          'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]',
+          'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)]',
       }
     case 'storno':
       return {

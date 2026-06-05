@@ -562,19 +562,19 @@ export default async function JobsPage({
         `}
       </style>
 
-      <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <main className="jobs-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
         <JobsForegroundRefresh />
         <PresenceSectionTracker section="Zakázky" route="/jobs" />
         <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+        aria-hidden
+          className="jobs-page__glow jobs-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+          className="jobs-page__glow jobs-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
         />
         <div className="print-shell relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-          <section className="print-header rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="jobs-page__hero print-header rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center justify-center lg:justify-start">
                 <Image
@@ -604,40 +604,41 @@ export default async function JobsPage({
                     name="q"
                     defaultValue={query}
                     placeholder="Hledat adresu, technika, firmu"
-                    className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
+                    className="jobs-page__search-input w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                   />
 
                   <button
-  type="submit"
-  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
->
-  HLEDAT
-</button>
-</form>
+                    type="submit"
+                    className="clients-page__search-button rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                  >
+                    HLEDAT
+                  </button>
+                </form>
 
-<Link
-  href="/dashboard"
-  className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
->
-  ZPĚT NA DASHBOARD
-</Link>
+                <Link
+                  href="/dashboard"
+                  className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
+                >
+                  ZPĚT NA DASHBOARD
+                </Link>
 
                 <NewJobButton
                   clientSuggestions={clientOptions}
                   clientContacts={clientContacts}
                   offerSuggestions={offerSuggestions}
                   isAdmin={isAdmin}
+                  className="clients-page__new-button"
                 />
               </div>
             </div>
           </section>
 
-          <section className="print-header rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-4">
+          <section className="jobs-page__filters-shell print-header rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-4">
             <div className="space-y-3">
               <form action="/jobs" method="get" className="print-hidden lg:hidden">
                 <input type="hidden" name="q" value={query} />
                 <details className="group w-full">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+                <summary className="jobs-page__filters-summary flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                   <span className="inline-flex items-center gap-2">
                     FILTRY
                     {hasActiveFilters ? (
@@ -649,7 +650,7 @@ export default async function JobsPage({
                   <span className="text-xs text-zinc-500 transition group-open:rotate-180">⌄</span>
                 </summary>
 
-                <div className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                <div className="jobs-page__filters-panel mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
                       <label
@@ -716,7 +717,7 @@ export default async function JobsPage({
                       >
                         Od dne
                       </label>
-                      <div className="min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef]">
+                      <div className="jobs-page__filters-date-shell min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef]">
                         <input
                           id="date_from-mobile"
                           name="date_from"
@@ -734,7 +735,7 @@ export default async function JobsPage({
                       >
                         Do dne
                       </label>
-                      <div className="min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef]">
+                      <div className="jobs-page__filters-date-shell min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef]">
                         <input
                           id="date_to-mobile"
                           name="date_to"
@@ -746,30 +747,34 @@ export default async function JobsPage({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
-                    <JobFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                  <div className="jobs-page__filter-divider flex items-center gap-2 border-t border-gray-100 pt-3">
+                    <JobFilterSubmitButton className="jobs-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                       POUŽÍT FILTRY
                     </JobFilterSubmitButton>
 
                     <JobFilterResetLink
                       href="/jobs"
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                      className="jobs-page__filter-reset inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                     >
                       RESET
                     </JobFilterResetLink>
 
-                    <PrintJobsButton />
+                    <PrintJobsButton className="jobs-page__print-button" />
                   </div>
                 </div>
                 </details>
               </form>
 
               <div className="print-hidden mt-2 grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 lg:hidden">
-                <ChangesLauncher initialCount={jobChangesCount} />
+                <ChangesLauncher
+                  initialCount={jobChangesCount}
+                  className="jobs-page__changes-button"
+                />
 
                 <Link
                   href={todayHref}
-                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                  data-active={isTodayActive}
+                  className={`jobs-page__range-link inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
                     isTodayActive
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                       : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -780,7 +785,8 @@ export default async function JobsPage({
 
                 <Link
                   href={tomorrowHref}
-                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                  data-active={isTomorrowActive}
+                  className={`jobs-page__range-link inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
                     isTomorrowActive
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                       : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -791,7 +797,8 @@ export default async function JobsPage({
 
                 <Link
                   href={thisWeekHref}
-                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                  data-active={isThisWeekActive}
+                  className={`jobs-page__range-link inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
                     isThisWeekActive
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                       : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -802,7 +809,8 @@ export default async function JobsPage({
 
                 <Link
                   href={nextWeekHref}
-                  className={`inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
+                  data-active={isNextWeekActive}
+                  className={`jobs-page__range-link inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border px-0.5 text-[10px] font-medium uppercase tracking-[0.01em] transition duration-200 hover:-translate-y-[1px] ${
                     isNextWeekActive
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                       : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -919,44 +927,44 @@ export default async function JobsPage({
                 </div>
                 </div>
 
-                <div className="hidden flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between lg:flex">
+                  <div className="jobs-page__filter-divider hidden flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between lg:flex">
                   <div className="print-filters-summary flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                  <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Řazení:{' '}
-                    <span className="ml-1 font-medium text-gray-900">
+                    <span className="ml-1 font-medium">
                       {getSortLabel(sort)}
                     </span>
                   </span>
 
-                  <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Zobrazení:{' '}
-                    <span className="ml-1 font-medium text-gray-900">
+                    <span className="ml-1 font-medium">
                       {getViewLabel(view)}
                     </span>
                   </span>
 
                   {query ? (
-                    <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Hledání:{' '}
-                      <span className="ml-1 font-medium text-gray-900">
+                      <span className="ml-1 font-medium">
                         {query}
                       </span>
                     </span>
                   ) : null}
 
                   {dateFrom ? (
-                    <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Od:{' '}
-                      <span className="ml-1 font-medium text-gray-900">
+                      <span className="ml-1 font-medium">
                         {dateFrom}
                       </span>
                     </span>
                   ) : null}
 
                   {dateTo ? (
-                    <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Do:{' '}
-                      <span className="ml-1 font-medium text-gray-900">
+                      <span className="ml-1 font-medium">
                         {dateTo}
                       </span>
                     </span>
@@ -964,28 +972,32 @@ export default async function JobsPage({
                   </div>
 
                   <div className="print-hidden flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="h-px bg-gray-100 sm:hidden" />
+                    <div className="jobs-page__filter-divider h-px bg-gray-100 sm:hidden" />
 
                   <div className="flex flex-wrap items-center gap-2 sm:contents">
-                    <ChangesLauncher initialCount={jobChangesCount} />
-                    <PrintJobsButton />
+                    <ChangesLauncher
+                      initialCount={jobChangesCount}
+                      className="jobs-page__changes-button"
+                    />
+                    <PrintJobsButton className="jobs-page__print-button" />
 
-                    <JobFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:order-5">
+                    <JobFilterSubmitButton className="jobs-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:order-5">
                       POUŽÍT FILTRY
                     </JobFilterSubmitButton>
 
                     <JobFilterResetLink
                       href="/jobs"
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] sm:order-6"
+                      className="jobs-page__filter-reset inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] sm:order-6"
                     >
                       RESET
                     </JobFilterResetLink>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:contents">
-                    <Link
-                      href={todayHref}
-                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-1 ${
+                <Link
+                  href={todayHref}
+                  data-active={isTodayActive}
+                  className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-1 ${
                         isTodayActive
                           ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                           : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -994,9 +1006,10 @@ export default async function JobsPage({
                       DNES
                     </Link>
 
-                    <Link
-                      href={tomorrowHref}
-                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-2 ${
+                <Link
+                  href={tomorrowHref}
+                  data-active={isTomorrowActive}
+                  className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-2 ${
                         isTomorrowActive
                           ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                           : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -1005,9 +1018,10 @@ export default async function JobsPage({
                       ZÍTRA
                     </Link>
 
-                    <Link
-                      href={thisWeekHref}
-                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-3 ${
+                <Link
+                  href={thisWeekHref}
+                  data-active={isThisWeekActive}
+                  className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-3 ${
                         isThisWeekActive
                           ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                           : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -1016,9 +1030,10 @@ export default async function JobsPage({
                       TENTO TÝDEN
                     </Link>
 
-                    <Link
-                      href={nextWeekHref}
-                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-4 ${
+                <Link
+                  href={nextWeekHref}
+                  data-active={isNextWeekActive}
+                  className={`inline-flex h-9 items-center justify-center rounded-xl border px-4 text-sm font-medium uppercase transition duration-200 hover:-translate-y-[1px] sm:order-4 ${
                         isNextWeekActive
                           ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
                           : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -1034,7 +1049,7 @@ export default async function JobsPage({
           </section>
 
           {typedJobs.length === 0 ? (
-            <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+            <section className="jobs-page__empty-state rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mx-auto max-w-xl space-y-3">
                 <h2 className="text-lg font-semibold text-gray-900">
                   {hasActiveFilters
@@ -1050,7 +1065,7 @@ export default async function JobsPage({
               </div>
             </section>
           ) : (
-            <div className="print-table-section">
+            <div className="jobs-page__table-shell print-table-section">
               <JobsInteractiveTable
                 jobs={jobsWithInfoState}
                 clientSuggestions={clientOptions}

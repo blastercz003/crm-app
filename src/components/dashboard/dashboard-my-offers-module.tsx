@@ -107,10 +107,12 @@ export function DashboardMyOffersModule({
   offers,
   currentUserId,
   isAdmin,
+  className = '',
 }: {
   offers: DashboardOfferPreview[]
   currentUserId: string
   isAdmin: boolean
+  className?: string
 }) {
   const [filter, setFilter] = useState<FilterKey>(() =>
     isAdmin ? 'submitted' : 'in_progress'
@@ -242,25 +244,25 @@ export function DashboardMyOffersModule({
 
   return (
     <section
-      className={`relative rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 ${
+      className={`dashboard-offers-module relative rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 ${
         isFilterOpen ? 'z-40 overflow-visible' : 'z-0'
-      }`}
+      } ${className}`}
     >
       {toast ? <ActionFeedbackToast toast={toast} isVisible={isVisible} /> : null}
 
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+          <div className="dashboard-offers-module__eyebrow text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
             Nabídky
           </div>
           <Link
             href="/offers"
-            className="group mt-2 inline-flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-950 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-[#2f6f9f]"
+            className="dashboard-offers-module__title group mt-2 inline-flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-950 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-[#2f6f9f]"
           >
             <span>Moje nabídky</span>
             <span
               aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_6px_12px_rgba(0,0,0,0.26)] transition duration-200 ease-out group-hover:-translate-y-[1px] group-hover:border-[#1f5f8e] group-hover:bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.36),0_9px_16px_rgba(9,48,82,0.30)]"
+              className="dashboard-offers-module__title-arrow inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_6px_12px_rgba(0,0,0,0.26)] transition duration-200 ease-out group-hover:-translate-y-[1px] group-hover:border-[#1f5f8e] group-hover:bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.36),0_9px_16px_rgba(9,48,82,0.30)]"
             >
               <span className="-translate-y-[1px] text-[18px] leading-none">›</span>
             </span>
@@ -273,7 +275,7 @@ export function DashboardMyOffersModule({
           <button
             type="button"
             onClick={() => setIsFilterOpen((prev) => !prev)}
-            className="flex h-11 w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-left text-base text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:h-9 sm:text-sm"
+            className="dashboard-offers-module__filter-button flex h-11 w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-left text-base text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:h-9 sm:text-sm"
             aria-haspopup="listbox"
             aria-expanded={isFilterOpen}
           >
@@ -282,7 +284,7 @@ export function DashboardMyOffersModule({
           </button>
 
           {isFilterOpen ? (
-            <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[260px] overflow-y-auto rounded-xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(243,247,252,0.9)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_18px_38px_rgba(15,23,42,0.14)]">
+            <div className="dashboard-offers-module__filter-menu absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[260px] overflow-y-auto rounded-xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(243,247,252,0.9)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_18px_38px_rgba(15,23,42,0.14)]">
               {availableFilters.map((item) => {
                 const active = item.key === filter
                 return (
@@ -293,7 +295,7 @@ export function DashboardMyOffersModule({
                       setFilter(item.key)
                       setIsFilterOpen(false)
                     }}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm transition ${
+                    className={`dashboard-offers-module__filter-option flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm transition ${
                       active
                         ? 'bg-[#2980B9] font-semibold text-white'
                         : 'text-zinc-700 hover:bg-white/75'
@@ -310,7 +312,7 @@ export function DashboardMyOffersModule({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
           Pro tento filtr teď nemáš žádné nabídky.
         </div>
       ) : (
@@ -318,7 +320,7 @@ export function DashboardMyOffersModule({
           {filtered.map((offer) => (
             <article
               key={offer.id}
-              className="relative min-w-0 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]"
+              className="dashboard-offers-module__item relative min-w-0 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]"
             >
               <Link
                 href={`/offers/${offer.id}`}
@@ -327,13 +329,19 @@ export function DashboardMyOffersModule({
               />
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-zinc-900">
+                  <div className="dashboard-offers-module__number truncate text-sm font-semibold text-zinc-900">
                     {offer.offerNumber}
                   </div>
-                  <div className="mt-0.5 truncate text-sm text-zinc-600" title={offer.clientName}>
+                  <div
+                    className="dashboard-offers-module__client mt-0.5 truncate text-sm text-zinc-600"
+                    title={offer.clientName}
+                  >
                     {offer.clientName}
                   </div>
-                  <div className="mt-0.5 truncate text-sm text-zinc-600" title={offer.title}>
+                  <div
+                    className="dashboard-offers-module__offer-title mt-0.5 truncate text-sm text-zinc-600"
+                    title={offer.title}
+                  >
                     {offer.title}
                   </div>
                 </div>
@@ -350,32 +358,32 @@ export function DashboardMyOffersModule({
               </div>
 
               {offer.lastCommentText ? (
-                <div className="relative z-10 mt-2 rounded-xl border border-[#ffd2b3]/85 bg-[linear-gradient(155deg,rgba(255,247,237,0.95)_0%,rgba(255,237,213,0.9)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_18px_rgba(194,97,39,0.12)]">
+                <div className="dashboard-offers-module__comment relative z-10 mt-2 rounded-xl border border-[#ffd2b3]/85 bg-[linear-gradient(155deg,rgba(255,247,237,0.95)_0%,rgba(255,237,213,0.9)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_18px_rgba(194,97,39,0.12)]">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-orange-700">
+                      <div className="dashboard-offers-module__comment-label text-[10px] font-semibold uppercase tracking-[0.08em] text-orange-700">
                         Poslední komentář
                       </div>
                       {hasForeignNewComment(offer) ? (
-                        <span className="inline-flex items-center rounded-full border border-orange-300/90 bg-[linear-gradient(155deg,rgba(255,247,237,0.95)_0%,rgba(255,237,213,0.9)_100%)] px-1.5 py-[1px] text-[8px] font-bold uppercase leading-none tracking-[0.04em] text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
+                        <span className="dashboard-offers-module__new-badge inline-flex items-center rounded-full border border-orange-300/90 bg-[linear-gradient(155deg,rgba(255,247,237,0.95)_0%,rgba(255,237,213,0.9)_100%)] px-1.5 py-[1px] text-[8px] font-bold uppercase leading-none tracking-[0.04em] text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
                           Nový
                         </span>
                       ) : null}
                     </div>
-                    <div className="shrink-0 text-[10px] tracking-[0.04em] text-orange-700">
+                    <div className="dashboard-offers-module__comment-time shrink-0 text-[10px] tracking-[0.04em] text-orange-700">
                       {formatDateTime(offer.lastCommentAt ?? offer.updatedAt)}
                     </div>
                   </div>
-                  <div className="mt-1 line-clamp-2 text-[12px] text-zinc-700">
+                  <div className="dashboard-offers-module__comment-text mt-1 line-clamp-2 text-[12px] text-zinc-700">
                     {offer.lastCommentText}
                   </div>
                 </div>
               ) : null}
 
-              <div className="relative z-10 mt-3 flex items-end justify-between gap-2">
-                <div className="min-h-8">
-                  {isAdmin ? (
-                    <span className="inline-flex h-8 items-center rounded-xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(241,245,249,0.88)_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_16px_rgba(15,23,42,0.08)]">
+                <div className="relative z-10 mt-3 flex items-end justify-between gap-2">
+                  <div className="min-h-8">
+                    {isAdmin ? (
+                    <span className="dashboard-offers-module__author inline-flex h-8 items-center rounded-xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(241,245,249,0.88)_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_16px_rgba(15,23,42,0.08)]">
                       {offer.createdByName ?? 'Neznámý uživatel'}
                     </span>
                   ) : null}
@@ -386,7 +394,7 @@ export function DashboardMyOffersModule({
                     <button
                       type="button"
                       onClick={() => openCommentModal(offer)}
-                      className="inline-flex h-8 items-center justify-center rounded-xl border border-[#ffd2b3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(255,247,237,0.9)_100%)] px-3 text-[11px] font-bold uppercase text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(194,97,39,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(194,97,39,0.16)]"
+                      className="dashboard-offers-module__action inline-flex h-8 items-center justify-center rounded-xl border border-[#ffd2b3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(255,247,237,0.9)_100%)] px-3 text-[11px] font-bold uppercase text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(194,97,39,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(194,97,39,0.16)]"
                     >
                       PŘIDAT KOMENTÁŘ
                     </button>
@@ -396,7 +404,7 @@ export function DashboardMyOffersModule({
                     <button
                       type="button"
                       onClick={() => openDetailModal(offer)}
-                      className="inline-flex h-8 items-center justify-center rounded-xl border border-[#ffd2b3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(255,247,237,0.9)_100%)] px-3 text-[11px] font-bold uppercase text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(194,97,39,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(194,97,39,0.16)]"
+                      className="dashboard-offers-module__action inline-flex h-8 items-center justify-center rounded-xl border border-[#ffd2b3]/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(255,247,237,0.9)_100%)] px-3 text-[11px] font-bold uppercase text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(194,97,39,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(194,97,39,0.16)]"
                     >
                       KOMENTÁŘE
                     </button>
@@ -412,12 +420,12 @@ export function DashboardMyOffersModule({
         ? createPortal(
             <>
               <div
-                className="fixed inset-0 z-[90] bg-zinc-900/10 backdrop-blur-[2px]"
+                className="dashboard-offers-module__overlay fixed inset-0 z-[90] bg-zinc-900/10 backdrop-blur-[2px]"
                 onClick={() => setCommentOffer(null)}
               />
 
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <div className="w-full max-w-[420px] rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
+                <div className="dashboard-offers-module__modal w-full max-w-[420px] rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
                   <CommentModalContent
                     offer={commentOffer}
                     value={commentText}
@@ -437,12 +445,12 @@ export function DashboardMyOffersModule({
         ? createPortal(
             <>
               <div
-                className="fixed inset-0 z-[90] bg-zinc-900/10 backdrop-blur-[2px]"
+                className="dashboard-offers-module__overlay fixed inset-0 z-[90] bg-zinc-900/10 backdrop-blur-[2px]"
                 onClick={() => setDetailOffer(null)}
               />
 
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <div className="w-full max-w-[680px] rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
+                <div className="dashboard-offers-module__modal w-full max-w-[680px] rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
                   <CommentsDetailModalContent
                     offer={detailOffer}
                     comments={detailComments}
@@ -479,17 +487,17 @@ function CommentModalContent({
     <div>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <div className="dashboard-offers-module__modal-eyebrow text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
             NOVÝ KOMENTÁŘ
           </div>
-          <div className="mt-1 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)]">
+          <div className="dashboard-offers-module__offer-pill mt-1 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)]">
             {offer.offerNumber}
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+          className="dashboard-offers-module__modal-close inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
         >
           ✕
         </button>
@@ -500,14 +508,14 @@ function CommentModalContent({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Komentář k průběhu..."
-        className="w-full rounded-xl border border-gray-200 bg-white/96 px-3 py-2 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+        className="dashboard-offers-module__modal-input w-full rounded-xl border border-gray-200 bg-white/96 px-3 py-2 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
       />
 
       <div className="mt-3 flex justify-end gap-2">
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+          className="dashboard-offers-module__modal-button dashboard-offers-module__modal-button--close inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
         >
           Zavřít
         </button>
@@ -515,7 +523,7 @@ function CommentModalContent({
           type="button"
           onClick={onSubmit}
           disabled={isPending}
-          className="inline-flex h-9 items-center justify-center rounded-xl border border-[#ffb98c] bg-[linear-gradient(155deg,#ff9a4d_0%,#ff861f_58%,#f97316_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(249,115,22,0.26)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(249,115,22,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="dashboard-offers-module__modal-button dashboard-offers-module__modal-button--primary inline-flex h-9 items-center justify-center rounded-xl border border-[#ffb98c] bg-[linear-gradient(155deg,#ff9a4d_0%,#ff861f_58%,#f97316_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(249,115,22,0.26)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(249,115,22,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPending ? 'Ukládám...' : 'Přidat komentář'}
         </button>
@@ -541,17 +549,17 @@ function CommentsDetailModalContent({
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <div className="dashboard-offers-module__modal-eyebrow text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
             KOMENTÁŘE NABÍDKY
           </div>
-          <div className="mt-1 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)]">
+          <div className="dashboard-offers-module__offer-pill mt-1 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)]">
             {offer.offerNumber}
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+          className="dashboard-offers-module__modal-close inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
           aria-label="Zavřít detail komentářů"
         >
           ✕
@@ -559,15 +567,15 @@ function CommentsDetailModalContent({
       </div>
 
       {isLoading ? (
-        <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+        <div className="dashboard-offers-module__modal-empty rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
           Načítám komentáře...
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(254,242,242,0.84)_100%)] px-4 py-8 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_30px_rgba(185,28,28,0.14)]">
+        <div className="dashboard-offers-module__modal-error rounded-2xl border border-red-200/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(254,242,242,0.84)_100%)] px-4 py-8 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_30px_rgba(185,28,28,0.14)]">
           {error}
         </div>
       ) : comments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+        <div className="dashboard-offers-module__modal-empty rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
           Tato nabídka zatím nemá žádné komentáře.
         </div>
       ) : (
@@ -575,17 +583,17 @@ function CommentsDetailModalContent({
           {comments.map((comment) => (
             <div
               key={comment.id}
-              className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+              className="dashboard-offers-module__comment-item rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                <div className="dashboard-offers-module__comment-author text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                   {comment.authorName ?? 'Neznámý uživatel'}
                 </div>
-                <div className="shrink-0 text-[11px] text-zinc-500">
+                <div className="dashboard-offers-module__comment-meta shrink-0 text-[11px] text-zinc-500">
                   {formatDateTime(comment.createdAt)}
                 </div>
               </div>
-              <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-800">
+              <div className="dashboard-offers-module__comment-body mt-1 whitespace-pre-wrap text-sm text-zinc-800">
                 {comment.note}
               </div>
             </div>
@@ -597,7 +605,7 @@ function CommentsDetailModalContent({
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
+          className="dashboard-offers-module__modal-button dashboard-offers-module__modal-button--close inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
         >
           Zavřít
         </button>

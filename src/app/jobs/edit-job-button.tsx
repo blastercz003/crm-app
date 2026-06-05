@@ -387,8 +387,8 @@ function JobFormShell({
       }}
     >
       <div className="flex h-full items-center justify-center overflow-hidden">
-        <div className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+        <div className="jobs-page__modal-shell jobs-page__job-form-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
+          <div className="jobs-page__modal-header jobs-page__job-form-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 {title}
@@ -398,7 +398,7 @@ function JobFormShell({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
+              className="jobs-page__job-form-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
               aria-label="Zavřít"
             >
               ✕
@@ -420,11 +420,11 @@ function JobFormShell({
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
 
-            <div className="px-4 py-3 sm:px-5 sm:py-4">
+            <div className="jobs-page__job-form-modal__body px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
-                <section className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
+                <section className="jobs-page__job-form-modal__section overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
                   <div className="mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Základ zakázky
                     </h3>
                   </div>
@@ -433,7 +433,7 @@ function JobFormShell({
                     <div>
                       <label
                         htmlFor={`${mode}-client-search`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Firma *
                       </label>
@@ -448,7 +448,7 @@ function JobFormShell({
                         onChange={(event) => handleCompanyChange(event.target.value)}
                         onFocus={handleCompanyFocus}
                         onBlur={handleCompanyBlur}
-                        className={`h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 ${
+                        className={`jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:ring-2 ${
                           showCompanyError
                             ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
                             : companySelectionIsValid && !companyHasFocus
@@ -457,7 +457,7 @@ function JobFormShell({
                         }`}
                       />
 
-                      <div className="mt-2 rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      <div className="jobs-page__job-form-modal__info-card mt-2 rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                           Vybraná firma
                         </div>
@@ -468,12 +468,12 @@ function JobFormShell({
                         </div>
                       </div>
 
-                      <p className={`mt-2 text-sm ${companyStatusClassName}`}>
+                      <p className={`jobs-page__job-form-modal__status mt-2 text-sm ${companyStatusClassName}`}>
                         {companyStatusText}
                       </p>
 
                       {showCompanyError ? (
-                        <p className="mt-2 text-sm text-red-600">
+                        <p className="jobs-page__job-form-modal__error mt-2 text-sm text-red-600">
                           Pro uložení změn musíš zadat existující firmu ze seznamu klientů.
                         </p>
                       ) : null}
@@ -482,7 +482,7 @@ function JobFormShell({
                     <div>
                       <label
                         htmlFor={`${mode}-contact_person`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Osoba
                       </label>
@@ -492,7 +492,7 @@ function JobFormShell({
                             id={`${mode}-client_contact_id`}
                             value={selectedContactId}
                             onChange={(event) => handleContactChange(event.target.value)}
-                            className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                            className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                           >
                             <option value="">Bez konkrétní osoby</option>
                             {selectedClientContacts.map((contact) => (
@@ -512,7 +512,7 @@ function JobFormShell({
                           value={contactPerson}
                           onChange={(event) => setContactPerson(event.target.value)}
                           placeholder="Kontaktní osoba"
-                          className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                          className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                         />
                       )}
                     </div>
@@ -520,7 +520,7 @@ function JobFormShell({
                     <div>
                       <label
                         htmlFor={`${mode}-sales_owner`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Obchodník
                       </label>
@@ -528,7 +528,7 @@ function JobFormShell({
                         id={`${mode}-sales_owner`}
                         name="sales_owner"
                         defaultValue={job.sales_owner ?? 'JIŘÍ'}
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       >
                         <option value="JIŘÍ">JIŘÍ</option>
                         <option value="MICHAL">MICHAL</option>
@@ -538,9 +538,9 @@ function JobFormShell({
                   </div>
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
+                <section className="jobs-page__job-form-modal__section overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
                   <div className="mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Termín a místo
                     </h3>
                   </div>
@@ -549,7 +549,7 @@ function JobFormShell({
                     <div className="min-w-0">
                       <label
                         htmlFor={`${mode}-start_at`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Začátek *
                       </label>
@@ -559,14 +559,14 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job.start_at)}
-                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
                     <div className="min-w-0">
                       <label
                         htmlFor={`${mode}-end_at`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Konec *
                       </label>
@@ -576,14 +576,14 @@ function JobFormShell({
                         type="datetime-local"
                         required
                         defaultValue={toDateTimeLocalValue(job.end_at)}
-                        className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor={`${mode}-site_address`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Adresa realizace
                       </label>
@@ -593,14 +593,14 @@ function JobFormShell({
                         type="text"
                         defaultValue={job.site_address ?? ''}
                         placeholder="Adresa realizace"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor={`${mode}-store_number`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Číslo prodejny
                       </label>
@@ -610,15 +610,15 @@ function JobFormShell({
                         type="text"
                         defaultValue={job.store_number ?? ''}
                         placeholder="Např. 154"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
+                <section className="jobs-page__job-form-modal__section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
                   <div className="mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Realizace
                     </h3>
                   </div>
@@ -627,7 +627,7 @@ function JobFormShell({
                     <div>
                       <label
                         htmlFor={`${mode}-technician_name`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Technik
                       </label>
@@ -637,14 +637,14 @@ function JobFormShell({
                         type="text"
                         defaultValue={job.technician_name ?? ''}
                         placeholder="Odpovědný pracovník"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor={`${mode}-generator_name`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Agregát
                       </label>
@@ -654,14 +654,14 @@ function JobFormShell({
                         type="text"
                         defaultValue={job.generator_name ?? ''}
                         placeholder="Např. Aggreko 250 kVA"
-                        className="h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor={`${mode}-info_note`}
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
                         Info k zakázce
                       </label>
@@ -671,7 +671,7 @@ function JobFormShell({
                         rows={6}
                         defaultValue={job.info_note ?? ''}
                         placeholder="Libovolná interní poznámka k zakázce"
-                        className="w-full resize-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field w-full resize-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
                   </div>
@@ -679,19 +679,19 @@ function JobFormShell({
               </div>
 
               {error ? (
-                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                <div className="jobs-page__job-form-modal__error mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
                   {error}
                 </div>
               ) : null}
             </div>
 
-            <div className="flex shrink-0 flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:px-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="jobs-page__job-form-modal__footer flex shrink-0 flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:px-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex shrink-0">
                 <button
                   type="button"
                   onClick={onDelete}
                   disabled={isDeleting}
-                  className="inline-flex h-10 min-w-[170px] shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-red-400/70 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_10px_20px_rgba(220,38,38,0.26)] transition duration-200 hover:-translate-y-[1px] hover:border-red-500/80 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.30),0_14px_26px_rgba(220,38,38,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__job-form-modal__delete inline-flex h-10 min-w-[170px] shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-red-400/70 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_10px_20px_rgba(220,38,38,0.26)] transition duration-200 hover:-translate-y-[1px] hover:border-red-500/80 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.30),0_14px_26px_rgba(220,38,38,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isDeleting ? 'MAŽU ZAKÁZKU…' : 'SMAZAT ZAKÁZKU'}
                 </button>
@@ -702,7 +702,7 @@ function JobFormShell({
                   type="button"
                   onClick={onClose}
                   disabled={isDeleting}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__job-form-modal__cancel inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   ZRUŠIT
                 </button>
@@ -729,9 +729,11 @@ function JobFormShell({
 function SubmitButton({
   label,
   disabled = false,
+  className = '',
 }: {
   label: string
   disabled?: boolean
+  className?: string
 }) {
   const { pending } = useFormStatus()
   const isDisabled = pending || disabled
@@ -740,7 +742,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={isDisabled}
-      className="inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+      className={`jobs-page__job-form-modal__submit inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {pending ? 'UKLÁDÁM…' : label}
     </button>

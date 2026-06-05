@@ -128,7 +128,7 @@ export default function TaskCard({
   const showDueDateBadge = task.status !== 'done' && hasDueDate
 
   const cardClassName =
-    'min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]'
+    'tasks-page__card min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]'
 
   const actionButtonClassName =
     'inline-flex h-9 items-center justify-center rounded-xl px-3 text-xs font-medium transition duration-200 ease-out'
@@ -137,30 +137,30 @@ export default function TaskCard({
     <div className={`${cardClassName} min-h-[178px]`}>
       <div className="flex h-full flex-col gap-2.5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-          <div className="order-2 min-w-0 flex-1 sm:order-1">
+          <div className="tasks-page__card-content order-2 min-w-0 flex-1 sm:order-1">
             <h3
-              className="line-clamp-2 min-h-[2.4rem] break-words text-sm font-semibold leading-5 text-zinc-900 md:text-base"
+              className="tasks-page__card-title line-clamp-2 min-h-[2.4rem] break-words text-sm font-semibold leading-5 text-zinc-900 md:text-base"
               title={task.title}
             >
               {task.title}
             </h3>
 
             <div
-              className="mt-0.5 min-h-[1.125rem] truncate text-sm leading-5 text-zinc-600"
+              className="tasks-page__card-client mt-0.5 min-h-[1.125rem] truncate text-sm leading-5 text-zinc-600"
               title={clientName}
             >
               {clientName}
             </div>
 
             <div
-              className={`mt-0.5 min-h-[1rem] text-xs leading-4 text-zinc-500 ${task.note ? 'line-clamp-1' : 'invisible'}`}
+              className={`tasks-page__card-note mt-0.5 min-h-[1rem] text-xs leading-4 text-zinc-500 ${task.note ? 'line-clamp-1' : 'invisible'}`}
               title={task.note ?? undefined}
             >
               {task.note ? truncatePreviewText(task.note) : '—'}
             </div>
           </div>
 
-          <div className="order-1 flex w-full min-w-0 flex-nowrap justify-end gap-1.5 overflow-hidden text-sm sm:order-2 sm:w-auto sm:shrink-0 sm:flex-wrap sm:gap-2 sm:overflow-visible">
+          <div className="tasks-page__card-badges order-1 flex w-full min-w-0 flex-nowrap justify-end gap-1.5 overflow-hidden text-sm sm:order-2 sm:w-auto sm:shrink-0 sm:flex-wrap sm:gap-2 sm:overflow-visible">
             {showDueDateBadge ? (
               <span
                 className={`inline-flex h-6 w-[74px] shrink-0 items-center justify-center rounded-full px-2.5 text-xs font-medium ${getTaskDueBadgeClass({
@@ -191,10 +191,10 @@ export default function TaskCard({
           </div>
         </div>
 
-        <div className="mt-auto flex min-w-0 flex-wrap items-end justify-between gap-2 pt-1">
+        <div className="tasks-page__card-footer mt-auto flex min-w-0 flex-wrap items-end justify-between gap-2 pt-1">
           <RepeatTaskBadge repeatInterval={task.repeat_interval} />
 
-          <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-2">
+          <div className="tasks-page__card-actions ml-auto flex min-w-0 flex-wrap justify-end gap-2">
             <EditTaskButton
               task={{
                 id: task.id,
@@ -213,13 +213,13 @@ export default function TaskCard({
               users={users}
               clients={clients}
               contacts={contacts}
-              className={`${actionButtonClassName} shrink-0 border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]`}
+              className={`${actionButtonClassName} clients-page__edit-button tasks-page__action-edit shrink-0 border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]`}
               label="UPRAVIT"
             />
 
             <Link
               href={`/tasks/${task.id}`}
-              className={`${actionButtonClassName} shrink-0 border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800`}
+              className={`${actionButtonClassName} clients-page__detail-button tasks-page__action-detail shrink-0 border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800`}
             >
               DETAIL
             </Link>
@@ -227,19 +227,19 @@ export default function TaskCard({
             {task.status !== 'done' ? (
               <>
                 {task.repeat_interval ? (
-                  <form action={endTaskRecurrenceAction} className="shrink-0">
+                  <form action={endTaskRecurrenceAction} className="tasks-page__action-repeat-form shrink-0">
                     <button
                       type="submit"
-                      className={`${actionButtonClassName} border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]`}
+                      className={`${actionButtonClassName} clients-page__secondary-button tasks-page__action-repeat border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]`}
                     >
                       UKONČIT OPAKOVÁNÍ
                     </button>
                   </form>
                 ) : null}
 
-                <form action={markTaskDoneAction} className="shrink-0">
+                <form action={markTaskDoneAction} className="tasks-page__action-complete-form shrink-0">
                   <TaskCompleteButton
-                    className={`${actionButtonClassName} border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)] hover:-translate-y-[1px]`}
+                    className={`${actionButtonClassName} tasks-page__action-complete border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)] hover:-translate-y-[1px]`}
                   />
                 </form>
               </>

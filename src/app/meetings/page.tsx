@@ -204,7 +204,9 @@ function FilterTab({
   return (
     <Link
       href={href}
+      data-active={active}
       className={[
+        'meetings-page__filter-tab',
         'inline-flex items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-medium transition duration-200 ease-out sm:px-4 sm:py-2 sm:text-sm',
         active
           ? 'border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
@@ -220,10 +222,12 @@ function StatCard({
   label,
   value,
   variant = 'neutral',
+  className = '',
 }: {
   label: string
   value: number
   variant?: 'neutral' | 'primary' | 'dark' | 'success'
+  className?: string
 }) {
   const cardClassName =
     variant === 'primary'
@@ -234,6 +238,15 @@ function StatCard({
           ? 'border-transparent bg-emerald-600 text-white'
           : 'border-zinc-200 bg-white text-zinc-950'
 
+  const variantClassName =
+    variant === 'primary'
+      ? 'meetings-page__stat-card--primary'
+      : variant === 'dark'
+        ? 'meetings-page__stat-card--dark'
+        : variant === 'success'
+          ? 'meetings-page__stat-card--success'
+          : 'meetings-page__stat-card--neutral'
+
   const labelClassName =
     variant === 'primary' || variant === 'dark' || variant === 'success'
       ? 'text-white'
@@ -242,7 +255,9 @@ function StatCard({
         : 'text-current/80'
 
   return (
-    <div className={`rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(15,23,42,0.12)] ${cardClassName}`}>
+    <div
+      className={`meetings-page__stat-card ${variantClassName} rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(15,23,42,0.12)] ${cardClassName} ${className}`}
+    >
       <div className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>
         {label}
       </div>
@@ -255,7 +270,7 @@ function StatCard({
 
 function InfoChip({ label }: { label: string }) {
   return (
-    <div className="inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
+    <div className="meetings-page__info-chip inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
       {label}
     </div>
   )
@@ -276,11 +291,11 @@ function MeetingListItem({
     meeting.client?.[0]?.name ?? meeting.company_name ?? 'Bez firmy'
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]">
+    <div className="meetings-page__meeting-item min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]">
       <div className="flex min-w-0 flex-col gap-3">
         <div className="flex min-w-0 items-center gap-2.5 text-sm">
           <div
-            className="min-w-0 flex-1 truncate font-medium text-zinc-900"
+            className="meetings-page__meeting-company min-w-0 flex-1 truncate font-medium text-zinc-900"
             title={companyLabel}
           >
             {companyLabel}
@@ -288,7 +303,7 @@ function MeetingListItem({
 
           {isAdminView && meeting.assigned_user_name ? (
             <div
-              className="max-w-[120px] shrink-0 truncate rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2.5 py-1 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]"
+              className="meetings-page__meeting-user max-w-[120px] shrink-0 truncate rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2.5 py-1 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]"
               title={meeting.assigned_user_name}
             >
               {meeting.assigned_user_name}
@@ -297,7 +312,7 @@ function MeetingListItem({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="shrink-0 whitespace-nowrap rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]">
+          <div className="meetings-page__meeting-date shrink-0 whitespace-nowrap rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]">
             {formatCompactDateTime(meeting.meeting_datetime)}
           </div>
 
@@ -306,12 +321,12 @@ function MeetingListItem({
               clients={clients}
               contacts={contacts}
               meeting={meeting}
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+              className="meetings-page__meeting-edit inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
             />
 
             <Link
               href={`/meetings/${meeting.id}`}
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
+              className="meetings-page__meeting-detail inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
             >
               DETAIL
             </Link>
@@ -354,25 +369,34 @@ function MeetingSection({
           ? 'border-transparent bg-emerald-600 text-white'
           : 'border-zinc-200 bg-zinc-50 text-zinc-600'
 
+  const countVariantClassName =
+    countVariant === 'primary'
+      ? 'meetings-page__count--primary'
+      : countVariant === 'dark'
+        ? 'meetings-page__count--dark'
+        : countVariant === 'success'
+          ? 'meetings-page__count--success'
+          : 'meetings-page__count--neutral'
+
   const shouldLimitMeetings =
     typeof initialVisibleCount === 'number' && meetings.length > initialVisibleCount
   const visibleMeetings = shouldLimitMeetings ? meetings.slice(0, initialVisibleCount) : meetings
   const hiddenMeetings = shouldLimitMeetings ? meetings.slice(initialVisibleCount) : []
 
   return (
-    <section className="min-w-0 rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_32px_rgba(15,23,42,0.1)]">
-      <div className="mb-0 flex items-center justify-between gap-4 border-b border-zinc-200/80 px-4 py-4 md:px-5">
+    <section className="meetings-page__section min-w-0 rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_32px_rgba(15,23,42,0.1)]">
+      <div className="meetings-page__section-header mb-0 flex items-center justify-between gap-4 border-b border-zinc-200/80 px-4 py-4 md:px-5">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+          <div className="meetings-page__section-eyebrow text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
             {eyebrow}
           </div>
-          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl">
+          <h2 className="meetings-page__section-title mt-1.5 text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl">
             {title}
           </h2>
         </div>
 
         <span
-          className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm font-semibold ${countClassName}`}
+          className={`meetings-page__count ${countVariantClassName} inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm font-semibold ${countClassName}`}
         >
           {count}
         </span>
@@ -380,7 +404,7 @@ function MeetingSection({
 
       <div className="p-4 md:p-5">
       {meetings.length === 0 ? (
-        <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
+        <div className="meetings-page__empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
           {emptyText}
         </div>
       ) : (
@@ -397,7 +421,7 @@ function MeetingSection({
 
           {hiddenMeetings.length > 0 ? (
             <details className="group grid gap-3">
-              <summary className="inline-flex min-h-10 cursor-pointer list-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
+              <summary className="meetings-page__show-all inline-flex min-h-10 cursor-pointer list-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
                 ZOBRAZIT VŠE
               </summary>
 
@@ -635,21 +659,21 @@ export default async function MeetingsPage({
   })
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+    <main className="meetings-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <PresenceSectionTracker section="Schůzky" route="/meetings" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+        className="meetings-page__glow--primary pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        className="meetings-page__glow--secondary pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
       />
       <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="meetings-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-end">
-              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
+              <h1 className="meetings-page__title text-3xl font-semibold leading-none tracking-tight text-gray-900">
                 Moje schůzky
               </h1>
             </div>
@@ -672,12 +696,12 @@ export default async function MeetingsPage({
                   name="search"
                   defaultValue={rawSearch}
                   placeholder="Firma, osoba, telefon, e-mail..."
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
+                  className="meetings-page__search-input w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
 
                 <button
                   type="submit"
-                  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                  className="meetings-page__search-button rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                 >
                   HLEDAT
                 </button>
@@ -685,7 +709,7 @@ export default async function MeetingsPage({
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
+                className="clients-page__back-button meetings-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
@@ -695,10 +719,10 @@ export default async function MeetingsPage({
           </div>
         </section>
 
-        <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="meetings-page__filters-panel rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
             <div className="min-w-0 hidden lg:block">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+              <div className="meetings-page__filter-eyebrow text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Zobrazení
               </div>
 
@@ -774,7 +798,7 @@ export default async function MeetingsPage({
               id="meetings-mobile-filters"
               className="group print-hidden w-full lg:hidden"
             >
-              <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+              <summary className="meetings-page__mobile-summary flex h-10 cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                 <span className="inline-flex items-center gap-2">
                   FILTRY
                   {hasActiveMobileFilters ? (
@@ -789,14 +813,14 @@ export default async function MeetingsPage({
               <form
                 action="/meetings"
                 method="get"
-                className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                className="meetings-page__mobile-panel mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
               >
                 <input type="hidden" name="search" value={rawSearch} />
 
                 <div>
                   <label
                     htmlFor="view-mobile"
-                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    className="meetings-page__mobile-label mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                   >
                     Zobrazení
                   </label>
@@ -804,7 +828,7 @@ export default async function MeetingsPage({
                     id="view-mobile"
                     name="view"
                     defaultValue={view}
-                    className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    className="meetings-page__mobile-select h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   >
                     <option value="all">Vše</option>
                     <option value="planned">Plánované</option>
@@ -817,7 +841,7 @@ export default async function MeetingsPage({
                   <div>
                     <label
                       htmlFor="scope-mobile"
-                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                      className="meetings-page__mobile-label mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                     >
                       Rozsah
                     </label>
@@ -825,7 +849,7 @@ export default async function MeetingsPage({
                       id="scope-mobile"
                       name="scope"
                       defaultValue={scope}
-                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      className="meetings-page__mobile-select h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     >
                       <option value="mine">Moje schůzky</option>
                       <option value="team">Všechny schůzky</option>
@@ -839,7 +863,7 @@ export default async function MeetingsPage({
                   <div>
                     <label
                       htmlFor="owner-mobile"
-                      className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                      className="meetings-page__mobile-label mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                     >
                       Uživatel
                     </label>
@@ -847,7 +871,7 @@ export default async function MeetingsPage({
                       id="owner-mobile"
                       name="owner"
                       defaultValue={rawOwner ?? ''}
-                      className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      className="meetings-page__mobile-select h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     >
                       <option value="">Všichni</option>
                       {ownerOptions.map((profileItem) => (
@@ -859,15 +883,15 @@ export default async function MeetingsPage({
                   </div>
                 ) : null}
 
-                <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
-                  <MeetingFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                <div className="meetings-page__filter-actions-divider flex items-center gap-2 border-t pt-3">
+                  <MeetingFilterSubmitButton className="meetings-page__mobile-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                     POUŽÍT FILTRY
                   </MeetingFilterSubmitButton>
 
                   <MeetingFilterResetLink
                     href={mobileResetHref}
                     detailsId="meetings-mobile-filters"
-                    className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                    className="meetings-page__mobile-reset inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                   >
                     RESET
                   </MeetingFilterResetLink>
@@ -895,7 +919,7 @@ export default async function MeetingsPage({
               </div>
 
               {isAdminTeamView ? (
-                <form method="get" className="space-y-2.5">
+                <form method="get" className="meetings-page__owner-form space-y-2.5">
                   <input type="hidden" name="view" value={view} />
                   <input type="hidden" name="scope" value={scope} />
                   <input type="hidden" name="search" value={rawSearch} />
@@ -903,7 +927,7 @@ export default async function MeetingsPage({
                   <div>
                     <label
                       htmlFor="meeting-owner"
-                      className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400"
+                      className="meetings-page__owner-label mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400"
                     >
                       Obchodník
                     </label>
@@ -911,7 +935,7 @@ export default async function MeetingsPage({
                       id="meeting-owner"
                       name="owner"
                       defaultValue={rawOwner ?? ''}
-                      className="h-11 w-full rounded-2xl border border-zinc-200 bg-white/96 px-4 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out focus:border-zinc-400"
+                      className="meetings-page__owner-select h-11 w-full rounded-2xl border border-zinc-200 bg-white/96 px-4 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out focus:border-zinc-400"
                     >
                       <option value="">Všichni</option>
                       {ownerOptions.map((profileItem) => (
@@ -924,7 +948,7 @@ export default async function MeetingsPage({
 
                   <button
                     type="submit"
-                    className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                    className="meetings-page__owner-button meetings-page__owner-submit inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.08em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                   >
                     POUŽÍT FILTR
                   </button>

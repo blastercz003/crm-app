@@ -8,7 +8,14 @@ import {
   PwaStartupScreenController,
   PwaStartupScreenShell,
 } from '../components/pwa/pwa-startup-screen'
+import { ThemePreferenceSync } from '@/components/theme/theme-preference-sync'
 import { APP_TITLE } from '@/lib/pageTitles'
+import {
+  THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY,
+  THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY,
+  THEME_COLORS,
+  THEME_STORAGE_KEY,
+} from '@/lib/theme/theme-preference'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -46,8 +53,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#eef3f8' },
-    { media: '(prefers-color-scheme: dark)', color: '#eef3f8' },
+    { media: '(prefers-color-scheme: light)', color: THEME_COLORS.light },
+    { media: '(prefers-color-scheme: dark)', color: THEME_COLORS.dark },
   ],
 }
 
@@ -60,14 +67,66 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme="light"
       data-startup-overlay="hide"
       suppressHydrationWarning
     >
       <head>
+        <meta name="theme-color" content={THEME_COLORS.light} />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function () {
   try {
+    var themeMode = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    var overrideMode = window.localStorage.getItem(${JSON.stringify(THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY)});
+    var overrideUntil = window.localStorage.getItem(${JSON.stringify(THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY)});
+    var now = new Date();
+    var theme = themeMode === 'light' || themeMode === 'dark'
+      ? themeMode
+      : (function () {
+          if (
+            themeMode === 'auto' &&
+            (overrideMode === 'light' || overrideMode === 'dark') &&
+            overrideUntil &&
+            !Number.isNaN(new Date(overrideUntil).getTime()) &&
+            new Date(overrideUntil).getTime() > now.getTime()
+          ) {
+            return overrideMode;
+          }
+
+          var parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Europe/Prague',
+            hour12: false,
+            hour: '2-digit',
+          }).formatToParts(now);
+          var hour = Number((parts.find(function (part) { return part.type === 'hour'; }) || {}).value || 0);
+          return hour >= 20 || hour < 9 ? 'dark' : 'light';
+        })();
+
+    document.documentElement.setAttribute('data-theme', theme);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute('content', theme === 'dark' ? '${THEME_COLORS.dark}' : '${THEME_COLORS.light}');
+    }
+
+    if (
+      themeMode === 'auto' &&
+      (overrideMode === 'light' || overrideMode === 'dark') &&
+      overrideUntil &&
+      !Number.isNaN(new Date(overrideUntil).getTime()) &&
+      new Date(overrideUntil).getTime() <= now.getTime()
+    ) {
+      window.localStorage.removeItem(${JSON.stringify(THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY)});
+      window.localStorage.removeItem(${JSON.stringify(THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY)});
+    }
+
+    if (themeMode !== 'auto' && themeMode !== 'light' && themeMode !== 'dark') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      if (meta) {
+        meta.setAttribute('content', '${THEME_COLORS.light}');
+      }
+    }
+
     var pathname = window.location.pathname;
     var allowedPath = pathname === '/' || pathname === '/dashboard';
     if (!allowedPath) {
@@ -96,6 +155,7 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         <PwaStartupScreenShell />
         <PwaStartupScreenController />
+        <ThemePreferenceSync />
         {children}
         <Suspense fallback={null}>
           <NavigationOverlay />

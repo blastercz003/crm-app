@@ -221,7 +221,7 @@ function getInvoiceStatusLabel(status: ClientJobRow['invoice_status']) {
 function renderMeetingsContent(meetings: ClientMeetingRow[]) {
   if (meetings.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      <div className="client-detail-page__empty-state rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
         Klient zatím nemá žádné schůzky.
       </div>
     )
@@ -233,7 +233,7 @@ function renderMeetingsContent(meetings: ClientMeetingRow[]) {
         <Link
           key={meeting.id}
           href={`/meetings/${meeting.id}`}
-          className="block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
+          className="client-detail-page__activity-card client-detail-page__activity-card--meeting block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -253,7 +253,7 @@ function renderMeetingsContent(meetings: ClientMeetingRow[]) {
             </div>
 
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+              className={`client-detail-page__activity-status client-detail-page__activity-status--meeting shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
                 meeting.status === 'completed'
                   ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-amber-100 text-amber-700'
@@ -271,7 +271,7 @@ function renderMeetingsContent(meetings: ClientMeetingRow[]) {
 function renderTasksContent(tasks: ClientTaskRow[]) {
   if (tasks.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      <div className="client-detail-page__empty-state rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
         Klient zatím nemá žádné úkoly.
       </div>
     )
@@ -283,7 +283,7 @@ function renderTasksContent(tasks: ClientTaskRow[]) {
         <Link
           key={task.id}
           href={`/tasks/${task.id}/edit`}
-          className="relative block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
+          className="client-detail-page__activity-card client-detail-page__activity-card--task relative block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
         >
           <div className="flex h-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 pb-8 pr-[178px] sm:flex-1 sm:pr-0">
@@ -311,7 +311,7 @@ function renderTasksContent(tasks: ClientTaskRow[]) {
               <div className="flex w-full min-w-0 flex-nowrap justify-end gap-1.5 overflow-hidden">
                 {task.priority ? (
                   <span
-                    className={`inline-flex min-w-0 max-w-[108px] shrink items-center rounded-full px-2.5 py-1 text-xs font-medium sm:max-w-[155px] ${getPriorityBadgeClass(task.priority)}`}
+                    className={`client-detail-page__activity-pill client-detail-page__activity-pill--priority inline-flex min-w-0 max-w-[108px] shrink items-center rounded-full px-2.5 py-1 text-xs font-medium sm:max-w-[155px] ${getPriorityBadgeClass(task.priority)}`}
                   >
                     <span className="truncate">
                       Priorita: {getPriorityLabel(task.priority)}
@@ -320,7 +320,7 @@ function renderTasksContent(tasks: ClientTaskRow[]) {
                 ) : null}
 
                 <span
-                  className={`inline-flex min-w-0 max-w-[62px] shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium sm:max-w-[100px] ${getTaskStatusClass(task.status)}`}
+                  className={`client-detail-page__activity-status client-detail-page__activity-status--task inline-flex min-w-0 max-w-[62px] shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium sm:max-w-[100px] ${getTaskStatusClass(task.status)}`}
                 >
                   <span className="truncate">
                     {getTaskStatusLabel(task.status)}
@@ -347,7 +347,7 @@ function renderTasksContent(tasks: ClientTaskRow[]) {
 function renderOffersContent(offers: ClientOfferRow[]) {
   if (offers.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      <div className="client-detail-page__empty-state rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
         Klient zatím nemá žádné nabídky.
       </div>
     )
@@ -359,7 +359,7 @@ function renderOffersContent(offers: ClientOfferRow[]) {
         <Link
           key={offer.id}
           href={`/offers/${offer.id}`}
-          className="block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
+          className="client-detail-page__activity-card client-detail-page__activity-card--offer block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -374,7 +374,7 @@ function renderOffersContent(offers: ClientOfferRow[]) {
               </p>
             </div>
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusClass(offer.status)}`}
+              className={`client-detail-page__activity-status client-detail-page__activity-status--offer shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusClass(offer.status)}`}
             >
               {getOfferStatusLabel(offer.status)}
             </span>
@@ -394,7 +394,7 @@ function renderJobsContent({
 }) {
   if (!canViewJobs) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      <div className="client-detail-page__empty-state client-detail-page__contacts-empty rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
         Zakázky se zobrazují pouze uživatelům s oprávněním k zakázkám.
       </div>
     )
@@ -402,7 +402,7 @@ function renderJobsContent({
 
   if (jobs.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      <div className="client-detail-page__empty-state client-detail-page__contacts-empty rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
         Klient zatím nemá žádné zakázky.
       </div>
     )
@@ -414,7 +414,7 @@ function renderJobsContent({
         <Link
           key={job.id}
           href="/jobs"
-          className="block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
+          className="client-detail-page__activity-card client-detail-page__activity-card--job block min-h-[112px] overflow-hidden rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-100"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -448,7 +448,7 @@ function renderJobsContent({
             </div>
 
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getJobStatusClass(job.job_status)}`}
+              className={`client-detail-page__activity-status client-detail-page__activity-status--job shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getJobStatusClass(job.job_status)}`}
             >
               {getJobStatusLabel(job.job_status)}
             </span>
@@ -636,14 +636,14 @@ export default async function ClientDetailPage({
     'Neuvedeno'
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+    <main className="client-detail-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+        className="client-detail-page__glow client-detail-page__glow--primary pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        className="client-detail-page__glow client-detail-page__glow--secondary pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
       />
       <style>
         {`
@@ -656,19 +656,19 @@ export default async function ClientDetailPage({
       </style>
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-6">
+        <section className="client-detail-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-6">
           <div className="flex flex-col gap-5">
             <div className="flex gap-2 sm:hidden">
               <EditClientButton
                 client={typedClient}
                 label="UPRAVIT KLIENTA"
                 canDeleteClient={isAdmin}
-                className="inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                className="client-detail-page__edit-button clients-page__edit-button inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
               />
 
               <Link
                 href="/clients"
-                className="inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
+                className="client-detail-page__back-link clients-page__back-button inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
               >
                 ZPĚT NA KLIENTY
               </Link>
@@ -677,18 +677,18 @@ export default async function ClientDetailPage({
             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+                  <h1 className="client-detail-page__title text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
                     {typedClient.name}
                   </h1>
 
                   {typedClient.ico ? (
-                    <span className="rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.84)_0%,rgba(241,245,249,0.72)_100%)] px-2.5 py-1 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.10)]">
+                    <span className="client-detail-page__pill rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.84)_0%,rgba(241,245,249,0.72)_100%)] px-2.5 py-1 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.10)]">
                       IČO: {typedClient.ico}
                     </span>
                   ) : null}
                 </div>
 
-                <div className="mt-2 grid gap-1.5 text-sm text-gray-600 xl:max-w-3xl">
+                <div className="client-detail-page__meta mt-2 grid gap-1.5 text-sm text-gray-600 xl:max-w-3xl">
                   <p className="min-w-0">
                     <span className="font-medium text-gray-900">Adresa:</span>{' '}
                     {typedClient.address || '—'}
@@ -696,11 +696,11 @@ export default async function ClientDetailPage({
                 </div>
 
                 <div className="client-detail-note mt-5 w-full">
-                  <div className="w-full rounded-2xl border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.9)_0%,rgba(247,250,252,0.82)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.10)] backdrop-blur-[6px]">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <div className="client-detail-page__note-box w-full rounded-2xl border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.9)_0%,rgba(247,250,252,0.82)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.10)] backdrop-blur-[6px]">
+                    <p className="client-detail-page__note-eyebrow text-xs font-medium uppercase tracking-wide text-gray-500">
                       Interní poznámka
                     </p>
-                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                    <p className="client-detail-page__note-text mt-1 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">
                       {typedClient.note || 'Zatím bez poznámky.'}
                     </p>
                   </div>
@@ -708,17 +708,17 @@ export default async function ClientDetailPage({
               </div>
 
               <div className="hidden self-stretch flex-col items-end justify-between gap-3 sm:flex xl:w-[320px]">
-                <div className="flex gap-2">
+                <div className="client-detail-page__actions flex gap-2">
                   <EditClientButton
                     client={typedClient}
                     label="UPRAVIT KLIENTA"
                     canDeleteClient={isAdmin}
-                    className="inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] sm:w-[150px]"
+                    className="client-detail-page__edit-button clients-page__edit-button inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] sm:w-[150px]"
                   />
 
                   <Link
                     href="/clients"
-                    className="inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] sm:w-[150px]"
+                    className="client-detail-page__back-link clients-page__back-button inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] sm:w-[150px]"
                   >
                     ZPĚT NA KLIENTY
                   </Link>
@@ -749,11 +749,11 @@ export default async function ClientDetailPage({
           </div>
         </section>
 
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,1fr)]">
-          <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
-            <div className="flex items-center justify-between gap-3 border-b border-white/60 px-5 py-4 sm:px-6">
+        <div className="client-detail-page__grid grid items-start gap-5 xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,1fr)]">
+          <section className="client-detail-page__contacts rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+            <div className="client-detail-page__contacts-header flex items-center justify-between gap-3 border-b border-white/60 px-5 py-4 sm:px-6">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="client-detail-page__section-title text-lg font-semibold text-gray-900">
                   Kontaktní osoby
                 </h2>
               </div>
@@ -761,43 +761,43 @@ export default async function ClientDetailPage({
               <NewClientContactButton
                 clientId={typedClient.id}
                 hasContacts={typedContacts.length > 0}
-                className="inline-flex h-10 w-[150px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
+                className="client-detail-page__new-contact clients-page__new-button inline-flex h-10 w-[150px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
               />
             </div>
 
             {typedContacts.length === 0 ? (
-              <div className="m-5 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] sm:m-6">
+              <div className="client-detail-page__contacts-empty m-5 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] sm:m-6">
                 Klient zatím nemá žádné kontaktní osoby.
               </div>
             ) : (
-              <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2 xl:grid-cols-1">
+              <div className="client-detail-page__contacts-grid grid gap-3 p-5 sm:p-6 lg:grid-cols-2 xl:grid-cols-1">
                 {typedContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className="flex min-h-[168px] flex-col rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)]"
+                    className="client-detail-page__contact-card flex min-h-[168px] flex-col rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)]"
                   >
                     <div className="flex flex-1 flex-col">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-sm font-semibold text-gray-900">
+                        <div className="client-detail-page__contact-header flex flex-wrap items-center gap-2">
+                          <h3 className="client-detail-page__contact-name text-sm font-semibold text-gray-900">
                             {contact.name}
                           </h3>
 
                           {contact.is_primary ? (
-                            <span className="rounded-full bg-[#2980B9]/10 px-2.5 py-1 text-xs font-medium text-[#236f9f]">
+                            <span className="client-detail-page__primary-contact rounded-full bg-[#2980B9]/10 px-2.5 py-1 text-xs font-medium text-[#236f9f]">
                               Hlavní kontakt
                             </span>
                           ) : null}
                         </div>
 
                         {contact.role ? (
-                          <p className="mt-1 text-sm text-gray-600">
+                          <p className="client-detail-page__contact-role mt-1 text-sm text-gray-600">
                             {contact.role}
                           </p>
                         ) : null}
                       </div>
 
-                      <div className="mt-2 grid gap-0.5 text-sm text-gray-600">
+                      <div className="client-detail-page__contact-meta mt-2 grid gap-0.5 text-sm text-gray-600">
                         <p>Telefon: {contact.phone || '—'}</p>
                         <p className="break-all">E-mail: {contact.email || '—'}</p>
                         {contact.note ? (
@@ -808,7 +808,7 @@ export default async function ClientDetailPage({
                       </div>
                     </div>
 
-                    <div className="mt-auto flex flex-wrap justify-end gap-2 pt-3">
+                    <div className="client-detail-page__contact-actions mt-auto flex flex-wrap justify-end gap-2 pt-3">
                       {!contact.is_primary ? (
                         <form action={setPrimaryClientContact}>
                           <input type="hidden" name="id" value={contact.id} />
@@ -819,7 +819,7 @@ export default async function ClientDetailPage({
                           />
                           <button
                             type="submit"
-                            className="inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                          className="client-detail-page__primary-contact-button inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                           >
                             NASTAVIT HLAVNÍ
                           </button>
@@ -837,7 +837,7 @@ export default async function ClientDetailPage({
                         />
                         <button
                           type="submit"
-                          className="inline-flex items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 py-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
+                          className="client-detail-page__delete-contact clients-modal__delete inline-flex items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 py-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
                         >
                           SMAZAT
                         </button>

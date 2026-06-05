@@ -125,15 +125,23 @@ function MobilePdfCanvasPreview({ previewUrl }: { previewUrl: string }) {
   }, [previewUrl])
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-zinc-500">Načítám náhled...</div>
+    return (
+      <div className="received-invoices-modal__pdf-message flex h-full items-center justify-center text-sm text-zinc-500">
+        Načítám náhled...
+      </div>
+    )
   }
 
   if (error) {
-    return <div className="flex h-full items-center justify-center text-sm text-zinc-500">{error}</div>
+    return (
+      <div className="received-invoices-modal__pdf-message flex h-full items-center justify-center text-sm text-zinc-500">
+        {error}
+      </div>
+    )
   }
 
   return (
-    <div className="h-full overflow-y-auto p-2">
+    <div className="received-invoices-modal__pdf-pages h-full overflow-y-auto p-2">
       <div className="space-y-2">
         {pages.map((page, index) => (
           <Image
@@ -165,7 +173,7 @@ const InvoicePreviewPane = memo(function InvoicePreviewPane({
   const isPdf = String(mimeType ?? '').toLowerCase() === 'application/pdf'
 
   return (
-    <div className="h-[46vh] min-h-[320px] flex-none overflow-hidden rounded-2xl border border-white/75 bg-white/85 lg:h-full lg:min-h-0 lg:flex-1">
+    <div className="received-invoices-modal__preview h-[46vh] min-h-[320px] flex-none overflow-hidden rounded-2xl border border-white/75 bg-white/85 lg:h-full lg:min-h-0 lg:flex-1">
       {previewUrl ? (
         isImageMimeType(mimeType) ? (
           <Image
@@ -491,10 +499,10 @@ export function ReceivedInvoicesModal({
     <>
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-[100] bg-zinc-950/38 backdrop-blur-[3.5px] supports-[backdrop-filter]:backdrop-blur-[3.5px]"
+        className="received-invoices-modal__overlay fixed inset-0 z-[100] bg-zinc-950/38 backdrop-blur-[3.5px] supports-[backdrop-filter]:backdrop-blur-[3.5px]"
       />
       <div
-        className="fixed inset-0 z-[101] overflow-y-auto p-4 sm:p-4"
+        className="received-invoices-modal fixed inset-0 z-[101] overflow-y-auto p-4 sm:p-4"
         role="dialog"
         aria-modal="true"
         onMouseDown={(event) => {
@@ -506,13 +514,13 @@ export function ReceivedInvoicesModal({
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
         >
         <div
-          className="relative flex w-full max-w-6xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
+          className="received-invoices-modal__shell relative flex w-full max-w-6xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             height:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
           }}
         >
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="received-invoices-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 Přijaté faktury
@@ -521,7 +529,7 @@ export function ReceivedInvoicesModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px]"
+              className="received-invoices-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px]"
               aria-label="Zavřít"
             >
               ✕
@@ -530,7 +538,7 @@ export function ReceivedInvoicesModal({
 
           <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[360px_minmax(0,1fr)]">
             <aside
-              className={`min-h-0 border-b-0 px-4 pt-4 lg:border-b-0 lg:border-r lg:border-white/70 ${
+              className={`received-invoices-modal__sidebar min-h-0 border-b-0 px-4 pt-4 lg:border-b-0 lg:border-r lg:border-white/70 ${
                 mode === 'view' && mobileViewPanel === 'preview' ? 'pb-2' : 'pb-4'
               }`}
             >
@@ -541,7 +549,8 @@ export function ReceivedInvoicesModal({
                     setMode('upload')
                     setMobileViewPanel('list')
                   }}
-                  className={`inline-flex h-9 items-center justify-center rounded-xl border text-xs font-semibold uppercase transition ${
+                  data-active={mode === 'upload'}
+                  className={`received-invoices-modal__mode-btn inline-flex h-9 items-center justify-center rounded-xl border text-xs font-semibold uppercase transition ${
                     mode === 'upload'
                       ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)]'
                       : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
@@ -555,7 +564,8 @@ export function ReceivedInvoicesModal({
                     setMode('view')
                     setMobileViewPanel(selectedInvoice ? 'preview' : 'list')
                   }}
-                  className={`inline-flex h-9 items-center justify-center rounded-xl border text-xs font-semibold uppercase transition ${
+                  data-active={mode === 'view'}
+                  className={`received-invoices-modal__mode-btn inline-flex h-9 items-center justify-center rounded-xl border text-xs font-semibold uppercase transition ${
                     mode === 'view'
                       ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)]'
                       : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
@@ -567,11 +577,11 @@ export function ReceivedInvoicesModal({
 
               {mode === 'upload' ? (
                 <div className="space-y-4 lg:mx-auto lg:w-full lg:max-w-[760px]">
-                  <form onSubmit={handleSingleUploadSubmit} className="space-y-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                  <form onSubmit={handleSingleUploadSubmit} className="received-invoices-modal__upload-card space-y-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
                     <div className="text-xs font-semibold uppercase text-zinc-500">Jeden soubor</div>
                     <label
                       htmlFor="received-invoice-single-file"
-                      className="group relative flex min-h-[64px] cursor-pointer items-center justify-center rounded-xl border border-[#8dbfe0]/65 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(237,246,252,0.9)_100%)] px-3 py-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(41,128,185,0.12)] transition duration-200 hover:-translate-y-[1px] hover:border-[#6fa9d1] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_12px_22px_rgba(41,128,185,0.18)]"
+                      className="received-invoices-modal__picker group relative flex min-h-[64px] cursor-pointer items-center justify-center rounded-xl border border-[#8dbfe0]/65 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(237,246,252,0.9)_100%)] px-3 py-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(41,128,185,0.12)] transition duration-200 hover:-translate-y-[1px] hover:border-[#6fa9d1] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_12px_22px_rgba(41,128,185,0.18)]"
                     >
                       <input
                         id="received-invoice-single-file"
@@ -580,12 +590,12 @@ export function ReceivedInvoicesModal({
                         onChange={(event) => setSingleFile(event.target.files?.[0] ?? null)}
                         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                       />
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#236f9f]">
+                      <div className="received-invoices-modal__picker-text text-[11px] font-semibold uppercase tracking-[0.08em] text-[#236f9f]">
                         Klikni pro výběr souboru
                       </div>
                     </label>
                     {singleFile ? (
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700">
+                      <div className="received-invoices-modal__selected-file rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700">
                         Vybráno: <span className="font-medium">{singleFile.name}</span>
                       </div>
                     ) : null}
@@ -593,22 +603,23 @@ export function ReceivedInvoicesModal({
                       type="date"
                       value={singleDueDate}
                       onChange={(event) => setSingleDueDate(event.target.value)}
-                      className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      className="received-invoices-modal__date-field received-invoices-modal__date-field--upload h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     />
                     <button
                       type="submit"
                       disabled={isPending}
+                      data-action="upload-single"
                       className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
                     >
                       Nahrát se splatností
                     </button>
                   </form>
 
-                  <form onSubmit={handleMultiUploadSubmit} className="space-y-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                  <form onSubmit={handleMultiUploadSubmit} className="received-invoices-modal__upload-card space-y-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
                     <div className="text-xs font-semibold uppercase text-zinc-500">Více souborů</div>
                     <label
                       htmlFor="received-invoice-multi-file"
-                      className="group relative flex min-h-[64px] cursor-pointer items-center justify-center rounded-xl border border-[#8dbfe0]/65 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(237,246,252,0.9)_100%)] px-3 py-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(41,128,185,0.12)] transition duration-200 hover:-translate-y-[1px] hover:border-[#6fa9d1] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_12px_22px_rgba(41,128,185,0.18)]"
+                      className="received-invoices-modal__picker group relative flex min-h-[64px] cursor-pointer items-center justify-center rounded-xl border border-[#8dbfe0]/65 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(237,246,252,0.9)_100%)] px-3 py-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(41,128,185,0.12)] transition duration-200 hover:-translate-y-[1px] hover:border-[#6fa9d1] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_12px_22px_rgba(41,128,185,0.18)]"
                     >
                       <input
                         id="received-invoice-multi-file"
@@ -618,12 +629,12 @@ export function ReceivedInvoicesModal({
                         onChange={(event) => setMultipleFiles(Array.from(event.target.files ?? []))}
                         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                       />
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#236f9f]">
+                      <div className="received-invoices-modal__picker-text text-[11px] font-semibold uppercase tracking-[0.08em] text-[#236f9f]">
                         Klikni pro výběr více souborů
                       </div>
                     </label>
                     {multipleFiles.length > 0 ? (
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700">
+                      <div className="received-invoices-modal__selected-file rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700">
                         Vybráno: <span className="font-medium">{multipleFiles.length}</span>{' '}
                         {multipleFiles.length === 1 ? 'soubor' : multipleFiles.length < 5 ? 'soubory' : 'souborů'}
                       </div>
@@ -632,6 +643,7 @@ export function ReceivedInvoicesModal({
                     <button
                       type="submit"
                       disabled={isPending}
+                      data-action="upload-multi"
                       className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
                     >
                       Nahrát více souborů
@@ -644,7 +656,8 @@ export function ReceivedInvoicesModal({
                     <button
                       type="button"
                       onClick={() => setMobileViewPanel('list')}
-                      className={`inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
+                      data-active={mobileViewPanel === 'list'}
+                      className={`received-invoices-modal__mobile-tab inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
                         mobileViewPanel === 'list'
                           ? 'border-zinc-700/90 bg-[linear-gradient(155deg,rgba(63,63,70,0.98)_0%,rgba(39,39,42,0.96)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_20px_rgba(24,24,27,0.34)]'
                           : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
@@ -655,7 +668,8 @@ export function ReceivedInvoicesModal({
                     <button
                       type="button"
                       onClick={() => setMobileViewPanel('preview')}
-                      className={`inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
+                      data-active={mobileViewPanel === 'preview'}
+                      className={`received-invoices-modal__mobile-tab inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
                         mobileViewPanel === 'preview'
                           ? 'border-zinc-700/90 bg-[linear-gradient(155deg,rgba(63,63,70,0.98)_0%,rgba(39,39,42,0.96)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_20px_rgba(24,24,27,0.34)]'
                           : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
@@ -666,7 +680,7 @@ export function ReceivedInvoicesModal({
                   </div>
 
                   <div
-                    className={`mb-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
+                    className={`received-invoices-modal__filters mb-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
                       mobileViewPanel === 'preview' ? 'hidden lg:block' : 'block'
                     }`}
                   >
@@ -685,7 +699,9 @@ export function ReceivedInvoicesModal({
                             key={item.key}
                             type="button"
                             onClick={() => setFilter(item.key)}
-                            className={`inline-flex h-8 items-center justify-center rounded-xl border px-2 text-xs font-semibold uppercase transition ${
+                            data-active={isActive}
+                            data-filter={item.key}
+                            className={`received-invoices-modal__filter-btn inline-flex h-8 items-center justify-center rounded-xl border px-2 text-xs font-semibold uppercase transition ${
                               isActive
                                 ? activeClass
                                 : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
@@ -727,7 +743,8 @@ export function ReceivedInvoicesModal({
                           }}
                           role="button"
                           tabIndex={0}
-                          className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                          data-selected={selectedId === row.id}
+                          className={`received-invoices-modal__row w-full rounded-xl border px-3 py-2 text-left transition ${
                             selectedId === row.id
                               ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,rgba(234,243,251,0.98)_0%,rgba(220,236,248,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),inset_0_-1px_0_rgba(41,128,185,0.08)]'
                               : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(148,163,184,0.12)] hover:-translate-y-[1px]'
@@ -751,7 +768,7 @@ export function ReceivedInvoicesModal({
                                   event.stopPropagation()
                                   setPendingDelete({ id: row.id, fileName: row.file_name })
                                 }}
-                                className="inline-flex h-6 shrink-0 items-center justify-center rounded-md border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(153,27,27,0.12)]"
+                                className="received-invoices-modal__row-delete inline-flex h-6 shrink-0 items-center justify-center rounded-md border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(153,27,27,0.12)]"
                               >
                                 SMAZAT
                               </button>
@@ -760,13 +777,13 @@ export function ReceivedInvoicesModal({
                           <div className="mt-1 flex items-center justify-between text-xs text-zinc-500">
                             <span>{formatFileSize(row.file_size)}</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="shrink-0 rounded-full border border-zinc-300/85 bg-[linear-gradient(155deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.9)_100%)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                              <span className="received-invoices-modal__due-pill shrink-0 rounded-full border border-zinc-300/85 bg-[linear-gradient(155deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.9)_100%)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                                 {row.status === 'paid'
                                   ? (formatDayMonthFromIso(row.updated_at) ?? '--')
                                   : (formatDayMonthFromDateOnly(row.due_date) ?? '--')}
                               </span>
                               <span
-                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${
+                                className={`received-invoices-modal__status-pill shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${
                                   row.status === 'paid'
                                     ? 'border border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700'
                                     : 'border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700'
@@ -785,7 +802,7 @@ export function ReceivedInvoicesModal({
             </aside>
 
             <section
-              className={`min-h-0 px-4 pb-4 ${
+              className={`received-invoices-modal__preview-col min-h-0 px-4 pb-4 ${
                 mode === 'upload' || mobileViewPanel === 'list' ? 'hidden lg:block' : ''
               } ${mobileViewPanel === 'preview' ? 'pt-2 lg:pt-4' : 'pt-4'}`}
             >
@@ -793,7 +810,7 @@ export function ReceivedInvoicesModal({
                 <div className="flex h-full min-h-0 flex-col gap-3">
                   <div className="flex flex-nowrap items-center gap-2">
                     <div
-                      className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-900"
+                      className="received-invoices-modal__selected-name min-w-0 flex-1 truncate text-sm font-semibold text-zinc-900"
                       title={selectedInvoice.file_name}
                     >
                       {selectedInvoice.file_name}
@@ -802,7 +819,8 @@ export function ReceivedInvoicesModal({
                       type="button"
                       onClick={handleDownload}
                       disabled={isPending}
-                      className="inline-flex h-9 w-[126px] shrink-0 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_24px_rgba(41,128,185,0.3)] disabled:opacity-60"
+                      data-action="download"
+                      className="received-invoices-modal__header-download inline-flex h-9 w-[126px] shrink-0 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_24px_rgba(41,128,185,0.3)] disabled:opacity-60"
                     >
                       STÁHNOUT
                     </button>
@@ -810,17 +828,19 @@ export function ReceivedInvoicesModal({
                       type="button"
                       onClick={handleDelete}
                       disabled={isPending}
-                      className="inline-flex h-9 w-[108px] shrink-0 items-center justify-center rounded-xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(153,27,27,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      data-action="delete"
+                      className="received-invoices-modal__header-delete inline-flex h-9 w-[108px] shrink-0 items-center justify-center rounded-xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(153,27,27,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       SMAZAT
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] lg:flex lg:flex-wrap lg:items-center">
+                  <div className="received-invoices-modal__action-row grid grid-cols-2 gap-2 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] lg:flex lg:flex-wrap lg:items-center">
                       <button
                         type="button"
                         onClick={() => handleToggleStatus('unpaid')}
                         disabled={isPending}
+                        data-status="unpaid"
                         className={`inline-flex h-8 w-full items-center justify-center rounded-lg border px-3 text-xs font-medium lg:w-auto ${
                           selectedInvoice.status === 'unpaid'
                             ? 'border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
@@ -833,6 +853,7 @@ export function ReceivedInvoicesModal({
                         type="button"
                         onClick={() => handleToggleStatus('paid')}
                         disabled={isPending}
+                        data-status="paid"
                         className={`inline-flex h-8 w-full items-center justify-center rounded-lg border px-3 text-xs font-medium lg:w-auto ${
                           selectedInvoice.status === 'paid'
                             ? 'border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
@@ -846,12 +867,14 @@ export function ReceivedInvoicesModal({
                       type="date"
                       value={dueDateDraft}
                       onChange={(event) => setDueDateDraft(event.target.value)}
-                      className="h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-xs text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] lg:ml-auto lg:w-auto"
+                      data-field="due-date"
+                      className="received-invoices-modal__date-field received-invoices-modal__date-field--due h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-xs text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] lg:ml-auto lg:w-auto"
                     />
                     <button
                       type="button"
                       onClick={handleSaveDueDate}
                       disabled={isPending}
+                      data-action="save"
                       className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60 lg:w-auto"
                     >
                       UPRAV SPLATNOST
@@ -866,7 +889,7 @@ export function ReceivedInvoicesModal({
                   />
                 </div>
               ) : (
-                <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white/70 text-sm text-zinc-500">
+                <div className="received-invoices-modal__empty flex h-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white/70 text-sm text-zinc-500">
                   Žádné soubory pro aktuální filtr.
                 </div>
               )}
@@ -874,14 +897,14 @@ export function ReceivedInvoicesModal({
           </div>
 
           {error ? (
-            <div className="border-t border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+            <div className="received-invoices-modal__error border-t border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
               {error}
             </div>
           ) : null}
 
           {pendingDelete ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-4">
-              <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-red-200 bg-[linear-gradient(155deg,rgba(254,242,242,0.98)_0%,rgba(255,228,230,0.96)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_16px_32px_rgba(153,27,27,0.18)]">
+            <div className="received-invoices-modal__delete pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-4">
+              <div className="received-invoices-modal__delete-card pointer-events-auto w-full max-w-md rounded-2xl border border-red-200 bg-[linear-gradient(155deg,rgba(254,242,242,0.98)_0%,rgba(255,228,230,0.96)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_16px_32px_rgba(153,27,27,0.18)]">
                 <div className="text-xs font-semibold uppercase tracking-[0.04em] text-red-700">
                   Opravdu smazat soubor?
                 </div>

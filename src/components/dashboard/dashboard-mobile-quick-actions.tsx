@@ -200,7 +200,7 @@ function QuickNotesModal({
       />
 
       <div
-        className={`absolute overflow-hidden rounded-[28px] border border-[#8dbfe0]/80 bg-[linear-gradient(165deg,rgba(61,129,184,0.94)_0%,rgba(44,113,170,0.9)_48%,rgba(32,91,145,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(198,228,250,0.5)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`dashboard-quick-notes-modal absolute overflow-hidden rounded-[28px] border border-[#8dbfe0]/80 bg-[linear-gradient(165deg,rgba(61,129,184,0.94)_0%,rgba(44,113,170,0.9)_48%,rgba(32,91,145,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(198,228,250,0.5)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isOpen
             ? 'translate-x-0 translate-y-0 scale-100 opacity-100 shadow-[0_46px_112px_rgba(9,48,82,0.42)]'
             : 'translate-x-4 translate-y-5 scale-[0.72] opacity-0 shadow-[0_12px_28px_rgba(9,48,82,0.14)]'
@@ -214,10 +214,10 @@ function QuickNotesModal({
           transformOrigin: 'bottom right',
           transitionDelay: isOpen ? '34ms' : '0ms',
         }}
-      >
+        >
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-90"
+          className="dashboard-quick-notes-modal__top-line pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-90"
         />
 
         <div
@@ -226,7 +226,7 @@ function QuickNotesModal({
           }`}
           style={{ transitionDelay: isOpen ? '86ms' : '0ms' }}
         >
-          <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-white/95">
+          <div className="dashboard-quick-notes-modal__eyebrow text-[12px] font-semibold uppercase tracking-[0.2em] text-white/95">
             Poznámky
           </div>
         </div>
@@ -243,15 +243,15 @@ function QuickNotesModal({
             maxLength={QUICK_NOTE_MAX_LENGTH}
             rows={12}
             placeholder="Rychlá poznámka..."
-            className="w-full resize-none rounded-2xl border border-white/55 bg-white/12 px-3 py-2.5 text-sm leading-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_22px_rgba(9,48,82,0.16)] outline-none placeholder:text-white/65 focus:border-white/75 focus:ring-2 focus:ring-white/35"
+            className="dashboard-quick-notes-modal__textarea w-full resize-none rounded-2xl border border-white/55 bg-white/12 px-3 py-2.5 text-sm leading-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_22px_rgba(9,48,82,0.16)] outline-none placeholder:text-white/65 focus:border-white/75 focus:ring-2 focus:ring-white/35"
           />
 
           <div className="flex items-start justify-between gap-3 pt-0.5">
             <div>
-              <div className="text-[10px] text-white/75">
+              <div className="dashboard-quick-notes-modal__counter text-[10px] text-white/75">
                 {text.length}/{QUICK_NOTE_MAX_LENGTH}
               </div>
-              <div className="mt-1 text-[10px] leading-4 text-white/65">
+              <div className="dashboard-quick-notes-modal__saved mt-1 text-[10px] leading-4 text-white/65">
                 {isSaving
                   ? 'Ukládám...'
                   : lastSavedAtLabel
@@ -263,7 +263,7 @@ function QuickNotesModal({
             <button
               type="button"
               onClick={onClearRequest}
-              className="inline-flex h-8 items-center justify-center rounded-xl border border-red-300/80 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(127,29,29,0.24)] transition duration-200 hover:-translate-y-[1px]"
+              className="dashboard-quick-notes-modal__clear inline-flex h-8 items-center justify-center rounded-xl border border-red-300/80 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(127,29,29,0.24)] transition duration-200 hover:-translate-y-[1px]"
             >
               Vymazat
             </button>
@@ -429,25 +429,27 @@ function ManualNotificationModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[110] hidden lg:block">
+    <div className="manual-notifications-modal fixed inset-0 z-[110] hidden lg:block">
       <button
         type="button"
         aria-label="Zavřít ruční notifikace"
-        className="absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
+        className="manual-notifications-modal__overlay absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
         onClick={onClose}
       />
 
       <div className="absolute inset-0 overflow-y-auto p-4">
-        <div className="mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
-          <div className="mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+        <div className="manual-notifications-modal__shell mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
+          <div className="manual-notifications-modal__header mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight text-gray-900">Ruční notifikace</h2>
+              <h2 className="manual-notifications-modal__title text-xl font-semibold tracking-tight text-gray-900">
+                Ruční notifikace
+              </h2>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+              className="manual-notifications-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
               aria-label="Zavřít"
             >
               ✕
@@ -455,23 +457,23 @@ function ManualNotificationModal({
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+            <section className="manual-notifications-modal__composer rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                  <label className="manual-notifications-modal__label mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
                     Příjemci
                   </label>
-                  <div className="max-h-[230px] space-y-1.5 overflow-y-auto rounded-xl border border-white/75 bg-white/70 p-2">
+                  <div className="manual-notifications-modal__recipient-list max-h-[230px] space-y-1.5 overflow-y-auto rounded-xl border border-white/75 bg-white/70 p-2">
                     {sortedUsers.map((user) => {
                       const isChecked = selectedUserIds.includes(user.id)
                       return (
                         <label
                           key={user.id}
-                          className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-800 transition hover:bg-white/80"
+                          className="manual-notifications-modal__recipient-item flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-800 transition hover:bg-white/80"
                         >
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-zinc-300 text-[#2f77af] focus:ring-[#2f77af]"
+                            className="manual-notifications-modal__checkbox h-4 w-4 rounded border-zinc-300 text-[#2f77af] focus:ring-[#2f77af]"
                             checked={isChecked}
                             onChange={() => toggleUser(user.id)}
                           />
@@ -485,7 +487,7 @@ function ManualNotificationModal({
                 <div>
                   <label
                     htmlFor="manual-notification-title"
-                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500"
+                    className="manual-notifications-modal__label mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500"
                   >
                     Nadpis (max 120)
                   </label>
@@ -495,7 +497,7 @@ function ManualNotificationModal({
                     value={title}
                     onChange={(event) => setTitle(event.target.value.slice(0, 120))}
                     maxLength={120}
-                    className="h-11 w-full rounded-xl border border-white/75 bg-white/80 px-3 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none ring-[#2f77af]/40 transition focus:ring-2"
+                    className="manual-notifications-modal__input h-11 w-full rounded-xl border border-white/75 bg-white/80 px-3 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none ring-[#2f77af]/40 transition focus:ring-2"
                     placeholder="Např. Důležité oznámení"
                   />
                 </div>
@@ -503,7 +505,7 @@ function ManualNotificationModal({
                 <div>
                   <label
                     htmlFor="manual-notification-message"
-                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500"
+                    className="manual-notifications-modal__label mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500"
                   >
                     Text (volitelné, max 500)
                   </label>
@@ -513,13 +515,13 @@ function ManualNotificationModal({
                     onChange={(event) => setMessage(event.target.value.slice(0, 500))}
                     maxLength={500}
                     rows={4}
-                    className="w-full resize-none rounded-xl border border-white/75 bg-white/80 px-3 py-2 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none ring-[#2f77af]/40 transition focus:ring-2"
+                    className="manual-notifications-modal__textarea w-full resize-none rounded-xl border border-white/75 bg-white/80 px-3 py-2 text-sm text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none ring-[#2f77af]/40 transition focus:ring-2"
                     placeholder="Volitelný text notifikace…"
                   />
                 </div>
 
                 {errorMessage ? (
-                  <div className="rounded-xl border border-red-200/85 bg-red-50/80 px-3 py-2 text-sm text-red-700">
+                  <div className="manual-notifications-modal__error rounded-xl border border-red-200/85 bg-red-50/80 px-3 py-2 text-sm text-red-700">
                     {errorMessage}
                   </div>
                 ) : null}
@@ -531,7 +533,7 @@ function ManualNotificationModal({
                       void sendCurrentNotification()
                     }}
                     disabled={isSubmitting}
-                    className="inline-flex min-h-11 items-center rounded-xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_24px_rgba(9,48,82,0.38)] transition hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="manual-notifications-modal__send inline-flex min-h-11 items-center rounded-xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_24px_rgba(9,48,82,0.38)] transition hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSubmitting ? 'ODESÍLÁM…' : 'ODESLAT NOTIFIKACI'}
                   </button>
@@ -539,30 +541,32 @@ function ManualNotificationModal({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            <section className="manual-notifications-modal__history rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+              <div className="manual-notifications-modal__history-title mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                 Historie odeslaných
               </div>
 
               <div className="max-h-[62vh] space-y-2 overflow-y-auto pr-1">
                 {historyLoading ? (
-                  <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                  <div className="manual-notifications-modal__history-empty rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
                     Načítám historii…
                   </div>
                 ) : historyItems.length === 0 ? (
-                  <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                  <div className="manual-notifications-modal__history-empty rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
                     Zatím bez odeslaných ručních notifikací.
                   </div>
                 ) : (
                   historyItems.map((item) => (
                     <div
                       key={item.batchId}
-                      className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-2.5"
+                      className="manual-notifications-modal__history-item rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-2.5"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-zinc-900">{item.title}</div>
-                          <div className="mt-1 text-[12px] text-zinc-600">
+                          <div className="manual-notifications-modal__history-item-title truncate text-sm font-semibold text-zinc-900">
+                            {item.title}
+                          </div>
+                          <div className="manual-notifications-modal__history-item-meta mt-1 text-[12px] text-zinc-600">
                             {formatManualHistoryTime(item.createdAt)} • Příjemců: {item.recipientCount}
                           </div>
                         </div>
@@ -572,17 +576,19 @@ function ManualNotificationModal({
                             void resendFromHistory(item)
                           }}
                           disabled={submittingBatchId === item.batchId}
-                          className="inline-flex min-h-9 shrink-0 items-center rounded-xl border border-[#2b6f9f]/85 bg-[#2f77af]/10 px-3 text-xs font-semibold uppercase tracking-[0.04em] text-[#1f5f8f] transition hover:bg-[#2f77af]/18 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="manual-notifications-modal__resend inline-flex min-h-9 shrink-0 items-center rounded-xl border border-[#2b6f9f]/85 bg-[#2f77af]/10 px-3 text-xs font-semibold uppercase tracking-[0.04em] text-[#1f5f8f] transition hover:bg-[#2f77af]/18 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {submittingBatchId === item.batchId ? 'ODESÍLÁM…' : 'ODESLAT ZNOVU'}
                         </button>
                       </div>
 
                       {item.message ? (
-                        <div className="mt-1.5 text-sm text-zinc-700">{item.message}</div>
+                        <div className="manual-notifications-modal__history-item-message mt-1.5 text-sm text-zinc-700">
+                          {item.message}
+                        </div>
                       ) : null}
 
-                      <div className="mt-2 text-[12px] text-zinc-600">
+                      <div className="manual-notifications-modal__history-item-recipients mt-2 text-[12px] text-zinc-600">
                         Komu: {item.recipientNames.join(', ')}
                       </div>
                     </div>
@@ -1323,9 +1329,9 @@ export function DashboardMobileQuickActions({
   )
   const FLOATING_INACTIVE_CLASS = 'blur-[6px] lg:blur-[5px]'
   const FLOATING_BLUE_BUTTON_CLASS =
-    'border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white hover:border-[#3a3a3a] hover:bg-[linear-gradient(160deg,rgba(48,48,48,0.96)_0%,rgba(28,28,28,0.97)_45%,rgba(12,12,12,0.99)_100%)]'
+    'dashboard-floating-action border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white hover:border-[#3a3a3a] hover:bg-[linear-gradient(160deg,rgba(48,48,48,0.96)_0%,rgba(28,28,28,0.97)_45%,rgba(12,12,12,0.99)_100%)]'
   const FLOATING_BLUE_BUTTON_ACTIVE_CLASS =
-    'scale-[0.97] bg-[linear-gradient(160deg,rgba(52,52,52,0.97)_0%,rgba(32,32,32,0.98)_45%,rgba(14,14,14,0.99)_100%)] shadow-[inset_0_3px_8px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(0,0,0,0.46)]'
+    'dashboard-floating-action--active scale-[0.97] bg-[linear-gradient(160deg,rgba(52,52,52,0.97)_0%,rgba(32,32,32,0.98)_45%,rgba(14,14,14,0.99)_100%)] shadow-[inset_0_3px_8px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(0,0,0,0.46)]'
   const activeFloatingModal: 'quick_create' | 'quick_notes' | 'today_jobs' | null =
     isQuickNotesOpen
       ? 'quick_notes'
@@ -1357,7 +1363,7 @@ export function DashboardMobileQuickActions({
           onClick={() => {
             void openPresenceModal()
           }}
-          className={`fixed z-[70] hidden overflow-hidden border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] text-zinc-900 backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
+          className={`dashboard-online-panel fixed z-[70] hidden overflow-hidden border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] text-zinc-900 backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:block ${
             shouldHideFloatingControls
               ? 'pointer-events-none opacity-0 scale-[0.94]'
               : isSheetOpen && !isQuickCreateActive
@@ -1376,21 +1382,21 @@ export function DashboardMobileQuickActions({
         >
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
+            className="dashboard-online-panel__top-line pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
           />
 
           <div className="flex h-full flex-col justify-center px-[18px]">
             <div className="flex items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+              <div className="dashboard-online-panel__label inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
                 <span>ONLINE</span>
                 <span className="relative inline-flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 blur-[2px]" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full border border-emerald-200/90 bg-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.95)]" />
+                  <span className="dashboard-online-panel__dot-glow absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 blur-[2px]" />
+                  <span className="dashboard-online-panel__dot relative inline-flex h-2.5 w-2.5 rounded-full border border-emerald-200/90 bg-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.95)]" />
                 </span>
               </div>
             </div>
 
-            <div className="mt-1 w-full truncate text-left text-[12px] font-medium leading-4 text-zinc-800">
+            <div className="dashboard-online-panel__text mt-1 w-full truncate text-left text-[12px] font-medium leading-4 text-zinc-800">
               {onlineCount === 0
                 ? 'Nikdo další není online'
                 : (() => {
@@ -1461,7 +1467,7 @@ export function DashboardMobileQuickActions({
             <path d="M10.95 12.95c.5 1.08 1.55 1.75 3 1.75" />
           </svg>
           {receivedInvoicesDueCount > 0 ? (
-            <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
+            <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-red-600 bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
               {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
             </span>
           ) : null}
@@ -1711,7 +1717,7 @@ export function DashboardMobileQuickActions({
             <path d="M10.95 12.95c.5 1.08 1.55 1.75 3 1.75" />
           </svg>
           {receivedInvoicesDueCount > 0 ? (
-            <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
+            <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-red-600 bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
               {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
             </span>
           ) : null}
@@ -1882,7 +1888,7 @@ export function DashboardMobileQuickActions({
           />
 
           <div
-            className={`absolute overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.9)_42%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`dashboard-floating-actions-sheet absolute overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.9)_42%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isSheetOpen
                 ? 'translate-x-0 translate-y-0 scale-100 opacity-100 shadow-[0_46px_112px_rgba(15,23,42,0.24)]'
                 : 'translate-x-4 translate-y-5 scale-[0.72] opacity-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
@@ -1901,7 +1907,7 @@ export function DashboardMobileQuickActions({
           >
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90"
+              className="dashboard-floating-actions-sheet__top-line pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90"
             />
 
             <div
@@ -1910,7 +1916,7 @@ export function DashboardMobileQuickActions({
               }`}
               style={{ transitionDelay: isSheetOpen ? '86ms' : '0ms' }}
             >
-              <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-[#2980B9]">
+              <div className="dashboard-floating-actions-sheet__eyebrow text-[13px] font-semibold uppercase tracking-[0.2em] text-[#2980B9]">
                 RYCHLÁ AKCE
               </div>
             </div>
@@ -1927,12 +1933,12 @@ export function DashboardMobileQuickActions({
                   <button
                     type="button"
                     onClick={() => handleActionSelect(action.key)}
-                    className={`flex w-full items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[180ms] ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
+                    className={`dashboard-floating-actions-sheet__button flex w-full items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[180ms] ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
                       isDesktopViewport ? 'min-h-[56px] py-3.5 text-[15px]' : 'min-h-[52px] py-3 text-[15px]'
                     }`}
                   >
                     <span>{action.label}</span>
-                    <span className="text-[24px] font-bold leading-none text-[#2980B9]">+</span>
+                    <span className="dashboard-floating-actions-sheet__plus text-[24px] font-bold leading-none text-[#2980B9]">+</span>
                   </button>
                 </div>
               ))}
@@ -1963,7 +1969,7 @@ export function DashboardMobileQuickActions({
           />
 
           <div
-            className={`absolute overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.9)_42%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`dashboard-today-jobs-modal absolute overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.9)_42%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isTodayJobsOpen
                 ? 'translate-x-0 translate-y-0 scale-100 opacity-100 shadow-[0_46px_112px_rgba(15,23,42,0.24)]'
                 : 'translate-x-4 translate-y-5 scale-[0.72] opacity-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
@@ -1982,7 +1988,7 @@ export function DashboardMobileQuickActions({
           >
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90"
+              className="dashboard-today-jobs-modal__top-line pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90"
             />
 
             <div
@@ -1991,7 +1997,7 @@ export function DashboardMobileQuickActions({
               }`}
               style={{ transitionDelay: isTodayJobsOpen ? '86ms' : '0ms' }}
             >
-              <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-[#2980B9]">
+              <div className="dashboard-today-jobs-modal__eyebrow text-[13px] font-semibold uppercase tracking-[0.2em] text-[#2980B9]">
                 DNEŠNÍ ZAKÁZKY
               </div>
             </div>
@@ -2006,15 +2012,15 @@ export function DashboardMobileQuickActions({
               }}
             >
               {todayJobsLoading ? (
-                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-3 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                <div className="dashboard-today-jobs-modal__loading rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-3 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   Načítám dnešní zakázky…
                 </div>
               ) : todayJobsError ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="dashboard-today-jobs-modal__error rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {todayJobsError}
                 </div>
               ) : todayJobs.length === 0 ? (
-                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-3 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                <div className="dashboard-today-jobs-modal__empty rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-3 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   Dnes žádné zakázky.
                 </div>
               ) : (
@@ -2022,11 +2028,11 @@ export function DashboardMobileQuickActions({
                   {todayJobs.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[11px] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                      className="dashboard-today-jobs-modal__item rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-[11px] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                       title={`${item.jobNumber} | ${item.companyName} | ${formatJobDateTime(item.startAt)} - ${formatJobDateTime(item.endAt)} | Technik: ${item.technicianName ?? '—'} | Agregát: ${item.generatorName ?? '—'}`}
                     >
                       <div className="flex items-center gap-2 whitespace-nowrap">
-                        <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[10px] font-semibold tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_14px_rgba(24,78,129,0.24)]">
+                        <span className="dashboard-today-jobs-modal__job-pill inline-flex h-5 shrink-0 items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[10px] font-semibold tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_14px_rgba(24,78,129,0.24)]">
                           {item.jobNumber}
                         </span>
                         <span className="min-w-0 flex-1 truncate font-medium">{item.companyName}</span>
@@ -2149,7 +2155,7 @@ export function DashboardMobileQuickActions({
           />
 
           {quickNotesSaveError ? (
-            <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+18px)] left-1/2 z-[90] w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border border-red-300/85 bg-[linear-gradient(135deg,rgba(127,29,29,0.96)_0%,rgba(153,27,27,0.94)_100%)] px-3 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(127,29,29,0.34)]">
+            <div className="dashboard-quick-notes-save-error fixed bottom-[calc(env(safe-area-inset-bottom,0px)+18px)] left-1/2 z-[90] w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border border-red-300/85 bg-[linear-gradient(135deg,rgba(127,29,29,0.96)_0%,rgba(153,27,27,0.94)_100%)] px-3 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(127,29,29,0.34)]">
               {quickNotesSaveError}
             </div>
           ) : null}
@@ -2160,16 +2166,16 @@ export function DashboardMobileQuickActions({
                 type="button"
                 aria-label="Zavřít potvrzení mazání poznámky"
                 onClick={() => setIsQuickNotesClearConfirmOpen(false)}
-                className="absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
+                className="dashboard-quick-notes-clear-confirm__overlay absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
               />
 
               <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="relative w-full max-w-sm overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
-                  <div aria-hidden className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
-                  <div aria-hidden className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
-                  <div aria-hidden className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
+                <div className="dashboard-quick-notes-clear-confirm__panel relative w-full max-w-sm overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+                  <div aria-hidden className="dashboard-quick-notes-clear-confirm__frame pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
+                  <div aria-hidden className="dashboard-quick-notes-clear-confirm__top-line pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
+                  <div aria-hidden className="dashboard-quick-notes-clear-confirm__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
 
-                  <p className="relative text-sm font-medium leading-6 text-gray-900">
+                  <p className="dashboard-quick-notes-clear-confirm__text relative text-sm font-medium leading-6 text-gray-900">
                     Opravdu chceš nevratně smazat veškerý text?
                   </p>
 
@@ -2179,14 +2185,14 @@ export function DashboardMobileQuickActions({
                       onClick={() => {
                         void clearQuickNotes()
                       }}
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-3 text-xs font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px]"
+                      className="dashboard-quick-notes-clear-confirm__accept inline-flex h-9 items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-3 text-xs font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px]"
                     >
                       Ano
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsQuickNotesClearConfirmOpen(false)}
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-3 text-xs font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)] transition duration-200 hover:-translate-y-[1px]"
+                      className="dashboard-quick-notes-clear-confirm__cancel inline-flex h-9 items-center justify-center rounded-xl border border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-3 text-xs font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(220,38,38,0.24)] transition duration-200 hover:-translate-y-[1px]"
                     >
                       Zrušit
                     </button>
@@ -2199,27 +2205,30 @@ export function DashboardMobileQuickActions({
       ) : null}
 
       {isAdmin && isDesktopViewport && isPresenceModalOpen ? (
-        <div className="fixed inset-0 z-[100] hidden lg:block">
+        <div className="online-log-modal fixed inset-0 z-[100] hidden lg:block">
           <button
             type="button"
             aria-label="Zavřít sledovač online stavu"
-            className="absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
+            className="online-log-modal__overlay absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px]"
             onClick={() => setIsPresenceModalOpen(false)}
           />
 
           <div className="absolute inset-0 overflow-y-auto p-4">
-            <div className="mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
-              <div className="mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+            <div className="online-log-modal__shell mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
+              <div className="online-log-modal__header mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-gray-900">ONLINE LOG</h2>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <h2 className="online-log-modal__title text-xl font-semibold tracking-tight text-gray-900">
+                    ONLINE LOG
+                  </h2>
+                  <p className="online-log-modal__subtitle mt-1 text-sm text-gray-500">
                     Online teď: {onlineCount} • Aktivní v období: {presenceUsers.length}
                   </p>
-                  <div className="mt-2 inline-flex items-center gap-1 rounded-xl border border-white/75 bg-white/65 p-1">
+                  <div className="online-log-modal__periods mt-2 inline-flex items-center gap-1 rounded-xl border border-white/75 bg-white/65 p-1">
                     <button
                       type="button"
                       onClick={() => setPresencePeriod('today')}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
+                      data-active={presencePeriod === 'today'}
+                      className={`online-log-modal__period-btn rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
                         presencePeriod === 'today'
                           ? 'bg-[#2f77af] text-white'
                           : 'text-zinc-600 hover:bg-white/70'
@@ -2230,7 +2239,8 @@ export function DashboardMobileQuickActions({
                     <button
                       type="button"
                       onClick={() => setPresencePeriod('7d')}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
+                      data-active={presencePeriod === '7d'}
+                      className={`online-log-modal__period-btn rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
                         presencePeriod === '7d'
                           ? 'bg-[#2f77af] text-white'
                           : 'text-zinc-600 hover:bg-white/70'
@@ -2241,7 +2251,8 @@ export function DashboardMobileQuickActions({
                     <button
                       type="button"
                       onClick={() => setPresencePeriod('30d')}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
+                      data-active={presencePeriod === '30d'}
+                      className={`online-log-modal__period-btn rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] transition ${
                         presencePeriod === '30d'
                           ? 'bg-[#2f77af] text-white'
                           : 'text-zinc-600 hover:bg-white/70'
@@ -2255,7 +2266,7 @@ export function DashboardMobileQuickActions({
                 <button
                   type="button"
                   onClick={() => setIsPresenceModalOpen(false)}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+                  className="online-log-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
                   aria-label="Zavřít"
                 >
                   ✕
@@ -2263,14 +2274,14 @@ export function DashboardMobileQuickActions({
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-                <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                <section className="online-log-modal__list-panel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <div className="online-log-modal__section-label mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                     Uživatelé v období
                   </div>
 
                   <div className="max-h-[58vh] space-y-2 overflow-y-auto pr-1">
                     {presenceUsers.length === 0 ? (
-                        <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                        <div className="online-log-modal__empty rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
                         V tomto období nebyl nikdo další aktivní.
                       </div>
                     ) : (
@@ -2279,23 +2290,26 @@ export function DashboardMobileQuickActions({
                           key={item.id}
                           type="button"
                           onClick={() => setSelectedPresenceUserId(item.id)}
-                          className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                          data-selected={selectedPresenceUserId === item.id}
+                          className={`online-log-modal__person-row w-full rounded-xl border px-3 py-2.5 text-left transition ${
                             selectedPresenceUserId === item.id
                               ? 'border-[#7cb3d8] bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(210,234,247,0.88)_100%)]'
                               : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] hover:-translate-y-[1px]'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="truncate text-sm font-semibold text-zinc-900">{item.name}</div>
+                            <div className="online-log-modal__person-name truncate text-sm font-semibold text-zinc-900">
+                              {item.name}
+                            </div>
                             <span
-                              className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold uppercase ${
+                              className={`online-log-modal__status inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold uppercase ${
                                 item.isOnline ? 'bg-emerald-500 text-white' : 'bg-zinc-200 text-zinc-700'
                               }`}
                             >
                               {item.isOnline ? 'ONLINE' : 'OFFLINE'}
                             </span>
                           </div>
-                          <div className="mt-1 text-[12px] text-zinc-600">
+                          <div className="online-log-modal__person-meta mt-1 text-[12px] text-zinc-600">
                             Naposledy online: {formatActivityTime(item.lastSeenAt)}
                           </div>
                         </button>
@@ -2304,40 +2318,44 @@ export function DashboardMobileQuickActions({
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                <section className="online-log-modal__detail-panel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   {selectedPresenceUser ? (
                     <>
-                      <div className="rounded-xl border border-white/75 bg-white/70 p-3">
-                        <div className="text-sm font-semibold text-zinc-900">{selectedPresenceUser.name}</div>
-                        <div className="mt-1 text-[12px] text-zinc-600">
+                      <div className="online-log-modal__detail-card rounded-xl border border-white/75 bg-white/70 p-3">
+                        <div className="online-log-modal__detail-name text-sm font-semibold text-zinc-900">
+                          {selectedPresenceUser.name}
+                        </div>
+                        <div className="online-log-modal__detail-meta mt-1 text-[12px] text-zinc-600">
                           Sekce: {selectedPresenceUser.lastSection ?? '—'} • Route: {formatOnlineRoute(selectedPresenceUser.lastRoute)}
                         </div>
-                        <div className="mt-1 text-[12px] text-zinc-600">
+                        <div className="online-log-modal__detail-meta mt-1 text-[12px] text-zinc-600">
                           Poslední akce: {formatOnlineActionText(selectedPresenceUser.lastAction)} ({formatActivityTime(selectedPresenceUser.lastActionAt)})
                         </div>
                       </div>
 
-                      <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                      <div className="online-log-modal__activity-label mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                         Historie aktivit
                       </div>
 
                       <div className="mt-2 max-h-[48vh] space-y-2 overflow-y-auto pr-1">
                         {isActivityLoading ? (
-                          <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                          <div className="online-log-modal__empty rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
                             Načítám historii…
                           </div>
                         ) : activityItems.length === 0 ? (
-                          <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                          <div className="online-log-modal__empty rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
                             Zatím bez záznamu aktivit.
                           </div>
                         ) : (
                           activityItems.map((item) => (
                             <div
                               key={item.id}
-                              className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-2.5"
+                              className="online-log-modal__activity-item rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-2.5"
                             >
-                              <div className="text-sm font-medium text-zinc-900">{formatOnlineActionText(item.action) || 'Bez popisu akce'}</div>
-                              <div className="mt-1 text-[12px] text-zinc-600">
+                              <div className="online-log-modal__activity-title text-sm font-medium text-zinc-900">
+                                {formatOnlineActionText(item.action) || 'Bez popisu akce'}
+                              </div>
+                              <div className="online-log-modal__activity-meta mt-1 text-[12px] text-zinc-600">
                                 {formatActivityTime(item.created_at)} • {item.section ?? '—'} • {formatOnlineRoute(item.route)}
                               </div>
                             </div>
@@ -2346,7 +2364,7 @@ export function DashboardMobileQuickActions({
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
+                    <div className="online-log-modal__empty rounded-xl border border-white/75 bg-white/60 px-3 py-4 text-sm text-zinc-500">
                       Vyber uživatele vlevo pro detail.
                     </div>
                   )}

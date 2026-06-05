@@ -58,11 +58,14 @@ function StatCard({
     variant === 'neutral' ? 'text-zinc-950' : 'text-white'
 
   return (
-    <div className={`rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(15,23,42,0.12)] ${className}`}>
-      <div className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>
+    <div
+      data-variant={variant}
+      className={`tasks-page__stat-card rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(15,23,42,0.12)] ${className}`}
+    >
+      <div className={`tasks-page__stat-label text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>
         {label}
       </div>
-      <div className="mt-1 text-lg font-semibold leading-none tracking-tight text-current">
+      <div className="tasks-page__stat-value mt-1 text-lg font-semibold leading-none tracking-tight text-current">
         {value}
       </div>
     </div>
@@ -71,7 +74,7 @@ function StatCard({
 
 function InfoChip({ label }: { label: string }) {
   return (
-    <div className="inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
+    <div className="tasks-page__info-chip inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
       {label}
     </div>
   )
@@ -90,7 +93,7 @@ function FilterTab({
     <Link
       href={href}
       className={[
-        'inline-flex items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-medium transition duration-200 ease-out sm:px-4 sm:py-2 sm:text-sm',
+        'tasks-page__filter-tab inline-flex items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-medium transition duration-200 ease-out sm:px-4 sm:py-2 sm:text-sm',
         active
           ? 'border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
           : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]',
@@ -412,7 +415,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const hasActiveMobileFilters = view !== 'all'
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+    <main className="tasks-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <PresenceSectionTracker section="Úkoly" route="/tasks" />
       <div
         aria-hidden
@@ -420,13 +423,13 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        className="tasks-page__glow tasks-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
       />
       <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="tasks-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-end">
-              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
+              <h1 className="tasks-page__hero-title text-3xl font-semibold leading-none tracking-tight text-gray-900">
                 Moje úkoly
               </h1>
             </div>
@@ -442,7 +445,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   name="search"
                   defaultValue={search}
                   placeholder="Název úkolu, klient, osoba, poznámka..."
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
+                  className="tasks-page__search-input w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
 
                 <input type="hidden" name="view" value={view} />
@@ -450,7 +453,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
                 <button
                   type="submit"
-                  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                  className="tasks-page__search-button rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                 >
                   HLEDAT
                 </button>
@@ -458,7 +461,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
+                className="clients-page__back-button tasks-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
@@ -468,7 +471,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           </div>
         </section>
 
-        <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="tasks-page__content rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="p-4 md:p-5">
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
             <div className="min-w-0 hidden lg:block">
@@ -515,7 +518,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
               id="tasks-mobile-filters"
               className="group print-hidden w-full lg:hidden"
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+              <summary className="tasks-page__mobile-summary flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                 <span className="inline-flex items-center gap-2">
                   FILTRY
                   {hasActiveMobileFilters ? (
@@ -530,7 +533,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
               <form
                 action="/tasks"
                 method="get"
-                className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                className="tasks-page__mobile-panel mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
               >
                 <input type="hidden" name="search" value={search} />
                 <input type="hidden" name="range" value={range} />
@@ -546,7 +549,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                     id="view-mobile"
                     name="view"
                     defaultValue={view}
-                    className="h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    className="tasks-page__mobile-select h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   >
                     <option value="all">Vše</option>
                     <option value="active">Aktivní</option>
@@ -554,8 +557,8 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   </select>
                 </div>
 
-                <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
-                  <TaskFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                <div className="tasks-page__filter-actions-divider flex items-center gap-2 border-t border-gray-100 pt-3">
+                  <TaskFilterSubmitButton className="tasks-page__mobile-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                     POUŽÍT FILTRY
                   </TaskFilterSubmitButton>
                 </div>
@@ -572,7 +575,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 <StatCard
                   label="Aktivní ostatním"
                   value={visibleDelegatedActive.length}
-                  variant="dark"
+                  variant="primary"
                 />
                 <StatCard
                   label="Vyřešené celkem"
@@ -581,7 +584,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   }
                   variant="success"
                 />
-                <StatCard label="Úkolů celkem" value={totalVisibleCount} />
+                <StatCard label="Úkolů celkem" value={totalVisibleCount} variant="success" />
               </div>
             </div>
           </div>
@@ -589,10 +592,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             <div className="mt-0 grid grid-cols-4 gap-1.5 lg:hidden">
               <Link
                 href={getTabHref({ search, view, range: 'today' })}
-                className={`inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-[#76a9d3]/85 px-2 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] sm:h-9 sm:px-4 sm:text-sm ${
+                className={`tasks-page__range-tab inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 px-2 text-[11px] font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 sm:h-9 sm:px-4 sm:text-sm ${
                   range === 'today'
-                    ? 'bg-[linear-gradient(155deg,#3f86be_0%,#2f74ab_55%,#245f91_100%)]'
-                    : 'bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)]'
+                    ? 'bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)]'
+                    : 'bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)]'
                 }`}
               >
                 DNES
@@ -600,10 +603,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href={getTabHref({ search, view, range: 'this_week' })}
-                className={`inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-[#76a9d3]/85 px-2 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] sm:h-9 sm:px-4 sm:text-sm ${
+                className={`tasks-page__range-tab inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 px-2 text-[11px] font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 sm:h-9 sm:px-4 sm:text-sm ${
                   range === 'this_week'
-                    ? 'bg-[linear-gradient(155deg,#3f86be_0%,#2f74ab_55%,#245f91_100%)]'
-                    : 'bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)]'
+                    ? 'bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)]'
+                    : 'bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)]'
                 }`}
               >
                 TENTO TÝDEN
@@ -611,10 +614,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href={getTabHref({ search, view, range: 'next_week' })}
-                className={`inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-[#76a9d3]/85 px-2 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] sm:h-9 sm:px-4 sm:text-sm ${
+                className={`tasks-page__range-tab inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 px-2 text-[11px] font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 sm:h-9 sm:px-4 sm:text-sm ${
                   range === 'next_week'
-                    ? 'bg-[linear-gradient(155deg,#3f86be_0%,#2f74ab_55%,#245f91_100%)]'
-                    : 'bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)]'
+                    ? 'bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)]'
+                    : 'bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)]'
                 }`}
               >
                 PŘÍŠTÍ TÝDEN
@@ -623,18 +626,18 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
               <TaskFilterResetLink
                 href="/tasks"
                 detailsId="tasks-mobile-filters"
-                className="inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2 text-[11px] font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 sm:h-9 sm:px-4 sm:text-sm"
+                className="tasks-page__range-reset inline-flex min-w-0 h-8 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2 text-[11px] font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 sm:h-9 sm:px-4 sm:text-sm"
               >
                 RESET
               </TaskFilterResetLink>
             </div>
-            <div className="mt-4 hidden flex-wrap items-center gap-2 border-t border-zinc-100 pt-4 lg:flex">
+            <div className="tasks-page__range-tabs mt-4 hidden flex-wrap items-center gap-2 border-t border-zinc-100 pt-4 lg:flex">
               <Link
                 href={getTabHref({ search, view, range: 'today' })}
-                className={`inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-[#76a9d3]/85 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] ${
+                className={`tasks-page__range-tab inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 ${
                   range === 'today'
-                    ? 'bg-[linear-gradient(155deg,#3f86be_0%,#2f74ab_55%,#245f91_100%)]'
-                    : 'bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)]'
+                    ? 'bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)]'
+                    : 'bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)]'
                 }`}
               >
                 DNES
@@ -642,10 +645,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href={getTabHref({ search, view, range: 'this_week' })}
-                className={`inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-[#76a9d3]/85 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] ${
+                className={`tasks-page__range-tab inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 ${
                   range === 'this_week'
-                    ? 'bg-[linear-gradient(155deg,#3f86be_0%,#2f74ab_55%,#245f91_100%)]'
-                    : 'bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)]'
+                    ? 'bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)]'
+                    : 'bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)]'
                 }`}
               >
                 TENTO TÝDEN
@@ -653,10 +656,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href={getTabHref({ search, view, range: 'next_week' })}
-                className={`inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-[#76a9d3]/85 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] ${
+                className={`tasks-page__range-tab inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 ${
                   range === 'next_week'
-                    ? 'bg-[linear-gradient(155deg,#3f86be_0%,#2f74ab_55%,#245f91_100%)]'
-                    : 'bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)]'
+                    ? 'bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)]'
+                    : 'bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)]'
                 }`}
               >
                 PŘÍŠTÍ TÝDEN
@@ -664,7 +667,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
               <Link
                 href="/tasks"
-                className="inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900"
+                className="tasks-page__range-reset inline-flex min-w-0 h-9 items-center justify-center whitespace-nowrap rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900"
               >
                 RESET
               </Link>
@@ -693,7 +696,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 users={users}
                 clients={clientOptions}
                 contacts={contactOptions}
-                countVariant="dark"
+                countVariant="primary"
                 initialVisibleCount={5}
               />
             </div>
@@ -703,10 +706,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         {view !== 'active' ? (
           <section className="space-y-4">
             <div className="px-1">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+              <div className="tasks-page__section-eyebrow text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Archiv
               </div>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-950">
+              <h2 className="tasks-page__section-title mt-1 text-xl font-semibold tracking-tight text-zinc-950">
                 Vyřešené úkoly
               </h2>
             </div>
@@ -740,10 +743,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         {isAdmin ? (
           <section className="space-y-4">
             <div className="px-1">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+              <div className="tasks-page__section-eyebrow text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Administrace
               </div>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-950">
+              <h2 className="tasks-page__section-title mt-1 text-xl font-semibold tracking-tight text-zinc-950">
                 Přehled všech úkolů
               </h2>
               <p className="mt-2 text-sm text-zinc-500">
@@ -753,13 +756,13 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
             <div className="grid gap-4 xl:grid-cols-2">
               {view !== 'resolved' ? (
-                <TaskSection
+              <TaskSection
                   title="Všechny aktivní úkoly"
                   tasks={visibleAdminActive}
                   users={users}
                   clients={clientOptions}
                   contacts={contactOptions}
-                  countVariant="dark"
+                  countVariant="primary"
                   initialVisibleCount={5}
                 />
               ) : null}

@@ -54,17 +54,17 @@ type TaskFormProps = {
 }
 
 const inputClassName =
-  'min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] transition duration-200 ease-out focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+  'clients-modal__input task-form__input min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] transition duration-200 ease-out focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
 
-const selectClassName = `${inputClassName} h-[46px] appearance-none bg-no-repeat py-0 pr-10`
+const selectClassName = `${inputClassName} task-form__select h-[46px] appearance-none bg-no-repeat py-0 pr-10`
 const selectArrowStyle = {
   backgroundImage:
-    "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%20fill='none'%20stroke='%23111827'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M6%208l4%204%204-4'/%3E%3C/svg%3E\")",
+    "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%20fill='none'%20stroke='%236b7280'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M6%208l4%204%204-4'/%3E%3C/svg%3E\")",
   backgroundPosition: 'right 0.95rem center',
   backgroundSize: '16px 16px',
 } as const
 
-const labelClassName = 'mb-2 block text-sm font-medium text-gray-700'
+const labelClassName = 'clients-modal__label task-form__label mb-2 block text-sm font-medium text-gray-700'
 
 function normalizeSearchText(value: string) {
   return value
@@ -244,7 +244,6 @@ export default function TaskForm({
       >
         <input type="hidden" name="client_id" value={selectedClientId} />
         <input type="hidden" name="client_contact_id" value={selectedContactId} />
-
         <div className={modalMode ? 'min-h-0 flex-1 overflow-y-auto pb-4' : ''}>
         <div className="grid gap-5 md:grid-cols-2">
         <div className="md:col-span-2">
@@ -277,7 +276,7 @@ export default function TaskForm({
             onChange={(event) => handleCompanyChange(event.target.value)}
             onFocus={handleCompanyFocus}
             onBlur={handleCompanyBlur}
-            className={`mb-1 w-full rounded-2xl border bg-white/96 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] transition duration-200 ease-out focus:ring-2 ${
+            className={`clients-modal__input task-form__input mb-1 w-full rounded-2xl border bg-white/96 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] transition duration-200 ease-out focus:ring-2 ${
               showCompanyError
                 ? 'border-amber-300 focus:border-amber-300 focus:ring-amber-100'
                 : companySelectionIsValid && !companyHasFocus
@@ -286,7 +285,7 @@ export default function TaskForm({
             }`}
           />
 
-          <div className="mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
+          <div className="task-form__company-status mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
               Napojení na klienta
             </div>
@@ -374,7 +373,7 @@ export default function TaskForm({
             name="due_date"
             type="date"
             defaultValue={initialValues?.due_date ?? ''}
-            className={`${inputClassName} appearance-none [&::-webkit-calendar-picker-indicator]:opacity-100`}
+            className={`${inputClassName} task-form__date appearance-none [&::-webkit-calendar-picker-indicator]:opacity-100`}
             style={{ minWidth: 0 }}
           />
         </div>
@@ -449,7 +448,7 @@ export default function TaskForm({
         </div>
 
         {error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(127,29,29,0.10)]">
+          <div className="task-form__error rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(127,29,29,0.10)]">
             {error}
           </div>
         ) : null}
@@ -474,7 +473,7 @@ function PendingFormLock() {
   if (!pending) return null
 
   return (
-    <div className="rounded-2xl border border-[#2980B9]/25 bg-[#2980B9]/10 px-4 py-3 text-sm font-medium text-[#1d5f88] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(24,95,145,0.14)]">
+    <div className="task-form__pending rounded-2xl border border-[#2980B9]/25 bg-[#2980B9]/10 px-4 py-3 text-sm font-medium text-[#1d5f88] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(24,95,145,0.14)]">
       Ukládám úkol, čekej prosím...
     </div>
   )
@@ -536,20 +535,21 @@ function TaskFormActions({
   return (
     <>
       {onCancel ? (
-        <MobileModalActions
-          onCancel={onCancel}
-          submitLabel={submitLabel}
-          pendingSubmitLabel={pendingSubmitLabel}
-          visualStyle="blaster"
-          disableAmbientGlow
-        />
+        <div className="tasks-form__actions-shell -mx-4 -mb-3 mt-4 sm:-mx-5 sm:-mb-4">
+          <MobileModalActions
+            onCancel={onCancel}
+            submitLabel={submitLabel}
+            pendingSubmitLabel={pendingSubmitLabel}
+            visualStyle="client-modal"
+          />
+        </div>
       ) : (
         <div className={`flex flex-wrap gap-3 ${pending ? 'cursor-wait' : ''}`}>
         <button
           type="submit"
           disabled={pending}
           aria-busy={pending}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-75"
+          className="clients-page__submit inline-flex items-center justify-center gap-2 rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-75"
         >
           {pending ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -564,7 +564,7 @@ function TaskFormActions({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="clients-page__cancel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cancelLabel}
           </button>
@@ -572,7 +572,7 @@ function TaskFormActions({
           <Link
             href={cancelHref}
             aria-disabled={pending}
-            className={`rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] ${
+            className={`clients-page__cancel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] ${
               pending ? 'pointer-events-none opacity-60' : ''
             }`}
           >

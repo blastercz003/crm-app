@@ -73,7 +73,7 @@ export function NewMeetingButton({
       <button
         type="button"
         onClick={openModal}
-        className={resolvedClassName}
+        className={`meetings-page__new-button ${resolvedClassName}`}
       >
         {label}
       </button>
@@ -141,7 +141,7 @@ export function CreateMeetingModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+      className="meetings-modal__overlay fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -155,7 +155,7 @@ export function CreateMeetingModal({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
-          className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
+          className="meetings-modal__shell relative flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] will-change-transform transform-gpu lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             maxHeight:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
@@ -163,19 +163,19 @@ export function CreateMeetingModal({
         >
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-3xl border border-white/65"
+            className="meetings-modal__shell-frame pointer-events-none absolute inset-0 rounded-3xl border border-white/65"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
+            className="meetings-modal__shell-sheen pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]"
+            className="meetings-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]"
           />
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+          <div className="meetings-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
+              <h2 className="meetings-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 Nová schůzka
               </h2>
             </div>
@@ -183,14 +183,14 @@ export function CreateMeetingModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
+              className="meetings-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
               aria-label="Zavřít"
             >
               ✕
             </button>
           </div>
 
-          <div className="min-h-0 flex flex-1 flex-col px-4 py-3 sm:px-5 sm:py-4">
+          <div className="clients-modal__body meetings-modal__body min-h-0 flex flex-1 flex-col px-4 py-3 sm:px-5 sm:py-4">
             <MeetingForm
               action={formAction}
               submitLabel="ULOŽIT SCHŮZKU"

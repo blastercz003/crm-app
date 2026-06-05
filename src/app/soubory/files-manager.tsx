@@ -300,8 +300,8 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
 
   return (
     <>
-      <section className="grid min-w-0 w-full items-start gap-3 overflow-x-hidden lg:items-stretch lg:grid-cols-[280px_minmax(0,1fr)_360px]">
-        <aside className="min-w-0 w-full rounded-3xl border border-zinc-200 bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] lg:h-full">
+      <section className="soubory-page__layout grid min-w-0 w-full items-start gap-3 overflow-x-hidden lg:items-stretch lg:grid-cols-[280px_minmax(0,1fr)_360px]">
+        <aside className="soubory-page__sidebar min-w-0 w-full rounded-3xl border border-zinc-200 bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] lg:h-full">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-gray-500">Složky</h2>
             <span className="text-xs text-gray-400">{sortedFolders.length}</span>
@@ -310,7 +310,8 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
           <button
             type="button"
             onClick={() => setSelectedJobId('all')}
-            className={`mb-2 w-full rounded-xl border px-3 py-2 text-left text-sm transition duration-200 ease-out ${
+            data-active={selectedJobId === 'all'}
+            className={`soubory-page__folder-button soubory-page__folder-button--all mb-2 w-full rounded-xl border px-3 py-2 text-left text-sm transition duration-200 ease-out ${
               selectedJobId === 'all'
                 ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]'
                 : 'border-zinc-200 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.93)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(148,163,184,0.08)] hover:border-zinc-300 hover:text-gray-900'
@@ -324,7 +325,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
             value={foldersQuery}
             onChange={(event) => setFoldersQuery(event.target.value)}
             placeholder="Hledat složku (min. 3 znaky)"
-            className="mb-2 h-10 w-full rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+            className="soubory-page__folder-search mb-2 h-10 w-full rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
           />
 
           <div className="max-h-[65vh] space-y-1 overflow-y-auto pr-1">
@@ -335,7 +336,8 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                   key={folder.id}
                   type="button"
                   onClick={() => setSelectedJobId(folder.id)}
-                  className={`w-full rounded-xl border px-3 py-2 text-left transition duration-200 ease-out ${
+                  data-active={selectedJobId === folder.id}
+                  className={`soubory-page__folder-button w-full rounded-xl border px-3 py-2 text-left transition duration-200 ease-out ${
                     selectedJobId === folder.id
                       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]'
                       : 'border-zinc-200 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.93)_100%)] text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(148,163,184,0.08)] hover:border-zinc-300 hover:text-gray-900'
@@ -350,7 +352,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
           </div>
         </aside>
 
-        <section className="min-w-0 w-full rounded-3xl border border-zinc-200 bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] lg:h-full">
+        <section className="soubory-page__files-panel min-w-0 w-full rounded-3xl border border-zinc-200 bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] lg:h-full">
           <div className="mb-4 text-sm font-semibold uppercase tracking-[0.12em] text-gray-500">
             Soubory
           </div>
@@ -360,7 +362,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
             <button
               type="button"
               onClick={() => setIsUploadOpen(true)}
-              className="inline-flex h-9 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px]"
+              className="soubory-page__primary-button inline-flex h-9 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px]"
             >
               Nahrát soubor
             </button>
@@ -368,7 +370,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
               type="button"
               disabled={checkedVisibleIds.length === 0 || isPending}
               onClick={() => runDownload(checkedVisibleIds, 'soubory-vyber.zip')}
-              className="inline-flex h-9 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-2 text-[11px] font-bold uppercase text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] disabled:opacity-40"
+              className="soubory-page__secondary-button inline-flex h-9 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-2 text-[11px] font-bold uppercase text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] disabled:opacity-40"
             >
               Stáhnout vybrané
             </button>
@@ -376,7 +378,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
               type="button"
               disabled={visibleFiles.length === 0 || isPending}
               onClick={() => runDownload(visibleFiles.map((file) => file.id), 'soubory-vse-filtrovane.zip')}
-              className="inline-flex h-9 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-2 text-[11px] font-bold uppercase text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] disabled:opacity-40"
+              className="soubory-page__secondary-button inline-flex h-9 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-2 text-[11px] font-bold uppercase text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] disabled:opacity-40"
             >
               Stáhnout vše (filtr)
             </button>
@@ -387,7 +389,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                 const ids = files.filter((file) => file.jobId === selectedJobId).map((file) => file.id)
                 runDownload(ids, `soubory-${selectedJobId}.zip`)
               }}
-              className="inline-flex h-9 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-2 text-[11px] font-bold uppercase text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] disabled:opacity-40"
+              className="soubory-page__secondary-button inline-flex h-9 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-2 text-[11px] font-bold uppercase text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] disabled:opacity-40"
             >
               Stáhnout vše (složka)
             </button>
@@ -395,7 +397,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
               type="button"
               disabled={checkedVisibleIds.length === 0 || isPending}
               onClick={() => handleDelete(checkedVisibleIds)}
-              className="inline-flex h-9 w-full items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-bold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] disabled:opacity-40"
+              className="soubory-page__danger-button inline-flex h-9 w-full items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-bold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] disabled:opacity-40"
             >
               Smazat vybrané
             </button>
@@ -403,12 +405,12 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
           </div>
 
           {errorMessage ? (
-            <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</div>
+          <div className="soubory-page__error mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</div>
           ) : null}
 
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-sm text-gray-500">{visibleFiles.length} souborů</div>
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <div className="soubory-page__file-count text-sm text-gray-500">{visibleFiles.length} souborů</div>
+            <label className="soubory-page__select-all inline-flex items-center gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
                 checked={visibleFiles.length > 0 && visibleFiles.every((file) => checkedIds.includes(file.id))}
@@ -418,15 +420,16 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
             </label>
           </div>
 
-          <div className="max-h-[65vh] overflow-y-auto rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.78)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+          <div className="soubory-page__file-list-shell max-h-[65vh] overflow-y-auto rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.78)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
             {visibleFiles.length === 0 ? (
               <div className="p-6 text-sm text-gray-500">Žádné soubory pro aktuální filtr.</div>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="soubory-page__file-list divide-y divide-gray-100">
                 {visibleFiles.map((file) => (
                   <li
                     key={file.id}
-                    className={`p-3 transition ${selectedFileId === file.id ? 'bg-[#2980B9]/5' : 'bg-white/92'}`}
+                    data-selected={selectedFileId === file.id}
+                    className={`soubory-page__file-row p-3 transition ${selectedFileId === file.id ? 'bg-[#2980B9]/5' : 'bg-white/92'}`}
                   >
                     <div className="flex items-start gap-3">
                       <input
@@ -443,7 +446,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                           void ensurePreview(file.id, file.mimeType)
                           setIsMobilePreviewOpen(true)
                         }}
-                        className="min-w-0 flex-1 text-left"
+                        className="soubory-page__file-link min-w-0 flex-1 text-left"
                       >
                         <div className="truncate text-sm font-semibold text-gray-900">{file.displayName}</div>
                         <div className="mt-0.5 text-xs text-gray-500">
@@ -458,7 +461,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                       <button
                         type="button"
                         onClick={() => runDownload([file.id], `${file.displayName}.zip`)}
-                        className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2 text-[11px] font-semibold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_18px_rgba(15,23,42,0.12)]"
+                        className="soubory-page__zip-button inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2 text-[11px] font-semibold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_18px_rgba(15,23,42,0.12)]"
                       >
                         ZIP
                       </button>
@@ -466,7 +469,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                       <button
                         type="button"
                         onClick={() => runDirectDownload(file.id)}
-                        className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[11px] font-semibold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(24,78,129,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_12px_20px_rgba(24,78,129,0.3)]"
+                        className="soubory-page__download-button inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[11px] font-semibold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_16px_rgba(24,78,129,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_12px_20px_rgba(24,78,129,0.3)]"
                       >
                         STÁHNOUT
                       </button>
@@ -474,7 +477,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                       <button
                         type="button"
                         onClick={() => handleDelete([file.id])}
-                        className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-semibold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(185,28,28,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_18px_rgba(185,28,28,0.18)]"
+                        className="soubory-page__delete-button inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-semibold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(185,28,28,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_18px_rgba(185,28,28,0.18)]"
                       >
                         Smazat
                       </button>
@@ -486,14 +489,14 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
           </div>
         </section>
 
-        <aside className="hidden min-w-0 w-full rounded-3xl border border-zinc-200 bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] lg:block lg:h-full">
+        <aside className="soubory-page__preview-panel hidden min-w-0 w-full rounded-3xl border border-zinc-200 bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] lg:block lg:h-full">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.12em] text-gray-500">Náhled</h2>
           {!selectedFile ? (
             <div className="text-sm text-gray-500">Vyber soubor ze seznamu.</div>
           ) : (
             <>
-              <div className="mb-2 truncate text-sm font-semibold text-gray-900">{selectedFile.displayName}</div>
-              <div className="mb-3 text-xs text-gray-500">{selectedFile.jobNumber} · {selectedFile.companyName}</div>
+              <div className="soubory-page__preview-title mb-2 truncate text-sm font-semibold text-gray-900">{selectedFile.displayName}</div>
+              <div className="soubory-page__preview-subtitle mb-3 text-xs text-gray-500">{selectedFile.jobNumber} · {selectedFile.companyName}</div>
 
               {previewUrl ? (
                 selectedFile.mimeType?.startsWith('image/') ? (
@@ -529,7 +532,7 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                   </div>
                 )
               ) : (
-                <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
+                <div className="soubory-page__preview-empty rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
                   Klikni na soubor pro načtení náhledu.
                 </div>
               )}
@@ -587,15 +590,15 @@ function MobilePreviewDrawer({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:hidden"
+        className="soubory-page__mobile-drawer fixed inset-0 z-50 bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:hidden"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="mx-auto flex h-full w-full max-w-3xl flex-col rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.34)]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/70 px-4 py-3">
+      <div className="soubory-page__mobile-shell mx-auto flex h-full w-full max-w-3xl flex-col rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.34)]">
+        <div className="soubory-page__mobile-header flex items-center justify-between gap-3 border-b border-white/70 px-4 py-3">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-gray-900">
               {file?.displayName ?? 'Náhled souboru'}
@@ -607,14 +610,14 @@ function MobilePreviewDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)]"
+            className="soubory-page__mobile-close inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)]"
             aria-label="Zavřít náhled"
           >
             ✕
           </button>
         </div>
 
-        <div className="flex items-center gap-2 border-b border-white/70 px-4 py-3">
+        <div className="soubory-page__mobile-actions flex items-center gap-2 border-b border-white/70 px-4 py-3">
           <button
             type="button"
             disabled={!file || isPending}
@@ -643,9 +646,9 @@ function MobilePreviewDrawer({
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto p-4">
+        <div className="soubory-page__mobile-content min-h-0 flex-1 overflow-auto p-4">
           {!file ? (
-            <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">Vyber soubor.</div>
+            <div className="soubory-page__preview-empty rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">Vyber soubor.</div>
           ) : previewUrl ? (
             file.mimeType?.startsWith('image/') ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -675,10 +678,10 @@ function MobilePreviewDrawer({
                 </a>
               </div>
             ) : (
-              <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">Náhled není pro tento typ dostupný.</div>
+              <div className="soubory-page__preview-empty rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">Náhled není pro tento typ dostupný.</div>
             )
           ) : (
-            <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">Načítám náhled...</div>
+              <div className="soubory-page__preview-empty rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] p-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">Načítám náhled...</div>
           )}
         </div>
       </div>
@@ -729,8 +732,8 @@ function UploadModal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="mx-auto mt-10 w-full max-w-xl rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
-        <h3 className="text-lg font-semibold text-gray-900">Nahrát soubor</h3>
+      <div className="soubory-page__upload-shell mx-auto mt-10 w-full max-w-xl rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
+        <h3 className="soubory-page__upload-title text-lg font-semibold text-gray-900">Nahrát soubor</h3>
 
         <div className="mt-3 space-y-3">
           <div>
@@ -738,7 +741,7 @@ function UploadModal({
             <select
               value={jobId}
               onChange={(event) => setJobId(event.target.value)}
-              className="h-10 w-full appearance-none rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+              className="soubory-page__upload-select h-10 w-full appearance-none rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
             >
               <option value="">Vyber zakázku</option>
               {jobs.map((job) => (
@@ -754,7 +757,7 @@ function UploadModal({
             <select
               value={category}
               onChange={(event) => setCategory(event.target.value as JobAttachmentCategory)}
-              className="h-10 w-full appearance-none rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+              className="soubory-page__upload-select h-10 w-full appearance-none rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
             >
               <option value="predavaci_protokol">Předávací protokol</option>
               <option value="foto">Foto</option>
@@ -768,7 +771,7 @@ function UploadModal({
               type="text"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className="h-10 w-full rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+              className="soubory-page__upload-input h-10 w-full rounded-xl border border-gray-200 bg-white/96 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
               placeholder="Volitelná poznámka"
             />
           </div>
@@ -779,7 +782,7 @@ function UploadModal({
               type="file"
               multiple
               onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
-              className="block w-full text-sm text-gray-900 file:mr-3 file:rounded-xl file:border file:border-white/75 file:bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-800 file:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.09)]"
+              className="soubory-page__upload-file block w-full text-sm text-gray-900 file:mr-3 file:rounded-xl file:border file:border-white/75 file:bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-800 file:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.09)]"
               accept=".pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
             />
           </div>
@@ -790,7 +793,7 @@ function UploadModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-11 min-w-[120px] items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
+              className="soubory-page__cancel inline-flex h-11 min-w-[120px] items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
             >
               Zrušit
             </button>
@@ -798,7 +801,7 @@ function UploadModal({
               type="button"
               disabled={!jobId || files.length === 0 || isPending}
               onClick={submitUpload}
-              className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
+              className="soubory-page__submit inline-flex h-11 min-w-[140px] items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
             >
               Nahrát
             </button>

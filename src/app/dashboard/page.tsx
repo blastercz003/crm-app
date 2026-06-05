@@ -32,11 +32,15 @@ import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNot
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
 import { DashboardStartupReadyBridge } from '@/components/pwa/pwa-startup-screen'
 import { getReceivedInvoiceBadgeCount } from '@/lib/received-invoices/service'
+import { DashboardThemeToggle } from '@/components/dashboard/dashboard-theme-toggle'
 import {
   DashboardGlobalSearchBody,
   DashboardGlobalSearchInput,
   DashboardGlobalSearchProvider,
 } from './dashboard-global-search'
+import {
+  type ThemePreferences,
+} from '@/lib/theme/theme-preference'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,6 +91,12 @@ type DashboardProfile = {
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
   can_view_offers: boolean | null
+}
+
+type DashboardThemePreference = {
+  theme_mode: 'light' | 'dark' | 'auto' | null
+  theme_auto_override_mode: 'light' | 'dark' | null
+  theme_auto_override_until: string | null
 }
 
 type DashboardClientOption = {
@@ -600,29 +610,29 @@ function DashboardSectionHeader({
 }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+      <div className="dashboard-section-header__eyebrow text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
         {eyebrow}
       </div>
       {href ? (
         <Link
           href={href}
-          className="group mt-2 inline-flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-950 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-[#2f6f9f]"
+          className="dashboard-section-header__link group mt-2 inline-flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-950 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-[#2f6f9f]"
         >
-          <span>{title}</span>
+          <span className="dashboard-section-header__title">{title}</span>
           <span
             aria-hidden
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_6px_12px_rgba(0,0,0,0.26)] transition duration-200 ease-out group-hover:-translate-y-[1px] group-hover:border-[#1f5f8e] group-hover:bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.36),0_9px_16px_rgba(9,48,82,0.30)]"
+            className="dashboard-section-header__arrow inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#2f2f2f]/95 bg-[linear-gradient(160deg,rgba(38,38,38,0.95)_0%,rgba(20,20,20,0.96)_45%,rgba(8,8,8,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_6px_12px_rgba(0,0,0,0.26)] transition duration-200 ease-out group-hover:-translate-y-[1px] group-hover:border-[#1f5f8e] group-hover:bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] group-hover:shadow-[inset_0_1px_0_rgba(170,217,247,0.36),0_9px_16px_rgba(9,48,82,0.30)]"
           >
             <span className="-translate-y-[1px] text-[18px] leading-none">›</span>
           </span>
         </Link>
       ) : (
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+        <h2 className="dashboard-section-header__title mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
           {title}
         </h2>
       )}
       {description ? (
-        <p className="mt-1.5 text-sm text-zinc-500">{description}</p>
+        <p className="dashboard-section-header__description mt-1.5 text-sm text-zinc-500">{description}</p>
       ) : null}
     </div>
   )
@@ -642,20 +652,20 @@ function DashboardUserPanel({
   return (
     <div
       className={[
-        'flex w-full flex-col gap-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] sm:flex-row sm:items-center sm:justify-between',
+        'dashboard-user-panel flex w-full flex-col gap-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] sm:flex-row sm:items-center sm:justify-between',
         className,
       ].join(' ')}
     >
-      <div className="min-w-0 flex-1 text-[10px] leading-4 text-zinc-500">
+      <div className="dashboard-user-panel__details min-w-0 flex-1 text-[10px] leading-4 text-zinc-500">
         <div className="truncate">
           Uživatel:{' '}
-          <span className="font-medium text-zinc-900">
+          <span className="dashboard-user-panel__value font-medium text-zinc-900">
             {profileName ?? userEmail}
           </span>
         </div>
         <div className="truncate">
           Role:{' '}
-          <span className="font-medium uppercase text-zinc-900">
+          <span className="dashboard-user-panel__value font-medium uppercase text-zinc-900">
             {profileRole ?? 'neuvedeno'}
           </span>
         </div>
@@ -664,13 +674,13 @@ function DashboardUserPanel({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Link
           href="/settings/password"
-          className="inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+          className="dashboard-control inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
         >
           NASTAVENÍ
         </Link>
 
         <form action="/auth/signout" method="post" className="shrink-0">
-          <button className="inline-flex h-8 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:w-auto">
+          <button className="dashboard-control dashboard-control--dark inline-flex h-8 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:w-auto">
             ODHLÁSIT
           </button>
         </form>
@@ -692,9 +702,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
     dueDate < todayDateKeyInPrague
 
   return (
-    <div
-      className="relative rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]"
-    >
+    <div className="dashboard-task-item relative rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]">
       <Link
         href={`/tasks/${task.id}`}
         className="absolute inset-0 rounded-2xl"
@@ -705,7 +713,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1 pr-2">
             <div
-              className="line-clamp-2 min-h-10 break-words text-sm font-semibold leading-5 text-zinc-900"
+              className="dashboard-task-item__title line-clamp-2 min-h-10 break-words text-sm font-semibold leading-5 text-zinc-900"
               title={task.title}
             >
               {task.title}
@@ -749,7 +757,7 @@ function DashboardTaskItem({ task }: { task: DashboardTask }) {
                   <form action={endTaskRecurrenceAction}>
                     <button
                       type="submit"
-                      className="inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-xs font-medium text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                      className="dashboard-control inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-xs font-medium text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                     >
                       UKONČIT
                     </button>
@@ -777,14 +785,14 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
   return (
     <Link
       href={`/meetings/${meeting.id}`}
-      className="block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]"
+      className="dashboard-meeting-item block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px]"
     >
       <div className="flex items-start gap-3">
-        <div className="flex w-[64px] shrink-0 flex-col items-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
-          <div className="text-xl font-semibold leading-none text-zinc-950">
+        <div className="dashboard-meeting-item__date flex w-[64px] shrink-0 flex-col items-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+          <div className="dashboard-meeting-item__day text-xl font-semibold leading-none text-zinc-950">
             {day}
           </div>
-          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          <div className="dashboard-meeting-item__month mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
             {month}
           </div>
           <div className="mt-2 w-full rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] px-1.5 py-1 text-[11px] font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
@@ -796,17 +804,17 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div
-                className="truncate text-sm font-semibold text-zinc-900"
+                className="dashboard-meeting-item__title truncate text-sm font-semibold text-zinc-900"
                 title={meeting.company_name ?? 'Bez firmy'}
               >
                 {meeting.company_name ?? 'Bez firmy'}
               </div>
 
-              <div className="mt-0.5 truncate text-sm text-zinc-600">
+              <div className="dashboard-meeting-item__meta mt-0.5 truncate text-sm text-zinc-600">
                 {meeting.contact_person ?? meeting.title ?? 'Bez kontaktní osoby'}
               </div>
 
-              <div className="mt-1 text-[11px] text-zinc-500">
+              <div className="dashboard-meeting-item__submeta mt-1 text-[11px] text-zinc-500">
                 {meeting.contact_phone ?? '—'}
               </div>
             </div>
@@ -988,6 +996,12 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single<DashboardProfile>()
 
+  const { data: themePreference } = await supabase
+    .from('profiles')
+    .select('theme_mode, theme_auto_override_mode, theme_auto_override_until')
+    .eq('id', user.id)
+    .maybeSingle<DashboardThemePreference>()
+
   const profilesResponse = await supabase.from('profiles').select('id, name')
 
   if (profilesResponse.error) {
@@ -1005,6 +1019,11 @@ export default async function DashboardPage() {
   const today = new Date()
   const nowIso = today.toISOString()
   const isAdmin = profile?.role === 'admin'
+  const initialThemePreferences: ThemePreferences = {
+    themeMode: themePreference?.theme_mode ?? 'light',
+    themeAutoOverrideMode: themePreference?.theme_auto_override_mode ?? null,
+    themeAutoOverrideUntil: themePreference?.theme_auto_override_until ?? null,
+  }
 
   const nearestMeetingsQuery = supabase
     .from('meetings')
@@ -1354,20 +1373,21 @@ export default async function DashboardPage() {
 
   return (
     <DashboardGlobalSearchProvider>
-      <div className="relative flex min-h-screen flex-col overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)] text-zinc-900">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
-        />
-        <main className="relative z-10 flex-1">
-          <AppBadgeSync count={notificationStats.unread} />
-          <DashboardStartupReadyBridge />
-          <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+      <div className="relative flex min-h-screen flex-col overflow-hidden">
+        <div className="dashboard-shell flex-1">
+          <div
+            aria-hidden
+            className="dashboard-shell__glow--top-right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="dashboard-shell__glow--bottom-left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full blur-3xl"
+          />
+          <main className="relative z-10 flex-1">
+            <AppBadgeSync count={notificationStats.unread} />
+            <DashboardStartupReadyBridge />
+            <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="dashboard-card dashboard-card--strong rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-center lg:justify-start">
               <Link href="/dashboard" className="inline-flex items-center">
@@ -1386,7 +1406,7 @@ export default async function DashboardPage() {
               <div className="flex w-full items-stretch justify-end gap-3 lg:w-auto">
                 <div className="hidden lg:block">
                   <DashboardGlobalSearchInput
-                    className="h-full w-[260px] rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm font-normal text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    className="dashboard-search-input h-full w-[260px] rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm font-normal text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                   />
                 </div>
 
@@ -1401,7 +1421,7 @@ export default async function DashboardPage() {
                   profileName={profile?.name ?? null}
                   profileRole={profile?.role ?? null}
                   userEmail={user.email ?? ''}
-                  className="lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
+                  className="dashboard-user-panel lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
                 />
               </div>
             </div>
@@ -1430,7 +1450,8 @@ export default async function DashboardPage() {
           <div className="contents xl:block xl:space-y-6">
             {isAdmin || profile?.can_view_offers ? (
               <div className="order-1 xl:order-none">
-                <DashboardMyOffersModule
+              <DashboardMyOffersModule
+                  className="dashboard-card dashboard-card--strong dashboard-offers-module"
                   offers={dashboardOfferPreviews}
                   currentUserId={user.id}
                   isAdmin={isAdmin}
@@ -1446,7 +1467,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="contents xl:block xl:space-y-6">
-            <section className="order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+            <section className="dashboard-card order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <DashboardSectionHeader
                   eyebrow="Úkoly"
@@ -1456,9 +1477,9 @@ export default async function DashboardPage() {
               </div>
 
               <DashboardMyTasksModule
-                allContent={
+                  allContent={
                   visibleAllTasks.length === 0 ? (
-                    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Nemáš žádné úkoly.
                     </div>
                   ) : (
@@ -1471,7 +1492,7 @@ export default async function DashboardPage() {
                 }
                 activeContent={
                   visibleActiveTasks.length === 0 ? (
-                    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Nemáš žádné aktivní úkoly.
                     </div>
                   ) : (
@@ -1484,7 +1505,7 @@ export default async function DashboardPage() {
                 }
                 overdueContent={
                   visibleOverdueTasks.length === 0 ? (
-                    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Nemáš žádné úkoly po termínu.
                     </div>
                   ) : (
@@ -1500,7 +1521,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="contents xl:block xl:space-y-6">
-            <section className="order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+            <section className="dashboard-card order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <DashboardSectionHeader
                   eyebrow="Schůzky"
@@ -1512,7 +1533,7 @@ export default async function DashboardPage() {
               <DashboardMyMeetingsModule
                 todayContent={
                   todayMeetings.length === 0 ? (
-                    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Nemáš žádné schůzky dnes.
                     </div>
                   ) : (
@@ -1525,7 +1546,7 @@ export default async function DashboardPage() {
                 }
                 weekContent={
                   weeklyMeetings.length === 0 ? (
-                    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       Nemáš žádné nadcházející schůzky.
                     </div>
                   ) : (
@@ -1560,17 +1581,18 @@ export default async function DashboardPage() {
           receivedInvoicesDueCount={receivedInvoicesDueCount}
         />
           </div>
-        </main>
+          </main>
+        </div>
 
-        <footer className="border-t border-white/12 bg-zinc-950 px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] sm:px-6 lg:px-8">
-          <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-2 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <span>B-ENERGY APP | coding by blaster</span>
+        <footer className="dashboard-footer border-t border-white/12 bg-zinc-950 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] sm:px-6 lg:px-8">
+          <div className="dashboard-footer__content mx-auto flex w-full max-w-[1920px] flex-col gap-1 text-xs text-white/70 md:flex-row md:items-center md:justify-between md:gap-3">
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              {isAdmin ? <DashboardThemeToggle initialThemePreferences={initialThemePreferences} /> : null}
               <Link
                 href="/snake"
                 aria-label="Otevřít hru Snake"
                 title="Snake"
-                className="inline-flex h-4 w-4 items-center justify-center text-white/70 transition hover:text-white"
+                className="dashboard-footer__link inline-flex h-4 w-4 items-center justify-center text-white/70 transition hover:text-white"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -1596,7 +1618,7 @@ export default async function DashboardPage() {
                 </svg>
               </Link>
             </div>
-            <div>v2.3.0</div>
+            <div className="self-end text-right md:self-auto md:text-left">v2.3.0</div>
           </div>
         </footer>
       </div>

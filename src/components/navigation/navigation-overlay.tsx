@@ -112,24 +112,26 @@ export function NavigationOverlay() {
   }, [routeKey, isNavigating])
 
   return (
-    <div
-      aria-hidden="true"
-      className={[
-        'fixed inset-0 z-[999] transition-opacity duration-200',
-        visible
-          ? 'pointer-events-auto opacity-100'
-          : 'pointer-events-none opacity-0',
-      ].join(' ')}
-    >
-      <div className="absolute inset-0 bg-white/18 backdrop-blur-[6px]" />
+      <div
+        aria-hidden="true"
+        className={[
+          'navigation-overlay__backdrop',
+          'fixed inset-0 z-[999] transition-opacity duration-200',
+          visible
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0',
+        ].join(' ')}
+      >
+        <div className="absolute inset-0 bg-white/18 backdrop-blur-[6px]" />
 
-      <div className="relative flex min-h-full items-center justify-center">
-        <div
-          className={[
-            'flex items-center gap-3 rounded-full px-6 py-5 transition-all duration-200',
-            visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
-          ].join(' ')}
-        >
+        <div className="relative flex min-h-full items-center justify-center">
+          <div
+            className={[
+              'navigation-overlay__dots',
+              'flex items-center gap-3 rounded-full px-6 py-5 transition-all duration-200',
+              visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
+            ].join(' ')}
+          >
           <LoadingDot delay="0ms" />
           <LoadingDot delay="140ms" />
           <LoadingDot delay="280ms" />
@@ -142,7 +144,7 @@ export function NavigationOverlay() {
 function LoadingDot({ delay }: { delay: string }) {
   return (
     <span
-      className="h-4 w-4 rounded-full bg-[#2980B9] shadow-[0_0_18px_rgba(41,128,185,0.35)] opacity-25"
+      className="navigation-overlay__dot h-4 w-4 rounded-full bg-[#2980B9] shadow-[0_0_18px_rgba(41,128,185,0.35)] opacity-25"
       style={{
         animation: 'navigation-loading-dot-pulse 1.1s ease-in-out infinite',
         animationDelay: delay,

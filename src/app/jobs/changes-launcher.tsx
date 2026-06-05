@@ -206,7 +206,7 @@ export function ChangesLauncher({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
-          className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
+          className="jobs-page__modal-shell relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             maxHeight:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
@@ -242,7 +242,7 @@ export function ChangesLauncher({
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
             <div className="grid gap-4">
-                  <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
+                  <section className="jobs-page__changes-section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.04em] text-gray-900">
                     NOVÉ ZAKÁZKY
@@ -256,7 +256,7 @@ export function ChangesLauncher({
                     {data.newJobs.map((job) => (
                       <div
                         key={job.jobId}
-                        className="grid grid-cols-[minmax(0,1fr)_98px] min-[340px]:grid-cols-[minmax(0,1fr)_108px] sm:grid-cols-[minmax(0,1fr)_108px] items-center gap-1.5 rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                        className="jobs-page__changes-row grid grid-cols-[minmax(0,1fr)_98px] min-[340px]:grid-cols-[minmax(0,1fr)_108px] sm:grid-cols-[minmax(0,1fr)_108px] items-center gap-1.5 rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                       >
                         <div className="min-w-0">
                           <div
@@ -310,7 +310,7 @@ export function ChangesLauncher({
                 )}
               </section>
 
-                  <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
+                  <section className="jobs-page__changes-section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.04em] text-gray-900">
                     Provedené změny
@@ -324,7 +324,7 @@ export function ChangesLauncher({
                     {data.updatedJobs.map((item) => (
                       <div
                         key={item.jobId}
-                        className="rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 py-2 text-[10px] leading-5 min-[340px]:px-2.5 min-[340px]:text-[11px] sm:text-[13px] font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                        className="jobs-page__changes-row rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 py-2 text-[10px] leading-5 min-[340px]:px-2.5 min-[340px]:text-[11px] sm:text-[13px] font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                         title={`${item.jobNumber} · Změny: ${item.changedFieldsLabel}`}
                       >
                         <span className="font-bold">{item.jobNumber}</span> · Změny: {item.changedFieldsLabel}
@@ -343,11 +343,11 @@ export function ChangesLauncher({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-zinc-100 px-4 py-3 sm:px-5">
+          <div className="jobs-page__changes-footer flex shrink-0 items-center justify-between gap-2 border-t border-[rgba(148,163,184,0.14)] px-4 py-3 sm:px-5">
             <button
               type="button"
               onClick={closeModal}
-              className="inline-flex h-10 min-w-[104px] items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
+              className="jobs-page__changes-modal-cancel inline-flex h-10 min-w-[104px] items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
             >
               ZRUŠIT
             </button>
@@ -356,7 +356,7 @@ export function ChangesLauncher({
               type="button"
               disabled={pending}
               onClick={() => setIsConfirmOpen(true)}
-              className="inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="jobs-page__changes-modal-confirm inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="sm:hidden">{pending ? 'UKLÁDÁM…' : 'ULOŽIT'}</span>
               <span className="hidden sm:inline">{pending ? 'ZPRACOVÁVÁM…' : 'ZAPSÁNO - ULOŽIT'}</span>
@@ -396,7 +396,7 @@ export function ChangesLauncher({
                     type="button"
                     disabled={isSaving}
                     onClick={() => setIsConfirmOpen(false)}
-                    className="inline-flex h-10 min-w-[104px] items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="jobs-page__changes-modal-cancel inline-flex h-10 min-w-[104px] items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     ZRUŠIT
                   </button>
@@ -407,7 +407,7 @@ export function ChangesLauncher({
                       setIsConfirmOpen(false)
                       void handleAcknowledgeAll()
                     }}
-                    className="inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="jobs-page__changes-modal-confirm inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSaving ? 'UKLÁDÁM…' : 'POTVRDIT'}
                   </button>

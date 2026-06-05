@@ -38,7 +38,7 @@ function buildSearchFilter(search: string) {
 }
 
 const secondaryGlassButtonClass =
-  'inline-flex w-[74px] items-center justify-center rounded-xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_9px_18px_rgba(15,23,42,0.12)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_12px_22px_rgba(15,23,42,0.16)]'
+  'clients-page__secondary-button inline-flex w-[74px] items-center justify-center rounded-xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_9px_18px_rgba(15,23,42,0.12)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_12px_22px_rgba(15,23,42,0.16)]'
 
 export default async function ClientsPage({
   searchParams,
@@ -92,25 +92,25 @@ export default async function ClientsPage({
   const typedClients = (clients ?? []) as ClientRow[]
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+    <main className="clients-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <PresenceSectionTracker section="Klienti" route="/clients" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+        className="clients-page__glow clients-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        className="clients-page__glow clients-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
       />
       <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="relative overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="clients-page__hero relative overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
+            className="clients-page__top-line pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
           />
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-end">
-              <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
+              <h1 className="clients-page__title text-3xl font-semibold leading-none tracking-tight text-gray-900">
                 Databáze klientů
               </h1>
             </div>
@@ -126,12 +126,12 @@ export default async function ClientsPage({
                   name="q"
                   defaultValue={query}
                   placeholder="Hledat firmu, IČO, osobu nebo e-mail"
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
+                  className="clients-page__search-input w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
 
                 <button
                   type="submit"
-                  className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                  className="clients-page__search-button rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                 >
                   HLEDAT
                 </button>
@@ -139,7 +139,7 @@ export default async function ClientsPage({
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
+                className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
@@ -150,10 +150,10 @@ export default async function ClientsPage({
         </section>
 
         {typedClients.length === 0 ? (
-          <section className="relative overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="clients-page__empty relative overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
+              className="clients-page__top-line pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
             />
             <div className="mx-auto max-w-xl space-y-3">
               <h2 className="text-lg font-semibold text-gray-900">
@@ -169,14 +169,14 @@ export default async function ClientsPage({
               <div className="pt-2">
                 <NewClientButton
                   label="Přidat klienta"
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(135deg,#9dc7e5_0%,#82b2d7_48%,#6ea3cf_100%)] px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_14px_28px_rgba(55,113,163,0.30)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.48),0_18px_30px_rgba(55,113,163,0.34)]"
+                className="clients-page__empty-button inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(135deg,#9dc7e5_0%,#82b2d7_48%,#6ea3cf_100%)] px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_14px_28px_rgba(55,113,163,0.30)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.48),0_18px_30px_rgba(55,113,163,0.34)]"
                 />
               </div>
             </div>
           </section>
         ) : (
           <>
-            <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+            <section className="clients-page__summary rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-gray-600">
                   Celkem klientů:{' '}
@@ -203,13 +203,13 @@ export default async function ClientsPage({
               </div>
             </section>
 
-            <section className="relative hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
+            <section className="clients-page__table-shell relative hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
               />
               <div className="max-h-[70vh] overflow-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="clients-page__table min-w-full">
                   <thead className="sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(245,246,248,0.92)_100%)] shadow-sm">
                     <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                       <th className="px-5 py-4">Firma</th>
@@ -222,12 +222,12 @@ export default async function ClientsPage({
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-gray-100/90">
+                  <tbody className="clients-page__table-body">
                     {typedClients.map((client) => {
                       return (
                         <tr
                           key={client.id}
-                          className="transition duration-200 ease-out hover:bg-white/75"
+                          className="clients-page__table-row transition duration-200 ease-out hover:bg-white/75"
                         >
                           <td className="px-5 py-4">
                             <div className="min-w-0">
@@ -274,7 +274,7 @@ export default async function ClientsPage({
 
                               <Link
                                 href={`/clients/${client.id}`}
-                                className="inline-flex w-[74px] items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
+                                className="clients-page__detail-button inline-flex w-[74px] items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
                               >
                                 DETAIL
                               </Link>
@@ -293,11 +293,11 @@ export default async function ClientsPage({
                 return (
                   <div
                     key={client.id}
-                    className="relative overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-4 shadow-[0_16px_34px_rgba(24,24,27,0.10)]"
+                        className="clients-page__mobile-card relative overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-4 shadow-[0_16px_34px_rgba(24,24,27,0.10)]"
                   >
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
+                      className="clients-page__mobile-card-top-line pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95"
                     />
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -340,7 +340,7 @@ export default async function ClientsPage({
 
                       <Link
                         href={`/clients/${client.id}`}
-                        className="inline-flex w-[74px] items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
+                        className="clients-page__detail-button inline-flex w-[74px] items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
                       >
                         DETAIL
                       </Link>

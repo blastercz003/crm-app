@@ -468,7 +468,7 @@ export function OfferItemsEditor({
 
   return (
     <>
-      <section className="min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+      <section className="offers-detail-page__items-section min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-gray-900">
@@ -478,7 +478,7 @@ export function OfferItemsEditor({
 
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             {showSectionTotalBadge ? (
-              <div className="rounded-2xl bg-gray-50 px-4 py-2 text-right">
+              <div className="offers-detail-page__items-summary-badge rounded-2xl bg-gray-50 px-4 py-2 text-right">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                   Cena bez DPH
                 </div>
@@ -490,7 +490,7 @@ export function OfferItemsEditor({
             <button
               type="button"
               onClick={handleOpen}
-              className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+              className="offers-detail-page__items-open-button inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
             >
               Upravit položky
             </button>
@@ -498,11 +498,11 @@ export function OfferItemsEditor({
         </div>
 
         {items.length === 0 ? (
-          <div className="mt-4 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
+          <div className="offers-detail-page__items-empty-state mt-4 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
             <div className="border-b border-[#d8e4ef] p-4 text-sm text-gray-500">
               Tato kalkulace zatím nemá žádné položky.
             </div>
-            <div className="min-h-[44px] bg-[rgba(255,255,255,0.58)] px-4 py-2 text-xs leading-5 text-gray-900">
+            <div className="offers-detail-page__items-section-note-display min-h-[44px] bg-[rgba(255,255,255,0.58)] px-4 py-2 text-xs leading-5 text-gray-900">
               <span className="font-semibold">Poznámka:</span>{' '}
               <span className="whitespace-pre-wrap">{sectionNote}</span>
             </div>
@@ -511,7 +511,7 @@ export function OfferItemsEditor({
           <div className="mt-4">
             <div className="grid gap-3 md:hidden">
               {items.map((item) => (
-                <article key={item.id} className="rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
+                    <article key={item.id} className="offers-detail-page__items-mobile-card rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
                   {useCompactClassicMobileCards ? (
                     <>
                       <div className="flex items-start justify-between gap-3">
@@ -670,13 +670,13 @@ export function OfferItemsEditor({
                   ) : null}
                 </article>
               ))}
-              <div className="min-h-[44px] rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.86)_0%,rgba(238,242,247,0.78)_100%)] px-4 py-2 text-xs leading-5 text-gray-900">
+              <div className="offers-detail-page__items-section-note-display min-h-[44px] rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.86)_0%,rgba(238,242,247,0.78)_100%)] px-4 py-2 text-xs leading-5 text-gray-900">
                 <span className="font-semibold">Poznámka:</span>{' '}
                 <span className="whitespace-pre-wrap">{sectionNote}</span>
               </div>
             </div>
 
-            <div className="hidden overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)] md:block">
+            <div className="offers-detail-page__items-table-shell hidden overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)] md:block">
               <table className="w-full table-fixed border-collapse text-sm">
                 <colgroup>
                   <col className={detailColumnClasses.item} />
@@ -749,7 +749,7 @@ export function OfferItemsEditor({
                   ))}
                 </tbody>
               </table>
-              <div className="min-h-[44px] border-t border-[#d8e4ef] bg-[rgba(255,255,255,0.5)] px-4 py-2 text-xs leading-5 text-gray-900">
+              <div className="offers-detail-page__items-section-note-display min-h-[44px] border-t border-[#d8e4ef] bg-[rgba(255,255,255,0.5)] px-4 py-2 text-xs leading-5 text-gray-900">
                 <span className="font-semibold">Poznámka:</span>{' '}
                 <span className="whitespace-pre-wrap">{sectionNote}</span>
               </div>
@@ -760,7 +760,7 @@ export function OfferItemsEditor({
 
       {isOpen ? (
         <div
-          className="fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+          className="offers-detail-page__items-modal-overlay fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
           aria-modal="true"
           role="dialog"
           onMouseDown={(event) => {
@@ -770,8 +770,8 @@ export function OfferItemsEditor({
           }}
         >
           <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-center">
-            <div className="flex h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(249,252,255,0.82)_50%,rgba(245,250,255,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100vh-3rem)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_36px_84px_rgba(24,24,27,0.32)]">
-              <div className="px-4 py-4 sm:px-6">
+            <div className="offers-detail-page__items-modal-shell flex h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(249,252,255,0.82)_50%,rgba(245,250,255,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100vh-3rem)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_36px_84px_rgba(24,24,27,0.32)]">
+              <div className="offers-detail-page__items-modal-header px-4 py-4 sm:px-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-semibold uppercase text-gray-900">
@@ -788,7 +788,7 @@ export function OfferItemsEditor({
                     type="button"
                     onClick={() => setIsOpen(false)}
                     disabled={isPending}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-lg text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="offers-detail-page__items-modal-close inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-lg text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
                     aria-label="Zavřít modal"
                   >
               ✕
@@ -796,14 +796,14 @@ export function OfferItemsEditor({
                 </div>
               </div>
 
-              <div className="px-4 pb-4 sm:px-6">
-                <div className="flex flex-col gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)] md:flex-row md:items-center md:justify-between">
+              <div className="offers-detail-page__items-modal-toolbar px-4 pb-4 sm:px-6">
+                <div className="offers-detail-page__items-modal-panel flex flex-col gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)] md:flex-row md:items-center md:justify-between">
                   <div className="grid gap-2 sm:grid-cols-2 md:flex md:flex-wrap md:items-center">
                     <select
                       value={activePresetKey}
                       onChange={(event) => setSelectedPresetKey(event.target.value)}
                       disabled={isPending}
-                      className="h-10 w-full min-w-0 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2 md:w-auto md:min-w-[260px]"
+                    className="offers-detail-page__items-modal-select h-10 w-full min-w-0 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2 md:w-auto md:min-w-[260px]"
                     >
                       {presets.map((preset) => (
                         <option key={preset.key} value={preset.key}>
@@ -820,7 +820,7 @@ export function OfferItemsEditor({
                       type="button"
                       onClick={addPresetRow}
                       disabled={isPending}
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="offers-detail-page__items-modal-add-preset inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Přidat položku
                     </button>
@@ -828,7 +828,7 @@ export function OfferItemsEditor({
                       type="button"
                       onClick={addRow}
                       disabled={isPending}
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="offers-detail-page__items-modal-add-row inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Vlastní řádek
                     </button>
@@ -839,7 +839,7 @@ export function OfferItemsEditor({
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+              <div className="offers-detail-page__items-modal-body flex-1 overflow-y-auto px-4 py-4 sm:px-6">
                 {errorMessage ? (
                   <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {errorMessage}
@@ -881,7 +881,7 @@ export function OfferItemsEditor({
                       const lineTotal = getDraftLineTotal(row)
 
                       return (
-                        <div key={`mobile-${row.id}`} className="rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                        <div key={`mobile-${row.id}`} className="offers-detail-page__items-modal-mobile-row rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
                           <div className="grid gap-2">
                             <label className="block">
                               <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
@@ -981,7 +981,7 @@ export function OfferItemsEditor({
                                 </label>
                               ) : null}
                               {showQuantityAndTotal ? (
-                                <div className={`${useCompactClassicMobileCards ? 'col-span-4' : 'col-span-2'} rounded-xl bg-gray-50 px-3 py-2`}>
+                        <div className={`${useCompactClassicMobileCards ? 'col-span-4' : 'col-span-2'} offers-detail-page__items-row-total rounded-xl bg-gray-50 px-3 py-2`}>
                                   <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
                                     Cena bez DPH
                                   </div>
@@ -997,7 +997,7 @@ export function OfferItemsEditor({
                                 type="button"
                                 onClick={() => moveRow(row.id, 'up')}
                                 disabled={index === 0 || isPending}
-                                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
+                                className="offers-detail-page__items-row-action inline-flex h-10 items-center justify-center rounded-xl text-sm transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
                                 title="Nahoru"
                               >
                                 ↑
@@ -1006,7 +1006,7 @@ export function OfferItemsEditor({
                                 type="button"
                                 onClick={() => moveRow(row.id, 'down')}
                                 disabled={index === rows.length - 1 || isPending}
-                                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
+                                className="offers-detail-page__items-row-action inline-flex h-10 items-center justify-center rounded-xl text-sm transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
                                 title="Dolů"
                               >
                                 ↓
@@ -1015,7 +1015,7 @@ export function OfferItemsEditor({
                                 type="button"
                                 onClick={() => duplicateRow(row.id)}
                                 disabled={isPending}
-                                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-xs font-semibold text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                className="offers-detail-page__items-row-action offers-detail-page__items-row-action--duplicate inline-flex h-10 items-center justify-center rounded-xl text-xs font-semibold transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                 title="Duplikovat"
                               >
                                 2×
@@ -1024,10 +1024,10 @@ export function OfferItemsEditor({
                                 type="button"
                                 onClick={() => removeRow(row.id)}
                                 disabled={isPending}
-                                className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="offers-detail-page__items-row-delete inline-flex h-10 items-center justify-center rounded-xl text-xs font-semibold transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                 title="Smazat"
                               >
-              ✕
+                                ✕
                               </button>
                             </div>
                           </div>
@@ -1042,7 +1042,7 @@ export function OfferItemsEditor({
                     return (
                       <div
                         key={row.id}
-                        className="hidden gap-2 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] md:grid"
+                        className="offers-detail-page__items-modal-desktop-row hidden gap-2 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] md:grid"
                         style={{ gridTemplateColumns: modalGridColumns }}
                       >
                         <input
@@ -1096,7 +1096,7 @@ export function OfferItemsEditor({
                           showQuantityAndTotal ? <div /> : null
                         )}
                         {showQuantityAndTotal ? (
-                          <div className="flex h-10 items-center justify-end rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm font-semibold text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+                          <div className="offers-detail-page__items-row-total flex h-10 items-center justify-end rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm font-semibold text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                             {typeof lineTotal === 'number' ? formatCurrency(lineTotal, currency) : '-'}
                           </div>
                         ) : null}
@@ -1105,7 +1105,7 @@ export function OfferItemsEditor({
                             type="button"
                             onClick={() => moveRow(row.id, 'up')}
                             disabled={index === 0 || isPending}
-                            className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
+                            className="offers-detail-page__items-row-action inline-flex h-10 items-center justify-center rounded-xl text-sm transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
                             title="Nahoru"
                           >
                             ↑
@@ -1114,7 +1114,7 @@ export function OfferItemsEditor({
                             type="button"
                             onClick={() => moveRow(row.id, 'down')}
                             disabled={index === rows.length - 1 || isPending}
-                            className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
+                            className="offers-detail-page__items-row-action inline-flex h-10 items-center justify-center rounded-xl text-sm transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-35"
                             title="Dolů"
                           >
                             ↓
@@ -1123,7 +1123,7 @@ export function OfferItemsEditor({
                             type="button"
                             onClick={() => duplicateRow(row.id)}
                             disabled={isPending}
-                            className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-xs font-semibold text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_16px_rgba(15,23,42,0.09)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="offers-detail-page__items-row-action offers-detail-page__items-row-action--duplicate inline-flex h-10 items-center justify-center rounded-xl text-xs font-semibold transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                             title="Duplikovat"
                           >
                             2×
@@ -1132,7 +1132,7 @@ export function OfferItemsEditor({
                             type="button"
                             onClick={() => removeRow(row.id)}
                             disabled={isPending}
-                            className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="offers-detail-page__items-row-delete inline-flex h-10 items-center justify-center rounded-xl text-xs font-semibold transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                             title="Smazat"
                           >
               ✕
@@ -1143,7 +1143,7 @@ export function OfferItemsEditor({
                   })}
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(240,245,250,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                <div className="offers-detail-page__items-section-note offers-detail-page__items-section-note--surface mt-4 rounded-2xl border p-3">
                   <label
                     htmlFor={`section-note-${itemSection}`}
                     className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500"
@@ -1155,18 +1155,18 @@ export function OfferItemsEditor({
                     value={draftSectionNote}
                     onChange={(event) => setDraftSectionNote(event.target.value)}
                     rows={2}
-                    className="min-h-[52px] w-full resize-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] outline-none transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
+                    className="offers-detail-page__items-section-note-input min-h-[52px] w-full resize-none rounded-xl border px-3 py-2 text-sm outline-none transition"
                     placeholder="Poznámka k této sekci"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-[#d8e4ef] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="offers-detail-page__items-modal-footer flex flex-col gap-3 border-t border-[#d8e4ef] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
                   disabled={isPending}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-5 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="offers-detail-page__items-modal-close inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-5 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Zavřít
                 </button>
@@ -1174,7 +1174,7 @@ export function OfferItemsEditor({
                   type="button"
                   onClick={handleSave}
                   disabled={isPending}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="offers-detail-page__items-modal-save inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isPending ? 'Ukládám...' : 'Uložit položky'}
                 </button>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { EditJobButton } from '../jobs/edit-job-button'
+import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 import {
   downloadJobAttachmentAction,
   deleteJobAttachmentAction,
@@ -71,8 +72,6 @@ const EDITABLE_CELL_COMPACT_CLASS = 'h-7 py-1'
 const EMPTY_ACTION_BADGE_CLASS =
   'flex h-full w-full items-center justify-center rounded-lg border border-[#76a9d3]/65 bg-[linear-gradient(155deg,rgba(79,146,203,0.14)_0%,rgba(58,126,184,0.1)_100%)] text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2f78b1] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] transition duration-200 hover:border-[#76a9d3]/85 hover:bg-[linear-gradient(155deg,rgba(79,146,203,0.2)_0%,rgba(58,126,184,0.14)_100%)]'
 const EMPTY_ACTION_BADGE_COMPACT_CLASS = 'text-[9px] tracking-[0.1em]'
-const GLASS_SECONDARY_BUTTON_CLASS =
-  'rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)]'
 
 const BASE_COST_PRESETS: CostPreset[] = [
   { key: 'doprava', label: 'Doprava', defaultUnitPrice: 19 },
@@ -106,9 +105,9 @@ export function FakturyInteractiveTable({
 }: FakturyInteractiveTableProps) {
   return (
     <>
-      <section className="hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
+      <section className="jobs-page__table-shell faktury-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
         <div className="overflow-x-auto px-1 py-2">
-          <table className="w-full table-fixed border-separate border-spacing-y-2">
+          <table className="jobs-page__table w-full table-fixed border-separate border-spacing-y-2">
             <colgroup>
               <col className="w-[60px]" />
               <col className="w-[72px]" />
@@ -144,7 +143,7 @@ export function FakturyInteractiveTable({
               </tr>
             </thead>
 
-            <tbody>
+            <tbody className="jobs-page__table-body">
               {rows.map((row) => (
                 <DesktopRow
                   key={row.id}
@@ -157,7 +156,7 @@ export function FakturyInteractiveTable({
         </div>
       </section>
 
-      <section className="grid gap-3 lg:hidden">
+      <section className="faktury-page__mobile-shell grid gap-3 lg:hidden">
         {rows.map((row) => (
           <MobileCard
             key={row.id}
@@ -184,7 +183,7 @@ function DesktopRow({
 
   return (
     <tr
-      className={`group transition duration-200 hover:-translate-y-[1px] ${
+      className={`jobs-page__table-row group transition duration-200 hover:-translate-y-[1px] ${
         isFinanceCompleted
           ? '[background:linear-gradient(160deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
           : '[background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
@@ -194,7 +193,7 @@ function DesktopRow({
         <EditJobButton
           job={row}
           clientSuggestions={clientSuggestions}
-          className="block h-8 rounded-lg px-1 py-1 text-center text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
+          className="jobs-page__job-number-button block h-8 rounded-lg px-1 py-1 text-center text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
         >
           <span className="block truncate leading-6 text-gray-900">
             {row.job_number}
@@ -315,7 +314,7 @@ function MobileCard({
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)] ${
+      className={`jobs-page__mobile-card faktury-page__mobile-card overflow-hidden rounded-2xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)] ${
         isFinanceCompleted
           ? 'border-[#95c4e6]/95 bg-[linear-gradient(155deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
           : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
@@ -327,7 +326,7 @@ function MobileCard({
             <EditJobButton
               job={row}
               clientSuggestions={clientSuggestions}
-              className="min-w-0 text-sm font-semibold leading-tight text-gray-900 hover:underline"
+              className="jobs-page__job-number-button min-w-0 text-sm font-semibold leading-tight text-gray-900 hover:underline"
             >
               <span className="block truncate">{row.job_number}</span>
             </EditJobButton>
@@ -384,7 +383,7 @@ function MobileCard({
       </div>
 
       {isFinanceOpen ? (
-        <div className="mt-3 divide-y divide-white/70 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+        <div className="faktury-page__costs-modal__mobile-finance-shell mt-3 rounded-2xl border bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
           <MobileFinanceRow label="Faktura">
             <FinanceEditableCell
               financeId={row.id}
@@ -475,7 +474,7 @@ function ReadOnlyCell({
       className={`border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] ${cellClassName}`}
     >
       <span
-        className={`block h-8 truncate px-1 py-1 text-[12px] leading-6 text-gray-700 ${alignClass}`}
+        className={`jobs-page__table-cell-value block h-8 truncate px-1 py-1 text-[12px] leading-6 text-gray-700 ${alignClass}`}
         title={title ?? value ?? '—'}
       >
         {value || '—'}
@@ -636,7 +635,7 @@ function FinanceEditableCell({
         title={title}
       >
         <span
-          className={`${EMPTY_ACTION_BADGE_CLASS} ${
+          className={`jobs-page__info-button--empty ${EMPTY_ACTION_BADGE_CLASS} ${
             compact ? EMPTY_ACTION_BADGE_COMPACT_CLASS : ''
           }`}
         >
@@ -650,14 +649,14 @@ function FinanceEditableCell({
     filledVariant === 'invoice'
       ? 'font-semibold text-[#2f78b1] hover:bg-[#4f92cb]/[0.08]'
       : filledVariant === 'strong'
-        ? 'font-semibold text-black hover:bg-black/[0.025]'
+        ? 'font-semibold text-gray-700 hover:bg-black/[0.025]'
         : 'font-medium text-gray-900 hover:bg-black/[0.025]'
 
   const filledTextClassName =
     filledVariant === 'invoice'
       ? 'font-semibold text-[#2f78b1]'
       : filledVariant === 'strong'
-        ? 'font-semibold text-black'
+        ? 'font-semibold text-gray-700'
         : 'font-medium text-gray-900'
 
   return (
@@ -672,7 +671,7 @@ function FinanceEditableCell({
       title={title}
     >
       <span
-        className={`block w-full truncate px-2 ${
+        className={`jobs-page__table-cell-value block w-full truncate px-2 ${
           compact ? 'leading-[1.125rem]' : 'leading-5'
         } ${filledTextClassName} ${
           align === 'right'
@@ -722,8 +721,8 @@ function JobAttachmentsCell({
         <span
           className={`inline-flex h-full w-full items-center justify-center rounded-lg transition ${
             hasAnyAttachments
-              ? 'border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)]'
-              : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] hover:border-[#cfd8e3]'
+              ? 'jobs-page__info-button--filled border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)]'
+              : 'jobs-page__info-button--empty border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] hover:border-[#cfd8e3]'
           }`}
         >
           <svg
@@ -777,20 +776,20 @@ function CostAmountCell({
           compact ? EDITABLE_CELL_COMPACT_CLASS : ''
         } text-right ${
           compact ? 'text-sm' : ''
-        } ${hasValue ? 'font-semibold text-black hover:bg-black/[0.025]' : ''}`}
+        } ${hasValue ? 'font-semibold text-gray-700 hover:bg-black/[0.025]' : ''}`}
         title={title}
       >
         {hasValue ? (
           <span
-            className={`block w-full truncate px-2 text-right font-semibold ${
+            className={`jobs-page__table-cell-value block w-full truncate px-2 text-right font-semibold ${
               compact ? 'leading-[1.125rem]' : 'leading-5'
-            } text-black`}
+            } text-gray-700`}
           >
             {formatMoney(value)}
           </span>
         ) : (
           <span
-            className={`${EMPTY_ACTION_BADGE_CLASS} ${
+            className={`jobs-page__info-button--empty ${EMPTY_ACTION_BADGE_CLASS} ${
               compact ? EMPTY_ACTION_BADGE_COMPACT_CLASS : ''
             }`}
           >
@@ -980,7 +979,7 @@ function JobAttachmentsModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
+      className="jobs-page__info-modal__overlay fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       aria-modal="true"
       role="dialog"
       onMouseDown={(event) => {
@@ -990,7 +989,7 @@ function JobAttachmentsModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-5xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[960px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+        <div className="jobs-page__info-modal__attachments-shell flex max-h-[calc(100vh-2rem)] w-full max-w-[960px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1008,7 +1007,7 @@ function JobAttachmentsModal({
                 type="button"
                 onClick={handleRequestClose}
                 disabled={isPending}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="jobs-page__info-modal__attachments-close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Zavřít modal"
               >
                 ×
@@ -1017,13 +1016,13 @@ function JobAttachmentsModal({
           </div>
 
           <div className="px-4 py-4 sm:px-6">
-            <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+            <div className="jobs-page__info-modal__upload rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     Soubory
                   </label>
-                  <label className="relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px]">
+                  <label className="jobs-page__info-modal__file-picker relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px]">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1057,7 +1056,7 @@ function JobAttachmentsModal({
                       setCategoryValue(event.target.value as JobAttachmentCategory)
                     }
                     disabled={isPending}
-                    className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                    className="jobs-page__info-modal__category-select h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                   >
                     {ATTACHMENT_CATEGORY_OPTIONS.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -1077,7 +1076,7 @@ function JobAttachmentsModal({
                   type="button"
                   onClick={handleUpload}
                   disabled={isPending || selectedFiles.length === 0}
-                  className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[176px] md:w-auto"
+                    className="jobs-page__info-modal__upload-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[176px] md:w-auto"
                 >
                   <span>
                     Nahrát
@@ -1090,14 +1089,14 @@ function JobAttachmentsModal({
 
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             {errorMessage ? (
-              <div className="mb-3 rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
+                <div className="jobs-page__info-modal__error mb-3 rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
                 {errorMessage}
               </div>
             ) : null}
 
             <div className="grid gap-3 md:hidden">
               {!isLoading && visibleItems.length === 0 ? (
-                <div className="rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-6 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <div className="jobs-page__info-modal__empty-state rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-6 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   Zatím nejsou nahrané žádné přílohy.
                 </div>
               ) : null}
@@ -1105,7 +1104,7 @@ function JobAttachmentsModal({
               {visibleItems.map((item) => (
                 <div
                   key={item.id}
-                  className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                  className="jobs-page__info-modal__attachment-card min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -1148,7 +1147,7 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleOpenAttachment(item.id)}
                       disabled={isPending}
-                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 py-1.5 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      className="jobs-page__info-modal__attachment-open inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 py-1.5 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       OTEVŘÍT
                     </button>
@@ -1156,7 +1155,7 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleDownloadAttachment(item.id)}
                       disabled={isPending}
-                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-1.5 text-[11px] font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      className="jobs-page__info-modal__attachment-download inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-1.5 text-[11px] font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       STÁHNOUT
                     </button>
@@ -1164,7 +1163,7 @@ function JobAttachmentsModal({
                       type="button"
                       onClick={() => handleDeleteAttachment(item.id, item.displayName)}
                       disabled={isPending}
-                      className="inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 py-1.5 text-[11px] font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      className="jobs-page__info-modal__attachment-delete inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 py-1.5 text-[11px] font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                     >
                       SMAZAT
                     </button>
@@ -1173,7 +1172,7 @@ function JobAttachmentsModal({
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] md:block">
+            <div className="jobs-page__info-modal__attachment-card hidden overflow-x-auto rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] md:block">
               <table className="w-full table-fixed bg-transparent">
                 <thead>
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
@@ -1223,7 +1222,7 @@ function JobAttachmentsModal({
                             type="button"
                             onClick={() => handleOpenAttachment(item.id)}
                             disabled={isPending}
-                            className="shrink-0 rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1.5 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                            className="jobs-page__info-modal__attachment-open shrink-0 rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1.5 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                           >
                             OTEVŘÍT
                           </button>
@@ -1231,7 +1230,7 @@ function JobAttachmentsModal({
                             type="button"
                             onClick={() => handleDownloadAttachment(item.id)}
                             disabled={isPending}
-                            className="shrink-0 rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                            className="jobs-page__info-modal__attachment-download shrink-0 rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                           >
                             STÁHNOUT
                           </button>
@@ -1241,7 +1240,7 @@ function JobAttachmentsModal({
                               handleDeleteAttachment(item.id, item.displayName)
                             }
                             disabled={isPending}
-                            className="shrink-0 rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2.5 py-1.5 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                            className="jobs-page__info-modal__attachment-delete shrink-0 rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2.5 py-1.5 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
                           >
                             SMAZAT
                           </button>
@@ -1518,9 +1517,9 @@ function CostItemsModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+        <div className="jobs-page__modal-shell faktury-page__costs-modal flex max-h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="px-4 py-4 sm:px-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="faktury-page__costs-modal__header flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
                   Náklady zakázky
@@ -1539,7 +1538,7 @@ function CostItemsModal({
                 type="button"
                 onClick={handleRequestClose}
                 disabled={isPending}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="faktury-page__costs-modal__close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Zavřít modal"
               >
                 ×
@@ -1548,7 +1547,7 @@ function CostItemsModal({
           </div>
 
           <div className="px-4 py-3 sm:px-6 sm:py-4">
-            <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:px-4 sm:py-3">
+            <div className="faktury-page__costs-modal__panel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] sm:px-4 sm:py-3">
               <div className="flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <div className="flex items-center gap-2">
@@ -1569,7 +1568,7 @@ function CostItemsModal({
                       type="button"
                       onClick={handleAddPresetRow}
                       disabled={isLoading || isPending}
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:px-4 sm:text-sm"
+                      className="jobs-page__modal-cancel inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-sm"
                     >
                       Přidat položku
                     </button>
@@ -1579,13 +1578,13 @@ function CostItemsModal({
                     type="button"
                     onClick={handleAddCustomRow}
                     disabled={isLoading || isPending}
-                    className="inline-flex h-9 items-center justify-center rounded-xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:px-4 sm:text-sm"
+                    className="jobs-page__modal-cancel faktury-page__costs-modal__add-custom-button inline-flex h-9 items-center justify-center rounded-xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:px-4 sm:text-sm"
                   >
                     Přidat vlastní řádek
                   </button>
                 </div>
 
-                <div className="hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] sm:block sm:px-4">
+                <div className="faktury-page__costs-modal__summary hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] sm:block sm:px-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     Celkový náklad
                   </div>
@@ -1600,18 +1599,18 @@ function CostItemsModal({
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             <div className="space-y-4">
               {errorMessage ? (
-                <div className="rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
+                <div className="faktury-page__costs-modal__error rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
                   {errorMessage}
                 </div>
               ) : null}
 
               <div className="space-y-3 md:hidden">
                 {isLoading ? (
-                  <div className="rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-10 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <div className="faktury-page__costs-modal__empty-state rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-10 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Načítám nákladové položky...
                   </div>
                 ) : rows.length === 0 ? (
-                  <div className="rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-10 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <div className="faktury-page__costs-modal__empty-state rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-10 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     Zatím nejsou zadané žádné nákladové položky.
                   </div>
                 ) : (
@@ -1625,7 +1624,7 @@ function CostItemsModal({
                     return (
                       <div
                         key={row.id}
-                        className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                        className="faktury-page__costs-modal__mobile-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                       >
                         <div className="space-y-2.5">
                           <div className="grid grid-cols-2 gap-2">
@@ -1638,7 +1637,7 @@ function CostItemsModal({
                                   <span className="block min-w-0 truncate text-sm font-medium text-gray-900">
                                     {row.label}
                                   </span>
-                                  <span className="shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
+                                  <span className="faktury-page__costs-modal__base-pill shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
                                     Základ
                                   </span>
                                 </div>
@@ -1751,7 +1750,7 @@ function CostItemsModal({
                                 type="button"
                                 onClick={() => handleDuplicateRow(row.id)}
                                 disabled={isPending}
-                                className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="jobs-page__modal-cancel inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 Kopie
                               </button>
@@ -1762,7 +1761,7 @@ function CostItemsModal({
                                 type="button"
                                 onClick={() => handleMoveRow(row.id, 'up')}
                                 disabled={isPending || !canMoveUp}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+                                className="faktury-page__costs-modal__row-neutral-button inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
                                 title="Posunout nahoru"
                               >
                                 ↑
@@ -1771,7 +1770,7 @@ function CostItemsModal({
                                 type="button"
                                 onClick={() => handleMoveRow(row.id, 'down')}
                                 disabled={isPending || !canMoveDown}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+                                className="faktury-page__costs-modal__row-neutral-button inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
                                 title="Posunout dolů"
                               >
                                 ↓
@@ -1780,7 +1779,7 @@ function CostItemsModal({
                                 type="button"
                                 onClick={() => handleDuplicateRow(row.id)}
                                 disabled={isPending}
-                                className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="jobs-page__modal-cancel faktury-page__costs-modal__copy-button inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 title="Duplikovat řádek"
                               >
                                 Kopie
@@ -1789,7 +1788,7 @@ function CostItemsModal({
                                 type="button"
                                 onClick={() => handleRemoveRow(row.id)}
                                 disabled={isPending}
-                                className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                className="faktury-page__costs-modal__delete-button inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                 title="Smazat řádek"
                               >
                                 SMAZAT
@@ -1803,7 +1802,7 @@ function CostItemsModal({
                 )}
               </div>
 
-              <div className="hidden overflow-x-auto rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] md:block">
+              <div className="faktury-page__costs-modal__table-shell hidden overflow-x-auto rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] md:block">
                 <table className="min-w-full table-fixed border-separate border-spacing-0 bg-transparent">
                   <colgroup>
                     <col className="w-[24%]" />
@@ -1814,7 +1813,7 @@ function CostItemsModal({
                     <col className="w-[220px]" />
                   </colgroup>
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_100%)] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                    <tr className="faktury-page__costs-modal__table-head bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_100%)] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                       <th className="border-b border-white/70 px-3 py-3">
                         Položka
                       </th>
@@ -1864,14 +1863,14 @@ function CostItemsModal({
                         const canMoveDown = canMoveRow(rows, row.id, 'down')
 
                         return (
-                          <tr key={row.id} className="border-t border-white/70">
+                          <tr key={row.id} className="faktury-page__costs-modal__table-row border-t border-white/70">
                             <td className="border-b border-white/70 px-3 py-3 align-middle">
                               {row.isBase ? (
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="block min-w-0 truncate text-sm font-medium text-gray-900">
                                     {row.label}
                                   </span>
-                                  <span className="shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
+                                  <span className="faktury-page__costs-modal__base-pill shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
                                     Základ
                                   </span>
                                 </div>
@@ -1985,18 +1984,18 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleDuplicateRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-                                  >
-                                    Kopie
-                                  </button>
-                                </div>
+                                    className="jobs-page__modal-cancel inline-flex h-10 w-[72px] shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                      Kopie
+                                    </button>
+                                  </div>
                               ) : (
                                 <div className="flex min-w-[212px] justify-end gap-1">
                                   <button
                                     type="button"
                                     onClick={() => handleMoveRow(row.id, 'up')}
                                     disabled={isPending || !canMoveUp}
-                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="faktury-page__costs-modal__row-neutral-button inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
                                     title="Posunout nahoru"
                                   >
                                     ↑
@@ -2005,7 +2004,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleMoveRow(row.id, 'down')}
                                     disabled={isPending || !canMoveDown}
-                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="faktury-page__costs-modal__row-neutral-button inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
                                     title="Posunout dolů"
                                   >
                                     ↓
@@ -2014,7 +2013,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleDuplicateRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="jobs-page__modal-cancel inline-flex h-10 w-[72px] shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                                     title="Duplikovat řádek"
                                   >
                                     Kopie
@@ -2023,7 +2022,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleRemoveRow(row.id)}
                                     disabled={isPending}
-                                    className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="faktury-page__costs-modal__delete-button inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                     title="Smazat řádek"
                                   >
                                     SMAZAT
@@ -2041,13 +2040,13 @@ function CostItemsModal({
             </div>
           </div>
 
-          <div className="border-t border-white/70 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="jobs-page__modal-footer faktury-page__costs-modal__footer border-t border-white/70 px-4 py-3 sm:px-6 sm:py-4">
             <div className="grid grid-cols-2 gap-2 sm:hidden">
               <button
                 type="button"
                 onClick={handleDeleteCosts}
                 disabled={isLoading || isPending}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                className="faktury-page__costs-modal__delete-button inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Smazat náklady
               </button>
@@ -2056,28 +2055,28 @@ function CostItemsModal({
                 href={`/faktury/${financeId}/costs-export`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 text-[11px] font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                className="faktury-page__costs-modal__export-button inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 text-[11px] font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
               >
                 Export nákladů
               </a>
 
-              <button
-                type="button"
-                onClick={handleRequestClose}
-                disabled={isPending}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Zrušit
-              </button>
+                <button
+                  type="button"
+                  onClick={handleRequestClose}
+                  disabled={isPending}
+                  className="jobs-page__modal-cancel faktury-page__costs-modal__cancel-button inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Zrušit
+                </button>
 
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isLoading || isPending}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isPending ? 'Ukládám…' : 'Uložit'}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isLoading || isPending}
+                  className="jobs-page__modal-submit faktury-page__costs-modal__save-button inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPending ? 'Ukládám…' : 'Uložit'}
+                </button>
             </div>
 
             <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between">
@@ -2085,7 +2084,7 @@ function CostItemsModal({
                 type="button"
                 onClick={handleDeleteCosts}
                 disabled={isLoading || isPending}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                className="faktury-page__costs-modal__delete-button inline-flex h-11 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Smazat náklady
               </button>
@@ -2095,7 +2094,7 @@ function CostItemsModal({
                   href={`/faktury/${financeId}/costs-export`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                  className="faktury-page__costs-modal__export-button inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
                 >
                   Export nákladů
                 </a>
@@ -2104,7 +2103,7 @@ function CostItemsModal({
                   type="button"
                   onClick={handleRequestClose}
                   disabled={isPending}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__modal-cancel faktury-page__costs-modal__cancel-button inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Zrušit
                 </button>
@@ -2113,7 +2112,7 @@ function CostItemsModal({
                   type="button"
                   onClick={handleSave}
                   disabled={isLoading || isPending}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__modal-submit faktury-page__costs-modal__save-button inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isPending ? 'Ukládám…' : 'Uložit'}
                 </button>
@@ -2187,11 +2186,11 @@ function ProfitText({
 
   return (
     <span
-      className={`block w-full truncate px-2 text-right font-semibold ${
+      className={`jobs-page__table-cell-value block w-full truncate px-2 text-right font-semibold ${
         compact ? 'h-7 py-1 leading-[1.125rem]' : 'h-8 py-1.5 leading-5'
       } ${
         compact ? 'text-sm' : 'text-[12px]'
-      } ${profit < 0 ? 'text-red-600' : 'text-black'}`}
+      } ${profit < 0 ? 'text-red-600' : 'text-gray-700'}`}
       title={formatMoney(profit)}
     >
       {formatMoney(profit)}
@@ -2208,7 +2207,7 @@ function SalesOwnerText({
 }) {
   return (
     <span
-      className={`inline-flex h-8 items-center justify-start rounded-lg px-2 py-1 text-left font-medium text-gray-700 ${
+      className={`jobs-page__table-cell-value inline-flex h-8 items-center justify-start rounded-lg px-2 py-1 text-left font-medium text-gray-700 ${
         compact ? 'text-[11px]' : 'text-[12px]'
       }`}
       title={salesOwner}

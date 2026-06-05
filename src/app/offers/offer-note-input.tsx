@@ -6,9 +6,14 @@ import { updateOfferInternalNote } from '@/app/offers/actions'
 type OfferNoteInputProps = {
   offerId: string
   initialValue: string
+  className?: string
 }
 
-export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
+export function OfferNoteInput({
+  offerId,
+  initialValue,
+  className = '',
+}: OfferNoteInputProps) {
   const [value, setValue] = useState(initialValue)
   const [savedValue, setSavedValue] = useState(initialValue)
   const [isEditing, setIsEditing] = useState(false)
@@ -42,6 +47,7 @@ export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
         onClick={() => setIsEditing(true)}
         title={savedValue || 'Přidat poznámku'}
         className={[
+          className,
           'block h-8 w-full truncate rounded-xl border border-white/45 bg-[linear-gradient(160deg,rgba(255,255,255,0.52)_0%,rgba(236,246,253,0.34)_100%)] px-2.5 py-1 text-left text-[12px] shadow-[inset_0_1px_0_rgba(255,255,255,0.74),inset_0_-1px_0_rgba(148,163,184,0.14)] transition duration-200 ease-out',
           savedValue ? 'text-gray-700 hover:text-gray-900' : 'text-gray-400 hover:text-gray-600',
         ].join(' ')}
@@ -52,7 +58,7 @@ export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
   }
 
   return (
-      <input
+    <input
       ref={inputRef}
       value={value}
       onChange={(event) => setValue(event.target.value)}
@@ -69,7 +75,7 @@ export function OfferNoteInput({ offerId, initialValue }: OfferNoteInputProps) {
         event.currentTarget.blur()
       }}
       placeholder={isPending ? 'Ukládám...' : 'Vlastní poznámka'}
-      className="h-8 w-full rounded-xl border border-white/45 bg-[linear-gradient(160deg,rgba(255,255,255,0.52)_0%,rgba(236,246,253,0.34)_100%)] px-2.5 text-[12px] text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.74),inset_0_-1px_0_rgba(148,163,184,0.14)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+      className={`${className} h-8 w-full rounded-xl border border-white/45 bg-[linear-gradient(160deg,rgba(255,255,255,0.52)_0%,rgba(236,246,253,0.34)_100%)] px-2.5 text-[12px] text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.74),inset_0_-1px_0_rgba(148,163,184,0.14)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]`}
     />
   )
 }

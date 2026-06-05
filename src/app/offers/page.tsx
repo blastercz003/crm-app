@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
-import type { OfferClient, OfferProfile, OfferRow, OfferStatus, OfferType } from '@/lib/offers/types'
+import type { OfferClient, OfferProfile, OfferRow, OfferStatus } from '@/lib/offers/types'
 import { formatCurrency } from '@/lib/offers/calculations'
 import { NewOfferButton } from './new-offer-button'
 import { CopyOfferButton } from './copy-offer-button'
@@ -10,6 +10,10 @@ import { OfferStatusButton } from './offer-status-button'
 import { OfferStatusCommentsHover } from './offer-status-comments-hover'
 import { OfferFilterSubmitButton } from './offer-filter-submit-button'
 import { OfferFilterResetLink } from './offer-filter-reset-link'
+import {
+  OFFER_TYPE_LABELS,
+  getOfferTypeBadgeClass,
+} from './offer-type-badge'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 
 export const metadata: Metadata = {
@@ -42,19 +46,6 @@ type ClientContactOption = {
 
 type OfferStatsRow = {
   status: OfferStatus
-}
-
-const OFFER_TYPE_LABELS: Record<OfferType, string> = {
-  classic: 'KLASICKÁ',
-  bsafe24: 'B-SAFE 24',
-}
-
-function getOfferTypeClass(type: OfferType) {
-  if (type === 'bsafe24') {
-    return 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_18px_rgba(24,78,129,0.24)]'
-  }
-
-  return 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]'
 }
 
 const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
@@ -162,19 +153,9 @@ function getSortLabel(sort: OfferSort) {
   return SORT_OPTIONS.find((option) => option.value === sort)?.label ?? 'Dle čísla nabídky'
 }
 
-function getOfferHref(params: { q: string; status: string; authorId: string; sort: OfferSort }) {
-  const query = new URLSearchParams()
-  if (params.q) query.set('q', params.q)
-  if (params.status) query.set('status', params.status)
-  if (params.authorId) query.set('author', params.authorId)
-  if (params.sort !== 'offer_number_desc') query.set('sort', params.sort)
-  const search = query.toString()
-  return search ? `/offers?${search}` : '/offers'
-}
-
 function InfoChip({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
+    <span className="offers-page__info-chip inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
       {label}
     </span>
   )
@@ -354,7 +335,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
       : offers
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+    <main className="offers-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <PresenceSectionTracker section="Nabídky" route="/offers" />
       <div
         aria-hidden
@@ -362,10 +343,10 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        className="offers-page__glow offers-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
       />
       <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="offers-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-end">
               <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
@@ -383,11 +364,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   name="q"
                   defaultValue={q}
                   placeholder="Hledat číslo nebo název nabídky"
-                  className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
+                  className="offers-page__search-input w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_20px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_14px_26px_rgba(15,23,42,0.14)]"
+                  className="offers-page__search-button clients-page__search-button rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                 >
                   HLEDAT
                 </button>
@@ -395,25 +376,29 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+                className="offers-page__back-button clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
               >
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <NewOfferButton clients={visibleClientOptions} contacts={contacts} />
+              <NewOfferButton
+                clients={visibleClientOptions}
+                contacts={contacts}
+                className="clients-page__new-button"
+              />
             </div>
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="offers-page__filters-shell overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="p-4 md:p-5">
             <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
-              <details className="group w-full lg:hidden">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+              <details className="group w-full lg:hidden offers-page__filters-panel">
+                <summary className="offers-page__filters-summary flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                   <span className="inline-flex items-center gap-2">
                     FILTRY
                     {hasActiveFilters ? (
-                      <span className="inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.07em] text-[#236f9f]">
+                      <span className="offers-page__filters-summary-badge inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.07em] text-[#236f9f]">
                         FILTR AKTIVNÍ
                       </span>
                     ) : null}
@@ -424,7 +409,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 <form
                   action="/offers"
                   method="get"
-                  className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                  className="offers-page__filters-mobile-form mt-2 space-y-3 rounded-2xl p-3"
                 >
                   <input type="hidden" name="q" value={q} />
 
@@ -496,7 +481,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     </div>
                   </div>
 
-                  <div className="w-full border-t border-gray-100 pt-3">
+                  <div className="offers-page__filters-divider w-full border-t border-gray-100 pt-3">
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 text-xs text-gray-600">
                       <InfoChip label={`Stav: ${getStatusLabel(status)}`} />
                       {isAdmin ? (
@@ -508,13 +493,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       {q ? <InfoChip label={`Hledání: ${q}`} /> : null}
                     </div>
 
-                    <div className="mt-3 flex shrink-0 items-center gap-2 border-t border-gray-100 pt-3">
-                      <OfferFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                    <div className="offers-page__filters-actions-divider mt-3 flex shrink-0 items-center gap-2 border-t pt-3">
+                      <OfferFilterSubmitButton className="offers-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                         POUŽÍT FILTRY
                       </OfferFilterSubmitButton>
                       <OfferFilterResetLink
                         href="/offers"
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                        className="offers-page__filter-reset offers-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                       >
                         RESET
                       </OfferFilterResetLink>
@@ -523,7 +508,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 </form>
               </details>
 
-              <form action="/offers" method="get" className="hidden w-full flex-none space-y-3 lg:block lg:w-[796px]">
+              <form action="/offers" method="get" className="offers-page__filters-panel hidden w-full flex-none space-y-3 lg:block lg:w-[796px]">
                 <input type="hidden" name="q" value={q} />
 
                 <div className="grid w-full gap-2 sm:grid-cols-2 lg:flex lg:w-[796px] lg:items-end">
@@ -603,9 +588,9 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   </div>
                 </div>
 
-                <div className="w-full border-t border-gray-100 pt-3 lg:w-[796px]">
+                <div className="offers-page__filters-divider w-full border-t border-gray-100 pt-3 lg:w-[796px]">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 text-xs text-gray-600 sm:gap-y-1.5">
+                    <div className="offers-page__filters-summary flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 text-xs text-gray-600 sm:gap-y-1.5">
                       <InfoChip label={`Stav: ${getStatusLabel(status)}`} />
                       {isAdmin ? (
                         <InfoChip label={`Uživatel: ${selectedAuthor?.name ?? 'Všichni uživatelé'}`} />
@@ -617,12 +602,12 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2 border-t border-gray-100 pt-3 sm:border-t-0 sm:pt-0">
-                      <OfferFilterSubmitButton className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                      <OfferFilterSubmitButton className="offers-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                         POUŽÍT FILTRY
                       </OfferFilterSubmitButton>
                       <OfferFilterResetLink
                         href="/offers"
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                        className="offers-page__filter-reset offers-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                       >
                         RESET
                       </OfferFilterResetLink>
@@ -632,29 +617,29 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
               </form>
 
               <div className="hidden w-full grid-cols-2 gap-3 sm:grid sm:grid-cols-4 lg:relative lg:right-8 lg:ml-auto lg:mr-0 lg:w-auto lg:max-w-full lg:flex-none lg:justify-end">
-                <div className="w-full rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_24px_rgba(41,128,185,0.25)] lg:w-[119px] lg:flex-none">
-                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
+                <div className="offers-page__stats-card offers-page__stats-card--total w-full rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_24px_rgba(41,128,185,0.25)] lg:w-[119px] lg:flex-none">
+                  <div className="offers-page__stats-card-label whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     CELKEM
                   </div>
-                  <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.total}</div>
+                  <div className="offers-page__stats-card-value mt-1 text-lg font-semibold leading-none">{statusCounts.total}</div>
                 </div>
-                <div className="w-full rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-3 text-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] lg:w-[119px] lg:flex-none">
-                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em]">
+                <div className="offers-page__stats-card offers-page__stats-card--draft w-full rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-3 text-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] lg:w-[119px] lg:flex-none">
+                  <div className="offers-page__stats-card-label whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em]">
                     ROZPRACOVANÉ
                   </div>
-                  <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.draft}</div>
+                  <div className="offers-page__stats-card-value mt-1 text-lg font-semibold leading-none">{statusCounts.draft}</div>
                 </div>
-                <div className="w-full rounded-2xl border border-zinc-900 bg-zinc-900 px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] lg:w-[119px] lg:flex-none">
-                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
+                <div className="offers-page__stats-card offers-page__stats-card--submitted w-full rounded-2xl border border-zinc-900 bg-zinc-900 px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] lg:w-[119px] lg:flex-none">
+                  <div className="offers-page__stats-card-label whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     SCHVÁLIT
                   </div>
-                  <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.submitted}</div>
+                  <div className="offers-page__stats-card-value mt-1 text-lg font-semibold leading-none">{statusCounts.submitted}</div>
                 </div>
-                <div className="w-full rounded-2xl border border-emerald-500/80 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_22px_rgba(16,185,129,0.24)] lg:w-[119px] lg:flex-none">
-                  <div className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
+                <div className="offers-page__stats-card offers-page__stats-card--approved w-full rounded-2xl border border-emerald-500/80 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-2.5 py-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_22px_rgba(16,185,129,0.24)] lg:w-[119px] lg:flex-none">
+                  <div className="offers-page__stats-card-label whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
                     SCHVÁLENO
                   </div>
-                  <div className="mt-1 text-lg font-semibold leading-none">{statusCounts.approved}</div>
+                  <div className="offers-page__stats-card-value mt-1 text-lg font-semibold leading-none">{statusCounts.approved}</div>
                 </div>
               </div>
             </div>
@@ -662,7 +647,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
         </section>
 
         {sortedOffers.length === 0 ? (
-          <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="offers-page__empty-state rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <h2 className="text-lg font-semibold text-gray-900">
               Zatím tu nejsou žádné nabídky.
             </h2>
@@ -672,7 +657,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
           </section>
         ) : (
           <>
-            <section className="grid gap-3 lg:hidden">
+            <section className="offers-page__mobile-card grid gap-3 lg:hidden">
               {sortedOffers.map((offer) => {
                 const client = clientById.get(offer.client_id)
                 const total = getOfferListPriceWithoutVat(offer, itemsByOfferId.get(offer.id) ?? [])
@@ -680,17 +665,17 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 return (
                   <article
                     key={offer.id}
-                    className="overflow-hidden rounded-3xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_24px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_16px_30px_rgba(15,23,42,0.14)]"
+                    className="offers-page__mobile-card-item overflow-hidden rounded-3xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_24px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_16px_30px_rgba(15,23,42,0.14)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 w-0 flex-1">
-                        <div className="truncate text-base font-semibold text-gray-900">
+                        <div className="offers-page__table-cell-value truncate text-base font-semibold text-gray-900">
                           {offer.offer_number}
                         </div>
-                        <div className="mt-1 block truncate text-sm text-gray-500">
+                        <div className="offers-page__table-cell-value mt-1 block truncate text-sm text-gray-500">
                           {offer.title}
                         </div>
-                        <div className="mt-1 block truncate text-sm text-gray-800">
+                        <div className="offers-page__table-cell-value mt-1 block truncate text-sm text-gray-800">
                           {client?.name ?? 'Neznámý klient'}
                         </div>
                       </div>
@@ -703,13 +688,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                           isOwner={offer.created_by === profile.id}
                           badgeWidthClass="w-[140px]"
                         />
-                        <span className={`inline-flex h-8 w-[140px] items-center justify-center rounded-xl border px-3 text-[11px] font-bold uppercase ${getOfferTypeClass(offer.offer_type)}`}>
+                        <span className={`inline-flex h-8 w-[140px] items-center justify-center rounded-xl border px-3 text-[11px] font-bold uppercase ${getOfferTypeBadgeClass(offer.offer_type)}`}>
                           {OFFER_TYPE_LABELS[offer.offer_type]}
                         </span>
                       </div>
                     </div>
 
-                    <div className="mt-4 text-sm font-semibold text-gray-900">
+                    <div className="offers-page__table-cell-value mt-4 text-sm font-semibold text-gray-900">
                       {formatCurrency(total, offer.currency)}
                     </div>
 
@@ -718,7 +703,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)]"
+                        className="offers-page__table-action offers-page__table-action--primary inline-flex h-9 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)]"
                       >
                         PDF
                       </Link>
@@ -727,11 +712,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         offerNumber={offer.offer_number}
                         clients={visibleClientOptions}
                         contacts={contacts}
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                        className="offers-page__table-action offers-page__table-action--secondary inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                       />
                       <Link
                         href={`/offers/${offer.id}`}
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+	                        className="offers-page__table-action clients-page__back-button inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
                       >
                         DETAIL
                       </Link>
@@ -741,10 +726,10 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
               })}
             </section>
 
-            <section className="hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
+            <section className="offers-page__table-shell hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
               <div className="max-h-[70vh] overflow-auto">
                 <div
-                  className="sticky top-0 z-20 grid min-w-[1320px] bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(245,249,253,0.95)_100%)] pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 shadow-[0_1px_0_0_#e5e7eb]"
+                  className="offers-page__table-head sticky top-0 z-20 grid min-w-[1320px] bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(245,249,253,0.95)_100%)] pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 shadow-[0_1px_0_0_#e5e7eb]"
                   style={{
                     gridTemplateColumns:
                       '11% 9% 14% 4% 8% 17% 11% 10% 16%',
@@ -761,7 +746,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   <div className="px-2 py-2 text-center">Akce</div>
                 </div>
 
-                <div className="grid min-w-[1320px] gap-2 pt-2">
+                <div className="offers-page__table-body grid min-w-[1320px] gap-2 pt-2">
                   {sortedOffers.map((offer) => {
                     const client = clientById.get(offer.client_id)
                     const author = profileById.get(offer.created_by)
@@ -770,38 +755,42 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     return (
                       <div
                         key={offer.id}
-                        className="group grid items-center rounded-2xl border border-[#cfd8e3] bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px] hover:border-[#78abcf] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_0_0_1px_rgba(143,183,216,0.55)]"
+                        className="offers-page__table-row group grid items-center rounded-2xl border border-[#cfd8e3] bg-[linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px] hover:border-[#78abcf] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_0_0_1px_rgba(143,183,216,0.55)]"
                         style={{
                           gridTemplateColumns:
                             '11% 9% 14% 4% 8% 17% 11% 10% 16%',
                         }}
                       >
                         <div className="min-w-0 px-2 py-2">
-                          <div className="text-sm font-semibold text-gray-900">
+                          <div className="offers-page__table-cell-value text-sm font-semibold text-gray-900">
                             {offer.offer_number}
                           </div>
-                          <div className="mt-1 truncate text-[12px] text-gray-500">
+                          <div className="offers-page__table-cell-value mt-1 truncate text-[12px] text-gray-500">
                             {offer.title}
                           </div>
                         </div>
                         <div className="min-w-0 px-2 py-2">
-                          <span className={`inline-flex h-8 w-full items-center justify-center rounded-xl border px-2 text-sm font-bold uppercase transition ${getOfferTypeClass(offer.offer_type)}`}>
+                          <span className={`inline-flex h-8 w-full items-center justify-center rounded-xl border px-2 text-sm font-bold uppercase transition ${getOfferTypeBadgeClass(offer.offer_type)}`}>
                             {OFFER_TYPE_LABELS[offer.offer_type]}
                           </span>
                         </div>
-                        <div className="min-w-0 px-2 py-2 text-[12px] text-gray-700">
+                        <div className="offers-page__table-cell-value min-w-0 px-2 py-2 text-[12px] text-gray-700">
                           <div className="truncate">{client?.name ?? 'Neznámý klient'}</div>
                         </div>
-                        <div className="min-w-0 px-2 py-2 text-[12px] text-gray-700">
+                        <div className="offers-page__table-cell-value min-w-0 px-2 py-2 text-[12px] text-gray-700">
                           <div className="truncate">{author?.name ?? 'Neznámý uživatel'}</div>
                         </div>
-                        <div className="min-w-0 px-2 py-2 text-[12px] text-gray-700">
+                        <div className="offers-page__table-cell-value min-w-0 px-2 py-2 text-[12px] text-gray-700">
                           {formatDate(offer.valid_until)}
                         </div>
                         <div className="min-w-0 px-2 py-2">
-                          <OfferNoteInput offerId={offer.id} initialValue={offer.internal_note ?? ''} />
+                          <OfferNoteInput
+                            offerId={offer.id}
+                            initialValue={offer.internal_note ?? ''}
+                            className="offers-page__table-note"
+                          />
                         </div>
-                        <div className="min-w-0 px-2 py-2 text-right text-[12px] font-semibold text-gray-900">
+                        <div className="offers-page__table-cell-value min-w-0 px-2 py-2 text-right text-[12px] font-semibold text-gray-900">
                           {formatCurrency(total, offer.currency)}
                         </div>
                         <div className="min-w-0 px-2 py-2">
@@ -819,7 +808,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                               href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex h-8 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)]"
+                              className="offers-page__table-action offers-page__table-action--primary inline-flex h-8 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)]"
                             >
                               PDF
                             </Link>
@@ -828,11 +817,11 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                               offerNumber={offer.offer_number}
                               clients={visibleClientOptions}
                               contacts={contacts}
-                              className="inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_20px_rgba(15,23,42,0.12)]"
+                              className="offers-page__table-action offers-page__table-action--secondary inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_20px_rgba(15,23,42,0.12)]"
                             />
                             <Link
                               href={`/offers/${offer.id}`}
-                              className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+	                              className="offers-page__table-action clients-page__back-button inline-flex h-8 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800"
                             >
                               DETAIL
                             </Link>
