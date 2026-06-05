@@ -121,7 +121,7 @@ export function ThemeAutoToggleWidget() {
             Automaticky měnit barvu appky
           </div>
           <p className="password-page__widget-subtitle mt-1 text-xs text-zinc-500">
-            DARK: 20:00 - 9:00.
+            Tmavý režim od soumraku do úsvitu.
           </p>
         </div>
 

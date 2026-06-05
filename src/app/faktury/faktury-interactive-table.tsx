@@ -587,7 +587,7 @@ function FinanceEditableCell({
             cancelEditing()
           }
         }}
-        className={`h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-[12px] font-semibold text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] ${textAlignClass}`}
+        className={`faktury-page__table-inline-edit-input h-8 w-full rounded-lg px-2 text-[12px] font-semibold outline-none transition ${textAlignClass}`}
       />
     )
   }
@@ -1282,7 +1282,7 @@ function CostItemsModal({
   const [savedSnapshot, setSavedSnapshot] = useState('')
   const [hasLoadedData, setHasLoadedData] = useState(false)
   const rowInputBaseClass =
-    'rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] outline-none transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]'
+    'faktury-page__costs-modal__row-input rounded-xl text-sm outline-none transition'
 
   function shouldCloseWithoutSaving() {
     if (!hasUnsavedChanges(rows, savedSnapshot)) {

@@ -678,7 +678,7 @@ function EditableCell({
               cancelEditing()
             }
           }}
-          className="h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-[12px] text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+          className="jobs-page__table-inline-edit-input h-8 w-full rounded-lg px-2 text-[12px] outline-none transition"
         />
       </td>
     )
@@ -906,7 +906,7 @@ function EditableCompanyCell({
             }
           }}
           autoComplete="off"
-          className="h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-[12px] text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+          className="jobs-page__table-inline-edit-input h-8 w-full rounded-lg px-2 text-[12px] outline-none transition"
         />
       </td>
     )

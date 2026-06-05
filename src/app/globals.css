@@ -8687,6 +8687,86 @@ html[data-theme='dark'] .jobs-page__table-shell .text-black {
   color: #f8fbff !important;
 }
 
+html[data-theme='light'] .jobs-page__table-shell .jobs-page__table-inline-edit-input {
+  border-color: rgba(255, 255, 255, 0.75) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(241, 245, 250, 0.88) 100%
+  ) !important;
+  color: #0f172a !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
+}
+
+html[data-theme='light'] .jobs-page__table-shell .jobs-page__table-inline-edit-input:focus {
+  border-color: #9dc7e5 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 0 0 2px rgba(185, 216, 239, 0.92) !important;
+}
+
+html[data-theme='dark'] .jobs-page__table-shell .jobs-page__table-inline-edit-input {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(10, 16, 28, 0.96) 0%,
+    rgba(8, 13, 23, 0.94) 100%
+  ) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(2, 6, 23, 0.14) !important;
+}
+
+html[data-theme='dark'] .jobs-page__table-shell .jobs-page__table-inline-edit-input:focus {
+  border-color: rgba(96, 165, 250, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 2px rgba(96, 165, 250, 0.18),
+    0 10px 22px rgba(2, 6, 23, 0.18) !important;
+}
+
+html[data-theme='light'] .faktury-page__table-shell .faktury-page__table-inline-edit-input {
+  border-color: #d6dee8 !important;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(247, 249, 252, 0.94) 100%
+  ) !important;
+  color: #0f172a !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='light'] .faktury-page__table-shell .faktury-page__table-inline-edit-input:focus {
+  border-color: #c2cfdd !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 0 2px rgba(219, 229, 239, 0.92) !important;
+}
+
+html[data-theme='dark'] .faktury-page__table-shell .faktury-page__table-inline-edit-input {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    165deg,
+    rgba(10, 16, 28, 0.96) 0%,
+    rgba(8, 13, 23, 0.94) 100%
+  ) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(2, 6, 23, 0.14) !important;
+}
+
+html[data-theme='dark'] .faktury-page__table-shell .faktury-page__table-inline-edit-input:focus {
+  border-color: rgba(96, 165, 250, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 2px rgba(96, 165, 250, 0.18),
+    0 10px 22px rgba(2, 6, 23, 0.18) !important;
+}
+
 html[data-theme='dark'] .jobs-page__job-edit-button {
   color: #f8fbff !important;
 }
@@ -10547,6 +10627,47 @@ html[data-theme='dark'] .faktury-page__costs-modal__close:hover {
 
 html[data-theme='light'] .faktury-page__costs-modal__mobile-finance-shell {
   border-color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme='light'] .faktury-page__costs-modal__row-input {
+  border-color: #d6dee8;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(247, 249, 252, 0.94) 100%
+  );
+  color: #0f172a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.12);
+}
+
+html[data-theme='light'] .faktury-page__costs-modal__row-input:focus {
+  border-color: #c2cfdd;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 0 2px rgba(219, 229, 239, 0.92);
+}
+
+html[data-theme='dark'] .faktury-page__costs-modal__row-input {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: linear-gradient(
+    165deg,
+    rgba(10, 16, 28, 0.96) 0%,
+    rgba(8, 13, 23, 0.94) 100%
+  );
+  color: #e2e8f0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(2, 6, 23, 0.14);
+}
+
+html[data-theme='dark'] .faktury-page__costs-modal__row-input:focus {
+  border-color: rgba(96, 165, 250, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 2px rgba(96, 165, 250, 0.18),
+    0 10px 22px rgba(2, 6, 23, 0.18);
 }
 
 html[data-theme='light'] .faktury-page__costs-modal__mobile-finance-shell > :not([hidden]) ~ :not([hidden]) {

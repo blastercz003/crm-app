@@ -5,6 +5,9 @@ export const THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY =
   'meeting-crm.theme-auto-override-until'
 export const THEME_PREFERENCES_CHANGED_EVENT = 'theme-preferences-changed'
 export const PRAGUE_TIME_ZONE = 'Europe/Prague'
+const PRAGUE_LATITUDE = 50.0755
+const PRAGUE_LONGITUDE = 14.4378
+const SUNSET_SUNRISE_ZENITH = 90.833
 
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type ThemeAppearanceMode = 'light' | 'dark'
@@ -70,6 +73,152 @@ function getTimeZoneOffsetMinutes(dateUtc: Date, timeZone: string) {
   return sign * (hours * 60 + minutes)
 }
 
+function isLeapYear(year: number) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+}
+
+function getPragueDayOfYear(dateParts: ReturnType<typeof getPragueDateParts>) {
+  const monthLengths = [31, isLeapYear(dateParts.year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+  return (
+    monthLengths
+      .slice(0, Math.max(0, dateParts.month - 1))
+      .reduce((sum, value) => sum + value, 0) + dateParts.day
+  )
+}
+
+function normalizeDegrees(value: number) {
+  let result = value % 360
+
+  if (result < 0) result += 360
+
+  return result
+}
+
+function normalizeHours(value: number) {
+  let result = value % 24
+
+  if (result < 0) result += 24
+
+  return result
+}
+
+function degreesToRadians(value: number) {
+  return (value * Math.PI) / 180
+}
+
+function radiansToDegrees(value: number) {
+  return (value * 180) / Math.PI
+}
+
+function decimalHoursToClockParts(decimalHours: number) {
+  let hour = Math.floor(decimalHours)
+  let minute = Math.round((decimalHours - hour) * 60)
+
+  if (minute >= 60) {
+    hour += 1
+    minute -= 60
+  }
+
+  return { hour, minute }
+}
+
+function getPragueUtcOffsetMinutesForDate(dateParts: ReturnType<typeof getPragueDateParts>) {
+  const noonUtc = getPragueDateForWallTime(dateParts.year, dateParts.month, dateParts.day, 12)
+  return getTimeZoneOffsetMinutes(noonUtc, PRAGUE_TIME_ZONE)
+}
+
+function calculatePragueSunEventUtcHours(
+  dateParts: ReturnType<typeof getPragueDateParts>,
+  event: 'sunrise' | 'sunset',
+) {
+  const dayOfYear = getPragueDayOfYear(dateParts)
+  const lngHour = PRAGUE_LONGITUDE / 15
+  const approxTime = dayOfYear + ((event === 'sunrise' ? 6 : 18) - lngHour) / 24
+  const meanAnomaly = 0.9856 * approxTime - 3.289
+  const trueLongitude = normalizeDegrees(
+    meanAnomaly +
+      1.916 * Math.sin(degreesToRadians(meanAnomaly)) +
+      0.02 * Math.sin(degreesToRadians(2 * meanAnomaly)) +
+      282.634
+  )
+  let rightAscension = radiansToDegrees(
+    Math.atan(0.91764 * Math.tan(degreesToRadians(trueLongitude)))
+  )
+  rightAscension = normalizeDegrees(rightAscension)
+
+  const longitudeQuadrant = Math.floor(trueLongitude / 90) * 90
+  const rightAscensionQuadrant = Math.floor(rightAscension / 90) * 90
+  rightAscension = (rightAscension + longitudeQuadrant - rightAscensionQuadrant) / 15
+
+  const sinDec = 0.39782 * Math.sin(degreesToRadians(trueLongitude))
+  const cosDec = Math.cos(Math.asin(sinDec))
+  const cosHourAngle =
+    (Math.cos(degreesToRadians(SUNSET_SUNRISE_ZENITH)) -
+      sinDec * Math.sin(degreesToRadians(PRAGUE_LATITUDE))) /
+    (cosDec * Math.cos(degreesToRadians(PRAGUE_LATITUDE)))
+
+  if (cosHourAngle > 1 || cosHourAngle < -1) return null
+
+  let hourAngle =
+    event === 'sunrise'
+      ? 360 - radiansToDegrees(Math.acos(cosHourAngle))
+      : radiansToDegrees(Math.acos(cosHourAngle))
+  hourAngle /= 15
+
+  const localMeanTime = hourAngle + rightAscension - 0.06571 * approxTime - 6.622
+  return normalizeHours(localMeanTime - lngHour)
+}
+
+function getPragueSunTimes(dateUtc: Date = new Date()) {
+  const dateParts = getPragueDateParts(dateUtc)
+  const offsetMinutes = getPragueUtcOffsetMinutesForDate(dateParts)
+  const offsetHours = offsetMinutes / 60
+  const sunriseUtcHours = calculatePragueSunEventUtcHours(dateParts, 'sunrise')
+  const sunsetUtcHours = calculatePragueSunEventUtcHours(dateParts, 'sunset')
+
+  if (sunriseUtcHours === null || sunsetUtcHours === null) return null
+
+  const sunriseLocalHours = normalizeHours(sunriseUtcHours + offsetHours)
+  const sunsetLocalHours = normalizeHours(sunsetUtcHours + offsetHours)
+  const sunriseClockParts = decimalHoursToClockParts(sunriseLocalHours)
+  const sunsetClockParts = decimalHoursToClockParts(sunsetLocalHours)
+
+  return {
+    sunriseAt: getPragueDateForWallTime(
+      dateParts.year,
+      dateParts.month,
+      dateParts.day,
+      sunriseClockParts.hour,
+      sunriseClockParts.minute
+    ),
+    sunsetAt: getPragueDateForWallTime(
+      dateParts.year,
+      dateParts.month,
+      dateParts.day,
+      sunsetClockParts.hour,
+      sunsetClockParts.minute
+    ),
+  }
+}
+
+function getFallbackAutoThemeChangeAt(nowUtc: Date = new Date()) {
+  const prague = getPragueDateParts(nowUtc)
+
+  if (prague.hour < 9) {
+    return getPragueDateForWallTime(prague.year, prague.month, prague.day, 9)
+  }
+
+  if (prague.hour < 20) {
+    return getPragueDateForWallTime(prague.year, prague.month, prague.day, 20)
+  }
+
+  const tomorrowBase = new Date(Date.UTC(prague.year, prague.month - 1, prague.day + 1, 12, 0, 0))
+  const tomorrow = getPragueDateParts(tomorrowBase)
+
+  return getPragueDateForWallTime(tomorrow.year, tomorrow.month, tomorrow.day, 9)
+}
+
 export function getPragueDateParts(dateUtc: Date = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: PRAGUE_TIME_ZONE,
@@ -117,20 +266,25 @@ export function getPragueDateForWallTime(
 }
 
 export function getNextAutoThemeChangeAt(nowUtc: Date = new Date()) {
+  const sunTimes = getPragueSunTimes(nowUtc)
+
+  if (!sunTimes) return getFallbackAutoThemeChangeAt(nowUtc)
+
+  const nowMs = nowUtc.getTime()
+
+  if (nowMs < sunTimes.sunriseAt.getTime()) {
+    return sunTimes.sunriseAt
+  }
+
+  if (nowMs < sunTimes.sunsetAt.getTime()) {
+    return sunTimes.sunsetAt
+  }
+
   const prague = getPragueDateParts(nowUtc)
-
-  if (prague.hour < 9) {
-    return getPragueDateForWallTime(prague.year, prague.month, prague.day, 9)
-  }
-
-  if (prague.hour < 20) {
-    return getPragueDateForWallTime(prague.year, prague.month, prague.day, 20)
-  }
-
   const tomorrowBase = new Date(Date.UTC(prague.year, prague.month - 1, prague.day + 1, 12, 0, 0))
-  const tomorrow = getPragueDateParts(tomorrowBase)
+  const tomorrowSunTimes = getPragueSunTimes(tomorrowBase)
 
-  return getPragueDateForWallTime(tomorrow.year, tomorrow.month, tomorrow.day, 9)
+  return tomorrowSunTimes?.sunriseAt ?? getFallbackAutoThemeChangeAt(nowUtc)
 }
 
 export function isThemeAutoOverrideActive(
@@ -159,8 +313,17 @@ export function resolveThemeAppearanceMode(
     return preferences.themeAutoOverrideMode ?? DEFAULT_THEME_MODE
   }
 
-  const prague = getPragueDateParts(nowUtc)
-  return prague.hour >= 20 || prague.hour < 9 ? 'dark' : 'light'
+  const sunTimes = getPragueSunTimes(nowUtc)
+
+  if (!sunTimes) {
+    const prague = getPragueDateParts(nowUtc)
+    return prague.hour >= 20 || prague.hour < 9 ? 'dark' : 'light'
+  }
+
+  const nowMs = nowUtc.getTime()
+  return nowMs >= sunTimes.sunriseAt.getTime() && nowMs < sunTimes.sunsetAt.getTime()
+    ? 'light'
+    : 'dark'
 }
 
 export function readStoredThemePreferences(): ThemePreferences {

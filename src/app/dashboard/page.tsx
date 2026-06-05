@@ -1618,7 +1618,7 @@ export default async function DashboardPage() {
                 </svg>
               </Link>
             </div>
-            <div className="self-end text-right md:self-auto md:text-left">v2.3.0</div>
+            <div className="self-end text-right md:self-auto md:text-left">v3.0.1</div>
           </div>
         </footer>
       </div>
