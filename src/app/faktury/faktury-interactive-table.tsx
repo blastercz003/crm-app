@@ -1633,11 +1633,11 @@ function CostItemsModal({
                                 Položka
                               </div>
                               {row.isBase ? (
-                                <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3">
-                                  <span className="block min-w-0 truncate text-sm font-medium text-gray-900">
+                                <div className="faktury-page__costs-modal__base-row flex h-10 items-center justify-between gap-2 rounded-xl border px-3">
+                                  <span className="faktury-page__costs-modal__base-row-label block min-w-0 truncate text-sm font-medium">
                                     {row.label}
                                   </span>
-                                  <span className="faktury-page__costs-modal__base-pill shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
+                                  <span className="faktury-page__costs-modal__base-pill shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em]">
                                     Základ
                                   </span>
                                 </div>
@@ -1732,9 +1732,9 @@ function CostItemsModal({
                               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                                 Cena
                               </div>
-                              <div className="flex h-10 items-center justify-end rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-3">
+                              <div className="faktury-page__costs-modal__summary-value flex h-10 items-center justify-end rounded-xl border px-3">
                                 <span
-                                  className={`text-sm font-semibold ${
+                                  className={`faktury-page__costs-modal__summary-value-text text-sm font-semibold ${
                                     hasValidTotal ? 'text-gray-900' : 'text-red-600'
                                   }`}
                                 >
@@ -1840,7 +1840,7 @@ function CostItemsModal({
                       <tr>
                         <td
                           colSpan={6}
-                          className="border-b border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-10 text-center text-sm text-gray-500"
+                          className="faktury-page__costs-modal__loading-state border-b px-4 py-10 text-center text-sm"
                         >
                           Načítám nákladové položky...
                         </td>
@@ -1866,11 +1866,11 @@ function CostItemsModal({
                           <tr key={row.id} className="faktury-page__costs-modal__table-row border-t border-white/70">
                             <td className="border-b border-white/70 px-3 py-3 align-middle">
                               {row.isBase ? (
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="block min-w-0 truncate text-sm font-medium text-gray-900">
+                                <div className="faktury-page__costs-modal__base-row flex items-center justify-between gap-3">
+                                  <span className="faktury-page__costs-modal__base-row-label block min-w-0 truncate text-sm font-medium">
                                     {row.label}
                                   </span>
-                                  <span className="faktury-page__costs-modal__base-pill shrink-0 rounded-full border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
+                                  <span className="faktury-page__costs-modal__base-pill shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em]">
                                     Základ
                                   </span>
                                 </div>
@@ -1964,7 +1964,7 @@ function CostItemsModal({
 
                             <td className="border-b border-white/70 px-3 py-3 align-middle text-right">
                               <span
-                                className={`ml-auto block w-[108px] text-right text-sm font-semibold ${
+                                className={`faktury-page__costs-modal__summary-value-text ml-auto block w-[108px] text-right text-sm font-semibold ${
                                   hasValidTotal ? 'text-gray-900' : 'text-red-600'
                                 }`}
                               >
