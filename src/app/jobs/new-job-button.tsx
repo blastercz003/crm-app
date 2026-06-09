@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/action-feedback-toast'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { TechnicianNamesInput } from './technician-names-input'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
@@ -52,6 +53,7 @@ type NewJobButtonProps = {
   clientSuggestions: ClientOption[]
   clientContacts?: ClientContactOption[]
   offerSuggestions?: OfferOption[]
+  technicianSuggestions?: string[]
   className?: string
   isAdmin?: boolean
 }
@@ -65,6 +67,7 @@ export function NewJobButton({
   clientSuggestions,
   clientContacts = [],
   offerSuggestions = [],
+  technicianSuggestions = [],
   className,
   isAdmin = true,
 }: NewJobButtonProps) {
@@ -107,6 +110,7 @@ export function NewJobButton({
           clientSuggestions={clientSuggestions}
           clientContacts={clientContacts}
           offerSuggestions={offerSuggestions}
+          technicianSuggestions={technicianSuggestions}
           onClose={closeModal}
           onSuccess={(state) => showToast(buildJobCreatedToast(state))}
         />
@@ -121,12 +125,14 @@ export function CreateJobModal({
   clientSuggestions,
   clientContacts,
   offerSuggestions,
+  technicianSuggestions,
   onClose,
   onSuccess,
 }: {
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
   offerSuggestions: OfferOption[]
+  technicianSuggestions: string[]
   onClose: () => void
   onSuccess?: (state: CreateJobActionState) => void
 }) {
@@ -145,6 +151,7 @@ export function CreateJobModal({
       clientSuggestions={clientSuggestions}
       clientContacts={clientContacts}
       offerSuggestions={offerSuggestions}
+      technicianSuggestions={technicianSuggestions}
       onClose={onClose}
       error={state.error}
       formAction={formAction}
@@ -157,6 +164,7 @@ function JobFormShell({
   clientSuggestions,
   clientContacts,
   offerSuggestions,
+  technicianSuggestions,
   onClose,
   error,
   formAction,
@@ -166,6 +174,7 @@ function JobFormShell({
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
   offerSuggestions: OfferOption[]
+  technicianSuggestions: string[]
   onClose: () => void
   error: string | null
   formAction: (payload: FormData) => void
@@ -205,6 +214,7 @@ function JobFormShell({
   const [selectedContactId, setSelectedContactId] = useState(job?.client_contact_id ?? '')
   const [selectedOfferId, setSelectedOfferId] = useState('')
   const [contactPerson, setContactPerson] = useState(job?.contact_person ?? '')
+  const [technicianName, setTechnicianName] = useState(job?.technician_name ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
@@ -412,6 +422,7 @@ function JobFormShell({
               name="company_name"
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
+            <input type="hidden" name="technician_name" value={technicianName} />
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
@@ -634,12 +645,12 @@ function JobFormShell({
                       >
                         Technik
                       </label>
-                      <input
+                      <TechnicianNamesInput
                         id={`${mode}-technician_name`}
-                        name="technician_name"
-                        type="text"
-                        defaultValue={job?.technician_name ?? ''}
-                        placeholder="Odpovědný pracovník"
+                        value={technicianName}
+                        onValueChange={setTechnicianName}
+                        technicians={technicianSuggestions}
+                        placeholder="Zadej jedno nebo více jmen techniků"
                         className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>

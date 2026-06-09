@@ -32,9 +32,49 @@ export default function ChangePasswordPage() {
   const [todayJobsEnabled, setTodayJobsEnabled] = useState(() =>
     readDashboardTodayJobsEnabled()
   )
+  const [profileRole, setProfileRole] = useState<string | null>(null)
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false)
+  const isTechnik = isProfileLoaded && profileRole === 'TECHNIK'
 
   useEffect(() => {
     document.title = buildPageTitle('Nastavení')
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadProfileRole() {
+      const {
+        data: { user },
+      } = await createClient().auth.getUser()
+
+      if (!user) {
+        if (!cancelled) {
+          setIsProfileLoaded(true)
+        }
+        return
+      }
+
+      const { data, error } = await createClient()
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single<{ role: string | null }>()
+
+      if (!cancelled) {
+        if (!error && data) {
+          setProfileRole(data.role)
+        }
+
+        setIsProfileLoaded(true)
+      }
+    }
+
+    void loadProfileRole()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -108,122 +148,137 @@ export default function ChangePasswordPage() {
               WIDGETY
             </div>
             <div className="mt-3 space-y-4">
-              <p className="password-page__text text-sm text-zinc-500">
-                Zde můžeš zapnout nebo vypnout widgety na Dashboardu.
-              </p>
+              {!isProfileLoaded ? (
+                <p className="password-page__text text-sm text-zinc-500">
+                  Načítám dostupné widgety...
+                </p>
+              ) : isTechnik ? (
+                <>
+                  <p className="password-page__text text-sm text-zinc-500">
+                    Pro tuto roli je dostupné jen automatické přepínání vzhledu appky.
+                  </p>
+                  <ThemeAutoToggleWidget />
+                </>
+              ) : (
+                <>
+                  <p className="password-page__text text-sm text-zinc-500">
+                    Zde můžeš zapnout nebo vypnout widgety na Dashboardu.
+                  </p>
 
-              <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
-                      Tlačítko Rychlých akcí &quot;+&quot;
+                  <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
+                          Tlačítko Rychlých akcí &quot;+&quot;
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="password-page__toggle-state text-xs font-semibold text-zinc-600">
+                          {quickCreateEnabled ? 'Aktivní' : 'Neaktivní'}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={quickCreateEnabled}
+                          onClick={() => {
+                            const nextValue = !quickCreateEnabled
+                            setQuickCreateEnabled(nextValue)
+                            writeDashboardQuickCreateEnabled(nextValue)
+                          }}
+                          className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
+                            quickCreateEnabled
+                              ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
+                              : 'border-zinc-300 bg-zinc-200/90'
+                          }`}
+                        >
+                          <span
+                            className={`password-page__toggle-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
+                              quickCreateEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="password-page__toggle-state text-xs font-semibold text-zinc-600">
-                      {quickCreateEnabled ? 'Aktivní' : 'Neaktivní'}
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={quickCreateEnabled}
-                      onClick={() => {
-                        const nextValue = !quickCreateEnabled
-                        setQuickCreateEnabled(nextValue)
-                        writeDashboardQuickCreateEnabled(nextValue)
-                      }}
-                      className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
-                        quickCreateEnabled
-                          ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
-                          : 'border-zinc-300 bg-zinc-200/90'
-                      }`}
-                    >
-                      <span
-                        className={`password-page__toggle-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
-                          quickCreateEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                  <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
+                          Tlačítko Rychlé poznámky
+                        </div>
+                      </div>
 
-              <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
-                      Tlačítko Rychlé poznámky
+                      <div className="flex items-center gap-3">
+                        <span className="password-page__toggle-state text-xs font-semibold text-zinc-600">
+                          {quickNotesEnabled ? 'Aktivní' : 'Neaktivní'}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={quickNotesEnabled}
+                          onClick={() => {
+                            const nextValue = !quickNotesEnabled
+                            setQuickNotesEnabled(nextValue)
+                            writeDashboardQuickNotesEnabled(nextValue)
+                          }}
+                          className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
+                            quickNotesEnabled
+                              ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
+                              : 'border-zinc-300 bg-zinc-200/90'
+                          }`}
+                        >
+                          <span
+                            className={`password-page__toggle-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
+                              quickNotesEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="password-page__toggle-state text-xs font-semibold text-zinc-600">
-                      {quickNotesEnabled ? 'Aktivní' : 'Neaktivní'}
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={quickNotesEnabled}
-                      onClick={() => {
-                        const nextValue = !quickNotesEnabled
-                        setQuickNotesEnabled(nextValue)
-                        writeDashboardQuickNotesEnabled(nextValue)
-                      }}
-                      className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
-                        quickNotesEnabled
-                          ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
-                          : 'border-zinc-300 bg-zinc-200/90'
-                      }`}
-                    >
-                      <span
-                        className={`password-page__toggle-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
-                          quickNotesEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                  <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
+                          Tlačítko Dnešní zakázky
+                        </div>
+                      </div>
 
-              <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
-                      Tlačítko Dnešní zakázky
+                      <div className="flex items-center gap-3">
+                        <span className="password-page__toggle-state text-xs font-semibold text-zinc-600">
+                          {todayJobsEnabled ? 'Aktivní' : 'Neaktivní'}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={todayJobsEnabled}
+                          onClick={() => {
+                            const nextValue = !todayJobsEnabled
+                            setTodayJobsEnabled(nextValue)
+                            writeDashboardTodayJobsEnabled(nextValue)
+                          }}
+                          className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
+                            todayJobsEnabled
+                              ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
+                              : 'border-zinc-300 bg-zinc-200/90'
+                          }`}
+                        >
+                          <span
+                            className={`password-page__toggle-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
+                              todayJobsEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="password-page__toggle-state text-xs font-semibold text-zinc-600">
-                      {todayJobsEnabled ? 'Aktivní' : 'Neaktivní'}
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={todayJobsEnabled}
-                      onClick={() => {
-                        const nextValue = !todayJobsEnabled
-                        setTodayJobsEnabled(nextValue)
-                        writeDashboardTodayJobsEnabled(nextValue)
-                      }}
-                      className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 ${
-                        todayJobsEnabled
-                          ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
-                          : 'border-zinc-300 bg-zinc-200/90'
-                      }`}
-                    >
-                      <span
-                        className={`password-page__toggle-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
-                          todayJobsEnabled ? 'translate-x-[24px]' : 'translate-x-[2px]'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <ThemeAutoToggleWidget />
+                  <ThemeAutoToggleWidget />
+                </>
+              )}
             </div>
           </section>
 

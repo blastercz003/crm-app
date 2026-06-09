@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
+import { Plug } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getAssignableUsers } from '@/lib/users/getAssignableUsers'
 import { endTaskRecurrence, updateTaskStatus } from '@/app/tasks/actions'
@@ -24,6 +25,7 @@ import { DashboardMyOffersModule } from '@/components/dashboard/dashboard-my-off
 import { DashboardMyTasksModule } from '@/components/dashboard/dashboard-my-tasks-module'
 import { DashboardMyMeetingsModule } from '@/components/dashboard/dashboard-my-meetings-module'
 import { DashboardSectionLinks } from '@/components/dashboard/dashboard-section-links'
+import { DashboardHandoverProtocolUploadLauncher } from '@/components/dashboard/dashboard-handover-protocol-upload-launcher'
 import {
   getCurrentUserNotificationStats,
   getCurrentUserNotifications,
@@ -39,8 +41,16 @@ import {
   DashboardGlobalSearchProvider,
 } from './dashboard-global-search'
 import {
+  canViewHandoverProtocolUploadSection,
+  isTechnikRole,
+} from '@/lib/auth/access'
+import {
   type ThemePreferences,
 } from '@/lib/theme/theme-preference'
+import {
+  getHandoverProtocolUploadJobOptions,
+  type HandoverProtocolUploadJobOption as DashboardHandoverProtocolUploadJobOption,
+} from './handover-protocol-upload-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,6 +90,77 @@ function DashboardActionLink({
   )
 }
 
+function TechnicianSectionLinks({
+  canViewTechJobs,
+  canViewConnectionPoints,
+  canViewHandoverProtocolUpload,
+  handoverProtocolUploadJobs,
+}: {
+  canViewTechJobs: boolean
+  canViewConnectionPoints: boolean
+  canViewHandoverProtocolUpload: boolean
+  handoverProtocolUploadJobs: DashboardHandoverProtocolUploadJobOption[]
+}) {
+  const items = [
+    canViewTechJobs
+      ? {
+          key: 'tech-jobs',
+          href: '/zakazky-techniku',
+          label: 'Moje zakázky',
+          icon: (
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="3" y="6" width="18" height="14" rx="2.4" />
+              <path d="M9 6V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V6" />
+              <path d="M3 11h18" />
+            </svg>
+          ),
+        }
+      : null,
+    canViewConnectionPoints
+      ? {
+          key: 'connection-points',
+          href: '/pripojne-body',
+          label: 'Přípojné body',
+          icon: (
+            <Plug className="h-6 w-6" strokeWidth={1.9} />
+          ),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string
+    href: string
+    label: string
+    icon: ReactNode
+  }>
+
+  if (items.length === 0 && !canViewHandoverProtocolUpload) return null
+
+  return (
+    <section className="px-1 py-1 sm:px-2">
+      <div className="grid grid-cols-3 gap-3 lg:flex lg:justify-center lg:gap-7">
+        {items.map((item) => (
+          <Link
+            key={item.key}
+            href={item.href}
+            className="dashboard-section-link group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-2.5 overflow-visible rounded-2xl px-2 py-3 text-center text-[#0b1d2c] transition lg:w-[170px]"
+          >
+            <span className="dashboard-section-link__icon relative inline-flex h-[74px] w-[74px] items-center justify-center rounded-[18px] border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.35),0_10px_22px_rgba(9,48,82,0.28)] backdrop-blur-xl transition-all duration-200 ease-out lg:h-[82px] lg:w-[82px] lg:group-hover:-translate-y-[2px]">
+              {item.icon}
+            </span>
+            <span className="dashboard-section-link__label truncate text-[13px] font-semibold uppercase tracking-[0.01em] leading-tight lg:text-[15px]">
+              {item.label}
+            </span>
+          </Link>
+        ))}
+
+        {canViewHandoverProtocolUpload ? (
+          <DashboardHandoverProtocolUploadLauncher jobs={handoverProtocolUploadJobs} />
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
 type ProfileRef = {
   id: string
   name: string | null
@@ -91,6 +172,9 @@ type DashboardProfile = {
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
   can_view_offers: boolean | null
+  can_view_tech_jobs: boolean | null
+  can_view_connection_points: boolean | null
+  can_view_handover_protocol_upload: boolean | null
 }
 
 type DashboardThemePreference = {
@@ -991,7 +1075,7 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers'
+      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_handover_protocol_upload'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
@@ -1019,6 +1103,13 @@ export default async function DashboardPage() {
   const today = new Date()
   const nowIso = today.toISOString()
   const isAdmin = profile?.role === 'admin'
+  const isTechnik = isTechnikRole(profile?.role ?? null)
+  const canViewTechJobs = isTechnik || Boolean(profile?.can_view_tech_jobs)
+  const canViewConnectionPoints =
+    isTechnik || Boolean(profile?.can_view_connection_points)
+  const canViewHandoverProtocolUpload =
+    isTechnik ||
+    canViewHandoverProtocolUploadSection(profile?.role ?? null, profile)
   const initialThemePreferences: ThemePreferences = {
     themeMode: themePreference?.theme_mode ?? 'light',
     themeAutoOverrideMode: themePreference?.theme_auto_override_mode ?? null,
@@ -1297,6 +1388,20 @@ export default async function DashboardPage() {
 
   const orderedOffersCount = Number(orderedOffersCountResponse.count ?? 0)
 
+  let handoverProtocolUploadJobs: DashboardHandoverProtocolUploadJobOption[] = []
+
+  if (canViewHandoverProtocolUpload) {
+    const uploadJobOptions = await getHandoverProtocolUploadJobOptions(user.id)
+    handoverProtocolUploadJobs = uploadJobOptions.map((job) => ({
+      id: job.id,
+      jobNumber: job.jobNumber,
+      companyName: job.companyName,
+      siteAddress: job.siteAddress,
+      startAt: job.startAt,
+      showInHandoverProtocolUpload: job.showInHandoverProtocolUpload,
+    }))
+  }
+
   const quickActionClients = (clientsResponse.data ?? []) as DashboardClientOption[]
   const quickActionContacts =
     (contactsResponse.data ?? []) as DashboardClientContactOption[]
@@ -1383,10 +1488,10 @@ export default async function DashboardPage() {
             aria-hidden
             className="dashboard-shell__glow--bottom-left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full blur-3xl"
           />
-          <main className="relative z-10 flex-1">
+          <main className="relative z-10 flex flex-1 flex-col">
             <AppBadgeSync count={notificationStats.unread} />
             <DashboardStartupReadyBridge />
-            <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="dashboard-card dashboard-card--strong rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-center lg:justify-start">
@@ -1437,149 +1542,171 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <DashboardSectionLinks
-          canViewJobs={Boolean(profile?.can_view_jobs)}
-          canViewJobsPortal={Boolean(profile?.can_view_jobs_portal)}
-          canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
-          isAdmin={isAdmin}
-          offersOrderedCount={orderedOffersCount}
-        />
+        {canViewTechJobs || canViewConnectionPoints || canViewHandoverProtocolUpload ? (
+          <TechnicianSectionLinks
+            canViewTechJobs={canViewTechJobs}
+            canViewConnectionPoints={canViewConnectionPoints}
+            canViewHandoverProtocolUpload={canViewHandoverProtocolUpload}
+            handoverProtocolUploadJobs={handoverProtocolUploadJobs}
+          />
+        ) : null}
 
-        <DashboardGlobalSearchBody>
-          <div className="grid gap-6 xl:grid-cols-3">
-          <div className="contents xl:block xl:space-y-6">
-            {isAdmin || profile?.can_view_offers ? (
-              <div className="order-1 xl:order-none">
-              <DashboardMyOffersModule
-                  className="dashboard-card dashboard-card--strong dashboard-offers-module"
-                  offers={dashboardOfferPreviews}
-                  currentUserId={user.id}
-                  isAdmin={isAdmin}
-                />
-              </div>
-            ) : null}
-
-            {SHOW_DASHBOARD_MINI_CALENDAR ? (
-              <div className="order-3 xl:order-none">
-                <DashboardMiniCalendar meetings={monthMeetings} />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="contents xl:block xl:space-y-6">
-            <section className="dashboard-card order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <DashboardSectionHeader
-                  eyebrow="Úkoly"
-                  title="Moje úkoly"
-                  href="/tasks"
-                />
-              </div>
-
-              <DashboardMyTasksModule
-                  allContent={
-                  visibleAllTasks.length === 0 ? (
-                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                      Nemáš žádné úkoly.
-                    </div>
-                  ) : (
-                    <div className="grid gap-3">
-                      {visibleAllTasks.map((task) => (
-                        <DashboardTaskItem key={task.id} task={task} />
-                      ))}
-                    </div>
-                  )
-                }
-                activeContent={
-                  visibleActiveTasks.length === 0 ? (
-                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                      Nemáš žádné aktivní úkoly.
-                    </div>
-                  ) : (
-                    <div className="grid gap-3">
-                      {visibleActiveTasks.map((task) => (
-                        <DashboardTaskItem key={task.id} task={task} />
-                      ))}
-                    </div>
-                  )
-                }
-                overdueContent={
-                  visibleOverdueTasks.length === 0 ? (
-                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                      Nemáš žádné úkoly po termínu.
-                    </div>
-                  ) : (
-                    <div className="grid gap-3">
-                      {visibleOverdueTasks.map((task) => (
-                        <DashboardTaskItem key={task.id} task={task} />
-                      ))}
-                    </div>
-                  )
-                }
-              />
-            </section>
-          </div>
-
-          <div className="contents xl:block xl:space-y-6">
-            <section className="dashboard-card order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <DashboardSectionHeader
-                  eyebrow="Schůzky"
-                  title="Moje schůzky"
-                  href="/meetings"
-                />
-              </div>
-
-              <DashboardMyMeetingsModule
-                todayContent={
-                  todayMeetings.length === 0 ? (
-                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                      Nemáš žádné schůzky dnes.
-                    </div>
-                  ) : (
-                    <div className="grid gap-2.5">
-                      {todayMeetings.map((meeting) => (
-                        <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                      ))}
-                    </div>
-                  )
-                }
-                weekContent={
-                  weeklyMeetings.length === 0 ? (
-                    <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                      Nemáš žádné nadcházející schůzky.
-                    </div>
-                  ) : (
-                    <div className="grid gap-2.5">
-                      {weeklyMeetings.map((meeting) => (
-                        <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                      ))}
-                    </div>
-                  )
-                }
-              />
-            </section>
-
-            <DashboardUserPanel
-              profileName={profile?.name ?? null}
-              profileRole={profile?.role ?? null}
-              userEmail={user.email ?? ''}
-              className="order-6 lg:hidden xl:order-none"
+        {isTechnik ? null : (
+          <>
+            <DashboardSectionLinks
+              canViewJobs={Boolean(profile?.can_view_jobs)}
+              canViewJobsPortal={Boolean(profile?.can_view_jobs_portal)}
+              canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
+              isAdmin={isAdmin}
+              offersOrderedCount={orderedOffersCount}
             />
-          </div>
-          </div>
-        </DashboardGlobalSearchBody>
-        <DashboardMobileQuickActions
-          users={assignableUsers}
-          clients={quickActionClients}
-          contacts={quickActionContacts}
-          offers={quickActionOffers}
-          canViewJobs={Boolean(profile?.can_view_jobs)}
-          canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
-          canCreateJobs={isAdmin}
-          isAdmin={isAdmin}
-          receivedInvoicesDueCount={receivedInvoicesDueCount}
-        />
+
+            <DashboardGlobalSearchBody>
+              <div className="grid gap-6 xl:grid-cols-3">
+              <div className="contents xl:block xl:space-y-6">
+                {isAdmin || profile?.can_view_offers ? (
+                  <div className="order-1 xl:order-none">
+                  <DashboardMyOffersModule
+                      className="dashboard-card dashboard-card--strong dashboard-offers-module"
+                      offers={dashboardOfferPreviews}
+                      currentUserId={user.id}
+                      isAdmin={isAdmin}
+                    />
+                  </div>
+                ) : null}
+
+                {SHOW_DASHBOARD_MINI_CALENDAR ? (
+                  <div className="order-3 xl:order-none">
+                    <DashboardMiniCalendar meetings={monthMeetings} />
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="contents xl:block xl:space-y-6">
+                <section className="dashboard-card order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <DashboardSectionHeader
+                      eyebrow="Úkoly"
+                      title="Moje úkoly"
+                      href="/tasks"
+                    />
+                  </div>
+
+                  <DashboardMyTasksModule
+                      allContent={
+                      visibleAllTasks.length === 0 ? (
+                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                          Nemáš žádné úkoly.
+                        </div>
+                      ) : (
+                        <div className="grid gap-3">
+                          {visibleAllTasks.map((task) => (
+                            <DashboardTaskItem key={task.id} task={task} />
+                          ))}
+                        </div>
+                      )
+                    }
+                    activeContent={
+                      visibleActiveTasks.length === 0 ? (
+                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                          Nemáš žádné aktivní úkoly.
+                        </div>
+                      ) : (
+                        <div className="grid gap-3">
+                          {visibleActiveTasks.map((task) => (
+                            <DashboardTaskItem key={task.id} task={task} />
+                          ))}
+                        </div>
+                      )
+                    }
+                    overdueContent={
+                      visibleOverdueTasks.length === 0 ? (
+                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                          Nemáš žádné úkoly po termínu.
+                        </div>
+                      ) : (
+                        <div className="grid gap-3">
+                          {visibleOverdueTasks.map((task) => (
+                            <DashboardTaskItem key={task.id} task={task} />
+                          ))}
+                        </div>
+                      )
+                    }
+                  />
+                </section>
+              </div>
+
+              <div className="contents xl:block xl:space-y-6">
+                <section className="dashboard-card order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <DashboardSectionHeader
+                      eyebrow="Schůzky"
+                      title="Moje schůzky"
+                      href="/meetings"
+                    />
+                  </div>
+
+                  <DashboardMyMeetingsModule
+                    todayContent={
+                      todayMeetings.length === 0 ? (
+                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                          Nemáš žádné schůzky dnes.
+                        </div>
+                      ) : (
+                        <div className="grid gap-2.5">
+                          {todayMeetings.map((meeting) => (
+                            <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                          ))}
+                        </div>
+                      )
+                    }
+                    weekContent={
+                      weeklyMeetings.length === 0 ? (
+                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                          Nemáš žádné nadcházející schůzky.
+                        </div>
+                      ) : (
+                        <div className="grid gap-2.5">
+                          {weeklyMeetings.map((meeting) => (
+                            <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                          ))}
+                        </div>
+                      )
+                    }
+                  />
+                </section>
+
+                <DashboardUserPanel
+                  profileName={profile?.name ?? null}
+                  profileRole={profile?.role ?? null}
+                  userEmail={user.email ?? ''}
+                  className="order-6 lg:hidden xl:order-none"
+                />
+              </div>
+              </div>
+            </DashboardGlobalSearchBody>
+            <DashboardMobileQuickActions
+              users={assignableUsers}
+              clients={quickActionClients}
+              contacts={quickActionContacts}
+              offers={quickActionOffers}
+              canViewJobs={Boolean(profile?.can_view_jobs)}
+              canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
+              canCreateJobs={isAdmin}
+              isAdmin={isAdmin}
+              receivedInvoicesDueCount={receivedInvoicesDueCount}
+            />
+          </>
+        )}
+
+        {isTechnik ? (
+          <DashboardUserPanel
+            profileName={profile?.name ?? null}
+            profileRole={profile?.role ?? null}
+            userEmail={user.email ?? ''}
+            className="mt-auto lg:hidden"
+          />
+        ) : null}
           </div>
           </main>
         </div>
@@ -1588,35 +1715,37 @@ export default async function DashboardPage() {
           <div className="dashboard-footer__content mx-auto flex w-full max-w-[1920px] flex-col gap-1 text-xs text-white/70 md:flex-row md:items-center md:justify-between md:gap-3">
             <div className="flex items-center gap-3 whitespace-nowrap">
               <DashboardThemeToggle initialThemePreferences={initialThemePreferences} />
-              <Link
-                href="/snake"
-                aria-label="Otevřít hru Snake"
-                title="Snake"
-                className="dashboard-footer__link inline-flex h-4 w-4 items-center justify-center text-white/70 transition hover:text-white"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 scale-[1.42]"
-                  fill="none"
-                  aria-hidden="true"
+              {!isTechnik ? (
+                <Link
+                  href="/snake"
+                  aria-label="Otevřít hru Snake"
+                  title="Snake"
+                  className="dashboard-footer__link inline-flex h-4 w-4 items-center justify-center text-white/70 transition hover:text-white"
                 >
-                  <path
-                    d="M8.1 8.2h7.8c1.6 0 2.6.9 3 2.3l.9 3.1c.4 1.6-.6 3.1-2.2 3.1-.8 0-1.5-.4-1.9-1l-1-1.5h-5.4l-1 1.5c-.4.6-1.1 1-1.9 1-1.6 0-2.7-1.5-2.2-3.1l.9-3.1c.4-1.4 1.4-2.3 3-2.3Z"
-                    stroke="currentColor"
-                    strokeWidth="1.65"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M9 11.4v2.2M7.9 12.5h2.2"
-                    stroke="currentColor"
-                    strokeWidth="1.55"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="15.3" cy="11.8" r="0.85" fill="currentColor" />
-                  <circle cx="17.1" cy="13.2" r="0.85" fill="currentColor" />
-                </svg>
-              </Link>
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 scale-[1.42]"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M8.1 8.2h7.8c1.6 0 2.6.9 3 2.3l.9 3.1c.4 1.6-.6 3.1-2.2 3.1-.8 0-1.5-.4-1.9-1l-1-1.5h-5.4l-1 1.5c-.4.6-1.1 1-1.9 1-1.6 0-2.7-1.5-2.2-3.1l.9-3.1c.4-1.4 1.4-2.3 3-2.3Z"
+                      stroke="currentColor"
+                      strokeWidth="1.65"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9 11.4v2.2M7.9 12.5h2.2"
+                      stroke="currentColor"
+                      strokeWidth="1.55"
+                      strokeLinecap="round"
+                    />
+                    <circle cx="15.3" cy="11.8" r="0.85" fill="currentColor" />
+                    <circle cx="17.1" cy="13.2" r="0.85" fill="currentColor" />
+                  </svg>
+                </Link>
+              ) : null}
             </div>
             <div className="self-end text-right md:self-auto md:text-left">v3.0.1</div>
           </div>

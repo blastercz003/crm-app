@@ -47,10 +47,11 @@ import type { CreateMeetingActionState } from '@/app/meetings/actions'
 import type { CreateJobActionState } from '@/app/jobs/actions'
 import type { CreateTaskActionState } from '@/app/tasks/actions'
 
-type UserOption = {
+  type UserOption = {
   id: string
   name: string | null
   role: string | null
+  can_be_assigned_as_technician?: boolean | null
 }
 
 type ClientOption = {
@@ -656,6 +657,9 @@ export function DashboardMobileQuickActions({
   const [isQuickNotesClearConfirmOpen, setIsQuickNotesClearConfirmOpen] = useState(false)
   const latestQuickNotesTextRef = useRef('')
   const quickNotesLastSavedTextRef = useRef('')
+  const technicianSuggestions = users
+    .filter((user) => Boolean(user.can_be_assigned_as_technician) && Boolean(user.name?.trim()))
+    .map((user) => user.name!.trim())
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([])
   const [presencePeriod, setPresencePeriod] = useState<PresencePeriod>('today')
   const [onlineNames, setOnlineNames] = useState<string[]>([])
@@ -2120,6 +2124,7 @@ export function DashboardMobileQuickActions({
           clientSuggestions={clients}
           clientContacts={contacts}
           offerSuggestions={offers}
+          technicianSuggestions={technicianSuggestions}
           onClose={() => setActiveAction(null)}
           onSuccess={handleJobSuccess}
         />

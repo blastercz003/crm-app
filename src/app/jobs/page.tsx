@@ -433,6 +433,7 @@ export default async function JobsPage({
     { data: jobs, error },
     { data: clientContactsData, error: contactsError },
     { data: offerSuggestionsData, error: offerSuggestionsError },
+    { data: technicianProfilesData, error: technicianProfilesError },
   ] = await Promise.all([
     request,
     contactsRequest,
@@ -442,6 +443,11 @@ export default async function JobsPage({
       .eq('offer_type', 'classic')
       .neq('status', 'realizace')
       .order('offer_number', { ascending: false }),
+    supabase
+      .from('profiles')
+      .select('id, name, can_be_assigned_as_technician')
+      .eq('can_be_assigned_as_technician', true)
+      .order('name', { ascending: true }),
   ])
 
   if (error) {
@@ -454,6 +460,10 @@ export default async function JobsPage({
 
   if (offerSuggestionsError) {
     throw new Error('Nepodařilo se načíst nabídky pro založení zakázky.')
+  }
+
+  if (technicianProfilesError) {
+    throw new Error('Nepodařilo se načíst techniky pro našeptávání.')
   }
 
   const typedJobs = (jobs ?? []) as JobRow[]
@@ -506,6 +516,13 @@ export default async function JobsPage({
       Boolean(String(item.offer_number ?? '').trim()) &&
       Boolean(String(item.title ?? '').trim())
   )
+  const technicianSuggestions = ((technicianProfilesData ?? []) as {
+    id: string
+    name: string | null
+    can_be_assigned_as_technician: boolean | null
+  }[])
+    .map((item) => item.name?.trim() ?? '')
+    .filter((item) => Boolean(item))
 
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo
@@ -626,6 +643,7 @@ export default async function JobsPage({
                   clientSuggestions={clientOptions}
                   clientContacts={clientContacts}
                   offerSuggestions={offerSuggestions}
+                  technicianSuggestions={technicianSuggestions}
                   isAdmin={isAdmin}
                   className="clients-page__new-button"
                 />
@@ -1070,7 +1088,9 @@ export default async function JobsPage({
                 jobs={jobsWithInfoState}
                 clientSuggestions={clientOptions}
                 clientContacts={clientContacts}
+                technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
+                allowEditing={true}
               />
             </div>
           )}

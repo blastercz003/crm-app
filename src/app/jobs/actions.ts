@@ -7,6 +7,10 @@ import {
   upsertJobChangeQueueEntry,
   type ChangedValues,
 } from '@/lib/jobs/changes-queue'
+import {
+  joinTechnicianNames,
+  resolveTechnicianNames,
+} from '@/lib/jobs/technicians'
 import { createClient } from '@/lib/supabase/server'
 import {
   getPersistedJobInfoAlert,
@@ -75,6 +79,12 @@ type JobNotificationProfileRow = {
   id: string
   role: string | null
   receive_job_notifications: boolean | null
+}
+
+type TechnicianProfileRow = {
+  id: string
+  name: string | null
+  can_be_assigned_as_technician: boolean | null
 }
 
 type CreatedJobNotificationRow = {
@@ -247,6 +257,10 @@ async function getJobNumberForLog(
 function normalizeText(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
   return text.length > 0 ? text : null
+}
+
+function normalizeTechnicianText(value: FormDataEntryValue | null) {
+  return String(value ?? '').trim()
 }
 
 function normalizeUuid(value: FormDataEntryValue | null) {
@@ -641,6 +655,122 @@ async function getJobNotificationRecipientIds(
   return Array.from(recipientIds)
 }
 
+async function getTechnicianProfiles(
+  supabase: Awaited<ReturnType<typeof createClient>>
+) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, can_be_assigned_as_technician')
+    .eq('can_be_assigned_as_technician', true)
+    .order('name', { ascending: true })
+
+  if (error) {
+    throw new Error(
+      `Nepodařilo se načíst techniky z databáze: ${error.message}`
+    )
+  }
+
+  return ((data ?? []) as TechnicianProfileRow[])
+    .map((profile) => ({
+      id: String(profile.id ?? '').trim(),
+      name: profile.name?.trim() ?? '',
+      can_be_assigned_as_technician: Boolean(
+        profile.can_be_assigned_as_technician
+      ),
+    }))
+    .filter((profile) => Boolean(profile.id) && Boolean(profile.name))
+}
+
+async function resolveTechnicianSelection(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  formData: FormData
+) {
+  const rawValue = normalizeTechnicianText(formData.get('technician_name'))
+
+  if (!rawValue) {
+    return {
+      error: null,
+      technicianIds: [] as string[],
+      technicianNames: [] as string[],
+      technicianLabel: null as string | null,
+    }
+  }
+
+  const profiles = await getTechnicianProfiles(supabase)
+  const availableNames = profiles.map((profile) => profile.name)
+  const resolution = resolveTechnicianNames(rawValue, availableNames)
+
+  if (resolution.error) {
+    return {
+      error: resolution.error,
+      technicianIds: [] as string[],
+      technicianNames: [] as string[],
+      technicianLabel: null as string | null,
+    }
+  }
+
+  const profileByName = new Map(
+    profiles.map((profile) => [profile.name, profile] as const)
+  )
+
+  const technicianIds = resolution.names
+    .map((name) => profileByName.get(name)?.id ?? '')
+    .filter((id) => Boolean(id))
+
+  if (technicianIds.length !== resolution.names.length) {
+    return {
+      error: 'Některého technika se nepodařilo přiřadit podle jména.',
+      technicianIds: [] as string[],
+      technicianNames: [] as string[],
+      technicianLabel: null as string | null,
+    }
+  }
+
+  return {
+    error: null,
+    technicianIds,
+    technicianNames: resolution.names,
+    technicianLabel: joinTechnicianNames(resolution.names),
+  }
+}
+
+async function syncJobTechnicians(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string,
+  technicianIds: string[]
+) {
+  const { error: deleteError } = await supabase
+    .from('job_technicians')
+    .delete()
+    .eq('job_id', jobId)
+
+  if (deleteError) {
+    throw new Error(
+      `Nepodařilo se vyčistit přiřazené techniky k zakázce: ${deleteError.message}`
+    )
+  }
+
+  if (technicianIds.length === 0) {
+    return
+  }
+
+  const rows = technicianIds.map((technicianId, index) => ({
+    job_id: jobId,
+    technician_id: technicianId,
+    position: index,
+  }))
+
+  const { error: insertError } = await supabase
+    .from('job_technicians')
+    .insert(rows)
+
+  if (insertError) {
+    throw new Error(
+      `Nepodařilo se uložit přiřazené techniky k zakázce: ${insertError.message}`
+    )
+  }
+}
+
 async function notifyUsersAboutCreatedJob({
   supabase,
   actorUserId,
@@ -803,11 +933,18 @@ async function getJobPayload(
   const endAt = parseDateTimeLocalAsPrague(formData.get('end_at'))
   const siteAddress = normalizeText(formData.get('site_address'))
   const storeNumber = normalizeText(formData.get('store_number'))
-  const technicianName = normalizeText(formData.get('technician_name'))
   const generatorName = normalizeText(formData.get('generator_name'))
   const infoNote = normalizeText(formData.get('info_note'))
   const jobStatus = normalizeJobStatus(formData.get('job_status'))
   const invoiceStatus = normalizeInvoiceStatus(formData.get('invoice_status'))
+  const technicianSelection = await resolveTechnicianSelection(supabase, formData)
+
+  if (technicianSelection.error) {
+    return {
+      error: technicianSelection.error,
+      payload: null,
+    }
+  }
 
   if (!startAt) {
     return {
@@ -843,12 +980,13 @@ async function getJobPayload(
       end_at: endAt,
       site_address: siteAddress,
       store_number: storeNumber,
-      technician_name: technicianName,
+      technician_name: technicianSelection.technicianLabel,
       generator_name: generatorName,
       info_note: infoNote,
       job_status: jobStatus,
       invoice_status: invoiceStatus,
     },
+    technicianIds: technicianSelection.technicianIds,
   }
 }
 
@@ -877,7 +1015,11 @@ export async function createJobAction(
     }
   }
 
-  const { error: validationError, payload } = await getJobPayload(
+  const {
+    error: validationError,
+    payload,
+    technicianIds,
+  } = await getJobPayload(
     supabase,
     formData
   )
@@ -948,6 +1090,28 @@ export async function createJobAction(
   }
 
   const createdJobId = String(createdJob.id)
+
+  try {
+    await syncJobTechnicians(
+      supabase,
+      createdJobId,
+      technicianIds ?? []
+    )
+  } catch (technicianError) {
+    await supabase.from('job_finances').delete().eq('job_id', createdJobId)
+    await supabase.from('jobs').delete().eq('id', createdJobId)
+
+    console.error(
+      'Nepodařilo se uložit techniky k nové zakázce.',
+      technicianError
+    )
+
+    return {
+      success: false,
+      error:
+        'Zakázka byla vytvořena, ale nepodařilo se uložit přiřazené techniky. Založení bylo vráceno zpět.',
+    }
+  }
 
   const { error: createFinanceError } = await supabase
     .from('job_finances')
@@ -1076,7 +1240,11 @@ export async function updateJobAction(
     }
   }
 
-  const { error: validationError, payload } = await getJobPayload(
+  const {
+    error: validationError,
+    payload,
+    technicianIds,
+  } = await getJobPayload(
     supabase,
     formData
   )
@@ -1097,6 +1265,24 @@ export async function updateJobAction(
     return {
       success: false,
       error: 'Zakázku se nepodařilo upravit.',
+    }
+  }
+
+  try {
+    await syncJobTechnicians(
+      supabase,
+      normalizedJobId,
+      technicianIds ?? []
+    )
+  } catch (technicianError) {
+    console.error(
+      'Nepodařilo se uložit techniky u existující zakázky.',
+      technicianError
+    )
+
+    return {
+      success: false,
+      error: 'Techniky se nepodařilo uložit.',
     }
   }
 
@@ -1837,6 +2023,76 @@ export async function updateJobInlineFieldAction(
 
     await logUserActivity({
       action: `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: Kontaktní osoba na ${normalizedValue ?? '—'}`,
+      section: 'Zakázky',
+      route: '/jobs',
+      userId: user.id,
+    })
+
+    revalidateAllRelatedPaths()
+
+    return {
+      success: true,
+      error: null,
+    }
+  }
+
+  if (field === 'technician_name') {
+    const technicianSelection = await resolveTechnicianSelection(
+      supabase,
+      formData
+    )
+
+    if (technicianSelection.error) {
+      return {
+        success: false,
+        error: technicianSelection.error,
+      }
+    }
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        technician_name: technicianSelection.technicianLabel,
+      })
+      .eq('id', normalizedJobId)
+
+    if (error) {
+      return {
+        success: false,
+        error: 'Techniky se nepodařilo uložit.',
+      }
+    }
+
+    try {
+      await syncJobTechnicians(
+        supabase,
+        normalizedJobId,
+        technicianSelection.technicianIds
+      )
+    } catch (technicianError) {
+      console.error(
+        'Nepodařilo se uložit techniky z inline editace zakázky.',
+        technicianError
+      )
+
+      return {
+        success: false,
+        error: 'Techniky se nepodařilo uložit.',
+      }
+    }
+
+    try {
+      await enqueueUpdatedJobChangeIfWritten({
+        supabase,
+        jobId: normalizedJobId,
+        fields: ['technician_name'],
+      })
+    } catch (queueError) {
+      console.error('Nepodařilo se zapsat změnu techniků do fronty změn.', queueError)
+    }
+
+    await logUserActivity({
+      action: `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: Technik na ${technicianSelection.technicianLabel ?? '—'}`,
       section: 'Zakázky',
       route: '/jobs',
       userId: user.id,

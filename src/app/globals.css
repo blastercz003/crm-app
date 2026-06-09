@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: light;
+  --font-geist-sans: Arial, Helvetica, sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --background: #eef3f8;
   --foreground: #171717;
   --surface: rgba(255, 255, 255, 0.96);
@@ -9963,6 +9965,14 @@ html[data-theme='dark'] .jobs-page__info-modal__category-select option {
   background: rgba(8, 13, 23, 0.98) !important;
 }
 
+html[data-theme='dark'] .jobs-page__info-modal__handover-job-select[data-placeholder='true'] {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .jobs-page__info-modal__handover-job-label {
+  color: #94a3b8 !important;
+}
+
 html[data-theme='dark'] .jobs-page__info-modal__upload-button {
   border-color: rgba(78, 160, 220, 0.28) !important;
   background: linear-gradient(
@@ -10001,14 +10011,15 @@ html[data-theme='dark'] .jobs-page__info-modal__upload {
     0 10px 22px rgba(2, 6, 23, 0.18) !important;
 }
 
+html:not([data-theme='dark']) .jobs-page__info-modal__empty-state {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
+}
+
 html[data-theme='dark'] .jobs-page__info-modal__empty-state {
   border-color: rgba(148, 163, 184, 0.14) !important;
-  background: linear-gradient(
-    155deg,
-    rgba(15, 23, 42, 0.96) 0%,
-    rgba(11, 18, 32, 0.94) 100%
-  ) !important;
+  background: rgba(11, 18, 32, 0.96) !important;
   color: #94a3b8 !important;
+  box-shadow: none !important;
 }
 
 html[data-theme='dark'] .jobs-page__info-modal__attachment-open {
@@ -10113,12 +10124,9 @@ html[data-theme='dark'] .jobs-page__info-modal__upload:hover {
 
 html[data-theme='dark'] .jobs-page__info-modal__empty-state {
   border-color: rgba(148, 163, 184, 0.14) !important;
-  background: linear-gradient(
-    155deg,
-    rgba(15, 23, 42, 0.96) 0%,
-    rgba(11, 18, 32, 0.94) 100%
-  ) !important;
+  background: rgba(11, 18, 32, 0.96) !important;
   color: #94a3b8 !important;
+  box-shadow: none !important;
 }
 
 html[data-theme='dark'] .jobs-page__info-modal__attachment-card {

@@ -12,12 +12,15 @@ import {
   View,
   renderToBuffer,
 } from '@react-pdf/renderer'
+import { canViewTechJobsSection } from '@/lib/auth/access'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
+  can_view_tech_jobs: boolean | null
+  role: string | null
 }
 
 type JobProtocolRow = {
@@ -43,6 +46,7 @@ type HandoverProtocolRow = {
   handover_place: string | null
   contact_person: string | null
   contact_phone: string | null
+  is_sent: boolean | null
 }
 
 type PreviewData = {
@@ -824,13 +828,21 @@ async function getPreviewData(jobId: string): Promise<PreviewData | null> {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('can_view_jobs')
+    .select('can_view_jobs, can_view_tech_jobs, role')
     .eq('id', user.id)
     .single()
 
-  if (profileError || !(profile as ProfilePermissionRow | null)?.can_view_jobs) {
+  if (profileError || !profile) {
     return null
   }
+
+  const typedProfile = profile as ProfilePermissionRow
+  const isAdmin = typedProfile.role === 'admin'
+  const canViewJobs = isAdmin || Boolean(typedProfile.can_view_jobs)
+  const canViewTechJobs = canViewTechJobsSection(
+    typedProfile.role,
+    typedProfile
+  )
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
@@ -844,12 +856,29 @@ async function getPreviewData(jobId: string): Promise<PreviewData | null> {
 
   const { data: protocol } = await supabase
     .from('handover_protocols')
-    .select('id, handover_title, handover_place, contact_person, contact_phone')
+    .select('id, handover_title, handover_place, contact_person, contact_phone, is_sent')
     .eq('job_id', typedJob.id)
     .maybeSingle()
 
   const typedProtocol = (protocol ?? null) as HandoverProtocolRow | null
   const protocolId = typedProtocol?.id ?? null
+
+  if (!canViewJobs) {
+    if (!canViewTechJobs || !typedProtocol?.is_sent) {
+      return null
+    }
+
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('job_technicians')
+      .select('job_id')
+      .eq('job_id', typedJob.id)
+      .eq('technician_id', user.id)
+      .maybeSingle()
+
+    if (assignmentError || !assignment) {
+      return null
+    }
+  }
 
   const [devicesResponse, accessoriesResponse, clientResponse] = await Promise.all([
     protocolId

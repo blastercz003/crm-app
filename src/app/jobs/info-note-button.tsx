@@ -25,6 +25,7 @@ type InfoNoteButtonProps = {
   infoNote: string | null
   hasInfoAttachments?: boolean
   infoAlertEnabled?: boolean
+  readOnly?: boolean
   variant?: 'table' | 'mobile'
   compact?: boolean
   className?: string
@@ -100,6 +101,7 @@ export function InfoNoteButton({
   infoNote,
   hasInfoAttachments = false,
   infoAlertEnabled = false,
+  readOnly = false,
   variant = 'table',
   compact = false,
   className = '',
@@ -135,7 +137,7 @@ export function InfoNoteButton({
     infoNote: persistedInfoNote,
     hasAttachments: persistedHasAttachments,
   })
-  const shouldShowAlertDot = currentHasInfoContent && persistedAlertEnabled
+  const shouldShowAlertDot = !readOnly && currentHasInfoContent && persistedAlertEnabled
   const handlePersistedStateChange = useCallback(
     ({
       infoNote: nextInfoNote,
@@ -218,13 +220,14 @@ export function InfoNoteButton({
       </button>
 
       {isOpen ? (
-        <InfoNoteModal
+      <InfoNoteModal
           key={formKey}
           jobId={jobId}
           jobNumber={jobNumber}
           initialValue={persistedInfoNote}
           initialHasAttachments={persistedHasAttachments}
           initialAlertEnabled={persistedAlertEnabled}
+          readOnly={readOnly}
           onPersistedStateChange={handlePersistedStateChange}
           onSaveSuccess={handleSaveSuccess}
           onClose={closeModal}
@@ -245,6 +248,7 @@ function InfoNoteModal({
   initialValue,
   initialHasAttachments,
   initialAlertEnabled,
+  readOnly,
   onPersistedStateChange,
   onSaveSuccess,
   onClose,
@@ -259,6 +263,7 @@ function InfoNoteModal({
   initialValue: string | null
   initialHasAttachments: boolean
   initialAlertEnabled: boolean
+  readOnly: boolean
   onPersistedStateChange: (state: {
     infoNote: string | null
     hasAttachments: boolean
@@ -299,6 +304,8 @@ function InfoNoteModal({
   const effectiveAlertEnabled = modalHasInfoContent && isAlertEnabled
 
   useEffect(() => {
+    if (readOnly) return
+
     if (state.success) {
       onSaveSuccess({
         infoNote: draftValue.trim() || null,
@@ -313,6 +320,7 @@ function InfoNoteModal({
     effectiveAlertEnabled,
     onClose,
     onSaveSuccess,
+    readOnly,
     state.success,
   ])
 
@@ -375,6 +383,8 @@ function InfoNoteModal({
   }
 
   async function handleUpload(files: File[]) {
+    if (readOnly) return
+
     if (files.length === 0) return
 
     setIsUploading(true)
@@ -402,6 +412,8 @@ function InfoNoteModal({
   }
 
   async function handleDelete(attachmentId: string) {
+    if (readOnly) return
+
     setDeletingId(attachmentId)
     setAttachmentsError(null)
 
@@ -440,6 +452,8 @@ function InfoNoteModal({
   }
 
   function handleAlertToggle() {
+    if (readOnly) return
+
     if (!modalHasInfoContent || isAlertPending) return
 
     const nextAlertEnabled = !effectiveAlertEnabled
@@ -531,7 +545,7 @@ function InfoNoteModal({
           </div>
         </div>
 
-        <form action={formAction} className="flex flex-col">
+        <form action={readOnly ? undefined : formAction} className="flex flex-col">
           <div className="jobs-page__info-modal__body px-5 py-4">
               <textarea
                 id="job-info-note"
@@ -539,6 +553,8 @@ function InfoNoteModal({
                 rows={6}
                 value={draftValue}
                 onChange={(event) => {
+                  if (readOnly) return
+
                   const nextValue = event.target.value
                   setDraftValue(nextValue)
 
@@ -552,32 +568,37 @@ function InfoNoteModal({
                   }
                 }}
                 placeholder="Sem napiš libovolný delší text k zakázce"
+                readOnly={readOnly}
                 className="jobs-page__info-modal__textarea w-full resize-y rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
               />
-              <input
-                type="hidden"
-                name="info_alert_enabled"
-                value={effectiveAlertEnabled ? '1' : '0'}
-              />
+              {readOnly ? null : (
+                <input
+                  type="hidden"
+                  name="info_alert_enabled"
+                  value={effectiveAlertEnabled ? '1' : '0'}
+                />
+              )}
 
             <div className="jobs-page__info-modal__attachments-shell mt-4 rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <label className="jobs-page__info-modal__upload inline-flex h-8 cursor-pointer items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60">
-                  {isUploading ? 'Nahrávám…' : 'Přidat fotku'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    disabled={isUploading}
-                    className="hidden"
-                    onChange={(event) => {
-                      const files = Array.from(event.target.files ?? [])
-                      event.currentTarget.value = ''
-                      void handleUpload(files)
-                    }}
-                  />
-                </label>
-              </div>
+              {readOnly ? null : (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <label className="jobs-page__info-modal__upload inline-flex h-8 cursor-pointer items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60">
+                    {isUploading ? 'Nahrávám…' : 'Přidat fotku'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={isUploading}
+                      className="hidden"
+                      onChange={(event) => {
+                        const files = Array.from(event.target.files ?? [])
+                        event.currentTarget.value = ''
+                        void handleUpload(files)
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
 
               <div className="mt-3 max-h-40 overflow-y-auto pr-1">
                 {attachmentsLoading ? (
@@ -619,19 +640,21 @@ function InfoNoteModal({
                               void handleDownload(item)
                             }}
                             className="inline-flex h-6 items-center justify-center rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_14px_rgba(24,78,129,0.24)] transition hover:-translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
-                          >
-                            STÁHNOUT
+                            >
+                              STÁHNOUT
                           </button>
-                          <button
-                            type="button"
-                            disabled={deletingId === item.id}
-                            onClick={() => {
-                              void handleDelete(item.id)
-                            }}
-                            className="inline-flex h-6 items-center justify-center rounded-lg border border-red-200/90 px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_6px_12px_rgba(220,38,38,0.12)] transition hover:-translate-y-[1px] hover:bg-red-50 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.78),0_8px_14px_rgba(220,38,38,0.16)] disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {deletingId === item.id ? '…' : 'Smazat'}
-                          </button>
+                          {readOnly ? null : (
+                            <button
+                              type="button"
+                              disabled={deletingId === item.id}
+                              onClick={() => {
+                                void handleDelete(item.id)
+                              }}
+                              className="inline-flex h-6 items-center justify-center rounded-lg border border-red-200/90 px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_6px_12px_rgba(220,38,38,0.12)] transition hover:-translate-y-[1px] hover:bg-red-50 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.78),0_8px_14px_rgba(220,38,38,0.16)] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {deletingId === item.id ? '…' : 'Smazat'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -659,10 +682,10 @@ function InfoNoteModal({
               onClick={onClose}
               className="jobs-page__info-modal__cancel inline-flex h-10 items-center justify-center rounded-2xl border border-red-400/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(185,28,28,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_22px_rgba(185,28,28,0.3)]"
             >
-              ZRUŠIT
+              ZAVŘÍT
             </button>
 
-            <SaveButton />
+            {readOnly ? null : <SaveButton />}
           </div>
         </form>
       </div>

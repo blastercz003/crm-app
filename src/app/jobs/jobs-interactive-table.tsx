@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -10,6 +11,7 @@ import {
 import { EditJobButton } from './edit-job-button'
 import { HandoverProtocolButton } from './handover-protocol-button'
 import { InfoNoteButton } from './info-note-button'
+import { TechnicianNamesInput } from './technician-names-input'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 
 type JobStatus =
@@ -52,6 +54,7 @@ type JobRow = {
   info_alert_enabled?: boolean | null
   has_info_attachments?: boolean
   has_info_content?: boolean
+  handover_protocol_is_sent?: boolean | null
   job_status: JobStatus
   evidence_status: EvidenceStatus
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
@@ -71,7 +74,13 @@ type JobsInteractiveTableProps = {
   jobs: JobRow[]
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  technicianSuggestions?: string[]
   isAdmin: boolean
+  allowEditing?: boolean
+  showReadOnlyInfo?: boolean
+  showEvidenceColumn?: boolean
+  showHandoverProtocolPdfColumn?: boolean
+  collapseReadOnlyMobileActions?: boolean
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
@@ -103,7 +112,13 @@ export function JobsInteractiveTable({
   jobs,
   clientSuggestions,
   clientContacts,
+  technicianSuggestions = [],
   isAdmin,
+  allowEditing = true,
+  showReadOnlyInfo = false,
+  showEvidenceColumn = true,
+  showHandoverProtocolPdfColumn = false,
+  collapseReadOnlyMobileActions = false,
 }: JobsInteractiveTableProps) {
   return (
     <>
@@ -115,9 +130,11 @@ export function JobsInteractiveTable({
               <th className="w-[76px] px-2 py-2 print:w-[70px] print:px-1.5 print:py-1.5">
                 Zakázka
               </th>
-              <th className="w-[112px] px-2 py-2 text-center print:hidden">
-                Evidence
-              </th>
+              {showEvidenceColumn ? (
+                <th className="w-[112px] px-2 py-2 text-center print:hidden">
+                  Evidence
+                </th>
+              ) : null}
               <th className="w-[120px] px-2 py-2 print:w-[130px] print:px-1.5 print:py-1.5">
                 Firma
               </th>
@@ -141,6 +158,11 @@ export function JobsInteractiveTable({
               <th className="w-[128px] px-2 py-2 text-center print:hidden">
                 Info
               </th>
+              {showHandoverProtocolPdfColumn ? (
+                <th className="w-[64px] px-2 py-2 text-center print:hidden">
+                  PP
+                </th>
+              ) : null}
               <th className="w-[112px] px-2 py-2 text-center print:w-[108px] print:px-1.5 print:py-1.5">
                 Stav
               </th>
@@ -154,7 +176,13 @@ export function JobsInteractiveTable({
                 job={job}
                 clientSuggestions={clientSuggestions}
                 clientContacts={clientContacts}
+                technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
+                allowEditing={allowEditing}
+                showReadOnlyInfo={showReadOnlyInfo}
+                showEvidenceColumn={showEvidenceColumn}
+                showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
+                collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
               />
             ))}
           </tbody>
@@ -169,7 +197,13 @@ export function JobsInteractiveTable({
             job={job}
             clientSuggestions={clientSuggestions}
             clientContacts={clientContacts}
+            technicianSuggestions={technicianSuggestions}
             isAdmin={isAdmin}
+            allowEditing={allowEditing}
+            showReadOnlyInfo={showReadOnlyInfo}
+            showEvidenceColumn={showEvidenceColumn}
+            showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
+            collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
           />
         ))}
       </section>
@@ -181,12 +215,22 @@ function DesktopRow({
   job,
   clientSuggestions,
   clientContacts,
+  technicianSuggestions,
   isAdmin,
+  allowEditing,
+  showReadOnlyInfo,
+  showEvidenceColumn,
+  showHandoverProtocolPdfColumn,
 }: {
   job: JobRow
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  technicianSuggestions: string[]
   isAdmin: boolean
+  allowEditing: boolean
+  showReadOnlyInfo: boolean
+  showEvidenceColumn: boolean
+  showHandoverProtocolPdfColumn: boolean
 }) {
   return (
     <tr className="jobs-page__table-row group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
@@ -195,6 +239,7 @@ function DesktopRow({
           job={job}
           clientSuggestions={clientSuggestions}
           clientContacts={clientContacts}
+          technicianSuggestions={technicianSuggestions}
           isAdmin={isAdmin}
           className="jobs-page__job-edit-button jobs-page__job-number-button inline-flex items-center justify-start px-1 py-1 text-[12px] font-bold leading-tight"
         >
@@ -204,83 +249,123 @@ function DesktopRow({
         </EditJobButton>
       </td>
 
-      <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
-        <EvidenceStatusButton job={job} canEdit />
-      </td>
+      {showEvidenceColumn ? (
+        <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
+          <EvidenceStatusButton job={job} canEdit={allowEditing} />
+        </td>
+      ) : null}
 
       <EditableCell
         job={job}
         field="company_name"
         value={job.company_name}
-        canEdit={isAdmin}
+        canEdit={allowEditing && isAdmin}
         clientSuggestions={clientSuggestions}
+        technicianSuggestions={technicianSuggestions}
       />
       <EditableCell
         job={job}
         field="contact_person"
         value={job.contact_person}
         printHidden
-        canEdit={isAdmin}
+        canEdit={allowEditing && isAdmin}
+        technicianSuggestions={technicianSuggestions}
       />
       <EditableCell
         job={job}
         field="start_at"
         value={job.start_at}
         type="datetime"
-        canEdit={isAdmin}
+        canEdit={allowEditing && isAdmin}
+        technicianSuggestions={technicianSuggestions}
       />
       <EditableCell
         job={job}
         field="end_at"
         value={job.end_at}
         type="datetime"
-        canEdit={isAdmin}
+        canEdit={allowEditing && isAdmin}
+        technicianSuggestions={technicianSuggestions}
       />
       <EditableCell
         job={job}
         field="site_address"
         value={job.site_address}
-        canEdit={isAdmin}
+        canEdit={allowEditing && isAdmin}
+        technicianSuggestions={technicianSuggestions}
       />
       <EditableCell
         job={job}
         field="store_number"
         value={job.store_number}
         printHidden
-        canEdit={isAdmin}
+        canEdit={allowEditing && isAdmin}
+        technicianSuggestions={technicianSuggestions}
       />
       <EditableCell
         job={job}
         field="technician_name"
         value={job.technician_name}
-        canEdit
+        canEdit={allowEditing}
+        technicianSuggestions={technicianSuggestions}
       />
       <EditableCell
         job={job}
         field="generator_name"
         value={job.generator_name}
-        canEdit
+        canEdit={allowEditing}
+        technicianSuggestions={technicianSuggestions}
       />
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
         <div className="flex items-center justify-center gap-2">
-          <HandoverProtocolButton
-            job={job}
-            className="jobs-page__handover-button"
-          />
-          <InfoNoteButton
-            jobId={job.id}
-            jobNumber={job.job_number}
-            infoNote={job.info_note}
-            hasInfoAttachments={job.has_info_attachments}
-            infoAlertEnabled={Boolean(job.info_alert_enabled)}
-            className="jobs-page__info-button"
-          />
+          {allowEditing ? (
+            <>
+              <HandoverProtocolButton
+                job={job}
+                className="jobs-page__handover-button"
+              />
+              <InfoNoteButton
+                jobId={job.id}
+                jobNumber={job.job_number}
+                infoNote={job.info_note}
+                hasInfoAttachments={job.has_info_attachments}
+                infoAlertEnabled={Boolean(job.info_alert_enabled)}
+                className="jobs-page__info-button"
+              />
+            </>
+          ) : (
+            <>
+              {showReadOnlyInfo && job.has_info_content ? (
+                <InfoNoteButton
+                  jobId={job.id}
+                  jobNumber={job.job_number}
+                  infoNote={job.info_note}
+                  hasInfoAttachments={job.has_info_attachments}
+                  infoAlertEnabled={Boolean(job.info_alert_enabled)}
+                  readOnly
+                  className="jobs-page__info-button"
+                />
+              ) : showReadOnlyInfo ? (
+                <DisabledInfoButton />
+              ) : null}
+            </>
+          )}
         </div>
       </td>
 
+      {showHandoverProtocolPdfColumn ? (
+        <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
+          {job.handover_protocol_is_sent ? (
+            <ProtocolPdfButton jobId={job.id} />
+          ) : (
+            <DisabledProtocolPdfButton />
+          )}
+        </td>
+      ) : null}
+
       <td className="rounded-r-2xl border border-l-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
-        <JobStatusButton job={job} canEdit />
+        <JobStatusButton job={job} canEdit={allowEditing} />
       </td>
     </tr>
   )
@@ -290,16 +375,32 @@ function MobileCard({
   job,
   clientSuggestions,
   clientContacts,
+  technicianSuggestions,
   isAdmin,
+  allowEditing,
+  showReadOnlyInfo,
+  showHandoverProtocolPdfColumn,
+  collapseReadOnlyMobileActions,
 }: {
   job: JobRow
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  technicianSuggestions: string[]
   isAdmin: boolean
+  allowEditing: boolean
+  showReadOnlyInfo: boolean
+  showHandoverProtocolPdfColumn: boolean
+  collapseReadOnlyMobileActions: boolean
 }) {
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const showInfoAlertDot = Boolean(job.info_alert_enabled) && Boolean(job.has_info_content)
-
+  const showProtocolPdfButton =
+    showHandoverProtocolPdfColumn && Boolean(job.handover_protocol_is_sent)
+  const showInfoButton = showReadOnlyInfo && Boolean(job.has_info_content)
+  const showCollapsedReadOnlyActions =
+    !allowEditing &&
+    collapseReadOnlyMobileActions &&
+    (showReadOnlyInfo || showHandoverProtocolPdfColumn)
   return (
     <div className="jobs-page__mobile-card overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
@@ -318,7 +419,7 @@ function MobileCard({
           </p>
         </div>
 
-        <JobStatusButton job={job} canEdit />
+        <JobStatusButton job={job} canEdit={allowEditing} />
       </div>
 
       <div className="mt-0 grid grid-cols-1 gap-x-2 gap-y-0 text-[12px] leading-5 text-gray-600 min-[300px]:grid-cols-[17.5ch_minmax(12ch,1fr)]">
@@ -356,12 +457,67 @@ function MobileCard({
             </span>
           </div>
 
+          {allowEditing ? (
+            <button
+              type="button"
+              onClick={() => setIsActionsOpen((current) => !current)}
+              aria-expanded={isActionsOpen}
+              aria-label="Akce zakázky"
+              className={`relative hidden min-[300px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+            >
+              {showInfoAlertDot ? (
+                <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+              ) : null}
+              ⋯
+            </button>
+          ) : showCollapsedReadOnlyActions ? (
+            <button
+              type="button"
+              onClick={() => setIsActionsOpen((current) => !current)}
+              aria-expanded={isActionsOpen}
+              aria-label="Akce zakázky"
+              className={`relative hidden min-[300px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+            >
+              {showInfoAlertDot ? (
+                <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+              ) : null}
+              ⋯
+            </button>
+          ) : showReadOnlyInfo || showHandoverProtocolPdfColumn ? (
+            <div className="flex items-center gap-2">
+              {showProtocolPdfButton ? (
+                <ProtocolPdfButton jobId={job.id} compact variant="mobile" />
+              ) : showHandoverProtocolPdfColumn ? (
+                <DisabledProtocolPdfButton compact variant="mobile" />
+              ) : null}
+              {showInfoButton ? (
+                <InfoNoteButton
+                  jobId={job.id}
+                  jobNumber={job.job_number}
+                  infoNote={job.info_note}
+                  hasInfoAttachments={job.has_info_attachments}
+                  infoAlertEnabled={Boolean(job.info_alert_enabled)}
+                  readOnly
+                  variant="mobile"
+                  compact
+                  className="jobs-page__info-button"
+                />
+              ) : showReadOnlyInfo ? (
+                <DisabledInfoButton compact variant="mobile" />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {allowEditing ? (
+        <div className="mt-0 flex justify-end min-[300px]:hidden">
           <button
             type="button"
             onClick={() => setIsActionsOpen((current) => !current)}
             aria-expanded={isActionsOpen}
             aria-label="Akce zakázky"
-            className={`relative hidden min-[300px]:inline-flex h-8 min-w-[44px] shrink-0 self-start -translate-y-2 items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+            className={`relative inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
           >
             {showInfoAlertDot ? (
               <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
@@ -369,24 +525,24 @@ function MobileCard({
             ⋯
           </button>
         </div>
-      </div>
+      ) : showCollapsedReadOnlyActions ? (
+        <div className="mt-0 flex justify-end min-[300px]:hidden">
+          <button
+            type="button"
+            onClick={() => setIsActionsOpen((current) => !current)}
+            aria-expanded={isActionsOpen}
+            aria-label="Akce zakázky"
+            className={`relative inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
+          >
+            {showInfoAlertDot ? (
+              <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+            ) : null}
+            ⋯
+          </button>
+        </div>
+      ) : null}
 
-      <div className="mt-0 flex justify-end min-[300px]:hidden">
-        <button
-          type="button"
-          onClick={() => setIsActionsOpen((current) => !current)}
-          aria-expanded={isActionsOpen}
-          aria-label="Akce zakázky"
-          className={`relative inline-flex h-8 min-w-[44px] items-center justify-center px-3 text-[18px] font-semibold leading-none tracking-[-0.08em] text-zinc-600 ${GLASS_SECONDARY_BUTTON_CLASS}`}
-        >
-          {showInfoAlertDot ? (
-            <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
-          ) : null}
-          ⋯
-        </button>
-      </div>
-
-      {isActionsOpen ? (
+      {isActionsOpen && allowEditing ? (
         <div className="mt-0 grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-1.5 min-[420px]:gap-2">
           <HandoverProtocolButton
             job={job}
@@ -406,22 +562,141 @@ function MobileCard({
             job={job}
             compact
             compactClassName="min-w-0 w-full px-2 text-[11px]"
-            canEdit
+            canEdit={allowEditing}
           />
-          <MobileAssignmentButton job={job} canEdit compact />
+          <MobileAssignmentButton
+            job={job}
+            canEdit
+            compact
+            technicianSuggestions={technicianSuggestions}
+          />
+        </div>
+      ) : isActionsOpen && showCollapsedReadOnlyActions ? (
+        <div
+          className={`mt-0 grid items-center gap-1.5 min-[420px]:gap-2 ${
+            showReadOnlyInfo && showHandoverProtocolPdfColumn
+              ? 'grid-cols-2'
+              : 'grid-cols-1'
+          }`}
+        >
+          {showProtocolPdfButton ? (
+            <ProtocolPdfButton jobId={job.id} compact variant="mobile" />
+          ) : showHandoverProtocolPdfColumn ? (
+            <DisabledProtocolPdfButton compact variant="mobile" />
+          ) : null}
+          {showInfoButton ? (
+            <InfoNoteButton
+              jobId={job.id}
+              jobNumber={job.job_number}
+              infoNote={job.info_note}
+              hasInfoAttachments={job.has_info_attachments}
+              infoAlertEnabled={Boolean(job.info_alert_enabled)}
+              readOnly
+              variant="mobile"
+              compact
+              className="jobs-page__info-button"
+            />
+          ) : showReadOnlyInfo ? (
+            <DisabledInfoButton compact variant="mobile" />
+          ) : null}
         </div>
       ) : null}
     </div>
   )
 }
 
+function ProtocolPdfButton({
+  jobId,
+  compact = false,
+  variant = 'table',
+}: {
+  jobId: string
+  compact?: boolean
+  variant?: 'table' | 'mobile'
+}) {
+  return (
+    <Link
+      href={`/jobs/${jobId}/pp?standalone=1&print=1`}
+      target="_blank"
+      rel="noreferrer"
+      title="Předávací protokol"
+      aria-label="Předávací protokol"
+      className={`inline-flex items-center justify-center rounded-xl border border-[#6fa9d1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)] ${
+        variant === 'mobile'
+          ? compact
+            ? 'h-8 min-w-[44px] px-2 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-[11px] font-semibold'
+            : 'h-8 min-w-[56px] px-3 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-xs font-semibold'
+          : 'h-8 min-w-[56px] px-3 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-xs font-semibold'
+      }`}
+    >
+      PP
+    </Link>
+  )
+}
+
+function DisabledProtocolPdfButton({
+  compact = false,
+  variant = 'table',
+}: {
+  compact?: boolean
+  variant?: 'table' | 'mobile'
+}) {
+  return (
+    <button
+      type="button"
+      disabled
+      title="Předávací protokol není připravený"
+      aria-label="Předávací protokol není připravený"
+      className={`inline-flex items-center justify-center rounded-xl border border-[#6fa9d1] text-white opacity-45 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] cursor-not-allowed ${
+        variant === 'mobile'
+          ? compact
+            ? 'h-8 min-w-[44px] px-2 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-[11px] font-semibold'
+            : 'h-8 min-w-[56px] px-3 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-xs font-semibold'
+          : 'h-8 min-w-[56px] px-3 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-xs font-semibold'
+      }`}
+    >
+      PP
+    </button>
+  )
+}
+
+function DisabledInfoButton({
+  compact = false,
+  variant = 'table',
+}: {
+  compact?: boolean
+  variant?: 'table' | 'mobile'
+}) {
+  const baseClasses = `inline-flex items-center justify-center rounded-xl font-medium transition duration-200 cursor-not-allowed opacity-55`
+  const buttonClasses =
+    variant === 'mobile'
+      ? compact
+        ? 'h-8 min-w-0 w-full px-2 text-[11px]'
+        : 'min-w-[88px] px-3 py-2 text-xs'
+      : 'min-w-[88px] px-3 py-2 text-xs'
+
+  return (
+    <button
+      type="button"
+      disabled
+      title="Info k zakázce není vyplněné"
+      aria-label="Info k zakázce není vyplněné"
+      className={`jobs-page__info-button jobs-page__info-button--empty border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] ${baseClasses} ${buttonClasses}`}
+    >
+      ZOBRAZIT
+    </button>
+  )
+}
+
 function MobileAssignmentButton({
   job,
   canEdit,
+  technicianSuggestions,
   compact = false,
 }: {
   job: JobRow
   canEdit: boolean
+  technicianSuggestions: string[]
   compact?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -429,10 +704,11 @@ function MobileAssignmentButton({
   const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')
   const [isPending, startTransition] = useTransition()
 
-  useEffect(() => {
+  function openModal() {
     setTechnicianValue(job.technician_name ?? '')
     setGeneratorValue(job.generator_name ?? '')
-  }, [job.generator_name, job.technician_name])
+    setIsOpen(true)
+  }
 
   function saveAssignments() {
     if (!canEdit) {
@@ -494,7 +770,7 @@ function MobileAssignmentButton({
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={openModal}
         className={`inline-flex h-8 items-center justify-center font-bold uppercase ${
           compact ? 'min-w-0 w-full px-2 text-[11px]' : 'min-w-[96px] px-3 text-[11px]'
         } ${GLASS_SECONDARY_BUTTON_CLASS}`}
@@ -514,11 +790,12 @@ function MobileAssignmentButton({
               <span className="mb-1.5 block text-sm font-medium text-gray-700">
                 Technik
               </span>
-              <input
-                type="text"
+              <TechnicianNamesInput
+                id={`mobile-technician-${job.id}`}
                 value={technicianValue}
+                technicians={technicianSuggestions}
+                onValueChange={setTechnicianValue}
                 disabled={isPending || !canEdit}
-                onChange={(event) => setTechnicianValue(event.target.value)}
                 className="h-11 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:bg-gray-50"
               />
             </label>
@@ -571,6 +848,7 @@ function EditableCell({
   printHidden = false,
   canEdit,
   clientSuggestions = [],
+  technicianSuggestions = [],
 }: {
   job: JobRow
   field: InlineEditableField
@@ -579,6 +857,7 @@ function EditableCell({
   printHidden?: boolean
   canEdit: boolean
   clientSuggestions?: ClientOption[]
+  technicianSuggestions?: string[]
 }) {
   if (field === 'company_name') {
     return (
@@ -592,18 +871,51 @@ function EditableCell({
     )
   }
 
+  if (field === 'technician_name') {
+    return (
+      <EditableTechnicianCell
+        job={job}
+        value={value}
+        printHidden={printHidden}
+        canEdit={canEdit}
+        technicianSuggestions={technicianSuggestions}
+      />
+    )
+  }
+
+  return (
+    <EditableGenericCell
+      job={job}
+      field={field}
+      value={value}
+      type={type}
+      printHidden={printHidden}
+      canEdit={canEdit}
+    />
+  )
+}
+
+function EditableGenericCell({
+  job,
+  field,
+  value,
+  type = 'text',
+  printHidden = false,
+  canEdit,
+}: {
+  job: JobRow
+  field: Exclude<InlineEditableField, 'company_name' | 'technician_name'>
+  value: string | null
+  type?: 'text' | 'datetime'
+  printHidden?: boolean
+  canEdit: boolean
+}) {
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState(
     type === 'datetime' ? toDateTimeLocalValue(value) : (value ?? '')
   )
   const [isPending, startTransition] = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    setDraftValue(
-      type === 'datetime' ? toDateTimeLocalValue(value) : (value ?? '')
-    )
-  }, [type, value])
 
   useEffect(() => {
     if (isEditing && canEdit) {
@@ -693,9 +1005,7 @@ function EditableCell({
           className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
           title={displayValue}
         >
-          <span className="block truncate">
-            {displayValue}
-          </span>
+          <span className="block truncate">{displayValue}</span>
         </div>
       </td>
     )
@@ -711,9 +1021,7 @@ function EditableCell({
         className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title={displayValue}
       >
-        <span className="block truncate">
-          {displayValue}
-        </span>
+        <span className="block truncate">{displayValue}</span>
       </button>
     </td>
   )
@@ -764,11 +1072,6 @@ function EditableCompanyCell({
   const [selectedClientId, setSelectedClientId] = useState(job.client_id ?? '')
 
   useEffect(() => {
-    setCompanyName(value ?? '')
-    setSelectedClientId(job.client_id ?? '')
-  }, [job.client_id, value])
-
-  useEffect(() => {
     if (isEditing && canEdit) {
       inputRef.current?.focus()
       inputRef.current?.setSelectionRange(companyName.length, companyName.length)
@@ -792,6 +1095,12 @@ function EditableCompanyCell({
       inputRef.current?.focus()
       inputRef.current?.setSelectionRange(start, end)
     })
+  }
+
+  function startEditing() {
+    setCompanyName(value ?? '')
+    setSelectedClientId(job.client_id ?? '')
+    setIsEditing(true)
   }
 
   function handleCompanyChange(nextRawValue: string) {
@@ -929,8 +1238,119 @@ function EditableCompanyCell({
     <td className={cellClassName}>
       <button
         type="button"
-        onClick={() => setIsEditing(true)}
+        onClick={startEditing}
         className="jobs-page__company-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-900 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
+        title={displayValue}
+      >
+        <span className="block truncate">{displayValue}</span>
+      </button>
+    </td>
+  )
+}
+
+function EditableTechnicianCell({
+  job,
+  value,
+  printHidden = false,
+  canEdit,
+  technicianSuggestions,
+}: {
+  job: JobRow
+  value: string | null
+  printHidden?: boolean
+  canEdit: boolean
+  technicianSuggestions: string[]
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [technicianValue, setTechnicianValue] = useState(value ?? '')
+
+  const cellClassName = `border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:border print:px-1.5 print:py-1.5 ${
+    printHidden ? 'print:hidden' : ''
+  }`
+
+  function cancelEditing() {
+    setTechnicianValue(value ?? '')
+    setIsEditing(false)
+  }
+
+  function saveValue(nextValue?: string) {
+    const originalValue = value ?? ''
+    const currentValue = nextValue ?? technicianValue
+
+    if (currentValue === originalValue) {
+      setIsEditing(false)
+      return
+    }
+
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.set('field', 'technician_name')
+      formData.set('value', currentValue)
+
+      const result = await updateJobInlineFieldAction(
+        job.id,
+        { success: false, error: null },
+        formData
+      )
+
+      if (!result.success) {
+        alert(result.error ?? 'Technika se nepodařilo uložit.')
+        cancelEditing()
+        return
+      }
+
+      setTechnicianValue(currentValue)
+      setIsEditing(false)
+    })
+  }
+
+  function startEditing() {
+    setTechnicianValue(value ?? '')
+    setIsEditing(true)
+  }
+
+  const displayValue = value || '—'
+
+  if (!canEdit) {
+    return (
+      <td className={cellClassName}>
+        <div
+          className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
+          title={displayValue}
+        >
+          <span className="block truncate">{displayValue}</span>
+        </div>
+      </td>
+    )
+  }
+
+  if (isEditing) {
+    return (
+      <td
+        className={`border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-1.5 align-middle ${
+          printHidden ? 'print:hidden' : 'print:border print:px-1.5 print:py-1.5'
+        }`}
+      >
+        <TechnicianNamesInput
+          id={`job-technician-${job.id}`}
+          value={technicianValue}
+          technicians={technicianSuggestions}
+          onValueChange={setTechnicianValue}
+          onBlur={saveValue}
+          disabled={isPending}
+          className="jobs-page__table-inline-edit-input h-8 w-full rounded-lg px-2 text-[12px] outline-none transition"
+        />
+      </td>
+    )
+  }
+
+  return (
+    <td className={cellClassName}>
+      <button
+        type="button"
+        onClick={startEditing}
+        className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title={displayValue}
       >
         <span className="block truncate">{displayValue}</span>
@@ -949,6 +1369,17 @@ function JobStatusButton({
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const meta = getJobStatusMeta(getEffectiveJobStatus(job))
+
+  if (!canEdit) {
+    return (
+      <span
+        data-status={meta.value}
+        className={`jobs-page__job-status-button inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase ${meta.className} pointer-events-none print:min-w-0 print:px-2 print:text-[10px]`}
+      >
+        <span className="truncate">{meta.label}</span>
+      </span>
+    )
+  }
 
   const options: { value: JobStatus; label: string; className: string }[] = [
     getJobStatusMeta('nova'),
@@ -1137,6 +1568,23 @@ function EvidenceStatusButton({
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const meta = getEvidenceStatusMeta(job.evidence_status)
+
+  if (!canEdit) {
+    return (
+      <span
+        data-status={meta.value}
+        className={`inline-flex h-8 ${
+          compact
+            ? compactClassName ?? 'min-w-[96px]'
+            : EVIDENCE_BUTTON_WIDTH_CLASS
+        } max-w-full items-center justify-center rounded-xl ${
+          compact ? '' : 'px-3'
+        } text-[11px] font-bold uppercase ${meta.className} pointer-events-none`}
+      >
+        <span className="truncate">{meta.label}</span>
+      </span>
+    )
+  }
 
   const options: {
     value: EvidenceStatus

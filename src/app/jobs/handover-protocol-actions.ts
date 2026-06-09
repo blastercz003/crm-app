@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 type ProfilePermissionRow = {
+  role: string | null
   can_view_jobs: boolean | null
+  can_view_tech_jobs: boolean | null
 }
 
 type JobProtocolRow = {
@@ -521,14 +523,37 @@ export async function saveHandoverProtocolDraftAction(
 export async function getHandoverProtocolPreviewData(
   jobId: string
 ): Promise<ActionResult<HandoverProtocolPreviewData>> {
-  const { supabase, error: accessError } = await requireJobsAccess()
+  const supabase = await createClient()
 
-  if (accessError) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
     return {
       success: false,
-      error: accessError,
+      error: 'Nejsi přihlášený.',
     }
   }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, can_view_jobs, can_view_tech_jobs')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    return {
+      success: false,
+      error: 'Nepodařilo se ověřit oprávnění uživatele.',
+    }
+  }
+
+  const typedProfile = profile as ProfilePermissionRow | null
+  const isAdmin = typedProfile?.role === 'admin'
+  const canViewJobs = isAdmin || Boolean(typedProfile?.can_view_jobs)
+  const canViewTechJobs =
+    isAdmin || Boolean(typedProfile?.can_view_tech_jobs) || typedProfile?.role === 'TECHNIK'
 
   const { error: jobError, job } = await getJobBaseData(supabase, jobId)
 
@@ -545,6 +570,29 @@ export async function getHandoverProtocolPreviewData(
     return {
       success: false,
       error: protocolData.error,
+    }
+  }
+
+  if (!canViewJobs) {
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('job_technicians')
+      .select('job_id, technician_id')
+      .eq('job_id', jobId)
+      .eq('technician_id', user.id)
+      .maybeSingle()
+
+    if (assignmentError) {
+      return {
+        success: false,
+        error: 'Nepodařilo se ověřit přiřazení zakázky.',
+      }
+    }
+
+    if (!canViewTechJobs || !protocolData.protocol?.is_sent || !assignment) {
+      return {
+        success: false,
+        error: 'K tomuto předávacímu protokolu nemáš přístup.',
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { NavigationOverlay } from '../components/navigation/navigation-overlay'
@@ -11,10 +12,7 @@ import {
 import { ThemePreferenceSync } from '@/components/theme/theme-preference-sync'
 import { APP_TITLE } from '@/lib/pageTitles'
 import {
-  THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY,
-  THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY,
   THEME_COLORS,
-  THEME_STORAGE_KEY,
 } from '@/lib/theme/theme-preference'
 
 const geistSans = Geist({
@@ -73,13 +71,12 @@ export default function RootLayout({
     >
       <head>
         <meta name="theme-color" content={THEME_COLORS.light} />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function () {
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {`(function () {
   try {
-    var themeMode = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    var overrideMode = window.localStorage.getItem(${JSON.stringify(THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY)});
-    var overrideUntil = window.localStorage.getItem(${JSON.stringify(THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY)});
+    var themeMode = window.localStorage.getItem(${JSON.stringify('meeting-crm.theme-mode')});
+    var overrideMode = window.localStorage.getItem(${JSON.stringify('meeting-crm.theme-auto-override-mode')});
+    var overrideUntil = window.localStorage.getItem(${JSON.stringify('meeting-crm.theme-auto-override-until')});
     var now = new Date();
     var theme = themeMode === 'light' || themeMode === 'dark'
       ? themeMode
@@ -109,24 +106,6 @@ export default function RootLayout({
       meta.setAttribute('content', theme === 'dark' ? '${THEME_COLORS.dark}' : '${THEME_COLORS.light}');
     }
 
-    if (
-      themeMode === 'auto' &&
-      (overrideMode === 'light' || overrideMode === 'dark') &&
-      overrideUntil &&
-      !Number.isNaN(new Date(overrideUntil).getTime()) &&
-      new Date(overrideUntil).getTime() <= now.getTime()
-    ) {
-      window.localStorage.removeItem(${JSON.stringify(THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY)});
-      window.localStorage.removeItem(${JSON.stringify(THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY)});
-    }
-
-    if (themeMode !== 'auto' && themeMode !== 'light' && themeMode !== 'dark') {
-      document.documentElement.setAttribute('data-theme', 'light');
-      if (meta) {
-        meta.setAttribute('content', '${THEME_COLORS.light}');
-      }
-    }
-
     var pathname = window.location.pathname;
     var allowedPath = pathname === '/' || pathname === '/dashboard';
     if (!allowedPath) {
@@ -147,9 +126,8 @@ export default function RootLayout({
   } catch (_) {
     document.documentElement.setAttribute('data-startup-overlay', 'hide');
   }
-})();`,
-          }}
-        />
+})();`}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />

@@ -15,6 +15,7 @@ import {
   updateJobAction,
   type UpdateJobActionState,
 } from './actions'
+import { TechnicianNamesInput } from './technician-names-input'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 type JobStatus = 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
@@ -58,6 +59,7 @@ type EditJobButtonProps = {
   job: JobFormValues
   clientSuggestions: ClientOption[]
   clientContacts?: ClientContactOption[]
+  technicianSuggestions?: string[]
   className?: string
   children?: React.ReactNode
   isAdmin?: boolean
@@ -72,6 +74,7 @@ export function EditJobButton({
   job,
   clientSuggestions,
   clientContacts = [],
+  technicianSuggestions = [],
   className,
   children,
   isAdmin = true,
@@ -106,6 +109,7 @@ export function EditJobButton({
           job={job}
           clientSuggestions={clientSuggestions}
           clientContacts={clientContacts}
+          technicianSuggestions={technicianSuggestions}
           onClose={closeModal}
         />
       ) : null}
@@ -117,11 +121,13 @@ function EditJobModal({
   job,
   clientSuggestions,
   clientContacts,
+  technicianSuggestions,
   onClose,
 }: {
   job: JobFormValues
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  technicianSuggestions: string[]
   onClose: () => void
 }) {
   const [state, formAction] = useActionState(
@@ -160,6 +166,7 @@ function EditJobModal({
       mode="edit"
       clientSuggestions={clientSuggestions}
       clientContacts={clientContacts}
+      technicianSuggestions={technicianSuggestions}
       onClose={onClose}
       error={state.error}
       formAction={formAction}
@@ -174,6 +181,7 @@ function JobFormShell({
   mode,
   clientSuggestions,
   clientContacts,
+  technicianSuggestions,
   onClose,
   error,
   formAction,
@@ -184,6 +192,7 @@ function JobFormShell({
   mode: 'edit'
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  technicianSuggestions: string[]
   onClose: () => void
   error: string | null
   formAction: (payload: FormData) => void
@@ -224,6 +233,7 @@ function JobFormShell({
   const [selectedClientId, setSelectedClientId] = useState(job.client_id ?? '')
   const [selectedContactId, setSelectedContactId] = useState(job.client_contact_id ?? '')
   const [contactPerson, setContactPerson] = useState(job.contact_person ?? '')
+  const [technicianName, setTechnicianName] = useState(job.technician_name ?? '')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
@@ -419,6 +429,7 @@ function JobFormShell({
               name="company_name"
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
+            <input type="hidden" name="technician_name" value={technicianName} />
 
             <div className="jobs-page__job-form-modal__body px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
@@ -631,12 +642,12 @@ function JobFormShell({
                       >
                         Technik
                       </label>
-                      <input
+                      <TechnicianNamesInput
                         id={`${mode}-technician_name`}
-                        name="technician_name"
-                        type="text"
-                        defaultValue={job.technician_name ?? ''}
-                        placeholder="Odpovědný pracovník"
+                        value={technicianName}
+                        onValueChange={setTechnicianName}
+                        technicians={technicianSuggestions}
+                        placeholder="Zadej jedno nebo více jmen techniků"
                         className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
