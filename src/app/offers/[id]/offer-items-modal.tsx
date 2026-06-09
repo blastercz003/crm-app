@@ -871,7 +871,7 @@ export function OfferItemsEditor({
                   </div>
 
                   {rows.length === 0 ? (
-                    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.86)_0%,rgba(238,242,247,0.78)_100%)] p-4 text-sm text-gray-500">
+                    <div className="offers-detail-page__items-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.86)_0%,rgba(238,242,247,0.78)_100%)] p-4 text-sm text-gray-500">
                       Přidej položku z nabídky nebo vytvoř vlastní řádek.
                     </div>
                   ) : null}

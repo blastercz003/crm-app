@@ -138,10 +138,10 @@ function canShowResubmitNotice(offer: OfferRow) {
 }
 
 const CLASSIC_DEFAULT_TERMS_NOTE =
-  'Nedílnou součástí nabídky jsou všeobecné obchodní podmínky pronájmu (VOPP).\nPro rezervaci termínu relizace je třeba zaslat písemnou objednávku.\n\n* Spotřeba pohonných hmot se vyúčtuje na základě skutečné spotřeby.\n** Platbu za PHM a služby je nutno uhradit min. 3 dny před započetím realizace (peníze na účtu Blaster Services s.r.o.)'
+  'Dodavatelem je Blaster Services s.r.o., IČ: 24802867, DIČ: CZ24802867.\n\nNedílnou součástí nabídky jsou všeobecné obchodní podmínky pronájmu (VOPP).\nPro rezervaci termínu relizace je třeba zaslat písemnou objednávku.\nMůže být vyžadována zálohová platba v předem oznámené výši.\n\n* Spotřeba pohonných hmot se vyúčtuje na základě skutečné spotřeby.'
 
 const BSAFE24_DEFAULT_TERMS_NOTE =
-  'Nedílnou součástí nabídky jsou všeobecné obchodní podmínky pronájmu (VOPP).\n\n* Spotřeba pohonných hmot se vyúčtuje na základě skutečné spotřeby.\n** Platbu za PHM a služby je nutno uhradit min. 3 dny před započetím realizace (peníze na účtu Blaster Services s.r.o.)'
+  'Dodavatelem je Blaster Services s.r.o., IČ: 24802867, DIČ: CZ24802867.\n\nNedílnou součástí nabídky jsou všeobecné obchodní podmínky pronájmu (VOPP).\n* Při aktivaci výjezdu jsou položky účtovány na základě skutečného využití dle jednotkových cen.'
 
 const BSAFE24_SERVICE_ITEM_PRESETS = [
   {
