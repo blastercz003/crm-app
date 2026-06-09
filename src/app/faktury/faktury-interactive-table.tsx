@@ -969,11 +969,12 @@ function JobAttachmentsModal({
         return
       }
 
+      let nextItems: JobAttachment[] = []
       setItems((current) => {
-        const nextItems = current.filter((item) => item.id !== attachmentId)
-        onAttachmentPresenceChange(nextItems.length > 0)
+        nextItems = current.filter((item) => item.id !== attachmentId)
         return nextItems
       })
+      onAttachmentPresenceChange(nextItems.length > 0)
       router.refresh()
     })
   }
