@@ -10153,6 +10153,10 @@ html[data-theme='dark'] .jobs-page__info-modal__attachment-card {
     0 10px 22px rgba(2, 6, 23, 0.18) !important;
 }
 
+html[data-theme='dark'] .jobs-page__info-modal__attachment-card tbody tr {
+  border-top-color: rgba(148, 163, 184, 0.14) !important;
+}
+
 html[data-theme='dark'] .jobs-page__info-modal__attachment-card .bg-zinc-100 {
   background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
 }

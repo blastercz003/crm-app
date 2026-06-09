@@ -62,8 +62,6 @@ export type LoadJobAttachmentsActionState = {
   items: JobAttachment[]
 }
 
-export type { JobAttachment, JobAttachmentCategory }
-
 export type UploadJobAttachmentsActionState = {
   success: boolean
   error: string | null

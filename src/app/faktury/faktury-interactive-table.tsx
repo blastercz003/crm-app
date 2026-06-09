@@ -15,11 +15,13 @@ import {
   saveFinanceCostItemsAction,
   uploadJobAttachmentsAction,
   updateFinanceInlineFieldAction,
-  type JobAttachment,
-  type JobAttachmentCategory,
   type FinanceCostItem,
   type FinanceCostItemInput,
 } from './actions'
+import type {
+  JobAttachment,
+  JobAttachmentCategory,
+} from '@/lib/job-attachments'
 import type { FakturaRow, SalesOwner } from './page'
 
 type InlineEditableFinanceField = 'info_note' | 'invoice_number' | 'sale_amount'
