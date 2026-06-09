@@ -11,6 +11,7 @@ import {
   mapJobAttachmentRow,
   type JobAttachment,
   type JobAttachmentRow,
+  type JobAttachmentCategory,
 } from '@/lib/job-attachments'
 
 export type UpdateFinanceInlineFieldActionState = {
@@ -60,6 +61,8 @@ export type LoadJobAttachmentsActionState = {
   error: string | null
   items: JobAttachment[]
 }
+
+export type { JobAttachment, JobAttachmentCategory }
 
 export type UploadJobAttachmentsActionState = {
   success: boolean
