@@ -23,6 +23,10 @@ function isImageMimeType(mimeType: string) {
   return mimeType.startsWith('image/')
 }
 
+function toArrayBuffer(bytes: Uint8Array | Buffer): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+}
+
 async function optimizePdfFile(file: File) {
   const originalBytes = Buffer.from(await file.arrayBuffer())
 
@@ -37,7 +41,7 @@ async function optimizePdfFile(file: File) {
     })
 
     if (optimizedBytes.length < originalBytes.length) {
-      return new File([optimizedBytes], file.name, {
+      return new File([toArrayBuffer(optimizedBytes)], file.name, {
         type: 'application/pdf',
         lastModified: file.lastModified,
       })
@@ -76,7 +80,7 @@ async function optimizeImageFile(file: File) {
     }
 
     if (nextBytes.length <= JPEG_SIZE_TARGET_BYTES) {
-      return new File([nextBytes], outputFileName, {
+      return new File([toArrayBuffer(nextBytes)], outputFileName, {
         type: 'image/jpeg',
         lastModified: file.lastModified,
       })
@@ -84,7 +88,7 @@ async function optimizeImageFile(file: File) {
   }
 
   if (bestCandidate && bestCandidate.bytes.length < originalBytes.length) {
-    return new File([bestCandidate.bytes], outputFileName, {
+    return new File([toArrayBuffer(bestCandidate.bytes)], outputFileName, {
       type: 'image/jpeg',
       lastModified: file.lastModified,
     })

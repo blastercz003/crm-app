@@ -182,7 +182,6 @@ export function JobsInteractiveTable({
                 showReadOnlyInfo={showReadOnlyInfo}
                 showEvidenceColumn={showEvidenceColumn}
                 showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
-                collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
               />
             ))}
           </tbody>
@@ -201,7 +200,6 @@ export function JobsInteractiveTable({
             isAdmin={isAdmin}
             allowEditing={allowEditing}
             showReadOnlyInfo={showReadOnlyInfo}
-            showEvidenceColumn={showEvidenceColumn}
             showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
             collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
           />
