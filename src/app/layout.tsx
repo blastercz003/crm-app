@@ -55,7 +55,7 @@ export default function RootLayout({
       lang="en"
       className="h-full antialiased"
       data-theme="light"
-      data-startup-overlay="hide"
+      data-startup-overlay="pending"
       suppressHydrationWarning
     >
       <head>
@@ -123,10 +123,12 @@ export default function RootLayout({
         <PwaStartupScreenShell />
         <PwaStartupScreenController />
         <ThemePreferenceSync />
-        {children}
-        <Suspense fallback={null}>
-          <NavigationOverlay />
-        </Suspense>
+        <div id="app-shell" className="flex min-h-full flex-1 flex-col">
+          {children}
+          <Suspense fallback={null}>
+            <NavigationOverlay />
+          </Suspense>
+        </div>
       </body>
     </html>
   )

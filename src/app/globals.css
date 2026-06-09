@@ -6116,7 +6116,7 @@ input[type="reset"]:not(:disabled) {
 }
 
 #pwa-startup-screen {
-  display: none;
+  display: grid;
   position: fixed;
   inset: 0;
   z-index: 999999;
@@ -6137,9 +6137,21 @@ html[data-theme='dark'] #pwa-startup-screen {
   color: #f8fbff;
 }
 
-html[data-startup-overlay='show'] #pwa-startup-screen {
-  display: grid;
+html[data-startup-overlay='hide'] #pwa-startup-screen {
+  display: none;
+}
+
+html[data-startup-overlay='show'] #pwa-startup-screen,
+html[data-startup-overlay='pending'] #pwa-startup-screen {
   place-items: center;
+}
+
+#app-shell {
+  visibility: hidden;
+}
+
+html[data-startup-overlay='hide'] #app-shell {
+  visibility: visible;
 }
 
 #pwa-startup-screen.is-hiding {
