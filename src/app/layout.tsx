@@ -12,7 +12,11 @@ import { ThemePreferenceSync } from '@/components/theme/theme-preference-sync'
 import { APP_TITLE } from '@/lib/pageTitles'
 import {
   THEME_COLORS,
+  resolveThemeAppearanceMode,
 } from '@/lib/theme/theme-preference'
+import {
+  getServerThemePreferences,
+} from '@/lib/theme/theme-preference.server'
 
 export const metadata: Metadata = {
   title: {
@@ -45,21 +49,24 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const themePreferences = await getServerThemePreferences()
+  const initialTheme = resolveThemeAppearanceMode(themePreferences)
+
   return (
     <html
       lang="en"
       className="h-full antialiased"
-      data-theme="light"
+      data-theme={initialTheme}
       data-startup-overlay="pending"
       suppressHydrationWarning
     >
       <head>
-        <meta name="theme-color" content={THEME_COLORS.light} />
+        <meta name="theme-color" content={THEME_COLORS[initialTheme]} />
         <Script id="theme-bootstrap" strategy="beforeInteractive">
           {`(function () {
   try {

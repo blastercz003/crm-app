@@ -5,6 +5,7 @@ export const THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY =
   'meeting-crm.theme-auto-override-until'
 export const THEME_PREFERENCES_CHANGED_EVENT = 'theme-preferences-changed'
 export const PRAGUE_TIME_ZONE = 'Europe/Prague'
+const THEME_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 const PRAGUE_LATITUDE = 50.0755
 const PRAGUE_LONGITUDE = 14.4378
 const SUNSET_SUNRISE_ZENITH = 90.833
@@ -351,10 +352,24 @@ export function readStoredThemeMode(): ThemeMode {
   return normalizeThemeMode(rawValue)
 }
 
+function writeThemePreferenceCookie(name: string, value: string | null) {
+  if (typeof document === 'undefined') return
+
+  if (value === null) {
+    document.cookie = `${encodeURIComponent(name)}=; Path=/; Max-Age=0; SameSite=Lax`
+    return
+  }
+
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Path=/; Max-Age=${THEME_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`
+}
+
 export function writeStoredThemeMode(themeMode: ThemeMode) {
   if (typeof window === 'undefined') return
 
   window.localStorage.setItem(THEME_STORAGE_KEY, themeMode)
+  writeThemePreferenceCookie(THEME_STORAGE_KEY, themeMode)
+  writeThemePreferenceCookie(THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY, null)
+  writeThemePreferenceCookie(THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY, null)
   window.dispatchEvent(new Event(THEME_PREFERENCES_CHANGED_EVENT))
 }
 
@@ -362,6 +377,7 @@ export function writeStoredThemePreferences(preferences: ThemePreferences) {
   if (typeof window === 'undefined') return
 
   window.localStorage.setItem(THEME_STORAGE_KEY, preferences.themeMode)
+  writeThemePreferenceCookie(THEME_STORAGE_KEY, preferences.themeMode)
 
   if (preferences.themeAutoOverrideMode && preferences.themeAutoOverrideUntil) {
     window.localStorage.setItem(
@@ -372,9 +388,19 @@ export function writeStoredThemePreferences(preferences: ThemePreferences) {
       THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY,
       preferences.themeAutoOverrideUntil
     )
+    writeThemePreferenceCookie(
+      THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY,
+      preferences.themeAutoOverrideMode
+    )
+    writeThemePreferenceCookie(
+      THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY,
+      preferences.themeAutoOverrideUntil
+    )
   } else {
     window.localStorage.removeItem(THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY)
     window.localStorage.removeItem(THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY)
+    writeThemePreferenceCookie(THEME_AUTO_OVERRIDE_MODE_STORAGE_KEY, null)
+    writeThemePreferenceCookie(THEME_AUTO_OVERRIDE_UNTIL_STORAGE_KEY, null)
   }
 
   window.dispatchEvent(new Event(THEME_PREFERENCES_CHANGED_EVENT))
