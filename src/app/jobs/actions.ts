@@ -458,6 +458,7 @@ async function requireJobsAccess() {
 
 function revalidateAllRelatedPaths() {
   revalidatePath('/jobs')
+  revalidatePath('/zakazky-techniku')
   revalidatePath('/jobs-portal')
   revalidatePath('/faktury')
 }

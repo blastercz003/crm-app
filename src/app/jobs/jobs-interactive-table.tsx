@@ -15,6 +15,7 @@ import { InfoNoteButton } from './info-note-button'
 import { TechnicianNamesInput } from './technician-names-input'
 import { finalizeTechnicianInputValue } from '@/lib/jobs/technicians'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
+import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 
 type JobStatus =
   | 'nova'
@@ -122,6 +123,25 @@ export function JobsInteractiveTable({
   showHandoverProtocolPdfColumn = false,
   collapseReadOnlyMobileActions = false,
 }: JobsInteractiveTableProps) {
+  const [visibleJobs, setVisibleJobs] = useState(jobs)
+
+  useEffect(() => {
+    setVisibleJobs(jobs)
+  }, [jobs])
+
+  function updateVisibleJob(jobId: string, nextValues: Partial<JobRow>) {
+    setVisibleJobs((currentJobs) =>
+      currentJobs.map((job) =>
+        job.id === jobId
+          ? {
+              ...job,
+              ...nextValues,
+            }
+          : job
+      )
+    )
+  }
+
   return (
     <>
       <section className="print-header print:block hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
@@ -172,7 +192,7 @@ export function JobsInteractiveTable({
           </thead>
 
           <tbody className="jobs-page__table-body">
-            {jobs.map((job) => (
+            {visibleJobs.map((job) => (
               <DesktopRow
                 key={job.id}
                 job={job}
@@ -192,21 +212,22 @@ export function JobsInteractiveTable({
       </section>
 
       <section className="grid gap-3 print:hidden lg:hidden">
-        {jobs.map((job) => (
-          <MobileCard
-            key={job.id}
-            job={job}
+            {visibleJobs.map((job) => (
+              <MobileCard
+                key={job.id}
+                job={job}
             clientSuggestions={clientSuggestions}
             clientContacts={clientContacts}
             technicianSuggestions={technicianSuggestions}
             isAdmin={isAdmin}
             allowEditing={allowEditing}
-            showReadOnlyInfo={showReadOnlyInfo}
-            showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
-            collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
-          />
-        ))}
-      </section>
+                showReadOnlyInfo={showReadOnlyInfo}
+                showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
+                collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
+                onJobUpdate={updateVisibleJob}
+              />
+            ))}
+          </section>
     </>
   )
 }
@@ -381,6 +402,7 @@ function MobileCard({
   showReadOnlyInfo,
   showHandoverProtocolPdfColumn,
   collapseReadOnlyMobileActions,
+  onJobUpdate,
 }: {
   job: JobRow
   clientSuggestions: ClientOption[]
@@ -391,6 +413,7 @@ function MobileCard({
   showReadOnlyInfo: boolean
   showHandoverProtocolPdfColumn: boolean
   collapseReadOnlyMobileActions: boolean
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const showInfoAlertDot = Boolean(job.info_alert_enabled) && Boolean(job.has_info_content)
@@ -569,6 +592,7 @@ function MobileCard({
             canEdit
             compact
             technicianSuggestions={technicianSuggestions}
+            onJobUpdate={onJobUpdate}
           />
         </div>
       ) : isActionsOpen && showCollapsedReadOnlyActions ? (
@@ -692,17 +716,22 @@ function MobileAssignmentButton({
   job,
   canEdit,
   technicianSuggestions,
+  onJobUpdate,
   compact = false,
 }: {
   job: JobRow
   canEdit: boolean
   technicianSuggestions: string[]
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
   compact?: boolean
 }) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [technicianValue, setTechnicianValue] = useState(job.technician_name ?? '')
   const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')
+  const [isTechnicianDirty, setIsTechnicianDirty] = useState(false)
+  const [isGeneratorDirty, setIsGeneratorDirty] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isSaving, setIsSaving] = useState(false)
   const isSavingRef = useRef(false)
@@ -710,6 +739,8 @@ function MobileAssignmentButton({
   function openModal() {
     setTechnicianValue(job.technician_name ?? '')
     setGeneratorValue(job.generator_name ?? '')
+    setIsTechnicianDirty(false)
+    setIsGeneratorDirty(false)
     setIsOpen(true)
   }
 
@@ -721,22 +752,12 @@ function MobileAssignmentButton({
 
     const originalTechnician = job.technician_name ?? ''
     const originalGenerator = job.generator_name ?? ''
-    const finalizedTechnician = finalizeTechnicianInputValue(
-      technicianValue,
-      technicianSuggestions
-    )
+    const technicianChanged =
+      isTechnicianDirty || technicianValue !== originalTechnician
+    const generatorChanged =
+      isGeneratorDirty || generatorValue !== originalGenerator
 
-    if (finalizedTechnician.error) {
-      alert(finalizedTechnician.error)
-      return
-    }
-
-    const normalizedTechnicianValue = finalizedTechnician.value
-
-    if (
-      normalizedTechnicianValue === originalTechnician &&
-      generatorValue === originalGenerator
-    ) {
+    if (!technicianChanged && !generatorChanged) {
       setIsOpen(false)
       return
     }
@@ -746,24 +767,47 @@ function MobileAssignmentButton({
 
     startTransition(async () => {
       try {
-        if (normalizedTechnicianValue !== originalTechnician) {
-          const technicianFormData = new FormData()
-          technicianFormData.set('field', 'technician_name')
-          technicianFormData.set('value', normalizedTechnicianValue)
+        let hasError = false
+        let normalizedTechnicianValue: string | null = null
 
-          const technicianResult = await updateJobInlineFieldAction(
-            job.id,
-            { success: false, error: null },
-            technicianFormData
+        if (technicianChanged) {
+          const finalizedTechnician = finalizeTechnicianInputValue(
+            technicianValue,
+            technicianSuggestions
           )
 
-          if (!technicianResult.success) {
-            alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
-            return
+          if (finalizedTechnician.error) {
+            alert(finalizedTechnician.error)
+            hasError = true
+          } else {
+            normalizedTechnicianValue = finalizedTechnician.value
+
+            if (normalizedTechnicianValue !== originalTechnician) {
+              const technicianFormData = new FormData()
+              technicianFormData.set('field', 'technician_name')
+              technicianFormData.set('value', normalizedTechnicianValue)
+
+              const technicianResult = await updateJobInlineFieldAction(
+                job.id,
+                { success: false, error: null },
+                technicianFormData
+              )
+
+              if (!technicianResult.success) {
+                alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
+                hasError = true
+              } else {
+                setTechnicianValue(normalizedTechnicianValue)
+                setIsTechnicianDirty(false)
+              }
+            } else {
+              setTechnicianValue(normalizedTechnicianValue)
+              setIsTechnicianDirty(false)
+            }
           }
         }
 
-        if (generatorValue !== originalGenerator) {
+        if (generatorChanged) {
           const generatorFormData = new FormData()
           generatorFormData.set('field', 'generator_name')
           generatorFormData.set('value', generatorValue)
@@ -776,12 +820,31 @@ function MobileAssignmentButton({
 
           if (!generatorResult.success) {
             alert(generatorResult.error ?? 'Agregát se nepodařilo uložit.')
-            return
+            hasError = true
+          } else {
+            setIsGeneratorDirty(false)
           }
         }
 
-        setTechnicianValue(normalizedTechnicianValue)
-        router.refresh()
+        if (hasError) {
+          return
+        }
+
+        const nextValues: Partial<JobRow> = {}
+
+        if (normalizedTechnicianValue !== null) {
+          nextValues.technician_name = normalizedTechnicianValue
+        }
+
+        if (generatorChanged) {
+          nextValues.generator_name = generatorValue
+        }
+
+        if (Object.keys(nextValues).length > 0) {
+          onJobUpdate(job.id, nextValues)
+        }
+
+        setSuccessMessage('Změny zakázky byly úspěšně uloženy.')
         setIsOpen(false)
       } finally {
         isSavingRef.current = false
@@ -818,7 +881,10 @@ function MobileAssignmentButton({
                 id={`mobile-technician-${job.id}`}
                 value={technicianValue}
                 technicians={technicianSuggestions}
-                onValueChange={setTechnicianValue}
+                onValueChange={(nextValue) => {
+                  setTechnicianValue(nextValue)
+                  setIsTechnicianDirty(nextValue !== (job.technician_name ?? ''))
+                }}
                 disabled={isPending || !canEdit}
                 className="h-11 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:bg-gray-50"
               />
@@ -832,7 +898,11 @@ function MobileAssignmentButton({
                 type="text"
                 value={generatorValue}
                 disabled={isPending || !canEdit}
-                onChange={(event) => setGeneratorValue(event.target.value)}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setGeneratorValue(nextValue)
+                  setIsGeneratorDirty(nextValue !== (job.generator_name ?? ''))
+                }}
                 className="h-11 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:bg-gray-50"
               />
             </label>
@@ -860,6 +930,13 @@ function MobileAssignmentButton({
           </div>
         </ModalShell>
       ) : null}
+
+      <SuccessConfirmationModal
+        isOpen={Boolean(successMessage)}
+        title="ULOŽENO"
+        message={successMessage ?? ''}
+        onConfirm={() => setSuccessMessage(null)}
+      />
     </>
   )
 }

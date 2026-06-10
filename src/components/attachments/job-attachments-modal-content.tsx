@@ -47,6 +47,7 @@ export type JobAttachmentsModalContentProps = {
   onOpenAttachment: (attachmentId: string) => void
   onDownloadAttachment: (attachmentId: string) => void
   onDeleteAttachment: (attachmentId: string, displayName: string) => void
+  showDeleteAttachment?: boolean
 }
 
 function formatFileSize(fileSizeBytes: number) {
@@ -104,6 +105,7 @@ export function JobAttachmentsModalContent({
   onOpenAttachment,
   onDownloadAttachment,
   onDeleteAttachment,
+  showDeleteAttachment = true,
 }: JobAttachmentsModalContentProps) {
   return (
     <div
@@ -266,7 +268,11 @@ export function JobAttachmentsModalContent({
                     </div>
                   </div>
 
-                  <div className="mt-4 grid min-w-0 w-full grid-cols-3 gap-2">
+                  <div
+                    className={`mt-4 grid min-w-0 w-full gap-2 ${
+                      showDeleteAttachment ? 'grid-cols-3' : 'grid-cols-2'
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => onOpenAttachment(item.id)}
@@ -283,14 +289,16 @@ export function JobAttachmentsModalContent({
                     >
                       STÁHNOUT
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onDeleteAttachment(item.id, item.displayName)}
-                      disabled={isPending}
-                      className="jobs-page__info-modal__attachment-delete inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 py-1.5 text-[11px] font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
-                    >
-                      SMAZAT
-                    </button>
+                    {showDeleteAttachment ? (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteAttachment(item.id, item.displayName)}
+                        disabled={isPending}
+                        className="jobs-page__info-modal__attachment-delete inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 py-1.5 text-[11px] font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      >
+                        SMAZAT
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -355,17 +363,19 @@ export function JobAttachmentsModalContent({
                             onClick={() => onDownloadAttachment(item.id)}
                             disabled={isPending}
                             className="jobs-page__info-modal__attachment-download shrink-0 rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
-                          >
-                            STÁHNOUT
+                            >
+                              STÁHNOUT
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onDeleteAttachment(item.id, item.displayName)}
-                            disabled={isPending}
-                            className="jobs-page__info-modal__attachment-delete shrink-0 rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2.5 py-1.5 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
-                          >
-                            SMAZAT
-                          </button>
+                          {showDeleteAttachment ? (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteAttachment(item.id, item.displayName)}
+                              disabled={isPending}
+                              className="jobs-page__info-modal__attachment-delete shrink-0 rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2.5 py-1.5 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                            >
+                              SMAZAT
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

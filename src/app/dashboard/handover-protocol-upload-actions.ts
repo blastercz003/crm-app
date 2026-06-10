@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase/server'
 import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   buildAttachmentStoragePath,
+  mapJobAttachmentRow,
   JOB_ATTACHMENTS_BUCKET,
   MAX_ATTACHMENT_FILE_SIZE_BYTES,
+  type JobAttachment,
 } from '@/lib/job-attachments'
 import { optimizeUploadFile } from '@/lib/uploads/optimize-upload-file'
 
@@ -25,6 +27,21 @@ type HandoverProtocolAttachmentJobRow = {
   created_at: string
 }
 
+type HandoverProtocolAttachmentRow = {
+  id: string
+  job_id: string
+  file_name: string
+  display_name: string
+  storage_bucket: string
+  storage_path: string
+  mime_type: string | null
+  file_size_bytes: number
+  category: 'predavaci_protokol' | 'foto' | 'jine'
+  note: string | null
+  uploaded_by: string | null
+  created_at: string
+}
+
 type ActionResult<T> =
   | {
       success: true
@@ -35,6 +52,22 @@ type ActionResult<T> =
       success: false
       error: string
       data: null
+    }
+
+export type HandoverProtocolUploadAttachmentListState = ActionResult<{
+  items: JobAttachment[]
+}>
+
+export type HandoverProtocolUploadAttachmentUrlState =
+  | {
+      success: true
+      error: null
+      signedUrl: string
+    }
+  | {
+      success: false
+      error: string
+      signedUrl: null
     }
 
 type HandoverProtocolJobRow = {
@@ -455,4 +488,144 @@ export async function getHandoverProtocolUploadJobOptions(
       showInHandoverProtocolUpload: Boolean(job.show_in_handover_protocol_upload),
     }))
     .filter((job) => Boolean(job.id) && Boolean(job.jobNumber) && Boolean(job.companyName))
+}
+
+export async function getHandoverProtocolUploadAttachmentsAction(
+  jobId: string
+): Promise<HandoverProtocolUploadAttachmentListState> {
+  const { supabase, user, profile, error } =
+    await requireHandoverProtocolUploadAccess()
+
+  if (!user) {
+    return { success: false, error: error ?? 'Neautorizovaný přístup.', data: null }
+  }
+
+  const normalizedJobId = String(jobId ?? '').trim()
+  if (!normalizedJobId) {
+    return { success: false, error: 'Vyber zakázku.', data: null }
+  }
+
+  const visibleJobIds = await getVisibleJobIds(
+    supabase,
+    user.id,
+    Boolean(profile?.can_view_all_technician_handover_uploads)
+  )
+
+  if (!visibleJobIds.includes(normalizedJobId)) {
+    return {
+      success: false,
+      error: 'K této zakázce nemáš oprávnění nahlížet do příloh.',
+      data: null,
+    }
+  }
+
+  const { data, error: attachmentsError } = await supabase
+    .from('job_attachments')
+    .select(
+      'id, job_id, file_name, display_name, storage_bucket, storage_path, mime_type, file_size_bytes, category, note, uploaded_by, created_at'
+    )
+    .eq('job_id', normalizedJobId)
+    .order('created_at', { ascending: false })
+
+  if (attachmentsError) {
+    return {
+      success: false,
+      error: 'Přílohy se nepodařilo načíst.',
+      data: null,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    data: {
+      items: ((data ?? []) as HandoverProtocolAttachmentRow[]).map(
+        mapJobAttachmentRow
+      ),
+    },
+  }
+}
+
+async function getHandoverProtocolUploadAttachmentUrl(
+  attachmentId: string,
+  download: boolean
+): Promise<HandoverProtocolUploadAttachmentUrlState> {
+  const { supabase, user, profile, error } =
+    await requireHandoverProtocolUploadAccess()
+
+  if (!user) {
+    return { success: false, error: error ?? 'Neautorizovaný přístup.', signedUrl: null }
+  }
+
+  const normalizedAttachmentId = String(attachmentId ?? '').trim()
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID přílohy.', signedUrl: null }
+  }
+
+  const { data: attachmentRow, error: attachmentError } = await supabase
+    .from('job_attachments')
+    .select('job_id, storage_bucket, storage_path, display_name')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (attachmentError || !attachmentRow) {
+    return { success: false, error: 'Příloha nebyla nalezena.', signedUrl: null }
+  }
+
+  const typedAttachmentRow = attachmentRow as {
+    job_id: string
+    storage_bucket: string
+    storage_path: string
+    display_name: string | null
+  }
+
+  const visibleJobIds = await getVisibleJobIds(
+    supabase,
+    user.id,
+    Boolean(profile?.can_view_all_technician_handover_uploads)
+  )
+
+  if (!visibleJobIds.includes(String(typedAttachmentRow.job_id ?? '').trim())) {
+    return {
+      success: false,
+      error: 'K této příloze nemáš oprávnění.',
+      signedUrl: null,
+    }
+  }
+
+  const { data, error: signedError } = await supabase.storage
+    .from(String(typedAttachmentRow.storage_bucket))
+    .createSignedUrl(String(typedAttachmentRow.storage_path), 60, download
+      ? {
+          download: String(typedAttachmentRow.display_name ?? '').trim() || undefined,
+        }
+      : undefined)
+
+  if (signedError || !data?.signedUrl) {
+    return {
+      success: false,
+      error: download
+        ? 'Nepodařilo se vytvořit odkaz pro stažení přílohy.'
+        : 'Nepodařilo se vytvořit odkaz pro otevření přílohy.',
+      signedUrl: null,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    signedUrl: data.signedUrl,
+  }
+}
+
+export async function openHandoverProtocolUploadAttachmentAction(
+  attachmentId: string
+): Promise<HandoverProtocolUploadAttachmentUrlState> {
+  return getHandoverProtocolUploadAttachmentUrl(attachmentId, false)
+}
+
+export async function downloadHandoverProtocolUploadAttachmentAction(
+  attachmentId: string
+): Promise<HandoverProtocolUploadAttachmentUrlState> {
+  return getHandoverProtocolUploadAttachmentUrl(attachmentId, true)
 }
