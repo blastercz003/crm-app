@@ -243,24 +243,24 @@ function RenameFolderModal({
   }
 
   return (
-    <SimpleModal isOpen={isOpen} title="Přejmenovat složku" onClose={onClose} className="max-w-xl">
-      <div className="px-5 py-4">
-        <label className="mb-2 block text-sm font-medium text-gray-700">Nový název</label>
+    <SimpleModal isOpen={isOpen} title="Přejmenovat složku" onClose={onClose} className="soubory-page__rename-modal max-w-xl">
+      <div className="soubory-page__rename-modal__body px-5 py-4">
+        <label className="soubory-page__rename-modal__label mb-2 block text-sm font-medium text-gray-700">Nový název</label>
         <input
           type="text"
           value={name}
           onChange={(event) => setName(event.target.value)}
           maxLength={255}
-          className="h-11 w-full rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+          className="soubory-page__rename-modal__input h-11 w-full rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
         />
-        {error ? <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+        {error ? <div className="soubory-page__rename-modal__error mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-white/70 px-5 py-4">
+      <div className="soubory-page__rename-modal__footer flex items-center justify-end gap-2 border-t border-white/70 px-5 py-4">
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+          className="soubory-page__rename-modal__cancel inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
         >
           Zrušit
         </button>
@@ -268,7 +268,7 @@ function RenameFolderModal({
           type="button"
           disabled={isPending || name.trim().length === 0}
           onClick={submit}
-          className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
+          className="soubory-page__rename-modal__submit inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
         >
           {isPending ? 'Ukládám…' : 'Přejmenovat'}
         </button>
@@ -308,30 +308,30 @@ function ConfirmModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="w-full max-w-lg rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
-          <div className="flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
-            <h3 className="text-lg font-semibold tracking-tight text-gray-900">{title}</h3>
+        <div className="soubory-page__confirm-modal w-full max-w-lg rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
+          <div className="soubory-page__confirm-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
+            <h3 className="soubory-page__confirm-modal__title text-lg font-semibold tracking-tight text-gray-900">{title}</h3>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+              className="soubory-page__confirm-modal__close inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
             >
               ✕
             </button>
           </div>
-          <div className="px-5 py-4 text-sm text-gray-600">{message}</div>
-          <div className="flex items-center justify-end gap-2 border-t border-white/70 px-5 py-4">
+          <div className="soubory-page__confirm-modal__body px-5 py-4 text-sm text-gray-600">{message}</div>
+          <div className="soubory-page__confirm-modal__footer flex items-center justify-end gap-2 border-t border-white/70 px-5 py-4">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+              className="soubory-page__confirm-modal__cancel inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
             >
               Zrušit
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className={`inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_12px_24px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] ${
+              className={`soubory-page__confirm-modal__confirm inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_12px_24px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] ${
                 destructive
                   ? 'border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)]'
                   : 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)]'
@@ -662,14 +662,14 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
                             <button
                               type="button"
                               onClick={() => setEditingComment(comment)}
-                              className="inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-white/85 px-3 text-xs font-semibold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px]"
+                              className="soubory-page__comments-panel__edit inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-white/85 px-3 text-xs font-semibold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px]"
                             >
                               Upravit
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeletingComment(comment)}
-                              className="inline-flex h-8 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-semibold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(185,28,28,0.12)] transition hover:-translate-y-[1px]"
+                              className="soubory-page__comments-panel__delete inline-flex h-8 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-semibold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(185,28,28,0.12)] transition hover:-translate-y-[1px]"
                             >
                               Smazat
                             </button>
