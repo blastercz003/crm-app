@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createNotificationsForAdmins } from '@/lib/notifications/createNotification'
 import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   buildAttachmentStoragePath,
@@ -13,6 +14,7 @@ import {
 import { optimizeUploadFile } from '@/lib/uploads/optimize-upload-file'
 
 type ProfileAccessRow = {
+  name: string | null
   role: string | null
   can_view_handover_protocol_upload: boolean | null
   can_view_all_technician_handover_uploads: boolean | null
@@ -80,10 +82,22 @@ type HandoverProtocolJobRow = {
   show_in_handover_protocol_upload: boolean | null
 }
 
+type HandoverProtocolNotificationJobRow = {
+  job_number: string
+  site_address: string | null
+}
+
 const HANDOVER_PROTOCOL_UPLOAD_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000
 
 function normalizeFiles(formData: FormData) {
   return formData.getAll('files').filter((file): file is File => file instanceof File)
+}
+
+function getJobAddressLabel(siteAddress: string | null | undefined) {
+  return String(siteAddress ?? '')
+    .split(',')
+    .at(0)
+    ?.trim() || 'bez adresy'
 }
 
 function formatPragueDateYmd(value: string | Date | null | undefined) {
@@ -183,7 +197,7 @@ async function requireHandoverProtocolUploadAccess() {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('role, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads')
+    .select('name, role, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads')
     .eq('id', user.id)
     .single()
 
@@ -283,6 +297,23 @@ async function isUploadAllowedForJob(
   )
 }
 
+async function getHandoverProtocolNotificationJob(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('job_number, site_address')
+    .eq('id', jobId)
+    .single()
+
+  if (error) {
+    throw new Error(`Nepodařilo se načíst údaje zakázky pro notifikaci: ${error.message}`)
+  }
+
+  return data as HandoverProtocolNotificationJobRow | null
+}
+
 export async function uploadHandoverProtocolAttachmentsAction(
   jobId: string,
   formData: FormData
@@ -320,6 +351,16 @@ export async function uploadHandoverProtocolAttachmentsAction(
         data: null,
       }
     }
+
+    const notificationJob = await getHandoverProtocolNotificationJob(supabase, normalizedJobId)
+    if (!notificationJob) {
+      return {
+        success: false,
+        error: 'Nepodařilo se načíst údaje zakázky pro notifikaci.',
+        data: null,
+      }
+    }
+
     const files = normalizeFiles(formData)
 
     if (files.length === 0) {
@@ -368,18 +409,22 @@ export async function uploadHandoverProtocolAttachmentsAction(
         }
       }
 
-      const { error: insertError } = await supabase.from('job_attachments').insert({
-        job_id: normalizedJobId,
-        file_name: optimizedFile.name,
-        display_name: optimizedFile.name,
-        storage_bucket: JOB_ATTACHMENTS_BUCKET,
-        storage_path: storagePath,
-        mime_type: contentType,
-        file_size_bytes: optimizedFile.size,
-        category: 'predavaci_protokol',
-        note: null,
-        uploaded_by: user.id,
-      })
+      const { data: insertedRow, error: insertError } = await supabase
+        .from('job_attachments')
+        .insert({
+          job_id: normalizedJobId,
+          file_name: optimizedFile.name,
+          display_name: optimizedFile.name,
+          storage_bucket: JOB_ATTACHMENTS_BUCKET,
+          storage_path: storagePath,
+          mime_type: contentType,
+          file_size_bytes: optimizedFile.size,
+          category: 'predavaci_protokol',
+          note: null,
+          uploaded_by: user.id,
+        })
+        .select('id')
+        .single()
 
       if (insertError) {
         await supabase.storage.from(JOB_ATTACHMENTS_BUCKET).remove([storagePath])
@@ -387,6 +432,32 @@ export async function uploadHandoverProtocolAttachmentsAction(
           success: false,
           error: `Metadata souboru "${file.name}" se nepodařilo uložit.`,
           data: null,
+        }
+      }
+
+      if (profile?.role === 'TECHNIK') {
+        try {
+          const jobNumber = String(notificationJob.job_number ?? '').trim() || '—'
+          const addressLabel = getJobAddressLabel(notificationJob.site_address)
+          const uploaderName = String(profile?.name ?? '').trim() || 'technik'
+          const attachmentId = String((insertedRow as { id?: string } | null)?.id ?? '').trim()
+
+          await createNotificationsForAdmins({
+            supabase,
+            actorUserId: user.id,
+            category: 'jobs',
+            type: 'job_handover_protocol_uploaded',
+            title: 'NAHRANÝ PP',
+            message: `Technik ${uploaderName} nahrál nový PP k zakázce ${jobNumber} ${addressLabel}.`,
+            entityType: 'job_attachment',
+            entityId: attachmentId || null,
+            href: '/faktury',
+            priority: 'normal',
+            dedupeKey: `job_handover_protocol_uploaded:${attachmentId || storagePath}`,
+            skipSelfNotification: false,
+          })
+        } catch (notificationError) {
+          console.error('Nepodařilo se odeslat notifikaci o nahraném PP.', notificationError)
         }
       }
 

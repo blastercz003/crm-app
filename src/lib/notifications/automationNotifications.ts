@@ -104,6 +104,7 @@ type AutomationRunResult = {
     meetingsOverdue24h: number
     tasksOverdue: number
     jobsMissingPp: number
+    jobsMissingPpTechnicians: number
     unreadOlderThan6h: number
     receivedInvoicesDue: number
   }
@@ -130,11 +131,22 @@ type JobRow = {
   id: string
   job_number: string
   end_at: string
+  site_address: string | null
   technician_name: string | null
 }
 
 type JobAttachmentRow = {
   job_id: string
+}
+
+type JobTechnicianAssignmentRow = {
+  job_id: string
+  technician_id: string
+}
+
+type TechnicianProfileRow = {
+  id: string
+  role: string | null
 }
 
 type RecipientRow = {
@@ -241,23 +253,19 @@ async function sendTaskOverdueNotifications(supabase: ServiceClient, now: Date) 
   return sent
 }
 
-async function sendJobMissingPpNotifications(supabase: ServiceClient, now: Date) {
+async function getJobsMissingPp(supabase: ServiceClient, now: Date) {
   const cutoffIso = getIsoHoursAgo(24, now)
 
-  const [{ data: jobs, error: jobsError }, { data: attachments, error: attachmentsError }, { data: admins, error: adminsError }] =
+  const [{ data: jobs, error: jobsError }, { data: attachments, error: attachmentsError }] =
     await Promise.all([
       supabase
         .from('jobs')
-        .select('id, job_number, end_at, technician_name')
+        .select('id, job_number, end_at, site_address, technician_name')
         .lt('end_at', cutoffIso),
       supabase
         .from('job_attachments')
-        .select('job_id'),
-      supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'admin')
-        .limit(1),
+        .select('job_id')
+        .eq('category', 'predavaci_protokol'),
     ])
 
   if (jobsError) {
@@ -268,23 +276,40 @@ async function sendJobMissingPpNotifications(supabase: ServiceClient, now: Date)
     throw new Error(`Automatické notifikace (přílohy zakázek) selhaly: ${attachmentsError.message}`)
   }
 
+  const attachmentJobIds = new Set(
+    ((attachments ?? []) as JobAttachmentRow[]).map((row) => row.job_id)
+  )
+
+  return ((jobs ?? []) as JobRow[]).filter(
+    (job) => !attachmentJobIds.has(job.id)
+  )
+}
+
+function getJobAddressLabel(siteAddress: string | null | undefined) {
+  return String(siteAddress ?? '')
+    .split(',')
+    .at(0)
+    ?.trim() || 'bez adresy'
+}
+
+async function sendJobMissingPpNotifications(supabase: ServiceClient, now: Date) {
+  const jobsWithoutAnyAttachment = await getJobsMissingPp(supabase, now)
+
+  const { data: admins, error: adminsError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .limit(1)
+
   if (adminsError) {
     throw new Error(`Automatické notifikace (admin) selhaly: ${adminsError.message}`)
   }
 
   const adminId = (admins?.[0] as AdminRow | undefined)?.id
 
-  if (!adminId) {
+  if (!adminId || jobsWithoutAnyAttachment.length === 0) {
     return 0
   }
-
-  const attachmentJobIds = new Set(
-    ((attachments ?? []) as JobAttachmentRow[]).map((row) => row.job_id)
-  )
-
-  const jobsWithoutAnyAttachment = ((jobs ?? []) as JobRow[]).filter(
-    (job) => !attachmentJobIds.has(job.id)
-  )
 
   await Promise.all(
     jobsWithoutAnyAttachment.map((job) => {
@@ -308,6 +333,104 @@ async function sendJobMissingPpNotifications(supabase: ServiceClient, now: Date)
   )
 
   return jobsWithoutAnyAttachment.length
+}
+
+async function sendTechnicianMissingPpNotifications(
+  supabase: ServiceClient,
+  now: Date
+) {
+  const jobsWithoutAnyAttachment = await getJobsMissingPp(supabase, now)
+
+  if (jobsWithoutAnyAttachment.length === 0) {
+    return 0
+  }
+
+  const jobIds = jobsWithoutAnyAttachment.map((job) => job.id)
+
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from('job_technicians')
+    .select('job_id, technician_id')
+    .in('job_id', jobIds)
+
+  if (assignmentsError) {
+    throw new Error(`Automatické notifikace (přiřazení techniků) selhaly: ${assignmentsError.message}`)
+  }
+
+  const technicianIds = Array.from(
+    new Set(
+      ((assignments ?? []) as JobTechnicianAssignmentRow[])
+        .map((row) => String(row.technician_id ?? '').trim())
+        .filter((technicianId) => Boolean(technicianId))
+    )
+  )
+
+  if (technicianIds.length === 0) {
+    return 0
+  }
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .in('id', technicianIds)
+
+  if (profilesError) {
+    throw new Error(`Automatické notifikace (technici) selhaly: ${profilesError.message}`)
+  }
+
+  const technicianProfiles = new Map(
+    ((profiles ?? []) as TechnicianProfileRow[])
+      .filter((profile) => profile.role === 'TECHNIK')
+      .map((profile) => [profile.id, profile] as const)
+  )
+
+  if (technicianProfiles.size === 0) {
+    return 0
+  }
+
+  const assignmentsByJobId = new Map<string, Set<string>>()
+  for (const assignment of (assignments ?? []) as JobTechnicianAssignmentRow[]) {
+    const jobId = String(assignment.job_id ?? '').trim()
+    const technicianId = String(assignment.technician_id ?? '').trim()
+
+    if (!jobId || !technicianId) continue
+    if (!technicianProfiles.has(technicianId)) continue
+
+    const next = assignmentsByJobId.get(jobId) ?? new Set<string>()
+    next.add(technicianId)
+    assignmentsByJobId.set(jobId, next)
+  }
+
+  let sent = 0
+
+  for (const job of jobsWithoutAnyAttachment) {
+    const technicianIds = Array.from(assignmentsByJobId.get(job.id) ?? [])
+    if (technicianIds.length === 0) continue
+
+    const addressLabel = getJobAddressLabel(job.site_address)
+    const message = `Zakázka ${job.job_number} ${addressLabel} je po termínu a nemá nahraný PP.`
+
+    for (const technicianId of technicianIds) {
+      await createNotification({
+        supabase,
+        recipientUserId: technicianId,
+        actorUserId: null,
+        category: 'jobs',
+        type: 'job_missing_pp_technician',
+        title: 'ZAKÁZKA BEZ PP',
+        message,
+        entityType: 'job',
+        entityId: job.id,
+        href: '/dashboard',
+        priority: 'high',
+        dedupeKey: `job_missing_pp_technician:${job.id}:${technicianId}`,
+        skipSelfNotification: false,
+      })
+
+      sent += 1
+    }
+  }
+
+  return sent
 }
 
 async function sendUnreadNotificationReminder(supabase: ServiceClient, now: Date) {
@@ -437,6 +560,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
         meetingsOverdue24h: 0,
         tasksOverdue: 0,
         jobsMissingPp: 0,
+        jobsMissingPpTechnicians: 0,
         unreadOlderThan6h: 0,
         receivedInvoicesDue: 0,
       },
@@ -449,11 +573,12 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
     throw new Error('Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro automatické notifikace.')
   }
 
-  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, unreadOlderThan6h, receivedInvoicesDue] =
+  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, jobsMissingPpTechnicians, unreadOlderThan6h, receivedInvoicesDue] =
     await Promise.all([
       sendMeetingOverdue24hNotifications(supabase, now),
       sendTaskOverdueNotifications(supabase, now),
       sendJobMissingPpNotifications(supabase, now),
+      sendTechnicianMissingPpNotifications(supabase, now),
       sendUnreadNotificationReminder(supabase, now),
       sendReceivedInvoiceDueNotifications(supabase, now),
     ])
@@ -463,6 +588,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       meetingsOverdue24h +
       tasksOverdue +
       jobsMissingPp +
+      jobsMissingPpTechnicians +
       unreadOlderThan6h +
       receivedInvoicesDue,
     skippedOutsideWindow: false,
@@ -470,6 +596,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       meetingsOverdue24h,
       tasksOverdue,
       jobsMissingPp,
+      jobsMissingPpTechnicians,
       unreadOlderThan6h,
       receivedInvoicesDue,
     },
