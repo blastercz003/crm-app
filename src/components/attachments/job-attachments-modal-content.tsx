@@ -29,6 +29,7 @@ export type JobAttachmentsModalContentProps = {
   jobBadgeLabel?: string
   showJobBadge?: boolean
   jobNumber: string
+  attachmentsHeading?: string
   items: JobAttachment[]
   isLoading: boolean
   isPending: boolean
