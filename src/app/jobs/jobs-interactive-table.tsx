@@ -705,6 +705,7 @@ function MobileAssignmentButton({
   const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')
   const [isPending, startTransition] = useTransition()
   const [isSaving, setIsSaving] = useState(false)
+  const isSavingRef = useRef(false)
 
   function openModal() {
     setTechnicianValue(job.technician_name ?? '')
@@ -713,7 +714,7 @@ function MobileAssignmentButton({
   }
 
   function saveAssignments() {
-    if (!canEdit || isPending || isSaving) {
+    if (!canEdit || isPending || isSavingRef.current) {
       setIsOpen(false)
       return
     }
@@ -740,6 +741,7 @@ function MobileAssignmentButton({
       return
     }
 
+    isSavingRef.current = true
     setIsSaving(true)
 
     startTransition(async () => {
@@ -782,6 +784,7 @@ function MobileAssignmentButton({
         router.refresh()
         setIsOpen(false)
       } finally {
+        isSavingRef.current = false
         setIsSaving(false)
       }
     })
