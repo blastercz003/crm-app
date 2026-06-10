@@ -1258,6 +1258,19 @@ export async function updateJobAction(
     }
   }
 
+  const { data: currentJob, error: currentJobError } = await supabase
+    .from('jobs')
+    .select('technician_name')
+    .eq('id', normalizedJobId)
+    .single()
+
+  if (currentJobError || !currentJob) {
+    return {
+      success: false,
+      error: 'Nepodařilo se načíst aktuální stav zakázky.',
+    }
+  }
+
   const { error } = await supabase
     .from('jobs')
     .update(payload)
@@ -1270,21 +1283,28 @@ export async function updateJobAction(
     }
   }
 
-  try {
-    await syncJobTechnicians(
-      supabase,
-      normalizedJobId,
-      technicianIds ?? []
-    )
-  } catch (technicianError) {
-    console.error(
-      'Nepodařilo se uložit techniky u existující zakázky.',
-      technicianError
-    )
+  const currentTechnicianName = String(
+    (currentJob as { technician_name: string | null }).technician_name ?? ''
+  ).trim()
+  const nextTechnicianName = String(payload.technician_name ?? '').trim()
 
-    return {
-      success: false,
-      error: 'Techniky se nepodařilo uložit.',
+  if (currentTechnicianName !== nextTechnicianName) {
+    try {
+      await syncJobTechnicians(
+        supabase,
+        normalizedJobId,
+        technicianIds ?? []
+      )
+    } catch (technicianError) {
+      console.error(
+        'Nepodařilo se uložit techniky u existující zakázky.',
+        technicianError
+      )
+
+      return {
+        success: false,
+        error: 'Techniky se nepodařilo uložit.',
+      }
     }
   }
 
