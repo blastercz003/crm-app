@@ -6992,20 +6992,121 @@ html[data-theme='dark'] .soubory-page__confirm-modal__cancel {
 
 html[data-theme='dark'] .soubory-page__rename-modal__submit,
 html[data-theme='dark'] .soubory-page__confirm-modal__confirm {
-  border-color: rgba(78, 160, 220, 0.26) !important;
-  color: #f8fbff !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 14px 28px rgba(24, 78, 129, 0.3) !important;
-}
-
-html[data-theme='dark'] .soubory-page__confirm-modal__confirm {
-  background: linear-gradient(155deg, rgba(56, 125, 177, 0.98) 0%, rgba(41, 105, 152, 0.96) 45%, rgba(30, 86, 129, 0.96) 100%) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 14px rgba(2, 6, 23, 0.22) !important;
 }
 
 html[data-theme='dark'] .soubory-page__confirm-modal__confirm:hover,
 html[data-theme='dark'] .soubory-page__rename-modal__submit:hover {
-  background: linear-gradient(155deg, rgba(66, 140, 191, 0.98) 0%, rgba(47, 119, 175, 0.96) 45%, rgba(35, 100, 153, 0.96) 100%) !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  background: linear-gradient(155deg, rgba(22, 34, 54, 0.98) 0%, rgba(14, 23, 38, 0.96) 100%) !important;
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__rename-modal .soubory-page__modal-header {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__rename-modal .soubory-page__modal-title {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__rename-modal .soubory-page__modal-close {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 18px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(13, 20, 34, 0.98) 0%, rgba(9, 15, 27, 0.96) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 34px 84px rgba(2, 6, 23, 0.52) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__header {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__title {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__close {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 18px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__body {
+  color: #e2e8f0 !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__textarea {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.98) 0%, rgba(12, 20, 34, 0.96) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 20px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__textarea::placeholder {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__textarea:focus {
+  border-color: rgba(78, 160, 220, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(78, 160, 220, 0.16),
+    0 10px 22px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__error {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: linear-gradient(155deg, rgba(58, 16, 22, 0.98) 0%, rgba(43, 12, 18, 0.98) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__footer {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__cancel {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: linear-gradient(155deg, rgba(58, 16, 22, 0.98) 0%, rgba(43, 12, 18, 0.98) 100%) !important;
+  color: #fee2e2 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(185, 28, 28, 0.18) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__submit {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 14px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comment-edit-modal__submit:hover {
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  background: linear-gradient(155deg, rgba(22, 34, 54, 0.98) 0%, rgba(14, 23, 38, 0.96) 100%) !important;
+  color: #f8fbff !important;
 }
 
 html[data-theme='dark'] .soubory-page__hero-stat {
@@ -7173,6 +7274,21 @@ html[data-theme='dark'] .soubory-page__comments-panel__edit {
 }
 
 html[data-theme='dark'] .soubory-page__comments-panel__edit:hover {
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  background: linear-gradient(155deg, rgba(22, 34, 54, 0.98) 0%, rgba(14, 23, 38, 0.96) 100%) !important;
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__folder-action-rename {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 14px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__folder-action-rename:hover {
   border-color: rgba(148, 163, 184, 0.24) !important;
   background: linear-gradient(155deg, rgba(22, 34, 54, 0.98) 0%, rgba(14, 23, 38, 0.96) 100%) !important;
   color: #f8fbff !important;

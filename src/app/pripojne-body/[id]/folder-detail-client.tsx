@@ -486,27 +486,27 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
                 </div>
               </div>
 
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
                 <Link
                   href="/pripojne-body"
-                  className="clients-page__back-button soubory-page__back-button inline-flex w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 sm:w-auto"
+                  className="clients-page__back-button soubory-page__back-button inline-flex w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 lg:order-3 lg:shrink-0 lg:w-auto"
                 >
                   ZPĚT NA PŘEHLED
                 </Link>
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex w-full items-center gap-2 lg:w-auto lg:justify-end">
                   {canEdit ? (
                     <>
                       <button
                         type="button"
                         onClick={() => setIsRenameOpen(true)}
-                        className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_26px_rgba(15,23,42,0.12)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#d6dee8] hover:bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(246,248,251,0.92)_100%)]"
+                        className="soubory-page__folder-action-rename inline-flex h-9 flex-1 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-[11px] font-medium uppercase tracking-[0.03em] text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_26px_rgba(15,23,42,0.12)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#d6dee8] hover:bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(246,248,251,0.92)_100%)] lg:h-auto lg:flex-none lg:px-4 lg:py-2.5 lg:text-sm"
                       >
                         Přejmenovat složku
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsDeleteOpen(true)}
-                        className="inline-flex items-center justify-center rounded-2xl border border-red-400/85 bg-[linear-gradient(160deg,#ef4444_0%,#dc2626_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_12px_26px_rgba(185,28,28,0.26)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-red-500 hover:bg-[linear-gradient(160deg,#f05252_0%,#d91f1f_100%)]"
+                        className="inline-flex h-9 flex-1 items-center justify-center rounded-2xl border border-red-400/85 bg-[linear-gradient(160deg,#ef4444_0%,#dc2626_100%)] px-3 text-[11px] font-medium uppercase tracking-[0.03em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_12px_26px_rgba(185,28,28,0.26)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-red-500 hover:bg-[linear-gradient(160deg,#f05252_0%,#d91f1f_100%)] lg:h-auto lg:flex-none lg:px-4 lg:py-2.5 lg:text-sm"
                       >
                         Smazat složku
                       </button>
@@ -828,32 +828,32 @@ function CommentEditModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
-          <div className="flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
-            <h3 className="text-lg font-semibold tracking-tight text-gray-900">Upravit komentář</h3>
+        <div className="soubory-page__comment-edit-modal w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
+          <div className="soubory-page__comment-edit-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
+            <h3 className="soubory-page__comment-edit-modal__title text-lg font-semibold tracking-tight text-gray-900">Upravit komentář</h3>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+              className="soubory-page__comment-edit-modal__close inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
             >
               ✕
             </button>
           </div>
-          <div className="px-5 py-4">
+          <div className="soubory-page__comment-edit-modal__body px-5 py-4">
             <textarea
               value={body}
               onChange={(event) => setBody(event.target.value)}
               maxLength={5000}
               rows={7}
-              className="w-full resize-y rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+              className="soubory-page__comment-edit-modal__textarea w-full resize-y rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
             />
-            {error ? <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+            {error ? <div className="soubory-page__comment-edit-modal__error mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-white/70 px-5 py-4">
+          <div className="soubory-page__comment-edit-modal__footer flex items-center justify-end gap-2 border-t border-white/70 px-5 py-4">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+              className="soubory-page__comment-edit-modal__cancel inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
             >
               Zrušit
             </button>
@@ -861,7 +861,7 @@ function CommentEditModal({
               type="button"
               onClick={submit}
               disabled={isPending}
-              className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
+              className="soubory-page__comment-edit-modal__submit inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
             >
               {isPending ? 'Ukládám…' : 'Uložit'}
             </button>
