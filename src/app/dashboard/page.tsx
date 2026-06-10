@@ -1543,7 +1543,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        {canViewTechJobs || canViewConnectionPoints || canViewHandoverProtocolUpload ? (
+        {canViewTechJobs || (isTechnik && canViewConnectionPoints) || canViewHandoverProtocolUpload ? (
           <TechnicianSectionLinks
             canViewTechJobs={canViewTechJobs}
             canViewConnectionPoints={canViewConnectionPoints}
@@ -1556,8 +1556,9 @@ export default async function DashboardPage() {
           <>
             <DashboardSectionLinks
               canViewJobs={Boolean(profile?.can_view_jobs)}
-              canViewJobsPortal={Boolean(profile?.can_view_jobs_portal)}
+              canViewJobsPortal={Boolean(!isAdmin && profile?.can_view_jobs_portal)}
               canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
+              canViewConnectionPoints={Boolean(!isTechnik && profile?.can_view_connection_points)}
               isAdmin={isAdmin}
               offersOrderedCount={orderedOffersCount}
             />

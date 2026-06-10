@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo } from 'react'
+import { Plug } from 'lucide-react'
 
 type SectionLink = {
   key: string
@@ -78,12 +79,14 @@ export function DashboardSectionLinks({
   canViewJobs,
   canViewJobsPortal,
   canViewOffers,
+  canViewConnectionPoints,
   isAdmin,
   offersOrderedCount,
 }: {
   canViewJobs: boolean
   canViewJobsPortal: boolean
   canViewOffers: boolean
+  canViewConnectionPoints: boolean
   isAdmin: boolean
   offersOrderedCount: number
 }) {
@@ -100,10 +103,17 @@ export function DashboardSectionLinks({
         icon: <IconOffers />,
         badgeCount: isAdmin ? offersOrderedCount : 0,
       },
+      {
+        key: 'connection-points',
+        href: '/pripojne-body',
+        label: 'Přípojné body',
+        visible: canViewConnectionPoints,
+        icon: <Plug className="h-6 w-6" strokeWidth={1.9} />,
+      },
       { key: 'finance', href: '/faktury', label: 'Finance', visible: isAdmin, icon: <IconFinance /> },
       { key: 'files', href: '/soubory', label: 'Soubory', visible: isAdmin, icon: <IconFiles /> },
     ].filter((item) => item.visible),
-    [canViewJobs, canViewJobsPortal, canViewOffers, isAdmin, offersOrderedCount]
+    [canViewJobs, canViewJobsPortal, canViewOffers, canViewConnectionPoints, isAdmin, offersOrderedCount]
   )
 
   return (
