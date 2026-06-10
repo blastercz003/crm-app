@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import {
   joinTechnicianNames,
+  finalizeTechnicianInputValue,
   normalizeTechnicianSearchText,
   resolveTechnicianName,
-  splitTechnicianInput,
 } from '@/lib/jobs/technicians'
 
 type TechnicianNamesInputProps = {
@@ -14,6 +14,7 @@ type TechnicianNamesInputProps = {
   technicians: string[]
   onValueChange: (value: string) => void
   onBlur?: (value: string) => void
+  name?: string
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -25,11 +26,13 @@ export function TechnicianNamesInput({
   technicians,
   onValueChange,
   onBlur,
+  name,
   placeholder = 'Zadej jedno nebo více jmen oddělených čárkou',
   disabled = false,
   className = '',
 }: TechnicianNamesInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const lastValueRef = useRef(value)
   const techniciansByNormalized = useMemo(() => {
     const map = new Map<string, string>()
 
@@ -50,6 +53,8 @@ export function TechnicianNamesInput({
     if (currentValue !== value) {
       inputRef.current.value = value
     }
+
+    lastValueRef.current = value
   }, [value])
 
   function completeValue(nextRawValue: string) {
@@ -97,32 +102,37 @@ export function TechnicianNamesInput({
   }
 
   function handleChange(nextRawValue: string) {
-    const nextValue = completeValue(nextRawValue)
+    const previousValue = lastValueRef.current
+    const nextValue =
+      nextRawValue.length < previousValue.length
+        ? nextRawValue
+        : completeValue(nextRawValue)
+
+    lastValueRef.current = nextValue
     onValueChange(nextValue)
   }
 
   function handleBlur() {
-    const resolved = splitTechnicianInput(value)
-      .map((part) => {
-        const resolvedName = resolveTechnicianName(
-          part,
-          Array.from(techniciansByNormalized.values())
-        )
+    const finalized = finalizeTechnicianInputValue(
+      value,
+      Array.from(techniciansByNormalized.values())
+    )
 
-        return resolvedName ?? part.trim()
-      })
-      .filter((part) => part.length > 0)
+    if (inputRef.current) {
+      inputRef.current.value = finalized.value
+    }
 
-    const nextValue = joinTechnicianNames(resolved)
+    lastValueRef.current = finalized.value
 
-    onValueChange(nextValue)
-    onBlur?.(nextValue)
+    onValueChange(finalized.value)
+    onBlur?.(finalized.value)
   }
 
   return (
     <input
       ref={inputRef}
       id={id}
+      name={name}
       type="text"
       value={value}
       disabled={disabled}

@@ -422,8 +422,6 @@ function JobFormShell({
               name="company_name"
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
-            <input type="hidden" name="technician_name" value={technicianName} />
-
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
                 <section className="overflow-hidden rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
@@ -647,6 +645,7 @@ function JobFormShell({
                       </label>
                       <TechnicianNamesInput
                         id={`${mode}-technician_name`}
+                        name="technician_name"
                         value={technicianName}
                         onValueChange={setTechnicianName}
                         technicians={technicianSuggestions}

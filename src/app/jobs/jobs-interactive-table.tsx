@@ -12,6 +12,7 @@ import { EditJobButton } from './edit-job-button'
 import { HandoverProtocolButton } from './handover-protocol-button'
 import { InfoNoteButton } from './info-note-button'
 import { TechnicianNamesInput } from './technician-names-input'
+import { finalizeTechnicianInputValue } from '@/lib/jobs/technicians'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 
 type JobStatus =
@@ -716,9 +717,20 @@ function MobileAssignmentButton({
 
     const originalTechnician = job.technician_name ?? ''
     const originalGenerator = job.generator_name ?? ''
+    const finalizedTechnician = finalizeTechnicianInputValue(
+      technicianValue,
+      technicianSuggestions
+    )
+
+    if (finalizedTechnician.error) {
+      alert(finalizedTechnician.error)
+      return
+    }
+
+    const normalizedTechnicianValue = finalizedTechnician.value
 
     if (
-      technicianValue === originalTechnician &&
+      normalizedTechnicianValue === originalTechnician &&
       generatorValue === originalGenerator
     ) {
       setIsOpen(false)
@@ -726,10 +738,10 @@ function MobileAssignmentButton({
     }
 
     startTransition(async () => {
-      if (technicianValue !== originalTechnician) {
+      if (normalizedTechnicianValue !== originalTechnician) {
         const technicianFormData = new FormData()
         technicianFormData.set('field', 'technician_name')
-        technicianFormData.set('value', technicianValue)
+        technicianFormData.set('value', normalizedTechnicianValue)
 
         const technicianResult = await updateJobInlineFieldAction(
           job.id,
@@ -760,6 +772,7 @@ function MobileAssignmentButton({
         }
       }
 
+      setTechnicianValue(normalizedTechnicianValue)
       setIsOpen(false)
     })
   }
@@ -1275,8 +1288,18 @@ function EditableTechnicianCell({
   function saveValue(nextValue?: string) {
     const originalValue = value ?? ''
     const currentValue = nextValue ?? technicianValue
+    const finalizedTechnician = finalizeTechnicianInputValue(
+      currentValue,
+      technicianSuggestions
+    )
 
-    if (currentValue === originalValue) {
+    if (finalizedTechnician.error) {
+      alert(finalizedTechnician.error)
+      cancelEditing()
+      return
+    }
+
+    if (finalizedTechnician.value === originalValue) {
       setIsEditing(false)
       return
     }
@@ -1284,7 +1307,7 @@ function EditableTechnicianCell({
     startTransition(async () => {
       const formData = new FormData()
       formData.set('field', 'technician_name')
-      formData.set('value', currentValue)
+      formData.set('value', finalizedTechnician.value)
 
       const result = await updateJobInlineFieldAction(
         job.id,
@@ -1298,7 +1321,7 @@ function EditableTechnicianCell({
         return
       }
 
-      setTechnicianValue(currentValue)
+      setTechnicianValue(finalizedTechnician.value)
       setIsEditing(false)
     })
   }

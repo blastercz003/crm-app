@@ -93,3 +93,31 @@ export function resolveTechnicianNames(
     names: resolvedNames,
   }
 }
+
+export function finalizeTechnicianInputValue(
+  rawValue: string,
+  technicianNames: string[]
+) {
+  const trimmedValue = rawValue.trim()
+
+  if (!trimmedValue) {
+    return {
+      error: null,
+      value: '',
+    }
+  }
+
+  const resolution = resolveTechnicianNames(trimmedValue, technicianNames)
+
+  if (resolution.error) {
+    return {
+      error: resolution.error,
+      value: trimmedValue,
+    }
+  }
+
+  return {
+    error: null,
+    value: joinTechnicianNames(resolution.names),
+  }
+}

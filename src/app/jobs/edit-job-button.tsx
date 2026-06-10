@@ -429,7 +429,6 @@ function JobFormShell({
               name="company_name"
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
-            <input type="hidden" name="technician_name" value={technicianName} />
 
             <div className="jobs-page__job-form-modal__body px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
@@ -644,6 +643,7 @@ function JobFormShell({
                       </label>
                       <TechnicianNamesInput
                         id={`${mode}-technician_name`}
+                        name="technician_name"
                         value={technicianName}
                         onValueChange={setTechnicianName}
                         technicians={technicianSuggestions}
