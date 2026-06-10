@@ -704,6 +704,7 @@ function MobileAssignmentButton({
   const [technicianValue, setTechnicianValue] = useState(job.technician_name ?? '')
   const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')
   const [isPending, startTransition] = useTransition()
+  const [isSaving, setIsSaving] = useState(false)
 
   function openModal() {
     setTechnicianValue(job.technician_name ?? '')
@@ -712,7 +713,7 @@ function MobileAssignmentButton({
   }
 
   function saveAssignments() {
-    if (!canEdit) {
+    if (!canEdit || isPending || isSaving) {
       setIsOpen(false)
       return
     }
@@ -739,44 +740,50 @@ function MobileAssignmentButton({
       return
     }
 
+    setIsSaving(true)
+
     startTransition(async () => {
-      if (normalizedTechnicianValue !== originalTechnician) {
-        const technicianFormData = new FormData()
-        technicianFormData.set('field', 'technician_name')
-        technicianFormData.set('value', normalizedTechnicianValue)
+      try {
+        if (normalizedTechnicianValue !== originalTechnician) {
+          const technicianFormData = new FormData()
+          technicianFormData.set('field', 'technician_name')
+          technicianFormData.set('value', normalizedTechnicianValue)
 
-        const technicianResult = await updateJobInlineFieldAction(
-          job.id,
-          { success: false, error: null },
-          technicianFormData
-        )
+          const technicianResult = await updateJobInlineFieldAction(
+            job.id,
+            { success: false, error: null },
+            technicianFormData
+          )
 
-        if (!technicianResult.success) {
-          alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
-          return
+          if (!technicianResult.success) {
+            alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
+            return
+          }
         }
-      }
 
-      if (generatorValue !== originalGenerator) {
-        const generatorFormData = new FormData()
-        generatorFormData.set('field', 'generator_name')
-        generatorFormData.set('value', generatorValue)
+        if (generatorValue !== originalGenerator) {
+          const generatorFormData = new FormData()
+          generatorFormData.set('field', 'generator_name')
+          generatorFormData.set('value', generatorValue)
 
-        const generatorResult = await updateJobInlineFieldAction(
-          job.id,
-          { success: false, error: null },
-          generatorFormData
-        )
+          const generatorResult = await updateJobInlineFieldAction(
+            job.id,
+            { success: false, error: null },
+            generatorFormData
+          )
 
-        if (!generatorResult.success) {
-          alert(generatorResult.error ?? 'Agregát se nepodařilo uložit.')
-          return
+          if (!generatorResult.success) {
+            alert(generatorResult.error ?? 'Agregát se nepodařilo uložit.')
+            return
+          }
         }
-      }
 
-      setTechnicianValue(normalizedTechnicianValue)
-      router.refresh()
-      setIsOpen(false)
+        setTechnicianValue(normalizedTechnicianValue)
+        router.refresh()
+        setIsOpen(false)
+      } finally {
+        setIsSaving(false)
+      }
     })
   }
 
@@ -840,10 +847,10 @@ function MobileAssignmentButton({
                 <button
                   type="button"
                   onClick={saveAssignments}
-                  disabled={isPending}
+                  disabled={isPending || isSaving}
                   className="jobs-page__mobile-modal-submit inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isPending ? 'UKLÁDÁM…' : 'ULOŽIT'}
+                  {isPending || isSaving ? 'UKLÁDÁM…' : 'ULOŽIT'}
                 </button>
               ) : null}
             </div>
