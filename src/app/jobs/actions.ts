@@ -685,7 +685,9 @@ async function resolveTechnicianSelection(
   supabase: Awaited<ReturnType<typeof createClient>>,
   formData: FormData
 ) {
-  const rawValue = normalizeTechnicianText(formData.get('technician_name'))
+  const rawValue = normalizeTechnicianText(
+    formData.get('technician_name') ?? formData.get('value')
+  )
 
   if (!rawValue) {
     return {

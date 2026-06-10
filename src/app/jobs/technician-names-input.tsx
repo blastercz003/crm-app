@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type KeyboardEventHandler } from 'react'
 import {
   joinTechnicianNames,
   finalizeTechnicianInputValue,
@@ -14,10 +14,12 @@ type TechnicianNamesInputProps = {
   technicians: string[]
   onValueChange: (value: string) => void
   onBlur?: (value: string) => void
+  onKeyDown?: KeyboardEventHandler<HTMLInputElement>
   name?: string
   placeholder?: string
   disabled?: boolean
   className?: string
+  autoFocus?: boolean
 }
 
 export function TechnicianNamesInput({
@@ -26,10 +28,12 @@ export function TechnicianNamesInput({
   technicians,
   onValueChange,
   onBlur,
+  onKeyDown,
   name,
   placeholder = 'Zadej jedno nebo více jmen oddělených čárkou',
   disabled = false,
   className = '',
+  autoFocus = false,
 }: TechnicianNamesInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const lastValueRef = useRef(value)
@@ -56,6 +60,15 @@ export function TechnicianNamesInput({
 
     lastValueRef.current = value
   }, [value])
+
+  useEffect(() => {
+    if (!autoFocus || disabled) return
+
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    })
+  }, [autoFocus, disabled])
 
   function completeValue(nextRawValue: string) {
     const parts = nextRawValue.split(',')
@@ -140,6 +153,7 @@ export function TechnicianNamesInput({
       placeholder={placeholder}
       onChange={(event) => handleChange(event.target.value)}
       onBlur={handleBlur}
+      onKeyDown={onKeyDown}
       className={className}
     />
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -698,6 +699,7 @@ function MobileAssignmentButton({
   technicianSuggestions: string[]
   compact?: boolean
 }) {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [technicianValue, setTechnicianValue] = useState(job.technician_name ?? '')
   const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')
@@ -773,6 +775,7 @@ function MobileAssignmentButton({
       }
 
       setTechnicianValue(normalizedTechnicianValue)
+      router.refresh()
       setIsOpen(false)
     })
   }
@@ -1272,6 +1275,7 @@ function EditableTechnicianCell({
   canEdit: boolean
   technicianSuggestions: string[]
 }) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [technicianValue, setTechnicianValue] = useState(value ?? '')
@@ -1323,6 +1327,7 @@ function EditableTechnicianCell({
 
       setTechnicianValue(finalizedTechnician.value)
       setIsEditing(false)
+      router.refresh()
     })
   }
 
@@ -1359,6 +1364,18 @@ function EditableTechnicianCell({
           technicians={technicianSuggestions}
           onValueChange={setTechnicianValue}
           onBlur={saveValue}
+          autoFocus
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              saveValue()
+            }
+
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              cancelEditing()
+            }
+          }}
           disabled={isPending}
           className="jobs-page__table-inline-edit-input h-8 w-full rounded-lg px-2 text-[12px] outline-none transition"
         />
