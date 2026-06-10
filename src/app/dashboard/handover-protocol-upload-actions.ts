@@ -13,6 +13,7 @@ import { optimizeUploadFile } from '@/lib/uploads/optimize-upload-file'
 type ProfileAccessRow = {
   role: string | null
   can_view_handover_protocol_upload: boolean | null
+  can_view_all_technician_handover_uploads: boolean | null
 }
 
 type JobAssignmentRow = {
@@ -21,6 +22,7 @@ type JobAssignmentRow = {
 
 type HandoverProtocolAttachmentJobRow = {
   job_id: string
+  created_at: string
 }
 
 type ActionResult<T> =
@@ -41,18 +43,17 @@ type HandoverProtocolJobRow = {
   company_name: string
   site_address: string | null
   start_at: string | null
+  end_at: string | null
   show_in_handover_protocol_upload: boolean | null
 }
 
-type HandoverProtocolUploadFlagRow = {
-  show_in_handover_protocol_upload: boolean | null
-}
+const HANDOVER_PROTOCOL_UPLOAD_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000
 
 function normalizeFiles(formData: FormData) {
   return formData.getAll('files').filter((file): file is File => file instanceof File)
 }
 
-function formatPragueDateYmd(value: string | null | undefined) {
+function formatPragueDateYmd(value: string | Date | null | undefined) {
   if (!value) return null
 
   const date = new Date(value)
@@ -63,6 +64,73 @@ function formatPragueDateYmd(value: string | null | undefined) {
   return new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Europe/Prague',
   }).format(date)
+}
+
+function parseDateTime(value: string | null | undefined) {
+  if (!value) return null
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getFirstAttachmentUploadAt(
+  attachmentRows: HandoverProtocolAttachmentJobRow[]
+) {
+  const firstAttachmentAtByJobId = new Map<string, string>()
+
+  for (const row of attachmentRows) {
+    const jobId = String(row.job_id ?? '').trim()
+    const createdAt = String(row.created_at ?? '').trim()
+    if (!jobId || !createdAt) continue
+
+    const existing = firstAttachmentAtByJobId.get(jobId)
+    if (!existing) {
+      firstAttachmentAtByJobId.set(jobId, createdAt)
+      continue
+    }
+
+    const existingDate = parseDateTime(existing)
+    const nextDate = parseDateTime(createdAt)
+
+    if (!existingDate || !nextDate) continue
+
+    if (nextDate.getTime() < existingDate.getTime()) {
+      firstAttachmentAtByJobId.set(jobId, createdAt)
+    }
+  }
+
+  return firstAttachmentAtByJobId
+}
+
+function isHandoverProtocolJobVisible(
+  job: HandoverProtocolJobRow,
+  firstAttachmentAt: string | null | undefined,
+  todayYmd: string,
+  now: Date
+) {
+  if (!job.show_in_handover_protocol_upload) {
+    return false
+  }
+
+  const jobStartYmd = formatPragueDateYmd(job.start_at)
+  if (!jobStartYmd || jobStartYmd > todayYmd) {
+    return false
+  }
+
+  const firstUploadDate = parseDateTime(firstAttachmentAt)
+  if (!firstUploadDate) {
+    return true
+  }
+
+  const jobEndYmd = formatPragueDateYmd(job.end_at)
+  if (!jobEndYmd) {
+    return true
+  }
+
+  const uploadWindowClosed = now.getTime() >= firstUploadDate.getTime() + HANDOVER_PROTOCOL_UPLOAD_GRACE_PERIOD_MS
+  const endDatePassed = todayYmd > jobEndYmd
+
+  return !(uploadWindowClosed && endDatePassed)
 }
 
 async function requireHandoverProtocolUploadAccess() {
@@ -82,7 +150,7 @@ async function requireHandoverProtocolUploadAccess() {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('role, can_view_handover_protocol_upload')
+    .select('role, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads')
     .eq('id', user.id)
     .single()
 
@@ -110,18 +178,20 @@ async function requireHandoverProtocolUploadAccess() {
   return {
     supabase,
     user,
+    profile: typedProfile,
     error: null,
   }
 }
 
-async function getAssignedJobIds(
+async function getVisibleJobIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
+  userId: string,
+  includeAllTechnicians: boolean
 ) {
-  const { data, error } = await supabase
-    .from('job_technicians')
-    .select('job_id')
-    .eq('technician_id', userId)
+  const query = supabase.from('job_technicians').select('job_id')
+  const { data, error } = includeAllTechnicians
+    ? await query
+    : await query.eq('technician_id', userId)
 
   if (error) {
     throw new Error(`Nepodařilo se načíst přiřazené zakázky: ${error.message}`)
@@ -142,7 +212,7 @@ async function isUploadAllowedForJob(
 ) {
   const { data, error } = await supabase
     .from('jobs')
-    .select('show_in_handover_protocol_upload')
+    .select('show_in_handover_protocol_upload, start_at, end_at')
     .eq('id', jobId)
     .single()
 
@@ -150,25 +220,33 @@ async function isUploadAllowedForJob(
     throw new Error(`Nepodařilo se ověřit zakázku: ${error.message}`)
   }
 
-  return Boolean((data as HandoverProtocolUploadFlagRow | null)?.show_in_handover_protocol_upload)
-}
-
-async function hasHandoverProtocolAttachment(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  jobId: string
-) {
-  const { data, error } = await supabase
-    .from('job_attachments')
-    .select('job_id')
-    .eq('job_id', jobId)
-    .eq('category', 'predavaci_protokol')
-    .limit(1)
-
-  if (error) {
-    throw new Error(`Nepodařilo se ověřit existující Předávací protokol: ${error.message}`)
+  const row = data as HandoverProtocolJobRow | null
+  if (!row) {
+    return false
   }
 
-  return (data ?? []).length > 0
+  const todayYmd = formatPragueDateYmd(new Date())
+  if (!todayYmd) return false
+
+  const { data: attachmentRows, error: attachmentError } = await supabase
+    .from('job_attachments')
+    .select('job_id, created_at')
+    .eq('job_id', jobId)
+
+  if (attachmentError) {
+    throw new Error(`Nepodařilo se ověřit existující přílohy: ${attachmentError.message}`)
+  }
+
+  const firstAttachmentAtByJobId = getFirstAttachmentUploadAt(
+    (attachmentRows ?? []) as HandoverProtocolAttachmentJobRow[]
+  )
+
+  return isHandoverProtocolJobVisible(
+    row,
+    firstAttachmentAtByJobId.get(jobId),
+    todayYmd,
+    new Date()
+  )
 }
 
 export async function uploadHandoverProtocolAttachmentsAction(
@@ -176,7 +254,7 @@ export async function uploadHandoverProtocolAttachmentsAction(
   formData: FormData
 ): Promise<ActionResult<{ uploadedCount: number }>> {
   try {
-    const { supabase, user, error } = await requireHandoverProtocolUploadAccess()
+    const { supabase, user, profile, error } = await requireHandoverProtocolUploadAccess()
 
     if (!user) {
       return { success: false, error: error ?? 'Neautorizovaný přístup.', data: null }
@@ -187,11 +265,15 @@ export async function uploadHandoverProtocolAttachmentsAction(
       return { success: false, error: 'Vyber zakázku.', data: null }
     }
 
-    const assignedJobIds = await getAssignedJobIds(supabase, user.id)
-    if (!assignedJobIds.includes(normalizedJobId)) {
+    const visibleJobIds = await getVisibleJobIds(
+      supabase,
+      user.id,
+      Boolean(profile?.can_view_all_technician_handover_uploads)
+    )
+    if (!visibleJobIds.includes(normalizedJobId)) {
       return {
         success: false,
-        error: 'Tato zakázka není přiřazená k tvému účtu.',
+        error: 'K této zakázce nemáš oprávnění nahrávat Předávací protokol.',
         data: null,
       }
     }
@@ -204,16 +286,6 @@ export async function uploadHandoverProtocolAttachmentsAction(
         data: null,
       }
     }
-
-    const alreadyHasAttachment = await hasHandoverProtocolAttachment(supabase, normalizedJobId)
-    if (alreadyHasAttachment) {
-      return {
-        success: false,
-        error: 'Tato zakázka už má nahraný Předávací protokol.',
-        data: null,
-      }
-    }
-
     const files = normalizeFiles(formData)
 
     if (files.length === 0) {
@@ -319,17 +391,31 @@ export async function getHandoverProtocolUploadJobOptions(
   userId: string
 ): Promise<HandoverProtocolUploadJobOption[]> {
   const supabase = await createClient()
-  const todayYmd = formatPragueDateYmd(new Date().toISOString())
+  const todayYmd = formatPragueDateYmd(new Date())
+  const now = new Date()
 
-  const assignedJobIds = await getAssignedJobIds(supabase, userId)
-  if (assignedJobIds.length === 0) {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads')
+    .eq('id', userId)
+    .single()
+
+  if (profileError) {
+    throw new Error(`Nepodařilo se ověřit oprávnění pro nahrávání PP: ${profileError.message}`)
+  }
+
+  const typedProfile = profile as ProfileAccessRow | null
+  const includeAllTechnicians = Boolean(typedProfile?.can_view_all_technician_handover_uploads)
+
+  const visibleJobIds = await getVisibleJobIds(supabase, userId, includeAllTechnicians)
+  if (visibleJobIds.length === 0) {
     return []
   }
 
   const { data: jobsData, error: jobsError } = await supabase
     .from('jobs')
-    .select('id, job_number, company_name, site_address, start_at, show_in_handover_protocol_upload')
-    .in('id', assignedJobIds)
+    .select('id, job_number, company_name, site_address, start_at, end_at, show_in_handover_protocol_upload')
+    .in('id', visibleJobIds)
     .order('job_number', { ascending: false })
 
   if (jobsError) {
@@ -339,28 +425,26 @@ export async function getHandoverProtocolUploadJobOptions(
   const jobs = (jobsData ?? []) as HandoverProtocolJobRow[]
   const { data: attachmentRows, error: attachmentError } = await supabase
     .from('job_attachments')
-    .select('job_id')
-    .eq('category', 'predavaci_protokol')
-    .in('job_id', assignedJobIds)
+    .select('job_id, created_at')
+    .in('job_id', visibleJobIds)
 
   if (attachmentError) {
-    throw new Error(`Nepodařilo se načíst existující Předávací protokoly: ${attachmentError.message}`)
+    throw new Error(`Nepodařilo se načíst existující přílohy: ${attachmentError.message}`)
   }
 
-  const attachedJobIds = new Set(
-    ((attachmentRows ?? []) as HandoverProtocolAttachmentJobRow[]).map((row) =>
-      String(row.job_id ?? '').trim()
-    )
+  const firstAttachmentAtByJobId = getFirstAttachmentUploadAt(
+    (attachmentRows ?? []) as HandoverProtocolAttachmentJobRow[]
   )
 
   return jobs
-    .filter((job) => Boolean(job.show_in_handover_protocol_upload))
-    .filter((job) => !attachedJobIds.has(job.id))
-    .filter((job) => {
-      const jobDateYmd = formatPragueDateYmd(job.start_at)
-      if (!jobDateYmd || !todayYmd) return false
-      return jobDateYmd <= todayYmd
-    })
+    .filter((job) =>
+      isHandoverProtocolJobVisible(
+        job,
+        firstAttachmentAtByJobId.get(job.id),
+        todayYmd ?? '',
+        now
+      )
+    )
     .map((job) => ({
       id: String(job.id),
       jobNumber: String(job.job_number ?? '').trim(),

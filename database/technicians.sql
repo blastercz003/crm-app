@@ -3,7 +3,8 @@ create extension if not exists "pgcrypto";
 alter table public.profiles
   add column if not exists can_be_assigned_as_technician boolean not null default false,
   add column if not exists can_view_tech_jobs boolean not null default false,
-  add column if not exists can_view_connection_points boolean not null default false;
+  add column if not exists can_view_connection_points boolean not null default false,
+  add column if not exists can_view_all_technician_handover_uploads boolean not null default false;
 
 create index if not exists profiles_technik_name_idx
   on public.profiles (role, name);
@@ -46,6 +47,12 @@ create policy "Admins can read job technicians or technicians can read own assig
         and profiles.role = 'admin'
     )
     or technician_id = auth.uid()
+    or exists (
+      select 1
+      from public.profiles
+      where profiles.id = auth.uid()
+        and profiles.can_view_all_technician_handover_uploads = true
+    )
   );
 
 drop policy if exists "Admins can insert job technicians" on public.job_technicians;

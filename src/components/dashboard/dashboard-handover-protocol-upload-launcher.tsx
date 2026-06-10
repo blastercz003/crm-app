@@ -180,10 +180,10 @@ export function DashboardHandoverProtocolUploadLauncher({
                       disabled={isPending || availableJobs.length === 0}
                       data-placeholder={!activeSelectedJobId}
                       className="jobs-page__info-modal__handover-job-select jobs-page__info-modal__category-select h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
+                      >
                       <option value="" disabled>
                         {availableJobs.length === 0
-                          ? 'Nemáš žádné zakázky bez nahraného PP'
+                          ? 'Nemáš žádné zakázky dostupné pro nahrání PP'
                           : 'Vyber zakázku'}
                       </option>
 

@@ -1,26 +1,36 @@
 alter table public.profiles
   add column if not exists can_view_handover_protocol_upload boolean not null default false;
+alter table public.profiles
+  add column if not exists can_view_all_technician_handover_uploads boolean not null default false;
 
 drop policy if exists "Technicians can read handover protocol attachments" on public.job_attachments;
 create policy "Technicians can read handover protocol attachments"
   on public.job_attachments
   for select
   using (
-    category = 'predavaci_protokol'
-    and exists (
+    exists (
       select 1
       from public.profiles
       where profiles.id = auth.uid()
         and (
           profiles.role = 'TECHNIK'
           or profiles.can_view_handover_protocol_upload = true
+          or profiles.can_view_all_technician_handover_uploads = true
         )
     )
     and exists (
       select 1
       from public.job_technicians
       where job_technicians.job_id = job_attachments.job_id
-        and job_technicians.technician_id = auth.uid()
+        and (
+          job_technicians.technician_id = auth.uid()
+          or exists (
+            select 1
+            from public.profiles
+            where profiles.id = auth.uid()
+              and profiles.can_view_all_technician_handover_uploads = true
+          )
+        )
     )
   );
 
@@ -38,13 +48,22 @@ create policy "Technicians can create handover protocol attachments"
         and (
           profiles.role = 'TECHNIK'
           or profiles.can_view_handover_protocol_upload = true
+          or profiles.can_view_all_technician_handover_uploads = true
         )
     )
     and exists (
       select 1
       from public.job_technicians
       where job_technicians.job_id = job_attachments.job_id
-        and job_technicians.technician_id = auth.uid()
+        and (
+          job_technicians.technician_id = auth.uid()
+          or exists (
+            select 1
+            from public.profiles
+            where profiles.id = auth.uid()
+              and profiles.can_view_all_technician_handover_uploads = true
+          )
+        )
     )
   );
 
@@ -62,13 +81,22 @@ create policy "Technicians can read handover protocol files"
         and (
           profiles.role = 'TECHNIK'
           or profiles.can_view_handover_protocol_upload = true
+          or profiles.can_view_all_technician_handover_uploads = true
         )
     )
     and exists (
       select 1
       from public.job_technicians
       where job_technicians.job_id::text = split_part(name, '/', 2)
-        and job_technicians.technician_id = auth.uid()
+        and (
+          job_technicians.technician_id = auth.uid()
+          or exists (
+            select 1
+            from public.profiles
+            where profiles.id = auth.uid()
+              and profiles.can_view_all_technician_handover_uploads = true
+          )
+        )
     )
   );
 
@@ -86,12 +114,21 @@ create policy "Technicians can upload handover protocol files"
         and (
           profiles.role = 'TECHNIK'
           or profiles.can_view_handover_protocol_upload = true
+          or profiles.can_view_all_technician_handover_uploads = true
         )
     )
     and exists (
       select 1
       from public.job_technicians
       where job_technicians.job_id::text = split_part(name, '/', 2)
-        and job_technicians.technician_id = auth.uid()
+        and (
+          job_technicians.technician_id = auth.uid()
+          or exists (
+            select 1
+            from public.profiles
+            where profiles.id = auth.uid()
+              and profiles.can_view_all_technician_handover_uploads = true
+          )
+        )
     )
   );

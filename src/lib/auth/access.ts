@@ -4,6 +4,7 @@ export type TechnicalAccessFlags = {
   can_view_tech_jobs: boolean | null
   can_view_connection_points: boolean | null
   can_view_handover_protocol_upload: boolean | null
+  can_view_all_technician_handover_uploads: boolean | null
 }
 
 export function isAdminRole(role: AppRole) {

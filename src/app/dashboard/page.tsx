@@ -175,6 +175,7 @@ type DashboardProfile = {
   can_view_tech_jobs: boolean | null
   can_view_connection_points: boolean | null
   can_view_handover_protocol_upload: boolean | null
+  can_view_all_technician_handover_uploads: boolean | null
 }
 
 type DashboardThemePreference = {
@@ -1075,7 +1076,7 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_handover_protocol_upload'
+      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
