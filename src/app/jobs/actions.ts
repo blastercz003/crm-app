@@ -742,34 +742,14 @@ async function syncJobTechnicians(
   jobId: string,
   technicianIds: string[]
 ) {
-  const { error: deleteError } = await supabase
-    .from('job_technicians')
-    .delete()
-    .eq('job_id', jobId)
+  const { error } = await supabase.rpc('sync_job_technicians_for_job', {
+    p_job_id: jobId,
+    p_technician_ids: technicianIds,
+  })
 
-  if (deleteError) {
+  if (error) {
     throw new Error(
-      `Nepodařilo se vyčistit přiřazené techniky k zakázce: ${deleteError.message}`
-    )
-  }
-
-  if (technicianIds.length === 0) {
-    return
-  }
-
-  const rows = technicianIds.map((technicianId, index) => ({
-    job_id: jobId,
-    technician_id: technicianId,
-    position: index,
-  }))
-
-  const { error: insertError } = await supabase
-    .from('job_technicians')
-    .insert(rows)
-
-  if (insertError) {
-    throw new Error(
-      `Nepodařilo se uložit přiřazené techniky k zakázce: ${insertError.message}`
+      `Nepodařilo se uložit přiřazené techniky k zakázce: ${error.message}`
     )
   }
 }

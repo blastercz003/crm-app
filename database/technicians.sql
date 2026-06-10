@@ -35,6 +35,53 @@ create index if not exists job_technicians_technician_id_position_idx
 
 alter table public.job_technicians enable row level security;
 
+create or replace function public.sync_job_technicians_for_job(
+  p_job_id uuid,
+  p_technician_ids uuid[]
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  sanitized_ids uuid[] := coalesce(p_technician_ids, '{}'::uuid[]);
+begin
+  if current_user_id is null then
+    raise exception 'Nejsi přihlášený.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.profiles
+    where profiles.id = current_user_id
+      and (
+        profiles.role = 'admin'
+        or profiles.can_view_jobs = true
+      )
+  ) then
+    raise exception 'Nemáš oprávnění pro práci se zakázkami.';
+  end if;
+
+  delete from public.job_technicians
+  where job_id = p_job_id;
+
+  if coalesce(array_length(sanitized_ids, 1), 0) = 0 then
+    return;
+  end if;
+
+  insert into public.job_technicians (job_id, technician_id, position)
+  select
+    p_job_id,
+    technician_id,
+    position - 1
+  from unnest(sanitized_ids) with ordinality as input_ids(technician_id, position)
+  on conflict (job_id, technician_id)
+  do update set position = excluded.position;
+end;
+$$;
+
 drop policy if exists "Admins can read job technicians or technicians can read own assignments" on public.job_technicians;
 create policy "Admins can read job technicians or technicians can read own assignments"
   on public.job_technicians
