@@ -2,11 +2,15 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getServiceRoleClient } from '@/lib/supabase/service'
-import { FilesManager } from './files-manager'
+import { canViewConnectionPointsSection } from '@/lib/auth/access'
+import { FoldersOverviewClient } from './folders-overview-client'
 
 export const metadata: Metadata = {
   title: 'Přípojné body',
+}
+
+type SearchParams = {
+  q?: string
 }
 
 type ProfilePermissionRow = {
@@ -14,34 +18,24 @@ type ProfilePermissionRow = {
   can_view_connection_points: boolean | null
 }
 
-type SearchParams = {
-  q?: string
+type ConnectionPointFolderRow = {
+  id: string
+  name: string
+  created_at: string
+  updated_at: string
 }
 
-type ConnectionPointAttachmentJoinRow = {
-  id: string
-  job_id: string
-  file_name: string
-  display_name: string
-  mime_type: string | null
-  file_size_bytes: number
-  category: 'predavaci_protokol' | 'foto' | 'jine'
-  note: string | null
-  created_at: string
-  job:
-    | {
-      id: string
-      job_number: string
-      company_name: string
-      site_address: string | null
-    }
-    | {
-        id: string
-        job_number: string
-        company_name: string
-        site_address: string | null
-      }[]
-    | null
+type FolderPhotoCountRow = {
+  folder_id: string
+}
+
+type FolderCommentRow = {
+  folder_id: string
+  body: string
+}
+
+function normalizeQuery(value: string) {
+  return String(value ?? '').trim().toLowerCase()
 }
 
 export default async function PripojneBodyPage({
@@ -51,6 +45,7 @@ export default async function PripojneBodyPage({
 }) {
   const params = searchParams ? await searchParams : undefined
   const query = String(params?.q ?? '').trim()
+  const normalizedQuery = normalizeQuery(query)
 
   const supabase = await createClient()
   const {
@@ -72,82 +67,78 @@ export default async function PripojneBodyPage({
   }
 
   const typedProfile = profile as ProfilePermissionRow | null
-  const hasAccess =
-    typedProfile?.role === 'admin' ||
-    typedProfile?.role === 'TECHNIK' ||
-    Boolean(typedProfile?.can_view_connection_points)
-
-  if (!hasAccess) {
+  if (!canViewConnectionPointsSection(typedProfile?.role ?? null, typedProfile)) {
     redirect('/dashboard')
   }
 
-  const dataSupabase = getServiceRoleClient() ?? supabase
+  const { data: foldersData, error: foldersError } = await supabase
+    .from('connection_point_folders')
+    .select('id, name, created_at, updated_at')
+    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
 
-  const { data, error } = await dataSupabase
-    .from('connection_point_attachments')
-    .select(`
-      id,
-      job_id,
-      file_name,
-      display_name,
-      mime_type,
-      file_size_bytes,
-      category,
-      note,
-      created_at,
-      job:jobs!inner (
-        id,
-        job_number,
-        company_name,
-        site_address
-      )
-    `)
-
-  if (error) {
-    throw new Error('Nepodařilo se načíst přípojné body.')
+  if (foldersError) {
+    throw new Error('Nepodařilo se načíst složky.')
   }
 
-  const rows = ((data ?? []) as ConnectionPointAttachmentJoinRow[])
-    .map((row) => {
-      const job = Array.isArray(row.job) ? row.job[0] : row.job
-      if (!job) return null
+  const folders = ((foldersData ?? []) as ConnectionPointFolderRow[]).map((folder) => ({
+    id: String(folder.id),
+    name: String(folder.name ?? ''),
+    createdAt: String(folder.created_at ?? ''),
+    updatedAt: String(folder.updated_at ?? ''),
+  }))
 
-      return {
-        id: String(row.id),
-        jobId: String(row.job_id),
-        jobNumber: String(job.job_number ?? ''),
-        companyName: String(job.company_name ?? ''),
-        siteAddress: String(job.site_address ?? ''),
-        displayName: String(row.display_name ?? row.file_name ?? ''),
-        fileName: String(row.file_name ?? ''),
-        mimeType: row.mime_type,
-        fileSizeBytes: Number(row.file_size_bytes) || 0,
-        category: row.category,
-        note: row.note,
-        createdAt: String(row.created_at ?? ''),
-      }
-    })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+  const { data: photoRowsData, error: photoRowsError } = await supabase
+    .from('connection_point_folder_photos')
+    .select('folder_id')
 
-  const { data: allJobsData, error: allJobsError } = await dataSupabase
-    .from('jobs')
-    .select('id, job_number, company_name, site_address')
-    .order('job_number', { ascending: false })
-
-  if (allJobsError) {
-    throw new Error('Nepodařilo se načíst zakázky pro přípojné body.')
+  if (photoRowsError) {
+    throw new Error('Nepodařilo se načíst fotky ke složkám.')
   }
 
-  const jobs = ((allJobsData ?? []) as Array<{
-    id: string
-    job_number: string
-    company_name: string
-    site_address: string | null
-  }>).map((job) => ({
-    id: String(job.id),
-    jobNumber: String(job.job_number ?? ''),
-    companyName: String(job.company_name ?? ''),
-    siteAddress: String(job.site_address ?? ''),
+  const { data: commentRowsData, error: commentRowsError } = await supabase
+    .from('connection_point_folder_comments')
+    .select('folder_id, body')
+
+  if (commentRowsError) {
+    throw new Error('Nepodařilo se načíst komentáře ke složkám.')
+  }
+
+  const photoCounts = new Map<string, number>()
+  for (const row of (photoRowsData ?? []) as FolderPhotoCountRow[]) {
+    const folderId = String(row.folder_id ?? '')
+    if (!folderId) continue
+    photoCounts.set(folderId, (photoCounts.get(folderId) ?? 0) + 1)
+  }
+
+  const commentCounts = new Map<string, number>()
+  const commentSearchBodies = new Map<string, string[]>()
+
+  for (const row of (commentRowsData ?? []) as FolderCommentRow[]) {
+    const folderId = String(row.folder_id ?? '')
+    if (!folderId) continue
+
+    commentCounts.set(folderId, (commentCounts.get(folderId) ?? 0) + 1)
+
+    const bodies = commentSearchBodies.get(folderId) ?? []
+    bodies.push(String(row.body ?? ''))
+    commentSearchBodies.set(folderId, bodies)
+  }
+
+  const visibleFolders =
+    normalizedQuery.length > 0
+      ? folders.filter((folder) => {
+          if (folder.name.toLowerCase().includes(normalizedQuery)) return true
+
+          const bodies = commentSearchBodies.get(folder.id) ?? []
+          return bodies.some((body) => body.toLowerCase().includes(normalizedQuery))
+        })
+      : folders
+
+  const overviewFolders = visibleFolders.map((folder) => ({
+    ...folder,
+    photoCount: photoCounts.get(folder.id) ?? 0,
+    commentCount: commentCounts.get(folder.id) ?? 0,
   }))
 
   return (
@@ -170,16 +161,12 @@ export default async function PripojneBodyPage({
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-              <form
-                action="/pripojne-body"
-                method="get"
-                className="flex w-full gap-3 sm:w-auto"
-              >
+              <form action="/pripojne-body" method="get" className="flex w-full gap-3 sm:w-auto">
                 <input
                   type="text"
                   name="q"
                   defaultValue={query}
-                  placeholder="Hledat zakázku, firmu nebo poznámku"
+                  placeholder="Hledat název složky nebo komentář"
                   className="soubory-page__search-input w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
 
@@ -201,12 +188,7 @@ export default async function PripojneBodyPage({
           </div>
         </section>
 
-        <FilesManager
-          files={rows}
-          jobs={jobs}
-          initialQuery={query}
-          isAdmin={typedProfile?.role === 'admin'}
-        />
+        <FoldersOverviewClient folders={overviewFolders} />
       </div>
     </main>
   )

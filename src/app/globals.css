@@ -6757,6 +6757,406 @@ html[data-theme='dark'] .soubory-page__hero {
     0 26px 60px rgba(2, 6, 23, 0.34) !important;
 }
 
+html[data-theme='dark'] .soubory-page__folders-panel {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(13, 20, 34, 0.96) 0%, rgba(9, 15, 27, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 28px 72px rgba(2, 6, 23, 0.42) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel .text-gray-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel .text-gray-600,
+html[data-theme='dark'] .soubory-page__folders-panel .text-gray-500,
+html[data-theme='dark'] .soubory-page__folders-panel .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__card {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__card:hover {
+  border-color: rgba(78, 160, 220, 0.3) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 30px rgba(2, 6, 23, 0.36) !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__card .text-gray-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__card .text-gray-500,
+html[data-theme='dark'] .soubory-page__folders-panel__card .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__create-button,
+html[data-theme='dark'] .soubory-page__folders-panel__open-button {
+  border-color: rgba(78, 160, 220, 0.26) !important;
+  background: linear-gradient(155deg, rgba(56, 125, 177, 0.98) 0%, rgba(41, 105, 152, 0.96) 45%, rgba(30, 86, 129, 0.96) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 12px 26px rgba(24, 78, 129, 0.3) !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__create-button:hover,
+html[data-theme='dark'] .soubory-page__folders-panel__open-button:hover {
+  border-color: rgba(78, 160, 220, 0.34) !important;
+  background: linear-gradient(155deg, rgba(66, 140, 191, 0.98) 0%, rgba(47, 119, 175, 0.96) 45%, rgba(35, 100, 153, 0.96) 100%) !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__meta-badge {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__folders-panel__meta-badge .text-gray-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(13, 20, 34, 0.98) 0%, rgba(9, 15, 27, 0.96) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 34px 84px rgba(2, 6, 23, 0.52) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__header {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__title {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__hint {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__close {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 18px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__input {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.98) 0%, rgba(12, 20, 34, 0.96) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 20px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__input::placeholder {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__input:focus {
+  border-color: rgba(78, 160, 220, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(78, 160, 220, 0.16),
+    0 10px 22px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__error {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: linear-gradient(155deg, rgba(58, 16, 22, 0.98) 0%, rgba(43, 12, 18, 0.98) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__footer {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__cancel {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: linear-gradient(155deg, rgba(58, 16, 22, 0.98) 0%, rgba(43, 12, 18, 0.98) 100%) !important;
+  color: #fee2e2 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(185, 28, 28, 0.18) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__submit {
+  border-color: rgba(78, 160, 220, 0.26) !important;
+  background: linear-gradient(155deg, rgba(56, 125, 177, 0.98) 0%, rgba(41, 105, 152, 0.96) 45%, rgba(30, 86, 129, 0.96) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 28px rgba(24, 78, 129, 0.3) !important;
+}
+
+html[data-theme='dark'] .soubory-page__create-folder-modal__submit:hover {
+  background: linear-gradient(155deg, rgba(66, 140, 191, 0.98) 0%, rgba(47, 119, 175, 0.96) 45%, rgba(35, 100, 153, 0.96) 100%) !important;
+}
+
+html[data-theme='dark'] .soubory-page__hero-stat {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__hero-stat .text-gray-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel,
+html[data-theme='dark'] .soubory-page__comments-panel {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(13, 20, 34, 0.96) 0%, rgba(9, 15, 27, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 28px 72px rgba(2, 6, 23, 0.42) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__header,
+html[data-theme='dark'] .soubory-page__comments-panel__header {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__title,
+html[data-theme='dark'] .soubory-page__comments-panel__title {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__upload-button,
+html[data-theme='dark'] .soubory-page__comments-panel__submit {
+  border-color: rgba(78, 160, 220, 0.26) !important;
+  background: linear-gradient(155deg, rgba(56, 125, 177, 0.98) 0%, rgba(41, 105, 152, 0.96) 45%, rgba(30, 86, 129, 0.96) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 28px rgba(24, 78, 129, 0.3) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__upload-button:hover,
+html[data-theme='dark'] .soubory-page__comments-panel__submit:hover {
+  background: linear-gradient(155deg, rgba(66, 140, 191, 0.98) 0%, rgba(47, 119, 175, 0.96) 45%, rgba(35, 100, 153, 0.96) 100%) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__empty,
+html[data-theme='dark'] .soubory-page__comments-panel__empty {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #94a3b8 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 30px rgba(2, 6, 23, 0.18) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__group,
+html[data-theme='dark'] .soubory-page__comments-panel__card {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__group:first-child,
+html[data-theme='dark'] .soubory-page__comments-panel__card:first-child {
+  border-color: rgba(78, 160, 220, 0.28) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(11, 18, 32, 0.96) 100%) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__group .text-gray-900,
+html[data-theme='dark'] .soubory-page__comments-panel__card .text-gray-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__comments-panel__body {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(13, 20, 34, 0.96) 0%, rgba(9, 15, 27, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(2, 6, 23, 0.2) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__group .text-gray-500,
+html[data-theme='dark'] .soubory-page__photos-panel__group .text-gray-600,
+html[data-theme='dark'] .soubory-page__comments-panel__card .text-gray-500,
+html[data-theme='dark'] .soubory-page__comments-panel__card .text-gray-600,
+html[data-theme='dark'] .soubory-page__comments-panel__composer-footer,
+html[data-theme='dark'] .soubory-page__comments-panel__group-meta {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__group-meta {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__photo-card {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(2, 6, 23, 0.24) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__photo-card:hover {
+  border-color: rgba(78, 160, 220, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 28px rgba(2, 6, 23, 0.34) !important;
+}
+
+html[data-theme='dark'] .soubory-page__photos-panel__photo-card .text-gray-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__comments-panel__composer {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(2, 6, 23, 0.24) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comments-panel__textarea {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.98) 0%, rgba(12, 20, 34, 0.96) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 20px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comments-panel__textarea::placeholder {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .soubory-page__comments-panel__textarea:focus {
+  border-color: rgba(78, 160, 220, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(78, 160, 220, 0.16),
+    0 10px 22px rgba(2, 6, 23, 0.28) !important;
+}
+
+html[data-theme='dark'] .soubory-page__comments-panel__error {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: linear-gradient(155deg, rgba(58, 16, 22, 0.98) 0%, rgba(43, 12, 18, 0.98) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(13, 20, 34, 0.98) 0%, rgba(9, 15, 27, 0.96) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 34px 84px rgba(2, 6, 23, 0.52) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal .soubory-page__modal-header {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal .soubory-page__modal-title {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal .soubory-page__modal-close {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 18px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__body {
+  color: #e2e8f0 !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__label,
+html[data-theme='dark'] .soubory-page__upload-modal__hint {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__file {
+  color: #e2e8f0 !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__file::file-selector-button,
+html[data-theme='dark'] .soubory-page__upload-modal__file::-webkit-file-upload-button {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 14px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__selection {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(8, 13, 23, 0.96) 0%, rgba(11, 18, 32, 0.94) 100%) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__error {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: linear-gradient(155deg, rgba(58, 16, 22, 0.98) 0%, rgba(43, 12, 18, 0.98) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__footer {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__cancel {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: linear-gradient(155deg, rgba(58, 16, 22, 0.98) 0%, rgba(43, 12, 18, 0.98) 100%) !important;
+  color: #fee2e2 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(185, 28, 28, 0.18) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__submit {
+  border-color: rgba(78, 160, 220, 0.26) !important;
+  background: linear-gradient(155deg, rgba(56, 125, 177, 0.98) 0%, rgba(41, 105, 152, 0.96) 45%, rgba(30, 86, 129, 0.96) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 28px rgba(24, 78, 129, 0.3) !important;
+}
+
+html[data-theme='dark'] .soubory-page__upload-modal__submit:hover {
+  background: linear-gradient(155deg, rgba(66, 140, 191, 0.98) 0%, rgba(47, 119, 175, 0.96) 45%, rgba(35, 100, 153, 0.96) 100%) !important;
+}
+
 html[data-theme='dark'] .soubory-page__hero .text-gray-900,
 html[data-theme='dark'] .soubory-page__hero .text-zinc-900,
 html[data-theme='dark'] .soubory-page__sidebar .text-gray-900,

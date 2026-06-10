@@ -5,27 +5,40 @@ import { createClient } from '@/lib/supabase/server'
 import { canViewConnectionPointsSection, isAdminRole } from '@/lib/auth/access'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 
-export type ConnectionPointAttachmentCategory = 'predavaci_protokol' | 'foto' | 'jine'
+export type ConnectionPointFolderPhotoRow = {
+  id: string
+  folder_id: string
+  upload_id: string
+  file_name: string
+  display_name: string
+  storage_bucket: string
+  storage_path: string
+  mime_type: string
+  file_size_bytes: number
+  uploaded_by: string | null
+  created_at: string
+}
+
+export type ConnectionPointFolderCommentRow = {
+  id: string
+  folder_id: string
+  body: string
+  created_by: string | null
+  edited_by: string | null
+  created_at: string
+  updated_at: string
+  edited_at: string | null
+}
 
 const CONNECTION_POINT_ATTACHMENTS_BUCKET = 'connection-point-attachments'
+const CONNECTION_POINT_FOLDER_PHOTOS_PREFIX = 'connection-point-folder'
 const MAX_ATTACHMENT_FILE_SIZE_BYTES = 5 * 1024 * 1024
-const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-])
-const CONNECTION_POINT_ATTACHMENT_CATEGORIES: ConnectionPointAttachmentCategory[] = [
-  'predavaci_protokol',
-  'foto',
-  'jine',
-]
+const ALLOWED_FOLDER_IMAGE_MIME_PREFIX = 'image/'
 
 type ProfilePermissionRow = {
   role: string | null
   can_view_connection_points: boolean | null
+  can_edit_connection_point_folders: boolean | null
 }
 
 function sanitizeAttachmentFileName(value: string) {
@@ -34,15 +47,9 @@ function sanitizeAttachmentFileName(value: string) {
   return safe.length > 0 ? safe : 'soubor'
 }
 
-function buildAttachmentStoragePath(jobId: string, fileName: string) {
+function buildFolderPhotoStoragePath(folderId: string, uploadId: string, fileName: string) {
   const safeName = sanitizeAttachmentFileName(fileName)
-  return `connection-point/${jobId}/${crypto.randomUUID()}-${safeName}`
-}
-
-function isAttachmentCategory(value: unknown): value is ConnectionPointAttachmentCategory {
-  return CONNECTION_POINT_ATTACHMENT_CATEGORIES.includes(
-    value as ConnectionPointAttachmentCategory
-  )
+  return `${CONNECTION_POINT_FOLDER_PHOTOS_PREFIX}/${folderId}/${uploadId}/${crypto.randomUUID()}-${safeName}`
 }
 
 async function requireConnectionPointsAccess() {
@@ -57,7 +64,7 @@ async function requireConnectionPointsAccess() {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('role, can_view_connection_points')
+    .select('role, can_view_connection_points, can_edit_connection_point_folders')
     .eq('id', user.id)
     .single()
 
@@ -73,287 +80,522 @@ async function requireConnectionPointsAccess() {
   return { supabase, user, error: null, profile: typedProfile }
 }
 
-async function requireAdmin() {
-  const { supabase, user, error, profile } = await requireConnectionPointsAccess()
-  if (!user) {
-    return { supabase, user: null, error, profile }
-  }
-
-  if (!isAdminRole(profile?.role ?? null)) {
-    return {
-      supabase,
-      user: null,
-      error: 'Nemáš oprávnění pro mazání souborů v sekci Přípojné body.',
-      profile,
-    }
-  }
-
-  return { supabase, user, error: null, profile }
-}
-
 function getConnectionPointsDataClient() {
   return getServiceRoleClient()
 }
 
-export async function uploadConnectionPointFilesAction(formData: FormData) {
+function normalizeFolderName(value: string) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ')
+}
+
+async function requireFolderEditAccess() {
+  const access = await requireConnectionPointsAccess()
+
+  if (!access.user) {
+    return access
+  }
+
+  if (isAdminRole(access.profile?.role ?? null) || access.profile?.can_edit_connection_point_folders) {
+    return access
+  }
+
+  return {
+    ...access,
+    user: null,
+    error: 'Nemáš oprávnění pro úpravu složek v sekci Přípojné body.',
+  }
+}
+
+export async function createConnectionPointFolderAction(formData: FormData) {
   try {
-    const { user, error } = await requireConnectionPointsAccess()
+    const { user, error, supabase } = await requireConnectionPointsAccess()
+    if (!user) {
+      return { success: false, error: error ?? 'Neautorizovaný přístup.', folderId: null }
+    }
+
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
+    if (!dataSupabase) {
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.', folderId: null }
+    }
+
+    const rawName = String(formData.get('name') ?? '')
+    const name = normalizeFolderName(rawName)
+
+    if (!name) {
+      return { success: false, error: 'Zadej název složky.', folderId: null }
+    }
+
+    const { data: existing, error: existingError } = await dataSupabase
+      .from('connection_point_folders')
+      .select('id')
+      .ilike('name', name)
+      .limit(1)
+
+    if (existingError) {
+      return { success: false, error: 'Nepodařilo se ověřit název složky.', folderId: null }
+    }
+
+    if ((existing ?? []).length > 0) {
+      return { success: false, error: 'Složka s tímto názvem už existuje.', folderId: null }
+    }
+
+    const { data: inserted, error: insertError } = await dataSupabase
+      .from('connection_point_folders')
+      .insert({
+        name,
+        created_by: user.id,
+      })
+      .select('id')
+      .single()
+
+    if (insertError || !inserted) {
+      const code = (insertError as { code?: string } | null | undefined)?.code
+      if (code === '23505') {
+        return { success: false, error: 'Složka s tímto názvem už existuje.', folderId: null }
+      }
+
+      return {
+        success: false,
+        error: 'Složku se nepodařilo vytvořit.',
+        folderId: null,
+      }
+    }
+
+    revalidatePath('/pripojne-body')
+    return { success: true, error: null, folderId: String((inserted as { id: string }).id) }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    return { success: false, error: `Vytvoření složky selhalo (${message}).`, folderId: null }
+  }
+}
+
+export async function renameConnectionPointFolderAction(folderId: string, formData: FormData) {
+  try {
+    const { user, error, supabase } = await requireFolderEditAccess()
     if (!user) {
       return { success: false, error: error ?? 'Neautorizovaný přístup.' }
     }
 
-    const dataSupabase = getConnectionPointsDataClient()
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
     if (!dataSupabase) {
-      return {
-        success: false,
-        error: 'Chybí service role klient pro sekci Přípojné body.',
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.' }
+    }
+
+    const normalizedFolderId = String(folderId ?? '').trim()
+    if (!normalizedFolderId) {
+      return { success: false, error: 'Složka nebyla nalezena.' }
+    }
+
+    const newName = normalizeFolderName(String(formData.get('name') ?? ''))
+    if (!newName) {
+      return { success: false, error: 'Zadej název složky.' }
+    }
+
+    const { data: folderRow, error: folderError } = await dataSupabase
+      .from('connection_point_folders')
+      .select('id')
+      .eq('id', normalizedFolderId)
+      .single()
+
+    if (folderError || !folderRow) {
+      return { success: false, error: 'Složka nebyla nalezena.' }
+    }
+
+    const { data: existingFolders, error: existingError } = await dataSupabase
+      .from('connection_point_folders')
+      .select('id, name')
+
+    if (existingError) {
+      return { success: false, error: 'Nepodařilo se ověřit název složky.' }
+    }
+
+    const duplicate = (existingFolders ?? [])
+      .filter((row) => String((row as { id: string }).id) !== normalizedFolderId)
+      .some((row) => normalizeFolderName(String((row as { name: string }).name ?? '')).toLowerCase() === newName.toLowerCase())
+
+    if (duplicate) {
+      return { success: false, error: 'Složka s tímto názvem už existuje.' }
+    }
+
+    const { error: updateError } = await dataSupabase
+      .from('connection_point_folders')
+      .update({
+        name: newName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', normalizedFolderId)
+
+    if (updateError) {
+      const code = (updateError as { code?: string } | null | undefined)?.code
+      if (code === '23505') {
+        return { success: false, error: 'Složka s tímto názvem už existuje.' }
+      }
+
+      return { success: false, error: 'Složku se nepodařilo přejmenovat.' }
+    }
+
+    revalidatePath('/pripojne-body')
+    revalidatePath(`/pripojne-body/${normalizedFolderId}`)
+    return { success: true, error: null }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    return { success: false, error: `Přejmenování složky selhalo (${message}).` }
+  }
+}
+
+export async function deleteConnectionPointFolderAction(folderId: string) {
+  try {
+    const { user, error, supabase } = await requireFolderEditAccess()
+    if (!user) {
+      return { success: false, error: error ?? 'Neautorizovaný přístup.' }
+    }
+
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
+    if (!dataSupabase) {
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.' }
+    }
+
+    const normalizedFolderId = String(folderId ?? '').trim()
+    if (!normalizedFolderId) {
+      return { success: false, error: 'Složka nebyla nalezena.' }
+    }
+
+    const { data: photoRows, error: photosError } = await dataSupabase
+      .from('connection_point_folder_photos')
+      .select('storage_bucket, storage_path')
+      .eq('folder_id', normalizedFolderId)
+
+    if (photosError) {
+      return { success: false, error: 'Nepodařilo se načíst soubory ke smazání.' }
+    }
+
+    const storageGroups = new Map<string, string[]>()
+    for (const row of (photoRows ?? []) as Array<{ storage_bucket: string; storage_path: string }>) {
+      const bucket = String(row.storage_bucket ?? CONNECTION_POINT_ATTACHMENTS_BUCKET)
+      const path = String(row.storage_path ?? '').trim()
+      if (!path) continue
+      const items = storageGroups.get(bucket) ?? []
+      items.push(path)
+      storageGroups.set(bucket, items)
+    }
+
+    for (const [bucket, paths] of storageGroups.entries()) {
+      const { error: removeError } = await dataSupabase.storage.from(bucket).remove(paths)
+      if (removeError) {
+        return { success: false, error: 'Nepodařilo se smazat soubory ze storage.' }
       }
     }
 
-    const jobId = String(formData.get('job_id') ?? '').trim()
-    if (!jobId) {
-      return { success: false, error: 'Vyber zakázku (složku).' }
+    const { error: deleteError } = await dataSupabase
+      .from('connection_point_folders')
+      .delete()
+      .eq('id', normalizedFolderId)
+
+    if (deleteError) {
+      return { success: false, error: 'Složku se nepodařilo smazat.' }
     }
 
-    const categoryValue = String(formData.get('category') ?? '').trim()
-    const category: ConnectionPointAttachmentCategory = isAttachmentCategory(categoryValue)
-      ? categoryValue
-      : 'jine'
+    revalidatePath('/pripojne-body')
+    revalidatePath(`/pripojne-body/${normalizedFolderId}`)
+    return { success: true, error: null }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    return { success: false, error: `Mazání složky selhalo (${message}).` }
+  }
+}
 
-    const noteValue = String(formData.get('note') ?? '').trim()
-    const note = noteValue.length > 0 ? noteValue : null
+export async function uploadConnectionPointFolderPhotosAction(formData: FormData) {
+  try {
+    const { user, error, supabase } = await requireConnectionPointsAccess()
+    if (!user) {
+      return { success: false, error: error ?? 'Neautorizovaný přístup.' }
+    }
 
-    const { data: jobRow, error: jobError } = await dataSupabase
-      .from('jobs')
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
+    if (!dataSupabase) {
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.' }
+    }
+
+    const folderId = String(formData.get('folder_id') ?? '').trim()
+    if (!folderId) {
+      return { success: false, error: 'Složka nebyla nalezena.' }
+    }
+
+    const { data: folderRow, error: folderError } = await dataSupabase
+      .from('connection_point_folders')
       .select('id')
-      .eq('id', jobId)
+      .eq('id', folderId)
       .single()
 
-    if (jobError || !jobRow) {
-      return { success: false, error: 'Zakázka neexistuje.' }
+    if (folderError || !folderRow) {
+      return { success: false, error: 'Složka nebyla nalezena.' }
     }
 
     const files = formData.getAll('files').filter((file): file is File => file instanceof File)
     if (files.length === 0) {
-      return { success: false, error: 'Vyber alespoň jeden soubor.' }
+      return { success: false, error: 'Vyber alespoň jednu fotku.' }
     }
 
-    const createdRows: Array<{ id: string; storagePath: string }> = []
+    const uploadId = crypto.randomUUID()
 
-    for (const file of files) {
-      if (file.size > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
-        return { success: false, error: `Soubor "${file.name}" překračuje limit 5 MB.` }
-      }
+    const { error: uploadInsertError } = await dataSupabase
+      .from('connection_point_folder_uploads')
+      .insert({
+        id: uploadId,
+        folder_id: folderId,
+        uploaded_by: user.id,
+      })
 
-      const mimeType = String(file.type ?? '').trim().toLowerCase()
-      if (!mimeType || !ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
-        return { success: false, error: `Soubor "${file.name}" má nepodporovaný typ.` }
-      }
+    if (uploadInsertError) {
+      return { success: false, error: 'Nepodařilo se založit upload skupinu.' }
+    }
 
-      const storagePath = buildAttachmentStoragePath(jobId, file.name)
-      const contentType = String(file.type ?? '').trim() || 'application/octet-stream'
+    const createdPhotoIds: string[] = []
 
-      const { error: uploadError } = await dataSupabase.storage
-        .from(CONNECTION_POINT_ATTACHMENTS_BUCKET)
-        .upload(storagePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType,
-        })
-
-      if (uploadError) {
-        return {
-          success: false,
-          error: `Soubor "${file.name}" se nepodařilo nahrát (${uploadError.message}).`,
+    try {
+      for (const file of files) {
+        if (file.size > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
+          throw new Error(`Soubor "${file.name}" překračuje limit 5 MB.`)
         }
-      }
 
-      const { data: inserted, error: insertError } = await dataSupabase
-        .from('connection_point_attachments')
-        .insert({
-          job_id: jobId,
-          file_name: file.name,
-          display_name: file.name,
-          storage_bucket: CONNECTION_POINT_ATTACHMENTS_BUCKET,
-          storage_path: storagePath,
-          mime_type: contentType,
-          file_size_bytes: file.size,
-          category,
-          note,
-          uploaded_by: user.id,
-        })
-        .select('id')
-        .single()
-
-      if (insertError || !inserted) {
-        await dataSupabase.storage.from(CONNECTION_POINT_ATTACHMENTS_BUCKET).remove([storagePath])
-        return {
-          success: false,
-          error: `Metadata souboru "${file.name}" se nepodařilo uložit.`,
+        const mimeType = String(file.type ?? '').trim().toLowerCase()
+        if (!mimeType || !mimeType.startsWith(ALLOWED_FOLDER_IMAGE_MIME_PREFIX)) {
+          throw new Error(`Soubor "${file.name}" má nepodporovaný typ.`)
         }
+
+        const storagePath = buildFolderPhotoStoragePath(folderId, uploadId, file.name)
+        const contentType = String(file.type ?? '').trim() || 'application/octet-stream'
+
+        const { error: uploadError } = await dataSupabase.storage
+          .from(CONNECTION_POINT_ATTACHMENTS_BUCKET)
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType,
+          })
+
+        if (uploadError) {
+          throw new Error(`Soubor "${file.name}" se nepodařilo nahrát (${uploadError.message}).`)
+        }
+
+        const { data: inserted, error: insertError } = await dataSupabase
+          .from('connection_point_folder_photos')
+          .insert({
+            folder_id: folderId,
+            upload_id: uploadId,
+            file_name: file.name,
+            display_name: file.name,
+            storage_bucket: CONNECTION_POINT_ATTACHMENTS_BUCKET,
+            storage_path: storagePath,
+            mime_type: contentType,
+            file_size_bytes: file.size,
+            uploaded_by: user.id,
+          })
+          .select('id')
+          .single()
+
+        if (insertError || !inserted) {
+          throw new Error(`Metadata souboru "${file.name}" se nepodařilo uložit.`)
+        }
+
+        createdPhotoIds.push(String((inserted as { id: string }).id))
+      }
+    } catch (uploadError) {
+      const { data: createdRows } = await dataSupabase
+        .from('connection_point_folder_photos')
+        .select('id, storage_path')
+        .eq('upload_id', uploadId)
+
+      const paths = (createdRows ?? []).map((row) => String((row as { storage_path: string }).storage_path))
+      if (paths.length > 0) {
+        await dataSupabase.storage.from(CONNECTION_POINT_ATTACHMENTS_BUCKET).remove(paths)
       }
 
-      createdRows.push({ id: String((inserted as { id: string }).id), storagePath })
+      await dataSupabase
+        .from('connection_point_folder_photos')
+        .delete()
+        .eq('upload_id', uploadId)
+
+      await dataSupabase
+        .from('connection_point_folder_uploads')
+        .delete()
+        .eq('id', uploadId)
+
+      const message = uploadError instanceof Error ? uploadError.message : 'Neznámá chyba.'
+      return { success: false, error: message }
     }
 
     revalidatePath('/pripojne-body')
-    return { success: true, error: null, uploadedCount: createdRows.length }
+    revalidatePath(`/pripojne-body/${folderId}`)
+    return { success: true, error: null, uploadedCount: createdPhotoIds.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
-    return { success: false, error: `Nahrávání selhalo (${message}).` }
+    return { success: false, error: `Nahrávání fotek selhalo (${message}).` }
   }
 }
 
-export async function getConnectionPointAttachmentPreviewUrlAction(attachmentId: string) {
-  const { user, error } = await requireConnectionPointsAccess()
-  if (!user) {
-    return { success: false, error: error ?? 'Neautorizovaný přístup.', signedUrl: null }
-  }
-
-  const dataSupabase = getConnectionPointsDataClient()
-  if (!dataSupabase) {
-    return { success: false, error: 'Chybí service role klient.', signedUrl: null }
-  }
-
-  const { data: row, error: rowError } = await dataSupabase
-    .from('connection_point_attachments')
-    .select('id, storage_bucket, storage_path')
-    .eq('id', String(attachmentId ?? '').trim())
-    .single()
-
-  if (rowError || !row) {
-    return { success: false, error: 'Soubor nebyl nalezen.', signedUrl: null }
-  }
-
-  const { data: signed, error: signedError } = await dataSupabase.storage
-    .from(String((row as { storage_bucket: string }).storage_bucket))
-    .createSignedUrl(String((row as { storage_path: string }).storage_path), 60 * 10)
-
-  if (signedError || !signed?.signedUrl) {
-    return { success: false, error: 'Nepodařilo se získat náhled.', signedUrl: null }
-  }
-
-  return { success: true, error: null, signedUrl: signed.signedUrl }
-}
-
-export async function getConnectionPointAttachmentDownloadLinksAction(attachmentIds: string[]) {
-  const { user, error } = await requireConnectionPointsAccess()
-  if (!user) {
-    return {
-      success: false,
-      error: error ?? 'Neautorizovaný přístup.',
-      items: [] as Array<{ id: string; name: string; url: string }>,
+export async function createConnectionPointFolderCommentAction(folderId: string, formData: FormData) {
+  try {
+    const { user, error, supabase } = await requireConnectionPointsAccess()
+    if (!user) {
+      return { success: false, error: error ?? 'Neautorizovaný přístup.' }
     }
-  }
 
-  const dataSupabase = getConnectionPointsDataClient()
-  if (!dataSupabase) {
-    return {
-      success: false,
-      error: 'Chybí service role klient.',
-      items: [] as Array<{ id: string; name: string; url: string }>,
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
+    if (!dataSupabase) {
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.' }
     }
-  }
 
-  const normalizedIds = Array.from(
-    new Set((attachmentIds ?? []).map((id) => String(id).trim()).filter(Boolean))
-  )
-  if (normalizedIds.length === 0) {
-    return {
-      success: false,
-      error: 'Nebyly vybrány žádné soubory.',
-      items: [] as Array<{ id: string; name: string; url: string }>,
+    const normalizedFolderId = String(folderId ?? '').trim()
+    const body = String(formData.get('body') ?? '').trim()
+
+    if (!normalizedFolderId) {
+      return { success: false, error: 'Složka nebyla nalezena.' }
     }
-  }
 
-  const { data, error: rowsError } = await dataSupabase
-    .from('connection_point_attachments')
-    .select('id, display_name, storage_bucket, storage_path')
-    .in('id', normalizedIds)
-
-  if (rowsError) {
-    return {
-      success: false,
-      error: 'Nepodařilo se načíst soubory ke stažení.',
-      items: [] as Array<{ id: string; name: string; url: string }>,
+    if (!body) {
+      return { success: false, error: 'Komentář nesmí být prázdný.' }
     }
-  }
 
-  const items: Array<{ id: string; name: string; url: string }> = []
+    if (body.length > 5000) {
+      return { success: false, error: 'Komentář může mít maximálně 5000 znaků.' }
+    }
 
-  for (const rawRow of (data ?? []) as Array<{
-    id: string
-    display_name: string
-    storage_bucket: string
-    storage_path: string
-  }>) {
-    const { data: signed, error: signedError } = await dataSupabase.storage
-      .from(String(rawRow.storage_bucket))
-      .createSignedUrl(String(rawRow.storage_path), 60 * 10)
+    const { data: folderRow, error: folderError } = await dataSupabase
+      .from('connection_point_folders')
+      .select('id')
+      .eq('id', normalizedFolderId)
+      .single()
 
-    if (!signedError && signed?.signedUrl) {
-      items.push({
-        id: String(rawRow.id),
-        name: String(rawRow.display_name ?? 'soubor'),
-        url: signed.signedUrl,
+    if (folderError || !folderRow) {
+      return { success: false, error: 'Složka nebyla nalezena.' }
+    }
+
+    const { error: insertError } = await dataSupabase
+      .from('connection_point_folder_comments')
+      .insert({
+        folder_id: normalizedFolderId,
+        body,
+        created_by: user.id,
       })
+
+    if (insertError) {
+      return { success: false, error: 'Komentář se nepodařilo uložit.' }
     }
-  }
 
-  if (items.length === 0) {
-    return { success: false, error: 'Nepodařilo se získat odkazy ke stažení.', items }
+    revalidatePath('/pripojne-body')
+    revalidatePath(`/pripojne-body/${normalizedFolderId}`)
+    return { success: true, error: null }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    return { success: false, error: `Vložení komentáře selhalo (${message}).` }
   }
-
-  return { success: true, error: null, items }
 }
 
-export async function deleteConnectionPointAttachmentsAction(attachmentIds: string[]) {
-  const { user, error } = await requireAdmin()
-  if (!user) {
-    return { success: false, error: error ?? 'Neautorizovaný přístup.' }
+export async function updateConnectionPointFolderCommentAction(commentId: string, formData: FormData) {
+  try {
+    const { user, error, supabase } = await requireFolderEditAccess()
+    if (!user) {
+      return { success: false, error: error ?? 'Neautorizovaný přístup.' }
+    }
+
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
+    if (!dataSupabase) {
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.' }
+    }
+
+    const normalizedCommentId = String(commentId ?? '').trim()
+    const body = String(formData.get('body') ?? '').trim()
+
+    if (!normalizedCommentId) {
+      return { success: false, error: 'Komentář nebyl nalezen.' }
+    }
+
+    if (!body) {
+      return { success: false, error: 'Komentář nesmí být prázdný.' }
+    }
+
+    if (body.length > 5000) {
+      return { success: false, error: 'Komentář může mít maximálně 5000 znaků.' }
+    }
+
+    const { data: row, error: rowError } = await dataSupabase
+      .from('connection_point_folder_comments')
+      .select('folder_id')
+      .eq('id', normalizedCommentId)
+      .single()
+
+    if (rowError || !row) {
+      return { success: false, error: 'Komentář nebyl nalezen.' }
+    }
+
+    const now = new Date().toISOString()
+    const { error: updateError } = await dataSupabase
+      .from('connection_point_folder_comments')
+      .update({
+        body,
+        updated_at: now,
+        edited_at: now,
+        edited_by: user.id,
+      })
+      .eq('id', normalizedCommentId)
+
+    if (updateError) {
+      return { success: false, error: 'Komentář se nepodařilo upravit.' }
+    }
+
+    const folderId = String((row as { folder_id: string }).folder_id)
+    revalidatePath('/pripojne-body')
+    revalidatePath(`/pripojne-body/${folderId}`)
+    return { success: true, error: null }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    return { success: false, error: `Úprava komentáře selhala (${message}).` }
   }
+}
 
-  const dataSupabase = getConnectionPointsDataClient()
-  if (!dataSupabase) {
-    return { success: false, error: 'Chybí service role klient.' }
+export async function deleteConnectionPointFolderCommentAction(commentId: string) {
+  try {
+    const { user, error, supabase } = await requireFolderEditAccess()
+    if (!user) {
+      return { success: false, error: error ?? 'Neautorizovaný přístup.' }
+    }
+
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
+    if (!dataSupabase) {
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.' }
+    }
+
+    const normalizedCommentId = String(commentId ?? '').trim()
+    if (!normalizedCommentId) {
+      return { success: false, error: 'Komentář nebyl nalezen.' }
+    }
+
+    const { data: row, error: rowError } = await dataSupabase
+      .from('connection_point_folder_comments')
+      .select('folder_id')
+      .eq('id', normalizedCommentId)
+      .single()
+
+    if (rowError || !row) {
+      return { success: false, error: 'Komentář nebyl nalezen.' }
+    }
+
+    const { error: deleteError } = await dataSupabase
+      .from('connection_point_folder_comments')
+      .delete()
+      .eq('id', normalizedCommentId)
+
+    if (deleteError) {
+      return { success: false, error: 'Komentář se nepodařilo smazat.' }
+    }
+
+    const folderId = String((row as { folder_id: string }).folder_id)
+    revalidatePath('/pripojne-body')
+    revalidatePath(`/pripojne-body/${folderId}`)
+    return { success: true, error: null }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    return { success: false, error: `Smazání komentáře selhalo (${message}).` }
   }
-
-  const normalizedIds = Array.from(
-    new Set((attachmentIds ?? []).map((id) => String(id).trim()).filter(Boolean))
-  )
-  if (normalizedIds.length === 0) {
-    return { success: false, error: 'Nebyly vybrány žádné soubory.' }
-  }
-
-  const { data, error: rowsError } = await dataSupabase
-    .from('connection_point_attachments')
-    .select('id, storage_bucket, storage_path')
-    .in('id', normalizedIds)
-
-  if (rowsError) {
-    return { success: false, error: 'Nepodařilo se načíst soubory ke smazání.' }
-  }
-
-  const rows = (data ?? []) as Array<{
-    id: string
-    storage_bucket: string
-    storage_path: string
-  }>
-
-  for (const row of rows) {
-    await dataSupabase.storage.from(String(row.storage_bucket)).remove([String(row.storage_path)])
-  }
-
-  const { error: deleteError } = await dataSupabase
-    .from('connection_point_attachments')
-    .delete()
-    .in('id', rows.map((row) => row.id))
-
-  if (deleteError) {
-    return { success: false, error: 'Nepodařilo se smazat metadata souborů.' }
-  }
-
-  revalidatePath('/pripojne-body')
-
-  return { success: true, error: null }
 }
