@@ -165,7 +165,8 @@ async function requireHandoverProtocolUploadAccess() {
   const typedProfile = profile as ProfileAccessRow | null
   const canAccess =
     typedProfile?.role === 'TECHNIK' ||
-    Boolean(typedProfile?.can_view_handover_protocol_upload)
+    Boolean(typedProfile?.can_view_handover_protocol_upload) ||
+    Boolean(typedProfile?.can_view_all_technician_handover_uploads)
 
   if (!canAccess) {
     return {

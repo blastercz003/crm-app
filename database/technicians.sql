@@ -64,7 +64,10 @@ create policy "Admins can insert job technicians"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_jobs = true
+        )
     )
   );
 
@@ -77,7 +80,10 @@ create policy "Admins can update job technicians"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_jobs = true
+        )
     )
   )
   with check (
@@ -85,7 +91,10 @@ create policy "Admins can update job technicians"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_jobs = true
+        )
     )
   );
 
@@ -98,7 +107,10 @@ create policy "Admins can delete job technicians"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_jobs = true
+        )
     )
   );
 

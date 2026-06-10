@@ -33,5 +33,9 @@ export function canViewHandoverProtocolUploadSection(
   role: AppRole,
   flags?: Partial<TechnicalAccessFlags> | null,
 ) {
-  return isTechnikRole(role) || Boolean(flags?.can_view_handover_protocol_upload)
+  return (
+    isTechnikRole(role) ||
+    Boolean(flags?.can_view_handover_protocol_upload) ||
+    Boolean(flags?.can_view_all_technician_handover_uploads)
+  )
 }
