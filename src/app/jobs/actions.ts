@@ -97,6 +97,13 @@ type CreatedJobNotificationRow = {
   site_address: string | null
 }
 
+type JobAssignmentNotificationRow = {
+  job_number: string | null
+  start_at: string | null
+  end_at: string | null
+  site_address: string | null
+}
+
 type ClientRow = {
   id: string
   name: string | null
@@ -627,6 +634,90 @@ function formatJobNotificationDate(value: string | null) {
   }).format(new Date(value))
 }
 
+function formatJobAssignmentDate(value: string | null) {
+  if (!value) return 'neuvedeno'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'neuvedeno'
+
+  const parts = new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: 'Europe/Prague',
+    day: 'numeric',
+    month: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+
+  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? ''
+
+  const day = getPart('day')
+  const month = getPart('month')
+  const hour = getPart('hour')
+  const minute = getPart('minute')
+
+  return `${day}.${month}. ${hour}:${minute}`
+}
+
+function getJobAddressLabel(siteAddress: string | null | undefined) {
+  return String(siteAddress ?? '')
+    .split(',')
+    .at(0)
+    ?.trim() || 'bez adresy'
+}
+
+async function notifyTechniciansAboutJobAssignment({
+  supabase,
+  actorUserId,
+  jobId,
+  job,
+  technicianIds,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  actorUserId: string
+  jobId: string
+  job: JobAssignmentNotificationRow
+  technicianIds: string[]
+}) {
+  const recipientIds = Array.from(
+    new Set(
+      technicianIds
+        .map((technicianId) => String(technicianId ?? '').trim())
+        .filter((technicianId) => Boolean(technicianId))
+    )
+  )
+
+  if (recipientIds.length === 0) return 0
+
+  const jobNumber = String(job.job_number ?? '').trim() || jobId
+  const addressLabel = getJobAddressLabel(job.site_address)
+  const startAt = formatJobAssignmentDate(job.start_at)
+  const endAt = formatJobAssignmentDate(job.end_at)
+  const message = `Zakázka ${jobNumber} ${addressLabel} v termínu ${startAt} - ${endAt} Ti byla přiřazena.`
+
+  await Promise.all(
+    recipientIds.map((recipientUserId) =>
+      createNotification({
+        supabase,
+        recipientUserId,
+        actorUserId,
+        category: 'jobs',
+        type: 'job_assigned',
+        title: 'PŘIŘAZENA NOVÁ ZAKÁZKA',
+        message,
+        entityType: 'job',
+        entityId: jobId,
+        href: '/zakazky-techniku',
+        priority: 'high',
+        dedupeKey: `job_assigned:${jobId}:${recipientUserId}`,
+      })
+    )
+  )
+
+  return recipientIds.length
+}
+
 async function getJobNotificationRecipientIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   salesOwner: string | null
@@ -1137,6 +1228,21 @@ export async function createJobAction(
     )
   }
 
+  try {
+    await notifyTechniciansAboutJobAssignment({
+      supabase,
+      actorUserId: user.id,
+      jobId: createdJobId,
+      job: createdJob as JobAssignmentNotificationRow,
+      technicianIds: technicianIds ?? [],
+    })
+  } catch (notificationError) {
+    console.error(
+      'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
+      notificationError
+    )
+  }
+
   let offerSyncWarning: string | null = null
 
   if (payload.offer_id) {
@@ -1241,7 +1347,7 @@ export async function updateJobAction(
 
   const { data: currentJob, error: currentJobError } = await supabase
     .from('jobs')
-    .select('technician_name')
+    .select('job_number, start_at, end_at, site_address, technician_name')
     .eq('id', normalizedJobId)
     .single()
 
@@ -1287,6 +1393,26 @@ export async function updateJobAction(
         error: 'Techniky se nepodařilo uložit.',
       }
     }
+
+    try {
+      await notifyTechniciansAboutJobAssignment({
+        supabase,
+        actorUserId: user.id,
+        jobId: normalizedJobId,
+        job: {
+          job_number: (currentJob as { job_number: string | null }).job_number ?? null,
+          start_at: payload.start_at,
+          end_at: payload.end_at,
+          site_address: payload.site_address,
+        },
+        technicianIds: technicianIds ?? [],
+      })
+    } catch (notificationError) {
+      console.error(
+        'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
+        notificationError
+      )
+    }
   }
 
   try {
@@ -1313,6 +1439,7 @@ export async function updateJobAction(
   }
 
   revalidateAllRelatedPaths()
+  revalidatePath('/notifications')
 
   return {
     success: true,
@@ -1921,7 +2048,7 @@ export async function updateJobInlineFieldAction(
 
     const { data: currentJob, error: currentJobError } = await supabase
       .from('jobs')
-      .select('start_at, end_at')
+      .select('job_number, start_at, end_at, site_address')
       .eq('id', normalizedJobId)
       .single()
 
@@ -2040,6 +2167,19 @@ export async function updateJobInlineFieldAction(
   }
 
   if (field === 'technician_name') {
+    const { data: currentJob, error: currentJobError } = await supabase
+      .from('jobs')
+      .select('job_number, start_at, end_at, site_address, technician_name')
+      .eq('id', normalizedJobId)
+      .single()
+
+    if (currentJobError || !currentJob) {
+      return {
+        success: false,
+        error: 'Nepodařilo se načíst aktuální stav zakázky.',
+      }
+    }
+
     const technicianSelection = await resolveTechnicianSelection(
       supabase,
       formData
@@ -2084,6 +2224,35 @@ export async function updateJobInlineFieldAction(
       }
     }
 
+    const currentTechnicianName = String(
+      (currentJob as { technician_name?: string | null }).technician_name ?? ''
+    ).trim()
+    const nextTechnicianName = String(
+      technicianSelection.technicianLabel ?? ''
+    ).trim()
+
+    if (currentTechnicianName !== nextTechnicianName && nextTechnicianName) {
+      try {
+        await notifyTechniciansAboutJobAssignment({
+          supabase,
+          actorUserId: user.id,
+          jobId: normalizedJobId,
+          job: {
+            job_number: (currentJob as { job_number?: string | null }).job_number ?? null,
+            start_at: (currentJob as { start_at?: string | null }).start_at ?? null,
+            end_at: (currentJob as { end_at?: string | null }).end_at ?? null,
+            site_address: (currentJob as { site_address?: string | null }).site_address ?? null,
+          },
+          technicianIds: technicianSelection.technicianIds,
+        })
+      } catch (notificationError) {
+        console.error(
+          'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
+          notificationError
+        )
+      }
+    }
+
     try {
       await enqueueUpdatedJobChangeIfWritten({
         supabase,
@@ -2102,6 +2271,7 @@ export async function updateJobInlineFieldAction(
     })
 
     revalidateAllRelatedPaths()
+    revalidatePath('/notifications')
 
     return {
       success: true,
@@ -2140,11 +2310,12 @@ export async function updateJobInlineFieldAction(
     userId: user.id,
   })
 
-  revalidateAllRelatedPaths()
+    revalidateAllRelatedPaths()
+    revalidatePath('/notifications')
 
-  return {
-    success: true,
-    error: null,
+    return {
+      success: true,
+      error: null,
   }
 }
 
