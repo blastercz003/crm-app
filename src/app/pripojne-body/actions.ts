@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { canViewConnectionPointsSection, isAdminRole } from '@/lib/auth/access'
 import { getServiceRoleClient } from '@/lib/supabase/service'
+import { optimizeUploadFile } from '@/lib/uploads/optimize-upload-file'
 
 export type ConnectionPointFolderPhotoRow = {
   id: string
@@ -354,21 +355,24 @@ export async function uploadConnectionPointFolderPhotosAction(formData: FormData
 
     try {
       for (const file of files) {
-        if (file.size > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
-          throw new Error(`Soubor "${file.name}" překračuje limit 5 MB.`)
+        const optimizedFile = await optimizeUploadFile(file)
+
+        if (optimizedFile.size > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
+          throw new Error(`Soubor "${file.name}" překračuje limit 5 MB i po optimalizaci.`)
         }
 
-        const mimeType = String(file.type ?? '').trim().toLowerCase()
+        const mimeType = String(optimizedFile.type ?? file.type ?? '').trim().toLowerCase()
         if (!mimeType || !mimeType.startsWith(ALLOWED_FOLDER_IMAGE_MIME_PREFIX)) {
           throw new Error(`Soubor "${file.name}" má nepodporovaný typ.`)
         }
 
-        const storagePath = buildFolderPhotoStoragePath(folderId, uploadId, file.name)
-        const contentType = String(file.type ?? '').trim() || 'application/octet-stream'
+        const storagePath = buildFolderPhotoStoragePath(folderId, uploadId, optimizedFile.name)
+        const contentType = String(optimizedFile.type ?? '').trim() || 'application/octet-stream'
+        const uploadBuffer = Buffer.from(await optimizedFile.arrayBuffer())
 
         const { error: uploadError } = await dataSupabase.storage
           .from(CONNECTION_POINT_ATTACHMENTS_BUCKET)
-          .upload(storagePath, file, {
+          .upload(storagePath, uploadBuffer, {
             cacheControl: '3600',
             upsert: false,
             contentType,
@@ -383,12 +387,12 @@ export async function uploadConnectionPointFolderPhotosAction(formData: FormData
           .insert({
             folder_id: folderId,
             upload_id: uploadId,
-            file_name: file.name,
-            display_name: file.name,
+            file_name: optimizedFile.name,
+            display_name: optimizedFile.name,
             storage_bucket: CONNECTION_POINT_ATTACHMENTS_BUCKET,
             storage_path: storagePath,
             mime_type: contentType,
-            file_size_bytes: file.size,
+            file_size_bytes: optimizedFile.size,
             uploaded_by: user.id,
           })
           .select('id')
@@ -431,6 +435,89 @@ export async function uploadConnectionPointFolderPhotosAction(formData: FormData
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
     return { success: false, error: `Nahrávání fotek selhalo (${message}).` }
+  }
+}
+
+export async function deleteConnectionPointFolderPhotoAction(photoId: string) {
+  try {
+    const { user, error, supabase } = await requireFolderEditAccess()
+    if (!user) {
+      return { success: false, error: error ?? 'Neautorizovaný přístup.' }
+    }
+
+    const dataSupabase = getConnectionPointsDataClient() ?? supabase
+    if (!dataSupabase) {
+      return { success: false, error: 'Chybí klient pro sekci Přípojné body.' }
+    }
+
+    const normalizedPhotoId = String(photoId ?? '').trim()
+    if (!normalizedPhotoId) {
+      return { success: false, error: 'Fotka nebyla nalezena.' }
+    }
+
+    const { data: photoRow, error: photoError } = await dataSupabase
+      .from('connection_point_folder_photos')
+      .select('id, folder_id, upload_id, storage_bucket, storage_path')
+      .eq('id', normalizedPhotoId)
+      .single()
+
+    if (photoError || !photoRow) {
+      return { success: false, error: 'Fotka nebyla nalezena.' }
+    }
+
+    const typedPhotoRow = photoRow as {
+      folder_id: string
+      upload_id: string
+      storage_bucket: string
+      storage_path: string
+    }
+
+    const bucket = String(typedPhotoRow.storage_bucket ?? CONNECTION_POINT_ATTACHMENTS_BUCKET)
+    const storagePath = String(typedPhotoRow.storage_path ?? '').trim()
+    const folderId = String(typedPhotoRow.folder_id ?? '').trim()
+    const uploadId = String(typedPhotoRow.upload_id ?? '').trim()
+
+    if (!storagePath || !folderId || !uploadId) {
+      return { success: false, error: 'Fotku se nepodařilo připravit ke smazání.' }
+    }
+
+    const { error: storageError } = await dataSupabase.storage.from(bucket).remove([storagePath])
+    if (storageError) {
+      return { success: false, error: 'Nepodařilo se smazat fotku ze storage.' }
+    }
+
+    const { error: deleteError } = await dataSupabase
+      .from('connection_point_folder_photos')
+      .delete()
+      .eq('id', normalizedPhotoId)
+
+    if (deleteError) {
+      return { success: false, error: 'Fotku se nepodařilo smazat.' }
+    }
+
+    const { data: remainingRows, error: remainingError } = await dataSupabase
+      .from('connection_point_folder_photos')
+      .select('id')
+      .eq('upload_id', uploadId)
+      .limit(1)
+
+    if (remainingError) {
+      return { success: false, error: 'Nepodařilo se ověřit zbývající fotky.' }
+    }
+
+    if ((remainingRows ?? []).length === 0) {
+      await dataSupabase
+        .from('connection_point_folder_uploads')
+        .delete()
+        .eq('id', uploadId)
+    }
+
+    revalidatePath('/pripojne-body')
+    revalidatePath(`/pripojne-body/${folderId}`)
+    return { success: true, error: null }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    return { success: false, error: `Smazání fotky selhalo (${message}).` }
   }
 }
 

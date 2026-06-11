@@ -4,9 +4,11 @@ import Link from 'next/link'
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 import {
   createConnectionPointFolderCommentAction,
   deleteConnectionPointFolderAction,
+  deleteConnectionPointFolderPhotoAction,
   deleteConnectionPointFolderCommentAction,
   renameConnectionPointFolderAction,
   uploadConnectionPointFolderPhotosAction,
@@ -347,6 +349,93 @@ function ConfirmModal({
   )
 }
 
+function PhotoDeleteModal({
+  photo,
+  onClose,
+  onDeleted,
+}: {
+  photo: FolderPhoto | null
+  onClose: () => void
+  onDeleted: () => void
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  useBodyScrollLock(Boolean(photo))
+
+  if (!photo || typeof document === 'undefined') return null
+
+  const currentPhoto = photo
+
+  function submit() {
+    startTransition(async () => {
+      const result = await deleteConnectionPointFolderPhotoAction(currentPhoto.id)
+      if (!result.success) {
+        setError(result.error ?? 'Fotku se nepodařilo smazat.')
+        return
+      }
+
+      onDeleted()
+    })
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[130] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div className="flex h-full items-center justify-center">
+        <div className="soubory-page__confirm-modal w-full max-w-lg rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
+          <div className="soubory-page__confirm-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
+            <h3 className="soubory-page__confirm-modal__title text-lg font-semibold tracking-tight text-gray-900">
+              Smazat fotku
+            </h3>
+            <button
+              type="button"
+              onClick={onClose}
+              className="soubory-page__confirm-modal__close inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="soubory-page__confirm-modal__body px-5 py-4 text-sm text-gray-600">
+            Opravdu chceš smazat tuto fotku? Tento krok je nevratný.
+          </div>
+          {error ? (
+            <div className="px-5 pb-4">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            </div>
+          ) : null}
+          <div className="soubory-page__confirm-modal__footer flex items-center justify-end gap-2 border-t border-white/70 px-5 py-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="soubory-page__confirm-modal__cancel inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+            >
+              Zrušit
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={isPending}
+              className="soubory-page__comments-panel__delete inline-flex h-11 items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
+            >
+              {isPending ? 'Mažu…' : 'Smazat fotku'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 function LightboxModal({
   photo,
   onClose,
@@ -407,11 +496,14 @@ function LightboxModal({
 export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: FolderDetailClientProps) {
   const router = useRouter()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [uploadSuccessMessage, setUploadSuccessMessage] = useState<string | null>(null)
+  const [commentSuccessMessage, setCommentSuccessMessage] = useState<string | null>(null)
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [commentBody, setCommentBody] = useState('')
   const [commentError, setCommentError] = useState<string | null>(null)
   const [selectedPhoto, setSelectedPhoto] = useState<FolderPhoto | null>(null)
+  const [deletingPhoto, setDeletingPhoto] = useState<FolderPhoto | null>(null)
   const [editingComment, setEditingComment] = useState<FolderComment | null>(null)
   const [deletingComment, setDeletingComment] = useState<FolderComment | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -447,6 +539,7 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
       setCommentBody('')
       setCommentError(null)
       refresh()
+      setCommentSuccessMessage('Komentář byl úspěšně uložen.')
     })
   }
 
@@ -543,7 +636,7 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
                   {uploadGroups.map((group, index) => (
                     <div
                       key={group.id}
-                      className={`soubory-page__photos-panel__group rounded-3xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] ${
+                      className={`soubory-page__photos-panel__group relative rounded-3xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] ${
                         index === 0
                           ? 'border-[#9dc7e5] bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(239,246,253,0.92)_100%)]'
                           : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] opacity-92'
@@ -560,12 +653,24 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
 
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {group.photos.map((photo) => (
-                          <button
+                          <div
                             key={photo.id}
-                            type="button"
-                            onClick={() => setSelectedPhoto(photo)}
-                            className="soubory-page__photos-panel__photo-card group overflow-hidden rounded-2xl border border-white/75 bg-white/90 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(39,39,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                            className="soubory-page__photos-panel__photo-card group relative overflow-hidden rounded-2xl border border-white/75 bg-white/90 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(39,39,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
                           >
+                            {canEdit ? (
+                              <button
+                                type="button"
+                                onClick={() => setDeletingPhoto(photo)}
+                                className="soubory-page__comments-panel__delete absolute right-2 top-2 z-10 inline-flex h-8 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-semibold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(185,28,28,0.12)] transition hover:-translate-y-[1px]"
+                              >
+                                Smazat
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPhoto(photo)}
+                              className="block h-full w-full text-left"
+                            >
                             <div className="aspect-square overflow-hidden bg-zinc-100">
                               {photo.signedUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
@@ -588,7 +693,8 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
                                 {formatDateTime(photo.createdAt)} · {formatBytes(photo.fileSizeBytes)}
                               </div>
                             </div>
-                          </button>
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -699,8 +805,8 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
           folderId={folder.id}
           onClose={() => setIsUploadOpen(false)}
           onUploaded={() => {
-            setIsUploadOpen(false)
             refresh()
+            setUploadSuccessMessage('Fotky byly úspěšně nahrány.')
           }}
         />
       ) : null}
@@ -764,6 +870,26 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
 
       {selectedPhoto ? <LightboxModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} /> : null}
 
+      {deletingPhoto ? (
+        <PhotoDeleteModal
+          photo={deletingPhoto}
+          onClose={() => setDeletingPhoto(null)}
+          onDeleted={() => {
+            setDeletingPhoto(null)
+            setSelectedPhoto(null)
+            refresh()
+          }}
+        />
+      ) : null}
+
+      <SuccessConfirmationModal
+        isOpen={Boolean(commentSuccessMessage)}
+        message={commentSuccessMessage ?? ''}
+        onConfirm={() => {
+          setCommentSuccessMessage(null)
+        }}
+      />
+
       {editingComment ? (
         <CommentEditModal
           comment={editingComment}
@@ -774,6 +900,15 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
           }}
         />
       ) : null}
+
+      <SuccessConfirmationModal
+        isOpen={Boolean(uploadSuccessMessage)}
+        message={uploadSuccessMessage ?? ''}
+        onConfirm={() => {
+          setUploadSuccessMessage(null)
+          setIsUploadOpen(false)
+        }}
+      />
     </>
   )
 }
