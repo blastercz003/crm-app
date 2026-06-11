@@ -17,6 +17,9 @@ import {
 
 const MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD = 5
 const MAX_CONNECTION_POINT_FOLDER_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
+const CLIENT_IMAGE_MAX_WIDTH = 1920
+const CLIENT_IMAGE_TARGET_BYTES = 1 * 1024 * 1024
+const CLIENT_IMAGE_QUALITY_STEPS = [0.82, 0.74, 0.66, 0.58]
 
 type FolderDetail = {
   id: string
@@ -74,6 +77,102 @@ function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function replaceFileExtension(fileName: string, nextExtension: string) {
+  const trimmed = String(fileName ?? '').trim()
+  if (!trimmed) return `soubor.${nextExtension}`
+
+  const lastDotIndex = trimmed.lastIndexOf('.')
+  if (lastDotIndex <= 0) {
+    return `${trimmed}.${nextExtension}`
+  }
+
+  return `${trimmed.slice(0, lastDotIndex)}.${nextExtension}`
+}
+
+async function loadImageFromFile(file: File): Promise<ImageBitmap | HTMLImageElement> {
+  if (typeof createImageBitmap === 'function') {
+    return createImageBitmap(file)
+  }
+
+  return await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    const objectUrl = URL.createObjectURL(file)
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(image)
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error(`Soubor "${file.name}" se nepodařilo načíst.`))
+    }
+
+    image.src = objectUrl
+  })
+}
+
+async function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number) {
+  return await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality)
+  })
+}
+
+async function compressImageFileInBrowser(file: File) {
+  const mimeType = String(file.type ?? '').trim().toLowerCase()
+  if (!mimeType.startsWith('image/')) return file
+
+  try {
+    const image = await loadImageFromFile(file)
+    const sourceWidth = image.width
+    const sourceHeight = image.height
+
+    if (!sourceWidth || !sourceHeight) return file
+
+    const scale = Math.min(1, CLIENT_IMAGE_MAX_WIDTH / sourceWidth)
+    const targetWidth = Math.max(1, Math.round(sourceWidth * scale))
+    const targetHeight = Math.max(1, Math.round(sourceHeight * scale))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = targetWidth
+    canvas.height = targetHeight
+
+    const context = canvas.getContext('2d')
+    if (!context) return file
+
+    context.drawImage(image as CanvasImageSource, 0, 0, targetWidth, targetHeight)
+
+    let bestCandidate: { blob: Blob; size: number; quality: number } | null = null
+
+    for (const quality of CLIENT_IMAGE_QUALITY_STEPS) {
+      const blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+      if (!blob) continue
+
+      if (!bestCandidate || blob.size < bestCandidate.size) {
+        bestCandidate = { blob, size: blob.size, quality }
+      }
+
+      if (blob.size <= CLIENT_IMAGE_TARGET_BYTES) {
+        return new File([blob], replaceFileExtension(file.name, 'jpg'), {
+          type: 'image/jpeg',
+          lastModified: file.lastModified,
+        })
+      }
+    }
+
+    if (bestCandidate && bestCandidate.size < file.size) {
+      return new File([bestCandidate.blob], replaceFileExtension(file.name, 'jpg'), {
+        type: 'image/jpeg',
+        lastModified: file.lastModified,
+      })
+    }
+  } catch {
+    // Když prohlížeč neumí soubor spolehlivě dekódovat, necháme originál.
+  }
+
+  return file
 }
 
 function useBodyScrollLock(isOpen: boolean) {
@@ -166,9 +265,17 @@ function UploadPhotosModal({
     }
 
     startTransition(async () => {
+      const preparedFiles = await Promise.all(files.map((file) => compressImageFileInBrowser(file)))
+
+      const tooLargeFile = preparedFiles.find((file) => file.size > MAX_CONNECTION_POINT_FOLDER_PHOTO_SIZE_BYTES)
+      if (tooLargeFile) {
+        setError(`Soubor "${tooLargeFile.name}" překračuje limit 5 MB i po kompresi.`)
+        return
+      }
+
       const formData = new FormData()
       formData.set('folder_id', folderId)
-      for (const file of files) formData.append('files', file)
+      for (const file of preparedFiles) formData.append('files', file)
 
       const result = await uploadConnectionPointFolderPhotosAction(formData)
       if (!result.success) {
