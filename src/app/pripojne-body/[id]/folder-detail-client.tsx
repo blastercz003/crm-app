@@ -15,6 +15,9 @@ import {
   updateConnectionPointFolderCommentAction,
 } from '../actions'
 
+const MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD = 5
+const MAX_CONNECTION_POINT_FOLDER_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
+
 type FolderDetail = {
   id: string
   name: string
@@ -151,6 +154,17 @@ function UploadPhotosModal({
   useBodyScrollLock(isOpen)
 
   function submit() {
+    if (files.length > MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD) {
+      setError(`Najednou můžeš nahrát maximálně ${MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD} fotek.`)
+      return
+    }
+
+    const oversizedFile = files.find((file) => file.size > MAX_CONNECTION_POINT_FOLDER_PHOTO_SIZE_BYTES)
+    if (oversizedFile) {
+      setError(`Soubor "${oversizedFile.name}" překračuje limit 5 MB.`)
+      return
+    }
+
     startTransition(async () => {
       const formData = new FormData()
       formData.set('folder_id', folderId)
@@ -171,16 +185,29 @@ function UploadPhotosModal({
   return (
     <SimpleModal isOpen={isOpen} title="Nahrát fotky" onClose={onClose} className="soubory-page__upload-modal max-w-xl">
       <div className="soubory-page__upload-modal__body px-5 py-4">
-        <label className="soubory-page__upload-modal__label mb-2 block text-sm font-medium text-gray-700">Fotky</label>
         <input
           type="file"
           multiple
           accept="image/*,.heic,.heif"
-          onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+          onChange={(event) => {
+            const nextFiles = Array.from(event.target.files ?? [])
+            if (nextFiles.length > MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD) {
+              setError(`Najednou můžeš vybrat maximálně ${MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD} fotek.`)
+              setFiles(nextFiles.slice(0, MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD))
+              return
+            }
+
+            setError(null)
+            setFiles(nextFiles)
+          }}
           className="soubory-page__upload-modal__file block w-full text-sm text-gray-900 file:mr-3 file:rounded-xl file:border file:border-white/75 file:bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-800 file:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.09)]"
         />
 
-        <p className="soubory-page__upload-modal__hint mt-2 text-xs text-gray-500">Povoleny jsou jen obrázky. Max. 5 MB na soubor.</p>
+        <p className="soubory-page__upload-modal__hint mt-2 text-xs text-gray-500">
+          Povoleny jsou jen obrázky.
+          <br />
+          Max. 5 fotek najednou, 5 MB na soubor.
+        </p>
 
         {files.length > 0 ? (
           <div className="soubory-page__upload-modal__selection mt-3 rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-sm text-gray-700">

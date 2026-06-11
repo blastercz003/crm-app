@@ -33,6 +33,7 @@ export type ConnectionPointFolderCommentRow = {
 
 const CONNECTION_POINT_ATTACHMENTS_BUCKET = 'connection-point-attachments'
 const CONNECTION_POINT_FOLDER_PHOTOS_PREFIX = 'connection-point-folder'
+const MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD = 5
 const MAX_ATTACHMENT_FILE_SIZE_BYTES = 5 * 1024 * 1024
 const ALLOWED_FOLDER_IMAGE_MIME_PREFIX = 'image/'
 
@@ -335,6 +336,13 @@ export async function uploadConnectionPointFolderPhotosAction(formData: FormData
     const files = formData.getAll('files').filter((file): file is File => file instanceof File)
     if (files.length === 0) {
       return { success: false, error: 'Vyber alespoň jednu fotku.' }
+    }
+
+    if (files.length > MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD) {
+      return {
+        success: false,
+        error: `Najednou můžeš nahrát maximálně ${MAX_CONNECTION_POINT_FOLDER_PHOTOS_PER_UPLOAD} fotek.`,
+      }
     }
 
     const uploadId = crypto.randomUUID()

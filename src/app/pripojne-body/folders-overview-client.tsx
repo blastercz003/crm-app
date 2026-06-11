@@ -162,11 +162,11 @@ export function FoldersOverviewClient({ folders }: FoldersOverviewClientProps) {
               <Link
                 key={folder.id}
                 href={`/pripojne-body/${folder.id}`}
-                className="soubory-page__folders-panel__card group rounded-2xl border border-[color:var(--surface-border)] bg-[var(--surface-strong)] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(39,39,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:border-[#9dc7e5] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_14px_26px_rgba(39,39,42,0.12)]"
+                className="soubory-page__folders-panel__card group overflow-hidden rounded-2xl border border-[color:var(--surface-border)] bg-[var(--surface-strong)] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(39,39,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:border-[#9dc7e5] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_14px_26px_rgba(39,39,42,0.12)]"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="soubory-page__folders-panel__folder-name truncate text-base font-semibold text-[color:var(--text-primary)]">
+                  <div className="min-w-0 flex-1">
+                    <div className="soubory-page__folders-panel__folder-name block w-full truncate text-base font-semibold text-[color:var(--text-primary)]">
                       {folder.name}
                     </div>
                     <div className="soubory-page__folders-panel__updated mt-1 text-xs text-[color:var(--text-secondary)]">
