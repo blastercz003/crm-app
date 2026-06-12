@@ -69,7 +69,7 @@ function getAllowedTargets(currentStatus: OfferStatus, isAdmin: boolean) {
 
   const options = (baseMap[currentStatus] ?? []).filter((status) => status !== 'changes_requested')
   if (isAdmin) return options
-  return options.filter((status) => status !== 'approved')
+  return options.filter((status) => status !== 'approved' && status !== 'realizace')
 }
 
 function buildStatusChangedToast(from: OfferStatus, to: OfferStatus) {

@@ -1550,19 +1550,6 @@ export async function setOfferStatusFromList(
     if (!isAdmin) {
       throw new Error('Do stavu REALIZACE může nabídku přepnout pouze admin.')
     }
-
-    const { count, error: offerBindingError } = await supabase
-      .from('jobs')
-      .select('id', { count: 'exact', head: true })
-      .eq('offer_id', offerId)
-
-    if (offerBindingError) {
-      throw new Error(`Nepodařilo se ověřit vazbu nabídky na zakázku: ${offerBindingError.message}`)
-    }
-
-    if ((count ?? 0) === 0) {
-      throw new Error('Nabídku lze ručně přepnout do stavu REALIZACE pouze při existující vazbě na zakázku.')
-    }
   }
 
   const now = new Date().toISOString()
