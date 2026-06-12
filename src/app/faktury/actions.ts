@@ -11,7 +11,6 @@ import {
   mapJobAttachmentRow,
   type JobAttachment,
   type JobAttachmentRow,
-  type JobAttachmentCategory,
 } from '@/lib/job-attachments'
 
 export type UpdateFinanceInlineFieldActionState = {
@@ -351,6 +350,7 @@ async function getJobAttachmentAccessRow(
 
 function revalidateFinancePaths(jobId?: string | null) {
   revalidatePath('/faktury')
+  revalidatePath('/zakazky-techniku')
 
   if (jobId) {
     revalidatePath(`/jobs/${jobId}`)

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getServiceRoleClient } from '@/lib/supabase/service'
 import { canViewTechJobsSection } from '@/lib/auth/access'
 import { JobsInteractiveTable } from '../jobs/jobs-interactive-table'
 import { JobFilterResetLink } from '../jobs/job-filter-reset-link'
@@ -57,6 +58,11 @@ type JobRow = {
 
 type AssignedJobRow = {
   job_id: string
+}
+
+type JobFinanceVisibilityRow = {
+  job_id: string
+  invoice_number: string | null
 }
 
 type HandoverProtocolStateRow = {
@@ -384,12 +390,43 @@ export default async function ZakazkyTechnikuPage({
 
   const typedJobs = (jobs ?? []) as JobRow[]
   const jobIds = typedJobs.map((job) => job.id)
-  const { data: infoAttachmentRows, error: infoAttachmentsError } =
+  const serviceSupabase = getServiceRoleClient()
+
+  if (!serviceSupabase) {
+    throw new Error(
+      'Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro načtení viditelnosti zakázek technika.'
+    )
+  }
+
+  const { data: financeRows, error: financeRowsError } =
     jobIds.length > 0
+      ? await serviceSupabase
+          .from('job_finances')
+          .select('job_id, invoice_number')
+          .in('job_id', jobIds)
+      : { data: [], error: null }
+
+  if (financeRowsError) {
+    throw new Error('Nepodařilo se načíst faktury zakázek technika.')
+  }
+
+  const hiddenJobIds = new Set(
+    ((financeRows ?? []) as JobFinanceVisibilityRow[])
+      .filter((row) => Boolean(row.invoice_number?.trim()))
+      .map((row) => String(row.job_id))
+  )
+
+  const visibleJobs = isAdmin
+    ? typedJobs
+    : typedJobs.filter((job) => !hiddenJobIds.has(job.id))
+
+  const visibleJobIds = visibleJobs.map((job) => job.id)
+  const { data: infoAttachmentRows, error: infoAttachmentsError } =
+    visibleJobIds.length > 0
       ? await supabase
           .from('job_info_attachments')
           .select('job_id')
-          .in('job_id', jobIds)
+          .in('job_id', visibleJobIds)
       : { data: [], error: null }
 
   if (infoAttachmentsError) {
@@ -397,11 +434,11 @@ export default async function ZakazkyTechnikuPage({
   }
 
   const { data: protocolRows, error: protocolError } =
-    jobIds.length > 0
+    visibleJobIds.length > 0
       ? await supabase
           .from('handover_protocols')
           .select('job_id, is_sent')
-          .in('job_id', jobIds)
+          .in('job_id', visibleJobIds)
       : { data: [], error: null }
 
   if (protocolError) {
@@ -415,7 +452,7 @@ export default async function ZakazkyTechnikuPage({
     ])
   )
 
-  const jobsWithInfoState = typedJobs.map((job) => {
+  const jobsWithInfoState = visibleJobs.map((job) => {
     const hasAttachments = (infoAttachmentRows ?? []).some(
       (row) => String((row as { job_id?: string | null }).job_id ?? '') === job.id
     )

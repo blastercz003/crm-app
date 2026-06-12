@@ -257,7 +257,7 @@ export function DashboardHandoverProtocolUploadLauncher({
                       >
                       <option value="" disabled>
                         {availableJobs.length === 0
-                          ? 'Nemáš žádné zakázky dostupné pro nahrání PP'
+                          ? 'Žádné zakázky dostupné pro nahrání PP'
                           : 'Vyber zakázku'}
                       </option>
 
