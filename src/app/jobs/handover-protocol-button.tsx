@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
+import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 import {
   getHandoverProtocolDraftAction,
   saveHandoverProtocolDraftAction,
@@ -126,7 +127,7 @@ function HandoverProtocolModal({
 }) {
   const [draft, setDraft] = useState<DraftState>(() => buildInitialDraft(job.site_address))
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isLoading, startLoading] = useTransition()
   const [isSaving, startSaving] = useTransition()
 
@@ -188,7 +189,6 @@ function HandoverProtocolModal({
         deviceIndex === index ? { ...device, [field]: value } : device
       ),
     }))
-    setSaveMessage(null)
   }
 
   function updateAccessory(
@@ -202,7 +202,6 @@ function HandoverProtocolModal({
         itemIndex === index ? { ...item, [field]: value } : item
       ),
     }))
-    setSaveMessage(null)
   }
 
   function addDevice() {
@@ -210,7 +209,6 @@ function HandoverProtocolModal({
       ...current,
       devices: [...current.devices, createEmptyDevice()],
     }))
-    setSaveMessage(null)
   }
 
   function removeDevice(index: number) {
@@ -221,7 +219,6 @@ function HandoverProtocolModal({
           ? [createEmptyDevice()]
           : current.devices.filter((_, deviceIndex) => deviceIndex !== index),
     }))
-    setSaveMessage(null)
   }
 
   function addAccessory() {
@@ -229,7 +226,6 @@ function HandoverProtocolModal({
       ...current,
       accessories: [...current.accessories, createEmptyAccessory()],
     }))
-    setSaveMessage(null)
   }
 
   function removeAccessory(index: number) {
@@ -240,7 +236,6 @@ function HandoverProtocolModal({
           ? [createEmptyAccessory()]
           : current.accessories.filter((_, itemIndex) => itemIndex !== index),
     }))
-    setSaveMessage(null)
   }
 
   function updateField(
@@ -252,7 +247,6 @@ function HandoverProtocolModal({
       [field]: value,
       ...(field === 'contact_person' ? { contact_phone: '' } : {}),
     }))
-    setSaveMessage(null)
   }
 
   function toggleSentState(nextIsSent: boolean) {
@@ -263,7 +257,7 @@ function HandoverProtocolModal({
 
     setDraft(nextDraft)
     setLoadError(null)
-    setSaveMessage(null)
+    setSuccessMessage(null)
 
     startSaving(async () => {
       const result = await saveHandoverProtocolDraftAction(job.id, sanitizeDraft(nextDraft))
@@ -274,17 +268,14 @@ function HandoverProtocolModal({
         return
       }
 
-      setSaveMessage(
-        nextIsSent
-          ? 'Předávací protokol byl označen jako POSLÁNO.'
-          : 'Předávací protokol byl označen jako NEPOSLÁNO.'
-      )
+      if (nextIsSent) {
+        setSuccessMessage('Předávací protokol byl úspěšně odeslán do sekce Moje zakázky.')
+      }
     })
   }
 
   function persistDraft(nextAction: 'save' | 'preview' | 'generate') {
     setLoadError(null)
-    setSaveMessage(null)
     const shouldUseCurrentTab =
       nextAction !== 'save' &&
       window.matchMedia('(max-width: 1023px)').matches
@@ -302,10 +293,7 @@ function HandoverProtocolModal({
         return
       }
 
-      if (nextAction === 'save') {
-        setSaveMessage('Předávací protokol byl uložen do zakázky.')
-        return
-      }
+      if (nextAction === 'save') return
 
       const url =
         nextAction === 'generate'
@@ -343,18 +331,26 @@ function HandoverProtocolModal({
                 <div className="jobs-page__handover-job-badge inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
                   ZAKÁZKA {job.job_number}
                 </div>
-                <button
-                  type="button"
-                  disabled={isLoading || isSaving}
-                  onClick={() => toggleSentState(!draft.is_sent)}
-                  className={`jobs-page__handover-sent-badge inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_16px_rgba(24,24,27,0.2)] transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                    draft.is_sent
-                      ? 'bg-emerald-600 hover:bg-emerald-700'
-                      : 'bg-red-600 hover:bg-red-700'
-                  }`}
-                >
-                  {draft.is_sent ? 'POSLÁNO' : 'NEPOSLÁNO'}
-                </button>
+                {draft.is_sent ? (
+                  <button
+                    type="button"
+                    disabled={isLoading || isSaving}
+                    onClick={() => toggleSentState(!draft.is_sent)}
+                    className="jobs-page__job-status-button inline-flex items-center justify-center rounded-full border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                    data-status="realizace"
+                  >
+                    POSLÁNO TECHNIKOVI
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isLoading || isSaving}
+                    onClick={() => toggleSentState(!draft.is_sent)}
+                    className="jobs-page__handover-sent-badge inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-60 jobs-page__handover-sent-badge--send"
+                  >
+                    ODESLAT TECHNIKOVI
+                  </button>
+                )}
               </div>
             </div>
 
@@ -457,11 +453,6 @@ function HandoverProtocolModal({
                 </div>
               ) : null}
 
-              {saveMessage ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  {saveMessage}
-                </div>
-              ) : null}
             </div>
           </div>
 
@@ -512,7 +503,18 @@ function HandoverProtocolModal({
     return null
   }
 
-  return createPortal(modalContent, document.body)
+  return (
+    <>
+      {createPortal(modalContent, document.body)}
+      <SuccessConfirmationModal
+        isOpen={Boolean(successMessage)}
+        title="PP odeslán technikovi"
+        message={successMessage ?? ''}
+        confirmLabel="OK"
+        onConfirm={() => setSuccessMessage(null)}
+      />
+    </>
+  )
 }
 
 function EditableRowsSection({

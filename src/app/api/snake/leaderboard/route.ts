@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 import type { Difficulty } from '@/lib/snake/types'
 import { normalizeGameMode, parseDifficultyFilter, parsePeriodFilter } from '@/lib/snake/validation'
@@ -63,6 +64,17 @@ export async function GET(request: Request) {
   }
 
   if (error) {
+    await reportRouteError({
+      error,
+      route: '/api/snake/leaderboard',
+      section: 'snake',
+      errorType: 'SnakeLeaderboardRouteError',
+      userId: user?.id ?? null,
+      context: {
+        difficulty,
+        period,
+      },
+    })
     return NextResponse.json({ error: `Načtení leaderboardu selhalo: ${error.message}` }, { status: 500 })
   }
 

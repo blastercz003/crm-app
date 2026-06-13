@@ -13,6 +13,7 @@ import {
   renderToBuffer,
 } from '@react-pdf/renderer'
 import { canViewTechJobsSection } from '@/lib/auth/access'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -969,6 +970,13 @@ export async function GET(
     })
   } catch (error) {
     console.error('PP PDF generation failed', error)
+    await reportRouteError({
+      error,
+      route: '/jobs/[id]/pp/pdf',
+      section: 'jobs-pp-pdf',
+      errorType: 'HandoverProtocolPdfError',
+      context: { jobId: id },
+    })
     return NextResponse.json(
       { error: 'Nepodařilo se vygenerovat PDF předávacího protokolu.' },
       { status: 500 }

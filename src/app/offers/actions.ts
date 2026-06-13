@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createNotification } from '@/lib/notifications/createNotification'
+import { reportActionError } from '@/lib/errors/reportActionError'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 import { getOfferApprover, getOfferRuntimeContext } from '@/lib/offers/permissions'
 import {
@@ -360,6 +361,12 @@ export async function createOfferModalAction(
       offerId: data.id,
     }
   } catch (error) {
+    await reportActionError({
+      error,
+      action: 'createOfferModalAction',
+      section: 'offers',
+      errorType: 'CreateOfferModalActionError',
+    })
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Nepodařilo se vytvořit nabídku.',
@@ -1272,6 +1279,13 @@ export async function submitOfferForApprovalWithAutosave(
 
     return { success: true as const, error: null }
   } catch (error) {
+    await reportActionError({
+      error,
+      action: 'sendOfferToClient',
+      section: 'offers',
+      errorType: 'SendOfferToClientError',
+      context: { offerId },
+    })
     return {
       success: false as const,
       error: error instanceof Error ? error.message : 'Nepodařilo se odeslat nabídku ke schválení.',
@@ -1429,6 +1443,14 @@ export async function sendOfferToClient(offerId: string) {
     })
   } catch (error) {
     console.error('Nepodařilo se vytvořit notifikaci o odeslání nabídky klientovi.', error)
+    await reportActionError({
+      error,
+      action: 'sendOfferToClient:notification',
+      section: 'offers',
+      errorType: 'OfferSentNotificationError',
+      userId: profile.id,
+      context: { offerId },
+    })
   }
 
   await logUserActivity({
@@ -1878,9 +1900,11 @@ export async function duplicateOfferModalAction(
   formData: FormData
 ): Promise<OfferFormActionState> {
   const offerId = getString(formData, 'offer_id')
+  let resolvedClientId = ''
 
   try {
     const clientId = getString(formData, 'client_id')
+    resolvedClientId = clientId
     const contactId = getOptionalContactId(formData)
     const title = getString(formData, 'title')
 
@@ -2009,6 +2033,13 @@ export async function duplicateOfferModalAction(
       offerId: duplicatedOffer.id,
     }
   } catch (error) {
+    await reportActionError({
+      error,
+      action: 'duplicateOfferModalAction',
+      section: 'offers',
+      errorType: 'DuplicateOfferModalActionError',
+      context: { offerId, clientId: resolvedClientId },
+    })
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Nepodařilo se vytvořit kopii nabídky.',

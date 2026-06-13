@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 import type { SalesOwner, SortMode } from '../page'
 
@@ -147,82 +148,98 @@ function buildFileName() {
 }
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ error: 'Nejsi přihlášený.' }, { status: 401 })
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError) {
-    return NextResponse.json(
-      { error: 'Nepodařilo se ověřit oprávnění uživatele.' },
-      { status: 500 }
-    )
-  }
-
-  const typedProfile = profile as ProfileRoleRow | null
-
-  if (typedProfile?.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Nemáš oprávnění pro export fakturace.' },
-      { status: 403 }
-    )
-  }
-
-  const searchParams = request.nextUrl.searchParams
-
-  const query = searchParams.get('q')?.trim() ?? ''
-  const salesOwner = isSalesOwner(searchParams.get('sales'))
-    ? (searchParams.get('sales') as SalesOwner)
-    : ''
-  const sort = isSortMode(searchParams.get('sort'))
-    ? (searchParams.get('sort') as SortMode)
-    : 'job_number_desc'
-  const dateFrom = searchParams.get('date_from')?.trim() ?? ''
-  const dateTo = searchParams.get('date_to')?.trim() ?? ''
-  const invoiced = isInvoicedFilter(searchParams.get('invoiced'))
-
-  let matchingJobIds: string[] = []
-
-  if (query) {
-    let jobsSearchRequest = supabase.from('jobs').select('id')
-
-    if (salesOwner) {
-      jobsSearchRequest = jobsSearchRequest.eq('sales_owner', salesOwner)
+    if (!user) {
+      return NextResponse.json({ error: 'Nejsi přihlášený.' }, { status: 401 })
     }
 
-    if (dateFrom) {
-      jobsSearchRequest = jobsSearchRequest.gte('start_at', `${dateFrom}T00:00:00`)
-    }
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-    if (dateTo) {
-      jobsSearchRequest = jobsSearchRequest.lte('start_at', `${dateTo}T23:59:59`)
-    }
-
-    const { data: matchingJobs, error: matchingJobsError } =
-      await jobsSearchRequest.or(buildJobSearchFilter(query))
-
-    if (matchingJobsError) {
+    if (profileError) {
+      await reportRouteError({
+        error: profileError,
+        route: '/app/faktury/export',
+        section: 'faktury',
+        errorType: 'FakturyExportProfileError',
+        userId: user.id,
+      })
       return NextResponse.json(
-        { error: 'Nepodařilo se načíst zakázky pro export.' },
+        { error: 'Nepodařilo se ověřit oprávnění uživatele.' },
         { status: 500 }
       )
     }
 
-    matchingJobIds = ((matchingJobs ?? []) as JobIdRow[]).map((job) => job.id)
-  }
+    const typedProfile = profile as ProfileRoleRow | null
 
-  let requestBuilder = supabase.from('job_finances').select(`
+    if (typedProfile?.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Nemáš oprávnění pro export fakturace.' },
+        { status: 403 }
+      )
+    }
+
+    const searchParams = request.nextUrl.searchParams
+
+    const query = searchParams.get('q')?.trim() ?? ''
+    const salesOwner = isSalesOwner(searchParams.get('sales'))
+      ? (searchParams.get('sales') as SalesOwner)
+      : ''
+    const sort = isSortMode(searchParams.get('sort'))
+      ? (searchParams.get('sort') as SortMode)
+      : 'job_number_desc'
+    const dateFrom = searchParams.get('date_from')?.trim() ?? ''
+    const dateTo = searchParams.get('date_to')?.trim() ?? ''
+    const invoiced = isInvoicedFilter(searchParams.get('invoiced'))
+
+    let matchingJobIds: string[] = []
+
+    if (query) {
+      let jobsSearchRequest = supabase.from('jobs').select('id')
+
+      if (salesOwner) {
+        jobsSearchRequest = jobsSearchRequest.eq('sales_owner', salesOwner)
+      }
+
+      if (dateFrom) {
+        jobsSearchRequest = jobsSearchRequest.gte('start_at', `${dateFrom}T00:00:00`)
+      }
+
+      if (dateTo) {
+        jobsSearchRequest = jobsSearchRequest.lte('start_at', `${dateTo}T23:59:59`)
+      }
+
+      const { data: matchingJobs, error: matchingJobsError } =
+        await jobsSearchRequest.or(buildJobSearchFilter(query))
+
+      if (matchingJobsError) {
+        await reportRouteError({
+          error: matchingJobsError,
+          route: '/app/faktury/export',
+          section: 'faktury',
+          errorType: 'FakturyExportJobsSearchError',
+          userId: user.id,
+          context: { query, salesOwner, dateFrom, dateTo },
+        })
+        return NextResponse.json(
+          { error: 'Nepodařilo se načíst zakázky pro export.' },
+          { status: 500 }
+        )
+      }
+
+      matchingJobIds = ((matchingJobs ?? []) as JobIdRow[]).map((job) => job.id)
+    }
+
+    let requestBuilder = supabase.from('job_finances').select(`
       id,
       job_id,
       info_note,
@@ -242,46 +259,54 @@ export async function GET(request: NextRequest) {
       )
     `)
 
-  if (salesOwner) {
-    requestBuilder = requestBuilder.eq('job.sales_owner', salesOwner)
-  }
-
-  if (dateFrom) {
-    requestBuilder = requestBuilder.gte('job.start_at', `${dateFrom}T00:00:00`)
-  }
-
-  if (dateTo) {
-    requestBuilder = requestBuilder.lte('job.start_at', `${dateTo}T23:59:59`)
-  }
-
-  if (invoiced === 'yes') {
-    requestBuilder = requestBuilder.not('invoice_number', 'is', null)
-  }
-
-  if (invoiced === 'no') {
-    requestBuilder = requestBuilder.is('invoice_number', null)
-  }
-
-  if (query) {
-    const financeSearchFilter = buildFinanceSearchFilter(query)
-
-    if (matchingJobIds.length > 0) {
-      requestBuilder = requestBuilder.or(
-        `${financeSearchFilter},job_id.in.(${matchingJobIds.join(',')})`
-      )
-    } else {
-      requestBuilder = requestBuilder.or(financeSearchFilter)
+    if (salesOwner) {
+      requestBuilder = requestBuilder.eq('job.sales_owner', salesOwner)
     }
-  }
 
-  const { data, error } = await requestBuilder
+    if (dateFrom) {
+      requestBuilder = requestBuilder.gte('job.start_at', `${dateFrom}T00:00:00`)
+    }
 
-  if (error) {
-    return NextResponse.json(
-      { error: 'Nepodařilo se načíst fakturaci pro export.' },
-      { status: 500 }
-    )
-  }
+    if (dateTo) {
+      requestBuilder = requestBuilder.lte('job.start_at', `${dateTo}T23:59:59`)
+    }
+
+    if (invoiced === 'yes') {
+      requestBuilder = requestBuilder.not('invoice_number', 'is', null)
+    }
+
+    if (invoiced === 'no') {
+      requestBuilder = requestBuilder.is('invoice_number', null)
+    }
+
+    if (query) {
+      const financeSearchFilter = buildFinanceSearchFilter(query)
+
+      if (matchingJobIds.length > 0) {
+        requestBuilder = requestBuilder.or(
+          `${financeSearchFilter},job_id.in.(${matchingJobIds.join(',')})`
+        )
+      } else {
+        requestBuilder = requestBuilder.or(financeSearchFilter)
+      }
+    }
+
+    const { data, error } = await requestBuilder
+
+    if (error) {
+      await reportRouteError({
+        error,
+        route: '/app/faktury/export',
+        section: 'faktury',
+        errorType: 'FakturyExportQueryError',
+        userId: user.id,
+        context: { query, salesOwner, sort, dateFrom, dateTo, invoiced },
+      })
+      return NextResponse.json(
+        { error: 'Nepodařilo se načíst fakturaci pro export.' },
+        { status: 500 }
+      )
+    }
 
   let rows: FakturaExportRow[] = ((data ?? []) as JobFinanceJoinRow[])
     .map((item) => {
@@ -334,8 +359,8 @@ export async function GET(request: NextRequest) {
     rows = [...rows].sort(compareByJobNumberDesc)
   }
 
-  const workbook = new ExcelJS.Workbook()
-  const worksheet = workbook.addWorksheet('Faktury')
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Faktury')
 
   worksheet.columns = [
     { header: 'Zakázka', key: 'job_number', width: 12 },
@@ -408,15 +433,28 @@ export async function GET(request: NextRequest) {
     }
   })
 
-  const buffer = await workbook.xlsx.writeBuffer()
+    const buffer = await workbook.xlsx.writeBuffer()
 
-  return new NextResponse(Buffer.from(buffer), {
-    status: 200,
-    headers: {
-      'Content-Type':
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${buildFileName()}"`,
-      'Cache-Control': 'no-store',
-    },
-  })
+    return new NextResponse(Buffer.from(buffer), {
+      status: 200,
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${buildFileName()}"`,
+        'Cache-Control': 'no-store',
+      },
+    })
+  } catch (error) {
+    await reportRouteError({
+      error,
+      route: '/app/faktury/export',
+      section: 'faktury',
+      errorType: 'FakturyExportUnhandledError',
+    })
+
+    return NextResponse.json(
+      { error: 'Nepodařilo se vygenerovat export fakturace.' },
+      { status: 500 }
+    )
+  }
 }

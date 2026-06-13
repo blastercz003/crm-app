@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { reportActionError } from '@/lib/errors/reportActionError'
 import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   buildAttachmentStoragePath,
@@ -855,6 +856,11 @@ export async function uploadJobAttachmentsAction(
   jobId: string,
   formData: FormData
 ): Promise<UploadJobAttachmentsActionState> {
+  let resolvedUserId: string | null = null
+  const resolvedJobId = String(jobId ?? '').trim()
+  let resolvedCategory: string | null = null
+  let resolvedFilesCount = 0
+
   try {
     const { supabase, user, error: accessError } =
       await requireFinanceAdminAccess()
@@ -863,8 +869,9 @@ export async function uploadJobAttachmentsAction(
       return { success: false, error: accessError, uploadedCount: 0 }
     }
 
-    const normalizedJobId = String(jobId ?? '').trim()
-    if (!normalizedJobId) {
+    resolvedUserId = user.id
+
+    if (!resolvedJobId) {
       return { success: false, error: 'Chybí ID zakázky.', uploadedCount: 0 }
     }
 
@@ -872,12 +879,13 @@ export async function uploadJobAttachmentsAction(
     const category = isJobAttachmentCategory(categoryValue)
       ? categoryValue
       : null
+    resolvedCategory = category
     if (!category) {
       return { success: false, error: 'Neplatná kategorie přílohy.', uploadedCount: 0 }
     }
 
     const normalizedNote = normalizeText(formData.get('note'))
-    const access = await getJobAttachmentAccessRow(supabase, normalizedJobId)
+    const access = await getJobAttachmentAccessRow(supabase, resolvedJobId)
     if (!access.success) {
       return { success: false, error: access.error, uploadedCount: 0 }
     }
@@ -886,6 +894,7 @@ export async function uploadJobAttachmentsAction(
     const cleanFiles = filesFromFormData.filter(
       (file): file is File => file instanceof File
     )
+    resolvedFilesCount = cleanFiles.length
 
     if (cleanFiles.length === 0) {
       return {
@@ -917,7 +926,7 @@ export async function uploadJobAttachmentsAction(
     const createdRows: Array<{ id: string; storagePath: string }> = []
 
     for (const file of cleanFiles) {
-      const storagePath = buildAttachmentStoragePath(normalizedJobId, file.name)
+      const storagePath = buildAttachmentStoragePath(resolvedJobId, file.name)
       const contentType = String(file.type ?? '').trim() || 'application/octet-stream'
 
       const { error: uploadError } = await supabase.storage
@@ -942,7 +951,7 @@ export async function uploadJobAttachmentsAction(
       }
 
       const insertPayload = {
-        job_id: normalizedJobId,
+        job_id: resolvedJobId,
         file_name: file.name,
         display_name: file.name,
         storage_bucket: JOB_ATTACHMENTS_BUCKET,
@@ -981,7 +990,7 @@ export async function uploadJobAttachmentsAction(
       })
     }
 
-    revalidateFinancePaths(normalizedJobId)
+    revalidateFinancePaths(resolvedJobId)
 
     return {
       success: true,
@@ -991,6 +1000,19 @@ export async function uploadJobAttachmentsAction(
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Neznámá chyba během nahrávání.'
+
+    await reportActionError({
+      error,
+      action: 'uploadJobAttachmentsAction',
+      section: 'faktury',
+      errorType: 'UploadJobAttachmentsActionError',
+      userId: resolvedUserId,
+      context: {
+        jobId: resolvedJobId,
+        category: resolvedCategory,
+        filesCount: resolvedFilesCount,
+      },
+    })
 
     return {
       success: false,

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { reportActionError } from '@/lib/errors/reportActionError'
 
 type UpdateCalendarMeetingDateInput = {
   meetingId: string
@@ -147,6 +148,17 @@ export async function updateCalendarMeetingDate({
   try {
     normalizedStart = normalizeCalendarMeetingDateTime(start)
   } catch (error) {
+    await reportActionError({
+      error,
+      action: 'updateCalendarMeetingDate',
+      section: 'calendar',
+      errorType: 'CalendarMeetingDateParseError',
+      userId: user.id,
+      context: {
+        meetingId,
+        start,
+      },
+    })
     return {
       error:
         error instanceof Error
@@ -163,6 +175,17 @@ export async function updateCalendarMeetingDate({
     .eq('id', meetingId)
 
   if (updateError) {
+    await reportActionError({
+      error: updateError,
+      action: 'updateCalendarMeetingDate',
+      section: 'calendar',
+      errorType: 'CalendarMeetingUpdateError',
+      userId: user.id,
+      context: {
+        meetingId,
+        start: normalizedStart,
+      },
+    })
     return {
       error: 'Nepodařilo se uložit nový termín schůzky.',
     }

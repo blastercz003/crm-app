@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 import { GLOBAL_SEARCH_FEATURE_ENABLED } from '@/lib/global-search/config'
 import { logGlobalSearchEvent } from '@/lib/global-search/logging'
@@ -44,6 +45,14 @@ export async function GET(request: Request) {
     return NextResponse.json(payload)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Nepodařilo se načíst globální hledání.'
+    await reportRouteError({
+      error,
+      route: '/api/global-search',
+      section: 'global-search',
+      errorType: 'GlobalSearchRouteError',
+      userId: user.id,
+      context: { query },
+    })
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

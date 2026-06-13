@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 
 type ProfileRoleRow = {
@@ -92,54 +93,62 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ financeId: string }> }
 ) {
-  const { financeId } = await context.params
-  const supabase = await createClient()
+  try {
+    const { financeId } = await context.params
+    const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ error: 'Nejsi přihlášený.' }, { status: 401 })
-  }
+    if (!user) {
+      return NextResponse.json({ error: 'Nejsi přihlášený.' }, { status: 401 })
+    }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-  if (profileError) {
-    return NextResponse.json(
-      { error: 'Nepodařilo se ověřit oprávnění uživatele.' },
-      { status: 500 }
-    )
-  }
+    if (profileError) {
+      await reportRouteError({
+        error: profileError,
+        route: '/app/faktury/[financeId]/costs-export',
+        section: 'faktury',
+        errorType: 'CostsExportProfileError',
+        userId: user.id,
+      })
+      return NextResponse.json(
+        { error: 'Nepodařilo se ověřit oprávnění uživatele.' },
+        { status: 500 }
+      )
+    }
 
-  const typedProfile = profile as ProfileRoleRow | null
+    const typedProfile = profile as ProfileRoleRow | null
 
-  if (typedProfile?.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Nemáš oprávnění pro export nákladů.' },
-      { status: 403 }
-    )
-  }
+    if (typedProfile?.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Nemáš oprávnění pro export nákladů.' },
+        { status: 403 }
+      )
+    }
 
-  const normalizedFinanceId = String(financeId ?? '').trim()
+    const normalizedFinanceId = String(financeId ?? '').trim()
 
-  if (!normalizedFinanceId) {
-    return NextResponse.json(
-      { error: 'Chybí ID finančního záznamu.' },
-      { status: 400 }
-    )
-  }
+    if (!normalizedFinanceId) {
+      return NextResponse.json(
+        { error: 'Chybí ID finančního záznamu.' },
+        { status: 400 }
+      )
+    }
 
-  const [{ data: financeRow, error: financeError }, costItemsResponse] =
-    await Promise.all([
-      supabase
-        .from('job_finances')
-        .select(
-          `
+    const [{ data: financeRow, error: financeError }, costItemsResponse] =
+      await Promise.all([
+        supabase
+          .from('job_finances')
+          .select(
+            `
             id,
             cost_amount,
             job:jobs!inner (
@@ -150,63 +159,71 @@ export async function GET(
               end_at
             )
           `
-        )
-        .eq('id', normalizedFinanceId)
-        .single(),
-      supabase
+          )
+          .eq('id', normalizedFinanceId)
+          .single(),
+        supabase
+          .from('job_finance_cost_items')
+          .select('label, supplier, unit_price, quantity, line_total, sort_order')
+          .eq('job_finance_id', normalizedFinanceId)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true }),
+      ])
+
+    let costItems = costItemsResponse.data
+    let costError = costItemsResponse.error
+
+    if (costError && isMissingSupplierColumnError(costError)) {
+      const fallbackResponse = await supabase
         .from('job_finance_cost_items')
-        .select('label, supplier, unit_price, quantity, line_total, sort_order')
+        .select('label, unit_price, quantity, line_total, sort_order')
         .eq('job_finance_id', normalizedFinanceId)
         .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true }),
-    ])
+        .order('created_at', { ascending: true })
 
-  let costItems = costItemsResponse.data
-  let costError = costItemsResponse.error
+      costItems = (fallbackResponse.data ?? []).map((item) => ({
+        ...item,
+        supplier: null,
+      }))
+      costError = fallbackResponse.error
+    }
 
-  if (costError && isMissingSupplierColumnError(costError)) {
-    const fallbackResponse = await supabase
-      .from('job_finance_cost_items')
-      .select('label, unit_price, quantity, line_total, sort_order')
-      .eq('job_finance_id', normalizedFinanceId)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true })
+    if (financeError || !financeRow) {
+      return NextResponse.json(
+        { error: 'Nepodařilo se načíst finanční záznam.' },
+        { status: 404 }
+      )
+    }
 
-    costItems = (fallbackResponse.data ?? []).map((item) => ({
-      ...item,
-      supplier: null,
-    }))
-    costError = fallbackResponse.error
-  }
+    if (costError) {
+      await reportRouteError({
+        error: costError,
+        route: '/app/faktury/[financeId]/costs-export',
+        section: 'faktury',
+        errorType: 'CostsExportQueryError',
+        userId: user.id,
+        context: { financeId: normalizedFinanceId },
+      })
+      return NextResponse.json(
+        { error: 'Nepodařilo se načíst nákladové položky.' },
+        { status: 500 }
+      )
+    }
 
-  if (financeError || !financeRow) {
-    return NextResponse.json(
-      { error: 'Nepodařilo se načíst finanční záznam.' },
-      { status: 404 }
-    )
-  }
+    const typedFinanceRow = financeRow as FinanceExportRow
+    const job = Array.isArray(typedFinanceRow.job)
+      ? typedFinanceRow.job[0]
+      : typedFinanceRow.job
 
-  if (costError) {
-    return NextResponse.json(
-      { error: 'Nepodařilo se načíst nákladové položky.' },
-      { status: 500 }
-    )
-  }
+    if (!job) {
+      return NextResponse.json(
+        { error: 'Nepodařilo se načíst zakázku pro export nákladů.' },
+        { status: 404 }
+      )
+    }
 
-  const typedFinanceRow = financeRow as FinanceExportRow
-  const job = Array.isArray(typedFinanceRow.job)
-    ? typedFinanceRow.job[0]
-    : typedFinanceRow.job
-
-  if (!job) {
-    return NextResponse.json(
-      { error: 'Nepodařilo se načíst zakázku pro export nákladů.' },
-      { status: 404 }
-    )
-  }
-
-  const workbook = new ExcelJS.Workbook()
-  const worksheet = workbook.addWorksheet('Náklady')
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Náklady')
 
   worksheet.columns = [
     { header: 'Položka', key: 'label', width: 30 },
@@ -266,15 +283,28 @@ export async function GET(
   worksheet.getCell(`A${totalRow.number}`).font = { bold: true }
   worksheet.getCell(`E${totalRow.number}`).font = { bold: true }
 
-  const buffer = await workbook.xlsx.writeBuffer()
+    const buffer = await workbook.xlsx.writeBuffer()
 
-  return new NextResponse(Buffer.from(buffer), {
-    status: 200,
-    headers: {
-      'Content-Type':
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${buildFileName(job.job_number)}"`,
-      'Cache-Control': 'no-store',
-    },
-  })
+    return new NextResponse(Buffer.from(buffer), {
+      status: 200,
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${buildFileName(job.job_number)}"`,
+        'Cache-Control': 'no-store',
+      },
+    })
+  } catch (error) {
+    await reportRouteError({
+      error,
+      route: '/app/faktury/[financeId]/costs-export',
+      section: 'faktury',
+      errorType: 'CostsExportUnhandledError',
+    })
+
+    return NextResponse.json(
+      { error: 'Nepodařilo se vygenerovat export nákladů.' },
+      { status: 500 }
+    )
+  }
 }

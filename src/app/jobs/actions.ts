@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/lib/notifications/createNotification'
+import { reportActionError } from '@/lib/errors/reportActionError'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 import {
   upsertJobChangeQueueEntry,
@@ -1261,6 +1262,14 @@ export async function createJobAction(
       'Nepodařilo se uložit techniky k nové zakázce.',
       technicianError
     )
+    await reportActionError({
+      error: technicianError,
+      action: 'createJobAction',
+      section: 'jobs',
+      errorType: 'CreateJobTechniciansSyncError',
+      userId: user.id,
+      context: { jobId: createdJobId },
+    })
 
     return {
       success: false,
@@ -1295,6 +1304,14 @@ export async function createJobAction(
       'Nepodařilo se uložit novou zakázku do fronty změn.',
       queueError
     )
+    await reportActionError({
+      error: queueError,
+      action: 'createJobAction',
+      section: 'jobs',
+      errorType: 'CreateJobQueueError',
+      userId: user.id,
+      context: { jobId: createdJobId },
+    })
   }
 
   try {
@@ -1308,6 +1325,14 @@ export async function createJobAction(
       'Nepodařilo se vytvořit notifikace k nové zakázce.',
       notificationError
     )
+    await reportActionError({
+      error: notificationError,
+      action: 'createJobAction',
+      section: 'jobs',
+      errorType: 'CreateJobNotificationError',
+      userId: user.id,
+      context: { jobId: createdJobId },
+    })
   }
 
   try {
@@ -1323,6 +1348,14 @@ export async function createJobAction(
       'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
       notificationError
     )
+    await reportActionError({
+      error: notificationError,
+      action: 'createJobAction',
+      section: 'jobs',
+      errorType: 'CreateJobTechnicianNotificationError',
+      userId: user.id,
+      context: { jobId: createdJobId },
+    })
   }
 
   let offerSyncWarning: string | null = null
@@ -1347,6 +1380,14 @@ export async function createJobAction(
       offerSyncWarning =
         'Zakázka byla vytvořena, ale nepodařilo se automaticky přepnout navázanou nabídku do stavu REALIZACE. Proveď změnu ručně v Nabídkách.'
       console.error('Nepodařilo se přepnout nabídku do stavu realizace po vytvoření zakázky.', offerSyncError)
+      await reportActionError({
+        error: offerSyncError,
+        action: 'createJobAction',
+        section: 'jobs',
+        errorType: 'CreateJobOfferSyncError',
+        userId: user.id,
+        context: { jobId: createdJobId, offerId: payload.offer_id },
+      })
     } else if (!updatedOfferRows || updatedOfferRows.length === 0) {
       offerSyncWarning =
         'Zakázka byla vytvořena, ale navázaná nabídka už nešla automaticky přepnout do stavu REALIZACE (pravděpodobně změna stavu mezitím). Proveď změnu ručně v Nabídkách.'
@@ -1493,6 +1534,14 @@ export async function updateJobAction(
         'Nepodařilo se synchronizovat adresu předávacího protokolu po úpravě zakázky.',
         syncError
       )
+      await reportActionError({
+        error: syncError,
+        action: 'updateJobAction',
+        section: 'jobs',
+        errorType: 'UpdateJobHandoverSyncError',
+        userId: user.id,
+        context: { jobId: normalizedJobId },
+      })
     }
   }
 
@@ -1519,6 +1568,14 @@ export async function updateJobAction(
         'Nepodařilo se přepnout nabídku do stavu realizace po úpravě zakázky.',
         offerSyncError
       )
+      await reportActionError({
+        error: offerSyncError,
+        action: 'updateJobAction',
+        section: 'jobs',
+        errorType: 'UpdateJobOfferSyncError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, offerId: payload.offer_id },
+      })
     } else if (!updatedOfferRows || updatedOfferRows.length === 0) {
       offerSyncWarning =
         'Zakázka byla uložena, ale navázaná nabídka už nešla automaticky přepnout do stavu REALIZACE (pravděpodobně změna stavu mezitím). Proveď změnu ručně v Nabídkách.'
@@ -1545,6 +1602,14 @@ export async function updateJobAction(
         'Nepodařilo se uložit techniky u existující zakázky.',
         technicianError
       )
+      await reportActionError({
+        error: technicianError,
+        action: 'updateJobAction',
+        section: 'jobs',
+        errorType: 'UpdateJobTechniciansSyncError',
+        userId: user.id,
+        context: { jobId: normalizedJobId },
+      })
 
       return {
         success: false,
@@ -1570,6 +1635,14 @@ export async function updateJobAction(
         'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
         notificationError
       )
+      await reportActionError({
+        error: notificationError,
+        action: 'updateJobAction',
+        section: 'jobs',
+        errorType: 'UpdateJobTechnicianNotificationError',
+        userId: user.id,
+        context: { jobId: normalizedJobId },
+      })
     }
   }
 
@@ -1594,6 +1667,14 @@ export async function updateJobAction(
     })
   } catch (queueError) {
     console.error('Nepodařilo se zapsat změnu zakázky do fronty změn.', queueError)
+    await reportActionError({
+      error: queueError,
+      action: 'updateJobAction',
+      section: 'jobs',
+      errorType: 'UpdateJobQueueError',
+      userId: user.id,
+      context: { jobId: normalizedJobId },
+    })
   }
 
   revalidateAllRelatedPaths()
@@ -1644,7 +1725,18 @@ export async function updateJobInfoAction(
       getJobInfoAlertStatus(supabase, normalizedJobId),
       jobHasInfoAttachments(supabase, normalizedJobId),
     ])
-  } catch {
+  } catch (error) {
+    await reportActionError({
+      error,
+      action: 'updateJobInfoAction',
+      section: 'jobs',
+      errorType: 'JobInfoStatusCheckError',
+      userId: user.id,
+      context: {
+        jobId: normalizedJobId,
+        jobStatusRequested: requestedAlertEnabled,
+      },
+    })
     return {
       success: false,
       error: 'Nepodařilo se ověřit stav zakázky.',
@@ -1681,6 +1773,17 @@ export async function updateJobInfoAction(
     })
   } catch (queueError) {
     console.error('Nepodařilo se zapsat změnu info do fronty změn.', queueError)
+    await reportActionError({
+      error: queueError,
+      action: 'updateJobInfoAction',
+      section: 'jobs',
+      errorType: 'JobInfoQueueWriteError',
+      userId: user.id,
+      context: {
+        jobId: normalizedJobId,
+        field: 'info_note',
+      },
+    })
   }
 
   revalidateAllRelatedPaths()
@@ -1727,7 +1830,18 @@ export async function updateJobInfoAlertAction(
       getJobInfoAlertStatus(supabase, normalizedJobId),
       jobHasInfoAttachments(supabase, normalizedJobId),
     ])
-  } catch {
+  } catch (error) {
+    await reportActionError({
+      error,
+      action: 'updateJobInfoAlertAction',
+      section: 'jobs',
+      errorType: 'JobInfoAlertStatusCheckError',
+      userId: user.id,
+      context: {
+        jobId: normalizedJobId,
+        requestedAlertEnabled,
+      },
+    })
     return {
       success: false,
       error: 'Nepodařilo se ověřit stav zakázky.',
@@ -1832,6 +1946,17 @@ export async function updateJobStatusAction(
     })
   } catch (queueError) {
     console.error('Nepodařilo se zapsat změnu stavu do fronty změn.', queueError)
+    await reportActionError({
+      error: queueError,
+      action: 'updateJobStatusAction',
+      section: 'jobs',
+      errorType: 'JobStatusQueueWriteError',
+      userId: user.id,
+      context: {
+        jobId: normalizedJobId,
+        jobStatus: jobStatusRaw,
+      },
+    })
   }
 
   await logUserActivity({
@@ -1924,6 +2049,14 @@ export async function updateJobInvoiceStatusAction(
       'Nepodařilo se zapsat změnu fakturace do fronty změn.',
       queueError
     )
+    await reportActionError({
+      error: queueError,
+      action: 'updateJobInvoiceStatusAction',
+      section: 'jobs',
+      errorType: 'UpdateJobInvoiceStatusQueueError',
+      userId: user.id,
+      context: { jobId: normalizedJobId, invoiceStatus: invoiceStatusRaw },
+    })
   }
 
   await logUserActivity({
@@ -2016,6 +2149,14 @@ export async function updateJobSalesOwnerAction(
       'Nepodařilo se zapsat změnu obchodníka do fronty změn.',
       queueError
     )
+    await reportActionError({
+      error: queueError,
+      action: 'updateJobSalesOwnerAction',
+      section: 'jobs',
+      errorType: 'UpdateJobSalesOwnerQueueError',
+      userId: user.id,
+      context: { jobId: normalizedJobId, salesOwner: salesOwnerRaw },
+    })
   }
 
   await logUserActivity({
@@ -2196,6 +2337,14 @@ export async function updateJobInlineFieldAction(
       })
     } catch (queueError) {
       console.error('Nepodařilo se zapsat změnu firmy do fronty změn.', queueError)
+      await reportActionError({
+        error: queueError,
+        action: 'updateJobInlineFieldAction',
+        section: 'jobs',
+        errorType: 'UpdateJobInlineCompanyQueueError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, field: 'company_name', clientId: client.id },
+      })
     }
 
     await logUserActivity({
@@ -2238,6 +2387,14 @@ export async function updateJobInlineFieldAction(
         'Nepodařilo se synchronizovat adresu předávacího protokolu po inline editaci zakázky.',
         syncError
       )
+      await reportActionError({
+        error: syncError,
+        action: 'updateJobInlineFieldAction',
+        section: 'jobs',
+        errorType: 'UpdateJobInlineHandoverSyncError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, field: 'site_address' },
+      })
     }
 
     try {
@@ -2251,6 +2408,14 @@ export async function updateJobInlineFieldAction(
         'Nepodařilo se zapsat změnu adresy do fronty změn.',
         queueError
       )
+      await reportActionError({
+        error: queueError,
+        action: 'updateJobInlineFieldAction',
+        section: 'jobs',
+        errorType: 'UpdateJobInlineAddressQueueError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, field: 'site_address' },
+      })
     }
 
     await logUserActivity({
@@ -2338,6 +2503,14 @@ export async function updateJobInlineFieldAction(
       })
     } catch (queueError) {
       console.error('Nepodařilo se zapsat změnu termínu do fronty změn.', queueError)
+      await reportActionError({
+        error: queueError,
+        action: 'updateJobInlineFieldAction',
+        section: 'jobs',
+        errorType: 'UpdateJobInlineDateQueueError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, field },
+      })
     }
 
     await logUserActivity({
@@ -2382,6 +2555,14 @@ export async function updateJobInlineFieldAction(
       })
     } catch (queueError) {
       console.error('Nepodařilo se zapsat změnu osoby do fronty změn.', queueError)
+      await reportActionError({
+        error: queueError,
+        action: 'updateJobInlineFieldAction',
+        section: 'jobs',
+        errorType: 'UpdateJobInlineContactQueueError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, field: 'contact_person' },
+      })
     }
 
     await logUserActivity({
@@ -2450,6 +2631,14 @@ export async function updateJobInlineFieldAction(
         'Nepodařilo se uložit techniky z inline editace zakázky.',
         technicianError
       )
+      await reportActionError({
+        error: technicianError,
+        action: 'updateJobInlineFieldAction',
+        section: 'jobs',
+        errorType: 'UpdateJobInlineTechniciansSyncError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, field: 'technician_name' },
+      })
 
       return {
         success: false,
@@ -2483,6 +2672,14 @@ export async function updateJobInlineFieldAction(
           'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
           notificationError
         )
+        await reportActionError({
+          error: notificationError,
+          action: 'updateJobInlineFieldAction',
+          section: 'jobs',
+          errorType: 'UpdateJobInlineTechnicianNotificationError',
+          userId: user.id,
+          context: { jobId: normalizedJobId, field: 'technician_name' },
+        })
       }
     }
 
@@ -2494,6 +2691,14 @@ export async function updateJobInlineFieldAction(
       })
     } catch (queueError) {
       console.error('Nepodařilo se zapsat změnu techniků do fronty změn.', queueError)
+      await reportActionError({
+        error: queueError,
+        action: 'updateJobInlineFieldAction',
+        section: 'jobs',
+        errorType: 'UpdateJobInlineTechniciansQueueError',
+        userId: user.id,
+        context: { jobId: normalizedJobId, field: 'technician_name' },
+      })
     }
 
     await logUserActivity({
@@ -2534,6 +2739,14 @@ export async function updateJobInlineFieldAction(
     })
   } catch (queueError) {
     console.error('Nepodařilo se zapsat inline změnu do fronty změn.', queueError)
+    await reportActionError({
+      error: queueError,
+      action: 'updateJobInlineFieldAction',
+      section: 'jobs',
+      errorType: 'UpdateJobInlineGenericQueueError',
+      userId: user.id,
+      context: { jobId: normalizedJobId, field },
+    })
   }
 
   await logUserActivity({

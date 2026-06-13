@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { reportActionError } from '@/lib/errors/reportActionError'
 import { createNotificationsForAdmins } from '@/lib/notifications/createNotification'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 
@@ -621,6 +622,12 @@ export async function createMeetingModalAction(
       meetingDateTime: result.meetingDateTime ?? undefined,
     }
   } catch (error) {
+    await reportActionError({
+      error,
+      action: 'createMeetingModalAction',
+      section: 'meetings',
+      errorType: 'CreateMeetingModalActionError',
+    })
     return {
       success: false,
       error:
@@ -648,6 +655,12 @@ export async function updateMeetingModalAction(
       error: null,
     }
   } catch (error) {
+    await reportActionError({
+      error,
+      action: 'updateMeetingModalAction',
+      section: 'meetings',
+      errorType: 'UpdateMeetingModalActionError',
+    })
     return {
       success: false,
       error:

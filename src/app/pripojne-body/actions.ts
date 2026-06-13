@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { canViewConnectionPointsSection, isAdminRole } from '@/lib/auth/access'
+import { reportActionError } from '@/lib/errors/reportActionError'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { optimizeUploadFile } from '@/lib/uploads/optimize-upload-file'
 
@@ -167,6 +168,15 @@ export async function createConnectionPointFolderAction(formData: FormData) {
     return { success: true, error: null, folderId: String((inserted as { id: string }).id) }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    await reportActionError({
+      error,
+      action: 'createConnectionPointFolderAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'create-folder',
+      },
+    })
     return { success: false, error: `Vytvoření složky selhalo (${message}).`, folderId: null }
   }
 }
@@ -241,6 +251,16 @@ export async function renameConnectionPointFolderAction(folderId: string, formDa
     return { success: true, error: null }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    await reportActionError({
+      error,
+      action: 'renameConnectionPointFolderAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'rename-folder',
+        folderId,
+      },
+    })
     return { success: false, error: `Přejmenování složky selhalo (${message}).` }
   }
 }
@@ -302,11 +322,24 @@ export async function deleteConnectionPointFolderAction(folderId: string) {
     return { success: true, error: null }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    await reportActionError({
+      error,
+      action: 'deleteConnectionPointFolderAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'delete-folder',
+        folderId,
+      },
+    })
     return { success: false, error: `Mazání složky selhalo (${message}).` }
   }
 }
 
 export async function uploadConnectionPointFolderPhotosAction(formData: FormData) {
+  let resolvedFolderId = ''
+  let resolvedFilesCount = 0
+
   try {
     const { user, error, supabase } = await requireConnectionPointsAccess()
     if (!user) {
@@ -323,6 +356,8 @@ export async function uploadConnectionPointFolderPhotosAction(formData: FormData
       return { success: false, error: 'Složka nebyla nalezena.' }
     }
 
+    resolvedFolderId = folderId
+
     const { data: folderRow, error: folderError } = await dataSupabase
       .from('connection_point_folders')
       .select('id')
@@ -334,6 +369,7 @@ export async function uploadConnectionPointFolderPhotosAction(formData: FormData
     }
 
     const files = formData.getAll('files').filter((file): file is File => file instanceof File)
+    resolvedFilesCount = files.length
     if (files.length === 0) {
       return { success: false, error: 'Vyber alespoň jednu fotku.' }
     }
@@ -442,6 +478,17 @@ export async function uploadConnectionPointFolderPhotosAction(formData: FormData
     return { success: true, error: null, uploadedCount: createdPhotoIds.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+      await reportActionError({
+      error,
+      action: 'uploadConnectionPointFolderPhotosAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'upload-photos',
+        folderId: resolvedFolderId,
+        filesCount: resolvedFilesCount,
+      },
+    })
     return { success: false, error: `Nahrávání fotek selhalo (${message}).` }
   }
 }
@@ -525,6 +572,16 @@ export async function deleteConnectionPointFolderPhotoAction(photoId: string) {
     return { success: true, error: null }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    await reportActionError({
+      error,
+      action: 'deleteConnectionPointFolderPhotoAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'delete-photo',
+        photoId,
+      },
+    })
     return { success: false, error: `Smazání fotky selhalo (${message}).` }
   }
 }
@@ -583,6 +640,16 @@ export async function createConnectionPointFolderCommentAction(folderId: string,
     return { success: true, error: null }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    await reportActionError({
+      error,
+      action: 'createConnectionPointFolderCommentAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'create-comment',
+        folderId,
+      },
+    })
     return { success: false, error: `Vložení komentáře selhalo (${message}).` }
   }
 }
@@ -645,6 +712,16 @@ export async function updateConnectionPointFolderCommentAction(commentId: string
     return { success: true, error: null }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    await reportActionError({
+      error,
+      action: 'updateConnectionPointFolderCommentAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'update-comment',
+        commentId,
+      },
+    })
     return { success: false, error: `Úprava komentáře selhala (${message}).` }
   }
 }
@@ -691,6 +768,16 @@ export async function deleteConnectionPointFolderCommentAction(commentId: string
     return { success: true, error: null }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neznámá chyba.'
+    await reportActionError({
+      error,
+      action: 'deleteConnectionPointFolderCommentAction',
+      section: 'connection-points',
+      userId: null,
+      context: {
+        operation: 'delete-comment',
+        commentId,
+      },
+    })
     return { success: false, error: `Smazání komentáře selhalo (${message}).` }
   }
 }

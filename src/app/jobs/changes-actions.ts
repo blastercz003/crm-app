@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { reportActionError } from '@/lib/errors/reportActionError'
 
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
@@ -298,6 +299,13 @@ export async function getJobsChangesModalDataAction(): Promise<
     }
   } catch (error) {
     console.error(error)
+    await reportActionError({
+      error,
+      action: 'getJobsChangesModalDataAction',
+      section: 'jobs',
+      errorType: 'JobsChangesModalDataActionError',
+      userId: user.id,
+    })
     return {
       success: false,
       error: 'Nepodařilo se načíst data modalu změn.',
@@ -387,6 +395,13 @@ export async function acknowledgeAllJobChangesAction(): Promise<
     }
   } catch (error) {
     console.error(error)
+    await reportActionError({
+      error,
+      action: 'acknowledgeAllJobChangesAction',
+      section: 'jobs',
+      errorType: 'AcknowledgeAllJobChangesActionError',
+      userId: user.id,
+    })
     return {
       success: false,
       error: 'Nepodařilo se potvrdit zaevidování změn.',

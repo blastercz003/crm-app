@@ -19,6 +19,24 @@
   --accent-soft: rgba(181, 216, 239, 0.65);
   --shadow-soft: rgba(15, 23, 42, 0.08);
   --shadow-medium: rgba(15, 23, 42, 0.12);
+  --handover-send-border: rgba(78, 160, 220, 0.82);
+  --handover-send-bg-start: rgba(79, 146, 203, 0.98);
+  --handover-send-bg-mid: rgba(58, 126, 184, 0.98);
+  --handover-send-bg-end: rgba(43, 103, 154, 0.98);
+  --handover-send-text: #f8fbff;
+  --handover-send-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 8px 16px rgba(24, 78, 129, 0.22);
+  --handover-send-hover-bg-start: rgba(92, 157, 210, 0.98);
+  --handover-send-hover-bg-mid: rgba(67, 138, 194, 0.98);
+  --handover-send-hover-bg-end: rgba(49, 114, 166, 0.98);
+  --handover-sent-border: rgba(34, 197, 94, 0.85);
+  --handover-sent-bg-start: #17a56f;
+  --handover-sent-bg-mid: #0f9b68;
+  --handover-sent-bg-end: #0f9b68;
+  --handover-sent-text: #f8fbff;
+  --handover-sent-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 8px 16px rgba(16, 185, 129, 0.22);
+  --handover-sent-hover-bg-start: #1bb378;
+  --handover-sent-hover-bg-mid: #109b66;
+  --handover-sent-hover-bg-end: #0d8255;
 }
 
 :root[data-theme='light'] {
@@ -38,6 +56,24 @@
   --accent-soft: rgba(181, 216, 239, 0.65);
   --shadow-soft: rgba(15, 23, 42, 0.08);
   --shadow-medium: rgba(15, 23, 42, 0.12);
+  --handover-send-border: rgba(78, 160, 220, 0.82);
+  --handover-send-bg-start: rgba(79, 146, 203, 0.98);
+  --handover-send-bg-mid: rgba(58, 126, 184, 0.98);
+  --handover-send-bg-end: rgba(43, 103, 154, 0.98);
+  --handover-send-text: #f8fbff;
+  --handover-send-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 8px 16px rgba(24, 78, 129, 0.22);
+  --handover-send-hover-bg-start: rgba(92, 157, 210, 0.98);
+  --handover-send-hover-bg-mid: rgba(67, 138, 194, 0.98);
+  --handover-send-hover-bg-end: rgba(49, 114, 166, 0.98);
+  --handover-sent-border: rgba(34, 197, 94, 0.26);
+  --handover-sent-bg-start: rgba(24, 104, 72, 0.98);
+  --handover-sent-bg-mid: rgba(16, 85, 58, 0.98);
+  --handover-sent-bg-end: rgba(16, 85, 58, 0.98);
+  --handover-sent-text: #f8fbff;
+  --handover-sent-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 16px rgba(16, 185, 129, 0.16);
+  --handover-sent-hover-bg-start: rgba(30, 121, 84, 0.98);
+  --handover-sent-hover-bg-mid: rgba(20, 104, 70, 0.98);
+  --handover-sent-hover-bg-end: rgba(15, 90, 61, 0.98);
 }
 
 :root[data-theme='dark'] {
@@ -57,6 +93,24 @@
   --accent-soft: rgba(78, 160, 220, 0.22);
   --shadow-soft: rgba(0, 0, 0, 0.28);
   --shadow-medium: rgba(0, 0, 0, 0.38);
+  --handover-send-border: rgba(78, 160, 220, 0.42);
+  --handover-send-bg-start: rgba(45, 84, 122, 0.98);
+  --handover-send-bg-mid: rgba(36, 72, 109, 0.98);
+  --handover-send-bg-end: rgba(28, 59, 93, 0.98);
+  --handover-send-text: #f8fbff;
+  --handover-send-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 16px rgba(0, 0, 0, 0.26);
+  --handover-send-hover-bg-start: rgba(53, 96, 137, 0.98);
+  --handover-send-hover-bg-mid: rgba(42, 83, 122, 0.98);
+  --handover-send-hover-bg-end: rgba(32, 70, 104, 0.98);
+  --handover-sent-border: rgba(74, 222, 128, 0.34);
+  --handover-sent-bg-start: rgba(30, 110, 66, 0.98);
+  --handover-sent-bg-mid: rgba(22, 92, 56, 0.98);
+  --handover-sent-bg-end: rgba(16, 77, 47, 0.98);
+  --handover-sent-text: #ecfdf5;
+  --handover-sent-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 16px rgba(16, 185, 129, 0.16);
+  --handover-sent-hover-bg-start: rgba(37, 123, 75, 0.98);
+  --handover-sent-hover-bg-mid: rgba(27, 104, 64, 0.98);
+  --handover-sent-hover-bg-end: rgba(20, 88, 54, 0.98);
 }
 
 @theme inline {
@@ -12416,4 +12470,117 @@ html[data-theme='dark'] .jobs-page__mobile-modal-submit:hover {
     animation: none;
     opacity: 1;
   }
+}
+
+.jobs-page__handover-sent-badge--send {
+  border: 1px solid rgba(15, 23, 42, 0.82);
+  background: linear-gradient(155deg, rgba(35, 35, 38, 0.98) 0%, rgba(22, 22, 26, 0.98) 55%, rgba(15, 15, 18, 0.98) 100%);
+  color: #f8fbff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 8px 16px rgba(0, 0, 0, 0.26);
+}
+
+.jobs-page__handover-sent-badge--send:hover {
+  background: linear-gradient(155deg, rgba(48, 48, 52, 0.98) 0%, rgba(31, 31, 35, 0.98) 55%, rgba(21, 21, 24, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 20px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.95) 0%, rgba(12, 20, 34, 0.92) 50%, rgba(8, 13, 23, 0.92) 100%);
+  color: #e5edf7;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 30px 72px rgba(0, 0, 0, 0.34);
+}
+
+html[data-theme='dark'] .jobs-page__handover-header,
+html[data-theme='dark'] .jobs-page__handover-footer {
+  border-color: rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(11, 18, 32, 0.52) 100%);
+}
+
+html[data-theme='dark'] .jobs-page__handover-section,
+html[data-theme='dark'] .jobs-page__handover-row {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: linear-gradient(155deg, rgba(17, 27, 46, 0.94) 0%, rgba(12, 20, 34, 0.9) 52%, rgba(9, 15, 27, 0.88) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme='dark'] .jobs-page__handover-input {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%);
+  color: #f8fbff;
+}
+
+html[data-theme='dark'] .jobs-page__handover-input:focus {
+  border-color: rgba(92, 167, 219, 0.28);
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 2px rgba(92, 167, 219, 0.12);
+}
+
+html[data-theme='dark'] .jobs-page__handover-sent-badge--send {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: linear-gradient(155deg, rgba(23, 29, 40, 0.98) 0%, rgba(14, 19, 28, 0.98) 55%, rgba(10, 14, 22, 0.98) 100%);
+  color: #f8fbff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.34);
+}
+
+html[data-theme='dark'] .jobs-page__handover-sent-badge--send:hover {
+  background: linear-gradient(155deg, rgba(33, 41, 55, 0.98) 0%, rgba(21, 27, 38, 0.98) 55%, rgba(12, 17, 26, 0.98) 100%);
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .text-gray-900,
+html[data-theme='dark'] .jobs-page__handover-modal .text-zinc-900 {
+  color: #f8fbff;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .text-gray-700,
+html[data-theme='dark'] .jobs-page__handover-modal .text-zinc-700 {
+  color: #d4def0;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .text-gray-600,
+html[data-theme='dark'] .jobs-page__handover-modal .text-gray-500 {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .border-white\/75,
+html[data-theme='dark'] .jobs-page__handover-modal .border-white\/70,
+html[data-theme='dark'] .jobs-page__handover-modal .border-zinc-200\/86,
+html[data-theme='dark'] .jobs-page__handover-modal .border-zinc-200\/95,
+html[data-theme='dark'] .jobs-page__handover-modal .border-zinc-200 {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-cancel {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: linear-gradient(155deg, rgba(62, 15, 23, 0.9) 0%, rgba(87, 20, 31, 0.86) 52%, rgba(120, 25, 35, 0.84) 100%);
+  color: #fee2e2;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-save,
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-preview {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%);
+  color: #e5edf7;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-add {
+  border-color: rgba(78, 160, 220, 0.28);
+  background: linear-gradient(155deg, rgba(47, 119, 175, 0.98) 0%, rgba(35, 100, 153, 0.96) 100%);
+  color: #f8fbff;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-remove {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: linear-gradient(155deg, rgba(62, 15, 23, 0.9) 0%, rgba(87, 20, 31, 0.86) 52%, rgba(120, 25, 35, 0.84) 100%);
+  color: #fecaca;
 }

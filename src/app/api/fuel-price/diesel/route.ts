@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 
 const FUEL_TYPE = 'diesel'
@@ -140,61 +141,87 @@ async function fetchCurrentDieselPriceWithVat() {
 }
 
 export async function GET() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 })
-  }
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 })
+    }
 
-  const { data: cachedRow } = await supabase
-    .from('fuel_price_cache')
-    .select('fuel_type, source_price_with_vat, display_price_without_vat, source, source_url, fetched_at')
-    .eq('fuel_type', FUEL_TYPE)
-    .maybeSingle<FuelPriceCacheRow>()
+    const { data: cachedRow } = await supabase
+      .from('fuel_price_cache')
+      .select('fuel_type, source_price_with_vat, display_price_without_vat, source, source_url, fetched_at')
+      .eq('fuel_type', FUEL_TYPE)
+      .maybeSingle<FuelPriceCacheRow>()
 
-  if (cachedRow && isFetchedToday(cachedRow.fetched_at)) {
-    return toResponse(cachedRow)
-  }
+    if (cachedRow && isFetchedToday(cachedRow.fetched_at)) {
+      return toResponse(cachedRow)
+    }
 
-  const sourcePriceWithVat = await fetchCurrentDieselPriceWithVat()
+    const sourcePriceWithVat = await fetchCurrentDieselPriceWithVat()
 
-  if (typeof sourcePriceWithVat !== 'number') {
-    return NextResponse.json({
-      success: false,
-      error: 'unavailable',
-    })
-  }
+    if (typeof sourcePriceWithVat !== 'number') {
+      return NextResponse.json({
+        success: false,
+        error: 'unavailable',
+      })
+    }
 
-  const displayPriceWithoutVat =
-    sourcePriceWithVat / VAT_RATE + DIESEL_MARGIN_WITHOUT_VAT
-  const fetchedAt = new Date().toISOString()
-  const fallbackRow: FuelPriceCacheRow = {
-    fuel_type: FUEL_TYPE,
-    source_price_with_vat: sourcePriceWithVat,
-    display_price_without_vat: displayPriceWithoutVat,
-    source: SOURCE,
-    source_url: SOURCE_URL,
-    fetched_at: fetchedAt,
-  }
-
-  const { data: savedRow, error } = await supabase
-    .from('fuel_price_cache')
-    .upsert({
+    const displayPriceWithoutVat =
+      sourcePriceWithVat / VAT_RATE + DIESEL_MARGIN_WITHOUT_VAT
+    const fetchedAt = new Date().toISOString()
+    const fallbackRow: FuelPriceCacheRow = {
       fuel_type: FUEL_TYPE,
       source_price_with_vat: sourcePriceWithVat,
       display_price_without_vat: displayPriceWithoutVat,
       source: SOURCE,
       source_url: SOURCE_URL,
       fetched_at: fetchedAt,
-      updated_at: fetchedAt,
+    }
+
+    const { data: savedRow, error } = await supabase
+      .from('fuel_price_cache')
+      .upsert({
+        fuel_type: FUEL_TYPE,
+        source_price_with_vat: sourcePriceWithVat,
+        display_price_without_vat: displayPriceWithoutVat,
+        source: SOURCE,
+        source_url: SOURCE_URL,
+        fetched_at: fetchedAt,
+        updated_at: fetchedAt,
+      })
+      .select('fuel_type, source_price_with_vat, display_price_without_vat, source, source_url, fetched_at')
+      .single<FuelPriceCacheRow>()
+
+    if (error || !savedRow) {
+      if (error) {
+        await reportRouteError({
+          error,
+          route: '/api/fuel-price/diesel',
+          section: 'fuel-price',
+          errorType: 'FuelPriceCacheUpsertError',
+          userId: user.id,
+        })
+      }
+
+      return toResponse(fallbackRow)
+    }
+
+    return toResponse(savedRow)
+  } catch (error) {
+    await reportRouteError({
+      error,
+      route: '/api/fuel-price/diesel',
+      section: 'fuel-price',
+      errorType: 'FuelPriceDieselRouteError',
     })
-    .select('fuel_type, source_price_with_vat, display_price_without_vat, source, source_url, fetched_at')
-    .single<FuelPriceCacheRow>()
 
-  if (error || !savedRow) return toResponse(fallbackRow)
-
-  return toResponse(savedRow)
+    return NextResponse.json(
+      { success: false, error: 'unavailable' },
+      { status: 500 }
+    )
+  }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 import { isPossibleScore, sanitizeDisplayName, scorePayloadSchema } from '@/lib/snake/validation'
 
@@ -116,6 +117,21 @@ export async function POST(request: Request) {
   }
 
   if (error) {
+    await reportRouteError({
+      error,
+      route: '/api/snake/scores',
+      section: 'snake',
+      errorType: 'SnakeScoresRouteError',
+      userId,
+      context: {
+        anonymousPlayerId,
+        displayName,
+        score: body.score,
+        level: body.level,
+        difficulty: body.difficulty,
+        gameMode: body.gameMode,
+      },
+    })
     return NextResponse.json({ error: `Uložení skóre selhalo: ${error.message}` }, { status: 500 })
   }
 

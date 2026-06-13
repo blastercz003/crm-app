@@ -3,6 +3,7 @@ import {
   getNotificationAutomationMetadata,
   runNotificationAutomations,
 } from '@/lib/notifications/automationNotifications'
+import { reportRouteError } from '@/lib/errors/reportRouteError'
 
 function isAuthorized(request: Request) {
   const token = process.env.NOTIFICATIONS_AUTOMATION_TOKEN
@@ -37,6 +38,13 @@ export async function GET(request: Request) {
       error instanceof Error
         ? error.message
         : 'Nepodařilo se spustit automatické notifikace.'
+
+    await reportRouteError({
+      error,
+      route: '/api/notifications/automations',
+      section: 'notifications-automations',
+      errorType: 'NotificationsAutomationsRouteError',
+    })
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
