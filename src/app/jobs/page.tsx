@@ -40,6 +40,7 @@ export type JobRow = {
   id: string
   job_number: string
   client_id?: string | null
+  offer_id?: string | null
   client_contact_id?: string | null
   company_name: string
   contact_person: string | null
@@ -480,6 +481,26 @@ export default async function JobsPage({
     throw new Error('Nepodařilo se načíst fotky k info zakázek.')
   }
 
+  const linkedOfferIds = Array.from(
+    new Set(
+      typedJobs
+        .map((job) => String(job.offer_id ?? '').trim())
+        .filter((offerId) => Boolean(offerId))
+    )
+  )
+
+  const { data: linkedOfferRows, error: linkedOfferError } =
+    linkedOfferIds.length > 0
+      ? await supabase
+          .from('offers')
+          .select('id, client_id, offer_number, title')
+          .in('id', linkedOfferIds)
+      : { data: [], error: null }
+
+  if (linkedOfferError) {
+    throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
+  }
+
   const jobsWithInfoState = typedJobs.map((job) => {
     const hasAttachments = (infoAttachmentRows ?? []).some(
       (row) => String((row as { job_id?: string | null }).job_id ?? '') === job.id
@@ -510,6 +531,13 @@ export default async function JobsPage({
     }))
     .filter((item) => Boolean(item.id) && Boolean(item.client_id) && Boolean(item.name))
   const offerSuggestions = ((offerSuggestionsData ?? []) as JobOfferOption[]).filter(
+    (item) =>
+      Boolean(String(item.id ?? '').trim()) &&
+      Boolean(String(item.client_id ?? '').trim()) &&
+      Boolean(String(item.offer_number ?? '').trim()) &&
+      Boolean(String(item.title ?? '').trim())
+  )
+  const jobOfferSuggestions = ((linkedOfferRows ?? []) as JobOfferOption[]).filter(
     (item) =>
       Boolean(String(item.id ?? '').trim()) &&
       Boolean(String(item.client_id ?? '').trim()) &&
@@ -1088,6 +1116,8 @@ export default async function JobsPage({
                 jobs={jobsWithInfoState}
                 clientSuggestions={clientOptions}
                 clientContacts={clientContacts}
+                offerSuggestions={offerSuggestions}
+                jobOfferSuggestions={jobOfferSuggestions}
                 technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
                 allowEditing={true}

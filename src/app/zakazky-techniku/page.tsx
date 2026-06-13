@@ -945,6 +945,8 @@ export default async function ZakazkyTechnikuPage({
               jobs={jobsWithInfoState}
               clientSuggestions={[]}
               clientContacts={[]}
+              offerSuggestions={[]}
+              jobOfferSuggestions={[]}
               technicianSuggestions={[]}
               isAdmin={false}
               allowEditing={false}

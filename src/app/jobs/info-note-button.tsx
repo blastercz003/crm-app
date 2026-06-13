@@ -15,6 +15,7 @@ import {
   uploadJobInfoAttachmentAction,
 } from './info-note-attachments-actions'
 import {
+  isJobCompletedStatus,
   hasJobInfoContent,
   type JobInfoAttachmentItem,
 } from './info-note-shared'
@@ -25,6 +26,7 @@ type InfoNoteButtonProps = {
   infoNote: string | null
   hasInfoAttachments?: boolean
   infoAlertEnabled?: boolean
+  jobStatus?: string | null
   readOnly?: boolean
   variant?: 'table' | 'mobile'
   compact?: boolean
@@ -101,6 +103,7 @@ export function InfoNoteButton({
   infoNote,
   hasInfoAttachments = false,
   infoAlertEnabled = false,
+  jobStatus = null,
   readOnly = false,
   variant = 'table',
   compact = false,
@@ -133,11 +136,13 @@ export function InfoNoteButton({
     setPersistedAlertEnabled(infoAlertEnabled)
   }, [infoAlertEnabled])
 
+  const isCompletedJob = isJobCompletedStatus(jobStatus)
   const currentHasInfoContent = hasJobInfoContent({
     infoNote: persistedInfoNote,
     hasAttachments: persistedHasAttachments,
   })
-  const shouldShowAlertDot = !readOnly && currentHasInfoContent && persistedAlertEnabled
+  const effectiveAlertEnabled = !isCompletedJob && persistedAlertEnabled
+  const shouldShowAlertDot = !readOnly && currentHasInfoContent && effectiveAlertEnabled
   const handlePersistedStateChange = useCallback(
     ({
       infoNote: nextInfoNote,
@@ -220,10 +225,11 @@ export function InfoNoteButton({
       </button>
 
       {isOpen ? (
-      <InfoNoteModal
+        <InfoNoteModal
           key={formKey}
           jobId={jobId}
           jobNumber={jobNumber}
+          jobStatus={jobStatus}
           initialValue={persistedInfoNote}
           initialHasAttachments={persistedHasAttachments}
           initialAlertEnabled={persistedAlertEnabled}
@@ -245,6 +251,7 @@ export function InfoNoteButton({
 function InfoNoteModal({
   jobId,
   jobNumber,
+  jobStatus,
   initialValue,
   initialHasAttachments,
   initialAlertEnabled,
@@ -260,6 +267,7 @@ function InfoNoteModal({
 }: {
   jobId: string
   jobNumber: string
+  jobStatus?: string | null
   initialValue: string | null
   initialHasAttachments: boolean
   initialAlertEnabled: boolean
@@ -296,12 +304,14 @@ function InfoNoteModal({
   const [draftValue, setDraftValue] = useState(initialValue ?? '')
   const [isAlertEnabled, setIsAlertEnabled] = useState(initialAlertEnabled)
   const [isAlertPending, startAlertTransition] = useTransition()
+  const isCompletedJob = isJobCompletedStatus(jobStatus)
 
   const modalHasInfoContent = hasJobInfoContent({
     infoNote: draftValue,
     attachmentsCount: attachments.length,
   })
-  const effectiveAlertEnabled = modalHasInfoContent && isAlertEnabled
+  const effectiveAlertEnabled =
+    modalHasInfoContent && isAlertEnabled && !isCompletedJob
 
   useEffect(() => {
     if (readOnly) return
@@ -454,7 +464,7 @@ function InfoNoteModal({
   function handleAlertToggle() {
     if (readOnly) return
 
-    if (!modalHasInfoContent || isAlertPending) return
+    if (!modalHasInfoContent || isAlertPending || isCompletedJob) return
 
     const nextAlertEnabled = !effectiveAlertEnabled
     const nextInfoNote = draftValue.trim() || null
@@ -517,14 +527,14 @@ function InfoNoteModal({
                 aria-label={
                   effectiveAlertEnabled ? 'Vypnout alert info zakázky' : 'Zapnout alert info zakázky'
                 }
-                disabled={!modalHasInfoContent || isAlertPending}
+                disabled={!modalHasInfoContent || isAlertPending || isCompletedJob}
                 data-active={effectiveAlertEnabled ? 'true' : 'false'}
                 onClick={handleAlertToggle}
                 className={`jobs-page__info-modal__alert-switch relative inline-flex h-7 w-12 items-center rounded-full border px-0.5 transition duration-200 ${
                   effectiveAlertEnabled
                     ? 'border-[#76a9d3]/85 bg-[linear-gradient(135deg,#1f7fe4_0%,#49a8ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_18px_rgba(24,78,129,0.22)]'
                     : 'border-white/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(226,232,240,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_16px_rgba(15,23,42,0.08)]'
-                } ${!modalHasInfoContent || isAlertPending ? 'cursor-not-allowed opacity-55' : 'hover:-translate-y-[1px]'}`}
+                } ${!modalHasInfoContent || isAlertPending || isCompletedJob ? 'cursor-not-allowed opacity-55' : 'hover:-translate-y-[1px]'}`}
               >
                 <span
                   className={`pointer-events-none inline-block h-[22px] w-[22px] rounded-full bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(246,248,251,0.96)_100%)] shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition duration-200 ${

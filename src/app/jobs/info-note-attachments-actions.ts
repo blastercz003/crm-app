@@ -60,7 +60,7 @@ async function syncJobInfoAlertState(
     await Promise.all([
       supabase
         .from('jobs')
-        .select('info_note, info_alert_enabled')
+        .select('info_note, info_alert_enabled, job_status')
         .eq('id', jobId)
         .maybeSingle(),
       supabase
@@ -83,6 +83,7 @@ async function syncJobInfoAlertState(
     requestedAlertEnabled: infoAlertEnabled,
     infoNote,
     hasAttachments: (count ?? 0) > 0,
+    jobStatus: (jobData as { job_status?: string | null }).job_status ?? null,
   })
 
   if (nextAlertEnabled === infoAlertEnabled) {

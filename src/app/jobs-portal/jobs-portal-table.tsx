@@ -112,6 +112,7 @@ function DesktopRow({ job }: { job: PortalJobRow }) {
             infoNote={job.info_note}
             hasInfoAttachments={Boolean(job.has_info_attachments)}
             infoAlertEnabled={Boolean(job.info_alert_enabled)}
+            jobStatus={job.job_status}
             updateInfoAction={updatePortalJobInfoAction}
             updateInfoAlertAction={updatePortalJobInfoAlertAction}
           />
@@ -218,6 +219,7 @@ function MobileCard({ job }: { job: PortalJobRow }) {
             infoNote={job.info_note}
             hasInfoAttachments={Boolean(job.has_info_attachments)}
             infoAlertEnabled={Boolean(job.info_alert_enabled)}
+            jobStatus={job.job_status}
             variant="mobile"
             compact
             updateInfoAction={updatePortalJobInfoAction}

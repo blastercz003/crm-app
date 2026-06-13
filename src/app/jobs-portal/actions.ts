@@ -120,6 +120,19 @@ export async function updatePortalJobInfoAction(
     }
   }
 
+  const { data: jobStateRow, error: jobStateError } = await supabase
+    .from('jobs')
+    .select('job_status')
+    .eq('id', normalizedJobId)
+    .maybeSingle()
+
+  if (jobStateError || !jobStateRow) {
+    return {
+      success: false,
+      error: 'Nepodařilo se ověřit stav zakázky.',
+    }
+  }
+
   let hasAttachments = false
 
   try {
@@ -127,7 +140,7 @@ export async function updatePortalJobInfoAction(
   } catch {
     return {
       success: false,
-      error: 'Nepodařilo se ověřit obsah info zakázky.',
+      error: 'Nepodařilo se ověřit stav zakázky.',
     }
   }
 
@@ -135,6 +148,7 @@ export async function updatePortalJobInfoAction(
     requestedAlertEnabled,
     infoNote,
     hasAttachments,
+    jobStatus: (jobStateRow as { job_status?: string | null }).job_status ?? null,
   })
 
   const { error } = await supabase
@@ -241,6 +255,19 @@ export async function updatePortalJobInfoAlertAction(
     }
   }
 
+  const { data: jobStateRow, error: jobStateError } = await supabase
+    .from('jobs')
+    .select('job_status')
+    .eq('id', normalizedJobId)
+    .maybeSingle()
+
+  if (jobStateError || !jobStateRow) {
+    return {
+      success: false,
+      error: 'Nepodařilo se ověřit stav zakázky.',
+    }
+  }
+
   let hasAttachments = false
 
   try {
@@ -248,7 +275,7 @@ export async function updatePortalJobInfoAlertAction(
   } catch {
     return {
       success: false,
-      error: 'Nepodařilo se ověřit obsah info zakázky.',
+      error: 'Nepodařilo se ověřit stav zakázky.',
     }
   }
 
@@ -256,6 +283,7 @@ export async function updatePortalJobInfoAlertAction(
     requestedAlertEnabled,
     infoNote,
     hasAttachments,
+    jobStatus: (jobStateRow as { job_status?: string | null }).job_status ?? null,
   })
 
   const { error } = await supabase

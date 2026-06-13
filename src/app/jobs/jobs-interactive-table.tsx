@@ -39,11 +39,19 @@ type ClientContactOption = {
   is_primary: boolean
 }
 
+type OfferOption = {
+  id: string
+  client_id: string
+  offer_number: string
+  title: string
+}
+
 type JobRow = {
   id: string
   job_number: string
   company_name: string
   client_id?: string | null
+  offer_id?: string | null
   client_contact_id?: string | null
   contact_person: string | null
   sales_owner: SalesOwner
@@ -77,6 +85,8 @@ type JobsInteractiveTableProps = {
   jobs: JobRow[]
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  offerSuggestions: OfferOption[]
+  jobOfferSuggestions: OfferOption[]
   technicianSuggestions?: string[]
   isAdmin: boolean
   allowEditing?: boolean
@@ -115,6 +125,8 @@ export function JobsInteractiveTable({
   jobs,
   clientSuggestions,
   clientContacts,
+  offerSuggestions,
+  jobOfferSuggestions,
   technicianSuggestions = [],
   isAdmin,
   allowEditing = true,
@@ -198,6 +210,8 @@ export function JobsInteractiveTable({
                 job={job}
                 clientSuggestions={clientSuggestions}
                 clientContacts={clientContacts}
+                offerSuggestions={offerSuggestions}
+                jobOfferSuggestions={jobOfferSuggestions}
                 technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
                 allowEditing={allowEditing}
@@ -216,11 +230,13 @@ export function JobsInteractiveTable({
               <MobileCard
                 key={job.id}
                 job={job}
-            clientSuggestions={clientSuggestions}
-            clientContacts={clientContacts}
-            technicianSuggestions={technicianSuggestions}
-            isAdmin={isAdmin}
-            allowEditing={allowEditing}
+                clientSuggestions={clientSuggestions}
+                clientContacts={clientContacts}
+                offerSuggestions={offerSuggestions}
+                jobOfferSuggestions={jobOfferSuggestions}
+                technicianSuggestions={technicianSuggestions}
+                isAdmin={isAdmin}
+                allowEditing={allowEditing}
                 showReadOnlyInfo={showReadOnlyInfo}
                 showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
                 collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
@@ -236,6 +252,8 @@ function DesktopRow({
   job,
   clientSuggestions,
   clientContacts,
+  offerSuggestions,
+  jobOfferSuggestions,
   technicianSuggestions,
   isAdmin,
   allowEditing,
@@ -246,6 +264,8 @@ function DesktopRow({
   job: JobRow
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  offerSuggestions: OfferOption[]
+  jobOfferSuggestions: OfferOption[]
   technicianSuggestions: string[]
   isAdmin: boolean
   allowEditing: boolean
@@ -260,6 +280,8 @@ function DesktopRow({
           job={job}
           clientSuggestions={clientSuggestions}
           clientContacts={clientContacts}
+          offerSuggestions={offerSuggestions}
+          jobOfferSuggestions={jobOfferSuggestions}
           technicianSuggestions={technicianSuggestions}
           isAdmin={isAdmin}
           className="jobs-page__job-edit-button jobs-page__job-number-button inline-flex items-center justify-start px-1 py-1 text-[12px] font-bold leading-tight"
@@ -352,6 +374,7 @@ function DesktopRow({
                 infoNote={job.info_note}
                 hasInfoAttachments={job.has_info_attachments}
                 infoAlertEnabled={Boolean(job.info_alert_enabled)}
+                jobStatus={job.job_status}
                 className="jobs-page__info-button"
               />
             </>
@@ -364,6 +387,7 @@ function DesktopRow({
                   infoNote={job.info_note}
                   hasInfoAttachments={job.has_info_attachments}
                   infoAlertEnabled={Boolean(job.info_alert_enabled)}
+                  jobStatus={job.job_status}
                   readOnly
                   className="jobs-page__info-button"
                 />
@@ -396,6 +420,8 @@ function MobileCard({
   job,
   clientSuggestions,
   clientContacts,
+  offerSuggestions,
+  jobOfferSuggestions,
   technicianSuggestions,
   isAdmin,
   allowEditing,
@@ -407,6 +433,8 @@ function MobileCard({
   job: JobRow
   clientSuggestions: ClientOption[]
   clientContacts: ClientContactOption[]
+  offerSuggestions: OfferOption[]
+  jobOfferSuggestions: OfferOption[]
   technicianSuggestions: string[]
   isAdmin: boolean
   allowEditing: boolean
@@ -432,6 +460,8 @@ function MobileCard({
             job={job}
             clientSuggestions={clientSuggestions}
             clientContacts={clientContacts}
+            offerSuggestions={offerSuggestions}
+            jobOfferSuggestions={jobOfferSuggestions}
             className="jobs-page__job-edit-button text-sm font-semibold leading-tight text-gray-900 hover:underline"
             isAdmin={isAdmin}
           >
@@ -520,6 +550,7 @@ function MobileCard({
                   infoNote={job.info_note}
                   hasInfoAttachments={job.has_info_attachments}
                   infoAlertEnabled={Boolean(job.info_alert_enabled)}
+                  jobStatus={job.job_status}
                   readOnly
                   variant="mobile"
                   compact
@@ -577,6 +608,7 @@ function MobileCard({
             infoNote={job.info_note}
             hasInfoAttachments={job.has_info_attachments}
             infoAlertEnabled={Boolean(job.info_alert_enabled)}
+            jobStatus={job.job_status}
             variant="mobile"
             compact
             className="jobs-page__info-button"
@@ -615,6 +647,7 @@ function MobileCard({
               infoNote={job.info_note}
               hasInfoAttachments={job.has_info_attachments}
               infoAlertEnabled={Boolean(job.info_alert_enabled)}
+              jobStatus={job.job_status}
               readOnly
               variant="mobile"
               compact
@@ -725,7 +758,6 @@ function MobileAssignmentButton({
   onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
   compact?: boolean
 }) {
-  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [technicianValue, setTechnicianValue] = useState(job.technician_name ?? '')
   const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')

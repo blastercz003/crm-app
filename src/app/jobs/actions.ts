@@ -28,6 +28,7 @@ export type CreateJobActionState = {
 export type UpdateJobActionState = {
   success: boolean
   error: string | null
+  warning?: string | null
 }
 
 export type UpdateJobInfoActionState = {
@@ -53,6 +54,7 @@ export type UpdateJobInvoiceStatusActionState = {
 export type UpdateJobInlineFieldActionState = {
   success: boolean
   error: string | null
+  warning?: string | null
 }
 
 export type UpdateJobSalesOwnerActionState = {
@@ -486,6 +488,23 @@ async function jobHasInfoAttachments(
   return (count ?? 0) > 0
 }
 
+async function getJobInfoAlertStatus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('job_status')
+    .eq('id', jobId)
+    .maybeSingle()
+
+  if (error || !data) {
+    throw new Error('Nepodařilo se ověřit stav zakázky.')
+  }
+
+  return String((data as { job_status?: string | null }).job_status ?? '').trim()
+}
+
 async function getJobQueueSource(
   supabase: Awaited<ReturnType<typeof createClient>>,
   jobId: string
@@ -665,6 +684,25 @@ function getJobAddressLabel(siteAddress: string | null | undefined) {
     .split(',')
     .at(0)
     ?.trim() || 'bez adresy'
+}
+
+async function syncHandoverProtocolPlace(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string,
+  siteAddress: string | null
+) {
+  const { error } = await supabase
+    .from('handover_protocols')
+    .update({
+      handover_place: siteAddress,
+    })
+    .eq('job_id', jobId)
+
+  if (error) {
+    throw new Error(
+      `Nepodařilo se synchronizovat místo předání s adresou zakázky: ${error.message}`
+    )
+  }
 }
 
 async function notifyTechniciansAboutJobAssignment({
@@ -973,6 +1011,73 @@ async function resolveJobContactSelection(
   }
 }
 
+async function resolveJobOfferSelection({
+  supabase,
+  clientId,
+  selectedOfferId,
+  currentOfferId = null,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  clientId: string
+  selectedOfferId: string | null
+  currentOfferId?: string | null
+}) {
+  if (!selectedOfferId) {
+    return {
+      error: null as string | null,
+      offerId: null as string | null,
+    }
+  }
+
+  if (currentOfferId && selectedOfferId === currentOfferId) {
+    return {
+      error: null as string | null,
+      offerId: selectedOfferId,
+    }
+  }
+
+  const { data: offerData, error } = await supabase
+    .from('offers')
+    .select('id, client_id, offer_type, status')
+    .eq('id', selectedOfferId)
+    .single()
+
+  if (error || !offerData) {
+    return {
+      error: 'Vybranou nabídku se nepodařilo ověřit.',
+      offerId: null as string | null,
+    }
+  }
+
+  const typedOffer = offerData as OfferForJobRow
+
+  if (typedOffer.client_id !== clientId) {
+    return {
+      error: 'Vybraná nabídka nepatří k zadanému klientovi.',
+      offerId: null as string | null,
+    }
+  }
+
+  if (typedOffer.offer_type !== 'classic') {
+    return {
+      error: 'K zakázce lze navázat pouze klasickou nabídku.',
+      offerId: null as string | null,
+    }
+  }
+
+  if (typedOffer.status === 'realizace') {
+    return {
+      error: 'Vybraná nabídka je již ve stavu REALIZACE.',
+      offerId: null as string | null,
+    }
+  }
+
+  return {
+    error: null as string | null,
+    offerId: selectedOfferId,
+  }
+}
+
 async function getJobPayload(
   supabase: Awaited<ReturnType<typeof createClient>>,
   formData: FormData
@@ -1106,51 +1211,28 @@ export async function createJobAction(
   }
 
   const selectedOfferId = normalizeUuid(formData.get('offer_id'))
+  const offerSelection = await resolveJobOfferSelection({
+    supabase,
+    clientId: payload.client_id,
+    selectedOfferId,
+  })
 
-  if (selectedOfferId) {
-    const { data: offerData, error: offerError } = await supabase
-      .from('offers')
-      .select('id, client_id, offer_type, status')
-      .eq('id', selectedOfferId)
-      .single()
-
-    if (offerError || !offerData) {
-      return {
-        success: false,
-        error: 'Vybranou nabídku se nepodařilo ověřit.',
-      }
+  if (offerSelection.error) {
+    return {
+      success: false,
+      error: offerSelection.error,
     }
-
-    const typedOffer = offerData as OfferForJobRow
-
-    if (typedOffer.client_id !== payload.client_id) {
-      return {
-        success: false,
-        error: 'Vybraná nabídka nepatří k zadanému klientovi.',
-      }
-    }
-
-    if (typedOffer.offer_type !== 'classic') {
-      return {
-        success: false,
-        error: 'K zakázce lze navázat pouze klasickou nabídku.',
-      }
-    }
-
-    if (typedOffer.status === 'realizace') {
-      return {
-        success: false,
-        error: 'Vybraná nabídka je již ve stavu REALIZACE.',
-      }
-    }
-
-    payload.offer_id = selectedOfferId
   }
+
+  const createPayload = payload as typeof payload & {
+    offer_id: string | null
+  }
+  createPayload.offer_id = offerSelection.offerId
 
   const { data: createdJob, error: createJobError } = await supabase
     .from('jobs')
     .insert({
-      ...payload,
+      ...createPayload,
       evidence_status: 'nove',
     })
     .select('id, job_number, company_name, sales_owner, start_at, end_at, site_address')
@@ -1347,7 +1429,7 @@ export async function updateJobAction(
 
   const { data: currentJob, error: currentJobError } = await supabase
     .from('jobs')
-    .select('job_number, start_at, end_at, site_address, technician_name')
+    .select('job_number, start_at, end_at, site_address, technician_name, offer_id')
     .eq('id', normalizedJobId)
     .single()
 
@@ -1358,15 +1440,91 @@ export async function updateJobAction(
     }
   }
 
+  const currentOfferId = String(
+    (currentJob as { offer_id?: string | null }).offer_id ?? ''
+  ).trim()
+  const selectedOfferId = normalizeUuid(formData.get('offer_id'))
+  const offerSelection = await resolveJobOfferSelection({
+    supabase,
+    clientId: payload.client_id,
+    selectedOfferId,
+    currentOfferId,
+  })
+
+  if (offerSelection.error) {
+    return {
+      success: false,
+      error: offerSelection.error,
+    }
+  }
+
+  const updatePayload = payload as typeof payload & {
+    offer_id: string | null
+  }
+  updatePayload.offer_id = offerSelection.offerId
+
   const { error } = await supabase
     .from('jobs')
-    .update(payload)
+    .update(updatePayload)
     .eq('id', normalizedJobId)
 
   if (error) {
     return {
       success: false,
       error: 'Zakázku se nepodařilo upravit.',
+    }
+  }
+
+  let offerSyncWarning: string | null = null
+  let handoverPlaceSyncWarning: string | null = null
+
+  if (typeof updatePayload.site_address !== 'undefined') {
+    try {
+      await syncHandoverProtocolPlace(
+        supabase,
+        normalizedJobId,
+        updatePayload.site_address
+      )
+      revalidatePath(`/jobs/${normalizedJobId}/pp`)
+    } catch (syncError) {
+      handoverPlaceSyncWarning =
+        'Zakázka byla uložena, ale nepodařilo se synchronizovat adresu do předávacího protokolu.'
+      console.error(
+        'Nepodařilo se synchronizovat adresu předávacího protokolu po úpravě zakázky.',
+        syncError
+      )
+    }
+  }
+
+  if (payload.offer_id) {
+    const now = new Date().toISOString()
+    const { data: updatedOfferRows, error: offerSyncError } = await supabase
+      .from('offers')
+      .update({
+        status: 'realizace',
+        rejection_comment: null,
+        last_edited_by: user.id,
+        updated_at: now,
+      })
+      .eq('id', payload.offer_id)
+      .eq('client_id', payload.client_id)
+      .eq('offer_type', 'classic')
+      .neq('status', 'realizace')
+      .select('id')
+
+    if (offerSyncError) {
+      offerSyncWarning =
+        'Zakázka byla uložena, ale nepodařilo se automaticky přepnout navázanou nabídku do stavu REALIZACE. Proveď změnu ručně v Nabídkách.'
+      console.error(
+        'Nepodařilo se přepnout nabídku do stavu realizace po úpravě zakázky.',
+        offerSyncError
+      )
+    } else if (!updatedOfferRows || updatedOfferRows.length === 0) {
+      offerSyncWarning =
+        'Zakázka byla uložena, ale navázaná nabídka už nešla automaticky přepnout do stavu REALIZACE (pravděpodobně změna stavu mezitím). Proveď změnu ručně v Nabídkách.'
+    } else {
+      revalidatePath('/offers')
+      revalidatePath(`/offers/${payload.offer_id}`)
     }
   }
 
@@ -1444,6 +1602,10 @@ export async function updateJobAction(
   return {
     success: true,
     error: null,
+    warning:
+      [offerSyncWarning, handoverPlaceSyncWarning]
+        .filter((item): item is string => Boolean(item))
+        .join(' ') || null,
   }
 }
 
@@ -1474,14 +1636,18 @@ export async function updateJobInfoAction(
   const requestedAlertEnabled = parseJobInfoAlertValue(
     formData.get('info_alert_enabled')
   )
+  let jobStatus = ''
   let hasAttachments = false
 
   try {
-    hasAttachments = await jobHasInfoAttachments(supabase, normalizedJobId)
+    ;[jobStatus, hasAttachments] = await Promise.all([
+      getJobInfoAlertStatus(supabase, normalizedJobId),
+      jobHasInfoAttachments(supabase, normalizedJobId),
+    ])
   } catch {
     return {
       success: false,
-      error: 'Nepodařilo se ověřit obsah info zakázky.',
+      error: 'Nepodařilo se ověřit stav zakázky.',
     }
   }
 
@@ -1489,6 +1655,7 @@ export async function updateJobInfoAction(
     requestedAlertEnabled,
     infoNote,
     hasAttachments,
+    jobStatus,
   })
 
   const { error } = await supabase
@@ -1552,14 +1719,18 @@ export async function updateJobInfoAlertAction(
     formData.get('info_alert_enabled')
   )
 
+  let jobStatus = ''
   let hasAttachments = false
 
   try {
-    hasAttachments = await jobHasInfoAttachments(supabase, normalizedJobId)
+    ;[jobStatus, hasAttachments] = await Promise.all([
+      getJobInfoAlertStatus(supabase, normalizedJobId),
+      jobHasInfoAttachments(supabase, normalizedJobId),
+    ])
   } catch {
     return {
       success: false,
-      error: 'Nepodařilo se ověřit obsah info zakázky.',
+      error: 'Nepodařilo se ověřit stav zakázky.',
     }
   }
 
@@ -1567,6 +1738,7 @@ export async function updateJobInfoAlertAction(
     requestedAlertEnabled,
     infoNote,
     hasAttachments,
+    jobStatus,
   })
 
   const { error } = await supabase
@@ -1630,11 +1802,19 @@ export async function updateJobStatusAction(
     }
   }
 
+  const statusUpdate =
+    jobStatusRaw === 'ukoncena'
+      ? {
+          job_status: jobStatusRaw,
+          info_alert_enabled: false,
+        }
+      : {
+          job_status: jobStatusRaw,
+        }
+
   const { error } = await supabase
     .from('jobs')
-    .update({
-      job_status: jobStatusRaw,
-    })
+    .update(statusUpdate)
     .eq('id', normalizedJobId)
 
   if (error) {
@@ -2033,6 +2213,61 @@ export async function updateJobInlineFieldAction(
     }
   }
 
+  const normalizedValue = normalizeText(value)
+
+  if (field === 'site_address') {
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        site_address: normalizedValue,
+      })
+      .eq('id', normalizedJobId)
+
+    if (error) {
+      return {
+        success: false,
+        error: 'Změnu se nepodařilo uložit.',
+      }
+    }
+
+    try {
+      await syncHandoverProtocolPlace(supabase, normalizedJobId, normalizedValue)
+      revalidatePath(`/jobs/${normalizedJobId}/pp`)
+    } catch (syncError) {
+      console.error(
+        'Nepodařilo se synchronizovat adresu předávacího protokolu po inline editaci zakázky.',
+        syncError
+      )
+    }
+
+    try {
+      await enqueueUpdatedJobChangeIfWritten({
+        supabase,
+        jobId: normalizedJobId,
+        fields: ['site_address'],
+      })
+    } catch (queueError) {
+      console.error(
+        'Nepodařilo se zapsat změnu adresy do fronty změn.',
+        queueError
+      )
+    }
+
+    await logUserActivity({
+      action: `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: Adresa na ${normalizedValue ?? '—'}`,
+      section: 'Zakázky',
+      route: '/jobs',
+      userId: user.id,
+    })
+
+    revalidateAllRelatedPaths()
+
+    return {
+      success: true,
+      error: null,
+    }
+  }
+
   if (field === 'start_at' || field === 'end_at') {
     const parsedDate = parseDateTimeLocalAsPrague(value)
 
@@ -2122,8 +2357,6 @@ export async function updateJobInlineFieldAction(
       error: null,
     }
   }
-
-  const normalizedValue = normalizeText(value)
 
   if (field === 'contact_person') {
     const { error } = await supabase

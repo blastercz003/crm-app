@@ -50,15 +50,25 @@ export function parseJobInfoAlertValue(value: FormDataEntryValue | null) {
   )
 }
 
+export function isJobCompletedStatus(value: string | null | undefined) {
+  return String(value ?? '').trim() === 'ukoncena'
+}
+
 export function getPersistedJobInfoAlert({
   requestedAlertEnabled,
   infoNote,
   hasAttachments,
+  jobStatus,
 }: {
   requestedAlertEnabled: boolean
   infoNote: string | null | undefined
   hasAttachments: boolean
+  jobStatus?: string | null | undefined
 }) {
+  if (isJobCompletedStatus(jobStatus)) {
+    return false
+  }
+
   if (!hasJobInfoContent({ infoNote, hasAttachments })) {
     return false
   }
