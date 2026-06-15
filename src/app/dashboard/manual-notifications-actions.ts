@@ -16,6 +16,7 @@ type HistoryRow = {
 type ProfileRow = {
   id: string
   name: string | null
+  role: string | null
 }
 
 function normalizeText(value: string, maxLength: number) {
@@ -47,6 +48,7 @@ async function requireAdmin() {
 
 export async function sendManualNotificationForAdminAction(input: {
   recipientUserIds: string[]
+  includeTechnicians?: boolean
   title: string
   message?: string | null
 }) {
@@ -58,7 +60,7 @@ export async function sendManualNotificationForAdminAction(input: {
 
     const title = normalizeText(String(input.title ?? ''), 120)
     const message = normalizeText(String(input.message ?? ''), 500)
-    const uniqueRecipientIds = Array.from(
+    const selectedRecipientIds = Array.from(
       new Set((input.recipientUserIds ?? []).map((id) => String(id).trim()).filter(Boolean))
     )
 
@@ -66,9 +68,30 @@ export async function sendManualNotificationForAdminAction(input: {
       return { success: false, error: 'Nadpis je povinný.', sentCount: 0 }
     }
 
-    if (uniqueRecipientIds.length === 0) {
+    const includeTechnicians = Boolean(input.includeTechnicians)
+
+    if (selectedRecipientIds.length === 0 && !includeTechnicians) {
       return { success: false, error: 'Vyber alespoň jednoho uživatele.', sentCount: 0 }
     }
+
+    const recipientIds = new Set(selectedRecipientIds)
+
+    if (includeTechnicians) {
+      const { data: technicianRows, error: technicianRowsError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'TECHNIK')
+
+      if (technicianRowsError) {
+        return { success: false, error: 'Nepodařilo se načíst techniky.', sentCount: 0 }
+      }
+
+      for (const row of technicianRows ?? []) {
+        recipientIds.add(row.id)
+      }
+    }
+
+    const uniqueRecipientIds = Array.from(recipientIds)
 
     const { data: profileRows, error: profileRowsError } = await supabase
       .from('profiles')

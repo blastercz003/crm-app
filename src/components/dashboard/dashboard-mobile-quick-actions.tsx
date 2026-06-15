@@ -47,7 +47,7 @@ import type { CreateMeetingActionState } from '@/app/meetings/actions'
 import type { CreateJobActionState } from '@/app/jobs/actions'
 import type { CreateTaskActionState } from '@/app/tasks/actions'
 
-  type UserOption = {
+type UserOption = {
   id: string
   name: string | null
   role: string | null
@@ -376,6 +376,7 @@ function ManualNotificationModal({
   onResent: (sentCount: number) => Promise<void> | void
 }) {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  const [includeTechnicians, setIncludeTechnicians] = useState(false)
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -397,6 +398,7 @@ function ManualNotificationModal({
     setIsSubmitting(true)
     const result = await sendManualNotificationForAdminAction({
       recipientUserIds: selectedUserIds,
+      includeTechnicians,
       title,
       message,
     })
@@ -463,6 +465,15 @@ function ManualNotificationModal({
                 <div>
                   <label className="manual-notifications-modal__label mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
                     Příjemci
+                  </label>
+                  <label className="manual-notifications-modal__recipient-item mb-2 flex cursor-pointer items-center gap-2 rounded-xl border border-white/75 bg-white/55 px-3 py-2 text-sm text-zinc-800 transition hover:bg-white/75">
+                    <input
+                      type="checkbox"
+                      className="manual-notifications-modal__checkbox h-4 w-4 rounded border-zinc-300 text-[#2f77af] focus:ring-[#2f77af]"
+                      checked={includeTechnicians}
+                      onChange={() => setIncludeTechnicians((current) => !current)}
+                    />
+                    <span className="truncate font-semibold">Technici</span>
                   </label>
                   <div className="manual-notifications-modal__recipient-list max-h-[230px] space-y-1.5 overflow-y-auto rounded-xl border border-white/75 bg-white/70 p-2">
                     {sortedUsers.map((user) => {
