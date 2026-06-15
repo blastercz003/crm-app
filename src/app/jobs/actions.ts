@@ -644,14 +644,26 @@ async function enqueueUpdatedJobChangeIfWritten({
 function formatJobNotificationDate(value: string | null) {
   if (!value) return 'neuvedeno'
 
-  return new Intl.DateTimeFormat('cs-CZ', {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'neuvedeno'
+
+  const parts = new Intl.DateTimeFormat('cs-CZ', {
     timeZone: 'Europe/Prague',
     day: 'numeric',
     month: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(value))
+    hourCycle: 'h23',
+  }).formatToParts(date)
+
+  const day = parts.find((part) => part.type === 'day')?.value ?? ''
+  const month = parts.find((part) => part.type === 'month')?.value ?? ''
+  const hour = parts.find((part) => part.type === 'hour')?.value ?? ''
+  const minute = parts.find((part) => part.type === 'minute')?.value ?? ''
+
+  if (!day || !month || !hour || !minute) return 'neuvedeno'
+
+  return `${day}.${month}. ${hour}:${minute}`
 }
 
 function formatJobAssignmentDate(value: string | null) {
