@@ -76,7 +76,9 @@ function CreateFolderModal({
         <div className="soubory-page__create-folder-modal__header flex items-start justify-between gap-4 border-b border-white/70 pb-4">
           <div>
             <h3 className="soubory-page__create-folder-modal__title text-lg font-semibold text-gray-900">Nová složka</h3>
-            <p className="soubory-page__create-folder-modal__hint mt-1 text-sm text-gray-500">Zadej název nové složky.</p>
+            <p className="soubory-page__create-folder-modal__hint mt-1 text-sm text-gray-500">
+                Zadej název nové složky, ve formátu: Firma Město, Ulice.
+            </p>
           </div>
           <button
             type="button"
@@ -94,7 +96,7 @@ function CreateFolderModal({
             value={name}
             onChange={(event) => setName(event.target.value)}
             className="soubory-page__create-folder-modal__input h-11 w-full rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-            placeholder="Např. Penny Tachov"
+            placeholder="např. Penny Poděbrady, Alšova"
             maxLength={255}
             autoFocus
           />
