@@ -23,6 +23,7 @@ function buildExternalFeedUrls(feedPath: string | undefined, origin: string | nu
   if (!feedPath || !origin) {
     return {
       httpsUrl: null,
+      webcalUrl: null,
       googleUrl: null,
     }
   }
@@ -31,6 +32,7 @@ function buildExternalFeedUrls(feedPath: string | undefined, origin: string | nu
 
   return {
     httpsUrl,
+    webcalUrl: `webcal://${new URL(httpsUrl).host}${new URL(httpsUrl).pathname}`,
     googleUrl: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(
       httpsUrl
     )}`,
@@ -310,8 +312,8 @@ export function MeetingCalendarButton({
               {state.success ? (
                 <CopyableUrlCard
                   title="iPhone / Apple Kalendář"
-                  description="Zkopíruj odkaz níže a vlož ho do Safari. Odtud už iPhone nabídne odběr do Kalendáře spolehlivěji."
-                  value={feedUrls.httpsUrl}
+                  description="Zkopíruj webcal odkaz a vlož ho do Safari. To je na iPhonu nejspolehlivější cesta do Kalendáře."
+                  value={feedUrls.webcalUrl}
                 />
               ) : (
                 <div className="meetings-calendar-modal__link-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
@@ -321,8 +323,8 @@ export function MeetingCalendarButton({
                         iPhone / Apple Kalendář
                       </h3>
                       <p className="meetings-calendar-modal__link-description mt-1 text-sm leading-6 text-zinc-500">
-                        Po aktivaci se tady ukáže odkaz, který zkopíruješ a
-                        vložíš do Safari.
+                        Po aktivaci se tady ukáže webcal odkaz, který zkopíruješ
+                        a vložíš do Safari.
                       </p>
                     </div>
 
