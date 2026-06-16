@@ -48,6 +48,8 @@ function CalendarLinkCard({
   href,
   hrefLabel,
   accentClassName,
+  target,
+  rel,
   variant,
 }: {
   title: string
@@ -55,6 +57,8 @@ function CalendarLinkCard({
   href: string | null
   hrefLabel: string
   accentClassName: string
+  target?: string
+  rel?: string
   variant: 'apple' | 'google'
 }) {
   const buttonVariantClassName =
@@ -98,8 +102,8 @@ function CalendarLinkCard({
       {href ? (
         <a
           href={href}
-          target={href.startsWith('https://calendar.google.com') ? '_blank' : undefined}
-          rel={href.startsWith('https://calendar.google.com') ? 'noreferrer noopener' : undefined}
+          target={target}
+          rel={rel}
           className={`meetings-calendar-modal__link-button ${buttonVariantClassName} mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]`}
         >
           {hrefLabel}
@@ -127,6 +131,7 @@ export function MeetingCalendarButton({
   useBodyScrollLock(isOpen)
 
   const feedUrls = buildExternalFeedUrls(state.feedPath, origin)
+  const iphoneLandingHref = state.token ? `/meetings/calendar/${state.token}` : null
   function openModal() {
     setIsOpen(true)
   }
@@ -239,9 +244,9 @@ export function MeetingCalendarButton({
             <div className="grid gap-3 md:grid-cols-2">
               <CalendarLinkCard
                 title="iPhone / Apple Kalendář"
-                description="Otevři odkaz v iPhonu. iOS nabídne přidání odběru do aplikace Kalendář."
-                href={feedUrls.webcalUrl}
-                hrefLabel="PŘIDAT DO IPHONE"
+                description="Otevři stránku pro iPhone. Přes Safari pak přidáš odběr do aplikace Kalendář."
+                href={iphoneLandingHref}
+                hrefLabel="OTEVŘÍT STRÁNKU PRO IPHONE"
                 accentClassName="border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]"
                 variant="apple"
               />
@@ -251,6 +256,8 @@ export function MeetingCalendarButton({
                 href={feedUrls.googleUrl}
                 hrefLabel="PŘIDAT DO GOOGLE CALENDAR"
                 accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
+                target="_blank"
+                rel="noreferrer noopener"
                 variant="google"
               />
             </div>

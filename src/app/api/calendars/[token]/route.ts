@@ -22,7 +22,7 @@ export async function GET(
       'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
       Pragma: 'no-cache',
       Expires: '0',
-      'Content-Disposition': `attachment; filename="${CALENDAR_FILENAME}"`,
+      'Content-Disposition': `inline; filename="${CALENDAR_FILENAME}"`,
       'X-WR-CALNAME': MEETING_CALENDAR_NAME,
     },
   })
