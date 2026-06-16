@@ -17,6 +17,13 @@ import {
   getPersistedJobInfoAlert,
   parseJobInfoAlertValue,
 } from './info-note-shared'
+import {
+  cancelJobCalendarItem,
+  backfillJobCalendarItemsForUser,
+  ensureJobCalendarFeed,
+  syncJobCalendarItem,
+  type JobCalendarJobRow,
+} from '@/lib/jobs/calendar-feed'
 
 export type CreateJobActionState = {
   success: boolean
@@ -30,6 +37,14 @@ export type UpdateJobActionState = {
   success: boolean
   error: string | null
   warning?: string | null
+}
+
+export type JobCalendarActivationActionState = {
+  success: boolean
+  error: string | null
+  token?: string
+  feedPath?: string
+  insertedCount?: number
 }
 
 export type UpdateJobInfoActionState = {
@@ -141,6 +156,10 @@ type JobQueueSourceRow = {
   job_status: string | null
   invoice_status: string | null
   evidence_status: string | null
+}
+
+type AssignedTechnicianRow = {
+  technician_id: string
 }
 
 const SALES_OWNER_VALUES = ['JIŘÍ', 'MICHAL', 'LÍDA'] as const
@@ -463,6 +482,51 @@ async function requireJobsAccess() {
     user,
     error: null,
     isAdmin,
+  }
+}
+
+export async function activateJobCalendarModalAction(
+  _prevState: JobCalendarActivationActionState,
+  _formData: FormData
+): Promise<JobCalendarActivationActionState> {
+  void _prevState
+  void _formData
+
+  try {
+    const { user, error: accessError } = await requireJobsAccess()
+
+    if (!user) {
+      return {
+        success: false,
+        error: accessError,
+      }
+    }
+
+    const backfillResult = await backfillJobCalendarItemsForUser(user.id)
+    const feed = await ensureJobCalendarFeed(user.id)
+
+    return {
+      success: true,
+      error: null,
+      token: feed.token,
+      feedPath: `/api/job-calendars/${feed.token}`,
+      insertedCount: backfillResult.insertedCount,
+    }
+  } catch (error) {
+    await reportActionError({
+      error,
+      action: 'activateJobCalendarModalAction',
+      section: 'jobs',
+      errorType: 'JobCalendarActivationError',
+    })
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se aktivovat kalendář.',
+    }
   }
 }
 
@@ -894,6 +958,174 @@ async function syncJobTechnicians(
       `Nepodařilo se uložit přiřazené techniky k zakázce: ${error.message}`
     )
   }
+}
+
+async function getAssignedTechnicianIdsForJob(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('job_technicians')
+    .select('technician_id')
+    .eq('job_id', jobId)
+
+  if (error) {
+    throw new Error(
+      `Nepodařilo se načíst přiřazené techniky k zakázce: ${error.message}`
+    )
+  }
+
+  return Array.from(
+    new Set(
+      ((data ?? []) as AssignedTechnicianRow[])
+        .map((row) => String(row.technician_id ?? '').trim())
+        .filter((technicianId) => Boolean(technicianId))
+    )
+  )
+}
+
+async function getJobCalendarSnapshot(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select(
+      `
+        id,
+        job_number,
+        company_name,
+        contact_person,
+        start_at,
+        end_at,
+        site_address,
+        store_number,
+        technician_name,
+        generator_name,
+        info_note,
+        job_status,
+        invoice_status,
+        evidence_status
+      `
+    )
+    .eq('id', jobId)
+    .single()
+
+  if (error || !data) {
+    throw new Error(
+      `Nepodařilo se načíst zakázku pro kalendář: ${error?.message ?? 'Neznámá chyba'}`
+    )
+  }
+
+  return data as JobCalendarJobRow
+}
+
+async function syncJobCalendarItemSafely(params: {
+  jobId: string
+  userId: string
+  job: JobCalendarJobRow
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await syncJobCalendarItem({
+      jobId: params.jobId,
+      userId: params.userId,
+      job: params.job,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'jobs',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Kalendářová synchronizace zakázky selhala.', reportError)
+    }
+  }
+}
+
+async function cancelJobCalendarItemSafely(params: {
+  jobId: string
+  userId: string
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await cancelJobCalendarItem({
+      jobId: params.jobId,
+      userId: params.userId,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'jobs',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Kalendářové zrušení zakázky selhalo.', reportError)
+    }
+  }
+}
+
+async function syncJobCalendarForTechniciansSafely(params: {
+  jobId: string
+  technicianIds: string[]
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  if (params.technicianIds.length === 0) {
+    return
+  }
+
+  const supabase = await createClient()
+  const job = await getJobCalendarSnapshot(supabase, params.jobId)
+
+  await Promise.all(
+    params.technicianIds.map((technicianId) =>
+      syncJobCalendarItemSafely({
+        jobId: params.jobId,
+        userId: technicianId,
+        job,
+        action: params.action,
+        errorType: params.errorType,
+        userIdForErrorLog: params.userIdForErrorLog,
+      })
+    )
+  )
+}
+
+async function cancelJobCalendarForTechniciansSafely(params: {
+  jobId: string
+  technicianIds: string[]
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  if (params.technicianIds.length === 0) {
+    return
+  }
+
+  await Promise.all(
+    params.technicianIds.map((technicianId) =>
+      cancelJobCalendarItemSafely({
+        jobId: params.jobId,
+        userId: technicianId,
+        action: params.action,
+        errorType: params.errorType,
+        userIdForErrorLog: params.userIdForErrorLog,
+      })
+    )
+  )
 }
 
 async function notifyUsersAboutCreatedJob({
@@ -1370,6 +1602,21 @@ export async function createJobAction(
     })
   }
 
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      jobId: createdJobId,
+      technicianIds: technicianIds ?? [],
+      action: 'createJobAction',
+      errorType: 'CreateJobCalendarSyncError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se synchronizovat kalendář po vytvoření zakázky.',
+      calendarError
+    )
+  }
+
   let offerSyncWarning: string | null = null
 
   if (payload.offer_id) {
@@ -1516,6 +1763,11 @@ export async function updateJobAction(
   }
   updatePayload.offer_id = offerSelection.offerId
 
+  const previousTechnicianIds = await getAssignedTechnicianIdsForJob(
+    supabase,
+    normalizedJobId
+  )
+
   const { error } = await supabase
     .from('jobs')
     .update(updatePayload)
@@ -1655,6 +1907,56 @@ export async function updateJobAction(
         userId: user.id,
         context: { jobId: normalizedJobId },
       })
+    }
+
+    const nextTechnicianIds = technicianIds ?? []
+    const removedTechnicianIds = previousTechnicianIds.filter(
+      (technicianId) => !nextTechnicianIds.includes(technicianId)
+    )
+
+    try {
+      await cancelJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: removedTechnicianIds,
+        action: 'updateJobAction',
+        errorType: 'UpdateJobCalendarCancelError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se zrušit kalendář u odebraných techniků.',
+        calendarError
+      )
+    }
+
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: nextTechnicianIds,
+        action: 'updateJobAction',
+        errorType: 'UpdateJobCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po změně techniků.',
+        calendarError
+      )
+    }
+  } else {
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: previousTechnicianIds,
+        action: 'updateJobAction',
+        errorType: 'UpdateJobCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po úpravě zakázky.',
+        calendarError
+      )
     }
   }
 
@@ -1798,6 +2100,21 @@ export async function updateJobInfoAction(
     })
   }
 
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      jobId: normalizedJobId,
+      technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+      action: 'updateJobInfoAction',
+      errorType: 'UpdateJobInfoCalendarSyncError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se synchronizovat kalendář po úpravě info zakázky.',
+      calendarError
+    )
+  }
+
   revalidateAllRelatedPaths()
 
   return {
@@ -1880,6 +2197,21 @@ export async function updateJobInfoAlertAction(
       success: false,
       error: 'Alert info zakázky se nepodařilo uložit.',
     }
+  }
+
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      jobId: normalizedJobId,
+      technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+      action: 'updateJobInfoAlertAction',
+      errorType: 'UpdateJobInfoAlertCalendarSyncError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se synchronizovat kalendář po úpravě alertu info zakázky.',
+      calendarError
+    )
   }
 
   revalidateAllRelatedPaths()
@@ -1969,6 +2301,21 @@ export async function updateJobStatusAction(
         jobStatus: jobStatusRaw,
       },
     })
+  }
+
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      jobId: normalizedJobId,
+      technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+      action: 'updateJobStatusAction',
+      errorType: 'UpdateJobStatusCalendarSyncError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se synchronizovat kalendář po změně stavu zakázky.',
+      calendarError
+    )
   }
 
   await logUserActivity({
@@ -2069,6 +2416,21 @@ export async function updateJobInvoiceStatusAction(
       userId: user.id,
       context: { jobId: normalizedJobId, invoiceStatus: invoiceStatusRaw },
     })
+  }
+
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      jobId: normalizedJobId,
+      technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+      action: 'updateJobInvoiceStatusAction',
+      errorType: 'UpdateJobInvoiceCalendarSyncError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se synchronizovat kalendář po změně fakturace.',
+      calendarError
+    )
   }
 
   await logUserActivity({
@@ -2247,6 +2609,21 @@ export async function updateJobEvidenceStatusAction(
     userId: user.id,
   })
 
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      jobId: normalizedJobId,
+      technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+      action: 'updateJobEvidenceStatusAction',
+      errorType: 'UpdateJobEvidenceCalendarSyncError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se synchronizovat kalendář po změně evidence.',
+      calendarError
+    )
+  }
+
   revalidateAllRelatedPaths()
 
   return {
@@ -2359,6 +2736,21 @@ export async function updateJobInlineFieldAction(
       })
     }
 
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+        action: 'updateJobInlineFieldAction',
+        errorType: 'UpdateJobInlineCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po změně firmy.',
+        calendarError
+      )
+    }
+
     await logUserActivity({
       action: `Upravil firmu u zakázky ${inlineJobNumberForLog || normalizedJobId} na ${client.name}`,
       section: 'Zakázky',
@@ -2428,6 +2820,21 @@ export async function updateJobInlineFieldAction(
         userId: user.id,
         context: { jobId: normalizedJobId, field: 'site_address' },
       })
+    }
+
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+        action: 'updateJobInlineFieldAction',
+        errorType: 'UpdateJobInlineCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po změně adresy.',
+        calendarError
+      )
     }
 
     await logUserActivity({
@@ -2525,6 +2932,21 @@ export async function updateJobInlineFieldAction(
       })
     }
 
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+        action: 'updateJobInlineFieldAction',
+        errorType: 'UpdateJobInlineCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po změně termínu.',
+        calendarError
+      )
+    }
+
     await logUserActivity({
       action:
         field === 'start_at'
@@ -2577,6 +2999,21 @@ export async function updateJobInlineFieldAction(
       })
     }
 
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+        action: 'updateJobInlineFieldAction',
+        errorType: 'UpdateJobInlineCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po změně kontaktní osoby.',
+        calendarError
+      )
+    }
+
     await logUserActivity({
       action: `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: Kontaktní osoba na ${normalizedValue ?? '—'}`,
       section: 'Zakázky',
@@ -2593,6 +3030,11 @@ export async function updateJobInlineFieldAction(
   }
 
   if (field === 'technician_name') {
+    const previousTechnicianIds = await getAssignedTechnicianIdsForJob(
+      supabase,
+      normalizedJobId
+    )
+
     const { data: currentJob, error: currentJobError } = await supabase
       .from('jobs')
       .select('job_number, start_at, end_at, site_address, technician_name')
@@ -2656,6 +3098,40 @@ export async function updateJobInlineFieldAction(
         success: false,
         error: 'Techniky se nepodařilo uložit.',
       }
+    }
+
+    const removedTechnicianIds = previousTechnicianIds.filter(
+      (technicianId) => !technicianSelection.technicianIds.includes(technicianId)
+    )
+
+    try {
+      await cancelJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: removedTechnicianIds,
+        action: 'updateJobInlineFieldAction',
+        errorType: 'UpdateJobInlineCalendarCancelError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se zrušit kalendář u odebraných techniků z inline editace.',
+        calendarError
+      )
+    }
+
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        jobId: normalizedJobId,
+        technicianIds: technicianSelection.technicianIds,
+        action: 'updateJobInlineFieldAction',
+        errorType: 'UpdateJobInlineCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po inline změně techniků.',
+        calendarError
+      )
     }
 
     const currentTechnicianName = String(
@@ -2750,7 +3226,10 @@ export async function updateJobInlineFieldAction(
       fields: [field],
     })
   } catch (queueError) {
-    console.error('Nepodařilo se zapsat inline změnu do fronty změn.', queueError)
+    console.error(
+      'Nepodařilo se zapsat inline změnu do fronty změn.',
+      queueError
+    )
     await reportActionError({
       error: queueError,
       action: 'updateJobInlineFieldAction',
@@ -2761,6 +3240,24 @@ export async function updateJobInlineFieldAction(
     })
   }
 
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      jobId: normalizedJobId,
+      technicianIds: await getAssignedTechnicianIdsForJob(
+        supabase,
+        normalizedJobId
+      ),
+      action: 'updateJobInlineFieldAction',
+      errorType: 'UpdateJobInlineCalendarSyncError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se synchronizovat kalendář po inline úpravě.',
+      calendarError
+    )
+  }
+
   await logUserActivity({
     action: `Upravil pole zakázky ${inlineJobNumberForLog || normalizedJobId}: ${getJobFieldActivityLabel(field)} na ${normalizedValue ?? '—'}`,
     section: 'Zakázky',
@@ -2768,12 +3265,12 @@ export async function updateJobInlineFieldAction(
     userId: user.id,
   })
 
-    revalidateAllRelatedPaths()
-    revalidatePath('/notifications')
+  revalidateAllRelatedPaths()
+  revalidatePath('/notifications')
 
-    return {
-      success: true,
-      error: null,
+  return {
+    success: true,
+    error: null,
   }
 }
 
@@ -2810,6 +3307,11 @@ export async function deleteJobAction(
     }
   }
 
+  const assignedTechnicianIds = await getAssignedTechnicianIdsForJob(
+    supabase,
+    normalizedJobId
+  )
+
   const { error: deleteFinancesError } = await supabase
     .from('job_finances')
     .delete()
@@ -2832,6 +3334,21 @@ export async function deleteJobAction(
       success: false,
       error: 'Zakázku se nepodařilo smazat.',
     }
+  }
+
+  try {
+    await cancelJobCalendarForTechniciansSafely({
+      jobId: normalizedJobId,
+      technicianIds: assignedTechnicianIds,
+      action: 'deleteJobAction',
+      errorType: 'DeleteJobCalendarCancelError',
+      userIdForErrorLog: user.id,
+    })
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se zrušit kalendář po smazání zakázky.',
+      calendarError
+    )
   }
 
   await logUserActivity({

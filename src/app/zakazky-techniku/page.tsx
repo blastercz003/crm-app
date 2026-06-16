@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { canViewTechJobsSection } from '@/lib/auth/access'
+import { JobCalendarButton } from '../jobs/job-calendar-button'
 import { JobsInteractiveTable } from '../jobs/jobs-interactive-table'
 import { JobFilterResetLink } from '../jobs/job-filter-reset-link'
 import { JobFilterSubmitButton } from '../jobs/job-filter-submit-button'
@@ -28,6 +29,13 @@ type SearchParams = {
 type ProfileRow = {
   role: string | null
   can_view_tech_jobs: boolean | null
+}
+
+type JobCalendarFeedRow = {
+  user_id: string
+  token: string
+  enabled: boolean
+  disabled_at: string | null
 }
 
 type JobRow = {
@@ -318,6 +326,28 @@ export default async function ZakazkyTechnikuPage({
   }
 
   const isAdmin = role === 'admin'
+
+  const { data: jobCalendarFeed, error: jobCalendarFeedError } = await supabase
+    .from('job_calendar_feeds')
+    .select('user_id, token, enabled, disabled_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (jobCalendarFeedError) {
+    throw new Error(
+      `Nepodařilo se načíst stav kalendáře zakázek: ${jobCalendarFeedError.message}`
+    )
+  }
+
+  const typedJobCalendarFeed = jobCalendarFeed as JobCalendarFeedRow | null
+  const isJobCalendarActivated = Boolean(
+    typedJobCalendarFeed &&
+      typedJobCalendarFeed.enabled &&
+      !typedJobCalendarFeed.disabled_at
+  )
+  const initialJobCalendarFeedPath = typedJobCalendarFeed?.token
+    ? `/api/job-calendars/${typedJobCalendarFeed.token}`
+    : null
 
   let allowedJobIds: string[] = []
 
@@ -655,6 +685,13 @@ export default async function ZakazkyTechnikuPage({
 
                     <PrintJobsButton className="jobs-page__print-button" />
                   </div>
+
+                  <div className="mt-2 flex">
+                    <JobCalendarButton
+                      initiallyActivated={isJobCalendarActivated}
+                      initialFeedPath={initialJobCalendarFeedPath}
+                    />
+                  </div>
                 </div>
               </details>
             </form>
@@ -856,10 +893,10 @@ export default async function ZakazkyTechnikuPage({
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <JobFilterSubmitButton className="jobs-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
-                    POUŽÍT FILTRY
-                  </JobFilterSubmitButton>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <JobFilterSubmitButton className="jobs-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
+                      POUŽÍT FILTRY
+                    </JobFilterSubmitButton>
 
                   <JobFilterResetLink
                     href="/zakazky-techniku"
@@ -868,7 +905,13 @@ export default async function ZakazkyTechnikuPage({
                     RESET
                   </JobFilterResetLink>
 
-                  <PrintJobsButton className="jobs-page__print-button" />
+                    <PrintJobsButton className="jobs-page__print-button" />
+                    <div className="ml-auto flex min-w-0 justify-end">
+                      <JobCalendarButton
+                        initiallyActivated={isJobCalendarActivated}
+                        initialFeedPath={initialJobCalendarFeedPath}
+                      />
+                    </div>
                   <Link
                     href={todayHref}
                     data-active={isTodayActive}

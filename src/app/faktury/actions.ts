@@ -4,6 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { reportActionError } from '@/lib/errors/reportActionError'
 import {
+  cancelJobCalendarItem,
+  syncJobCalendarItem,
+  type JobCalendarJobRow,
+} from '@/lib/jobs/calendar-feed'
+import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   buildAttachmentStoragePath,
   JOB_ATTACHMENTS_BUCKET,
@@ -136,6 +141,10 @@ type JobFinanceAccessRow = {
   job_id: string
 }
 
+type AssignedTechnicianRow = {
+  technician_id: string
+}
+
 type JobFinanceCostItemRow = {
   id: string
   label: string
@@ -258,6 +267,130 @@ function mapFinanceCostItemRow(row: JobFinanceCostItemRow): FinanceCostItem {
         ? row.line_total
         : 0,
   }
+}
+
+async function getAssignedTechnicianIdsForJob(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('job_technicians')
+    .select('technician_id')
+    .eq('job_id', jobId)
+
+  if (error) {
+    throw new Error(
+      `Nepodařilo se načíst přiřazené techniky k zakázce: ${error.message}`
+    )
+  }
+
+  return Array.from(
+    new Set(
+      ((data ?? []) as AssignedTechnicianRow[])
+        .map((row) => String(row.technician_id ?? '').trim())
+        .filter((technicianId) => Boolean(technicianId))
+    )
+  )
+}
+
+async function getJobCalendarSnapshot(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select(
+      `
+        id,
+        job_number,
+        company_name,
+        contact_person,
+        start_at,
+        end_at,
+        site_address,
+        store_number,
+        technician_name,
+        generator_name,
+        info_note,
+        job_status,
+        invoice_status,
+        evidence_status
+      `
+    )
+    .eq('id', jobId)
+    .single()
+
+  if (error || !data) {
+    throw new Error(
+      `Nepodařilo se načíst zakázku pro kalendář: ${error?.message ?? 'Neznámá chyba'}`
+    )
+  }
+
+  return data as JobCalendarJobRow
+}
+
+async function syncJobCalendarForTechniciansSafely(params: {
+  jobId: string
+  technicianIds: string[]
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  if (params.technicianIds.length === 0) {
+    return
+  }
+
+  const supabase = await createClient()
+  const job = await getJobCalendarSnapshot(supabase, params.jobId)
+
+  await Promise.all(
+    params.technicianIds.map((technicianId) =>
+      syncJobCalendarItem({
+        jobId: params.jobId,
+        userId: technicianId,
+        job,
+      })
+    )
+  ).catch(async (error) => {
+    await reportActionError({
+      error,
+      action: params.action,
+      section: 'faktury',
+      errorType: params.errorType,
+      userId: params.userIdForErrorLog ?? null,
+      context: { jobId: params.jobId },
+    })
+  })
+}
+
+async function cancelJobCalendarForTechniciansSafely(params: {
+  jobId: string
+  technicianIds: string[]
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  if (params.technicianIds.length === 0) {
+    return
+  }
+
+  await Promise.all(
+    params.technicianIds.map((technicianId) =>
+      cancelJobCalendarItem({
+        jobId: params.jobId,
+        userId: technicianId,
+      })
+    )
+  ).catch(async (error) => {
+    await reportActionError({
+      error,
+      action: params.action,
+      section: 'faktury',
+      errorType: params.errorType,
+      userId: params.userIdForErrorLog ?? null,
+      context: { jobId: params.jobId },
+    })
+  })
 }
 
 async function requireAuthenticatedUser() {
@@ -736,7 +869,7 @@ export async function updateFinanceInlineFieldAction(
 
   const { data: financeRow, error: financeRowError } = await supabase
     .from('job_finances')
-    .select('id, job_id')
+    .select('id, job_id, invoice_number')
     .eq('id', normalizedFinanceId)
     .single()
 
@@ -764,6 +897,46 @@ export async function updateFinanceInlineFieldAction(
           field === 'info_note'
             ? 'Info se nepodařilo uložit.'
             : 'Číslo faktury se nepodařilo uložit.',
+      }
+    }
+
+    if (field === 'invoice_number') {
+      try {
+        const technicianIds = await getAssignedTechnicianIdsForJob(
+          supabase,
+          String(financeRow.job_id)
+        )
+
+        if (normalizedText) {
+          await cancelJobCalendarForTechniciansSafely({
+            jobId: String(financeRow.job_id),
+            technicianIds,
+            action: 'updateFinanceInlineFieldAction',
+            errorType: 'UpdateFinanceCalendarCancelError',
+            userIdForErrorLog: user.id,
+          })
+        } else {
+          await syncJobCalendarForTechniciansSafely({
+            jobId: String(financeRow.job_id),
+            technicianIds,
+            action: 'updateFinanceInlineFieldAction',
+            errorType: 'UpdateFinanceCalendarSyncError',
+            userIdForErrorLog: user.id,
+          })
+        }
+      } catch (calendarError) {
+        console.error(
+          'Nepodařilo se synchronizovat kalendář po změně čísla faktury.',
+          calendarError
+        )
+        await reportActionError({
+          error: calendarError,
+          action: 'updateFinanceInlineFieldAction',
+          section: 'faktury',
+          errorType: 'UpdateFinanceCalendarSyncError',
+          userId: user.id,
+          context: { financeId: normalizedFinanceId, jobId: financeRow.job_id },
+        })
       }
     }
 
