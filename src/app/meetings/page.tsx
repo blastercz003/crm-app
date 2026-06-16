@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import { EditMeetingButton } from './edit-meeting-button'
+import { MeetingCalendarButton } from './meeting-calendar-button'
 import { NewMeetingButton } from './new-meeting-button'
 import { MeetingFilterSubmitButton } from './meeting-filter-submit-button'
 import { MeetingFilterResetLink } from './meeting-filter-reset-link'
@@ -883,7 +884,7 @@ export default async function MeetingsPage({
                   </div>
                 ) : null}
 
-                <div className="meetings-page__filter-actions-divider flex items-center gap-2 border-t pt-3">
+              <div className="meetings-page__filter-actions-divider flex items-center gap-2 border-t pt-3">
                   <MeetingFilterSubmitButton className="meetings-page__mobile-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                     POUŽÍT FILTRY
                   </MeetingFilterSubmitButton>
@@ -892,12 +893,18 @@ export default async function MeetingsPage({
                     href={mobileResetHref}
                     detailsId="meetings-mobile-filters"
                     className="meetings-page__mobile-reset inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
-                  >
-                    RESET
-                  </MeetingFilterResetLink>
-                </div>
-              </form>
-            </details>
+                    >
+                      RESET
+                    </MeetingFilterResetLink>
+                  </div>
+
+                  <div className="pt-3">
+                    <MeetingCalendarButton
+                      className="meetings-page__calendar-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                    />
+                  </div>
+                </form>
+              </details>
 
             <div className="hidden space-y-3 md:block">
               <div className="hidden grid-cols-3 gap-2 md:grid">
@@ -915,6 +922,12 @@ export default async function MeetingsPage({
                   label="Proběhlé"
                   value={visibleCompletedMeetings.length}
                   variant="success"
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <MeetingCalendarButton
+                  className="meetings-page__calendar-button inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                 />
               </div>
 

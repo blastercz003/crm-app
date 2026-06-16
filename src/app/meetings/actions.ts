@@ -5,6 +5,12 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { reportActionError } from '@/lib/errors/reportActionError'
 import { createNotificationsForAdmins } from '@/lib/notifications/createNotification'
+import {
+  cancelMeetingCalendarItem,
+  backfillMeetingCalendarItemsForUser,
+  ensureMeetingCalendarFeed,
+  syncMeetingCalendarItem,
+} from '@/lib/meetings/calendar-feed'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 
 export type MeetingFormActionState = {
@@ -16,6 +22,13 @@ export type MeetingFormActionState = {
 
 export type CreateMeetingActionState = MeetingFormActionState
 export type UpdateMeetingActionState = MeetingFormActionState
+export type MeetingCalendarActivationActionState = {
+  success: boolean
+  error: string | null
+  token?: string
+  feedPath?: string
+  insertedCount?: number
+}
 
 function normalizeText(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
@@ -147,6 +160,44 @@ async function getCurrentUserWithRole() {
     user,
     profile,
     role: profile.role as 'admin' | 'member',
+  }
+}
+
+export async function activateMeetingCalendarModalAction(
+  _prevState: MeetingCalendarActivationActionState,
+  _formData: FormData
+): Promise<MeetingCalendarActivationActionState> {
+  void _prevState
+  void _formData
+
+  try {
+    const { user } = await getCurrentUserWithRole()
+
+    const backfillResult = await backfillMeetingCalendarItemsForUser(user.id)
+    const feed = await ensureMeetingCalendarFeed(user.id)
+
+    return {
+      success: true,
+      error: null,
+      token: feed.token,
+      feedPath: `/api/calendars/${feed.token}`,
+      insertedCount: backfillResult.insertedCount,
+    }
+  } catch (error) {
+    await reportActionError({
+      error,
+      action: 'activateMeetingCalendarModalAction',
+      section: 'meetings',
+      errorType: 'MeetingCalendarActivationError',
+    })
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se aktivovat kalendář.',
+    }
   }
 }
 
@@ -347,6 +398,79 @@ async function syncMeetingFollowUpTask(params: {
   }
 }
 
+async function syncMeetingCalendarItemSafely(params: {
+  meetingId: string
+  userId: string
+  meeting: {
+    id: string
+    company_name: string | null
+    contact_person: string | null
+    contact_phone: string | null
+    contact_email: string | null
+    address: string | null
+    title: string | null
+    meeting_datetime: string | null
+    pre_meeting_note: string | null
+    result_note: string | null
+    follow_up_task: string | null
+    follow_up_task_note: string | null
+    follow_up_task_priority: string | null
+    follow_up_task_due_date: string | null
+    status: 'planned' | 'completed'
+    assigned_user_id: string | null
+  }
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await syncMeetingCalendarItem({
+      meetingId: params.meetingId,
+      userId: params.userId,
+      meeting: params.meeting,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'meetings',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Kalendářová synchronizace schůzky selhala.', reportError)
+    }
+  }
+}
+
+async function cancelMeetingCalendarItemSafely(params: {
+  meetingId: string
+  userId: string
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await cancelMeetingCalendarItem({
+      meetingId: params.meetingId,
+      userId: params.userId,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'meetings',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Kalendářové zrušení schůzky selhalo.', reportError)
+    }
+  }
+}
+
 async function createMeetingRecord(formData: FormData) {
   const { supabase, user, profile } = await getCurrentUserWithRole()
 
@@ -421,6 +545,32 @@ async function createMeetingRecord(formData: FormData) {
       `Nepodařilo se vytvořit schůzku: ${error?.message ?? 'Neznámá chyba'}`
     )
   }
+
+  await syncMeetingCalendarItemSafely({
+    meetingId: data.id,
+    userId: data.assigned_user_id ?? user.id,
+    meeting: {
+      id: data.id,
+      company_name: companyName,
+      contact_person: contactPerson,
+      contact_phone: contactPhone,
+      contact_email: contactEmail,
+      address,
+      title,
+      meeting_datetime: meetingDatetime,
+      pre_meeting_note: preMeetingNote,
+      result_note: resultNote,
+      follow_up_task: followUpTask,
+      follow_up_task_note: followUpTaskNote,
+      follow_up_task_priority: followUpTaskPriority,
+      follow_up_task_due_date: followUpTaskDueDate,
+      status,
+      assigned_user_id: data.assigned_user_id,
+    },
+    action: 'syncMeetingCalendarItemOnCreate',
+    errorType: 'MeetingCalendarSyncCreateError',
+    userIdForErrorLog: user.id,
+  })
 
   await syncMeetingFollowUpTask({
     meetingId: data.id,
@@ -564,6 +714,32 @@ async function updateMeetingRecord(formData: FormData) {
     )
   }
 
+  await syncMeetingCalendarItemSafely({
+    meetingId: data.id,
+    userId: data.assigned_user_id ?? user.id,
+    meeting: {
+      id,
+      company_name: companyName,
+      contact_person: contactPerson,
+      contact_phone: contactPhone,
+      contact_email: contactEmail,
+      address,
+      title,
+      meeting_datetime: meetingDatetime,
+      pre_meeting_note: preMeetingNote,
+      result_note: resultNote,
+      follow_up_task: followUpTask,
+      follow_up_task_note: followUpTaskNote,
+      follow_up_task_priority: followUpTaskPriority,
+      follow_up_task_due_date: followUpTaskDueDate,
+      status,
+      assigned_user_id: data.assigned_user_id,
+    },
+    action: 'syncMeetingCalendarItemOnUpdate',
+    errorType: 'MeetingCalendarSyncUpdateError',
+    userIdForErrorLog: user.id,
+  })
+
   await syncMeetingFollowUpTask({
     meetingId: data.id,
     clientId,
@@ -699,6 +875,14 @@ export async function deleteMeeting(formData: FormData) {
       `Nepodařilo se odstranit navázaný task: ${taskDeleteError.message}`
     )
   }
+
+  await cancelMeetingCalendarItemSafely({
+    meetingId: id,
+    userId: meeting.assigned_user_id ?? user.id,
+    action: 'cancelMeetingCalendarItemOnDelete',
+    errorType: 'MeetingCalendarSyncDeleteError',
+    userIdForErrorLog: user.id,
+  })
 
   const { error } = await supabase.from('meetings').delete().eq('id', id)
 
