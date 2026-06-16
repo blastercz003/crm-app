@@ -12,6 +12,7 @@ type MeetingCalendarButtonProps = {
   className?: string
   label?: string
   initiallyActivated?: boolean
+  initialFeedPath?: string | null
 }
 
 function buildExternalFeedUrls(feedPath: string | undefined, origin: string | null) {
@@ -177,7 +178,7 @@ function IphoneCalendarCard({
         </div>
       )}
 
-      <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-3 py-3 text-sm text-zinc-700 break-all">
+      <div className="meetings-calendar-modal__copy-value mt-4 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-3 py-3 text-sm text-zinc-700 break-all">
         {copyValue ?? 'Odkaz se nepodařilo připravit.'}
       </div>
 
@@ -186,7 +187,7 @@ function IphoneCalendarCard({
         onClick={() => {
           void handleCopy()
         }}
-        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
+        className="meetings-calendar-modal__copy-button mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
       >
         {copied ? 'Odkaz zkopírován' : 'Zkopírovat odkaz'}
       </button>
@@ -198,12 +199,14 @@ export function MeetingCalendarButton({
   className,
   label = 'SCHŮZKY DO KALENDÁŘE',
   initiallyActivated = false,
+  initialFeedPath = null,
 }: MeetingCalendarButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const initialMeetingCalendarActivationState: MeetingCalendarActivationActionState =
     {
       success: initiallyActivated,
       error: null,
+      feedPath: initialFeedPath ?? undefined,
     }
   const [state, formAction] = useActionState(
     activateMeetingCalendarModalAction,
