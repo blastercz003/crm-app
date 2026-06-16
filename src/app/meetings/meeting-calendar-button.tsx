@@ -11,13 +11,8 @@ import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 type MeetingCalendarButtonProps = {
   className?: string
   label?: string
+  initiallyActivated?: boolean
 }
-
-const initialMeetingCalendarActivationState: MeetingCalendarActivationActionState =
-  {
-    success: false,
-    error: null,
-  }
 
 function buildExternalFeedUrls(feedPath: string | undefined, origin: string | null) {
   if (!feedPath || !origin) {
@@ -114,23 +109,23 @@ function CalendarLinkCard({
   )
 }
 
-function CopyableUrlCard({
-  title,
-  description,
-  value,
+function IphoneCalendarCard({
+  href,
+  copyValue,
+  activated,
 }: {
-  title: string
-  description: string
-  value: string | null
+  href: string | null
+  copyValue: string | null
+  activated: boolean
 }) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
-    if (!value || typeof navigator === 'undefined' || !navigator.clipboard) {
+    if (!copyValue || typeof navigator === 'undefined' || !navigator.clipboard) {
       return
     }
 
-    await navigator.clipboard.writeText(value)
+    await navigator.clipboard.writeText(copyValue)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 2000)
   }
@@ -140,10 +135,11 @@ function CopyableUrlCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="meetings-calendar-modal__link-title text-sm font-semibold tracking-tight text-zinc-950">
-            {title}
+            iPhone / Apple Kalendář
           </h3>
           <p className="meetings-calendar-modal__link-description mt-1 text-sm leading-6 text-zinc-500">
-            {description}
+            Na iPhonu zkusíme otevřít odběr přímo z PWA. Když to nepůjde,
+            zkopíruj odkaz níže a vlož ho do Safari.
           </p>
         </div>
 
@@ -168,8 +164,21 @@ function CopyableUrlCard({
         </span>
       </div>
 
+      {activated && href ? (
+        <a
+          href={href}
+          className="meetings-calendar-modal__link-button mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
+        >
+          OTEVŘÍT V KALENDÁŘI
+        </a>
+      ) : (
+        <div className="meetings-calendar-modal__link-disabled mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/70 px-4 text-sm font-medium uppercase text-zinc-400">
+          Nejprve aktivuj kalendář
+        </div>
+      )}
+
       <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-3 py-3 text-sm text-zinc-700 break-all">
-        {value ?? 'Odkaz se nepodařilo připravit.'}
+        {copyValue ?? 'Odkaz se nepodařilo připravit.'}
       </div>
 
       <button
@@ -179,7 +188,7 @@ function CopyableUrlCard({
         }}
         className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
       >
-        {copied ? 'Odkaz zkopírován' : 'Kopírovat odkaz'}
+        {copied ? 'Odkaz zkopírován' : 'Zkopírovat odkaz'}
       </button>
     </div>
   )
@@ -188,8 +197,14 @@ function CopyableUrlCard({
 export function MeetingCalendarButton({
   className,
   label = 'SCHŮZKY DO KALENDÁŘE',
+  initiallyActivated = false,
 }: MeetingCalendarButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const initialMeetingCalendarActivationState: MeetingCalendarActivationActionState =
+    {
+      success: initiallyActivated,
+      error: null,
+    }
   const [state, formAction] = useActionState(
     activateMeetingCalendarModalAction,
     initialMeetingCalendarActivationState
@@ -309,51 +324,11 @@ export function MeetingCalendarButton({
             </form>
 
             <div className="grid gap-3 md:grid-cols-2">
-              {state.success ? (
-                <CopyableUrlCard
-                  title="iPhone / Apple Kalendář"
-                  description="Zkopíruj webcal odkaz a vlož ho do Safari. To je na iPhonu nejspolehlivější cesta do Kalendáře."
-                  value={feedUrls.webcalUrl}
-                />
-              ) : (
-                <div className="meetings-calendar-modal__link-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="meetings-calendar-modal__link-title text-sm font-semibold tracking-tight text-zinc-950">
-                        iPhone / Apple Kalendář
-                      </h3>
-                      <p className="meetings-calendar-modal__link-description mt-1 text-sm leading-6 text-zinc-500">
-                        Po aktivaci se tady ukáže webcal odkaz, který zkopíruješ
-                        a vložíš do Safari.
-                      </p>
-                    </div>
-
-                    <span
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]"
-                      aria-hidden="true"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M8 3v4" />
-                        <path d="M16 3v4" />
-                        <path d="M3 9h18" />
-                        <rect x="4" y="5" width="16" height="16" rx="3" />
-                      </svg>
-                    </span>
-                  </div>
-
-                  <div className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-4 text-sm font-medium uppercase text-zinc-400">
-                    Nejprve aktivuj kalendář
-                  </div>
-                </div>
-              )}
+              <IphoneCalendarCard
+                activated={state.success}
+                href={feedUrls.webcalUrl}
+                copyValue={feedUrls.webcalUrl}
+              />
               <CalendarLinkCard
                 title="Google Calendar"
                 description="Na Androidu nebo v Google Calendar se otevře přihlášení k odběru z odkazu."

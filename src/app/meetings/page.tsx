@@ -491,6 +491,27 @@ export default async function MeetingsPage({
   const scope: 'mine' | 'team' = isAdmin ? requestedScope : 'mine'
   const isAdminTeamView = isAdmin && scope === 'team'
 
+  const { data: meetingCalendarFeed, error: meetingCalendarFeedError } =
+    await supabase
+      .from('meeting_calendar_feeds')
+      .select('user_id, enabled, disabled_at')
+      .eq('user_id', user.id)
+      .maybeSingle<{
+        user_id: string
+        enabled: boolean
+        disabled_at: string | null
+      }>()
+
+  if (meetingCalendarFeedError) {
+    throw new Error(
+      `Nepodařilo se načíst stav kalendáře schůzek: ${meetingCalendarFeedError.message}`
+    )
+  }
+
+  const isMeetingCalendarActivated = Boolean(
+    meetingCalendarFeed && meetingCalendarFeed.enabled && !meetingCalendarFeed.disabled_at
+  )
+
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
   const { data: allProfiles, error: profilesError } = await supabase
@@ -901,6 +922,7 @@ export default async function MeetingsPage({
                   <div className="pt-3">
                     <MeetingCalendarButton
                       className="meetings-page__calendar-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                      initiallyActivated={isMeetingCalendarActivated}
                     />
                   </div>
                 </form>
@@ -928,6 +950,7 @@ export default async function MeetingsPage({
               <div className="flex justify-end">
                 <MeetingCalendarButton
                   className="meetings-page__calendar-button inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                  initiallyActivated={isMeetingCalendarActivated}
                 />
               </div>
 
