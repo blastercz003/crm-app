@@ -23,19 +23,14 @@ function buildExternalFeedUrls(feedPath: string | undefined, origin: string | nu
   if (!feedPath || !origin) {
     return {
       httpsUrl: null,
-      webcalUrl: null,
       googleUrl: null,
     }
   }
 
   const httpsUrl = new URL(feedPath, origin).toString()
-  const webcalUrl = new URL(httpsUrl)
-
-  webcalUrl.protocol = 'webcal:'
 
   return {
     httpsUrl,
-    webcalUrl: webcalUrl.toString(),
     googleUrl: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(
       httpsUrl
     )}`,
@@ -117,6 +112,77 @@ function CalendarLinkCard({
   )
 }
 
+function CopyableUrlCard({
+  title,
+  description,
+  value,
+}: {
+  title: string
+  description: string
+  value: string | null
+}) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    if (!value || typeof navigator === 'undefined' || !navigator.clipboard) {
+      return
+    }
+
+    await navigator.clipboard.writeText(value)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="meetings-calendar-modal__link-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="meetings-calendar-modal__link-title text-sm font-semibold tracking-tight text-zinc-950">
+            {title}
+          </h3>
+          <p className="meetings-calendar-modal__link-description mt-1 text-sm leading-6 text-zinc-500">
+            {description}
+          </p>
+        </div>
+
+        <span
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]"
+          aria-hidden="true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M8 3v4" />
+            <path d="M16 3v4" />
+            <path d="M3 9h18" />
+            <rect x="4" y="5" width="16" height="16" rx="3" />
+          </svg>
+        </span>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-3 py-3 text-sm text-zinc-700 break-all">
+        {value ?? 'Odkaz se nepodařilo připravit.'}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          void handleCopy()
+        }}
+        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
+      >
+        {copied ? 'Odkaz zkopírován' : 'Kopírovat odkaz'}
+      </button>
+    </div>
+  )
+}
+
 export function MeetingCalendarButton({
   className,
   label = 'SCHŮZKY DO KALENDÁŘE',
@@ -131,7 +197,6 @@ export function MeetingCalendarButton({
   useBodyScrollLock(isOpen)
 
   const feedUrls = buildExternalFeedUrls(state.feedPath, origin)
-  const iphoneLandingHref = state.token ? `/meetings/calendar/${state.token}` : null
   function openModal() {
     setIsOpen(true)
   }
@@ -242,14 +307,51 @@ export function MeetingCalendarButton({
             </form>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <CalendarLinkCard
-                title="iPhone / Apple Kalendář"
-                description="Otevři stránku pro iPhone. Přes Safari pak přidáš odběr do aplikace Kalendář."
-                href={iphoneLandingHref}
-                hrefLabel="OTEVŘÍT STRÁNKU PRO IPHONE"
-                accentClassName="border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]"
-                variant="apple"
-              />
+              {state.success ? (
+                <CopyableUrlCard
+                  title="iPhone / Apple Kalendář"
+                  description="Zkopíruj odkaz níže a vlož ho do Safari. Odtud už iPhone nabídne odběr do Kalendáře spolehlivěji."
+                  value={feedUrls.httpsUrl}
+                />
+              ) : (
+                <div className="meetings-calendar-modal__link-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="meetings-calendar-modal__link-title text-sm font-semibold tracking-tight text-zinc-950">
+                        iPhone / Apple Kalendář
+                      </h3>
+                      <p className="meetings-calendar-modal__link-description mt-1 text-sm leading-6 text-zinc-500">
+                        Po aktivaci se tady ukáže odkaz, který zkopíruješ a
+                        vložíš do Safari.
+                      </p>
+                    </div>
+
+                    <span
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]"
+                      aria-hidden="true"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M8 3v4" />
+                        <path d="M16 3v4" />
+                        <path d="M3 9h18" />
+                        <rect x="4" y="5" width="16" height="16" rx="3" />
+                      </svg>
+                    </span>
+                  </div>
+
+                  <div className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-4 text-sm font-medium uppercase text-zinc-400">
+                    Nejprve aktivuj kalendář
+                  </div>
+                </div>
+              )}
               <CalendarLinkCard
                 title="Google Calendar"
                 description="Na Androidu nebo v Google Calendar se otevře přihlášení k odběru z odkazu."
