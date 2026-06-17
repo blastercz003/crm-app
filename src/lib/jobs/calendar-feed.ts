@@ -160,9 +160,24 @@ function getEvidenceStatusLabel(status: JobCalendarJobRow['evidence_status']) {
   return labels[status] ?? status
 }
 
-function buildSummary(job: JobCalendarJobRow) {
+function buildSummary(
+  job: JobCalendarJobRow,
+  options: { minimal: boolean } = { minimal: false }
+) {
   const jobNumber = job.job_number.trim()
   const companyName = job.company_name.trim()
+
+  if (options.minimal) {
+    if (jobNumber && companyName) {
+      return `${jobNumber} - ${companyName}`
+    }
+
+    if (jobNumber) {
+      return jobNumber
+    }
+
+    return companyName || 'Zakázka'
+  }
 
   if (jobNumber && companyName) {
     return `${jobNumber} · ${companyName}`
@@ -175,7 +190,25 @@ function buildSummary(job: JobCalendarJobRow) {
   return companyName || 'Zakázka'
 }
 
-function buildDescription(job: JobCalendarJobRow) {
+function buildDescription(
+  job: JobCalendarJobRow,
+  options: { minimal: boolean } = { minimal: false }
+) {
+  if (options.minimal) {
+    const lines = [
+      job.job_number.trim() ? `Zakázka: ${job.job_number.trim()}` : null,
+      job.company_name.trim() ? `Firma: ${job.company_name.trim()}` : null,
+      job.site_address?.trim() ? `Adresa: ${job.site_address.trim()}` : null,
+      job.contact_person?.trim()
+        ? `Kontakt: ${job.contact_person.trim()}`
+        : null,
+      `Začátek: ${formatPragueDateTime(job.start_at)}`,
+      `Konec: ${formatPragueDateTime(job.end_at)}`,
+    ].filter((line): line is string => Boolean(line))
+
+    return lines.join('\n')
+  }
+
   const lines = [
     `Číslo zakázky: ${job.job_number.trim()}`,
     `Firma: ${job.company_name.trim()}`,
@@ -207,7 +240,8 @@ function buildEventUid(userId: string, jobId: string) {
 
 function buildCalendarEvent(
   job: JobCalendarJobRow,
-  item?: JobCalendarItemRow
+  item?: JobCalendarItemRow,
+  options: { minimal: boolean } = { minimal: false }
 ): JobCalendarEvent | null {
   if (!job.start_at || !job.end_at) {
     return null
@@ -216,8 +250,8 @@ function buildCalendarEvent(
   return {
     uid: item?.uid ?? buildEventUid(item?.user_id ?? 'unknown', job.id),
     sequence: item?.sequence ?? 1,
-    summary: buildSummary(job),
-    description: buildDescription(job),
+    summary: buildSummary(job, options),
+    description: buildDescription(job, options),
     location: job.site_address?.trim() || null,
     startIso: job.start_at,
     endIso: job.end_at,
@@ -240,7 +274,11 @@ function buildCancelledEvent(item: JobCalendarItemRow) {
 
 function serializeEvent(
   event: JobCalendarEvent,
-  options: { includeAlarms: boolean; visibility: 'PUBLIC' | 'PRIVATE' }
+  options: {
+    includeAlarms: boolean
+    visibility: 'PUBLIC' | 'PRIVATE'
+    minimal: boolean
+  }
 ) {
   const lines = [
     'BEGIN:VEVENT',
@@ -251,10 +289,15 @@ function serializeEvent(
     `DESCRIPTION:${escapeIcsText(event.description)}`,
     `DTSTART:${formatUtcIsoForIcs(event.startIso)}`,
     `DTEND:${formatUtcIsoForIcs(event.endIso)}`,
-    `CLASS:${options.visibility}`,
-    'TRANSP:OPAQUE',
-    'X-MICROSOFT-CDO-ALLDAYEVENT:FALSE',
   ]
+
+  if (!options.minimal) {
+    lines.push(
+      `CLASS:${options.visibility}`,
+      'TRANSP:OPAQUE',
+      'X-MICROSOFT-CDO-ALLDAYEVENT:FALSE'
+    )
+  }
 
   if (event.location) {
     lines.push(`LOCATION:${escapeIcsText(event.location)}`)
@@ -465,10 +508,15 @@ export async function cancelJobCalendarItem(params: {
 
 export async function getJobCalendarFeedByToken(
   token: string,
-  options: { includeAlarms?: boolean; visibility?: 'PUBLIC' | 'PRIVATE' } = {}
+  options: {
+    includeAlarms?: boolean
+    visibility?: 'PUBLIC' | 'PRIVATE'
+    minimal?: boolean
+  } = {}
 ) {
   const includeAlarms = options.includeAlarms ?? true
   const visibility = options.visibility ?? 'PRIVATE'
+  const minimal = options.minimal ?? false
   const feedResult = await getFeedClientData(token)
 
   if (!feedResult) {
@@ -563,7 +611,7 @@ export async function getJobCalendarFeedByToken(
         return null
       }
 
-      return buildCalendarEvent(job, item)
+      return buildCalendarEvent(job, item, { minimal })
     })
     .filter((event): event is JobCalendarEvent => Boolean(event))
 
@@ -585,7 +633,7 @@ export async function getJobCalendarFeedByToken(
     `X-WR-TIMEZONE:${JOB_CALENDAR_TIME_ZONE}`,
     'X-PUBLISHED-TTL:PT15M',
     ...events.flatMap((event) =>
-      serializeEvent(event, { includeAlarms, visibility })
+      serializeEvent(event, { includeAlarms, visibility, minimal })
     ),
     'END:VCALENDAR',
   ])

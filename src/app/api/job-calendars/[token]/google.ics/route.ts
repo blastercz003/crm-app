@@ -15,6 +15,7 @@ export async function GET(
   const feed = await getJobCalendarFeedByToken(token, {
     includeAlarms: false,
     visibility: 'PUBLIC',
+    minimal: true,
   })
 
   if (!feed) {
