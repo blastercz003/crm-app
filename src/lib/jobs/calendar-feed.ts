@@ -238,7 +238,10 @@ function buildCancelledEvent(item: JobCalendarItemRow) {
   } satisfies JobCalendarEvent
 }
 
-function serializeEvent(event: JobCalendarEvent) {
+function serializeEvent(
+  event: JobCalendarEvent,
+  options: { includeAlarms: boolean }
+) {
   const lines = [
     'BEGIN:VEVENT',
     `UID:${escapeIcsText(event.uid)}`,
@@ -259,7 +262,7 @@ function serializeEvent(event: JobCalendarEvent) {
 
   if (event.isCancelled) {
     lines.push('STATUS:CANCELLED')
-  } else {
+  } else if (options.includeAlarms) {
     lines.push(
       'BEGIN:VALARM',
       `TRIGGER:-PT${JOB_CALENDAR_ALARM_MINUTES}M`,
@@ -460,7 +463,11 @@ export async function cancelJobCalendarItem(params: {
   }
 }
 
-export async function getJobCalendarFeedByToken(token: string) {
+export async function getJobCalendarFeedByToken(
+  token: string,
+  options: { includeAlarms?: boolean } = {}
+) {
+  const includeAlarms = options.includeAlarms ?? true
   const feedResult = await getFeedClientData(token)
 
   if (!feedResult) {
@@ -576,7 +583,7 @@ export async function getJobCalendarFeedByToken(token: string) {
     `X-WR-CALNAME:${escapeIcsText(JOB_CALENDAR_NAME)}`,
     `X-WR-TIMEZONE:${JOB_CALENDAR_TIME_ZONE}`,
     'X-PUBLISHED-TTL:PT15M',
-    ...events.flatMap((event) => serializeEvent(event)),
+    ...events.flatMap((event) => serializeEvent(event, { includeAlarms })),
     'END:VCALENDAR',
   ])
 

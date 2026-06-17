@@ -24,6 +24,7 @@ import {
   syncJobCalendarItem,
   type JobCalendarJobRow,
 } from '@/lib/jobs/calendar-feed'
+import { canViewTechJobsSection } from '@/lib/auth/access'
 
 export type CreateJobActionState = {
   success: boolean
@@ -91,6 +92,11 @@ export type DeleteJobActionState = {
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
   role: string | null
+}
+
+type TechJobsSectionProfileRow = {
+  role: string | null
+  can_view_tech_jobs: boolean | null
 }
 
 type JobNotificationProfileRow = {
@@ -485,6 +491,48 @@ async function requireJobsAccess() {
   }
 }
 
+async function requireTechJobsSectionAccess() {
+  const { supabase, user, error } = await requireAuthenticatedUser()
+
+  if (!user) {
+    return {
+      supabase,
+      user: null,
+      error,
+    }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, can_view_tech_jobs')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    return {
+      supabase,
+      user: null,
+      error: 'Nepodařilo se ověřit oprávnění uživatele.',
+    }
+  }
+
+  const typedProfile = profile as TechJobsSectionProfileRow | null
+
+  if (!canViewTechJobsSection(typedProfile?.role ?? null, typedProfile)) {
+    return {
+      supabase,
+      user: null,
+      error: 'Nemáš oprávnění pro práci se zakázkami.',
+    }
+  }
+
+  return {
+    supabase,
+    user,
+    error: null,
+  }
+}
+
 export async function activateJobCalendarModalAction(
   _prevState: JobCalendarActivationActionState,
   _formData: FormData
@@ -493,7 +541,7 @@ export async function activateJobCalendarModalAction(
   void _formData
 
   try {
-    const { user, error: accessError } = await requireJobsAccess()
+    const { user, error: accessError } = await requireTechJobsSectionAccess()
 
     if (!user) {
       return {
