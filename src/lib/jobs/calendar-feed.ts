@@ -240,7 +240,7 @@ function buildCancelledEvent(item: JobCalendarItemRow) {
 
 function serializeEvent(
   event: JobCalendarEvent,
-  options: { includeAlarms: boolean }
+  options: { includeAlarms: boolean; visibility: 'PUBLIC' | 'PRIVATE' }
 ) {
   const lines = [
     'BEGIN:VEVENT',
@@ -251,7 +251,7 @@ function serializeEvent(
     `DESCRIPTION:${escapeIcsText(event.description)}`,
     `DTSTART:${formatUtcIsoForIcs(event.startIso)}`,
     `DTEND:${formatUtcIsoForIcs(event.endIso)}`,
-    'CLASS:PRIVATE',
+    `CLASS:${options.visibility}`,
     'TRANSP:OPAQUE',
     'X-MICROSOFT-CDO-ALLDAYEVENT:FALSE',
   ]
@@ -465,9 +465,10 @@ export async function cancelJobCalendarItem(params: {
 
 export async function getJobCalendarFeedByToken(
   token: string,
-  options: { includeAlarms?: boolean } = {}
+  options: { includeAlarms?: boolean; visibility?: 'PUBLIC' | 'PRIVATE' } = {}
 ) {
   const includeAlarms = options.includeAlarms ?? true
+  const visibility = options.visibility ?? 'PRIVATE'
   const feedResult = await getFeedClientData(token)
 
   if (!feedResult) {
@@ -583,7 +584,9 @@ export async function getJobCalendarFeedByToken(
     `X-WR-CALNAME:${escapeIcsText(JOB_CALENDAR_NAME)}`,
     `X-WR-TIMEZONE:${JOB_CALENDAR_TIME_ZONE}`,
     'X-PUBLISHED-TTL:PT15M',
-    ...events.flatMap((event) => serializeEvent(event, { includeAlarms })),
+    ...events.flatMap((event) =>
+      serializeEvent(event, { includeAlarms, visibility })
+    ),
     'END:VCALENDAR',
   ])
 
