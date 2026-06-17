@@ -1,10 +1,12 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   activateMeetingCalendarModalAction,
+  disconnectMeetingGoogleCalendarModalAction,
   type MeetingCalendarActivationActionState,
+  type MeetingGoogleCalendarDisconnectActionState,
 } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
@@ -13,6 +15,8 @@ type MeetingCalendarButtonProps = {
   label?: string
   initiallyActivated?: boolean
   initialFeedPath?: string | null
+  initialGoogleConnected?: boolean
+  initialGoogleConfigured?: boolean
 }
 
 function buildExternalFeedUrls(feedPath: string | undefined, origin: string | null) {
@@ -39,19 +43,37 @@ function CalendarLinkCard({
   title,
   description,
   href,
+  copyValue,
+  copyHint,
   hrefLabel,
+  statusLabel,
+  helperText,
+  secondaryActionLabel,
+  secondaryActionDescription,
+  secondaryActionFormAction,
+  copyButtonLabel,
   accentClassName,
   target,
   rel,
+  onActivate,
   variant,
 }: {
   title: string
   description: string
   href: string | null
+  copyValue?: string | null
+  copyHint?: string
   hrefLabel: string
+  statusLabel?: string | null
+  helperText?: string | null
+  secondaryActionLabel?: string | null
+  secondaryActionDescription?: string | null
+  secondaryActionFormAction?: ((formData: FormData) => void | Promise<void>) | null
+  copyButtonLabel?: string
   accentClassName: string
   target?: string
   rel?: string
+  onActivate?: () => void
   variant: 'apple' | 'google'
 }) {
   const buttonVariantClassName =
@@ -92,20 +114,71 @@ function CalendarLinkCard({
         </span>
       </div>
 
-      {href ? (
+      {statusLabel ? (
+        <div className="meetings-calendar-modal__status mt-4 rounded-xl border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+          {statusLabel}
+        </div>
+      ) : null}
+
+      {helperText ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {helperText}
+        </div>
+      ) : null}
+
+      {href && onActivate ? (
         <a
           href={href}
           target={target}
           rel={rel}
+          onClick={(event) => {
+            event.preventDefault()
+            onActivate()
+          }}
           className={`meetings-calendar-modal__link-button ${buttonVariantClassName} mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]`}
         >
           {hrefLabel}
         </a>
+      ) : copyValue ? (
+        <div className="mt-4 space-y-3">
+          <div className="meetings-calendar-modal__copy-value rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-3 py-3 text-sm text-zinc-700 break-all">
+            {copyValue}
+          </div>
+
+          {copyHint ? (
+            <p className="text-sm leading-6 text-zinc-500">{copyHint}</p>
+          ) : null}
+
+          <button
+            type="button"
+            className="meetings-calendar-modal__copy-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
+          >
+            {copyButtonLabel ?? 'Zkopírovat URL'}
+          </button>
+        </div>
       ) : (
         <div className="meetings-calendar-modal__link-disabled mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/70 px-4 text-sm font-medium uppercase text-zinc-400">
-          Nejprve aktivuj kalendář
+          {helperText ?? 'Nejprve aktivuj kalendář'}
         </div>
       )}
+
+      {secondaryActionLabel && secondaryActionFormAction ? (
+        <div className="mt-4 space-y-2">
+          {secondaryActionDescription ? (
+            <p className="text-sm leading-6 text-zinc-500">
+              {secondaryActionDescription}
+            </p>
+          ) : null}
+          <form action={secondaryActionFormAction}>
+            <button
+              type="submit"
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-rose-200 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(254,226,226,0.92)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_22px_rgba(153,27,27,0.1)] transition duration-200 hover:-translate-y-[1px] hover:bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(254,226,226,0.96)_100%)]"
+            >
+              {secondaryActionLabel}
+            </button>
+          </form>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -200,6 +273,8 @@ export function MeetingCalendarButton({
   label = 'SCHŮZKY DO KALENDÁŘE',
   initiallyActivated = false,
   initialFeedPath = null,
+  initialGoogleConnected = false,
+  initialGoogleConfigured = true,
 }: MeetingCalendarButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const initialMeetingCalendarActivationState: MeetingCalendarActivationActionState =
@@ -212,11 +287,33 @@ export function MeetingCalendarButton({
     activateMeetingCalendarModalAction,
     initialMeetingCalendarActivationState
   )
+  const [disconnectState, disconnectFormAction] =
+    useActionState(
+      disconnectMeetingGoogleCalendarModalAction,
+      {
+        success: false,
+        error: null,
+      } satisfies MeetingGoogleCalendarDisconnectActionState
+    )
+  const [isGoogleConnected, setIsGoogleConnected] = useState(
+    initialGoogleConnected
+  )
   const origin = typeof window !== 'undefined' ? window.location.origin : null
 
   useBodyScrollLock(isOpen)
 
+  useEffect(() => {
+    if (disconnectState.success) {
+      setIsGoogleConnected(false)
+    }
+  }, [disconnectState.success])
+
   const feedUrls = buildExternalFeedUrls(state.feedPath, origin)
+  const googleConnectHref = '/api/meeting-google-calendar/connect'
+  const googleConnectUrl =
+    origin && googleConnectHref
+      ? new URL(googleConnectHref, origin).toString()
+      : googleConnectHref
   function openModal() {
     setIsOpen(true)
   }
@@ -334,9 +431,48 @@ export function MeetingCalendarButton({
               />
               <CalendarLinkCard
                 title="Google Calendar"
-                description="Na Androidu nebo v Google Calendar se otevře přihlášení k odběru z odkazu."
-                href={feedUrls.googleUrl}
-                hrefLabel="PŘIDAT DO GOOGLE CALENDAR"
+                description="Připojíš svůj Google účet a kalendář se vytvoří přímo v Google Kalendáři."
+                href={googleConnectUrl}
+                hrefLabel={
+                  initialGoogleConfigured
+                    ? isGoogleConnected
+                      ? 'ZNOVU PROVÉST AKTIVACI'
+                      : 'PŘIPOJIT GOOGLE ÚČET'
+                    : 'GOOGLE NENÍ NASTAVEN'
+                }
+                statusLabel={
+                  initialGoogleConfigured && isGoogleConnected
+                    ? 'Google kalendář je připojen'
+                    : null
+                }
+                helperText={
+                  initialGoogleConfigured
+                    ? null
+                    : 'Google OAuth není v prostředí nastavený. Doplň GOOGLE_CLIENT_ID a GOOGLE_CLIENT_SECRET.'
+                }
+                secondaryActionLabel={
+                  initialGoogleConfigured && isGoogleConnected
+                    ? 'ODPOJIT GOOGLE KALENDÁŘ'
+                    : null
+                }
+                secondaryActionDescription={
+                  initialGoogleConfigured && isGoogleConnected
+                    ? 'Tím se odpojí a smaže napojení na Google kalendář.'
+                    : null
+                }
+                secondaryActionFormAction={
+                  initialGoogleConfigured && isGoogleConnected
+                    ? disconnectFormAction
+                    : null
+                }
+                onActivate={
+                  initialGoogleConfigured
+                    ? () => {
+                        if (typeof window === 'undefined') return
+                        window.location.assign(googleConnectUrl)
+                      }
+                    : undefined
+                }
                 accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
                 target="_blank"
                 rel="noreferrer noopener"

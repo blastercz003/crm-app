@@ -57,6 +57,13 @@ type ProfileRow = {
   role: string | null
 }
 
+type MeetingGoogleCalendarIntegrationRow = {
+  user_id: string
+  calendar_id: string | null
+  enabled: boolean
+  disabled_at: string | null
+}
+
 type ClientOption = {
   id: string
   name: string
@@ -516,6 +523,35 @@ export default async function MeetingsPage({
     ? `/api/calendars/${meetingCalendarFeed.token}`
     : null
 
+  let isMeetingGoogleCalendarConnected = false
+
+  try {
+    const { data: meetingGoogleCalendarIntegration, error: meetingGoogleCalendarIntegrationError } =
+      await supabase
+        .from('meeting_google_calendar_integrations')
+        .select('user_id, calendar_id, enabled, disabled_at')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+    if (meetingGoogleCalendarIntegrationError) {
+      console.warn(
+        'Nepodařilo se načíst stav Google kalendáře schůzek:',
+        meetingGoogleCalendarIntegrationError.message
+      )
+    } else {
+      const typedMeetingGoogleCalendarIntegration =
+        meetingGoogleCalendarIntegration as MeetingGoogleCalendarIntegrationRow | null
+      isMeetingGoogleCalendarConnected = Boolean(
+        typedMeetingGoogleCalendarIntegration &&
+          typedMeetingGoogleCalendarIntegration.enabled &&
+          !typedMeetingGoogleCalendarIntegration.disabled_at &&
+          typedMeetingGoogleCalendarIntegration.calendar_id
+      )
+    }
+  } catch (error) {
+    console.warn('Nepodařilo se načíst stav Google kalendáře schůzek:', error)
+  }
+
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
 
   const { data: allProfiles, error: profilesError } = await supabase
@@ -928,6 +964,10 @@ export default async function MeetingsPage({
                       className="meetings-page__calendar-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                       initiallyActivated={isMeetingCalendarActivated}
                       initialFeedPath={initialMeetingCalendarFeedPath}
+                      initialGoogleConnected={isMeetingGoogleCalendarConnected}
+                      initialGoogleConfigured={Boolean(
+                        process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                      )}
                     />
                   </div>
                 </form>
@@ -957,6 +997,10 @@ export default async function MeetingsPage({
                   className="meetings-page__calendar-button inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
                   initiallyActivated={isMeetingCalendarActivated}
                   initialFeedPath={initialMeetingCalendarFeedPath}
+                  initialGoogleConnected={isMeetingGoogleCalendarConnected}
+                  initialGoogleConfigured={Boolean(
+                    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                  )}
                 />
               </div>
 

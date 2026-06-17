@@ -9,7 +9,10 @@ import {
   cancelMeetingCalendarItem,
   backfillMeetingCalendarItemsForUser,
   ensureMeetingCalendarFeed,
+  cancelMeetingGoogleCalendarItem,
+  disconnectMeetingGoogleCalendar,
   syncMeetingCalendarItem,
+  syncMeetingGoogleCalendarItem,
 } from '@/lib/meetings/calendar-feed'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 
@@ -28,6 +31,13 @@ export type MeetingCalendarActivationActionState = {
   token?: string
   feedPath?: string
   insertedCount?: number
+}
+
+export type MeetingGoogleCalendarDisconnectActionState = {
+  success: boolean
+  error: string | null
+  disconnectedAt?: string
+  deletedCalendar?: boolean
 }
 
 function normalizeText(value: FormDataEntryValue | null) {
@@ -197,6 +207,43 @@ export async function activateMeetingCalendarModalAction(
         error instanceof Error
           ? error.message
           : 'Nepodařilo se aktivovat kalendář.',
+    }
+  }
+}
+
+export async function disconnectMeetingGoogleCalendarModalAction(
+  _prevState: MeetingGoogleCalendarDisconnectActionState,
+  _formData: FormData
+): Promise<MeetingGoogleCalendarDisconnectActionState> {
+  void _prevState
+  void _formData
+
+  try {
+    const { user } = await getCurrentUserWithRole()
+    const result = await disconnectMeetingGoogleCalendar(user.id)
+
+    revalidatePath('/meetings')
+
+    return {
+      success: Boolean(result.disconnected),
+      error: null,
+      disconnectedAt: result.disconnectedAt,
+      deletedCalendar: result.deletedCalendar,
+    }
+  } catch (error) {
+    await reportActionError({
+      error,
+      action: 'disconnectMeetingGoogleCalendarModalAction',
+      section: 'meetings',
+      errorType: 'MeetingGoogleCalendarDisconnectError',
+    })
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se odpojit Google kalendář.',
     }
   }
 }
@@ -471,6 +518,79 @@ async function cancelMeetingCalendarItemSafely(params: {
   }
 }
 
+async function syncMeetingGoogleCalendarItemSafely(params: {
+  meetingId: string
+  userId: string
+  meeting: {
+    id: string
+    company_name: string | null
+    contact_person: string | null
+    contact_phone: string | null
+    contact_email: string | null
+    address: string | null
+    title: string | null
+    meeting_datetime: string | null
+    pre_meeting_note: string | null
+    result_note: string | null
+    follow_up_task: string | null
+    follow_up_task_note: string | null
+    follow_up_task_priority: string | null
+    follow_up_task_due_date: string | null
+    status: 'planned' | 'completed'
+    assigned_user_id: string | null
+  }
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await syncMeetingGoogleCalendarItem({
+      meetingId: params.meetingId,
+      userId: params.userId,
+      meeting: params.meeting,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'meetings',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Google kalendářová synchronizace schůzky selhala.', reportError)
+    }
+  }
+}
+
+async function cancelMeetingGoogleCalendarItemSafely(params: {
+  meetingId: string
+  userId: string
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await cancelMeetingGoogleCalendarItem({
+      meetingId: params.meetingId,
+      userId: params.userId,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'meetings',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Google kalendářové zrušení schůzky selhalo.', reportError)
+    }
+  }
+}
+
 async function createMeetingRecord(formData: FormData) {
   const { supabase, user, profile } = await getCurrentUserWithRole()
 
@@ -569,6 +689,32 @@ async function createMeetingRecord(formData: FormData) {
     },
     action: 'syncMeetingCalendarItemOnCreate',
     errorType: 'MeetingCalendarSyncCreateError',
+    userIdForErrorLog: user.id,
+  })
+
+  await syncMeetingGoogleCalendarItemSafely({
+    meetingId: data.id,
+    userId: data.assigned_user_id ?? user.id,
+    meeting: {
+      id: data.id,
+      company_name: companyName,
+      contact_person: contactPerson,
+      contact_phone: contactPhone,
+      contact_email: contactEmail,
+      address,
+      title,
+      meeting_datetime: meetingDatetime,
+      pre_meeting_note: preMeetingNote,
+      result_note: resultNote,
+      follow_up_task: followUpTask,
+      follow_up_task_note: followUpTaskNote,
+      follow_up_task_priority: followUpTaskPriority,
+      follow_up_task_due_date: followUpTaskDueDate,
+      status,
+      assigned_user_id: data.assigned_user_id,
+    },
+    action: 'syncMeetingGoogleCalendarItemOnCreate',
+    errorType: 'MeetingGoogleCalendarSyncCreateError',
     userIdForErrorLog: user.id,
   })
 
@@ -740,6 +886,32 @@ async function updateMeetingRecord(formData: FormData) {
     userIdForErrorLog: user.id,
   })
 
+  await syncMeetingGoogleCalendarItemSafely({
+    meetingId: data.id,
+    userId: data.assigned_user_id ?? user.id,
+    meeting: {
+      id,
+      company_name: companyName,
+      contact_person: contactPerson,
+      contact_phone: contactPhone,
+      contact_email: contactEmail,
+      address,
+      title,
+      meeting_datetime: meetingDatetime,
+      pre_meeting_note: preMeetingNote,
+      result_note: resultNote,
+      follow_up_task: followUpTask,
+      follow_up_task_note: followUpTaskNote,
+      follow_up_task_priority: followUpTaskPriority,
+      follow_up_task_due_date: followUpTaskDueDate,
+      status,
+      assigned_user_id: data.assigned_user_id,
+    },
+    action: 'syncMeetingGoogleCalendarItemOnUpdate',
+    errorType: 'MeetingGoogleCalendarSyncUpdateError',
+    userIdForErrorLog: user.id,
+  })
+
   await syncMeetingFollowUpTask({
     meetingId: data.id,
     clientId,
@@ -881,6 +1053,14 @@ export async function deleteMeeting(formData: FormData) {
     userId: meeting.assigned_user_id ?? user.id,
     action: 'cancelMeetingCalendarItemOnDelete',
     errorType: 'MeetingCalendarSyncDeleteError',
+    userIdForErrorLog: user.id,
+  })
+
+  await cancelMeetingGoogleCalendarItemSafely({
+    meetingId: id,
+    userId: meeting.assigned_user_id ?? user.id,
+    action: 'cancelMeetingGoogleCalendarItemOnDelete',
+    errorType: 'MeetingGoogleCalendarSyncDeleteError',
     userIdForErrorLog: user.id,
   })
 
