@@ -453,27 +453,34 @@ export default async function ZakazkyTechnikuPage({
       .map((row) => String(row.job_id))
   )
 
-  const { data: jobGoogleCalendarIntegration, error: jobGoogleCalendarIntegrationError } =
-    await serviceSupabase
-      .from('job_google_calendar_integrations')
-      .select('user_id, calendar_id, enabled, disabled_at')
-      .eq('user_id', user.id)
-      .maybeSingle()
+  let isJobGoogleCalendarConnected = false
 
-  if (jobGoogleCalendarIntegrationError) {
-    throw new Error(
-      `Nepodařilo se načíst stav Google kalendáře zakázek: ${jobGoogleCalendarIntegrationError.message}`
-    )
+  try {
+    const { data: jobGoogleCalendarIntegration, error: jobGoogleCalendarIntegrationError } =
+      await serviceSupabase
+        .from('job_google_calendar_integrations')
+        .select('user_id, calendar_id, enabled, disabled_at')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+    if (jobGoogleCalendarIntegrationError) {
+      console.warn(
+        'Nepodařilo se načíst stav Google kalendáře zakázek:',
+        jobGoogleCalendarIntegrationError.message
+      )
+    } else {
+      const typedJobGoogleCalendarIntegration =
+        jobGoogleCalendarIntegration as JobGoogleCalendarIntegrationRow | null
+      isJobGoogleCalendarConnected = Boolean(
+        typedJobGoogleCalendarIntegration &&
+          typedJobGoogleCalendarIntegration.enabled &&
+          !typedJobGoogleCalendarIntegration.disabled_at &&
+          typedJobGoogleCalendarIntegration.calendar_id
+      )
+    }
+  } catch (error) {
+    console.warn('Nepodařilo se načíst stav Google kalendáře zakázek:', error)
   }
-
-  const typedJobGoogleCalendarIntegration =
-    jobGoogleCalendarIntegration as JobGoogleCalendarIntegrationRow | null
-  const isJobGoogleCalendarConnected = Boolean(
-    typedJobGoogleCalendarIntegration &&
-      typedJobGoogleCalendarIntegration.enabled &&
-      !typedJobGoogleCalendarIntegration.disabled_at &&
-      typedJobGoogleCalendarIntegration.calendar_id
-  )
 
   const visibleJobs = isAdmin
     ? typedJobs
