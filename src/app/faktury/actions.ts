@@ -9,6 +9,10 @@ import {
   type JobCalendarJobRow,
 } from '@/lib/jobs/calendar-feed'
 import {
+  cancelJobGoogleCalendarItem,
+  syncJobGoogleCalendarItem,
+} from '@/lib/jobs/google-calendar'
+import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   buildAttachmentStoragePath,
   JOB_ATTACHMENTS_BUCKET,
@@ -289,6 +293,76 @@ async function getAssignedTechnicianIdsForJob(
       ((data ?? []) as AssignedTechnicianRow[])
         .map((row) => String(row.technician_id ?? '').trim())
         .filter((technicianId) => Boolean(technicianId))
+    )
+  )
+}
+
+async function syncJobGoogleCalendarForTechniciansSafely(params: {
+  jobId: string
+  technicianIds: string[]
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  if (params.technicianIds.length === 0) {
+    return
+  }
+
+  const supabase = await createClient()
+  const job = await getJobCalendarSnapshot(supabase, params.jobId)
+
+  await Promise.all(
+    params.technicianIds.map((technicianId) =>
+      syncJobGoogleCalendarItem({
+        jobId: params.jobId,
+        userId: technicianId,
+        job,
+      }).catch(async (error) => {
+        try {
+          await reportActionError({
+            error,
+            action: params.action,
+            section: 'faktury',
+            errorType: params.errorType,
+            userId: params.userIdForErrorLog ?? technicianId,
+          })
+        } catch (reportError) {
+          console.error('Google kalendářová synchronizace z faktur selhala.', reportError)
+        }
+      })
+    )
+  )
+}
+
+async function cancelJobGoogleCalendarForTechniciansSafely(params: {
+  jobId: string
+  technicianIds: string[]
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  if (params.technicianIds.length === 0) {
+    return
+  }
+
+  await Promise.all(
+    params.technicianIds.map((technicianId) =>
+      cancelJobGoogleCalendarItem({
+        jobId: params.jobId,
+        userId: technicianId,
+      }).catch(async (error) => {
+        try {
+          await reportActionError({
+            error,
+            action: params.action,
+            section: 'faktury',
+            errorType: params.errorType,
+            userId: params.userIdForErrorLog ?? technicianId,
+          })
+        } catch (reportError) {
+          console.error('Google kalendářové zrušení z faktur selhalo.', reportError)
+        }
+      })
     )
   )
 }
@@ -915,12 +989,26 @@ export async function updateFinanceInlineFieldAction(
             errorType: 'UpdateFinanceCalendarCancelError',
             userIdForErrorLog: user.id,
           })
+          await cancelJobGoogleCalendarForTechniciansSafely({
+            jobId: String(financeRow.job_id),
+            technicianIds,
+            action: 'updateFinanceInlineFieldAction',
+            errorType: 'UpdateFinanceGoogleCalendarCancelError',
+            userIdForErrorLog: user.id,
+          })
         } else {
           await syncJobCalendarForTechniciansSafely({
             jobId: String(financeRow.job_id),
             technicianIds,
             action: 'updateFinanceInlineFieldAction',
             errorType: 'UpdateFinanceCalendarSyncError',
+            userIdForErrorLog: user.id,
+          })
+          await syncJobGoogleCalendarForTechniciansSafely({
+            jobId: String(financeRow.job_id),
+            technicianIds,
+            action: 'updateFinanceInlineFieldAction',
+            errorType: 'UpdateFinanceGoogleCalendarSyncError',
             userIdForErrorLog: user.id,
           })
         }

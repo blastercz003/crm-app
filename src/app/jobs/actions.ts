@@ -24,6 +24,10 @@ import {
   syncJobCalendarItem,
   type JobCalendarJobRow,
 } from '@/lib/jobs/calendar-feed'
+import {
+  cancelJobGoogleCalendarItem,
+  syncJobGoogleCalendarItem,
+} from '@/lib/jobs/google-calendar'
 import { canViewTechJobsSection } from '@/lib/auth/access'
 
 export type CreateJobActionState = {
@@ -1124,6 +1128,62 @@ async function cancelJobCalendarItemSafely(params: {
   }
 }
 
+async function syncJobGoogleCalendarItemSafely(params: {
+  jobId: string
+  userId: string
+  job: JobCalendarJobRow
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await syncJobGoogleCalendarItem({
+      jobId: params.jobId,
+      userId: params.userId,
+      job: params.job,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'jobs',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Google kalendářová synchronizace zakázky selhala.', reportError)
+    }
+  }
+}
+
+async function cancelJobGoogleCalendarItemSafely(params: {
+  jobId: string
+  userId: string
+  action: string
+  errorType: string
+  userIdForErrorLog?: string | null
+}) {
+  try {
+    await cancelJobGoogleCalendarItem({
+      jobId: params.jobId,
+      userId: params.userId,
+    })
+  } catch (error) {
+    try {
+      await reportActionError({
+        error,
+        action: params.action,
+        section: 'jobs',
+        errorType: params.errorType,
+        userId: params.userIdForErrorLog ?? params.userId,
+      })
+    } catch (reportError) {
+      console.error('Google kalendářové zrušení zakázky selhalo.', reportError)
+    }
+  }
+}
+
 async function syncJobCalendarForTechniciansSafely(params: {
   jobId: string
   technicianIds: string[]
@@ -1140,14 +1200,24 @@ async function syncJobCalendarForTechniciansSafely(params: {
 
   await Promise.all(
     params.technicianIds.map((technicianId) =>
-      syncJobCalendarItemSafely({
-        jobId: params.jobId,
-        userId: technicianId,
-        job,
-        action: params.action,
-        errorType: params.errorType,
-        userIdForErrorLog: params.userIdForErrorLog,
-      })
+      Promise.all([
+        syncJobCalendarItemSafely({
+          jobId: params.jobId,
+          userId: technicianId,
+          job,
+          action: params.action,
+          errorType: params.errorType,
+          userIdForErrorLog: params.userIdForErrorLog,
+        }),
+        syncJobGoogleCalendarItemSafely({
+          jobId: params.jobId,
+          userId: technicianId,
+          job,
+          action: params.action,
+          errorType: `${params.errorType}Google`,
+          userIdForErrorLog: params.userIdForErrorLog,
+        }),
+      ])
     )
   )
 }
@@ -1165,13 +1235,22 @@ async function cancelJobCalendarForTechniciansSafely(params: {
 
   await Promise.all(
     params.technicianIds.map((technicianId) =>
-      cancelJobCalendarItemSafely({
-        jobId: params.jobId,
-        userId: technicianId,
-        action: params.action,
-        errorType: params.errorType,
-        userIdForErrorLog: params.userIdForErrorLog,
-      })
+      Promise.all([
+        cancelJobCalendarItemSafely({
+          jobId: params.jobId,
+          userId: technicianId,
+          action: params.action,
+          errorType: params.errorType,
+          userIdForErrorLog: params.userIdForErrorLog,
+        }),
+        cancelJobGoogleCalendarItemSafely({
+          jobId: params.jobId,
+          userId: technicianId,
+          action: params.action,
+          errorType: `${params.errorType}Google`,
+          userIdForErrorLog: params.userIdForErrorLog,
+        }),
+      ])
     )
   )
 }

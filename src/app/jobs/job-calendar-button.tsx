@@ -13,6 +13,7 @@ type JobCalendarButtonProps = {
   label?: string
   initiallyActivated?: boolean
   initialFeedPath?: string | null
+  initialGoogleConnected?: boolean
 }
 
 function buildExternalFeedUrls(feedPath: string | undefined, origin: string | null) {
@@ -20,19 +21,14 @@ function buildExternalFeedUrls(feedPath: string | undefined, origin: string | nu
     return {
       httpsUrl: null,
       webcalUrl: null,
-      googleIcsUrl: null,
-      googleUrl: null,
     }
   }
 
   const httpsUrl = new URL(feedPath, origin).toString()
-  const googleIcsUrl = new URL(`${feedPath}/google.ics`, origin).toString()
 
   return {
     httpsUrl,
     webcalUrl: `webcal://${new URL(httpsUrl).host}${new URL(httpsUrl).pathname}`,
-    googleIcsUrl,
-    googleUrl: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(googleIcsUrl)}`,
   }
 }
 
@@ -43,6 +39,7 @@ function CalendarLinkCard({
   copyValue,
   copyHint,
   hrefLabel,
+  statusLabel,
   copyButtonLabel,
   accentClassName,
   target,
@@ -55,6 +52,7 @@ function CalendarLinkCard({
   copyValue?: string | null
   copyHint?: string
   hrefLabel: string
+  statusLabel?: string | null
   copyButtonLabel?: string
   accentClassName: string
   target?: string
@@ -98,6 +96,12 @@ function CalendarLinkCard({
           </svg>
         </span>
       </div>
+
+      {statusLabel ? (
+        <div className="meetings-calendar-modal__status mt-4 rounded-xl border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+          {statusLabel}
+        </div>
+      ) : null}
 
       {href ? (
         <a
@@ -231,6 +235,7 @@ export function JobCalendarButton({
   label = 'ZAKÁZKY DO KALENDÁŘE',
   initiallyActivated = false,
   initialFeedPath = null,
+  initialGoogleConnected = false,
 }: JobCalendarButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const initialJobCalendarActivationState: JobCalendarActivationActionState = {
@@ -247,6 +252,7 @@ export function JobCalendarButton({
   useBodyScrollLock(isOpen)
 
   const feedUrls = buildExternalFeedUrls(state.feedPath, origin)
+  const googleConnectHref = '/api/job-google-calendar/connect'
 
   const resolvedClassName =
     className ??
@@ -357,12 +363,18 @@ export function JobCalendarButton({
               />
               <CalendarLinkCard
                 title="Google Calendar"
-                description="Zkopíruj URL a vlož ji v Google Kalendáři přes Přidat kalendář > Z URL."
-                href={null}
-                copyValue={feedUrls.googleIcsUrl}
-                copyHint="V Google Kalendáři zvol Přidat kalendář, pak Z URL a vlož tento odkaz."
-                hrefLabel="PŘIDAT DO GOOGLE CALENDAR"
-                copyButtonLabel="ZKOPÍROVAT URL"
+                description="Připojíš svůj Google účet a kalendář se vytvoří přímo v Google Kalendáři."
+                href={googleConnectHref}
+                hrefLabel={
+                  initialGoogleConnected
+                    ? 'ZNOVU PROVÉST AKTIVACI'
+                    : 'PŘIPOJIT GOOGLE ÚČET'
+                }
+                statusLabel={
+                  initialGoogleConnected
+                    ? 'Google kalendář je připojen'
+                    : null
+                }
                 accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
                 variant="google"
               />
