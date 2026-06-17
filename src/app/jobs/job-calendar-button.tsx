@@ -1,10 +1,12 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   activateJobCalendarModalAction,
+  disconnectJobGoogleCalendarModalAction,
   type JobCalendarActivationActionState,
+  type JobGoogleCalendarDisconnectActionState,
 } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
@@ -264,9 +266,25 @@ export function JobCalendarButton({
     activateJobCalendarModalAction,
     initialJobCalendarActivationState
   )
+  const [disconnectState, disconnectFormAction] = useActionState(
+    disconnectJobGoogleCalendarModalAction,
+    {
+      success: false,
+      error: null,
+    } satisfies JobGoogleCalendarDisconnectActionState
+  )
+  const [isGoogleConnected, setIsGoogleConnected] = useState(
+    initialGoogleConnected
+  )
   const origin = typeof window !== 'undefined' ? window.location.origin : null
 
   useBodyScrollLock(isOpen)
+
+  useEffect(() => {
+    if (disconnectState.success) {
+      setIsGoogleConnected(false)
+    }
+  }, [disconnectState.success])
 
   const feedUrls = buildExternalFeedUrls(state.feedPath, origin)
   const googleConnectHref = '/api/job-google-calendar/connect'
@@ -395,13 +413,13 @@ export function JobCalendarButton({
                 }
                 hrefLabel={
                   initialGoogleConfigured
-                    ? initialGoogleConnected
+                    ? isGoogleConnected
                       ? 'ZNOVU PROVÉST AKTIVACI'
                       : 'PŘIPOJIT GOOGLE ÚČET'
                     : 'GOOGLE NENÍ NASTAVEN'
                 }
                 statusLabel={
-                  initialGoogleConfigured && initialGoogleConnected
+                  initialGoogleConfigured && isGoogleConnected
                     ? 'Google kalendář je připojen'
                     : null
                 }
@@ -413,6 +431,29 @@ export function JobCalendarButton({
                 accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
                 variant="google"
               />
+
+              {disconnectState.success ? (
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                  Google kalendář byl odpojen a synchronizace byla zastavena.
+                </div>
+              ) : null}
+
+              {disconnectState.error ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {disconnectState.error}
+                </div>
+              ) : null}
+
+              {initialGoogleConfigured && isGoogleConnected ? (
+                <form action={disconnectFormAction}>
+                  <button
+                    type="submit"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-rose-200 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(254,226,226,0.92)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_22px_rgba(153,27,27,0.1)] transition duration-200 hover:-translate-y-[1px] hover:bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(254,226,226,0.96)_100%)]"
+                  >
+                    ODPOJIT GOOGLE KALENDÁŘ
+                  </button>
+                </form>
+              ) : null}
             </div>
 
             <div className="meetings-calendar-modal__steps rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">

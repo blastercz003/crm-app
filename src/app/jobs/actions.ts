@@ -26,6 +26,7 @@ import {
 } from '@/lib/jobs/calendar-feed'
 import {
   cancelJobGoogleCalendarItem,
+  disconnectJobGoogleCalendar,
   syncJobGoogleCalendarItem,
 } from '@/lib/jobs/google-calendar'
 import { canViewTechJobsSection } from '@/lib/auth/access'
@@ -50,6 +51,13 @@ export type JobCalendarActivationActionState = {
   token?: string
   feedPath?: string
   insertedCount?: number
+}
+
+export type JobGoogleCalendarDisconnectActionState = {
+  success: boolean
+  error: string | null
+  disconnectedAt?: string
+  deletedCalendar?: boolean
 }
 
 export type UpdateJobInfoActionState = {
@@ -578,6 +586,50 @@ export async function activateJobCalendarModalAction(
         error instanceof Error
           ? error.message
           : 'Nepodařilo se aktivovat kalendář.',
+    }
+  }
+}
+
+export async function disconnectJobGoogleCalendarModalAction(
+  _prevState: JobGoogleCalendarDisconnectActionState,
+  _formData: FormData
+): Promise<JobGoogleCalendarDisconnectActionState> {
+  void _prevState
+  void _formData
+
+  try {
+    const { user, error: accessError } = await requireTechJobsSectionAccess()
+
+    if (!user) {
+      return {
+        success: false,
+        error: accessError,
+      }
+    }
+
+    const result = await disconnectJobGoogleCalendar(user.id)
+    revalidatePath('/zakazky-techniku')
+
+    return {
+      success: true,
+      error: null,
+      disconnectedAt: result.disconnectedAt,
+      deletedCalendar: result.deletedCalendar,
+    }
+  } catch (error) {
+    await reportActionError({
+      error,
+      action: 'disconnectJobGoogleCalendarModalAction',
+      section: 'jobs',
+      errorType: 'JobGoogleCalendarDisconnectError',
+    })
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Nepodařilo se odpojit Google kalendář.',
     }
   }
 }

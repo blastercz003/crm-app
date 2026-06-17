@@ -525,6 +525,26 @@ async function deleteGoogleEvent({
   }
 }
 
+async function deleteGoogleCalendar(calendarId: string, accessToken: string) {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  )
+
+  if (response.status === 404) {
+    return
+  }
+
+  if (!response.ok) {
+    throw new Error(await readGoogleError(response))
+  }
+}
+
 async function syncJobGoogleCalendarItemWithContext(params: {
   context: JobGoogleCalendarContext
   jobId: string
@@ -866,5 +886,65 @@ export async function completeJobGoogleCalendarOAuth(params: {
   return {
     insertedCount: backfillResult.insertedCount,
     calendarId,
+  }
+}
+
+export async function disconnectJobGoogleCalendar(userId: string) {
+  const supabase = getServiceClient()
+
+  const { data: integration, error } = await supabase
+    .from('job_google_calendar_integrations')
+    .select(
+      'user_id, google_sub, google_email, refresh_token, calendar_id, calendar_name, enabled, disabled_at, connected_at, created_at, updated_at'
+    )
+    .eq('user_id', userId)
+    .maybeSingle<JobGoogleCalendarIntegrationRow>()
+
+  if (error) {
+    throw new Error(
+      `Nepodařilo se načíst Google kalendář pro odpojení: ${error.message}`
+    )
+  }
+
+  if (!integration) {
+    return { disconnected: false, deletedCalendar: false }
+  }
+
+  let deletedCalendar = false
+
+  if (integration.refresh_token && integration.calendar_id) {
+    const accessToken = await refreshGoogleAccessToken(integration.refresh_token)
+    await deleteGoogleCalendar(integration.calendar_id, accessToken)
+    deletedCalendar = true
+  }
+
+  const now = new Date().toISOString()
+
+  const { error: itemsError } = await supabase
+    .from('job_google_calendar_items')
+    .delete()
+    .eq('user_id', userId)
+
+  if (itemsError) {
+    throw new Error(
+      `Nepodařilo se odstranit položky Google kalendáře: ${itemsError.message}`
+    )
+  }
+
+  const { error: deleteError } = await supabase
+    .from('job_google_calendar_integrations')
+    .delete()
+    .eq('user_id', userId)
+
+  if (deleteError) {
+    throw new Error(
+      `Nepodařilo se odstranit Google kalendář zakázek: ${deleteError.message}`
+    )
+  }
+
+  return {
+    disconnected: true,
+    deletedCalendar,
+    disconnectedAt: now,
   }
 }
