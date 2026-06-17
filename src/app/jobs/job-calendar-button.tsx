@@ -20,18 +20,19 @@ function buildExternalFeedUrls(feedPath: string | undefined, origin: string | nu
     return {
       httpsUrl: null,
       webcalUrl: null,
+      publicIcsUrl: null,
       googleUrl: null,
     }
   }
 
   const httpsUrl = new URL(feedPath, origin).toString()
+  const publicIcsUrl = new URL(`${feedPath}/feed.ics`, origin).toString()
 
   return {
     httpsUrl,
     webcalUrl: `webcal://${new URL(httpsUrl).host}${new URL(httpsUrl).pathname}`,
-    googleUrl: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(
-      httpsUrl
-    )}`,
+    publicIcsUrl,
+    googleUrl: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(publicIcsUrl)}`,
   }
 }
 
