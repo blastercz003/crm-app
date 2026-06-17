@@ -40,7 +40,10 @@ function CalendarLinkCard({
   title,
   description,
   href,
+  copyValue,
+  copyHint,
   hrefLabel,
+  copyButtonLabel,
   accentClassName,
   target,
   rel,
@@ -49,7 +52,10 @@ function CalendarLinkCard({
   title: string
   description: string
   href: string | null
+  copyValue?: string | null
+  copyHint?: string
   hrefLabel: string
+  copyButtonLabel?: string
   accentClassName: string
   target?: string
   rel?: string
@@ -102,6 +108,30 @@ function CalendarLinkCard({
         >
           {hrefLabel}
         </a>
+      ) : copyValue ? (
+        <div className="mt-4 space-y-3">
+          <div className="meetings-calendar-modal__copy-value rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-3 py-3 text-sm text-zinc-700 break-all">
+            {copyValue}
+          </div>
+
+          {copyHint ? (
+            <p className="text-sm leading-6 text-zinc-500">{copyHint}</p>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={async () => {
+              if (typeof navigator === 'undefined' || !navigator.clipboard) {
+                return
+              }
+
+              await navigator.clipboard.writeText(copyValue)
+            }}
+            className="meetings-calendar-modal__copy-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
+          >
+            {copyButtonLabel ?? 'Zkopírovat URL'}
+          </button>
+        </div>
       ) : (
         <div className="meetings-calendar-modal__link-disabled mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/70 px-4 text-sm font-medium uppercase text-zinc-400">
           Nejprve aktivuj kalendář
@@ -327,12 +357,13 @@ export function JobCalendarButton({
               />
               <CalendarLinkCard
                 title="Google Calendar"
-                description="Na Androidu nebo v Google Calendar se otevře přihlášení k odběru z odkazu."
-                href={feedUrls.googleUrl}
+                description="Zkopíruj URL a vlož ji v Google Kalendáři přes Přidat kalendář > Z URL."
+                href={null}
+                copyValue={feedUrls.googleIcsUrl}
+                copyHint="V Google Kalendáři zvol Přidat kalendář, pak Z URL a vlož tento odkaz."
                 hrefLabel="PŘIDAT DO GOOGLE CALENDAR"
+                copyButtonLabel="ZKOPÍROVAT URL"
                 accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
-                target="_blank"
-                rel="noreferrer noopener"
                 variant="google"
               />
             </div>
