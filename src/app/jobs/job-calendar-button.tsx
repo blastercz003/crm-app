@@ -44,6 +44,9 @@ function CalendarLinkCard({
   hrefLabel,
   statusLabel,
   helperText,
+  secondaryActionLabel,
+  secondaryActionDescription,
+  secondaryActionFormAction,
   copyButtonLabel,
   accentClassName,
   target,
@@ -59,6 +62,9 @@ function CalendarLinkCard({
   hrefLabel: string
   statusLabel?: string | null
   helperText?: string | null
+  secondaryActionLabel?: string | null
+  secondaryActionDescription?: string | null
+  secondaryActionFormAction?: ((formData: FormData) => void | Promise<void>) | null
   copyButtonLabel?: string
   accentClassName: string
   target?: string
@@ -159,6 +165,24 @@ function CalendarLinkCard({
           {helperText ?? 'Nejprve aktivuj kalendář'}
         </div>
       )}
+
+      {secondaryActionLabel && secondaryActionFormAction ? (
+        <div className="mt-4 space-y-2">
+          {secondaryActionDescription ? (
+            <p className="text-sm leading-6 text-zinc-500">
+              {secondaryActionDescription}
+            </p>
+          ) : null}
+          <form action={secondaryActionFormAction}>
+            <button
+              type="submit"
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-rose-200 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(254,226,226,0.92)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_22px_rgba(153,27,27,0.1)] transition duration-200 hover:-translate-y-[1px] hover:bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(254,226,226,0.96)_100%)]"
+            >
+              {secondaryActionLabel}
+            </button>
+          </form>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -428,32 +452,24 @@ export function JobCalendarButton({
                     ? null
                     : 'Google OAuth není v prostředí nastavený. Doplň GOOGLE_CLIENT_ID a GOOGLE_CLIENT_SECRET.'
                 }
+                secondaryActionLabel={
+                  initialGoogleConfigured && isGoogleConnected
+                    ? 'ODPOJIT GOOGLE KALENDÁŘ'
+                    : null
+                }
+                secondaryActionDescription={
+                  initialGoogleConfigured && isGoogleConnected
+                    ? 'Tím se odpojí a smaže napojení na Google kalendář.'
+                    : null
+                }
+                secondaryActionFormAction={
+                  initialGoogleConfigured && isGoogleConnected
+                    ? disconnectFormAction
+                    : null
+                }
                 accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
                 variant="google"
               />
-
-              {disconnectState.success ? (
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                  Google kalendář byl odpojen a synchronizace byla zastavena.
-                </div>
-              ) : null}
-
-              {disconnectState.error ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                  {disconnectState.error}
-                </div>
-              ) : null}
-
-              {initialGoogleConfigured && isGoogleConnected ? (
-                <form action={disconnectFormAction}>
-                  <button
-                    type="submit"
-                    className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-rose-200 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(254,226,226,0.92)_100%)] px-4 text-sm font-medium uppercase tracking-[0.05em] text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_22px_rgba(153,27,27,0.1)] transition duration-200 hover:-translate-y-[1px] hover:bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(254,226,226,0.96)_100%)]"
-                  >
-                    ODPOJIT GOOGLE KALENDÁŘ
-                  </button>
-                </form>
-              ) : null}
             </div>
 
             <div className="meetings-calendar-modal__steps rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
