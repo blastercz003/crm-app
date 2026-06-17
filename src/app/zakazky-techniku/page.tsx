@@ -727,6 +727,9 @@ export default async function ZakazkyTechnikuPage({
                       initiallyActivated={isJobCalendarActivated}
                       initialFeedPath={initialJobCalendarFeedPath}
                       initialGoogleConnected={isJobGoogleCalendarConnected}
+                      initialGoogleConfigured={Boolean(
+                        process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                      )}
                     />
                   </div>
                 </div>
@@ -944,12 +947,15 @@ export default async function ZakazkyTechnikuPage({
 
                     <PrintJobsButton className="jobs-page__print-button" />
                     <div className="ml-auto flex min-w-0 justify-end">
-                      <JobCalendarButton
-                        initiallyActivated={isJobCalendarActivated}
-                        initialFeedPath={initialJobCalendarFeedPath}
-                        initialGoogleConnected={isJobGoogleCalendarConnected}
-                      />
-                    </div>
+                    <JobCalendarButton
+                      initiallyActivated={isJobCalendarActivated}
+                      initialFeedPath={initialJobCalendarFeedPath}
+                      initialGoogleConnected={isJobGoogleCalendarConnected}
+                      initialGoogleConfigured={Boolean(
+                        process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                      )}
+                    />
+                  </div>
                   <Link
                     href={todayHref}
                     data-active={isTodayActive}

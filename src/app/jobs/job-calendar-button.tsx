@@ -14,6 +14,7 @@ type JobCalendarButtonProps = {
   initiallyActivated?: boolean
   initialFeedPath?: string | null
   initialGoogleConnected?: boolean
+  initialGoogleConfigured?: boolean
 }
 
 function buildExternalFeedUrls(feedPath: string | undefined, origin: string | null) {
@@ -40,10 +41,12 @@ function CalendarLinkCard({
   copyHint,
   hrefLabel,
   statusLabel,
+  helperText,
   copyButtonLabel,
   accentClassName,
   target,
   rel,
+  onActivate,
   variant,
 }: {
   title: string
@@ -53,10 +56,12 @@ function CalendarLinkCard({
   copyHint?: string
   hrefLabel: string
   statusLabel?: string | null
+  helperText?: string | null
   copyButtonLabel?: string
   accentClassName: string
   target?: string
   rel?: string
+  onActivate?: () => void
   variant: 'apple' | 'google'
 }) {
   const buttonVariantClassName =
@@ -103,11 +108,22 @@ function CalendarLinkCard({
         </div>
       ) : null}
 
-      {href ? (
+      {helperText ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {helperText}
+        </div>
+      ) : null}
+
+      {href && onActivate ? (
         <a
           href={href}
           target={target}
           rel={rel}
+          onClick={(event) => {
+            if (!onActivate) return
+            event.preventDefault()
+            onActivate()
+          }}
           className={`meetings-calendar-modal__link-button ${buttonVariantClassName} mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]`}
         >
           {hrefLabel}
@@ -138,7 +154,7 @@ function CalendarLinkCard({
         </div>
       ) : (
         <div className="meetings-calendar-modal__link-disabled mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/70 px-4 text-sm font-medium uppercase text-zinc-400">
-          Nejprve aktivuj kalendář
+          {helperText ?? 'Nejprve aktivuj kalendář'}
         </div>
       )}
     </div>
@@ -236,6 +252,7 @@ export function JobCalendarButton({
   initiallyActivated = false,
   initialFeedPath = null,
   initialGoogleConnected = false,
+  initialGoogleConfigured = true,
 }: JobCalendarButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const initialJobCalendarActivationState: JobCalendarActivationActionState = {
@@ -253,6 +270,8 @@ export function JobCalendarButton({
 
   const feedUrls = buildExternalFeedUrls(state.feedPath, origin)
   const googleConnectHref = '/api/job-google-calendar/connect'
+  const googleConnectUrl =
+    origin && googleConnectHref ? new URL(googleConnectHref, origin).toString() : googleConnectHref
 
   const resolvedClassName =
     className ??
@@ -344,6 +363,7 @@ export function JobCalendarButton({
                   {state.error}
                 </div>
               ) : null}
+
             </div>
 
             <form action={formAction} className="flex flex-col gap-3">
@@ -364,16 +384,31 @@ export function JobCalendarButton({
               <CalendarLinkCard
                 title="Google Calendar"
                 description="Připojíš svůj Google účet a kalendář se vytvoří přímo v Google Kalendáři."
-                href={googleConnectHref}
+                href={googleConnectUrl}
+                onActivate={
+                  initialGoogleConfigured
+                    ? () => {
+                        if (typeof window === 'undefined') return
+                        window.location.assign(googleConnectUrl)
+                      }
+                    : undefined
+                }
                 hrefLabel={
-                  initialGoogleConnected
-                    ? 'ZNOVU PROVÉST AKTIVACI'
-                    : 'PŘIPOJIT GOOGLE ÚČET'
+                  initialGoogleConfigured
+                    ? initialGoogleConnected
+                      ? 'ZNOVU PROVÉST AKTIVACI'
+                      : 'PŘIPOJIT GOOGLE ÚČET'
+                    : 'GOOGLE NENÍ NASTAVEN'
                 }
                 statusLabel={
-                  initialGoogleConnected
+                  initialGoogleConfigured && initialGoogleConnected
                     ? 'Google kalendář je připojen'
                     : null
+                }
+                helperText={
+                  initialGoogleConfigured
+                    ? null
+                    : 'Google OAuth není v prostředí nastavený. Doplň GOOGLE_CLIENT_ID a GOOGLE_CLIENT_SECRET.'
                 }
                 accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
                 variant="google"

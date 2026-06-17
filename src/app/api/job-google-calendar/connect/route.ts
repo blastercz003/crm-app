@@ -7,33 +7,41 @@ const STATE_COOKIE_NAME = 'job_google_calendar_oauth_state'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    const state = crypto.randomUUID()
+    const redirectUri = new URL('/api/job-google-calendar/callback', request.url).toString()
+    const authUrl = await createJobGoogleCalendarOAuthUrl({
+      redirectUri,
+      state,
+    })
+
+    const response = NextResponse.redirect(authUrl)
+    response.cookies.set({
+      name: STATE_COOKIE_NAME,
+      value: state,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: request.url.startsWith('https://'),
+      path: '/',
+      maxAge: 10 * 60,
+    })
+
+    return response
+  } catch (error) {
+    const redirectUrl = new URL('/zakazky-techniku', request.url)
+    redirectUrl.searchParams.set(
+      'google_calendar_error',
+      error instanceof Error ? error.message : 'Nepodařilo se připravit Google přihlášení.'
+    )
+    return NextResponse.redirect(redirectUrl)
   }
-
-  const state = crypto.randomUUID()
-  const redirectUri = new URL('/api/job-google-calendar/callback', request.url).toString()
-  const authUrl = await createJobGoogleCalendarOAuthUrl({
-    redirectUri,
-    state,
-  })
-
-  const response = NextResponse.redirect(authUrl)
-  response.cookies.set({
-    name: STATE_COOKIE_NAME,
-    value: state,
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: request.url.startsWith('https://'),
-    path: '/',
-    maxAge: 10 * 60,
-  })
-
-  return response
 }
-
