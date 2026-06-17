@@ -52,6 +52,7 @@ export type JobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  marny_vyjezd?: boolean | null
   info_alert_enabled?: boolean | null
   has_info_attachments?: boolean
   has_info_content?: boolean
@@ -89,6 +90,7 @@ type JobOfferOption = {
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
   role: string | null
+  skryt_marny_vyjezd: boolean | null
 }
 
 type JobsSearchParams = {
@@ -331,7 +333,7 @@ export default async function JobsPage({
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('can_view_jobs, role')
+    .select('can_view_jobs, role, skryt_marny_vyjezd')
     .eq('id', user.id)
     .single()
 
@@ -341,6 +343,7 @@ export default async function JobsPage({
 
   const typedProfile = profile as ProfilePermissionRow | null
   const isAdmin = typedProfile?.role === 'admin'
+  const hideMarnyVyjezdy = Boolean(typedProfile?.skryt_marny_vyjezd)
 
   if (!isAdmin && !typedProfile?.can_view_jobs) {
     redirect('/dashboard')
@@ -468,7 +471,10 @@ export default async function JobsPage({
   }
 
   const typedJobs = (jobs ?? []) as JobRow[]
-  const jobIds = typedJobs.map((job) => job.id)
+  const visibleJobs = hideMarnyVyjezdy
+    ? typedJobs.filter((job) => !Boolean(job.marny_vyjezd))
+    : typedJobs
+  const jobIds = visibleJobs.map((job) => job.id)
   const { data: infoAttachmentRows, error: infoAttachmentsError } =
     jobIds.length > 0
       ? await supabase
@@ -483,7 +489,7 @@ export default async function JobsPage({
 
   const linkedOfferIds = Array.from(
     new Set(
-      typedJobs
+      visibleJobs
         .map((job) => String(job.offer_id ?? '').trim())
         .filter((offerId) => Boolean(offerId))
     )
@@ -501,7 +507,7 @@ export default async function JobsPage({
     throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
   }
 
-  const jobsWithInfoState = typedJobs.map((job) => {
+  const jobsWithInfoState = visibleJobs.map((job) => {
     const hasAttachments = (infoAttachmentRows ?? []).some(
       (row) => String((row as { job_id?: string | null }).job_id ?? '') === job.id
     )
@@ -1095,7 +1101,7 @@ export default async function JobsPage({
             </div>
           </section>
 
-          {typedJobs.length === 0 ? (
+          {visibleJobs.length === 0 ? (
             <section className="jobs-page__empty-state rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
               <div className="mx-auto max-w-xl space-y-3">
                 <h2 className="text-lg font-semibold text-gray-900">

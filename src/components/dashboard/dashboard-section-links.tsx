@@ -80,6 +80,7 @@ export function DashboardSectionLinks({
   canViewJobsPortal,
   canViewOffers,
   canViewConnectionPoints,
+  showClients = true,
   isAdmin,
   offersOrderedCount,
 }: {
@@ -87,12 +88,19 @@ export function DashboardSectionLinks({
   canViewJobsPortal: boolean
   canViewOffers: boolean
   canViewConnectionPoints: boolean
+  showClients?: boolean
   isAdmin: boolean
   offersOrderedCount: number
 }) {
   const items = useMemo<SectionLink[]>(
     () => [
-      { key: 'clients', href: '/clients', label: 'Klienti', visible: true, icon: <IconClients /> },
+      {
+        key: 'clients',
+        href: '/clients',
+        label: 'Klienti',
+        visible: showClients,
+        icon: <IconClients />,
+      },
       { key: 'jobs', href: '/jobs', label: 'Zakázky', visible: canViewJobs, icon: <IconJobs /> },
       { key: 'jobs-portal', href: '/jobs-portal', label: 'Portál zakázek', visible: canViewJobsPortal, icon: <IconPortal /> },
       {
@@ -113,7 +121,15 @@ export function DashboardSectionLinks({
       { key: 'finance', href: '/faktury', label: 'Finance', visible: isAdmin, icon: <IconFinance /> },
       { key: 'files', href: '/soubory', label: 'Soubory', visible: isAdmin, icon: <IconFiles /> },
     ].filter((item) => item.visible),
-    [canViewJobs, canViewJobsPortal, canViewOffers, canViewConnectionPoints, isAdmin, offersOrderedCount]
+    [
+      canViewJobs,
+      canViewJobsPortal,
+      canViewOffers,
+      canViewConnectionPoints,
+      showClients,
+      isAdmin,
+      offersOrderedCount,
+    ]
   )
 
   return (

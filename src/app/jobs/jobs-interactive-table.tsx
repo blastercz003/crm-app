@@ -448,6 +448,7 @@ function MobileCard({
   const showProtocolPdfButton =
     showHandoverProtocolPdfColumn && Boolean(job.handover_protocol_is_sent)
   const showInfoButton = showReadOnlyInfo && Boolean(job.has_info_content)
+  const startWeekdayLabel = formatJobStartWeekday(job.start_at)
   const showCollapsedReadOnlyActions =
     !allowEditing &&
     collapseReadOnlyMobileActions &&
@@ -456,17 +457,34 @@ function MobileCard({
     <div className="jobs-page__mobile-card overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 w-0 flex-1">
-          <EditJobButton
-            job={job}
-            clientSuggestions={clientSuggestions}
-            clientContacts={clientContacts}
-            offerSuggestions={offerSuggestions}
-            jobOfferSuggestions={jobOfferSuggestions}
-            className="jobs-page__job-edit-button text-sm font-semibold leading-tight text-gray-900 hover:underline"
-            isAdmin={isAdmin}
-          >
-            {job.job_number}
-          </EditJobButton>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <EditJobButton
+              job={job}
+              clientSuggestions={clientSuggestions}
+              clientContacts={clientContacts}
+              offerSuggestions={offerSuggestions}
+              jobOfferSuggestions={jobOfferSuggestions}
+              className="jobs-page__job-edit-button text-sm font-semibold leading-tight text-gray-900 hover:underline"
+              isAdmin={isAdmin}
+            >
+              {job.job_number}
+            </EditJobButton>
+            <span
+              aria-hidden="true"
+              className="text-sm font-semibold leading-none text-gray-900"
+            >
+              •
+            </span>
+            {startWeekdayLabel ? (
+              <span
+                className="jobs-page__job-day-badge inline-flex shrink-0 items-center justify-center rounded-sm border border-current bg-transparent px-2 py-[2px] text-[10px] font-medium leading-none uppercase tracking-[0.01em] whitespace-nowrap text-gray-900"
+                aria-label={`Začíná v den ${startWeekdayLabel}`}
+                title={`Začíná v den ${startWeekdayLabel}`}
+              >
+                {startWeekdayLabel}
+              </span>
+            ) : null}
+          </div>
           <p className="mt-0.5 block truncate text-[12px] font-medium leading-5 text-gray-900">
             {job.company_name}
           </p>
@@ -2069,6 +2087,34 @@ function formatDateTimeMobile(value: string | null) {
   if (!day || !month || !hour || !minute) return '—'
 
   return `${day}.${month}. ${hour}:${minute}`
+}
+
+function formatJobStartWeekday(value: string | null) {
+  if (!value) return null
+
+  const weekday = new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: PRAGUE_TIME_ZONE,
+    weekday: 'long',
+  }).format(new Date(value))
+
+  switch (weekday) {
+    case 'pondělí':
+      return 'PONDĚLÍ'
+    case 'úterý':
+      return 'ÚTERÝ'
+    case 'středa':
+      return 'STŘEDA'
+    case 'čtvrtek':
+      return 'ČTVRTEK'
+    case 'pátek':
+      return 'PÁTEK'
+    case 'sobota':
+      return 'SOBOTA'
+    case 'neděle':
+      return 'NEDĚLE'
+    default:
+      return null
+  }
 }
 
 function toDateTimeLocalValue(value: string | null | undefined) {

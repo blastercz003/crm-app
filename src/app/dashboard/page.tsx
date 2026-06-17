@@ -47,6 +47,7 @@ import {
 import {
   type ThemePreferences,
 } from '@/lib/theme/theme-preference'
+import { getServiceRoleClient } from '@/lib/supabase/service'
 import {
   getHandoverProtocolUploadJobOptions,
   type HandoverProtocolUploadJobOption as DashboardHandoverProtocolUploadJobOption,
@@ -59,46 +60,17 @@ export const metadata: Metadata = {
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
-const DASHBOARD_ACTION_LINK_CLASS =
-  'inline-flex min-h-[46px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-zinc-900 bg-zinc-900 px-3 py-3 text-sm font-medium tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800'
-const DASHBOARD_ACTION_LINK_WIDTH = 172
-const SHOW_DASHBOARD_MINI_CALENDAR = false
-
-function DashboardActionLink({
-  href,
-  children,
-  className,
-}: {
-  href: string
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <Link
-      href={href}
-      className={[DASHBOARD_ACTION_LINK_CLASS, className]
-        .filter(Boolean)
-        .join(' ')}
-      style={{
-        width: DASHBOARD_ACTION_LINK_WIDTH,
-        minWidth: DASHBOARD_ACTION_LINK_WIDTH,
-        maxWidth: DASHBOARD_ACTION_LINK_WIDTH,
-      }}
-    >
-      {children}
-    </Link>
-  )
-}
-
 function TechnicianSectionLinks({
   canViewTechJobs,
   canViewConnectionPoints,
   canViewHandoverProtocolUpload,
+  includeJobsLink,
   handoverProtocolUploadJobs,
 }: {
   canViewTechJobs: boolean
   canViewConnectionPoints: boolean
   canViewHandoverProtocolUpload: boolean
+  includeJobsLink?: boolean
   handoverProtocolUploadJobs: DashboardHandoverProtocolUploadJobOption[]
 }) {
   const items = [
@@ -107,6 +79,20 @@ function TechnicianSectionLinks({
           key: 'tech-jobs',
           href: '/zakazky-techniku',
           label: 'Moje zakázky',
+          icon: (
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="3" y="6" width="18" height="14" rx="2.4" />
+              <path d="M9 6V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V6" />
+              <path d="M3 11h18" />
+            </svg>
+          ),
+        }
+      : null,
+    includeJobsLink
+      ? {
+          key: 'jobs',
+          href: '/jobs',
+          label: 'Zakázky',
           icon: (
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
               <rect x="3" y="6" width="18" height="14" rx="2.4" />
@@ -176,6 +162,9 @@ type DashboardProfile = {
   can_view_connection_points: boolean | null
   can_view_handover_protocol_upload: boolean | null
   can_view_all_technician_handover_uploads: boolean | null
+  david_dashboard_ikony: boolean | null
+  dashboard_schovat_ukoly_a_schuzky: boolean | null
+  dashboard_calendar: boolean | null
 }
 
 type DashboardThemePreference = {
@@ -280,7 +269,17 @@ type CalendarDay = {
   dayNumber: number
   isCurrentMonth: boolean
   isToday: boolean
-  meetings: DashboardMeeting[]
+  count: number
+  jobs: DashboardJobCalendarRow[]
+}
+
+type DashboardJobCalendarRow = {
+  id: string
+  job_number: string
+  start_at: string | null
+  end_at: string | null
+  site_address: string | null
+  marny_vyjezd: boolean | null
 }
 
 type PragueDateParts = {
@@ -299,6 +298,56 @@ function parseDate(value: string | null) {
   }
 
   return date
+}
+
+function formatPragueDateTime(value: string | null) {
+  if (!value) return 'Bez začátku'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Bez začátku'
+  }
+
+  return new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: PRAGUE_TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function formatPragueDateTimeCompact(value: string | null) {
+  if (!value) return 'Bez termínu'
+
+  const date = parseDate(value)
+
+  if (!date) return 'Bez termínu'
+
+  const dateParts = new Intl.DateTimeFormat('cs-CZ', {
+    day: 'numeric',
+    month: 'numeric',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).formatToParts(date)
+  const day = dateParts.find((part) => part.type === 'day')?.value ?? ''
+  const month = dateParts.find((part) => part.type === 'month')?.value ?? ''
+
+  const time = new Intl.DateTimeFormat('cs-CZ', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: PRAGUE_TIME_ZONE,
+  }).format(date)
+
+  return `${day}.${month}. ${time}`
+}
+
+function getJobCity(address: string | null) {
+  const value = String(address ?? '').trim()
+
+  if (!value) return 'Bez adresy'
+
+  return value.split(',')[0]?.trim() || 'Bez adresy'
 }
 
 function getPragueOffsetMinutes(dateUtc: Date) {
@@ -443,6 +492,24 @@ function getTodayDateKeyInPrague() {
   }).format(new Date())
 }
 
+function getSingleSearchParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? ''
+  }
+
+  return value ?? ''
+}
+
+function normalizeMonthOffset(value: string | string[] | undefined) {
+  const parsed = Number(getSingleSearchParam(value))
+
+  if (!Number.isFinite(parsed)) {
+    return 0
+  }
+
+  return Math.max(-24, Math.min(24, Math.trunc(parsed)))
+}
+
 function getTaskPriorityOrder(task: DashboardTask, todayDateKey: string) {
   if (task.status === 'done') return 3
   if (task.due_date && task.due_date < todayDateKey) return 0
@@ -563,18 +630,27 @@ function getTodayRange() {
   }
 }
 
-function getMonthRange() {
+function addMonthsToCarrier(value: Date, months: number) {
+  const next = new Date(value)
+  next.setUTCMonth(next.getUTCMonth() + months)
+  return next
+}
+
+function getMonthRange(monthOffset = 0) {
   const now = new Date()
   const { year, month } = getPragueDateParts(now)
+  const baseCarrier = createDateCarrier(year, month, 1)
+  const targetCarrier = addMonthsToCarrier(baseCarrier, monthOffset)
+  const targetYear = targetCarrier.getUTCFullYear()
+  const targetMonth = targetCarrier.getUTCMonth() + 1
 
-  const nextMonthYear = month === 12 ? year + 1 : year
-  const nextMonth = month === 12 ? 1 : month + 1
+  const nextMonthCarrier = addMonthsToCarrier(targetCarrier, 1)
 
   return {
-    start: convertPragueLocalPartsToUtcIsoString(year, month, 1, 0, 0, 0),
+    start: convertPragueLocalPartsToUtcIsoString(targetYear, targetMonth, 1, 0, 0, 0),
     end: convertPragueLocalPartsToUtcIsoString(
-      nextMonthYear,
-      nextMonth,
+      nextMonthCarrier.getUTCFullYear(),
+      nextMonthCarrier.getUTCMonth() + 1,
       1,
       0,
       0,
@@ -583,7 +659,7 @@ function getMonthRange() {
   }
 }
 
-function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
+function getCalendarDays(jobs: DashboardJobCalendarRow[], monthOffset = 0): CalendarDay[] {
   const now = new Date()
   const todayParts = getPragueDateParts(now)
   const todayCarrier = createDateCarrier(
@@ -592,10 +668,13 @@ function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
     todayParts.day
   )
 
-  const monthStartCarrier = createDateCarrier(todayParts.year, todayParts.month, 1)
+  const baseCarrier = createDateCarrier(todayParts.year, todayParts.month, 1)
+  const monthStartCarrier = addMonthsToCarrier(baseCarrier, monthOffset)
   const nextMonthCarrier = createDateCarrier(
-    todayParts.month === 12 ? todayParts.year + 1 : todayParts.year,
-    todayParts.month === 12 ? 1 : todayParts.month + 1,
+    monthStartCarrier.getUTCMonth() === 11
+      ? monthStartCarrier.getUTCFullYear() + 1
+      : monthStartCarrier.getUTCFullYear(),
+    monthStartCarrier.getUTCMonth() === 11 ? 1 : monthStartCarrier.getUTCMonth() + 2,
     1
   )
   const monthEndCarrier = addDaysToCarrier(nextMonthCarrier, -1)
@@ -630,35 +709,22 @@ function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
 
   const calendarEnd = addDaysToCarrier(monthEndCarrier, 7 - endWeekday)
 
-  const meetingsByDay = new Map<string, DashboardMeeting[]>()
+  const jobsByDay = new Map<string, DashboardJobCalendarRow[]>()
 
-  for (const meeting of meetings) {
-    const meetingDate = parseDate(meeting.meeting_datetime)
-    if (!meetingDate) continue
+  for (const job of jobs) {
+    if (job.marny_vyjezd) continue
 
-    const meetingParts = getPragueDateParts(meetingDate)
+    const jobDate = parseDate(job.start_at)
+    if (!jobDate) continue
+
+    const jobParts = getPragueDateParts(jobDate)
     const key = toCarrierKey(
-      createDateCarrier(meetingParts.year, meetingParts.month, meetingParts.day)
+      createDateCarrier(jobParts.year, jobParts.month, jobParts.day)
     )
 
-    const existing = meetingsByDay.get(key) ?? []
-    existing.push(meeting)
-    meetingsByDay.set(key, existing)
-  }
-
-  for (const [key, dayMeetings] of meetingsByDay.entries()) {
-    meetingsByDay.set(
-      key,
-      [...dayMeetings].sort((a, b) => {
-        const aTime = a.meeting_datetime
-          ? new Date(a.meeting_datetime).getTime()
-          : 0
-        const bTime = b.meeting_datetime
-          ? new Date(b.meeting_datetime).getTime()
-          : 0
-        return aTime - bTime
-      })
-    )
+    const existing = jobsByDay.get(key) ?? []
+    existing.push(job)
+    jobsByDay.set(key, existing)
   }
 
   const days: CalendarDay[] = []
@@ -673,7 +739,8 @@ function getCalendarDays(meetings: DashboardMeeting[]): CalendarDay[] {
       dayNumber: cursor.getUTCDate(),
       isCurrentMonth: cursor.getUTCMonth() === monthStartCarrier.getUTCMonth(),
       isToday: isSameCarrierDay(cursor, todayCarrier),
-      meetings: meetingsByDay.get(key) ?? [],
+      count: jobsByDay.get(key)?.length ?? 0,
+      jobs: jobsByDay.get(key) ?? [],
     })
 
     cursor = addDaysToCarrier(cursor, 1)
@@ -916,34 +983,45 @@ function DashboardMeetingItem({ meeting }: { meeting: DashboardMeeting }) {
 }
 
 function DashboardMiniCalendar({
-  meetings,
+  jobs,
+  monthOffset,
 }: {
-  meetings: DashboardMeeting[]
+  jobs: DashboardJobCalendarRow[]
+  monthOffset: number
 }) {
   const now = new Date()
+  const monthDate = addMonthsToCarrier(
+    createDateCarrier(
+      getPragueDateParts(now).year,
+      getPragueDateParts(now).month,
+      1
+    ),
+    monthOffset
+  )
   const monthLabel = new Intl.DateTimeFormat('cs-CZ', {
     timeZone: PRAGUE_TIME_ZONE,
     month: 'long',
     year: 'numeric',
-  }).format(now)
+  }).format(monthDate)
 
-  const calendarDays = getCalendarDays(meetings)
+  const calendarDays = getCalendarDays(jobs, monthOffset)
   const weekdayLabels = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne']
+  const prevMonthOffset = monthOffset - 1
+  const nextMonthOffset = monthOffset + 1
+  const prevMonthHref = `/dashboard?calendar_month_offset=${prevMonthOffset}`
+  const nextMonthHref = `/dashboard?calendar_month_offset=${nextMonthOffset}`
 
   return (
     <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <DashboardSectionHeader
-            eyebrow="Kalendář"
-            title={monthLabel}
-          />
+          <div className="dashboard-section-header__eyebrow text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+            Kalendář
+          </div>
         </div>
 
-        <div className="shrink-0 self-start">
-          <DashboardActionLink href="/calendar">
-            OTEVŘÍT KALENDÁŘ
-          </DashboardActionLink>
+        <div className="shrink-0 self-start text-right text-2xl font-semibold tracking-tight text-zinc-950">
+          {monthLabel}
         </div>
       </div>
 
@@ -960,9 +1038,9 @@ function DashboardMiniCalendar({
 
       <div className="grid grid-cols-7 gap-2">
         {calendarDays.map((day) => {
-          const hasMeetings = day.meetings.length > 0
-          const visibleMeetings = day.meetings.slice(0, 3)
-          const hasMoreMeetings = day.meetings.length > 3
+          const hasJobs = day.count > 0
+          const visibleJobs = day.jobs.slice(0, 3)
+          const hasMoreJobs = day.jobs.length > 3
 
           return (
             <div key={day.isoKey} className="group relative">
@@ -974,7 +1052,7 @@ function DashboardMiniCalendar({
                     : day.isCurrentMonth
                       ? 'border-zinc-200 bg-white'
                       : 'border-zinc-100 bg-zinc-50/70 text-zinc-400',
-                  hasMeetings
+                  hasJobs
                     ? day.isToday
                       ? 'bg-[#2980B9] hover:opacity-95'
                       : 'border-zinc-300 bg-white hover:border-[#2980B9]/60'
@@ -999,41 +1077,35 @@ function DashboardMiniCalendar({
                 </div>
 
                 <div className="mt-auto flex h-5 items-center justify-center pt-1">
-                  {hasMeetings ? (
+                  {hasJobs ? (
                     <div className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/90 bg-[#2980B9] text-[10px] font-semibold leading-none text-white shadow-sm">
-                      {day.meetings.length}
+                      {day.count}
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              {hasMeetings ? (
+              {hasJobs ? (
                 <div className="pointer-events-none absolute left-1/2 top-[calc(100%+10px)] z-30 hidden w-[260px] -translate-x-1/2 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:block group-hover:opacity-100 xl:w-[280px]">
                   <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl">
                     <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                      Schůzky
+                      Zakázky
                     </div>
 
                     <div className="grid gap-2">
-                      {visibleMeetings.map((meeting) => (
+                      {visibleJobs.map((job) => (
                         <Link
-                          key={meeting.id}
-                          href={`/meetings/${meeting.id}`}
+                          key={job.id}
+                          href="/jobs"
                           className="block rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition duration-200 hover:border-zinc-300 hover:bg-white"
                         >
                           <div className="text-[11px] font-semibold text-[#2980B9]">
-                            {formatMeetingTime(meeting.meeting_datetime)}
-                          </div>
-                          <div className="mt-1 text-sm font-medium text-zinc-900">
-                            {meeting.company_name ?? 'Bez firmy'}
-                          </div>
-                          <div className="mt-0.5 text-xs text-zinc-500">
-                            {meeting.contact_person ?? 'Bez kontaktní osoby'}
+                            {job.job_number || 'Bez čísla zakázky'} · {formatPragueDateTimeCompact(job.start_at)} · {formatPragueDateTimeCompact(job.end_at)} · {getJobCity(job.site_address)}
                           </div>
                         </Link>
                       ))}
 
-                      {hasMoreMeetings ? (
+                      {hasMoreJobs ? (
                         <div className="px-1 pt-1 text-xs font-medium text-zinc-500">
                           a další
                         </div>
@@ -1047,23 +1119,46 @@ function DashboardMiniCalendar({
         })}
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3 text-xs text-zinc-500">
+      <div className="mt-5 flex items-center gap-3 text-xs text-zinc-500">
         <div className="inline-flex items-center gap-2">
           <span className="h-3 w-3 rounded-full bg-zinc-900" />
           Dnes
         </div>
         <div className="inline-flex items-center gap-2">
           <span className="h-3 w-3 rounded-full bg-[#2980B9]" />
-          Počet schůzek v daném dni
+          Počet zakázek
         </div>
+        <div className="ml-auto flex items-center gap-2">
+        <Link
+          href={prevMonthHref}
+          aria-label="Předchozí měsíc"
+          title="Předchozí měsíc"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black bg-black text-white shadow-sm transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-900 hover:border-zinc-900"
+        >
+          <span className="text-base font-semibold leading-none">↑</span>
+        </Link>
+        <Link
+          href={nextMonthHref}
+          aria-label="Další měsíc"
+          title="Další měsíc"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black bg-black text-white shadow-sm transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-900 hover:border-zinc-900"
+        >
+          <span className="text-base font-semibold leading-none">↓</span>
+        </Link>
+      </div>
       </div>
 
     </section>
   )
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const supabase = await createClient()
+  const resolvedSearchParams = searchParams ? await searchParams : {}
 
   const {
     data: { user },
@@ -1076,7 +1171,7 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads'
+      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
@@ -1099,18 +1194,38 @@ export default async function DashboardPage() {
 
   const { start, end } = getCurrentWeekRange()
   const { start: todayStart, end: todayEnd } = getTodayRange()
-  const { start: monthStart, end: monthEnd } = getMonthRange()
+  const dashboardCalendarMonthOffset = normalizeMonthOffset(
+    resolvedSearchParams.calendar_month_offset
+  )
+  const { start: monthStart, end: monthEnd } = getMonthRange(
+    dashboardCalendarMonthOffset
+  )
 
   const today = new Date()
   const nowIso = today.toISOString()
   const isAdmin = profile?.role === 'admin'
   const isTechnik = isTechnikRole(profile?.role ?? null)
+  const useDavidDashboardLayout = Boolean(profile?.david_dashboard_ikony)
+  const hideTasksAndMeetingsOnDashboard = Boolean(
+    profile?.dashboard_schovat_ukoly_a_schuzky
+  )
+  const showDashboardMiniCalendar = Boolean(profile?.dashboard_calendar)
   const canViewTechJobs = isTechnik || Boolean(profile?.can_view_tech_jobs)
   const canViewConnectionPoints =
     isTechnik || Boolean(profile?.can_view_connection_points)
   const canViewHandoverProtocolUpload =
     isTechnik ||
     canViewHandoverProtocolUploadSection(profile?.role ?? null, profile)
+  const showTechnicianSection =
+    canViewTechJobs ||
+    (isTechnik && canViewConnectionPoints) ||
+    canViewHandoverProtocolUpload
+  const showConnectionPointsInMainMenu =
+    Boolean(profile?.can_view_connection_points) && !showTechnicianSection
+  const showJobsInMainMenu = Boolean(profile?.can_view_jobs) && !useDavidDashboardLayout
+  const showClientsInMainMenu = !useDavidDashboardLayout
+  const showJobsInTechnicianSection =
+    useDavidDashboardLayout && Boolean(profile?.can_view_jobs)
   const initialThemePreferences: ThemePreferences = {
     themeMode: themePreference?.theme_mode ?? 'light',
     themeAutoOverrideMode: themePreference?.theme_auto_override_mode ?? null,
@@ -1178,6 +1293,19 @@ export default async function DashboardPage() {
     monthMeetingsQuery = monthMeetingsQuery.eq('assigned_user_id', user.id)
   }
 
+  const serviceSupabase = getServiceRoleClient()
+  if (!serviceSupabase) {
+    throw new Error('Chybí Supabase service role client pro dashboardový mini kalendář.')
+  }
+
+  const monthJobsQuery = serviceSupabase
+    .from('jobs')
+    .select('id, job_number, start_at, end_at, site_address, marny_vyjezd')
+    .not('start_at', 'is', null)
+    .gte('start_at', monthStart)
+    .lt('start_at', monthEnd)
+    .order('start_at', { ascending: true })
+
   const tasksSelect = `
     id,
     title,
@@ -1226,6 +1354,7 @@ export default async function DashboardPage() {
     dashboardMeetingsCountResponse,
     dashboardWeeklyMeetingsCountResponse,
     monthMeetingsResponse,
+    monthJobsResponse,
     dashboardOffersResponse,
   ] = await Promise.all([
     dashboardTasksQuery(),
@@ -1237,6 +1366,8 @@ export default async function DashboardPage() {
     dashboardWeeklyMeetingsCountQuery,
 
     monthMeetingsQuery,
+
+    monthJobsQuery,
 
     isAdmin
       ? supabase
@@ -1274,6 +1405,12 @@ export default async function DashboardPage() {
   if (monthMeetingsResponse.error) {
     throw new Error(
       `Nepodařilo se načíst měsíční kalendář schůzek: ${monthMeetingsResponse.error.message}`
+    )
+  }
+
+  if (monthJobsResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst měsíční kalendář zakázek: ${monthJobsResponse.error.message}`
     )
   }
 
@@ -1333,6 +1470,7 @@ export default async function DashboardPage() {
       meeting.meeting_datetime! < end
   )
   const monthMeetings = (monthMeetingsResponse.data ?? []) as DashboardMeeting[]
+  const monthJobs = (monthJobsResponse.data ?? []) as DashboardJobCalendarRow[]
   const dashboardOffers = (dashboardOffersResponse.data ?? []) as DashboardOfferRow[]
 
   await ensureMeetingResultNotifications({ supabase, userId: user.id })
@@ -1543,11 +1681,12 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        {canViewTechJobs || (isTechnik && canViewConnectionPoints) || canViewHandoverProtocolUpload ? (
+        {showTechnicianSection ? (
           <TechnicianSectionLinks
             canViewTechJobs={canViewTechJobs}
             canViewConnectionPoints={canViewConnectionPoints}
             canViewHandoverProtocolUpload={canViewHandoverProtocolUpload}
+            includeJobsLink={showJobsInTechnicianSection}
             handoverProtocolUploadJobs={handoverProtocolUploadJobs}
           />
         ) : null}
@@ -1555,128 +1694,137 @@ export default async function DashboardPage() {
         {isTechnik ? null : (
           <>
             <DashboardSectionLinks
-              canViewJobs={Boolean(profile?.can_view_jobs)}
+              canViewJobs={showJobsInMainMenu}
               canViewJobsPortal={Boolean(!isAdmin && profile?.can_view_jobs_portal)}
               canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
-              canViewConnectionPoints={Boolean(!isTechnik && profile?.can_view_connection_points)}
+              canViewConnectionPoints={showConnectionPointsInMainMenu}
+              showClients={showClientsInMainMenu}
               isAdmin={isAdmin}
               offersOrderedCount={orderedOffersCount}
             />
 
             <DashboardGlobalSearchBody>
               <div className="grid gap-6 xl:grid-cols-3">
-              <div className="contents xl:block xl:space-y-6">
-                {isAdmin || profile?.can_view_offers ? (
-                  <div className="order-1 xl:order-none">
-                  <DashboardMyOffersModule
-                      className="dashboard-card dashboard-card--strong dashboard-offers-module"
-                      offers={dashboardOfferPreviews}
-                      currentUserId={user.id}
-                      isAdmin={isAdmin}
-                    />
-                  </div>
+                <div className="contents xl:block xl:space-y-6">
+                  {isAdmin || profile?.can_view_offers ? (
+                    <div className="order-1 xl:order-none">
+                      <DashboardMyOffersModule
+                        className="dashboard-card dashboard-card--strong dashboard-offers-module"
+                        offers={dashboardOfferPreviews}
+                        currentUserId={user.id}
+                        isAdmin={isAdmin}
+                      />
+                    </div>
+                  ) : null}
+
+                  {showDashboardMiniCalendar ? (
+                    <div className="order-3 xl:order-none">
+                      <DashboardMiniCalendar
+                        jobs={monthJobs}
+                        monthOffset={dashboardCalendarMonthOffset}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                {!hideTasksAndMeetingsOnDashboard ? (
+                  <>
+                    <div className="contents xl:block xl:space-y-6">
+                      <section className="dashboard-card order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                          <DashboardSectionHeader
+                            eyebrow="Úkoly"
+                            title="Moje úkoly"
+                            href="/tasks"
+                          />
+                        </div>
+
+                        <DashboardMyTasksModule
+                          allContent={
+                            visibleAllTasks.length === 0 ? (
+                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                                Nemáš žádné úkoly.
+                              </div>
+                            ) : (
+                              <div className="grid gap-3">
+                                {visibleAllTasks.map((task) => (
+                                  <DashboardTaskItem key={task.id} task={task} />
+                                ))}
+                              </div>
+                            )
+                          }
+                          activeContent={
+                            visibleActiveTasks.length === 0 ? (
+                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                                Nemáš žádné aktivní úkoly.
+                              </div>
+                            ) : (
+                              <div className="grid gap-3">
+                                {visibleActiveTasks.map((task) => (
+                                  <DashboardTaskItem key={task.id} task={task} />
+                                ))}
+                              </div>
+                            )
+                          }
+                          overdueContent={
+                            visibleOverdueTasks.length === 0 ? (
+                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                                Nemáš žádné úkoly po termínu.
+                              </div>
+                            ) : (
+                              <div className="grid gap-3">
+                                {visibleOverdueTasks.map((task) => (
+                                  <DashboardTaskItem key={task.id} task={task} />
+                                ))}
+                              </div>
+                            )
+                          }
+                        />
+                      </section>
+                    </div>
+
+                    <div className="contents xl:block xl:space-y-6">
+                      <section className="dashboard-card order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                          <DashboardSectionHeader
+                            eyebrow="Schůzky"
+                            title="Moje schůzky"
+                            href="/meetings"
+                          />
+                        </div>
+
+                        <DashboardMyMeetingsModule
+                          todayContent={
+                            todayMeetings.length === 0 ? (
+                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                                Nemáš žádné schůzky dnes.
+                              </div>
+                            ) : (
+                              <div className="grid gap-2.5">
+                                {todayMeetings.map((meeting) => (
+                                  <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                                ))}
+                              </div>
+                            )
+                          }
+                          weekContent={
+                            weeklyMeetings.length === 0 ? (
+                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                                Nemáš žádné nadcházející schůzky.
+                              </div>
+                            ) : (
+                              <div className="grid gap-2.5">
+                                {weeklyMeetings.map((meeting) => (
+                                  <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                                ))}
+                              </div>
+                            )
+                          }
+                        />
+                      </section>
+                    </div>
+                  </>
                 ) : null}
-
-                {SHOW_DASHBOARD_MINI_CALENDAR ? (
-                  <div className="order-3 xl:order-none">
-                    <DashboardMiniCalendar meetings={monthMeetings} />
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="contents xl:block xl:space-y-6">
-                <section className="dashboard-card order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
-                  <div className="mb-4 flex items-start justify-between gap-4">
-                    <DashboardSectionHeader
-                      eyebrow="Úkoly"
-                      title="Moje úkoly"
-                      href="/tasks"
-                    />
-                  </div>
-
-                  <DashboardMyTasksModule
-                      allContent={
-                      visibleAllTasks.length === 0 ? (
-                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                          Nemáš žádné úkoly.
-                        </div>
-                      ) : (
-                        <div className="grid gap-3">
-                          {visibleAllTasks.map((task) => (
-                            <DashboardTaskItem key={task.id} task={task} />
-                          ))}
-                        </div>
-                      )
-                    }
-                    activeContent={
-                      visibleActiveTasks.length === 0 ? (
-                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                          Nemáš žádné aktivní úkoly.
-                        </div>
-                      ) : (
-                        <div className="grid gap-3">
-                          {visibleActiveTasks.map((task) => (
-                            <DashboardTaskItem key={task.id} task={task} />
-                          ))}
-                        </div>
-                      )
-                    }
-                    overdueContent={
-                      visibleOverdueTasks.length === 0 ? (
-                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                          Nemáš žádné úkoly po termínu.
-                        </div>
-                      ) : (
-                        <div className="grid gap-3">
-                          {visibleOverdueTasks.map((task) => (
-                            <DashboardTaskItem key={task.id} task={task} />
-                          ))}
-                        </div>
-                      )
-                    }
-                  />
-                </section>
-              </div>
-
-              <div className="contents xl:block xl:space-y-6">
-                <section className="dashboard-card order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
-                  <div className="mb-4 flex items-start justify-between gap-4">
-                    <DashboardSectionHeader
-                      eyebrow="Schůzky"
-                      title="Moje schůzky"
-                      href="/meetings"
-                    />
-                  </div>
-
-                  <DashboardMyMeetingsModule
-                    todayContent={
-                      todayMeetings.length === 0 ? (
-                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                          Nemáš žádné schůzky dnes.
-                        </div>
-                      ) : (
-                        <div className="grid gap-2.5">
-                          {todayMeetings.map((meeting) => (
-                            <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                          ))}
-                        </div>
-                      )
-                    }
-                    weekContent={
-                      weeklyMeetings.length === 0 ? (
-                        <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                          Nemáš žádné nadcházející schůzky.
-                        </div>
-                      ) : (
-                        <div className="grid gap-2.5">
-                          {weeklyMeetings.map((meeting) => (
-                            <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                          ))}
-                        </div>
-                      )
-                    }
-                  />
-                </section>
 
                 <DashboardUserPanel
                   profileName={profile?.name ?? null}
@@ -1684,7 +1832,6 @@ export default async function DashboardPage() {
                   userEmail={user.email ?? ''}
                   className="order-6 lg:hidden xl:order-none"
                 />
-              </div>
               </div>
             </DashboardGlobalSearchBody>
             <DashboardMobileQuickActions

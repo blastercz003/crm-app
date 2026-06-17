@@ -39,6 +39,36 @@ function buildExternalFeedUrls(feedPath: string | undefined, origin: string | nu
   }
 }
 
+function PlatformLogoBadge({
+  variant,
+}: {
+  variant: 'apple' | 'android'
+}) {
+  if (variant === 'apple') {
+    return (
+      <span
+        className="meetings-calendar-modal__platform-logo meetings-calendar-modal__platform-logo--apple inline-flex h-12 w-12 shrink-0 items-center justify-center"
+        aria-hidden="true"
+      >
+        <svg viewBox="0 0 24 24" className="h-8 w-8" fill="currentColor">
+          <path d="M16.7 13.5c-.1-1.8.8-3.2 2.1-4-1-.9-2.3-1.4-3.5-1.4-1.6-.2-3 1-3.8 1-.8 0-2-.9-3.3-.9-1.7 0-3.2 1-4.1 2.6-1.8 3.1-.5 8 1.3 10.6.9 1.2 2 2.6 3.3 2.5 1.2 0 1.8-.8 3.3-.8s2 .8 3.3.8c1.4 0 2.3-1.4 3.1-2.6.9-1.3 1.3-2.5 1.4-2.7-1.7-.7-2.9-2.2-3.1-4.1zm-2.4-6.2c.6-.8 1.1-1.9 1-3-1 .1-2.1.7-2.8 1.6-.7.8-1.2 1.9-1.1 2.9 1.1.1 2.2-.6 2.9-1.5z" />
+        </svg>
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className="meetings-calendar-modal__platform-logo meetings-calendar-modal__platform-logo--android inline-flex h-12 w-12 shrink-0 items-center justify-center"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="currentColor">
+        <path d="M7.3 7.4 5.7 9V17c0 .7.5 1.2 1.2 1.2h1.2V21c0 .5.4.9.9.9s.9-.4.9-.9v-2.8h2.4V21c0 .5.4.9.9.9s.9-.4.9-.9v-2.8h1.2c.7 0 1.2-.5 1.2-1.2V9l-1.6-1.6H7.3Zm.1 1.3h9.2c.1 0 .2.1.2.2v6.8c0 .1-.1.2-.2.2H7.4a.2.2 0 0 1-.2-.2V8.9c0-.1.1-.2.2-.2Zm1-1.7h7.3l-.4-.7c-.1-.1-.2-.2-.4-.1l-1 .5-.4-1.1c-.1-.3-.4-.4-.6-.3-.3.1-.4.4-.3.6l.3.9h-1.8l.3-.9c.1-.2 0-.5-.3-.6-.2-.1-.5 0-.6.3l-.4 1.1-1-.5c-.2-.1-.4 0-.4.1l-.4.7Z" />
+      </svg>
+    </span>
+  )
+}
+
 function CalendarLinkCard({
   title,
   description,
@@ -52,7 +82,6 @@ function CalendarLinkCard({
   secondaryActionDescription,
   secondaryActionFormAction,
   copyButtonLabel,
-  accentClassName,
   target,
   rel,
   onActivate,
@@ -70,7 +99,6 @@ function CalendarLinkCard({
   secondaryActionDescription?: string | null
   secondaryActionFormAction?: ((formData: FormData) => void | Promise<void>) | null
   copyButtonLabel?: string
-  accentClassName: string
   target?: string
   rel?: string
   onActivate?: () => void
@@ -93,25 +121,7 @@ function CalendarLinkCard({
           </p>
         </div>
 
-        <span
-          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${accentClassName}`}
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M8 3v4" />
-            <path d="M16 3v4" />
-            <path d="M3 9h18" />
-            <rect x="4" y="5" width="16" height="16" rx="3" />
-          </svg>
-        </span>
+        <PlatformLogoBadge variant={variant === 'apple' ? 'apple' : 'android'} />
       </div>
 
       {statusLabel ? (
@@ -217,25 +227,7 @@ function IphoneCalendarCard({
           </p>
         </div>
 
-        <span
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.24)]"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M8 3v4" />
-            <path d="M16 3v4" />
-            <path d="M3 9h18" />
-            <rect x="4" y="5" width="16" height="16" rx="3" />
-          </svg>
-        </span>
+        <PlatformLogoBadge variant="apple" />
       </div>
 
       {activated && href ? (
@@ -473,7 +465,6 @@ export function MeetingCalendarButton({
                       }
                     : undefined
                 }
-                accentClassName="border-emerald-500/20 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.22)]"
                 target="_blank"
                 rel="noreferrer noopener"
                 variant="google"

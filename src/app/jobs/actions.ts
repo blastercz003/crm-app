@@ -171,6 +171,7 @@ type JobQueueSourceRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  marny_vyjezd: boolean | null
   job_status: string | null
   invoice_status: string | null
   evidence_status: string | null
@@ -304,6 +305,13 @@ async function getJobNumberForLog(
 function normalizeText(value: FormDataEntryValue | null) {
   const text = String(value ?? '').trim()
   return text.length > 0 ? text : null
+}
+
+function normalizeCheckbox(value: FormDataEntryValue | null) {
+  if (value === null) return false
+
+  const text = String(value).trim().toLowerCase()
+  return text !== '' && text !== '0' && text !== 'false'
 }
 
 function normalizeTechnicianText(value: FormDataEntryValue | null) {
@@ -681,7 +689,7 @@ async function getJobQueueSource(
   const { data, error } = await supabase
     .from('jobs')
     .select(
-      'id, job_number, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, technician_name, generator_name, info_note, job_status, invoice_status, evidence_status'
+      'id, job_number, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, technician_name, generator_name, info_note, marny_vyjezd, job_status, invoice_status, evidence_status'
     )
     .eq('id', jobId)
     .single()
@@ -1538,6 +1546,7 @@ async function getJobPayload(
   const storeNumber = normalizeText(formData.get('store_number'))
   const generatorName = normalizeText(formData.get('generator_name'))
   const infoNote = normalizeText(formData.get('info_note'))
+  const marnyVyjezd = normalizeCheckbox(formData.get('marny_vyjezd'))
   const jobStatus = normalizeJobStatus(formData.get('job_status'))
   const invoiceStatus = normalizeInvoiceStatus(formData.get('invoice_status'))
   const technicianSelection = await resolveTechnicianSelection(supabase, formData)
@@ -1586,6 +1595,7 @@ async function getJobPayload(
       technician_name: technicianSelection.technicianLabel,
       generator_name: generatorName,
       info_note: infoNote,
+      marny_vyjezd: marnyVyjezd,
       job_status: jobStatus,
       invoice_status: invoiceStatus,
     },

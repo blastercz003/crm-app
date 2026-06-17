@@ -7,6 +7,7 @@ import { reportActionError } from '@/lib/errors/reportActionError'
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
   role: string | null
+  skryt_marny_vyjezd: boolean | null
 }
 
 type JobChangeStateRow = {
@@ -23,6 +24,7 @@ type NewJobRow = {
   generator_name: string | null
   technician_name: string | null
   evidence_status: string | null
+  marny_vyjezd: boolean | null
   updated_at: string
 }
 
@@ -35,11 +37,13 @@ type UpdatedJobQueueRow = {
         id: string
         job_number: string | null
         evidence_status: string | null
+        marny_vyjezd: boolean | null
       }
     | Array<{
         id: string
         job_number: string | null
         evidence_status: string | null
+        marny_vyjezd: boolean | null
       }>
     | null
 }
@@ -48,6 +52,7 @@ type UpdatedJobRelation = {
   id: string
   job_number: string | null
   evidence_status: string | null
+  marny_vyjezd: boolean | null
 }
 
 function getUpdatedJobRelation(value: UpdatedJobQueueRow['jobs']): UpdatedJobRelation | null {
@@ -152,12 +157,13 @@ async function requireJobsAccess() {
       supabase,
       user: null,
       error: 'Nejsi přihlášený.',
+      hideMarnyVyjezdy: false,
     }
   }
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('can_view_jobs, role')
+    .select('can_view_jobs, role, skryt_marny_vyjezd')
     .eq('id', user.id)
     .single()
 
@@ -166,17 +172,20 @@ async function requireJobsAccess() {
       supabase,
       user: null,
       error: 'Nepodařilo se ověřit oprávnění uživatele.',
+      hideMarnyVyjezdy: false,
     }
   }
 
   const typedProfile = profile as ProfilePermissionRow | null
   const isAdmin = typedProfile?.role === 'admin'
+  const hideMarnyVyjezdy = Boolean(typedProfile?.skryt_marny_vyjezd)
 
   if (!isAdmin && !typedProfile?.can_view_jobs) {
     return {
       supabase,
       user: null,
       error: 'Nemáš oprávnění pro práci se zakázkami.',
+      hideMarnyVyjezdy: false,
     }
   }
 
@@ -184,6 +193,7 @@ async function requireJobsAccess() {
     supabase,
     user,
     error: null,
+    hideMarnyVyjezdy,
   }
 }
 
@@ -205,7 +215,8 @@ async function getClearedAt(supabase: Awaited<ReturnType<typeof createClient>>) 
 export async function getJobsChangesModalDataAction(): Promise<
   JobChangesActionResult<JobChangesModalData>
 > {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const { supabase, user, error: accessError, hideMarnyVyjezdy } =
+    await requireJobsAccess()
 
   if (!user) {
     return {
@@ -227,7 +238,7 @@ export async function getJobsChangesModalDataAction(): Promise<
       supabase
         .from('jobs')
         .select(
-          'id, job_number, company_name, site_address, start_at, end_at, generator_name, technician_name, evidence_status, updated_at'
+          'id, job_number, company_name, site_address, start_at, end_at, generator_name, technician_name, evidence_status, marny_vyjezd, updated_at'
         )
         .eq('evidence_status', 'nove')
         .gte('start_at', from)
@@ -238,7 +249,7 @@ export async function getJobsChangesModalDataAction(): Promise<
       supabase
         .from('job_changes_queue')
         .select(
-          'job_id, changed_fields_label, updated_at, jobs!inner(id, job_number, evidence_status)'
+          'job_id, changed_fields_label, updated_at, jobs!inner(id, job_number, evidence_status, marny_vyjezd)'
         )
         .eq('kind', 'updated_job')
         .gt('updated_at', clearedAt)
@@ -261,6 +272,7 @@ export async function getJobsChangesModalDataAction(): Promise<
     }
 
     const newJobs: ChangesNewJobItem[] = ((newJobsResponse.data ?? []) as NewJobRow[])
+      .filter((row) => !hideMarnyVyjezdy || !Boolean(row.marny_vyjezd))
       .map((row) => ({
         evidenceStatus:
           row.evidence_status === 'zapsano' ? ('zapsano' as const) : ('nove' as const),
@@ -280,7 +292,11 @@ export async function getJobsChangesModalDataAction(): Promise<
         row,
         jobRelation: getUpdatedJobRelation(row.jobs),
       }))
-      .filter((entry) => entry.jobRelation !== null)
+      .filter(
+        (entry) =>
+          entry.jobRelation !== null &&
+          (!hideMarnyVyjezdy || !Boolean(entry.jobRelation?.marny_vyjezd))
+      )
       .map((row) => ({
         jobId: row.row.job_id,
         jobNumber: row.jobRelation?.job_number?.trim() || '—',
@@ -316,7 +332,8 @@ export async function getJobsChangesModalDataAction(): Promise<
 export async function acknowledgeAllJobChangesAction(): Promise<
   JobChangesActionResult<{ acknowledged: true }>
 > {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const { supabase, user, error: accessError, hideMarnyVyjezdy } =
+    await requireJobsAccess()
 
   if (!user) {
     return {
@@ -334,7 +351,7 @@ export async function acknowledgeAllJobChangesAction(): Promise<
 
     const { data: newJobsRows, error: newJobsError } = await supabase
       .from('jobs')
-      .select('id')
+      .select('id, marny_vyjezd')
       .eq('evidence_status', 'nove')
       .gte('start_at', from)
       .lte('start_at', to)
@@ -347,6 +364,7 @@ export async function acknowledgeAllJobChangesAction(): Promise<
     }
 
     const newJobIds = (newJobsRows ?? [])
+      .filter((row) => !hideMarnyVyjezdy || !Boolean((row as NewJobRow).marny_vyjezd))
       .map((row) => String((row as { id: string }).id ?? '').trim())
       .filter(Boolean)
 

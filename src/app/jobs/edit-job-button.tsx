@@ -59,6 +59,7 @@ type JobFormValues = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  marny_vyjezd?: boolean | null
   job_status: JobStatus
   invoice_status: InvoiceStatus
 }
@@ -756,6 +757,17 @@ function JobFormShell({
                       />
                     </div>
 
+                    <label className="jobs-page__job-form-modal__checkbox-card flex h-10 items-center gap-3 rounded-xl border border-zinc-200/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.86)_100%)] px-3 text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
+                      <input
+                        type="checkbox"
+                        name="marny_vyjezd"
+                        value="1"
+                        defaultChecked={Boolean(job.marny_vyjezd)}
+                        className="jobs-page__job-form-modal__checkbox-input h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+                      />
+                      <span>MARNÝ VÝJEZD</span>
+                    </label>
+
                     <div>
                       <label
                         htmlFor={`${mode}-info_note`}
@@ -766,7 +778,7 @@ function JobFormShell({
                       <textarea
                         id={`${mode}-info_note`}
                         name="info_note"
-                        rows={6}
+                        rows={5}
                         defaultValue={job.info_note ?? ''}
                         placeholder="Libovolná interní poznámka k zakázce"
                         className="jobs-page__job-form-modal__field w-full resize-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 py-2.5 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
