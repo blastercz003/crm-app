@@ -1680,6 +1680,7 @@ export async function createJobAction(
   }
 
   const createdJobId = String(createdJob.id)
+  const isMarnyVyjezd = Boolean(createPayload.marny_vyjezd)
 
   try {
     await syncJobTechnicians(
@@ -1747,48 +1748,50 @@ export async function createJobAction(
     })
   }
 
-  try {
-    await notifyUsersAboutCreatedJob({
-      supabase,
-      actorUserId: user.id,
-      job: createdJob as CreatedJobNotificationRow,
-    })
-  } catch (notificationError) {
-    console.error(
-      'Nepodařilo se vytvořit notifikace k nové zakázce.',
-      notificationError
-    )
-    await reportActionError({
-      error: notificationError,
-      action: 'createJobAction',
-      section: 'jobs',
-      errorType: 'CreateJobNotificationError',
-      userId: user.id,
-      context: { jobId: createdJobId },
-    })
-  }
+  if (!isMarnyVyjezd) {
+    try {
+      await notifyUsersAboutCreatedJob({
+        supabase,
+        actorUserId: user.id,
+        job: createdJob as CreatedJobNotificationRow,
+      })
+    } catch (notificationError) {
+      console.error(
+        'Nepodařilo se vytvořit notifikace k nové zakázce.',
+        notificationError
+      )
+      await reportActionError({
+        error: notificationError,
+        action: 'createJobAction',
+        section: 'jobs',
+        errorType: 'CreateJobNotificationError',
+        userId: user.id,
+        context: { jobId: createdJobId },
+      })
+    }
 
-  try {
-    await notifyTechniciansAboutJobAssignment({
-      supabase,
-      actorUserId: user.id,
-      jobId: createdJobId,
-      job: createdJob as JobAssignmentNotificationRow,
-      technicianIds: technicianIds ?? [],
-    })
-  } catch (notificationError) {
-    console.error(
-      'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
-      notificationError
-    )
-    await reportActionError({
-      error: notificationError,
-      action: 'createJobAction',
-      section: 'jobs',
-      errorType: 'CreateJobTechnicianNotificationError',
-      userId: user.id,
-      context: { jobId: createdJobId },
-    })
+    try {
+      await notifyTechniciansAboutJobAssignment({
+        supabase,
+        actorUserId: user.id,
+        jobId: createdJobId,
+        job: createdJob as JobAssignmentNotificationRow,
+        technicianIds: technicianIds ?? [],
+      })
+    } catch (notificationError) {
+      console.error(
+        'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
+        notificationError
+      )
+      await reportActionError({
+        error: notificationError,
+        action: 'createJobAction',
+        section: 'jobs',
+        errorType: 'CreateJobTechnicianNotificationError',
+        userId: user.id,
+        context: { jobId: createdJobId },
+      })
+    }
   }
 
   try {
