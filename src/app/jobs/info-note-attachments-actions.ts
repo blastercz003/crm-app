@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
+import { canViewTechJobsSection } from '@/lib/auth/access'
 import {
   getPersistedJobInfoAlert,
   normalizeJobInfoText,
@@ -17,6 +18,7 @@ type ProfileAccessRow = {
   role: string | null
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
+  can_view_tech_jobs: boolean | null
 }
 
 type AttachmentRow = {
@@ -137,8 +139,53 @@ async function requireJobsAccess() {
   return { supabase, user, error: null }
 }
 
+async function requireJobsInfoAttachmentsViewAccess() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { supabase, user: null, error: 'Nejsi přihlášený.' }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, can_view_jobs, can_view_jobs_portal, can_view_tech_jobs')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile) {
+    return {
+      supabase,
+      user: null,
+      error: 'Nepodařilo se ověřit oprávnění uživatele.',
+    }
+  }
+
+  const typedProfile = profile as ProfileAccessRow
+  const hasAccess =
+    typedProfile.role === 'admin' ||
+    Boolean(typedProfile.can_view_jobs) ||
+    Boolean(typedProfile.can_view_jobs_portal) ||
+    canViewTechJobsSection(typedProfile.role, {
+      can_view_tech_jobs: typedProfile.can_view_tech_jobs,
+    })
+
+  if (!hasAccess) {
+    return {
+      supabase,
+      user: null,
+      error: 'Nemáš oprávnění pro fotky info zakázky.',
+    }
+  }
+
+  return { supabase, user, error: null }
+}
+
 export async function getJobInfoAttachmentsAction(jobId: string) {
-  const { supabase, user, error: accessError } = await requireJobsAccess()
+  const { supabase, user, error: accessError } =
+    await requireJobsInfoAttachmentsViewAccess()
 
   if (!user) {
     return { success: false, error: accessError, items: [] }
