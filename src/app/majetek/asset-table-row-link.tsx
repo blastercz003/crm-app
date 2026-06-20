@@ -79,7 +79,7 @@ export function AssetTableRowLink({
           <td className="px-5 py-4 text-sm text-gray-700">{insuranceLabel ?? '—'}</td>
           <td className="px-5 py-4 text-sm text-gray-700">{stkExpiresLabel ?? '—'}</td>
           <td className="px-5 py-4 text-right">
-            <span className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">
+            <span className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">
               OTEVŘÍT
             </span>
           </td>
@@ -91,7 +91,7 @@ export function AssetTableRowLink({
           <td className="px-5 py-4 text-sm text-gray-700">{insuranceProviderLabel ?? '—'}</td>
           <td className="px-5 py-4 text-sm text-gray-700">{insuranceLabel ?? '—'}</td>
           <td className="px-5 py-4 text-right">
-            <span className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">
+            <span className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">
               OTEVŘÍT
             </span>
           </td>
@@ -101,7 +101,7 @@ export function AssetTableRowLink({
           <td className="px-5 py-4 text-sm text-gray-700">{purchaseDateLabel ?? '—'}</td>
           <td className="px-5 py-4 text-sm text-gray-700">{purchasePriceLabel ?? '—'}</td>
           <td className="px-5 py-4 text-right">
-            <span className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">
+            <span className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">
               OTEVŘÍT
             </span>
           </td>

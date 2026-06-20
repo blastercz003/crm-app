@@ -12950,7 +12950,9 @@ html[data-theme='dark'] .assets-page__summary .text-gray-600,
 html[data-theme='dark'] .assets-page__summary .text-zinc-600,
 html[data-theme='dark'] .assets-page__summary .text-gray-500,
 html[data-theme='dark'] .assets-page__summary .text-zinc-500,
-html[data-theme='dark'] .assets-page__summary .text-gray-400 {
+html[data-theme='dark'] .assets-page__summary .text-gray-400,
+html[data-theme='dark'] .assets-page__hero .text-zinc-500,
+html[data-theme='dark'] .assets-page__hero .text-gray-500 {
   color: #94a3b8 !important;
 }
 
@@ -13151,4 +13153,342 @@ html[data-theme='dark'] .assets-page__summary .text-zinc-900 {
 html[data-theme='dark'] .assets-page__summary .text-gray-600,
 html[data-theme='dark'] .assets-page__summary .text-gray-500 {
   color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__overview-card,
+html[data-theme='dark'] .assets-detail-page__compact-card,
+html[data-theme='dark'] .assets-detail-page__compact-line {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__overview-card .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__overview-card .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__compact-card .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__compact-card .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__compact-line .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__compact-line .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__overview-card .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__overview-card .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__overview-card .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__compact-card .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__compact-card .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__compact-card .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__compact-line .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__compact-line .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__compact-line .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__section-header {
+  border-bottom-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__meta-pill {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #dbe7f5 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__status-pill.border-amber-200\/90,
+html[data-theme='dark'] .assets-detail-page__status-pill.border-emerald-200\/90 {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #dbe7f5 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__empty-state {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #94a3b8 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-shell,
+html[data-theme='dark'] .assets-detail-page__insurance-create-shell {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__insurance-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__insurance-create-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__insurance-create-shell .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__insurance-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__insurance-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__insurance-create-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__insurance-create-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__insurance-create-shell .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-item {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-summary {
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-item .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__insurance-item .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-item .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__insurance-item .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__insurance-item .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-chevron {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #dbe7f5 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__insurance-form-panel {
+  border-top-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-card {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-card .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__document-card .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-card .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__document-card .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__document-card .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-meta {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-link {
+  color: #7cc4ff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-note {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-delete-button {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__document-delete-button--confirm {
+  border-color: rgba(248, 113, 113, 0.22) !important;
+  background: linear-gradient(155deg, rgba(71, 23, 31, 0.98) 0%, rgba(48, 15, 20, 0.96) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-shell,
+html[data-theme='dark'] .assets-detail-page__rental-create-shell {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__rental-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__rental-create-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__rental-create-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__rental-item .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__rental-item .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__rental-stat .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__rental-stat .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__rental-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__rental-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__rental-create-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__rental-create-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__rental-create-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__rental-item .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__rental-item .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__rental-item .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__rental-stat .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__rental-stat .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__rental-stat .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-stat {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-item {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-chevron,
+html[data-theme='dark'] .assets-detail-page__rental-panel {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-panel {
+  border-top-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-create-panel {
+  border-top-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-empty-state {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #94a3b8 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-delete {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-delete--confirm {
+  border-color: rgba(248, 113, 113, 0.22) !important;
+  background: linear-gradient(155deg, rgba(71, 23, 31, 0.98) 0%, rgba(48, 15, 20, 0.96) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-shell,
+html[data-theme='dark'] .assets-detail-page__electricity-create-shell {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__electricity-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__electricity-create-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__electricity-create-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__electricity-item .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__electricity-item .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__electricity-stat .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__electricity-stat .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__electricity-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__electricity-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__electricity-create-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__electricity-create-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__electricity-create-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__electricity-item .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__electricity-item .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__electricity-item .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__electricity-stat .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__electricity-stat .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__electricity-stat .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-stat {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-item {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-chevron,
+html[data-theme='dark'] .assets-detail-page__electricity-panel {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-panel {
+  border-top-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-create-panel {
+  border-top-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-empty-state {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #94a3b8 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-delete {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__electricity-delete--confirm {
+  border-color: rgba(248, 113, 113, 0.22) !important;
+  background: linear-gradient(155deg, rgba(71, 23, 31, 0.98) 0%, rgba(48, 15, 20, 0.96) 100%) !important;
+  color: #fecaca !important;
 }

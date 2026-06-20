@@ -92,7 +92,7 @@ export function AssetInsuranceSection({ assetId, insurances }: AssetInsuranceSec
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+      <section className="assets-detail-page__insurance-shell rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold tracking-tight text-gray-900">Uložená pojištění</h3>
@@ -112,14 +112,14 @@ export function AssetInsuranceSection({ assetId, insurances }: AssetInsuranceSec
               />
             ))
           ) : (
-            <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[8px]">
+            <div className="assets-detail-page__empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[8px]">
               Zatím zde není žádné pojištění.
             </div>
           )}
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+      <section className="assets-detail-page__insurance-create-shell rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold tracking-tight text-gray-900">Nové pojištění</h3>
@@ -135,7 +135,7 @@ export function AssetInsuranceSection({ assetId, insurances }: AssetInsuranceSec
         </div>
 
         {isCreating ? (
-          <div className="mt-5 border-t border-white/70 pt-5">
+          <div className="assets-detail-page__insurance-form-panel mt-5 border-t border-white/70 pt-5">
             <AssetInsuranceForm
               key="new-insurance"
               assetId={assetId}
@@ -339,9 +339,9 @@ function InsuranceAccordionItem({
   return (
     <details
       open={defaultOpen}
-      className="group rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]"
+      className="assets-detail-page__insurance-item group rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]"
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
+      <summary className="assets-detail-page__insurance-summary flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900">{title}</p>
           <p className="mt-1 truncate text-xs text-gray-500">{subtitle || 'Bez doplňujících údajů'}</p>
@@ -358,7 +358,7 @@ function InsuranceAccordionItem({
             <p className="text-xs text-gray-500">Pojistné</p>
             <p className="text-sm font-medium text-gray-900">{formatCurrency(insurance.annual_premium)}</p>
           </div>
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180">
+          <span className="assets-detail-page__insurance-chevron inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180">
             <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
               <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -366,7 +366,7 @@ function InsuranceAccordionItem({
         </div>
       </summary>
 
-      <div className="border-t border-white/70 px-5 py-5">
+      <div className="assets-detail-page__insurance-item-body border-t border-white/70 px-5 py-5">
         <AssetInsuranceForm
           key={`${insurance.id}-${insurance.updated_at}`}
           assetId={assetId}

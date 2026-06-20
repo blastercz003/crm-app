@@ -35,14 +35,14 @@ export function AssetDocumentDeleteButton({ assetId, documentId }: AssetDocument
         <>
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition duration-200 hover:-translate-y-[1px] hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
+            className="assets-detail-page__document-delete-button assets-detail-page__document-delete-button--confirm inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition duration-200 hover:-translate-y-[1px] hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
           >
             Smazat
           </button>
           <button
             type="button"
             onClick={() => setIsConfirming(false)}
-            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
+            className="assets-detail-page__document-delete-button inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
           >
             Zrušit
           </button>
@@ -51,7 +51,7 @@ export function AssetDocumentDeleteButton({ assetId, documentId }: AssetDocument
         <button
           type="button"
           onClick={() => setIsConfirming(true)}
-          className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-red-700"
+          className="assets-detail-page__document-delete-button inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-red-700"
           aria-label="Smazat dokument"
         >
           <Trash2 className="h-3.5 w-3.5" />

@@ -381,7 +381,7 @@ function DocumentSidebar({
                   event.preventDefault()
                 }
               }}
-              className="block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_22px_rgba(15,23,42,0.12)]"
+              className="assets-detail-page__document-card block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_22px_rgba(15,23,42,0.12)]"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
@@ -392,16 +392,16 @@ function DocumentSidebar({
                   <p className="mt-1 truncate text-xs text-gray-500">{document.file_name}</p>
                 </div>
 
-                <div className="grid gap-2 text-xs text-gray-600 md:text-right">
+                <div className="assets-detail-page__document-meta grid gap-2 text-xs text-gray-600 md:text-right">
                   <p>{formatBytes(document.file_size_bytes)}</p>
                   <p>{formatDateTime(document.created_at)}</p>
-                  <p className="font-medium text-[#2f77af]">
+                  <p className="assets-detail-page__document-link font-medium text-[#2f77af]">
                     {document.signedUrl ? 'Otevřít dokument' : 'Odkaz není k dispozici'}
                   </p>
                 </div>
               </div>
 
-              {document.note ? <p className="mt-3 text-sm leading-6 text-gray-600">{document.note}</p> : null}
+              {document.note ? <p className="assets-detail-page__document-note mt-3 text-sm leading-6 text-gray-600">{document.note}</p> : null}
             </a>
           ))}
         </div>

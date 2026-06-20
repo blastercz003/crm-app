@@ -251,7 +251,7 @@ function CompactStat({
   note?: string
 }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+    <div className="assets-detail-page__compact-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
       <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">{title}</p>
       <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
       {note ? <p className="mt-1 text-xs leading-5 text-gray-500">{note}</p> : null}
@@ -267,7 +267,7 @@ function CompactLine({
   value: string
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+    <div className="assets-detail-page__compact-line flex items-start justify-between gap-4 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
       <p className="text-sm font-medium text-gray-900 text-right">{value}</p>
     </div>
@@ -296,7 +296,7 @@ function OverviewCard({
   note?: string
 }) {
   return (
-    <div className="flex h-full min-h-[62px] items-center justify-between gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+    <div className="assets-detail-page__overview-card flex h-full min-h-[62px] items-center justify-between gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
       <p className="text-[11px] font-medium uppercase tracking-wide leading-none text-gray-500">{title}</p>
       <p className="text-sm font-semibold leading-none text-right text-gray-900 whitespace-nowrap">{value}</p>
       {note ? <p className="mt-1 text-xs leading-5 text-gray-500">{note}</p> : null}
@@ -315,7 +315,7 @@ function SectionShell({
 }) {
   return (
     <section className="assets-page__category overflow-hidden rounded-[28px] border border-white/72 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,0.93)_48%,rgba(241,245,249,0.89)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
-      <div className="border-b border-white/70 px-5 py-4 sm:px-6">
+      <div className="assets-detail-page__section-header border-b border-white/70 px-5 py-4 sm:px-6">
         <h2 className="text-xl font-semibold tracking-tight text-gray-900">{title}</h2>
         {description ? <p className="mt-1 text-sm text-zinc-500">{description}</p> : null}
       </div>
@@ -326,7 +326,7 @@ function SectionShell({
 }
 
 const emptyStateClassName =
-  'rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[8px]'
+  'assets-detail-page__empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[8px]'
 
 function getActiveInsurance(insurances: AssetInsuranceRow[]) {
   const now = new Date()
@@ -362,7 +362,7 @@ function DocumentList({
       {documents.map((document) => (
         <div
           key={document.id}
-          className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_22px_rgba(15,23,42,0.12)]"
+          className="assets-detail-page__document-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_22px_rgba(15,23,42,0.12)]"
         >
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -385,17 +385,17 @@ function DocumentList({
                 <p className="mt-1 truncate text-xs text-gray-500">{document.file_name}</p>
               </a>
 
-              <div className="grid gap-2 text-xs text-gray-600 md:text-right">
+              <div className="assets-detail-page__document-meta grid gap-2 text-xs text-gray-600 md:text-right">
                 <p>{formatBytes(document.file_size_bytes)}</p>
                 <p>{formatDateTime(document.created_at)}</p>
-                <p className="font-medium text-[#2f77af]">
+                <p className="assets-detail-page__document-link font-medium text-[#2f77af]">
                   {document.signedUrl ? 'Otevřít dokument' : 'Odkaz není k dispozici'}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              {document.note ? <p className="text-sm leading-6 text-gray-600">{document.note}</p> : <span />}
+              {document.note ? <p className="assets-detail-page__document-note text-sm leading-6 text-gray-600">{document.note}</p> : <span />}
               <AssetDocumentDeleteButton assetId={assetId} documentId={document.id} />
             </div>
           </div>
@@ -458,7 +458,7 @@ function renderOverviewTab({
 
   return (
     <SectionShell title="Základní přehled">
-      <div className="space-y-4">
+      <div className="assets-page__summary space-y-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <OverviewCard title="Název" value={asset.name} />
           <OverviewCard title="Kategorie" value={category.name} />
@@ -977,10 +977,10 @@ export function AssetDetailClient({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]">
+              <span className="assets-detail-page__meta-pill inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]">
                 {category.name}
               </span>
-              <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] ${statusTone(asset.status)}`}>
+              <span className={`assets-detail-page__meta-pill assets-detail-page__status-pill inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] ${statusTone(asset.status)}`}>
                 {statusLabel(asset.status)}
               </span>
             </div>

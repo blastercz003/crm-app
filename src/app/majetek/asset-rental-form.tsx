@@ -158,7 +158,7 @@ function RentalStat({
   note?: string
 }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+    <div className="assets-detail-page__rental-stat rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
       <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">{title}</p>
       <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
       {note ? <p className="mt-1 text-xs leading-5 text-gray-500">{note}</p> : null}
@@ -177,7 +177,7 @@ function RentalAccordionItem({
   const summary = [rental.tenant_contact].filter(Boolean).join(' • ')
 
   return (
-    <details className="group rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+    <details className="assets-detail-page__rental-item group rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900">{rental.tenant_name || 'Nezadáno'}</p>
@@ -195,7 +195,7 @@ function RentalAccordionItem({
               {status}
             </span>
           </div>
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180">
+          <span className="assets-detail-page__rental-chevron inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180">
             <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
               <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -203,7 +203,7 @@ function RentalAccordionItem({
         </div>
       </summary>
 
-      <div className="border-t border-white/70 px-5 py-5">
+      <div className="assets-detail-page__rental-panel border-t border-white/70 px-5 py-5">
         <AssetRentalForm
           key={`${rental.id}-${rental.updated_at}`}
           assetId={assetId}
@@ -244,14 +244,14 @@ function AssetRentalDeleteButton({
         <>
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition duration-200 hover:-translate-y-[1px] hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
+            className="assets-detail-page__rental-delete assets-detail-page__rental-delete--confirm inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition duration-200 hover:-translate-y-[1px] hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
           >
             Smazat
           </button>
           <button
             type="button"
             onClick={() => setIsConfirming(false)}
-            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
+            className="assets-detail-page__rental-delete inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
           >
             Zrušit
           </button>
@@ -260,7 +260,7 @@ function AssetRentalDeleteButton({
         <button
           type="button"
           onClick={() => setIsConfirming(true)}
-          className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-red-700"
+          className="assets-detail-page__rental-delete inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-red-700"
           aria-label="Smazat pronájem"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -431,7 +431,7 @@ export function AssetRentalSection({ assetId, rentals }: AssetRentalSectionProps
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+      <section className="assets-detail-page__rental-shell rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold tracking-tight text-gray-900">Uložené pronájmy</h3>
@@ -457,14 +457,14 @@ export function AssetRentalSection({ assetId, rentals }: AssetRentalSectionProps
               <RentalAccordionItem key={rental.id} assetId={assetId} rental={rental} />
             ))
           ) : (
-            <div className={emptyStateClassName}>
+            <div className="assets-detail-page__rental-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[8px]">
               Zatím zde není žádný pronájem.
             </div>
           )}
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+      <section className="assets-detail-page__rental-create-shell rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold tracking-tight text-gray-900">Nový pronájem</h3>
@@ -480,7 +480,7 @@ export function AssetRentalSection({ assetId, rentals }: AssetRentalSectionProps
         </div>
 
         {isCreating ? (
-          <div className="mt-5 border-t border-white/70 pt-5">
+          <div className="assets-detail-page__rental-create-panel mt-5 border-t border-white/70 pt-5">
             <AssetRentalForm
               key="new-rental"
               assetId={assetId}
