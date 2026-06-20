@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { KeyboardEvent } from 'react'
+import { NAVIGATION_OVERLAY_START_EVENT } from '@/components/navigation/navigation-overlay'
 
 type AssetTableRowLinkProps = {
   href: string
@@ -32,13 +33,19 @@ export function AssetTableRowLink({
 }: AssetTableRowLinkProps) {
   const router = useRouter()
 
+  function triggerNavigationOverlay() {
+    window.dispatchEvent(new Event(NAVIGATION_OVERLAY_START_EVENT))
+  }
+
   function handleClick() {
+    triggerNavigationOverlay()
     router.push(href)
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTableRowElement>) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
+      triggerNavigationOverlay()
       router.push(href)
     }
   }
