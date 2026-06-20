@@ -280,7 +280,7 @@ export function AssetsPageClient({
 
         <section className="assets-page__filters rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
           <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-            <div className="w-full lg:col-start-3 lg:w-auto lg:justify-self-end">
+            <div className="w-full lg:col-start-3 lg:row-start-1 lg:w-auto lg:justify-self-end">
               <Link
                 href="/majetek/nastaveni"
                 className="assets-page__settings-button inline-flex w-full items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 lg:w-auto"
@@ -289,7 +289,7 @@ export function AssetsPageClient({
               </Link>
             </div>
 
-            <div className="assets-page__filter-row -mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 lg:col-start-2 lg:mx-0 lg:justify-center lg:overflow-visible lg:px-0 lg:pb-0">
+            <div className="assets-page__filter-row -mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:justify-center lg:overflow-visible lg:px-0 lg:pb-0">
               {categories.map((category) => {
                 const isActive = activeCategoryId === category.id
 
