@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { Plug } from 'lucide-react'
+import { CarFront, Plug } from 'lucide-react'
 
 type SectionLink = {
   key: string
@@ -75,6 +75,10 @@ function IconFiles() {
   )
 }
 
+function IconAssets() {
+  return <CarFront className="h-6 w-6" strokeWidth={1.85} />
+}
+
 export function DashboardSectionLinks({
   canViewJobs,
   canViewJobsPortal,
@@ -117,6 +121,13 @@ export function DashboardSectionLinks({
         label: 'Přípojné body',
         visible: canViewConnectionPoints,
         icon: <Plug className="h-6 w-6" strokeWidth={1.9} />,
+      },
+      {
+        key: 'assets',
+        href: '/majetek',
+        label: 'Majetek',
+        visible: isAdmin,
+        icon: <IconAssets />,
       },
       { key: 'finance', href: '/faktury', label: 'Finance', visible: isAdmin, icon: <IconFinance /> },
       { key: 'files', href: '/soubory', label: 'Soubory', visible: isAdmin, icon: <IconFiles /> },
