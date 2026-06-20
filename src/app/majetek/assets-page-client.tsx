@@ -73,6 +73,42 @@ function formatCurrency(value: string | number | null) {
   }).format(parsed)
 }
 
+type MobileAssetCardField = {
+  label: string
+  value: string
+}
+
+function getMobileAssetCardFields(
+  asset: AssetRow,
+  category: AssetCategoryRow | null
+): MobileAssetCardField[] {
+  const normalizedCategoryName = normalizeSearchText(category?.name ?? '')
+
+  if (normalizedCategoryName === 'osobni vozy') {
+    return [
+      { label: 'Název', value: asset.name },
+      { label: 'VIN', value: asset.vin ?? '—' },
+      { label: 'Poj. smlouva', value: asset.insurance_policy_number ?? '—' },
+      { label: 'Pojišťovna', value: asset.insurance_provider_name ?? '—' },
+    ]
+  }
+
+  if (normalizedCategoryName === 'domy' || normalizedCategoryName === 'byty') {
+    return [
+      { label: 'Název', value: asset.name },
+      { label: 'Poj. smlouva', value: asset.insurance_policy_number ?? '—' },
+      { label: 'Pojišťovna', value: asset.insurance_provider_name ?? '—' },
+    ]
+  }
+
+  return [
+    { label: 'Název', value: asset.name },
+    { label: 'Stav', value: asset.status === 'sold' ? 'Prodáno' : 'Aktivní' },
+    { label: 'Pořízení', value: formatDate(asset.purchase_date) },
+    { label: 'Cena', value: formatCurrency(asset.purchase_price) },
+  ]
+}
+
 function AssetCategoryIcon({ iconKey }: { iconKey: string }) {
   switch (iconKey) {
     case 'car':
@@ -244,7 +280,16 @@ export function AssetsPageClient({
 
         <section className="assets-page__filters rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
           <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-            <div className="flex flex-wrap justify-center gap-2 lg:col-start-2">
+            <div className="w-full lg:col-start-3 lg:w-auto lg:justify-self-end">
+              <Link
+                href="/majetek/nastaveni"
+                className="assets-page__settings-button inline-flex w-full items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 lg:w-auto"
+              >
+                NASTAVENÍ
+              </Link>
+            </div>
+
+            <div className="assets-page__filter-row -mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 lg:col-start-2 lg:mx-0 lg:justify-center lg:overflow-visible lg:px-0 lg:pb-0">
               {categories.map((category) => {
                 const isActive = activeCategoryId === category.id
 
@@ -254,10 +299,10 @@ export function AssetsPageClient({
                     type="button"
                     onClick={() => updateCategory(category.id)}
                     className={[
-                      'assets-page__pill assets-page__pill--filter inline-flex items-center justify-start gap-2 rounded-full px-4 py-2 text-sm font-medium leading-none transition duration-200',
+                      'assets-page__pill assets-page__pill--filter inline-flex shrink-0 items-center justify-start gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium leading-none transition duration-200',
                       isActive
-                        ? 'border text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_14px_28px_rgba(24,78,129,0.22)]'
-                        : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:text-zinc-900',
+                        ? 'border text-white shadow-none md:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_14px_28px_rgba(24,78,129,0.22)]'
+                        : 'border border-white/75 bg-white text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_2px_6px_rgba(15,23,42,0.04)] hover:-translate-y-[1px] hover:text-zinc-900 md:bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] md:text-zinc-600 md:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]',
                     ].join(' ')}
                     style={
                       isActive
@@ -281,15 +326,6 @@ export function AssetsPageClient({
                 )
               })}
             </div>
-
-            <div className="lg:col-start-3 lg:justify-self-end">
-              <Link
-                href="/majetek/nastaveni"
-                className="assets-page__settings-button inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900"
-              >
-                NASTAVENÍ
-              </Link>
-            </div>
           </div>
         </section>
 
@@ -308,8 +344,8 @@ export function AssetsPageClient({
                 boxShadow: `inset 0 1px 0 rgba(255,255,255,0.92), 0 20px 44px rgba(15,23,42,0.12), 0 0 0 1px ${activeCategory.color}22`,
               }}
             >
-              <div className="assets-page__category-header flex flex-col gap-3 border-b border-white/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <div className="flex items-center gap-3">
+              <div className="assets-page__category-header flex items-start justify-between gap-3 border-b border-white/70 px-5 py-4 sm:px-6">
+                <div className="flex min-w-0 items-center gap-3">
                   <div
                     className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_18px_rgba(15,23,42,0.14)]"
                     style={{ background: activeCategory.color }}
@@ -323,14 +359,61 @@ export function AssetsPageClient({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="shrink-0 pt-1">
                   <span className="assets-page__category-count inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]">
                     {visibleAssets.length} záznamů
                   </span>
                 </div>
               </div>
 
-              <div className="assets-page__table-shell overflow-x-auto">
+              <div className="assets-page__mobile-list space-y-3 px-4 py-4 sm:px-6 md:hidden">
+                {visibleAssets.length === 0 ? (
+                  <div className="rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-center text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                    Zatím zde nejsou žádné záznamy.
+                  </div>
+                ) : (
+                  visibleAssets.map((asset) => (
+                    <Link
+                      key={asset.id}
+                      href={`/majetek/${asset.id}`}
+                      className="assets-page__mobile-card block overflow-hidden rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_24px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="assets-page__mobile-card-title text-sm font-semibold leading-5 text-gray-900">
+                            {asset.name}
+                          </p>
+                          <p className="assets-page__mobile-card-category mt-1 text-xs text-zinc-500">
+                            {activeCategory.name}
+                          </p>
+                        </div>
+
+                        <span className="assets-page__mobile-card-badge inline-flex shrink-0 items-center rounded-full border border-white/75 bg-white/80 px-2.5 py-1 text-[11px] font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+                          OTEVŘÍT
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid gap-3">
+                        {getMobileAssetCardFields(asset, activeCategory).map((field) => (
+                          <div
+                            key={field.label}
+                            className="assets-page__mobile-card-field flex items-start justify-between gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.06)]"
+                          >
+                            <span className="assets-page__mobile-card-field-label text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                              {field.label}
+                            </span>
+                            <span className="assets-page__mobile-card-field-value max-w-[65%] text-right text-sm font-semibold leading-5 text-gray-900">
+                              {field.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+
+              <div className="assets-page__table-shell hidden overflow-x-auto md:block">
                 <table className="min-w-full">
                   <thead className="assets-page__table-head bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(246,249,252,0.94)_100%)]">
                     <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">

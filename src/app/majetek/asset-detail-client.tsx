@@ -928,6 +928,7 @@ export function AssetDetailClient({
                     purchase_price: asset.purchase_price,
                   }}
                   categories={categories}
+                  className="w-full sm:w-auto"
                 />
 
                 {structuredDetailsKind ? (
@@ -961,14 +962,15 @@ export function AssetDetailClient({
                               model: electronics?.model ?? '',
                               warranty_until: electronics?.warranty_until ?? '',
                               location: electronics?.location ?? '',
-                            }
+                          }
                     }
+                    className="w-full sm:w-auto"
                   />
                 ) : null}
 
                 <Link
                   href="/majetek"
-                  className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
+                  className="clients-page__back-button inline-flex w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 sm:w-auto"
                 >
                   ZPĚT NA MAJETEK
                 </Link>
@@ -988,7 +990,7 @@ export function AssetDetailClient({
         </section>
 
         <section className="assets-detail-page__tabs-shell rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
-          <div className="assets-detail-page__tabs flex flex-wrap gap-2">
+          <div className="assets-detail-page__tabs grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2">
             {availableTabs.map((tab) => {
               const isActive = tab === activeTab
 
@@ -1004,7 +1006,7 @@ export function AssetDetailClient({
                       borderColor: isActive ? category.color : `${category.color}33`,
                     } as CSSProperties
                   }
-                  className="assets-detail-page__tab inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium transition duration-200"
+                  className="assets-detail-page__tab inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl border px-4 py-2.5 text-xs font-medium transition duration-200 sm:w-auto sm:text-sm"
                 >
                   <span>{ASSET_TAB_LABELS[tab]}</span>
                 </button>

@@ -12997,6 +12997,53 @@ html[data-theme='dark'] .assets-page__category .bg-white\/18 {
   background: rgba(255, 255, 255, 0.12) !important;
 }
 
+html[data-theme='dark'] .assets-page__mobile-list {
+  background: transparent !important;
+}
+
+html[data-theme='dark'] .assets-page__mobile-card {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 28px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-page__mobile-card:hover {
+  background: linear-gradient(155deg, rgba(22, 34, 54, 0.98) 0%, rgba(14, 23, 38, 0.96) 100%) !important;
+}
+
+html[data-theme='dark'] .assets-page__mobile-card-title {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-page__mobile-card-category,
+html[data-theme='dark'] .assets-page__mobile-card-field-label {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-page__mobile-card-badge {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.96) 100%) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-page__mobile-card-field {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.94) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-page__mobile-card-field-value {
+  color: #f8fbff !important;
+}
+
 html[data-theme='dark'] .assets-detail-page__tabs-shell {
   border-color: rgba(148, 163, 184, 0.16) !important;
   background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
@@ -13009,17 +13056,27 @@ html[data-theme='dark'] .assets-detail-page__tabs-shell {
 .assets-detail-page__tab[data-active='false'] {
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 245, 249, 0.84) 100%);
   color: #475569;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 8px 18px rgba(15, 23, 42, 0.1);
+  box-shadow: none;
 }
 
 .assets-detail-page__tab[data-active='true'] {
   background: linear-gradient(155deg, var(--asset-tab-accent, #4f92cb) 0%, var(--asset-tab-accent, #4f92cb) 100%);
   color: #ffffff;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 14px 28px rgba(24, 78, 129, 0.22);
+  box-shadow: none;
+}
+
+@media (min-width: 768px) {
+  .assets-detail-page__tab[data-active='false'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 8px 18px rgba(15, 23, 42, 0.1);
+  }
+
+  .assets-detail-page__tab[data-active='true'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      0 14px 28px rgba(24, 78, 129, 0.22);
+  }
 }
 
 html[data-theme='dark'] .assets-detail-page__tab[data-active='false'] {
