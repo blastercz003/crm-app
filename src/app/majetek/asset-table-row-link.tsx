@@ -12,6 +12,8 @@ type AssetTableRowLinkProps = {
   purchasePriceLabel?: string
   createdAtLabel?: string
   vinLabel?: string
+  insurancePolicyLabel?: string
+  insuranceProviderLabel?: string
   insuranceLabel?: string
   rentalLabel?: string
   stkExpiresLabel?: string
@@ -26,6 +28,8 @@ export function AssetTableRowLink({
   purchasePriceLabel,
   createdAtLabel,
   vinLabel,
+  insurancePolicyLabel,
+  insuranceProviderLabel,
   insuranceLabel,
   rentalLabel,
   stkExpiresLabel,
@@ -70,6 +74,8 @@ export function AssetTableRowLink({
       {variant === 'vehicle' ? (
         <>
           <td className="px-5 py-4 text-sm text-gray-700">{vinLabel ?? '—'}</td>
+          <td className="px-5 py-4 text-sm text-gray-700">{insurancePolicyLabel ?? '—'}</td>
+          <td className="px-5 py-4 text-sm text-gray-700">{insuranceProviderLabel ?? '—'}</td>
           <td className="px-5 py-4 text-sm text-gray-700">{insuranceLabel ?? '—'}</td>
           <td className="px-5 py-4 text-sm text-gray-700">{stkExpiresLabel ?? '—'}</td>
           <td className="px-5 py-4 text-right">
@@ -81,6 +87,8 @@ export function AssetTableRowLink({
       ) : variant === 'real_estate' ? (
         <>
           <td className="px-5 py-4 text-sm text-gray-700">{rentalLabel ?? '—'}</td>
+          <td className="px-5 py-4 text-sm text-gray-700">{insurancePolicyLabel ?? '—'}</td>
+          <td className="px-5 py-4 text-sm text-gray-700">{insuranceProviderLabel ?? '—'}</td>
           <td className="px-5 py-4 text-sm text-gray-700">{insuranceLabel ?? '—'}</td>
           <td className="px-5 py-4 text-right">
             <span className="inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">

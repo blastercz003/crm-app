@@ -28,7 +28,9 @@ type AssetRow = {
   created_at: string
   updated_at: string
   vin?: string | null
+  insurance_provider_name?: string | null
   insurance_total?: number | null
+  insurance_policy_number?: string | null
   rental_monthly_rent?: number | null
   stk_expires_on?: string | null
   search_text: string
@@ -337,6 +339,8 @@ export function AssetsPageClient({
                       {showVehicleColumns ? (
                         <>
                           <th className="px-5 py-4">VIN</th>
+                          <th className="px-5 py-4">POJ. SMLOUVA</th>
+                          <th className="px-5 py-4">POJIŠŤOVNA</th>
                           <th className="px-5 py-4">Pojistné</th>
                           <th className="px-5 py-4">STK expirace</th>
                           <th className="px-5 py-4">Detail</th>
@@ -344,6 +348,8 @@ export function AssetsPageClient({
                       ) : showRealEstateColumns ? (
                         <>
                           <th className="px-5 py-4">Nájemné</th>
+                          <th className="px-5 py-4">POJ. SMLOUVA</th>
+                          <th className="px-5 py-4">POJIŠŤOVNA</th>
                           <th className="px-5 py-4">Pojistné</th>
                           <th className="px-5 py-4">Detail</th>
                         </>
@@ -360,7 +366,7 @@ export function AssetsPageClient({
                     {visibleAssets.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={showVehicleColumns ? 6 : showRealEstateColumns ? 5 : 5}
+                          colSpan={showVehicleColumns ? 8 : showRealEstateColumns ? 7 : 5}
                           className="px-5 py-8 text-center text-sm text-zinc-500"
                         >
                           Zatím zde nejsou žádné záznamy.
@@ -377,6 +383,8 @@ export function AssetsPageClient({
                           purchasePriceLabel={formatCurrency(asset.purchase_price)}
                           createdAtLabel={formatDate(asset.created_at)}
                           vinLabel={asset.vin ?? '—'}
+                          insurancePolicyLabel={asset.insurance_policy_number ?? '—'}
+                          insuranceProviderLabel={asset.insurance_provider_name ?? '—'}
                           insuranceLabel={formatCurrency(asset.insurance_total ?? null)}
                           rentalLabel={formatCurrency(asset.rental_monthly_rent ?? null)}
                           stkExpiresLabel={formatDate(asset.stk_expires_on ?? null)}

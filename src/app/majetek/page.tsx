@@ -33,7 +33,9 @@ type AssetRow = {
   created_at: string
   updated_at: string
   vin?: string | null
+  insurance_provider_name?: string | null
   insurance_total?: number | null
+  insurance_policy_number?: string | null
   rental_monthly_rent?: number | null
   stk_expires_on?: string | null
 }
@@ -82,7 +84,12 @@ type AssetVehicleSearchRow = {
 
 type AssetInsuranceSearchRow = {
   asset_id: string
+  provider_name: string | null
+  policy_number: string | null
   annual_premium: string | number | null
+  start_date: string | null
+  end_date: string | null
+  created_at: string
 }
 
 type AssetsPageProps = {
@@ -166,7 +173,7 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
       .select('asset_id, vin, stk_expires_on'),
     supabase
       .from('asset_insurance_details')
-      .select('asset_id, annual_premium'),
+      .select('asset_id, provider_name, policy_number, annual_premium, start_date, end_date, created_at'),
   ])
 
   if (categoriesResult.error) {
@@ -282,6 +289,17 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
   }
 
   const insuranceTotalByAssetId = new Map<string, number>()
+  const insuranceByAssetId = new Map<
+    string,
+    Array<{
+      provider_name: string | null
+      policy_number: string | null
+      annual_premium: string | number | null
+      start_date: string | null
+      end_date: string | null
+      created_at: string
+    }>
+  >()
   for (const insurance of insuranceRows) {
     const parsed = typeof insurance.annual_premium === 'number' ? insurance.annual_premium : Number(insurance.annual_premium)
     if (!Number.isFinite(parsed)) continue
@@ -289,12 +307,55 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
       insurance.asset_id,
       (insuranceTotalByAssetId.get(insurance.asset_id) ?? 0) + parsed
     )
+
+    const list = insuranceByAssetId.get(insurance.asset_id) ?? []
+    list.push({
+      provider_name: insurance.provider_name,
+      policy_number: insurance.policy_number,
+      annual_premium: insurance.annual_premium,
+      start_date: insurance.start_date,
+      end_date: insurance.end_date,
+      created_at: insurance.created_at,
+    })
+    insuranceByAssetId.set(insurance.asset_id, list)
+  }
+
+  function getActiveInsurance(assetId: string) {
+    const records = insuranceByAssetId.get(assetId) ?? []
+    if (records.length === 0) return null
+
+    const now = new Date()
+
+    const active = [...records].find((insurance) => {
+      if (!insurance.end_date) return true
+      const endDate = new Date(insurance.end_date)
+      return Number.isFinite(endDate.getTime()) && endDate >= now
+    })
+
+    const fallback =
+      active ??
+      [...records].sort((left, right) => {
+        const leftStart = left.start_date ? new Date(left.start_date).getTime() : 0
+        const rightStart = right.start_date ? new Date(right.start_date).getTime() : 0
+
+        if (rightStart !== leftStart) {
+          return rightStart - leftStart
+        }
+
+        return new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+      })[0] ??
+      null
+
+    return fallback
   }
 
   const assetsWithSearchText = assets.map((asset) => {
     const category = categoryById.get(asset.category_id)
     const vehicle = vehicleByAssetId.get(asset.id) ?? null
     const insuranceTotal = insuranceTotalByAssetId.get(asset.id) ?? null
+    const activeInsurance = getActiveInsurance(asset.id)
+    const insurancePolicyNumber = activeInsurance?.policy_number ?? null
+    const insuranceProviderName = activeInsurance?.provider_name ?? null
     const latestRental = [...(rentalsByAssetId.get(asset.id) ?? [])].sort((left, right) => {
       const leftStart = left.start_date ? new Date(left.start_date).getTime() : 0
       const rightStart = right.start_date ? new Date(right.start_date).getTime() : 0
@@ -312,7 +373,9 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
     return {
       ...asset,
       vin: vehicle?.vin ?? null,
+      insurance_provider_name: insuranceProviderName,
       insurance_total: insuranceTotal,
+      insurance_policy_number: insurancePolicyNumber,
       rental_monthly_rent: Number.isFinite(rentalMonthlyRent ?? NaN) ? rentalMonthlyRent : null,
       stk_expires_on: vehicle?.stk_expires_on ?? null,
       search_text: buildSearchableText([
@@ -324,6 +387,8 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
         String(asset.purchase_price ?? ''),
         vehicle?.vin,
         vehicle?.stk_expires_on,
+        insuranceProviderName,
+        insurancePolicyNumber,
         insuranceTotal !== null ? String(insuranceTotal) : null,
         rentalMonthlyRent !== null && Number.isFinite(rentalMonthlyRent) ? String(rentalMonthlyRent) : null,
         ...(notesByAssetId.get(asset.id) ?? []),
