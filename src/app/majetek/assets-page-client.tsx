@@ -227,13 +227,6 @@ export function AssetsPageClient({
                   ZPĚT NA DASHBOARD
                 </Link>
 
-                <Link
-                  href="/majetek/nastaveni"
-                  className="assets-page__settings-button inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900"
-                >
-                  NASTAVENÍ
-                </Link>
-
                 {categories.length > 0 ? (
                   <NewAssetButton
                     categories={categories}
@@ -248,42 +241,53 @@ export function AssetsPageClient({
         </section>
 
         <section className="assets-page__filters rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
-          <div className="flex flex-wrap justify-center gap-2">
-            {categories.map((category) => {
-              const isActive = activeCategoryId === category.id
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+            <div className="flex flex-wrap justify-center gap-2 lg:col-start-2">
+              {categories.map((category) => {
+                const isActive = activeCategoryId === category.id
 
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => updateCategory(category.id)}
-                  className={[
-                    'assets-page__pill assets-page__pill--filter inline-flex items-center justify-start gap-2 rounded-full px-4 py-2 text-sm font-medium leading-none transition duration-200',
-                    isActive
-                      ? 'border text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_14px_28px_rgba(24,78,129,0.22)]'
-                      : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:text-zinc-900',
-                  ].join(' ')}
-                  style={
-                    isActive
-                      ? {
-                          background: `linear-gradient(155deg, ${category.color} 0%, ${category.color} 100%)`,
-                          borderColor: category.color,
-                        }
-                      : {
-                          borderColor: `${category.color}33`,
-                        }
-                  }
-                >
-                  <span
-                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center self-center rounded-full bg-white/18"
-                    aria-hidden="true"
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => updateCategory(category.id)}
+                    className={[
+                      'assets-page__pill assets-page__pill--filter inline-flex items-center justify-start gap-2 rounded-full px-4 py-2 text-sm font-medium leading-none transition duration-200',
+                      isActive
+                        ? 'border text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_14px_28px_rgba(24,78,129,0.22)]'
+                        : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] hover:-translate-y-[1px] hover:text-zinc-900',
+                    ].join(' ')}
+                    style={
+                      isActive
+                        ? {
+                            background: `linear-gradient(155deg, ${category.color} 0%, ${category.color} 100%)`,
+                            borderColor: category.color,
+                          }
+                        : {
+                            borderColor: `${category.color}33`,
+                          }
+                    }
                   >
-                    <AssetCategoryIcon iconKey={category.icon_key} />
-                  </span>
-                  {category.name}
-                </button>
-              )
-            })}
+                    <span
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center self-center rounded-full bg-white/18"
+                      aria-hidden="true"
+                    >
+                      <AssetCategoryIcon iconKey={category.icon_key} />
+                    </span>
+                    {category.name}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="lg:col-start-3 lg:justify-self-end">
+              <Link
+                href="/majetek/nastaveni"
+                className="assets-page__settings-button inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900"
+              >
+                NASTAVENÍ
+              </Link>
+            </div>
           </div>
         </section>
 
