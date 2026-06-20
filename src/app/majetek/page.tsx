@@ -34,6 +34,7 @@ type AssetRow = {
   updated_at: string
   vin?: string | null
   insurance_total?: number | null
+  rental_monthly_rent?: number | null
   stk_expires_on?: string | null
 }
 
@@ -67,6 +68,9 @@ type AssetRentalSearchRow = {
   asset_id: string
   tenant_name: string | null
   tenant_contact: string | null
+  monthly_rent: string | number | null
+  start_date: string | null
+  created_at: string
   note: string | null
 }
 
@@ -156,7 +160,7 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
       .select('asset_id, billing_year, provider_name, ean, meter_number, note'),
     supabase
       .from('asset_rentals')
-      .select('asset_id, tenant_name, tenant_contact, note'),
+      .select('asset_id, tenant_name, tenant_contact, monthly_rent, start_date, created_at, note'),
     supabase
       .from('asset_vehicle_details')
       .select('asset_id, vin, stk_expires_on'),
@@ -257,7 +261,7 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
 
   const rentalsByAssetId = new Map<
     string,
-    Array<{ tenant_name: string | null; tenant_contact: string | null; note: string | null }>
+    Array<{ tenant_name: string | null; tenant_contact: string | null; note: string | null; monthly_rent: string | number | null; start_date: string | null; created_at: string }>
   >()
   for (const rental of rentals) {
     const list = rentalsByAssetId.get(rental.asset_id) ?? []
@@ -265,6 +269,9 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
       tenant_name: rental.tenant_name,
       tenant_contact: rental.tenant_contact,
       note: rental.note,
+      monthly_rent: rental.monthly_rent,
+      start_date: rental.start_date,
+      created_at: rental.created_at,
     })
     rentalsByAssetId.set(rental.asset_id, list)
   }
@@ -288,10 +295,25 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
     const category = categoryById.get(asset.category_id)
     const vehicle = vehicleByAssetId.get(asset.id) ?? null
     const insuranceTotal = insuranceTotalByAssetId.get(asset.id) ?? null
+    const latestRental = [...(rentalsByAssetId.get(asset.id) ?? [])].sort((left, right) => {
+      const leftStart = left.start_date ? new Date(left.start_date).getTime() : 0
+      const rightStart = right.start_date ? new Date(right.start_date).getTime() : 0
+
+      if (rightStart !== leftStart) {
+        return rightStart - leftStart
+      }
+
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    })[0] ?? null
+    const rentalMonthlyRent =
+      latestRental?.monthly_rent !== null && latestRental?.monthly_rent !== undefined
+        ? Number(latestRental.monthly_rent)
+        : null
     return {
       ...asset,
       vin: vehicle?.vin ?? null,
       insurance_total: insuranceTotal,
+      rental_monthly_rent: Number.isFinite(rentalMonthlyRent ?? NaN) ? rentalMonthlyRent : null,
       stk_expires_on: vehicle?.stk_expires_on ?? null,
       search_text: buildSearchableText([
         asset.name,
@@ -303,6 +325,7 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
         vehicle?.vin,
         vehicle?.stk_expires_on,
         insuranceTotal !== null ? String(insuranceTotal) : null,
+        rentalMonthlyRent !== null && Number.isFinite(rentalMonthlyRent) ? String(rentalMonthlyRent) : null,
         ...(notesByAssetId.get(asset.id) ?? []),
         ...(documentsByAssetId.get(asset.id) ?? []).flatMap((document) => [document.title, document.file_name]),
         ...(photosByAssetId.get(asset.id) ?? []).flatMap((photo) => [photo.title, photo.file_name]),

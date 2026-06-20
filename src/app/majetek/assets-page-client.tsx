@@ -29,6 +29,7 @@ type AssetRow = {
   updated_at: string
   vin?: string | null
   insurance_total?: number | null
+  rental_monthly_rent?: number | null
   stk_expires_on?: string | null
   search_text: string
 }
@@ -136,6 +137,7 @@ export function AssetsPageClient({
     categories[0] ??
     null
   const showVehicleColumns = activeCategory?.icon_key === 'car'
+  const showRealEstateColumns = activeCategory?.icon_key === 'house' || activeCategory?.icon_key === 'building'
 
   const visibleAssets = activeCategory
     ? [...assets]
@@ -335,6 +337,12 @@ export function AssetsPageClient({
                           <th className="px-5 py-4">STK expirace</th>
                           <th className="px-5 py-4">Detail</th>
                         </>
+                      ) : showRealEstateColumns ? (
+                        <>
+                          <th className="px-5 py-4">Nájemné</th>
+                          <th className="px-5 py-4">Pojistné</th>
+                          <th className="px-5 py-4">Detail</th>
+                        </>
                       ) : (
                         <>
                           <th className="px-5 py-4">Pořízení</th>
@@ -347,7 +355,10 @@ export function AssetsPageClient({
                   <tbody className="assets-page__table-body">
                     {visibleAssets.length === 0 ? (
                       <tr>
-                        <td colSpan={showVehicleColumns ? 6 : 5} className="px-5 py-8 text-center text-sm text-zinc-500">
+                        <td
+                          colSpan={showVehicleColumns ? 6 : showRealEstateColumns ? 5 : 5}
+                          className="px-5 py-8 text-center text-sm text-zinc-500"
+                        >
                           Zatím zde nejsou žádné záznamy.
                         </td>
                       </tr>
@@ -363,8 +374,9 @@ export function AssetsPageClient({
                           createdAtLabel={formatDate(asset.created_at)}
                           vinLabel={asset.vin ?? '—'}
                           insuranceLabel={formatCurrency(asset.insurance_total ?? null)}
+                          rentalLabel={formatCurrency(asset.rental_monthly_rent ?? null)}
                           stkExpiresLabel={formatDate(asset.stk_expires_on ?? null)}
-                          variant={showVehicleColumns ? 'vehicle' : 'default'}
+                          variant={showVehicleColumns ? 'vehicle' : showRealEstateColumns ? 'real_estate' : 'default'}
                         />
                       ))
                     )}
