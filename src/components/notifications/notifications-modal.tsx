@@ -20,6 +20,7 @@ type NotificationsModalProps = {
 }
 
 const CATEGORY_LABELS: Record<NotificationCategory, string> = {
+  assets: 'Majetek',
   tasks: 'Úkoly',
   meetings: 'Schůzky',
   offers: 'Nabídky',

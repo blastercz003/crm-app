@@ -1,4 +1,5 @@
 import { createNotification } from '@/lib/notifications/createNotification'
+import { buildAssetDetailHref } from '@/lib/majetek/detail'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
@@ -107,6 +108,7 @@ type AutomationRunResult = {
     jobsMissingPpTechnicians: number
     unreadOlderThan6h: number
     receivedInvoicesDue: number
+    assetInsuranceExpiring6w: number
   }
 }
 
@@ -162,6 +164,69 @@ type ReceivedInvoiceDueRow = {
   file_name: string
   due_date: string | null
   status: 'unpaid' | 'paid'
+}
+
+type AssetInsuranceExpiryRow = {
+  id: string
+  asset_id: string
+  end_date: string | null
+  provider_name: string | null
+  policy_number: string | null
+}
+
+type AssetNameRow = {
+  id: string
+  name: string
+}
+
+type AssetRecipientRow = {
+  id: string
+}
+
+function addDaysToDateKey(dateKey: string, days: number) {
+  const match = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (!match) {
+    return null
+  }
+
+  const [, year, month, day] = match
+
+  return new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day) + days, 12, 0, 0)
+  )
+    .toISOString()
+    .slice(0, 10)
+}
+
+function formatDateKeyForCzech(dateKey: string) {
+  const match = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (!match) {
+    return dateKey
+  }
+
+  const [, year, month, day] = match
+
+  return new Intl.DateTimeFormat('cs-CZ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12, 0, 0)))
+}
+
+async function getAssetNotificationRecipients(supabase: ServiceClient) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .eq('majetek', true)
+
+  if (error) {
+    throw new Error(`Automatické notifikace (majetek) selhaly: ${error.message}`)
+  }
+
+  return ((data ?? []) as AssetRecipientRow[]).map((row) => row.id).filter(Boolean)
 }
 
 async function sendMeetingOverdue24hNotifications(
@@ -551,6 +616,83 @@ async function sendReceivedInvoiceDueNotifications(
   return sent
 }
 
+async function sendAssetInsuranceExpiryNotifications(
+  supabase: ServiceClient,
+  now: Date
+) {
+  const pragueDateKey = getPragueDateKey(now)
+  const targetDateKey = addDaysToDateKey(pragueDateKey, 42)
+
+  if (!targetDateKey) {
+    throw new Error('Automatické notifikace (majetek) selhaly: neplatné datum.')
+  }
+
+  const [{ data: insuranceRows, error: insuranceError }, recipients] = await Promise.all([
+    supabase
+      .from('asset_insurance_details')
+      .select('id, asset_id, end_date, provider_name, policy_number')
+      .eq('end_date', targetDateKey),
+    getAssetNotificationRecipients(supabase),
+  ])
+
+  if (insuranceError) {
+    throw new Error(`Automatické notifikace (majetek) selhaly: ${insuranceError.message}`)
+  }
+
+  const insurances = (insuranceRows ?? []) as AssetInsuranceExpiryRow[]
+
+  if (insurances.length === 0 || recipients.length === 0) {
+    return 0
+  }
+
+  const assetIds = Array.from(new Set(insurances.map((row) => row.asset_id).filter(Boolean)))
+
+  const { data: assetRows, error: assetsError } = await supabase
+    .from('assets')
+    .select('id, name')
+    .in('id', assetIds)
+
+  if (assetsError) {
+    throw new Error(`Automatické notifikace (majetek) selhaly: ${assetsError.message}`)
+  }
+
+  const assetMap = new Map(
+    ((assetRows ?? []) as AssetNameRow[]).map((asset) => [asset.id, asset.name] as const)
+  )
+  const targetDateLabel = formatDateKeyForCzech(targetDateKey)
+
+  let sent = 0
+
+  for (const insurance of insurances) {
+    const assetName = assetMap.get(insurance.asset_id) ?? 'nepojmenovaný majetek'
+    const policyLabel = insurance.policy_number ? `, smlouva ${insurance.policy_number}` : ''
+    const providerLabel = insurance.provider_name ? ` u ${insurance.provider_name}` : ''
+    const message = `Pojištění u majetku „${assetName}“${policyLabel}${providerLabel} končí ${targetDateLabel}. Zkontroluj ho a případně zažádej o aktualizaci pojistky.`
+
+    for (const recipientUserId of recipients) {
+      await createNotification({
+        supabase,
+        recipientUserId,
+        actorUserId: null,
+        category: 'assets',
+        type: 'asset_insurance_expiry_6w',
+        title: 'POJIŠTĚNÍ MAJETKU KONČÍ ZA 6 TÝDNŮ',
+        message,
+        entityType: 'asset_insurance',
+        entityId: insurance.id,
+        href: buildAssetDetailHref(insurance.asset_id, 'insurance'),
+        priority: 'normal',
+        dedupeKey: `asset_insurance_expiry_6w:${insurance.id}:${recipientUserId}:${pragueDateKey}`,
+        skipSelfNotification: false,
+      })
+
+      sent += 1
+    }
+  }
+
+  return sent
+}
+
 export async function runNotificationAutomations(now = new Date()): Promise<AutomationRunResult> {
   if (!isWithinSendWindow(now)) {
     return {
@@ -563,6 +705,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
         jobsMissingPpTechnicians: 0,
         unreadOlderThan6h: 0,
         receivedInvoicesDue: 0,
+        assetInsuranceExpiring6w: 0,
       },
     }
   }
@@ -573,7 +716,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
     throw new Error('Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro automatické notifikace.')
   }
 
-  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, jobsMissingPpTechnicians, unreadOlderThan6h, receivedInvoicesDue] =
+  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, jobsMissingPpTechnicians, unreadOlderThan6h, receivedInvoicesDue, assetInsuranceExpiring6w] =
     await Promise.all([
       sendMeetingOverdue24hNotifications(supabase, now),
       sendTaskOverdueNotifications(supabase, now),
@@ -581,6 +724,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       sendTechnicianMissingPpNotifications(supabase, now),
       sendUnreadNotificationReminder(supabase, now),
       sendReceivedInvoiceDueNotifications(supabase, now),
+      sendAssetInsuranceExpiryNotifications(supabase, now),
     ])
 
   return {
@@ -590,7 +734,8 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       jobsMissingPp +
       jobsMissingPpTechnicians +
       unreadOlderThan6h +
-      receivedInvoicesDue,
+      receivedInvoicesDue +
+      assetInsuranceExpiring6w,
     skippedOutsideWindow: false,
     details: {
       meetingsOverdue24h,
@@ -599,6 +744,7 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       jobsMissingPpTechnicians,
       unreadOlderThan6h,
       receivedInvoicesDue,
+      assetInsuranceExpiring6w,
     },
   }
 }

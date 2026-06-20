@@ -1,4 +1,5 @@
 export type NotificationCategory =
+  | 'assets'
   | 'tasks'
   | 'meetings'
   | 'offers'

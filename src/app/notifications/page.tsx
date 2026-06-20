@@ -43,6 +43,7 @@ type StatCardProps = {
 
 const CATEGORY_LABELS: Record<NotificationCategoryFilter, string> = {
   all: 'Vše',
+  assets: 'Majetek',
   tasks: 'Úkoly',
   meetings: 'Schůzky',
   offers: 'Nabídky',
@@ -128,6 +129,7 @@ function isStatusFilter(value: string | undefined): value is NotificationStatusF
 function isCategoryFilter(value: string | undefined): value is NotificationCategoryFilter {
   return (
     value === 'all' ||
+    value === 'assets' ||
     value === 'tasks' ||
     value === 'meetings' ||
     value === 'jobs' ||
@@ -479,7 +481,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
                       defaultValue={category}
                       className="notifications-page__mobile-select h-9 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                     >
-                      {(['all', 'tasks', 'meetings', 'jobs', 'offers', 'system'] as NotificationCategoryFilter[]).map(
+                      {(['all', 'assets', 'tasks', 'meetings', 'jobs', 'offers', 'system'] as NotificationCategoryFilter[]).map(
                         (item) => (
                           <option key={item} value={item}>
                             {CATEGORY_LABELS[item]}
@@ -518,7 +520,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
             </div>
 
             <div className="notifications-page__category-tabs mt-4 hidden flex-wrap gap-2 border-t border-white/70 pt-4 lg:flex">
-              {(['all', 'tasks', 'meetings', 'jobs', 'offers', 'system'] as NotificationCategoryFilter[]).map(
+              {(['all', 'assets', 'tasks', 'meetings', 'jobs', 'offers', 'system'] as NotificationCategoryFilter[]).map(
                 (item) => (
                   <FilterTab
                     key={item}
