@@ -20,6 +20,12 @@ import {
   normalizeAssetTabs,
   isAssetTabKey,
 } from '@/lib/majetek/detail'
+import type {
+  RentalServiceAdvanceHistoryRow,
+  RentalServiceSettlementCustomItemRow,
+  RentalServiceSettlementFileRow,
+  RentalServiceSettlementRow,
+} from '@/lib/majetek/rental-settlements'
 import type { AssetTabKey } from '@/lib/majetek/types'
 
 export const metadata: Metadata = {
@@ -204,6 +210,43 @@ async function loadAssetDocumentTypes(supabase: Awaited<ReturnType<typeof create
     data: (fallback.data ?? []).map((documentType) => ({
       ...documentType,
       tabs_config: [],
+    })),
+  }
+}
+
+async function loadRentalServiceSettlements(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  assetId: string,
+) {
+  const withReconciliation = await supabase
+    .from('asset_rental_service_settlements')
+    .select('id, asset_id, rental_id, settlement_code, period_from, period_to, tenant_name_snapshot, tenant_contact_snapshot, status, electricity_amount, hot_water_heating_amount, space_heating_amount, common_area_cleaning_amount, cold_water_sewer_amount, hot_water_sewer_amount, advance_payments_total_amount, service_total_amount, balance_amount, settled_on, settled_by, settled_note, note, closed_at, closed_by, created_by, created_at, updated_at')
+    .eq('asset_id', assetId)
+    .order('period_from', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (!withReconciliation.error) {
+    return withReconciliation
+  }
+
+  if (!isMissingColumnError(withReconciliation.error)) {
+    return withReconciliation
+  }
+
+  const fallback = await supabase
+    .from('asset_rental_service_settlements')
+    .select('id, asset_id, rental_id, settlement_code, period_from, period_to, tenant_name_snapshot, tenant_contact_snapshot, status, electricity_amount, hot_water_heating_amount, space_heating_amount, common_area_cleaning_amount, cold_water_sewer_amount, hot_water_sewer_amount, advance_payments_total_amount, service_total_amount, balance_amount, note, closed_at, closed_by, created_by, created_at, updated_at')
+    .eq('asset_id', assetId)
+    .order('period_from', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  return {
+    ...fallback,
+    data: (fallback.data ?? []).map((settlement) => ({
+      ...settlement,
+      settled_on: null,
+      settled_by: null,
+      settled_note: null,
     })),
   }
 }
@@ -939,6 +982,68 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const electronics = (electronicsResponse.data ?? null) as AssetElectronicsRow | null
   const insurances = (insuranceResponse.data ?? []) as AssetInsuranceRow[]
   const electricity = (electricityResponse.data ?? []) as AssetElectricityRow[]
+  const rentalIds = rentals.map((rental) => rental.id)
+
+  const [
+    rentalServiceAdvanceHistoryResponse,
+    rentalServiceSettlementsResponse,
+  ] = rentalIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from('asset_rental_service_advance_history')
+          .select('id, rental_id, effective_from, monthly_advance, note, created_at, updated_at')
+          .in('rental_id', rentalIds)
+          .order('effective_from', { ascending: false })
+          .order('created_at', { ascending: false }),
+        loadRentalServiceSettlements(supabase, asset.id),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ]
+
+  const settlementIds = ((rentalServiceSettlementsResponse.data ?? []) as RentalServiceSettlementRow[]).map(
+    (settlement) => settlement.id
+  )
+
+  const rentalServiceSettlementFilesResponse = settlementIds.length > 0
+    ? await supabase
+        .from('asset_rental_service_settlement_files')
+        .select('id, settlement_id, title, file_name, storage_bucket, storage_path, mime_type, file_size_bytes, uploaded_by, created_at, updated_at')
+        .in('settlement_id', settlementIds)
+        .order('created_at', { ascending: true })
+    : { data: [], error: null }
+
+  const rentalServiceSettlementCustomItemsResponse = settlementIds.length > 0
+    ? await supabase
+        .from('asset_rental_service_settlement_custom_items')
+        .select('id, settlement_id, title, amount, sort_order, created_by, created_at, updated_at')
+        .in('settlement_id', settlementIds)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
+    : { data: [], error: null }
+
+  if (rentalServiceAdvanceHistoryResponse.error) {
+    throw new Error('Nepodařilo se načíst historii záloh na služby.')
+  }
+
+  if (rentalServiceSettlementsResponse.error) {
+    throw new Error('Nepodařilo se načíst vyúčtování služeb.')
+  }
+
+  if (rentalServiceSettlementFilesResponse.error) {
+    throw new Error('Nepodařilo se načíst přílohy vyúčtování.')
+  }
+
+  if (rentalServiceSettlementCustomItemsResponse.error) {
+    throw new Error('Nepodařilo se načíst vlastní položky vyúčtování.')
+  }
+
+  const rentalServiceAdvanceHistory = (rentalServiceAdvanceHistoryResponse.data ?? []) as RentalServiceAdvanceHistoryRow[]
+  const rentalServiceSettlements = (rentalServiceSettlementsResponse.data ?? []) as RentalServiceSettlementRow[]
+  const rentalServiceSettlementFiles = (rentalServiceSettlementFilesResponse.data ?? []) as RentalServiceSettlementFileRow[]
+  const rentalServiceSettlementCustomItems = (rentalServiceSettlementCustomItemsResponse.data ?? []) as RentalServiceSettlementCustomItemRow[]
+
   const [documentsWithUrls, photosWithUrls] = await Promise.all([
     Promise.all(
       documents.map(async (document) => ({
@@ -953,6 +1058,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       })),
     ),
   ])
+  const rentalServiceSettlementFilesWithUrls = await Promise.all(
+    rentalServiceSettlementFiles.map(async (file) => ({
+      ...file,
+      signedUrl: await createSignedUrl(supabase, file.storage_path, 60 * 10),
+    }))
+  )
   const structuredDetailsKind =
     category.icon_key === 'car'
       ? 'vehicle'
@@ -975,6 +1086,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       insurances={insurances}
       electricity={electricity}
       rentals={rentals}
+      rentalServiceAdvanceHistory={rentalServiceAdvanceHistory}
+      rentalServiceSettlements={rentalServiceSettlements}
+      rentalServiceSettlementFiles={rentalServiceSettlementFilesWithUrls}
+      rentalServiceSettlementCustomItems={rentalServiceSettlementCustomItems}
       documents={documentsWithUrls}
       photos={photosWithUrls}
       notes={notes}

@@ -9,6 +9,7 @@ import {
   type DeleteAssetInsuranceActionState,
   type UpdateAssetInsuranceActionState,
 } from './actions'
+import { MoneyInput } from '@/components/ui/money-input'
 
 export type AssetInsuranceRow = {
   id: string
@@ -57,12 +58,6 @@ type AssetInsuranceSectionProps = {
 function asDateInput(value: string | null) {
   if (!value) return ''
   return value.slice(0, 10)
-}
-
-function asNumberInput(value: string | number | null) {
-  if (value === null || value === undefined || value === '') return ''
-  const parsed = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(parsed) ? String(parsed) : ''
 }
 
 function formatDate(value: string | null) {
@@ -245,12 +240,10 @@ function AssetInsuranceForm({ assetId, insurance, submitLabel, onSuccess }: Asse
           <label htmlFor={`premium-${assetId}-${insurance?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
             Roční pojistné
           </label>
-          <input
+          <MoneyInput
             id={`premium-${assetId}-${insurance?.id ?? 'new'}`}
             name="annual_premium"
-            type="text"
-            inputMode="decimal"
-            defaultValue={asNumberInput(insurance?.annual_premium ?? null)}
+            defaultValue={insurance?.annual_premium ?? null}
             placeholder="Volitelné"
             className={inputClassName}
           />
@@ -260,12 +253,10 @@ function AssetInsuranceForm({ assetId, insurance, submitLabel, onSuccess }: Asse
           <label htmlFor={`deductible-${assetId}-${insurance?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
             Spoluúčast
           </label>
-          <input
+          <MoneyInput
             id={`deductible-${assetId}-${insurance?.id ?? 'new'}`}
             name="deductible"
-            type="text"
-            inputMode="decimal"
-            defaultValue={asNumberInput(insurance?.deductible ?? null)}
+            defaultValue={insurance?.deductible ?? null}
             placeholder="Volitelné"
             className={inputClassName}
           />
@@ -275,12 +266,10 @@ function AssetInsuranceForm({ assetId, insurance, submitLabel, onSuccess }: Asse
           <label htmlFor={`insured-${assetId}-${insurance?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
             Pojistná částka
           </label>
-          <input
+          <MoneyInput
             id={`insured-${assetId}-${insurance?.id ?? 'new'}`}
             name="insured_amount"
-            type="text"
-            inputMode="decimal"
-            defaultValue={asNumberInput(insurance?.insured_amount ?? null)}
+            defaultValue={insurance?.insured_amount ?? null}
             placeholder="Volitelné"
             className={inputClassName}
           />

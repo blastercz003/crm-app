@@ -7,6 +7,7 @@ import { useFormStatus } from 'react-dom'
 import { createAssetAction, type CreateAssetActionState } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { MoneyInput } from '@/components/ui/money-input'
 
 type AssetCategoryOption = {
   id: string
@@ -222,12 +223,10 @@ function CreateAssetModal({
                   >
                     Pořizovací cena
                   </label>
-                  <input
+                  <MoneyInput
                     id="purchase_price"
                     name="purchase_price"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Např. 1250000"
+                    placeholder="Např. 1.250.000,- Kč"
                     className={inputClassName}
                   />
                 </div>

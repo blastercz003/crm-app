@@ -12,12 +12,21 @@ import { AssetInsuranceSection, type AssetInsuranceRow } from './asset-insurance
 import { AssetNoteDeleteButton } from './asset-note-delete-button'
 import { AssetNoteForm } from './asset-note-form'
 import { AssetRentalSection } from './asset-rental-form'
+import {
+  AssetRentalServiceSettlementsSection,
+} from './asset-rental-service-settlements'
 import { EditAssetButton } from './edit-asset-button'
 import { EditStructuredDetailsButton } from './edit-structured-details-button'
 import {
   ASSET_TAB_LABELS,
   documentTypeMatchesTab,
 } from '@/lib/majetek/detail'
+import type {
+  RentalServiceAdvanceHistoryRow,
+  RentalServiceSettlementCustomItemRow,
+  RentalServiceSettlementFileRow,
+  RentalServiceSettlementRow,
+} from '@/lib/majetek/rental-settlements'
 import { ASSET_DOCUMENT_TYPE_SEED_TABS_BY_LABEL } from '@/lib/majetek/config'
 import type { AssetTabKey } from '@/lib/majetek/types'
 
@@ -94,6 +103,12 @@ type AssetRentalRow = {
   updated_at: string
 }
 
+type AssetRentalServiceAdvanceHistoryRow = RentalServiceAdvanceHistoryRow
+type AssetRentalServiceSettlementRow = RentalServiceSettlementRow
+type AssetRentalServiceSettlementFileRow = RentalServiceSettlementFileRow & {
+  signedUrl: string | null
+}
+
 type AssetDocumentViewRow = {
   id: string
   asset_id: string
@@ -148,6 +163,10 @@ type AssetDetailClientProps = {
   insurances: AssetInsuranceRow[]
   electricity: AssetElectricityRow[]
   rentals: AssetRentalRow[]
+  rentalServiceAdvanceHistory: AssetRentalServiceAdvanceHistoryRow[]
+  rentalServiceSettlements: AssetRentalServiceSettlementRow[]
+  rentalServiceSettlementFiles: AssetRentalServiceSettlementFileRow[]
+  rentalServiceSettlementCustomItems: RentalServiceSettlementCustomItemRow[]
   documents: AssetDocumentViewRow[]
   photos: AssetPhotoViewRow[]
   notes: AssetNoteRow[]
@@ -255,21 +274,6 @@ function CompactStat({
       <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">{title}</p>
       <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
       {note ? <p className="mt-1 text-xs leading-5 text-gray-500">{note}</p> : null}
-    </div>
-  )
-}
-
-function CompactLine({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="assets-detail-page__compact-line flex items-start justify-between gap-4 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="text-sm font-medium text-gray-900 text-right">{value}</p>
     </div>
   )
 }
@@ -719,25 +723,86 @@ function renderServiceTab({
 function renderRentTab({
   assetId,
   rentals,
+  rentalServiceAdvanceHistory,
+  rentalServiceSettlements,
+  rentalServiceSettlementFiles,
+  rentalServiceSettlementCustomItems,
   documents,
   documentTypeMap,
 }: {
   assetId: string
   rentals: AssetRentalRow[]
+  rentalServiceAdvanceHistory: AssetRentalServiceAdvanceHistoryRow[]
+  rentalServiceSettlements: AssetRentalServiceSettlementRow[]
+  rentalServiceSettlementFiles: AssetRentalServiceSettlementFileRow[]
+  rentalServiceSettlementCustomItems: RentalServiceSettlementCustomItemRow[]
   documents: AssetDocumentViewRow[]
   documentTypeMap: Map<string, string>
 }) {
-  return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]">
-      <AssetRentalSection assetId={assetId} rentals={rentals} />
+  const advanceHistoryByRentalId = rentalServiceAdvanceHistory.reduce<Record<string, AssetRentalServiceAdvanceHistoryRow[]>>(
+    (accumulator, entry) => {
+      if (!accumulator[entry.rental_id]) {
+        accumulator[entry.rental_id] = []
+      }
 
-      <DocumentSidebar
-        assetId={assetId}
-        title="Související dokumenty"
-        documents={documents}
-        documentTypeMap={documentTypeMap}
-        emptyMessage="K pronájmu zatím nejsou navázané žádné dokumenty."
-      />
+      accumulator[entry.rental_id].push(entry)
+      return accumulator
+    },
+    {},
+  )
+
+  const settlementFilesBySettlementId = rentalServiceSettlementFiles.reduce<Record<string, AssetRentalServiceSettlementFileRow[]>>(
+    (accumulator, entry) => {
+      if (!accumulator[entry.settlement_id]) {
+        accumulator[entry.settlement_id] = []
+      }
+
+      accumulator[entry.settlement_id].push(entry)
+      return accumulator
+    },
+    {},
+  )
+
+  const settlementCustomItemsBySettlementId = rentalServiceSettlementCustomItems.reduce<Record<string, RentalServiceSettlementCustomItemRow[]>>(
+    (accumulator, entry) => {
+      if (!accumulator[entry.settlement_id]) {
+        accumulator[entry.settlement_id] = []
+      }
+
+      accumulator[entry.settlement_id].push(entry)
+      return accumulator
+    },
+    {},
+  )
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div className="space-y-5">
+        <AssetRentalSection
+          assetId={assetId}
+          rentals={rentals}
+          advanceHistoryByRentalId={advanceHistoryByRentalId}
+        />
+
+        <AssetRentalServiceSettlementsSection
+          assetId={assetId}
+          rentals={rentals}
+          settlements={rentalServiceSettlements}
+          settlementFilesBySettlementId={settlementFilesBySettlementId}
+          settlementCustomItemsBySettlementId={settlementCustomItemsBySettlementId}
+        />
+      </div>
+
+      <div className="space-y-5">
+        <DocumentSidebar
+          assetId={assetId}
+          title="Související dokumenty"
+          documents={documents}
+          documentTypeMap={documentTypeMap}
+          emptyMessage="K pronájmu zatím nejsou navázané žádné dokumenty."
+        />
+
+      </div>
     </div>
   )
 }
@@ -821,6 +886,10 @@ export function AssetDetailClient({
   insurances,
   electricity,
   rentals,
+  rentalServiceAdvanceHistory,
+  rentalServiceSettlements,
+  rentalServiceSettlementFiles,
+  rentalServiceSettlementCustomItems,
   documents,
   photos,
   notes,
@@ -1074,9 +1143,13 @@ export function AssetDetailClient({
               ? renderRentTab({
                   assetId: asset.id,
                   rentals,
+                  rentalServiceAdvanceHistory,
+                  rentalServiceSettlements,
+                  rentalServiceSettlementFiles,
+                  rentalServiceSettlementCustomItems,
                   documents: linkedDocumentsForActiveTab,
                   documentTypeMap,
-                })
+              })
               : null}
             {activeTab === 'electricity'
               ? renderElectricityTab({

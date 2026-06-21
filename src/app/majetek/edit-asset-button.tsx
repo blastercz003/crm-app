@@ -8,6 +8,7 @@ import { Pencil } from 'lucide-react'
 import { updateAssetAction, type UpdateAssetActionState } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { MoneyInput } from '@/components/ui/money-input'
 
 type AssetCategoryOption = {
   id: string
@@ -44,12 +45,6 @@ const inputClassName =
 function formatDateForInput(value: string | null) {
   if (!value) return ''
   return value.slice(0, 10)
-}
-
-function formatNumberForInput(value: string | number | null) {
-  if (value === null || value === undefined || value === '') return ''
-  const parsed = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(parsed) ? String(parsed) : ''
 }
 
 export function EditAssetButton({
@@ -249,12 +244,10 @@ function EditAssetModal({
                   >
                     Pořizovací cena
                   </label>
-                  <input
+                  <MoneyInput
                     id={`asset-purchase-price-${asset.id}`}
                     name="purchase_price"
-                    type="text"
-                    inputMode="decimal"
-                    defaultValue={formatNumberForInput(asset.purchase_price)}
+                    defaultValue={asset.purchase_price}
                     className={inputClassName}
                   />
                 </div>

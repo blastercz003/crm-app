@@ -9,6 +9,7 @@ import {
   type DeleteAssetElectricityActionState,
   type UpdateAssetElectricityActionState,
 } from './actions'
+import { MoneyInput } from '@/components/ui/money-input'
 
 export type AssetElectricityRow = {
   id: string
@@ -70,12 +71,6 @@ function asNumberInput(value: string | number | null) {
   return Number.isFinite(parsed) ? String(parsed) : ''
 }
 
-function asSignedNumberInput(value: string | number | null) {
-  if (value === null || value === undefined || value === '') return ''
-  const parsed = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(parsed) ? String(parsed) : ''
-}
-
 function formatDate(value: string | null) {
   if (!value) return '—'
 
@@ -83,18 +78,6 @@ function formatDate(value: string | null) {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(value))
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return '—'
-
-  return new Intl.DateTimeFormat('cs-CZ', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   }).format(new Date(value))
 }
 
@@ -387,12 +370,10 @@ function AssetElectricityForm({
           <label htmlFor={`total-${assetId}-${electricity?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
             Celková částka
           </label>
-          <input
+          <MoneyInput
             id={`total-${assetId}-${electricity?.id ?? 'new'}`}
             name="total_amount"
-            type="text"
-            inputMode="decimal"
-            defaultValue={asNumberInput(electricity?.total_amount ?? null)}
+            defaultValue={electricity?.total_amount ?? null}
             placeholder="Volitelné"
             className={inputClassName}
           />
@@ -402,12 +383,10 @@ function AssetElectricityForm({
           <label htmlFor={`advance-${assetId}-${electricity?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
             Zaplacené zálohy
           </label>
-          <input
+          <MoneyInput
             id={`advance-${assetId}-${electricity?.id ?? 'new'}`}
             name="advance_payments"
-            type="text"
-            inputMode="decimal"
-            defaultValue={asNumberInput(electricity?.advance_payments ?? null)}
+            defaultValue={electricity?.advance_payments ?? null}
             placeholder="Volitelné"
             className={inputClassName}
           />
@@ -417,13 +396,12 @@ function AssetElectricityForm({
           <label htmlFor={`balance-${assetId}-${electricity?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
             Vyrovnání
           </label>
-          <input
+          <MoneyInput
             id={`balance-${assetId}-${electricity?.id ?? 'new'}`}
             name="balance_amount"
-            type="text"
-            inputMode="decimal"
-            defaultValue={asSignedNumberInput(electricity?.balance_amount ?? null)}
-            placeholder="Např. -1200"
+            defaultValue={electricity?.balance_amount ?? null}
+            placeholder="Např. -1.200,- Kč"
+            allowNegative
             className={inputClassName}
           />
         </div>

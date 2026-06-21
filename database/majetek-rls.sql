@@ -18,6 +18,8 @@ alter table public.assets enable row level security;
 alter table public.asset_vehicle_details enable row level security;
 alter table public.asset_real_estate_details enable row level security;
 alter table public.asset_rentals enable row level security;
+alter table public.asset_rental_service_advance_history enable row level security;
+alter table public.asset_rental_service_settlement_custom_items enable row level security;
 alter table public.asset_electricity_details enable row level security;
 alter table public.asset_electronics_details enable row level security;
 alter table public.asset_documents enable row level security;
@@ -210,6 +212,56 @@ create policy "Admins can update asset rentals"
 drop policy if exists "Admins can delete asset rentals" on public.asset_rentals;
 create policy "Admins can delete asset rentals"
   on public.asset_rentals
+  for delete
+  using (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can read rental service advances" on public.asset_rental_service_advance_history;
+create policy "Admins can read rental service advances"
+  on public.asset_rental_service_advance_history
+  for select
+  using (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can insert rental service advances" on public.asset_rental_service_advance_history;
+create policy "Admins can insert rental service advances"
+  on public.asset_rental_service_advance_history
+  for insert
+  with check (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can update rental service advances" on public.asset_rental_service_advance_history;
+create policy "Admins can update rental service advances"
+  on public.asset_rental_service_advance_history
+  for update
+  using (public.current_user_is_majetek_admin())
+  with check (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can delete rental service advances" on public.asset_rental_service_advance_history;
+create policy "Admins can delete rental service advances"
+  on public.asset_rental_service_advance_history
+  for delete
+  using (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can read settlement custom items" on public.asset_rental_service_settlement_custom_items;
+create policy "Admins can read settlement custom items"
+  on public.asset_rental_service_settlement_custom_items
+  for select
+  using (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can insert settlement custom items" on public.asset_rental_service_settlement_custom_items;
+create policy "Admins can insert settlement custom items"
+  on public.asset_rental_service_settlement_custom_items
+  for insert
+  with check (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can update settlement custom items" on public.asset_rental_service_settlement_custom_items;
+create policy "Admins can update settlement custom items"
+  on public.asset_rental_service_settlement_custom_items
+  for update
+  using (public.current_user_is_majetek_admin())
+  with check (public.current_user_is_majetek_admin());
+
+drop policy if exists "Admins can delete settlement custom items" on public.asset_rental_service_settlement_custom_items;
+create policy "Admins can delete settlement custom items"
+  on public.asset_rental_service_settlement_custom_items
   for delete
   using (public.current_user_is_majetek_admin());
 
