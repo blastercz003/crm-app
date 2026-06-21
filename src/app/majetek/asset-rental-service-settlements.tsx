@@ -216,20 +216,20 @@ export function SettlementDeleteButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className={[
-          'inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-red-700',
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className={[
+          'inline-flex items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]',
           variant === 'button'
-            ? 'gap-2 px-4 py-2.5 text-sm font-medium text-red-600'
-            : 'px-3 py-2 text-xs font-medium text-red-600',
+            ? 'gap-2 border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100'
+            : 'border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 hover:text-red-700',
           className,
         ].join(' ')}
         aria-label="Smazat vyúčtování"
       >
         <Trash2 className={variant === 'button' ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
-        {variant === 'button' ? 'Smazat' : null}
+        {variant === 'button' ? 'SMAZAT' : null}
       </button>
 
       {isOpen && isMounted

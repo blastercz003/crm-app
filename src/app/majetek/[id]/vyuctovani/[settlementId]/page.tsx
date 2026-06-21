@@ -370,7 +370,7 @@ export default async function SettlementDetailPage({
                   </span>
                 </div>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-900">
-                  Vyúčtování služeb {settlement.settlement_code}
+                  {settlement.settlement_code}
                 </h1>
                 <p className="mt-2 text-sm text-zinc-500">
                   {settlement.tenant_name_snapshot}
@@ -382,12 +382,6 @@ export default async function SettlementDetailPage({
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <Link
-                  href={`/majetek/${asset.id}?tab=rent`}
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-gray-900 sm:w-auto"
-                >
-                  Zpět na pronájem
-                </Link>
                 <SettlementDeleteButton
                   assetId={asset.id}
                   settlementId={settlement.id}
@@ -398,11 +392,17 @@ export default async function SettlementDetailPage({
                 <a
                   href={`/majetek/${asset.id}/vyuctovani/${settlement.id}/export`}
                   download
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] sm:w-auto"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] sm:w-auto"
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  XLS export
+                  XLS EXPORT
                 </a>
+                <Link
+                  href={`/majetek/${asset.id}?tab=rent`}
+                  className="clients-page__back-button inline-flex w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800 sm:w-auto"
+                >
+                  ZPĚT NA PRONÁJEM
+                </Link>
               </div>
             </div>
 
