@@ -12855,6 +12855,7 @@ html[data-theme='dark'] .assets-page__settings-button,
 html[data-theme='dark'] .assets-page__edit-button,
 html[data-theme='dark'] .assets-page__search-button,
 html[data-theme='dark'] .assets-page__new-button,
+html[data-theme='dark'] .assets-detail-page__settlement-new-button,
 html[data-theme='dark'] .assets-page__category-count {
   border-color: rgba(148, 163, 184, 0.16) !important;
   background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
@@ -12868,10 +12869,26 @@ html[data-theme='dark'] .assets-page__back-button:hover,
 html[data-theme='dark'] .assets-page__settings-button:hover,
 html[data-theme='dark'] .assets-page__edit-button:hover,
 html[data-theme='dark'] .assets-page__search-button:hover,
-html[data-theme='dark'] .assets-page__new-button:hover {
+html[data-theme='dark'] .assets-page__new-button:hover,
+html[data-theme='dark'] .assets-detail-page__settlement-new-button:hover {
   border-color: rgba(78, 160, 220, 0.22) !important;
   background: linear-gradient(155deg, rgba(22, 34, 54, 0.98) 0%, rgba(14, 23, 38, 0.96) 100%) !important;
   color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-new-button {
+  border-color: rgba(118, 169, 211, 0.85) !important;
+  background: linear-gradient(155deg, #4f92cb 0%, #3a7eb8 55%, #2b679a 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 14px 28px rgba(24, 78, 129, 0.34) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-new-button:hover {
+  border-color: rgba(118, 169, 211, 0.95) !important;
+  background: linear-gradient(155deg, #5a9ad0 0%, #4084bd 55%, #2f6fa4 100%) !important;
+  color: #ffffff !important;
 }
 
 html[data-theme='dark'] .assets-page__pill {
@@ -13264,6 +13281,24 @@ html[data-theme='dark'] .assets-detail-page__status-pill.border-emerald-200\/90 
   color: #dbe7f5 !important;
 }
 
+html[data-theme='dark'] .assets-detail-page__status-pill--active,
+html[data-theme='dark'] .assets-detail-page__status-pill--sold {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #dbe7f5 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__status-pill--active {
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__status-pill--sold {
+  color: #e5edf7 !important;
+}
+
 html[data-theme='dark'] .assets-detail-page__empty-state {
   border-color: rgba(148, 163, 184, 0.16) !important;
   background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
@@ -13432,9 +13467,37 @@ html[data-theme='dark'] .assets-detail-page__rental-item {
     0 8px 18px rgba(0, 0, 0, 0.18) !important;
 }
 
+html[data-theme='dark'] .assets-detail-page__rental-status-pill {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 8px 18px rgba(0, 0, 0, 0.14) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-status-pill.text-emerald-800,
+html[data-theme='dark'] .assets-detail-page__rental-status-pill.text-amber-800,
+html[data-theme='dark'] .assets-detail-page__rental-status-pill.text-slate-700,
+html[data-theme='dark'] .assets-detail-page__rental-status-pill.text-sky-800 {
+  color: #e5edf7 !important;
+}
+
 html[data-theme='dark'] .assets-detail-page__rental-chevron,
 html[data-theme='dark'] .assets-detail-page__rental-panel {
   border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-chevron {
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__rental-chevron svg {
+  color: #e2e8f0 !important;
 }
 
 html[data-theme='dark'] .assets-detail-page__rental-panel {
@@ -13463,6 +13526,452 @@ html[data-theme='dark'] .assets-detail-page__rental-delete--confirm {
   border-color: rgba(248, 113, 113, 0.22) !important;
   background: linear-gradient(155deg, rgba(71, 23, 31, 0.98) 0%, rgba(48, 15, 20, 0.96) 100%) !important;
   color: #fecaca !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-shell,
+html[data-theme='dark'] .assets-detail-page__settlement-create-shell {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-shell {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.97) 0%, rgba(12, 20, 34, 0.94) 48%, rgba(8, 13, 23, 0.96) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 20px 44px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-header-shell .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-header-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-header-shell .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-asset-badge {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.95) 0%, rgba(12, 20, 34, 0.9) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-status,
+html[data-theme='dark'] .assets-detail-page__settlement-header-reconciliation {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 8px 18px rgba(0, 0, 0, 0.14) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-status {
+  background: linear-gradient(155deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-reconciliation {
+  background: linear-gradient(155deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-status {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-reconciliation {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-card-status,
+html[data-theme='dark'] .assets-detail-page__settlement-card-reconciliation {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 8px 18px rgba(0, 0, 0, 0.14) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-card-status.text-emerald-800,
+html[data-theme='dark'] .assets-detail-page__settlement-card-status.text-amber-800,
+html[data-theme='dark'] .assets-detail-page__settlement-card-reconciliation.text-emerald-800,
+html[data-theme='dark'] .assets-detail-page__settlement-card-reconciliation.text-zinc-700 {
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-title,
+html[data-theme='dark'] .assets-detail-page__settlement-items-title,
+html[data-theme='dark'] .assets-detail-page__settlement-months-title,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-title,
+html[data-theme='dark'] .assets-detail-page__settlement-files-title {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-meta,
+html[data-theme='dark'] .assets-detail-page__settlement-header-period,
+html[data-theme='dark'] .assets-detail-page__settlement-items-note,
+html[data-theme='dark'] .assets-detail-page__settlement-items-status,
+html[data-theme='dark'] .assets-detail-page__settlement-months-note,
+html[data-theme='dark'] .assets-detail-page__settlement-months-status,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-note-text,
+html[data-theme='dark'] .assets-detail-page__settlement-files-note,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-note-label,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-note-body {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-create-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-create-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-item .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-item .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-stat .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-stat .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-create-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-create-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-create-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-item .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-item .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-item .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-stat .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-stat .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-stat .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-stat {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-summary-stat {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-summary-stat .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-stat .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-summary-stat .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-stat .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-stat .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-items,
+html[data-theme='dark'] .assets-detail-page__settlement-months,
+html[data-theme='dark'] .assets-detail-page__settlement-summary,
+html[data-theme='dark'] .assets-detail-page__settlement-files-shell,
+html[data-theme='dark'] .assets-detail-page__settlement-return,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items-shell,
+html[data-theme='dark'] .assets-detail-page__settlement-table-shell,
+html[data-theme='dark'] .assets-detail-page__settlement-file-card {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-items thead,
+html[data-theme='dark'] .assets-detail-page__settlement-months thead {
+  background: rgba(15, 23, 42, 0.88) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-items tbody tr,
+html[data-theme='dark'] .assets-detail-page__settlement-months tbody tr,
+html[data-theme='dark'] .assets-detail-page__settlement-item-row,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-row,
+html[data-theme='dark'] .assets-detail-page__settlement-empty-row,
+html[data-theme='dark'] .assets-detail-page__settlement-month-row {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+  background: rgba(15, 23, 42, 0.74) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-table-shell {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(11, 18, 32, 0.98) 0%, rgba(8, 13, 23, 0.96) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 12px 26px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-table-shell thead {
+  background: rgba(11, 18, 32, 0.9) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-custom-header {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.94) 100%) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-items .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-items .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-months .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-months .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-summary .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-summary .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-files-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-files-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items-shell .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items-shell .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-file-card .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-file-card .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-items .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-items .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-items .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-items .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-months .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-months .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-months .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-months .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-summary .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-summary .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-summary .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-summary .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-files-shell .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-files-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-files-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-files-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items-shell .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items-shell .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items-shell .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items-shell .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-file-card .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-file-card .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-file-card .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-files-empty,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-item-row {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-file-open,
+html[data-theme='dark'] .assets-detail-page__settlement-file-mime {
+  border-color: rgba(92, 167, 219, 0.38) !important;
+  background: linear-gradient(155deg, rgba(33, 51, 79, 0.99) 0%, rgba(22, 35, 58, 0.97) 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 28px rgba(0, 0, 0, 0.3) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-file-open:hover,
+html[data-theme='dark'] .assets-detail-page__settlement-file-mime:hover,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-add-button:hover {
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  background: linear-gradient(155deg, rgba(42, 64, 97, 0.99) 0%, rgba(27, 43, 70, 0.97) 100%) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-file-upload-input {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-file-upload-input::file-selector-button {
+  background: linear-gradient(155deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-file-upload-button {
+  border-color: rgba(96, 165, 250, 0.38) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-custom-add-button,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-empty-state,
+html[data-theme='dark'] .assets-detail-page__settlement-file-delete {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-file-delete {
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-file-delete:hover {
+  border-color: rgba(248, 113, 113, 0.22) !important;
+  background: linear-gradient(155deg, rgba(71, 23, 31, 0.98) 0%, rgba(48, 15, 20, 0.96) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-summary-note {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.94) 0%, rgba(12, 20, 34, 0.9) 100%) !important;
+  color: #e5edf7 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-summary-note .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-summary-note .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-item {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-chevron,
+html[data-theme='dark'] .assets-detail-page__settlement-panel {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-panel {
+  border-top-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-empty-state {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #94a3b8 !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-delete {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-delete--confirm {
+  border-color: rgba(248, 113, 113, 0.22) !important;
+  background: linear-gradient(155deg, rgba(71, 23, 31, 0.98) 0%, rgba(48, 15, 20, 0.96) 100%) !important;
+  color: #fecaca !important;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-delete-button {
+  border-color: rgba(248, 113, 113, 0.22) !important;
+  background: linear-gradient(155deg, rgba(71, 23, 31, 0.98) 0%, rgba(48, 15, 20, 0.96) 100%) !important;
+  color: #fecaca !important;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-header-delete-button:hover {
+  border-color: rgba(248, 113, 113, 0.3) !important;
+  background: linear-gradient(155deg, rgba(87, 28, 37, 0.99) 0%, rgba(58, 18, 25, 0.97) 100%) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items,
+html[data-theme='dark'] .assets-detail-page__settlement-files {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 52%, rgba(8, 13, 23, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation-toggle,
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation-meta,
+html[data-theme='dark'] .assets-detail-page__settlement-files-header {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.94) 100%) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items .text-gray-700,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-900,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-zinc-900,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-700 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-custom-items .text-zinc-500,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-600,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-gray-500,
+html[data-theme='dark'] .assets-detail-page__settlement-files .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation-toggle,
+html[data-theme='dark'] .assets-detail-page__settlement-reconciliation-meta {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-chevron {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98) 0%, rgba(12, 20, 34, 0.94) 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-chevron svg {
+  color: #e2e8f0 !important;
+}
+
+html[data-theme='dark'] .assets-detail-page__settlement-files svg {
+  color: #94a3b8 !important;
 }
 
 html[data-theme='dark'] .assets-detail-page__electricity-shell,

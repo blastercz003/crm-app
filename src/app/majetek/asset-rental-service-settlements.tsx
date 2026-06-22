@@ -187,7 +187,7 @@ function SettlementStat({
   note?: string
 }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+    <div className="assets-detail-page__settlement-stat rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
       <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">{title}</p>
       <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
       {note ? <p className="mt-1 text-xs leading-5 text-gray-500">{note}</p> : null}
@@ -220,14 +220,14 @@ export function SettlementDeleteButton({
           type="button"
           onClick={() => setIsOpen(true)}
           className={[
-          'inline-flex items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]',
-          variant === 'button'
-            ? 'gap-2 border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100'
-            : 'border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 hover:text-red-700',
-          className,
-        ].join(' ')}
-        aria-label="Smazat vyúčtování"
-      >
+            'assets-detail-page__rental-delete assets-detail-page__settlement-delete inline-flex items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]',
+            variant === 'button'
+              ? 'assets-detail-page__rental-delete--confirm assets-detail-page__settlement-delete--confirm gap-2 border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100'
+              : 'border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 hover:text-red-700',
+            className,
+          ].join(' ')}
+          aria-label="Smazat vyúčtování"
+        >
         <Trash2 className={variant === 'button' ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
         {variant === 'button' ? 'SMAZAT' : null}
       </button>
@@ -387,7 +387,7 @@ function SettlementFileDeleteButton({
         <button
           type="button"
           onClick={() => setIsConfirming(true)}
-          className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-red-700"
+          className="assets-detail-page__settlement-file-delete inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-red-700"
           aria-label="Smazat soubor"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -415,10 +415,10 @@ function SettlementFileUploadForm({
   }, [router, state.success])
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-3">
+    <form ref={formRef} action={formAction} className="assets-detail-page__settlement-file-upload space-y-3">
       <input type="hidden" name="settlement_id" value={settlementId} />
       <div className="space-y-2">
-        <label className="clients-modal__label text-sm font-medium text-gray-900">
+        <label className="assets-detail-page__settlement-file-upload-label clients-modal__label text-sm font-medium text-gray-900">
           Přidat přílohy
         </label>
         <input
@@ -426,7 +426,7 @@ function SettlementFileUploadForm({
           type="file"
           multiple
           accept=".pdf,image/*"
-          className="clients-modal__input w-full rounded-2xl border border-dashed border-gray-300 bg-white/92 px-4 py-3 text-sm text-gray-700 file:mr-4 file:rounded-xl file:border-0 file:bg-[#eaf3fb] file:px-4 file:py-2 file:text-sm file:font-medium file:text-[#2f78b1] hover:file:bg-[#ddebf7]"
+          className="assets-detail-page__settlement-file-upload-input clients-modal__input w-full rounded-2xl border border-dashed border-gray-300 bg-white/92 px-4 py-3 text-sm text-gray-700 file:mr-4 file:rounded-xl file:border-0 file:bg-[#eaf3fb] file:px-4 file:py-2 file:text-sm file:font-medium file:text-[#2f78b1] hover:file:bg-[#ddebf7]"
         />
       </div>
 
@@ -445,7 +445,7 @@ function SettlementFileUploadForm({
       <div className="flex justify-end">
         <button
           type="submit"
-          className="inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-wait disabled:opacity-60"
+          className="assets-detail-page__settlement-file-upload-button inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-wait disabled:opacity-60"
         >
           Nahrát soubory
         </button>
@@ -466,7 +466,7 @@ function SettlementCustomItemEditorRow({
   onRemove: () => void
 }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+    <div className="assets-detail-page__settlement-custom-item-row rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
         <div className="flex-1 space-y-2">
           <label htmlFor={`custom-item-title-${draft.id}`} className="clients-modal__label text-sm font-medium text-gray-900">
@@ -688,7 +688,7 @@ function SettlementForm({
         </div>
       </div>
 
-      <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+      <section className="assets-detail-page__settlement-custom-items-shell rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h4 className="text-sm font-semibold text-gray-900">Vlastní položky</h4>
@@ -699,7 +699,7 @@ function SettlementForm({
           <button
             type="button"
             onClick={() => setCustomItemDrafts((current) => [...current, createCustomItemDraft()])}
-            className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
+            className="assets-detail-page__settlement-custom-add-button inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
           >
             + Přidat položku
           </button>
@@ -723,7 +723,7 @@ function SettlementForm({
               />
             ))
           ) : (
-            <div className={emptyGlassStateClassName}>
+            <div className={`${emptyGlassStateClassName} assets-detail-page__settlement-custom-empty-state`}>
               Zatím nejsou přidané žádné vlastní položky.
             </div>
           )}
@@ -763,7 +763,7 @@ function SettlementFilesList({
 }) {
   if (files.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-[#d8e4ef] bg-[rgba(255,255,255,0.56)] p-4 text-sm text-gray-500">
+      <div className="assets-detail-page__settlement-files-empty rounded-2xl border border-dashed border-[#d8e4ef] bg-[rgba(255,255,255,0.56)] p-4 text-sm text-gray-500">
         Zatím nejsou nahrané žádné přílohy.
       </div>
     )
@@ -774,7 +774,7 @@ function SettlementFilesList({
       {files.map((file) => (
         <article
           key={file.id}
-          className="flex flex-col gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] sm:flex-row sm:items-center sm:justify-between"
+          className="assets-detail-page__settlement-file-card flex flex-col gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-gray-900">{file.title || file.file_name}</p>
@@ -794,12 +794,12 @@ function SettlementFilesList({
                   event.preventDefault()
                 }
               }}
-              className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
+              className="assets-detail-page__settlement-file-open inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
             >
               Otevřít
             </a>
             {file.mime_type ? (
-              <span className="hidden rounded-full border border-white/75 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-gray-500 sm:inline-flex">
+              <span className="assets-detail-page__settlement-file-mime hidden rounded-full border border-white/75 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-gray-500 sm:inline-flex">
                 {file.mime_type}
               </span>
             ) : null}
@@ -828,7 +828,7 @@ function SettlementCardActions({
         onClick={(event) => {
           event.stopPropagation()
         }}
-        className={cardLinkClassName}
+        className={`${cardLinkClassName} clients-page__detail-button`}
       >
         Detail
       </Link>
@@ -839,7 +839,7 @@ function SettlementCardActions({
           onClick={(event) => {
             event.stopPropagation()
           }}
-          className={cardDownloadClassName}
+          className={`${cardDownloadClassName} clients-page__new-button`}
         >
           <Download className="mr-1 h-3.5 w-3.5" />
           XLS
@@ -872,7 +872,7 @@ export function SettlementReconciliationForm({
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="settlement_id" value={settlement.id} />
-      <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+      <div className="assets-detail-page__settlement-reconciliation rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Vypořádání</p>
@@ -887,7 +887,7 @@ export function SettlementReconciliationForm({
         </div>
 
         <div className="mt-4 space-y-3">
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/75 bg-white/70 px-3 py-3 text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.06)]">
+          <label className="assets-detail-page__settlement-reconciliation-toggle flex cursor-pointer items-start gap-3 rounded-2xl border border-white/75 bg-white/70 px-3 py-3 text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.06)]">
             <input
               type="checkbox"
               name="is_settled"
@@ -903,13 +903,13 @@ export function SettlementReconciliationForm({
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-3 text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.06)]">
+            <div className="assets-detail-page__settlement-reconciliation-meta rounded-2xl border border-white/75 bg-white/70 px-3 py-3 text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Datum</p>
               <p className="mt-1 font-semibold text-gray-900">
                 {settlement.settled_on ? formatDateOnly(settlement.settled_on) : 'Nevypořádáno'}
               </p>
             </div>
-            <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-3 text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.06)]">
+            <div className="assets-detail-page__settlement-reconciliation-meta rounded-2xl border border-white/75 bg-white/70 px-3 py-3 text-sm text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Zapsal</p>
               <p className="mt-1 font-semibold text-gray-900">{settledByName ?? '—'}</p>
             </div>
@@ -969,7 +969,7 @@ function SettlementCard({
   return (
     <details
       id={`settlement-${settlement.id}`}
-      className="group rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]"
+      className="assets-detail-page__settlement-item group rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]"
       open={defaultOpen}
     >
       <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-4 px-5 py-4 sm:flex-nowrap sm:items-center">
@@ -992,7 +992,7 @@ function SettlementCard({
           <div className="hidden lg:block">
             <p className="text-xs text-gray-500">Stav</p>
             <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
+              className={`assets-detail-page__settlement-card-status inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
                 settlement.status === 'closed'
                   ? 'border border-emerald-200/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.92)_0%,rgba(220,252,231,0.84)_100%)] text-emerald-800'
                   : 'border border-amber-200/90 bg-[linear-gradient(155deg,rgba(255,247,237,0.92)_0%,rgba(254,243,199,0.84)_100%)] text-amber-800'
@@ -1004,7 +1004,7 @@ function SettlementCard({
           <div className="hidden xl:block">
             <p className="text-xs text-gray-500">Vypořádání</p>
             <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${formatSettlementReconciliation(settlement).className}`}
+              className={`assets-detail-page__settlement-card-reconciliation inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${formatSettlementReconciliation(settlement).className}`}
             >
               {formatSettlementReconciliation(settlement).label}
             </span>
@@ -1012,7 +1012,7 @@ function SettlementCard({
           <div className="shrink-0">
             <SettlementCardActions assetId={assetId} settlement={settlement} />
           </div>
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180">
+          <span className="assets-detail-page__settlement-chevron inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180">
             <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
               <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -1020,21 +1020,21 @@ function SettlementCard({
         </div>
       </summary>
 
-      <div className="border-t border-white/70 px-5 py-5">
+      <div className="assets-detail-page__settlement-panel border-t border-white/70 px-5 py-5">
         <div className="grid gap-3 md:grid-cols-3">
           <SettlementStat title="Zálohy celkem" value={formatCurrency(settlement.advance_payments_total_amount)} />
           <SettlementStat title="Služby celkem" value={formatCurrency(settlement.service_total_amount)} />
           <SettlementStat title="Výsledek" value={formatSignedBalance(settlement.balance_amount)} />
         </div>
 
-        <div className="mt-5">
+        <div className="assets-detail-page__settlement-reconciliation-wrap mt-5">
           <SettlementReconciliationForm
             settlement={settlement}
             settledByName={null}
           />
         </div>
 
-        <div className="mt-5">
+        <div className="assets-detail-page__settlement-custom-items mt-5">
           <SettlementForm
             key={`${settlement.id}-${settlement.updated_at}`}
             assetId={assetId}
@@ -1045,8 +1045,8 @@ function SettlementCard({
           />
         </div>
 
-        <div className="mt-5 space-y-3">
-          <div>
+        <div className="assets-detail-page__settlement-files mt-5 space-y-3">
+          <div className="assets-detail-page__settlement-files-header">
             <h4 className="text-sm font-semibold text-gray-900">Přílohy</h4>
             <p className="text-xs text-gray-500">Seznam nahraných PDF a obrázků k vyúčtování.</p>
           </div>
@@ -1080,7 +1080,7 @@ export function AssetRentalServiceSettlementsSection({
   )
 
   return (
-    <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+    <section className="assets-detail-page__settlement-shell rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold tracking-tight text-gray-900">Vyúčtování služeb</h3>
@@ -1089,14 +1089,14 @@ export function AssetRentalServiceSettlementsSection({
         <button
           type="button"
           onClick={() => setIsCreating((current) => !current)}
-          className="inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
+          className="assets-page__new-button assets-detail-page__settlement-new-button inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px]"
         >
           {isCreating ? 'Skrýt formulář' : '+ Nové vyúčtování'}
         </button>
       </div>
 
       {isCreating ? (
-        <div className="mt-5 rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+        <div className="assets-detail-page__rental-create-shell assets-detail-page__settlement-create-shell mt-5 rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
           <SettlementForm
             assetId={assetId}
             rentals={rentals}
@@ -1121,7 +1121,7 @@ export function AssetRentalServiceSettlementsSection({
             />
           ))
         ) : (
-          <div className={emptyGlassStateClassName}>
+          <div className={`${emptyGlassStateClassName} assets-detail-page__settlement-empty-state`}>
             Zatím zde není žádné vyúčtování.
           </div>
         )}

@@ -196,7 +196,7 @@ function formatBalance(value: string | number | null) {
 }
 
 function statClassName() {
-  return 'rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]'
+  return 'assets-detail-page__settlement-summary-stat rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]'
 }
 
 function emptyGlassStateClassName() {
@@ -346,22 +346,22 @@ export default async function SettlementDetailPage({
   return (
     <main className="assets-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <div className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="assets-detail-page__settlement-header-shell rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full border border-white/75 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                  <span className="assets-detail-page__settlement-asset-badge inline-flex items-center rounded-full border border-white/75 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
                     {asset.name}
                   </span>
-                  <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
+                  <span className={`assets-detail-page__settlement-header-status inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
                     settlement.status === 'closed'
                       ? 'border border-emerald-200/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.92)_0%,rgba(220,252,231,0.84)_100%)] text-emerald-800'
                       : 'border border-amber-200/90 bg-[linear-gradient(155deg,rgba(255,247,237,0.92)_0%,rgba(254,243,199,0.84)_100%)] text-amber-800'
                   }`}>
                     {settlement.status === 'closed' ? 'Uzavřené' : 'Koncept'}
                   </span>
-                  <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
+                  <span className={`assets-detail-page__settlement-header-reconciliation inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
                     settlement.settled_on
                       ? 'border border-emerald-200/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.92)_0%,rgba(220,252,231,0.84)_100%)] text-emerald-800'
                       : 'border border-zinc-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(244,244,245,0.84)_100%)] text-zinc-700'
@@ -369,14 +369,14 @@ export default async function SettlementDetailPage({
                     {settlement.settled_on ? 'Vypořádáno' : 'Nevypořádáno'}
                   </span>
                 </div>
-                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-900">
+                <h1 className="assets-detail-page__settlement-header-title mt-3 text-3xl font-semibold tracking-tight text-gray-900">
                   {settlement.settlement_code}
                 </h1>
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="assets-detail-page__settlement-header-meta mt-2 text-sm text-zinc-500">
                   {settlement.tenant_name_snapshot}
                   {settlement.tenant_contact_snapshot ? ` • ${settlement.tenant_contact_snapshot}` : ''}
                 </p>
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="assets-detail-page__settlement-header-period mt-2 text-sm text-zinc-500">
                   Období {formatPeriod(settlement.period_from, settlement.period_to)}
                 </p>
               </div>
@@ -387,7 +387,7 @@ export default async function SettlementDetailPage({
                   settlementId={settlement.id}
                   successRedirectHref={`/majetek/${asset.id}?tab=rent`}
                   variant="button"
-                  className="w-full sm:w-auto"
+                  className="assets-detail-page__settlement-header-delete-button w-full sm:w-auto"
                 />
                 <a
                   href={`/majetek/${asset.id}/vyuctovani/${settlement.id}/export`}
@@ -429,16 +429,16 @@ export default async function SettlementDetailPage({
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]">
           <div className="space-y-5">
-            <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+            <section className="assets-detail-page__settlement-items rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold tracking-tight text-gray-900">Rozpis položek</h2>
-                  <p className="text-sm text-zinc-500">Jednotlivé služby v samostatných sloupcích.</p>
+                  <h2 className="assets-detail-page__settlement-items-title text-lg font-semibold tracking-tight text-gray-900">Rozpis položek</h2>
+                  <p className="assets-detail-page__settlement-items-note text-sm text-zinc-500">Jednotlivé služby v samostatných sloupcích.</p>
                 </div>
-                <span className="text-sm font-medium text-zinc-500">{settlement.status === 'closed' ? 'Uzavřeno' : 'Rozpracováno'}</span>
+                <span className="assets-detail-page__settlement-items-status text-sm font-medium text-zinc-500">{settlement.status === 'closed' ? 'Uzavřeno' : 'Rozpracováno'}</span>
               </div>
 
-              <div className="mt-5 overflow-hidden rounded-2xl border border-white/75">
+              <div className="assets-detail-page__settlement-table-shell mt-5 overflow-hidden rounded-2xl border border-white/75">
                 <table className="w-full table-fixed border-separate border-spacing-0">
                   <thead className="bg-white/75">
                     <tr className="text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
@@ -448,7 +448,7 @@ export default async function SettlementDetailPage({
                   </thead>
                   <tbody>
                     {fixedLineItems.map((entry) => (
-                      <tr key={entry.key} className="border-t border-white/70 bg-white/50">
+                      <tr key={entry.key} className="assets-detail-page__settlement-item-row border-t border-white/70 bg-white/50">
                         <td className="px-4 py-3 text-sm text-gray-700">{entry.title}</td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">{formatCurrency(entry.amount)}</td>
                       </tr>
@@ -456,13 +456,13 @@ export default async function SettlementDetailPage({
 
                     {customLineItems.length > 0 ? (
                       <>
-                        <tr className="border-t border-white/70 bg-[linear-gradient(155deg,rgba(245,248,252,0.98)_0%,rgba(238,244,250,0.92)_100%)]">
+                        <tr className="assets-detail-page__settlement-custom-header border-t border-white/70 bg-[linear-gradient(155deg,rgba(245,248,252,0.98)_0%,rgba(238,244,250,0.92)_100%)]">
                           <td className="px-4 py-3 text-sm font-semibold text-gray-900" colSpan={2}>
                             Vlastní položky
                           </td>
                         </tr>
                         {customLineItems.map((entry) => (
-                          <tr key={entry.key} className="border-t border-white/70 bg-white/50">
+                          <tr key={entry.key} className="assets-detail-page__settlement-custom-row border-t border-white/70 bg-white/50">
                             <td className="px-4 py-3 text-sm text-gray-700">{entry.title}</td>
                             <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">{formatCurrency(entry.amount)}</td>
                           </tr>
@@ -470,7 +470,7 @@ export default async function SettlementDetailPage({
                       </>
                     ) : null}
                     {customLineItems.length === 0 ? (
-                      <tr className="border-t border-white/70 bg-white/50">
+                      <tr className="assets-detail-page__settlement-empty-row border-t border-white/70 bg-white/50">
                         <td className="px-4 py-3 text-sm text-gray-500" colSpan={2}>
                           Bez vlastních položek.
                         </td>
@@ -481,16 +481,16 @@ export default async function SettlementDetailPage({
               </div>
             </section>
 
-            <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+            <section className="assets-detail-page__settlement-months rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold tracking-tight text-gray-900">Rozpad záloh po měsících</h2>
-                  <p className="text-sm text-zinc-500">Přepočet záloh podle historie k jednotlivým měsícům období.</p>
+                  <h2 className="assets-detail-page__settlement-months-title text-lg font-semibold tracking-tight text-gray-900">Rozpad záloh po měsících</h2>
+                  <p className="assets-detail-page__settlement-months-note text-sm text-zinc-500">Přepočet záloh podle historie k jednotlivým měsícům období.</p>
                 </div>
-                <span className="text-sm font-medium text-zinc-500">{advanceCalculation.monthBreakdown.length} měsíců</span>
+                <span className="assets-detail-page__settlement-months-status text-sm font-medium text-zinc-500">{advanceCalculation.monthBreakdown.length} měsíců</span>
               </div>
 
-              <div className="mt-5 overflow-hidden rounded-2xl border border-white/75">
+              <div className="assets-detail-page__settlement-table-shell mt-5 overflow-hidden rounded-2xl border border-white/75">
                 <table className="w-full table-fixed border-separate border-spacing-0">
                   <thead className="bg-white/75">
                     <tr className="text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
@@ -501,7 +501,7 @@ export default async function SettlementDetailPage({
                   </thead>
                   <tbody>
                     {advanceCalculation.monthBreakdown.map((entry) => (
-                      <tr key={entry.month} className="border-t border-white/70 bg-white/50">
+                      <tr key={entry.month} className="assets-detail-page__settlement-month-row border-t border-white/70 bg-white/50">
                         <td className="px-4 py-3 text-sm text-gray-700">{entry.month}</td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">{formatCurrency(entry.monthlyAdvance)}</td>
                         <td className="px-4 py-3 text-sm text-gray-500">{entry.sourceAdvanceId ?? '—'}</td>
@@ -514,10 +514,10 @@ export default async function SettlementDetailPage({
           </div>
 
           <div className="space-y-5">
-            <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+            <section className="assets-detail-page__settlement-summary rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-gray-900">Shrnutí</h2>
-                <p className="text-sm text-zinc-500">Nájemce, období a interní stav vyúčtování.</p>
+                <h2 className="assets-detail-page__settlement-summary-title text-lg font-semibold tracking-tight text-gray-900">Shrnutí</h2>
+                <p className="assets-detail-page__settlement-summary-note-text text-sm text-zinc-500">Nájemce, období a interní stav vyúčtování.</p>
               </div>
 
               <div className="mt-5 grid gap-3">
@@ -545,18 +545,18 @@ export default async function SettlementDetailPage({
               </div>
 
               {settlement.note ? (
-                <div className="mt-5 rounded-2xl border border-white/75 bg-white/75 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Poznámka</p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{settlement.note}</p>
+                <div className="assets-detail-page__settlement-summary-note mt-5 rounded-2xl border border-white/75 bg-white/75 p-4">
+                  <p className="assets-detail-page__settlement-summary-note-label text-xs font-semibold uppercase tracking-wide text-gray-500">Poznámka</p>
+                  <p className="assets-detail-page__settlement-summary-note-body mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{settlement.note}</p>
                 </div>
               ) : null}
             </section>
 
-            <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
+            <section className="assets-detail-page__settlement-files-shell rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold tracking-tight text-gray-900">Přílohy</h2>
-                  <p className="text-sm text-zinc-500">PDF a obrázky přiložené k vyúčtování.</p>
+                  <h2 className="assets-detail-page__settlement-files-title text-lg font-semibold tracking-tight text-gray-900">Přílohy</h2>
+                  <p className="assets-detail-page__settlement-files-note text-sm text-zinc-500">PDF a obrázky přiložené k vyúčtování.</p>
                 </div>
                 <Paperclip className="h-4 w-4 text-gray-500" />
               </div>
@@ -570,7 +570,7 @@ export default async function SettlementDetailPage({
                         href={file.signedUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
+                        className="assets-detail-page__settlement-file-card block rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
                       >
                         <p className="truncate text-sm font-semibold text-gray-900">{file.title || file.file_name}</p>
                         <p className="mt-1 text-xs text-gray-500">{file.file_name}</p>
@@ -578,7 +578,7 @@ export default async function SettlementDetailPage({
                     ) : (
                       <div
                         key={file.id}
-                        className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]"
+                        className="assets-detail-page__settlement-file-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]"
                       >
                         <p className="truncate text-sm font-semibold text-gray-900">{file.title || file.file_name}</p>
                         <p className="mt-1 text-xs text-gray-500">{file.file_name}</p>
@@ -586,27 +586,13 @@ export default async function SettlementDetailPage({
                     )
                   ))
                 ) : (
-                  <div className={emptyGlassStateClassName()}>
+                  <div className={`${emptyGlassStateClassName()} assets-detail-page__settlement-files-empty`}>
                     Zatím nejsou nahrané žádné přílohy.
                   </div>
                 )}
               </div>
             </section>
 
-            <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.94)_48%,rgba(241,245,249,0.9)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_18px_36px_rgba(15,23,42,0.1)] sm:p-6">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight text-gray-900">Návrat k úpravě</h2>
-                <p className="text-sm text-zinc-500">Úpravy se dělají z tabulky Pronájem v detailu majetku.</p>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Link
-                  href={`/majetek/${asset.id}?tab=rent#settlement-${settlement.id}`}
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-gray-900"
-                >
-                  Otevřít v pronájmu
-                </Link>
-              </div>
-            </section>
           </div>
         </div>
       </div>

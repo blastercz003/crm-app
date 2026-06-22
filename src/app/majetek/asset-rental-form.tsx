@@ -211,7 +211,7 @@ function RentalAccordionItem({
           </div>
           <div className="hidden lg:block">
             <p className="text-xs text-gray-500">Stav</p>
-            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getRentalTone(status)}`}>
+            <span className={`assets-detail-page__rental-status-pill inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getRentalTone(status)}`}>
               {status}
             </span>
           </div>

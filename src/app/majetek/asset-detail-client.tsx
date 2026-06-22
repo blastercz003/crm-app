@@ -1051,7 +1051,7 @@ export function AssetDetailClient({
               <span className="assets-detail-page__meta-pill inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]">
                 {category.name}
               </span>
-              <span className={`assets-detail-page__meta-pill assets-detail-page__status-pill inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] ${statusTone(asset.status)}`}>
+              <span className={`assets-detail-page__meta-pill assets-detail-page__status-pill assets-detail-page__status-pill--${asset.status === 'sold' ? 'sold' : 'active'} inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] ${statusTone(asset.status)}`}>
                 {statusLabel(asset.status)}
               </span>
             </div>
