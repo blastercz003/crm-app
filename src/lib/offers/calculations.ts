@@ -11,7 +11,9 @@ export function getOfferItemNetTotal(item: Pick<
   return quantity * unitPrice * (1 - discount / 100)
 }
 
-export function getOfferTotals(items: OfferItemRow[]) {
+export function getOfferTotals(
+  items: Array<Pick<OfferItemRow, 'quantity' | 'unit_price_without_vat' | 'discount_percent' | 'vat_rate'>>
+) {
   const subtotalWithoutVat = items.reduce(
     (sum, item) => sum + getOfferItemNetTotal(item),
     0
