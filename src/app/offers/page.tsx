@@ -125,24 +125,8 @@ function getOfferTotalWithoutVat(items: OfferItemForTotal[]) {
   }, 0)
 }
 
-function getOfferUnitPriceWithoutVat(items: OfferItemForTotal[]) {
-  return items.reduce((sum, item) => {
-    const unitPrice = Number(item.unit_price_without_vat) || 0
-    const discount = Math.min(Math.max(Number(item.discount_percent) || 0, 0), 100)
-    return sum + unitPrice * (1 - discount / 100)
-  }, 0)
-}
-
-function getOfferListPriceWithoutVat(offer: OfferRow, items: OfferItemForTotal[]) {
-  if (offer.offer_type !== 'bsafe24') {
-    return getOfferTotalWithoutVat(items)
-  }
-
-  const serviceItems = items.filter(
-    (item) => item.item_section === 'bsafe_service' || item.item_section === 'main'
-  )
-
-  return getOfferUnitPriceWithoutVat(serviceItems)
+function getOfferListPriceWithoutVat(items: OfferItemForTotal[]) {
+  return getOfferTotalWithoutVat(items)
 }
 
 function getStatusLabel(status: string) {
@@ -328,8 +312,8 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const sortedOffers =
     sort === 'price_desc'
       ? [...offers].sort((a, b) => {
-          const aTotal = getOfferListPriceWithoutVat(a, itemsByOfferId.get(a.id) ?? [])
-          const bTotal = getOfferListPriceWithoutVat(b, itemsByOfferId.get(b.id) ?? [])
+          const aTotal = getOfferListPriceWithoutVat(itemsByOfferId.get(a.id) ?? [])
+          const bTotal = getOfferListPriceWithoutVat(itemsByOfferId.get(b.id) ?? [])
           return bTotal - aTotal
         })
       : offers
@@ -660,7 +644,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
             <section className="offers-page__mobile-card grid gap-3 lg:hidden">
               {sortedOffers.map((offer) => {
                 const client = clientById.get(offer.client_id)
-                const total = getOfferListPriceWithoutVat(offer, itemsByOfferId.get(offer.id) ?? [])
+                const total = getOfferListPriceWithoutVat(itemsByOfferId.get(offer.id) ?? [])
 
                 return (
                   <article
@@ -750,7 +734,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   {sortedOffers.map((offer) => {
                     const client = clientById.get(offer.client_id)
                     const author = profileById.get(offer.created_by)
-                    const total = getOfferListPriceWithoutVat(offer, itemsByOfferId.get(offer.id) ?? [])
+                    const total = getOfferListPriceWithoutVat(itemsByOfferId.get(offer.id) ?? [])
 
                     return (
                       <div

@@ -74,9 +74,17 @@ export function OfferPdfLayout({
   const totals = getOfferTotals(items)
   const services = serviceItems.filter((item) => item.specification === OFFER_SERVICE_GROUP_LABEL)
   const depots = serviceItems.filter((item) => item.specification === OFFER_DEPOT_GROUP_LABEL)
+  const hideStartupOverlayScript = `
+    document.documentElement.setAttribute('data-startup-overlay', 'hide');
+    try {
+      sessionStorage.setItem('pwaStartupFinished', 'true');
+      sessionStorage.setItem('pwaStartupActive', 'false');
+    } catch (error) {}
+  `
 
   return (
     <>
+      <script dangerouslySetInnerHTML={{ __html: hideStartupOverlayScript }} />
       {shouldAutoPrint ? <OfferPdfAutoPrint /> : null}
       <style>
         {`

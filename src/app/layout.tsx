@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
 import './globals.css'
 import { NavigationOverlay } from '../components/navigation/navigation-overlay'
 import { ServiceWorkerRegistration } from '../components/pwa/service-worker-registration'
@@ -59,13 +60,16 @@ export default async function RootLayout({
 }>) {
   const themePreferences = await getServerThemePreferences()
   const initialTheme = resolveThemeAppearanceMode(themePreferences)
+  const requestHeaders = await headers()
+  const shouldRenderStartupScreen = requestHeaders.get('x-benergy-skip-startup-screen') !== '1'
+    && (requestHeaders.get('x-matched-path') === '/' || requestHeaders.get('x-matched-path') === '/dashboard')
 
   return (
     <html
       lang="en"
       className="h-full antialiased"
       data-theme={initialTheme}
-      data-startup-overlay="pending"
+      data-startup-overlay={shouldRenderStartupScreen ? 'pending' : 'hide'}
       suppressHydrationWarning
     >
       <head>
@@ -73,8 +77,8 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
-        <PwaStartupScreenShell />
-        <PwaStartupScreenController />
+        {shouldRenderStartupScreen ? <PwaStartupScreenShell /> : null}
+        {shouldRenderStartupScreen ? <PwaStartupScreenController /> : null}
         <ThemePreferenceSync />
         <div id="app-shell" className="flex min-h-full flex-1 flex-col">
           {children}

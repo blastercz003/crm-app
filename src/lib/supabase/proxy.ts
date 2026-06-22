@@ -9,8 +9,18 @@ function getSupabaseKey() {
 }
 
 export async function updateSession(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers)
+  const pathname = request.nextUrl.pathname
+  const shouldSkipStartupScreen = pathname.startsWith('/offers/') && pathname.endsWith('/pdf')
+
+  if (shouldSkipStartupScreen) {
+    requestHeaders.set('x-benergy-skip-startup-screen', '1')
+  }
+
   let response = NextResponse.next({
-    request,
+    request: {
+      headers: requestHeaders,
+    },
   })
 
   const supabase = createServerClient(
@@ -25,7 +35,9 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
 
           response = NextResponse.next({
-            request,
+            request: {
+              headers: requestHeaders,
+            },
           })
 
           cookiesToSet.forEach(({ name, value, options }) =>
