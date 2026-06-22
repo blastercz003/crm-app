@@ -160,6 +160,7 @@ type DashboardProfile = {
   can_view_offers: boolean | null
   can_view_tech_jobs: boolean | null
   can_view_connection_points: boolean | null
+  can_view_job_attachments: boolean | null
   can_view_handover_protocol_upload: boolean | null
   can_view_all_technician_handover_uploads: boolean | null
   david_dashboard_ikony: boolean | null
@@ -1171,7 +1172,7 @@ export default async function DashboardPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
+      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
@@ -1213,6 +1214,7 @@ export default async function DashboardPage({
   const canViewTechJobs = isTechnik || Boolean(profile?.can_view_tech_jobs)
   const canViewConnectionPoints =
     isTechnik || Boolean(profile?.can_view_connection_points)
+  const canViewFiles = isAdmin || Boolean(profile?.can_view_job_attachments)
   const canViewHandoverProtocolUpload =
     isTechnik ||
     canViewHandoverProtocolUploadSection(profile?.role ?? null, profile)
@@ -1698,6 +1700,7 @@ export default async function DashboardPage({
               canViewJobsPortal={Boolean(!isAdmin && profile?.can_view_jobs_portal)}
               canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
               canViewConnectionPoints={showConnectionPointsInMainMenu}
+              canViewFiles={canViewFiles}
               showClients={showClientsInMainMenu}
               isAdmin={isAdmin}
               offersOrderedCount={orderedOffersCount}

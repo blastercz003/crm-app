@@ -1,5 +1,8 @@
 create extension if not exists "pgcrypto";
 
+alter table public.profiles
+  add column if not exists can_view_job_attachments boolean not null default false;
+
 create table if not exists public.job_attachments (
   id uuid primary key default gen_random_uuid(),
   job_id uuid not null references public.jobs(id) on delete cascade,
@@ -28,7 +31,8 @@ create index if not exists job_attachments_category_idx
 alter table public.job_attachments enable row level security;
 
 drop policy if exists "Admins can read job attachments" on public.job_attachments;
-create policy "Admins can read job attachments"
+drop policy if exists "Users with file access can read job attachments" on public.job_attachments;
+create policy "Users with file access can read job attachments"
   on public.job_attachments
   for select
   using (
@@ -36,12 +40,15 @@ create policy "Admins can read job attachments"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   );
 
-drop policy if exists "Admins can create job attachments" on public.job_attachments;
-create policy "Admins can create job attachments"
+drop policy if exists "Users with file access can create job attachments" on public.job_attachments;
+create policy "Users with file access can create job attachments"
   on public.job_attachments
   for insert
   with check (
@@ -50,12 +57,15 @@ create policy "Admins can create job attachments"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   );
 
-drop policy if exists "Admins can update job attachments" on public.job_attachments;
-create policy "Admins can update job attachments"
+drop policy if exists "Users with file access can update job attachments" on public.job_attachments;
+create policy "Users with file access can update job attachments"
   on public.job_attachments
   for update
   using (
@@ -63,7 +73,10 @@ create policy "Admins can update job attachments"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   )
   with check (
@@ -71,7 +84,10 @@ create policy "Admins can update job attachments"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   );
 

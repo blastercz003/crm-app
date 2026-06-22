@@ -34,6 +34,7 @@ type FilesManagerProps = {
   files: FileItem[]
   jobs: JobFolder[]
   initialQuery: string
+  canDeleteFiles: boolean
 }
 
 function formatBytes(bytes: number) {
@@ -94,7 +95,7 @@ async function downloadZipFromLinks(
   URL.revokeObjectURL(objectUrl)
 }
 
-export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
+export function FilesManager({ files, jobs, initialQuery, canDeleteFiles }: FilesManagerProps) {
   const router = useRouter()
   const [query] = useState(initialQuery)
   const [foldersQuery, setFoldersQuery] = useState('')
@@ -393,14 +394,16 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
             >
               Stáhnout vše (složka)
             </button>
-            <button
-              type="button"
-              disabled={checkedVisibleIds.length === 0 || isPending}
-              onClick={() => handleDelete(checkedVisibleIds)}
-              className="soubory-page__danger-button inline-flex h-9 w-full items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-bold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] disabled:opacity-40"
-            >
-              Smazat vybrané
-            </button>
+            {canDeleteFiles ? (
+              <button
+                type="button"
+                disabled={checkedVisibleIds.length === 0 || isPending}
+                onClick={() => handleDelete(checkedVisibleIds)}
+                className="soubory-page__danger-button inline-flex h-9 w-full items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-bold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] disabled:opacity-40"
+              >
+                Smazat vybrané
+              </button>
+            ) : null}
             </div>
           </div>
 
@@ -474,13 +477,15 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
                         STÁHNOUT
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDelete([file.id])}
-                        className="soubory-page__delete-button inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-semibold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(185,28,28,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_18px_rgba(185,28,28,0.18)]"
-                      >
-                        Smazat
-                      </button>
+                      {canDeleteFiles ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete([file.id])}
+                          className="soubory-page__delete-button inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-[11px] font-semibold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(185,28,28,0.12)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_18px_rgba(185,28,28,0.18)]"
+                        >
+                          Smazat
+                        </button>
+                      ) : null}
                     </div>
                   </li>
                 ))}
@@ -562,11 +567,16 @@ export function FilesManager({ files, jobs, initialQuery }: FilesManagerProps) {
             if (!selectedFile) return
             runDownload([selectedFile.id], `${selectedFile.displayName}.zip`)
           }}
-          onDelete={() => {
-            if (!selectedFile) return
-            setIsMobilePreviewOpen(false)
-            handleDelete([selectedFile.id])
-          }}
+          onDelete={
+            canDeleteFiles
+              ? () => {
+                  if (!selectedFile) return
+                  setIsMobilePreviewOpen(false)
+                  handleDelete([selectedFile.id])
+                }
+              : undefined
+          }
+          canDeleteFiles={canDeleteFiles}
         />
       ) : null}
     </>
@@ -580,13 +590,15 @@ function MobilePreviewDrawer({
   onClose,
   onDownload,
   onDelete,
+  canDeleteFiles,
 }: {
   file: FileItem | null
   previewUrl: string | null
   isPending: boolean
   onClose: () => void
   onDownload: () => void
-  onDelete: () => void
+  onDelete?: () => void
+  canDeleteFiles: boolean
 }) {
   return (
     <div
@@ -626,14 +638,16 @@ function MobilePreviewDrawer({
           >
             Stáhnout
           </button>
-          <button
-            type="button"
-            disabled={!file || isPending}
-            onClick={onDelete}
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-bold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] disabled:opacity-40"
-          >
-            Smazat
-          </button>
+          {canDeleteFiles ? (
+            <button
+              type="button"
+              disabled={!file || isPending}
+              onClick={onDelete}
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-bold uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] disabled:opacity-40"
+            >
+              Smazat
+            </button>
+          ) : null}
           {previewUrl ? (
             <a
               href={previewUrl}

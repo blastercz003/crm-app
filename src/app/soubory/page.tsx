@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { canViewFilesSection } from '@/lib/files/access'
 import { FilesManager } from './files-manager'
 
 export const metadata: Metadata = {
@@ -9,6 +10,9 @@ export const metadata: Metadata = {
 }
 
 type ProfileRoleRow = { role: string | null }
+type ProfileFileAccessRow = ProfileRoleRow & {
+  can_view_job_attachments: boolean | null
+}
 
 type SearchParams = {
   q?: string
@@ -57,7 +61,7 @@ export default async function SouboryPage({
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, can_view_job_attachments')
     .eq('id', user.id)
     .single()
 
@@ -65,8 +69,8 @@ export default async function SouboryPage({
     throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
   }
 
-  const typedProfile = profile as ProfileRoleRow | null
-  if (typedProfile?.role !== 'admin') {
+  const typedProfile = profile as ProfileFileAccessRow | null
+  if (!canViewFilesSection(typedProfile?.role, typedProfile)) {
     redirect('/dashboard')
   }
 
@@ -174,7 +178,12 @@ export default async function SouboryPage({
           </div>
         </section>
 
-        <FilesManager files={rows} jobs={jobs} initialQuery={query} />
+        <FilesManager
+          files={rows}
+          jobs={jobs}
+          initialQuery={query}
+          canDeleteFiles={typedProfile?.role === 'admin'}
+        />
       </div>
     </main>
   )

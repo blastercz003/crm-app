@@ -20,7 +20,8 @@ set
   allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "Admins can read job attachments files" on storage.objects;
-create policy "Admins can read job attachments files"
+drop policy if exists "Users with file access can read job attachments files" on storage.objects;
+create policy "Users with file access can read job attachments files"
   on storage.objects
   for select
   using (
@@ -29,12 +30,15 @@ create policy "Admins can read job attachments files"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   );
 
-drop policy if exists "Admins can upload job attachments files" on storage.objects;
-create policy "Admins can upload job attachments files"
+drop policy if exists "Users with file access can upload job attachments files" on storage.objects;
+create policy "Users with file access can upload job attachments files"
   on storage.objects
   for insert
   with check (
@@ -44,12 +48,15 @@ create policy "Admins can upload job attachments files"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   );
 
-drop policy if exists "Admins can update job attachments files" on storage.objects;
-create policy "Admins can update job attachments files"
+drop policy if exists "Users with file access can update job attachments files" on storage.objects;
+create policy "Users with file access can update job attachments files"
   on storage.objects
   for update
   using (
@@ -58,7 +65,10 @@ create policy "Admins can update job attachments files"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   )
   with check (
@@ -68,7 +78,10 @@ create policy "Admins can update job attachments files"
       select 1
       from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and (
+          profiles.role = 'admin'
+          or profiles.can_view_job_attachments = true
+        )
     )
   );
 

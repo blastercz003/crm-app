@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { canViewFilesSection } from '@/lib/files/access'
 
 export type JobAttachmentCategory = 'predavaci_protokol' | 'foto' | 'jine'
 
@@ -22,6 +23,9 @@ const JOB_ATTACHMENT_CATEGORIES: JobAttachmentCategory[] = [
 ]
 
 type ProfileRoleRow = { role: string | null }
+type ProfileFileAccessRow = ProfileRoleRow & {
+  can_view_job_attachments: boolean | null
+}
 
 function sanitizeAttachmentFileName(value: string) {
   const normalized = String(value ?? '').trim().replace(/\s+/g, ' ')
@@ -38,7 +42,7 @@ function isJobAttachmentCategory(value: unknown): value is JobAttachmentCategory
   return JOB_ATTACHMENT_CATEGORIES.includes(value as JobAttachmentCategory)
 }
 
-async function requireAdmin() {
+async function requireFilesAccess() {
   const supabase = await createClient()
   const {
     data: { user },
@@ -50,7 +54,7 @@ async function requireAdmin() {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, can_view_job_attachments')
     .eq('id', user.id)
     .single()
 
@@ -58,17 +62,17 @@ async function requireAdmin() {
     return { supabase, user: null, error: 'Nepodařilo se ověřit oprávnění.' }
   }
 
-  const typed = profile as ProfileRoleRow | null
-  if (typed?.role !== 'admin') {
-    return { supabase, user: null, error: 'Nemáš oprávnění pro správu souborů.' }
+  const typed = profile as ProfileFileAccessRow | null
+  if (!canViewFilesSection(typed?.role, typed)) {
+    return { supabase, user: null, error: 'Nemáš oprávnění pro sekci Soubory.' }
   }
 
-  return { supabase, user, error: null }
+  return { supabase, user, profile: typed, error: null }
 }
 
 export async function uploadFilesToJobAction(formData: FormData) {
   try {
-    const { supabase, user, error } = await requireAdmin()
+    const { supabase, user, error } = await requireFilesAccess()
     if (!user) {
       return { success: false, error: error ?? 'Neautorizovaný přístup.' }
     }
@@ -163,7 +167,7 @@ export async function uploadFilesToJobAction(formData: FormData) {
 }
 
 export async function getAttachmentPreviewUrlAction(attachmentId: string) {
-  const { supabase, user, error } = await requireAdmin()
+  const { supabase, user, error } = await requireFilesAccess()
   if (!user) {
     return { success: false, error: error ?? 'Neautorizovaný přístup.', signedUrl: null }
   }
@@ -190,7 +194,7 @@ export async function getAttachmentPreviewUrlAction(attachmentId: string) {
 }
 
 export async function getAttachmentDownloadLinksAction(attachmentIds: string[]) {
-  const { supabase, user, error } = await requireAdmin()
+  const { supabase, user, error } = await requireFilesAccess()
   if (!user) {
     return { success: false, error: error ?? 'Neautorizovaný přístup.', items: [] as Array<{ id: string; name: string; url: string }> }
   }
@@ -233,9 +237,19 @@ export async function getAttachmentDownloadLinksAction(attachmentIds: string[]) 
 }
 
 export async function deleteAttachmentsAction(attachmentIds: string[]) {
-  const { supabase, user, error } = await requireAdmin()
+  const { supabase, user, error } = await requireFilesAccess()
   if (!user) {
     return { success: false, error: error ?? 'Neautorizovaný přístup.' }
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single<{ role: string | null }>()
+
+  if (profile?.role !== 'admin') {
+    return { success: false, error: 'Nemáš oprávnění mazat soubory.' }
   }
 
   const normalizedIds = Array.from(new Set((attachmentIds ?? []).map((id) => String(id).trim()).filter(Boolean)))

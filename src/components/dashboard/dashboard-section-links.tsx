@@ -84,6 +84,7 @@ export function DashboardSectionLinks({
   canViewJobsPortal,
   canViewOffers,
   canViewConnectionPoints,
+  canViewFiles,
   showClients = true,
   isAdmin,
   offersOrderedCount,
@@ -92,6 +93,7 @@ export function DashboardSectionLinks({
   canViewJobsPortal: boolean
   canViewOffers: boolean
   canViewConnectionPoints: boolean
+  canViewFiles: boolean
   showClients?: boolean
   isAdmin: boolean
   offersOrderedCount: number
@@ -130,13 +132,14 @@ export function DashboardSectionLinks({
         icon: <IconAssets />,
       },
       { key: 'finance', href: '/faktury', label: 'Finance', visible: isAdmin, icon: <IconFinance /> },
-      { key: 'files', href: '/soubory', label: 'Soubory', visible: isAdmin, icon: <IconFiles /> },
+      { key: 'files', href: '/soubory', label: 'Soubory', visible: canViewFiles, icon: <IconFiles /> },
     ].filter((item) => item.visible),
     [
       canViewJobs,
       canViewJobsPortal,
       canViewOffers,
       canViewConnectionPoints,
+      canViewFiles,
       showClients,
       isAdmin,
       offersOrderedCount,
