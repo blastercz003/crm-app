@@ -128,7 +128,7 @@ function addDaysUtc(value: Date, days: number) {
   return next
 }
 
-function getWorkWeekRange(offsetWeeks = 0) {
+function getNextWorkWeekEnd() {
   const today = getPragueTodayParts()
   const pragueDateAsUtc = new Date(
     Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0)
@@ -136,13 +136,10 @@ function getWorkWeekRange(offsetWeeks = 0) {
 
   const day = pragueDateAsUtc.getUTCDay()
   const mondayOffset = day === 0 ? -6 : 1 - day
-  const monday = addDaysUtc(pragueDateAsUtc, mondayOffset + offsetWeeks * 7)
-  const friday = addDaysUtc(monday, 4)
+  const nextMonday = addDaysUtc(pragueDateAsUtc, mondayOffset + 7)
+  const nextFriday = addDaysUtc(nextMonday, 4)
 
-  return {
-    from: toDateOnly(monday),
-    to: toDateOnly(friday),
-  }
+  return toDateOnly(nextFriday)
 }
 
 async function requireJobsAccess() {
@@ -227,12 +224,8 @@ export async function getJobsChangesModalDataAction(): Promise<
 
   try {
     const clearedAt = await getClearedAt(supabase)
-
-    const currentWeek = getWorkWeekRange(0)
-    const nextWeek = getWorkWeekRange(1)
-
-    const from = `${currentWeek.from}T00:00:00`
-    const to = `${nextWeek.to}T23:59:59`
+    const nextWorkWeekEnd = getNextWorkWeekEnd()
+    const to = `${nextWorkWeekEnd}T23:59:59`
 
     const [newJobsResponse, updatedJobsResponse] = await Promise.all([
       supabase
@@ -241,7 +234,6 @@ export async function getJobsChangesModalDataAction(): Promise<
           'id, job_number, company_name, site_address, start_at, end_at, generator_name, technician_name, evidence_status, marny_vyjezd, updated_at'
         )
         .eq('evidence_status', 'nove')
-        .gte('start_at', from)
         .lte('start_at', to)
         .order('start_at', { ascending: true })
         .order('end_at', { ascending: true })
@@ -343,17 +335,13 @@ export async function acknowledgeAllJobChangesAction(): Promise<
   }
 
   try {
-    const currentWeek = getWorkWeekRange(0)
-    const nextWeek = getWorkWeekRange(1)
-
-    const from = `${currentWeek.from}T00:00:00`
-    const to = `${nextWeek.to}T23:59:59`
+    const nextWorkWeekEnd = getNextWorkWeekEnd()
+    const to = `${nextWorkWeekEnd}T23:59:59`
 
     const { data: newJobsRows, error: newJobsError } = await supabase
       .from('jobs')
       .select('id, marny_vyjezd')
       .eq('evidence_status', 'nove')
-      .gte('start_at', from)
       .lte('start_at', to)
 
     if (newJobsError) {
