@@ -4,6 +4,15 @@
 create extension if not exists pg_trgm;
 create extension if not exists unaccent;
 
+-- Optional helper function for accent-insensitive normalization in future ranking.
+create or replace function public.global_search_normalize(value text)
+returns text
+language sql
+immutable
+as $$
+  select lower(unaccent(coalesce(value, '')))
+$$;
+
 -- Clients
 create index if not exists clients_name_trgm_idx
   on public.clients using gin (name gin_trgm_ops);
@@ -56,6 +65,30 @@ create index if not exists jobs_technician_name_trgm_idx
 create index if not exists jobs_generator_name_trgm_idx
   on public.jobs using gin (generator_name gin_trgm_ops);
 
+alter table public.jobs
+  add column if not exists company_name_search text generated always as (public.global_search_normalize(company_name)) stored,
+  add column if not exists technician_name_search text generated always as (public.global_search_normalize(technician_name)) stored,
+  add column if not exists site_address_search text generated always as (public.global_search_normalize(site_address)) stored,
+  add column if not exists generator_name_search text generated always as (public.global_search_normalize(generator_name)) stored,
+  add column if not exists contact_person_search text generated always as (public.global_search_normalize(contact_person)) stored,
+  add column if not exists job_number_search text generated always as (public.global_search_normalize(job_number)) stored,
+  add column if not exists store_number_search text generated always as (public.global_search_normalize(store_number)) stored;
+
+create index if not exists jobs_company_name_search_trgm_idx
+  on public.jobs using gin (company_name_search gin_trgm_ops);
+create index if not exists jobs_technician_name_search_trgm_idx
+  on public.jobs using gin (technician_name_search gin_trgm_ops);
+create index if not exists jobs_site_address_search_trgm_idx
+  on public.jobs using gin (site_address_search gin_trgm_ops);
+create index if not exists jobs_generator_name_search_trgm_idx
+  on public.jobs using gin (generator_name_search gin_trgm_ops);
+create index if not exists jobs_contact_person_search_trgm_idx
+  on public.jobs using gin (contact_person_search gin_trgm_ops);
+create index if not exists jobs_job_number_search_trgm_idx
+  on public.jobs using gin (job_number_search gin_trgm_ops);
+create index if not exists jobs_store_number_search_trgm_idx
+  on public.jobs using gin (store_number_search gin_trgm_ops);
+
 -- Finance / notifications
 create index if not exists job_finances_invoice_number_trgm_idx
   on public.job_finances using gin (invoice_number gin_trgm_ops);
@@ -63,12 +96,3 @@ create index if not exists notifications_title_trgm_idx
   on public.notifications using gin (title gin_trgm_ops);
 create index if not exists notifications_message_trgm_idx
   on public.notifications using gin (message gin_trgm_ops);
-
--- Optional helper function for accent-insensitive normalization in future ranking.
-create or replace function public.global_search_normalize(value text)
-returns text
-language sql
-immutable
-as $$
-  select lower(unaccent(coalesce(value, '')))
-$$;

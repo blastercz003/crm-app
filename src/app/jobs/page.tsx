@@ -118,16 +118,23 @@ const JOB_STATUS_OPTIONS: JobStatus[] = [
 ]
 
 function buildSearchFilter(search: string) {
-  const escaped = search.replaceAll(',', ' ').trim()
+  const normalized = search
+    .replaceAll(',', ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+
+  const escaped = normalized.replaceAll('%', '\\%').replaceAll('_', '\\_')
 
   return [
-    `company_name.ilike.%${escaped}%`,
-    `technician_name.ilike.%${escaped}%`,
-    `site_address.ilike.%${escaped}%`,
-    `generator_name.ilike.%${escaped}%`,
-    `contact_person.ilike.%${escaped}%`,
-    `job_number.ilike.%${escaped}%`,
-    `store_number.ilike.%${escaped}%`,
+    `company_name_search.ilike.%${escaped}%`,
+    `technician_name_search.ilike.%${escaped}%`,
+    `site_address_search.ilike.%${escaped}%`,
+    `generator_name_search.ilike.%${escaped}%`,
+    `contact_person_search.ilike.%${escaped}%`,
+    `job_number_search.ilike.%${escaped}%`,
+    `store_number_search.ilike.%${escaped}%`,
   ].join(',')
 }
 

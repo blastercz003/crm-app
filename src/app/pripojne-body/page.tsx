@@ -35,7 +35,11 @@ type FolderCommentRow = {
 }
 
 function normalizeQuery(value: string) {
-  return String(value ?? '').trim().toLowerCase()
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
 }
 
 export default async function PripojneBodyPage({
@@ -128,10 +132,10 @@ export default async function PripojneBodyPage({
   const visibleFolders =
     normalizedQuery.length > 0
       ? folders.filter((folder) => {
-          if (folder.name.toLowerCase().includes(normalizedQuery)) return true
+          if (normalizeQuery(folder.name).includes(normalizedQuery)) return true
 
           const bodies = commentSearchBodies.get(folder.id) ?? []
-          return bodies.some((body) => body.toLowerCase().includes(normalizedQuery))
+          return bodies.some((body) => normalizeQuery(body).includes(normalizedQuery))
         })
       : folders
 
