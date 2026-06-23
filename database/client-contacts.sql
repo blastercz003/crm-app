@@ -112,18 +112,7 @@ create policy "Users can read contacts for their clients and admins all contacts
   on public.client_contacts
   for select
   using (
-    exists (
-      select 1
-      from public.clients
-      where clients.id = client_contacts.client_id
-        and clients.created_by = auth.uid()
-    )
-    or exists (
-      select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
-    )
+    public.current_user_can_view_client(client_id)
   );
 
 drop policy if exists "Users can create contacts for their clients and admins all contacts" on public.client_contacts;
@@ -132,20 +121,7 @@ create policy "Users can create contacts for their clients and admins all contac
   for insert
   with check (
     created_by = auth.uid()
-    and (
-      exists (
-        select 1
-        from public.clients
-        where clients.id = client_contacts.client_id
-          and clients.created_by = auth.uid()
-      )
-      or exists (
-        select 1
-        from public.profiles
-        where profiles.id = auth.uid()
-          and profiles.role = 'admin'
-      )
-    )
+    and public.current_user_can_manage_client(client_id)
   );
 
 drop policy if exists "Users can update contacts for their clients and admins all contacts" on public.client_contacts;
@@ -153,32 +129,10 @@ create policy "Users can update contacts for their clients and admins all contac
   on public.client_contacts
   for update
   using (
-    exists (
-      select 1
-      from public.clients
-      where clients.id = client_contacts.client_id
-        and clients.created_by = auth.uid()
-    )
-    or exists (
-      select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
-    )
+    public.current_user_can_manage_client(client_id)
   )
   with check (
-    exists (
-      select 1
-      from public.clients
-      where clients.id = client_contacts.client_id
-        and clients.created_by = auth.uid()
-    )
-    or exists (
-      select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
-    )
+    public.current_user_can_manage_client(client_id)
   );
 
 drop policy if exists "Users can delete contacts for their clients and admins all contacts" on public.client_contacts;
@@ -186,16 +140,5 @@ create policy "Users can delete contacts for their clients and admins all contac
   on public.client_contacts
   for delete
   using (
-    exists (
-      select 1
-      from public.clients
-      where clients.id = client_contacts.client_id
-        and clients.created_by = auth.uid()
-    )
-    or exists (
-      select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
-    )
+    public.current_user_can_manage_client(client_id)
   );

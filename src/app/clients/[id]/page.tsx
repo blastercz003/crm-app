@@ -35,6 +35,10 @@ type ClientOwnerOption = {
   name: string
 }
 
+type ClientAccessRow = {
+  user_id: string
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -489,11 +493,7 @@ export default async function ClientDetailPage({
   const isAdmin = typedProfile?.role === 'admin'
   const canViewJobs = isAdmin || Boolean(typedProfile?.can_view_jobs)
 
-  let clientRequest = supabase.from('clients').select('*').eq('id', id)
-
-  if (!isAdmin) {
-    clientRequest = clientRequest.eq('created_by', user.id)
-  }
+  const clientRequest = supabase.from('clients').select('*').eq('id', id)
 
   const jobsRequest = canViewJobs
     ? supabase
@@ -522,6 +522,7 @@ export default async function ClientDetailPage({
     offersResponse,
     jobsResponse,
     ownerProfilesResponse,
+    sharedAccessResponse,
   ] = await Promise.all([
     clientRequest.single(),
     supabase
@@ -561,14 +562,13 @@ export default async function ClientDetailPage({
       .order('updated_at', { ascending: false }),
     jobsRequest,
     isAdmin
+      ? supabase.from('profiles').select('id, name').order('name', { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+    isAdmin
       ? supabase
-          .from('profiles')
-          .select('id, name')
-          .in('id', [
-            user.id,
-            '46c40df2-04d7-41e9-ad6d-51cc2ee76019',
-            '735d158c-667a-42c0-8af0-6ee12a9c1f11',
-          ])
+          .from('client_access')
+          .select('user_id')
+          .eq('client_id', id)
       : Promise.resolve({ data: [], error: null }),
   ])
 
@@ -579,6 +579,7 @@ export default async function ClientDetailPage({
   const { data: offers, error: offersError } = offersResponse
   const { data: jobs, error: jobsError } = jobsResponse
   const { data: ownerProfiles, error: ownerProfilesError } = ownerProfilesResponse
+  const { data: sharedAccessRows, error: sharedAccessError } = sharedAccessResponse
 
   if (clientError || !client) {
     notFound()
@@ -608,12 +609,17 @@ export default async function ClientDetailPage({
     throw new Error('Nepodařilo se načíst uživatele pro změnu majitele klienta.')
   }
 
+  if (isAdmin && sharedAccessError) {
+    throw new Error('Nepodařilo se načíst sdílení klienta.')
+  }
+
   const typedClient = client as ClientRow
   const typedContacts = (contacts ?? []) as ClientContactRow[]
   const typedMeetings = (meetings ?? []) as ClientMeetingRow[]
   const typedTasks = (tasks ?? []) as ClientTaskRow[]
   const typedOffers = (offers ?? []) as ClientOfferRow[]
   const typedJobs = (jobs ?? []) as ClientJobRow[]
+  const canManageClient = isAdmin || typedClient.created_by === user.id
   const ownerOptions = ((ownerProfiles ?? []) as ClientOwnerOption[])
     .map((profile) => ({
       id: profile.id,
@@ -631,6 +637,9 @@ export default async function ClientDetailPage({
         sensitivity: 'base',
       })
     )
+  const sharedUserIds = ((sharedAccessRows ?? []) as ClientAccessRow[]).map(
+    (row) => row.user_id
+  )
   const currentOwnerName =
     ownerOptions.find((option) => option.id === typedClient.created_by)?.name ??
     'Neuvedeno'
@@ -659,12 +668,14 @@ export default async function ClientDetailPage({
         <section className="client-detail-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-6">
           <div className="flex flex-col gap-5">
             <div className="flex gap-2 sm:hidden">
-              <EditClientButton
-                client={typedClient}
-                label="UPRAVIT KLIENTA"
-                canDeleteClient={isAdmin}
-                className="client-detail-page__edit-button clients-page__edit-button inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
-              />
+              {canManageClient ? (
+                <EditClientButton
+                  client={typedClient}
+                  label="UPRAVIT KLIENTA"
+                  canDeleteClient={isAdmin}
+                  className="client-detail-page__edit-button clients-page__edit-button inline-flex h-10 min-w-0 flex-1 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                />
+              ) : null}
 
               <Link
                 href="/clients"
@@ -709,12 +720,14 @@ export default async function ClientDetailPage({
 
               <div className="hidden self-stretch flex-col items-end justify-between gap-3 sm:flex xl:w-[320px]">
                 <div className="client-detail-page__actions flex gap-2">
-                  <EditClientButton
-                    client={typedClient}
-                    label="UPRAVIT KLIENTA"
-                    canDeleteClient={isAdmin}
-                    className="client-detail-page__edit-button clients-page__edit-button inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] sm:w-[150px]"
-                  />
+                  {canManageClient ? (
+                    <EditClientButton
+                      client={typedClient}
+                      label="UPRAVIT KLIENTA"
+                      canDeleteClient={isAdmin}
+                      className="client-detail-page__edit-button clients-page__edit-button inline-flex h-10 min-w-0 shrink items-center justify-center whitespace-nowrap rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] sm:w-[150px]"
+                    />
+                  ) : null}
 
                   <Link
                     href="/clients"
@@ -738,8 +751,11 @@ export default async function ClientDetailPage({
                       </p>
                       <ClientOwnerChangeButton
                         clientId={typedClient.id}
+                        currentOwnerId={typedClient.created_by ?? ''}
                         currentOwnerName={currentOwnerName}
                         ownerOptions={ownerOptions}
+                        sharedUserOptions={ownerOptions}
+                        selectedSharedUserIds={sharedUserIds}
                       />
                     </div>
                   ) : null}
@@ -758,11 +774,13 @@ export default async function ClientDetailPage({
                 </h2>
               </div>
 
-              <NewClientContactButton
-                clientId={typedClient.id}
-                hasContacts={typedContacts.length > 0}
-                className="client-detail-page__new-contact clients-page__new-button inline-flex h-10 w-[150px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
-              />
+              {canManageClient ? (
+                <NewClientContactButton
+                  clientId={typedClient.id}
+                  hasContacts={typedContacts.length > 0}
+                  className="client-detail-page__new-contact clients-page__new-button inline-flex h-10 w-[150px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
+                />
+              ) : null}
             </div>
 
             {typedContacts.length === 0 ? (
@@ -808,9 +826,28 @@ export default async function ClientDetailPage({
                       </div>
                     </div>
 
-                    <div className="client-detail-page__contact-actions mt-auto flex flex-wrap justify-end gap-2 pt-3">
-                      {!contact.is_primary ? (
-                        <form action={setPrimaryClientContact}>
+                    {canManageClient ? (
+                      <div className="client-detail-page__contact-actions mt-auto flex flex-wrap justify-end gap-2 pt-3">
+                        {!contact.is_primary ? (
+                          <form action={setPrimaryClientContact}>
+                            <input type="hidden" name="id" value={contact.id} />
+                            <input
+                              type="hidden"
+                              name="client_id"
+                              value={typedClient.id}
+                            />
+                            <button
+                              type="submit"
+                              className="client-detail-page__primary-contact-button inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                            >
+                              NASTAVIT HLAVNÍ
+                            </button>
+                          </form>
+                        ) : null}
+
+                        <EditClientContactButton contact={contact} />
+
+                        <form action={deleteClientContact}>
                           <input type="hidden" name="id" value={contact.id} />
                           <input
                             type="hidden"
@@ -819,30 +856,13 @@ export default async function ClientDetailPage({
                           />
                           <button
                             type="submit"
-                          className="client-detail-page__primary-contact-button inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-2 text-xs font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)]"
+                            className="client-detail-page__delete-contact clients-modal__delete inline-flex items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 py-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
                           >
-                            NASTAVIT HLAVNÍ
+                            SMAZAT
                           </button>
                         </form>
-                      ) : null}
-
-                      <EditClientContactButton contact={contact} />
-
-                      <form action={deleteClientContact}>
-                        <input type="hidden" name="id" value={contact.id} />
-                        <input
-                          type="hidden"
-                          name="client_id"
-                          value={typedClient.id}
-                        />
-                        <button
-                          type="submit"
-                          className="client-detail-page__delete-contact clients-modal__delete inline-flex items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 py-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
-                        >
-                          SMAZAT
-                        </button>
-                      </form>
-                    </div>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

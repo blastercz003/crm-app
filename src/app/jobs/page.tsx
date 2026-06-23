@@ -356,14 +356,10 @@ export default async function JobsPage({
     redirect('/dashboard')
   }
 
-  let clientsRequest = supabase
+  const clientsRequest = supabase
     .from('clients')
     .select('id, name')
     .order('name', { ascending: true })
-
-  if (!isAdmin) {
-    clientsRequest = clientsRequest.eq('created_by', user.id)
-  }
 
   const { data: clientSuggestionsData, error: clientsError } =
     await clientsRequest

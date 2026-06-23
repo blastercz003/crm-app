@@ -14,10 +14,18 @@ type ClientOwnerOption = {
   name: string
 }
 
+type ClientAccessOption = {
+  id: string
+  name: string
+}
+
 type ClientOwnerChangeButtonProps = {
   clientId: string
+  currentOwnerId: string
   currentOwnerName: string
   ownerOptions: ClientOwnerOption[]
+  sharedUserOptions: ClientAccessOption[]
+  selectedSharedUserIds: string[]
 }
 
 const initialState: ChangeClientOwnerActionState = {
@@ -30,8 +38,11 @@ const glassSelectClass =
 
 export function ClientOwnerChangeButton({
   clientId,
+  currentOwnerId,
   currentOwnerName,
   ownerOptions,
+  sharedUserOptions,
+  selectedSharedUserIds,
 }: ClientOwnerChangeButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
@@ -58,8 +69,11 @@ export function ClientOwnerChangeButton({
         <ClientOwnerChangeModal
           key={formKey}
           clientId={clientId}
+          currentOwnerId={currentOwnerId}
           currentOwnerName={currentOwnerName}
           ownerOptions={ownerOptions}
+          sharedUserOptions={sharedUserOptions}
+          selectedSharedUserIds={selectedSharedUserIds}
           onClose={() => setIsOpen(false)}
           onSuccess={(ownerName) => {
             setIsOpen(false)
@@ -77,21 +91,30 @@ export function ClientOwnerChangeButton({
 
 function ClientOwnerChangeModal({
   clientId,
+  currentOwnerId,
   currentOwnerName,
   ownerOptions,
+  sharedUserOptions,
+  selectedSharedUserIds,
   onClose,
   onSuccess,
 }: {
   clientId: string
+  currentOwnerId: string
   currentOwnerName: string
   ownerOptions: ClientOwnerOption[]
+  sharedUserOptions: ClientAccessOption[]
+  selectedSharedUserIds: string[]
   onClose: () => void
   onSuccess: (ownerName: string) => void
 }) {
   const router = useRouter()
   const [state, formAction] = useActionState(changeClientOwnerAction, initialState)
   const [selectedOwnerId, setSelectedOwnerId] = useState(
-    ownerOptions.find((option) => option.name === currentOwnerName)?.id ?? ownerOptions[0]?.id ?? ''
+    currentOwnerId || ownerOptions[0]?.id || ''
+  )
+  const [selectedSharedIds, setSelectedSharedIds] = useState<string[]>(
+    selectedSharedUserIds.filter((id) => id !== currentOwnerId)
   )
 
   useEffect(() => {
@@ -126,7 +149,7 @@ function ClientOwnerChangeModal({
           <div className="clients-modal__header flex items-center justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-5 py-4">
             <div>
               <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Změna majitele klienta
+                Změna majitele a sdílení klienta
               </h2>
               <p className="clients-modal__subtitle mt-1 text-sm text-gray-500">
                 Aktuálně: <span className="font-semibold text-gray-900">{currentOwnerName}</span>
@@ -147,25 +170,77 @@ function ClientOwnerChangeModal({
             <input type="hidden" name="client_id" value={clientId} />
 
             <div className="clients-modal__body px-5 py-4">
-              <label
-                htmlFor={`client-owner-${clientId}`}
-                className="clients-modal__label mb-2 block text-sm font-medium text-gray-900"
-              >
-                Nový majitel klienta
-              </label>
-              <select
-                id={`client-owner-${clientId}`}
-                name="owner_user_id"
-                value={selectedOwnerId}
-                onChange={(event) => setSelectedOwnerId(event.target.value)}
-                className={glassSelectClass}
-              >
-                {ownerOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
+              <div className="grid gap-4">
+                <div>
+                  <label
+                    htmlFor={`client-owner-${clientId}`}
+                    className="clients-modal__label mb-2 block text-sm font-medium text-gray-900"
+                  >
+                    Majitel klienta
+                  </label>
+                  <select
+                    id={`client-owner-${clientId}`}
+                    name="owner_user_id"
+                    value={selectedOwnerId}
+                    onChange={(event) => {
+                      const nextOwnerId = event.target.value
+
+                      setSelectedOwnerId(nextOwnerId)
+                      setSelectedSharedIds((current) =>
+                        current.filter((id) => id !== nextOwnerId)
+                      )
+                    }}
+                    className={glassSelectClass}
+                  >
+                    {ownerOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <p className="clients-modal__label mb-2 block text-sm font-medium text-gray-900">
+                    Další uživatelé s přístupem
+                  </p>
+
+                  <div className="max-h-56 overflow-auto rounded-2xl border border-zinc-200/80 bg-white/70 p-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {sharedUserOptions
+                        .filter((option) => option.id !== selectedOwnerId)
+                        .map((option) => {
+                          const checked = selectedSharedIds.includes(option.id)
+
+                          return (
+                            <label
+                              key={option.id}
+                              className="flex items-center gap-3 rounded-xl border border-zinc-200/70 bg-white/80 px-3 py-2 text-sm text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                            >
+                              <input
+                                type="checkbox"
+                                name="shared_user_ids"
+                                value={option.id}
+                                checked={checked}
+                                onChange={(event) => {
+                                  setSelectedSharedIds((current) => {
+                                    if (event.target.checked) {
+                                      return Array.from(new Set([...current, option.id]))
+                                    }
+
+                                    return current.filter((id) => id !== option.id)
+                                  })
+                                }}
+                                className="h-4 w-4 accent-[#2980B9]"
+                              />
+                              <span className="min-w-0 truncate">{option.name}</span>
+                            </label>
+                          )
+                        })}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {state.error ? (
                 <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

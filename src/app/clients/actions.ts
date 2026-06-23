@@ -26,9 +26,15 @@ type CurrentProfile = {
   name: string | null
 }
 
-type ClientOwnerProfileRow = {
+type ClientAccessProfileRow = {
   id: string
   name: string | null
+}
+
+type ManagedClientRow = {
+  id: string
+  name: string | null
+  created_by: string | null
 }
 
 const CLIENT_OWNER_FIXED_IDS = {
@@ -92,28 +98,22 @@ async function getCurrentProfile(params: {
   return profile
 }
 
-async function getAllowedClientOwnerProfiles(
+async function getClientAccessProfiles(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  currentAdminProfile: CurrentProfile
+  currentProfile: CurrentProfile
 ) {
-  const allowedIds = [
-    currentAdminProfile.id,
-    CLIENT_OWNER_FIXED_IDS.MICHAL,
-    CLIENT_OWNER_FIXED_IDS['LÍDA'],
-  ]
-
   const { data, error } = await supabase
     .from('profiles')
     .select('id, name')
-    .in('id', allowedIds)
+    .order('name', { ascending: true })
 
   if (error) {
-    throw new Error('Nepodařilo se načíst uživatele pro změnu majitele klienta.')
+    throw new Error('Nepodařilo se načíst uživatele pro změnu přístupu ke klientovi.')
   }
 
-  return ((data ?? []) as ClientOwnerProfileRow[])
+  return ((data ?? []) as ClientAccessProfileRow[])
     .map((profile) => {
-      if (profile.id === currentAdminProfile.id) {
+      if (profile.id === currentProfile.id) {
         return {
           ...profile,
           name: 'Jiří',
@@ -141,6 +141,35 @@ async function getAllowedClientOwnerProfiles(
         sensitivity: 'base',
       })
     )
+}
+
+async function assertCanManageClient(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  userId: string
+  clientId: string
+}) {
+  const { supabase, userId, clientId } = params
+
+  const profile = await getCurrentProfile({ supabase, userId })
+
+  const { data: client, error } = await supabase
+    .from('clients')
+    .select('id, name, created_by')
+    .eq('id', clientId)
+    .maybeSingle<ManagedClientRow>()
+
+  if (error || !client) {
+    throw new Error('Klient nebyl nalezen.')
+  }
+
+  if (profile.role !== 'admin' && client.created_by !== userId) {
+    throw new Error('Tento klient je jen pro čtení.')
+  }
+
+  return {
+    profile,
+    client,
+  }
 }
 
 async function assertNoDuplicateClientOnCreate(params: {
@@ -315,6 +344,12 @@ async function createClientContactValues(formData: FormData) {
     throw new Error('Jméno kontaktní osoby je povinné.')
   }
 
+  await assertCanManageClient({
+    supabase,
+    userId: user.id,
+    clientId,
+  })
+
   const { count, error: countError } = await supabase
     .from('client_contacts')
     .select('id', { count: 'exact', head: true })
@@ -385,6 +420,12 @@ async function updateClientContactValues(formData: FormData) {
   if (!name) {
     throw new Error('Jméno kontaktní osoby je povinné.')
   }
+
+  await assertCanManageClient({
+    supabase,
+    userId: user.id,
+    clientId,
+  })
 
   if (isPrimary) {
     const { error } = await supabase
@@ -504,8 +545,6 @@ async function insertClientRecord(formData: FormData) {
 
 async function updateClientValues(formData: FormData) {
   const { supabase, user } = await requireUser()
-  const profile = await getCurrentProfile({ supabase, userId: user.id })
-  const isAdmin = profile.role === 'admin'
 
   const id = getString(formData, 'id')
   const name = getString(formData, 'name')
@@ -524,22 +563,24 @@ async function updateClientValues(formData: FormData) {
     throw new Error('Název klienta je povinný.')
   }
 
-  let query = supabase.from('clients').update({
-    name,
-    ico: ico || null,
-    contact_person: contactPerson || null,
-    contact_phone: contactPhone || null,
-    contact_email: contactEmail || null,
-    address: address || null,
-    note: note || null,
+  await assertCanManageClient({
+    supabase,
+    userId: user.id,
+    clientId: id,
   })
-  .eq('id', id)
 
-  if (!isAdmin) {
-    query = query.eq('created_by', user.id)
-  }
-
-  const { error } = await query
+  const { error } = await supabase
+    .from('clients')
+    .update({
+      name,
+      ico: ico || null,
+      contact_person: contactPerson || null,
+      contact_phone: contactPhone || null,
+      contact_email: contactEmail || null,
+      address: address || null,
+      note: note || null,
+    })
+    .eq('id', id)
 
   if (error) {
     throw new Error('Nepodařilo se upravit klienta.')
@@ -627,12 +668,20 @@ export async function changeClientOwnerAction(
 
     const clientId = getString(formData, 'client_id')
     const nextOwnerId = getString(formData, 'owner_user_id')
+    const nextSharedUserIds = Array.from(
+      new Set(
+        formData
+          .getAll('shared_user_ids')
+          .map((value) => (typeof value === 'string' ? value.trim() : ''))
+          .filter(Boolean)
+      )
+    )
 
     if (!clientId || !nextOwnerId) {
       throw new Error('Chybí klient nebo nový majitel.')
     }
 
-    const allowedOwners = await getAllowedClientOwnerProfiles(supabase, profile)
+    const allowedOwners = await getClientAccessProfiles(supabase, profile)
     const nextOwner = allowedOwners.find((owner) => owner.id === nextOwnerId)
 
     if (!nextOwner) {
@@ -649,25 +698,18 @@ export async function changeClientOwnerAction(
       throw new Error('Klient nebyl nalezen.')
     }
 
-    if (client.created_by === nextOwnerId) {
-      return {
-        success: true,
-        error: null,
-        ownerName: nextOwner.name?.trim() || 'Neuvedeno',
-      }
-    }
+    const { error: visibilityError } = await supabase.rpc('set_client_visibility', {
+      p_client_id: clientId,
+      p_owner_user_id: nextOwnerId,
+      p_shared_user_ids: nextSharedUserIds,
+    })
 
-    const { error: updateError } = await supabase
-      .from('clients')
-      .update({ created_by: nextOwnerId })
-      .eq('id', clientId)
-
-    if (updateError) {
-      throw new Error('Nepodařilo se změnit majitele klienta.')
+    if (visibilityError) {
+      throw new Error('Nepodařilo se změnit přístup ke klientovi.')
     }
 
     await logUserActivity({
-      action: `Změnil majitele klienta ${client.name?.trim() || clientId} na ${nextOwner.name?.trim() || nextOwnerId}`,
+      action: `Změnil přístup ke klientovi ${client.name?.trim() || clientId}. Majitel: ${nextOwner.name?.trim() || nextOwnerId}. Sdílení: ${nextSharedUserIds.length} uživatelů.`,
       section: 'Klienti',
       route: `/clients/${clientId}`,
       userId: user.id,

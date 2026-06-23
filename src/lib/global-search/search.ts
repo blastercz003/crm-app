@@ -294,20 +294,14 @@ function formatDateTimeRange(startAt: string | null, endAt: string | null) {
 async function searchClients(params: {
   supabase: Awaited<ReturnType<typeof createClient>>
   query: string
-  isAdmin: boolean
-  userId: string
 }) {
-  const { supabase, query, isAdmin, userId } = params
+  const { supabase, query } = params
 
   let request = supabase
     .from('clients')
     .select('id, name, ico, address, contact_person, contact_email, created_at')
     .order('created_at', { ascending: false })
     .limit(40)
-
-  if (!isAdmin) {
-    request = request.eq('created_by', userId)
-  }
 
   const escaped = escapeLike(query)
   request = request.or(
@@ -510,10 +504,7 @@ async function searchOffers(params: {
   const escaped = escapeLike(query)
 
   let matchingClientIds: string[] = []
-  let clientQuery = supabase.from('clients').select('id').ilike('name', `%${escaped}%`)
-  if (!isAdmin) {
-    clientQuery = clientQuery.eq('created_by', userId)
-  }
+  const clientQuery = supabase.from('clients').select('id').ilike('name', `%${escaped}%`)
 
   const clientsResponse = await clientQuery
   if (clientsResponse.error) {
@@ -856,7 +847,7 @@ export async function globalSearch(rawQuery: string): Promise<GlobalSearchRespon
   const isAdmin = profile.role === 'admin'
   const sections: GlobalSearchSectionResult[] = []
 
-  sections.push(await searchClients({ supabase, query, isAdmin, userId: user.id }))
+  sections.push(await searchClients({ supabase, query }))
   sections.push(await searchTasks({ supabase, query, isAdmin, userId: user.id }))
   sections.push(await searchMeetings({ supabase, query, isAdmin, userId: user.id }))
 

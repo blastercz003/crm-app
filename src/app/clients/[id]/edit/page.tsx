@@ -14,6 +14,7 @@ type ClientRow = {
   contact_email: string | null
   address: string | null
   note: string | null
+  created_by: string | null
   created_at: string
 }
 
@@ -80,6 +81,11 @@ export default async function EditClientPage({
   }
 
   const typedClient = client as ClientRow
+  const canManageClient = isAdmin || typedClient.created_by === user.id
+
+  if (!canManageClient) {
+    notFound()
+  }
 
   return (
     <main className="min-h-screen bg-gray-50">

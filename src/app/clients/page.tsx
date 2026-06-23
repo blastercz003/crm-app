@@ -15,6 +15,7 @@ type ClientRow = {
   contact_email: string | null
   address: string | null
   note: string | null
+  created_by: string | null
   created_at: string
 }
 
@@ -74,10 +75,6 @@ export default async function ClientsPage({
     .from('clients')
     .select('*')
     .order('name', { ascending: true })
-
-  if (!isAdmin) {
-    request = request.eq('created_by', user.id)
-  }
 
   if (query) {
     request = request.or(buildSearchFilter(query))
@@ -224,6 +221,9 @@ export default async function ClientsPage({
 
                   <tbody className="clients-page__table-body">
                     {typedClients.map((client) => {
+                      const canManageClient =
+                        isAdmin || client.created_by === user.id
+
                       return (
                         <tr
                           key={client.id}
@@ -266,11 +266,13 @@ export default async function ClientsPage({
 
                           <td className="px-5 py-4">
                             <div className="flex justify-end gap-2">
-                              <EditClientButton
-                                client={client}
-                                canDeleteClient={isAdmin}
-                                className={secondaryGlassButtonClass}
-                              />
+                              {canManageClient ? (
+                                <EditClientButton
+                                  client={client}
+                                  canDeleteClient={isAdmin}
+                                  className={secondaryGlassButtonClass}
+                                />
+                              ) : null}
 
                               <Link
                                 href={`/clients/${client.id}`}
@@ -290,6 +292,9 @@ export default async function ClientsPage({
 
             <section className="grid gap-3 lg:hidden">
               {typedClients.map((client) => {
+                const canManageClient =
+                  isAdmin || client.created_by === user.id
+
                 return (
                   <div
                     key={client.id}
@@ -332,11 +337,13 @@ export default async function ClientsPage({
                     </div>
 
                     <div className="mt-4 flex flex-wrap justify-end gap-2">
-                      <EditClientButton
-                        client={client}
-                        canDeleteClient={isAdmin}
-                        className={secondaryGlassButtonClass}
-                      />
+                      {canManageClient ? (
+                        <EditClientButton
+                          client={client}
+                          canDeleteClient={isAdmin}
+                          className={secondaryGlassButtonClass}
+                        />
+                      ) : null}
 
                       <Link
                         href={`/clients/${client.id}`}
