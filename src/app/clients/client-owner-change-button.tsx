@@ -205,7 +205,7 @@ function ClientOwnerChangeModal({
                     Další uživatelé s přístupem
                   </p>
 
-                  <div className="max-h-56 overflow-auto rounded-2xl border border-zinc-200/80 bg-white/70 p-3">
+                  <div className="clients-modal__shared-users-panel max-h-56 overflow-auto rounded-[28px] p-3">
                     <div className="grid gap-2 sm:grid-cols-2">
                       {sharedUserOptions
                         .filter((option) => option.id !== selectedOwnerId)
@@ -215,7 +215,7 @@ function ClientOwnerChangeModal({
                           return (
                             <label
                               key={option.id}
-                              className="flex items-center gap-3 rounded-xl border border-zinc-200/70 bg-white/80 px-3 py-2 text-sm text-gray-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                              className="clients-modal__shared-users-option flex items-center gap-3 rounded-xl px-3 py-2 text-sm shadow-none transition"
                             >
                               <input
                                 type="checkbox"
@@ -233,7 +233,9 @@ function ClientOwnerChangeModal({
                                 }}
                                 className="h-4 w-4 accent-[#2980B9]"
                               />
-                              <span className="min-w-0 truncate">{option.name}</span>
+                              <span className="min-w-0 truncate">
+                                {option.name}
+                              </span>
                             </label>
                           )
                         })}
