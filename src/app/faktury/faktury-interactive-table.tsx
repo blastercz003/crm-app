@@ -29,11 +29,29 @@ type InlineEditableFinanceField = 'info_note' | 'invoice_number' | 'sale_amount'
 type FakturyInteractiveTableProps = {
   rows: FakturaRow[]
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
+  offerSuggestions: JobOfferOption[]
+  jobOfferSuggestions: JobOfferOption[]
+  technicianSuggestions: string[]
 }
 
 type ClientOption = {
   id: string
   name: string
+}
+
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
+type JobOfferOption = {
+  id: string
+  client_id: string
+  offer_number: string
+  title: string
 }
 
 type CostPreset = {
@@ -105,6 +123,10 @@ const ATTACHMENT_CATEGORY_OPTIONS: Array<{
 export function FakturyInteractiveTable({
   rows,
   clientSuggestions,
+  clientContacts,
+  offerSuggestions,
+  jobOfferSuggestions,
+  technicianSuggestions,
 }: FakturyInteractiveTableProps) {
   return (
     <>
@@ -152,6 +174,10 @@ export function FakturyInteractiveTable({
                   key={row.id}
                   row={row}
                   clientSuggestions={clientSuggestions}
+                  clientContacts={clientContacts}
+                  offerSuggestions={offerSuggestions}
+                  jobOfferSuggestions={jobOfferSuggestions}
+                  technicianSuggestions={technicianSuggestions}
                 />
               ))}
             </tbody>
@@ -165,6 +191,10 @@ export function FakturyInteractiveTable({
             key={row.id}
             row={row}
             clientSuggestions={clientSuggestions}
+            clientContacts={clientContacts}
+            offerSuggestions={offerSuggestions}
+            jobOfferSuggestions={jobOfferSuggestions}
+            technicianSuggestions={technicianSuggestions}
           />
         ))}
       </section>
@@ -175,14 +205,23 @@ export function FakturyInteractiveTable({
 function DesktopRow({
   row,
   clientSuggestions,
+  clientContacts,
+  offerSuggestions,
+  jobOfferSuggestions,
+  technicianSuggestions,
 }: {
   row: FakturaRow
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
+  offerSuggestions: JobOfferOption[]
+  jobOfferSuggestions: JobOfferOption[]
+  technicianSuggestions: string[]
 }) {
   const isFinanceCompleted =
     Boolean(row.invoice_number?.trim()) &&
     typeof row.sale_amount === 'number' &&
     typeof row.cost_amount === 'number'
+  const editableJob = buildEditableJob(row)
 
   return (
     <tr
@@ -194,8 +233,12 @@ function DesktopRow({
     >
       <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <EditJobButton
-          job={row}
+          job={editableJob}
           clientSuggestions={clientSuggestions}
+          clientContacts={clientContacts}
+          offerSuggestions={offerSuggestions}
+          jobOfferSuggestions={jobOfferSuggestions}
+          technicianSuggestions={technicianSuggestions}
           className="jobs-page__job-number-button block h-8 rounded-lg px-1 py-1 text-center text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
         >
           <span className="block truncate leading-6 text-gray-900">
@@ -302,18 +345,50 @@ function DesktopRow({
   )
 }
 
+function buildEditableJob(row: FakturaRow) {
+  return {
+    id: row.job_id,
+    job_number: row.job_number,
+    company_name: row.company_name,
+    client_id: row.client_id,
+    offer_id: row.offer_id,
+    client_contact_id: row.client_contact_id,
+    contact_person: row.contact_person,
+    sales_owner: row.sales_owner,
+    start_at: row.start_at,
+    end_at: row.end_at,
+    site_address: row.site_address,
+    store_number: row.store_number,
+    technician_name: row.technician_name,
+    generator_name: row.generator_name,
+    info_note: row.info_note,
+    marny_vyjezd: row.marny_vyjezd,
+    job_status: row.job_status,
+    invoice_status: row.invoice_status,
+  }
+}
+
 function MobileCard({
   row,
   clientSuggestions,
+  clientContacts,
+  offerSuggestions,
+  jobOfferSuggestions,
+  technicianSuggestions,
 }: {
   row: FakturaRow
   clientSuggestions: ClientOption[]
+  clientContacts: ClientContactOption[]
+  offerSuggestions: JobOfferOption[]
+  jobOfferSuggestions: JobOfferOption[]
+  technicianSuggestions: string[]
 }) {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false)
   const isFinanceCompleted =
     Boolean(row.invoice_number?.trim()) &&
     typeof row.sale_amount === 'number' &&
     typeof row.cost_amount === 'number'
+  const editableJob = buildEditableJob(row)
 
   return (
     <div
@@ -327,8 +402,12 @@ function MobileCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <EditJobButton
-              job={row}
+              job={editableJob}
               clientSuggestions={clientSuggestions}
+              clientContacts={clientContacts}
+              offerSuggestions={offerSuggestions}
+              jobOfferSuggestions={jobOfferSuggestions}
+              technicianSuggestions={technicianSuggestions}
               className="jobs-page__job-number-button min-w-0 text-sm font-semibold leading-tight text-gray-900 hover:underline"
             >
               <span className="block truncate">{row.job_number}</span>

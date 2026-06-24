@@ -18,6 +18,8 @@ export type FakturaRow = {
   id: string
   job_id: string
   client_id: string | null
+  offer_id: string | null
+  client_contact_id: string | null
   job_number: string
   company_name: string
   contact_person: string | null
@@ -28,6 +30,7 @@ export type FakturaRow = {
   store_number: string | null
   technician_name: string | null
   generator_name: string | null
+  marny_vyjezd: boolean | null
   job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
   info_note: string | null
@@ -59,9 +62,30 @@ type JobFinanceJoinRow = {
   sale_amount: number | null
   cost_amount: number | null
   job:
+      | {
+          id: string
+          client_id: string | null
+          offer_id: string | null
+          client_contact_id: string | null
+          job_number: string
+          company_name: string
+          contact_person: string | null
+          sales_owner: SalesOwner
+          start_at: string
+        end_at: string
+          site_address: string | null
+          store_number: string | null
+          technician_name: string | null
+          generator_name: string | null
+          marny_vyjezd: boolean | null
+          job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
+          invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
+        }
     | {
         id: string
         client_id: string | null
+        offer_id: string | null
+        client_contact_id: string | null
         job_number: string
         company_name: string
         contact_person: string | null
@@ -72,22 +96,7 @@ type JobFinanceJoinRow = {
         store_number: string | null
         technician_name: string | null
         generator_name: string | null
-        job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
-        invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
-      }
-    | {
-        id: string
-        client_id: string | null
-        job_number: string
-        company_name: string
-        contact_person: string | null
-        sales_owner: SalesOwner
-        start_at: string
-        end_at: string
-        site_address: string | null
-        store_number: string | null
-        technician_name: string | null
-        generator_name: string | null
+        marny_vyjezd: boolean | null
         job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
         invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
       }[]
@@ -101,6 +110,20 @@ type JobIdRow = {
 type ClientSuggestionRow = {
   id: string
   name: string | null
+}
+
+type ClientContactOption = {
+  id: string
+  client_id: string
+  name: string
+  is_primary: boolean
+}
+
+type JobOfferOption = {
+  id: string
+  client_id: string
+  offer_number: string
+  title: string
 }
 
 type FinanceStatsJoinRow = {
@@ -509,6 +532,8 @@ export default async function FakturyPage({
       job:jobs!inner (
         id,
         client_id,
+        offer_id,
+        client_contact_id,
         job_number,
         company_name,
         contact_person,
@@ -519,6 +544,7 @@ export default async function FakturyPage({
         store_number,
         technician_name,
         generator_name,
+        marny_vyjezd,
         job_status,
         invoice_status
       )
@@ -559,6 +585,9 @@ export default async function FakturyPage({
   const [
     financeResponse,
     clientSuggestionsResponse,
+    clientContactsResponse,
+    offerSuggestionsResponse,
+    technicianProfilesResponse,
     statsResponse,
   ] = await Promise.all([
     request,
@@ -566,12 +595,43 @@ export default async function FakturyPage({
       .from('clients')
       .select('id, name')
       .order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+    supabase
+      .from('offers')
+      .select('id, client_id, offer_number, title, offer_type, status')
+      .eq('offer_type', 'classic')
+      .neq('status', 'realizace')
+      .order('offer_number', { ascending: false }),
+    supabase
+      .from('profiles')
+      .select('id, name, can_be_assigned_as_technician')
+      .eq('can_be_assigned_as_technician', true)
+      .order('name', { ascending: true }),
     supabase.from('job_finances').select(`
       sale_amount,
       cost_amount,
       job:jobs!inner (
+        id,
+        client_id,
+        offer_id,
+        client_contact_id,
+        job_number,
+        company_name,
+        contact_person,
+        sales_owner,
         start_at,
-        end_at
+        end_at,
+        site_address,
+        store_number,
+        technician_name,
+        generator_name,
+        marny_vyjezd,
+        job_status,
+        invoice_status
       )
     `),
   ])
@@ -586,6 +646,18 @@ export default async function FakturyPage({
     throw new Error('Nepodařilo se načíst klienty.')
   }
 
+  if (clientContactsResponse.error) {
+    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
+  }
+
+  if (offerSuggestionsResponse.error) {
+    throw new Error('Nepodařilo se načíst nabídky pro zakázky.')
+  }
+
+  if (technicianProfilesResponse.error) {
+    throw new Error('Nepodařilo se načíst techniky pro našeptávání.')
+  }
+
   if (statsResponse.error) {
     throw new Error('Nepodařilo se načíst přehled fakturace.')
   }
@@ -597,6 +669,32 @@ export default async function FakturyPage({
     }))
     .filter((client) => client.id && client.name)
 
+  const clientContacts = ((clientContactsResponse.data ?? []) as ClientContactOption[])
+    .map((item) => ({
+      id: String(item.id ?? '').trim(),
+      client_id: String(item.client_id ?? '').trim(),
+      name: String(item.name ?? '').trim(),
+      is_primary: Boolean(item.is_primary),
+    }))
+    .filter((item) => item.id && item.client_id && item.name)
+
+  const offerSuggestions = ((offerSuggestionsResponse.data ?? []) as JobOfferOption[])
+    .map((item) => ({
+      id: String(item.id ?? '').trim(),
+      client_id: String(item.client_id ?? '').trim(),
+      offer_number: String(item.offer_number ?? '').trim(),
+      title: String(item.title ?? '').trim(),
+    }))
+    .filter((item) => item.id && item.client_id && item.offer_number && item.title)
+
+  const technicianSuggestions = ((technicianProfilesResponse.data ?? []) as {
+    id: string
+    name: string | null
+    can_be_assigned_as_technician: boolean | null
+  }[])
+    .map((item) => String(item.name ?? '').trim())
+    .filter((name): name is string => Boolean(name))
+
   let rows: FakturaRow[] = ((data ?? []) as JobFinanceJoinRow[])
     .map((item) => {
       const job = Array.isArray(item.job) ? item.job[0] : item.job
@@ -607,6 +705,8 @@ export default async function FakturyPage({
         id: item.id,
         job_id: item.job_id,
         client_id: job.client_id,
+        offer_id: job.offer_id,
+        client_contact_id: job.client_contact_id,
         job_number: job.job_number,
         company_name: job.company_name,
         contact_person: job.contact_person,
@@ -617,6 +717,7 @@ export default async function FakturyPage({
         store_number: job.store_number,
         technician_name: job.technician_name,
         generator_name: job.generator_name,
+        marny_vyjezd: job.marny_vyjezd,
         job_status: job.job_status,
         invoice_status: job.invoice_status,
         info_note: item.info_note,
@@ -629,6 +730,26 @@ export default async function FakturyPage({
       }
     })
     .filter((item): item is FakturaRow => Boolean(item))
+
+  const linkedOfferIds = Array.from(
+    new Set(
+      rows
+        .map((row) => String(row.offer_id ?? '').trim())
+        .filter((offerId) => Boolean(offerId))
+    )
+  )
+
+  const { data: linkedOfferRows, error: linkedOfferError } =
+    linkedOfferIds.length > 0
+      ? await supabase
+          .from('offers')
+          .select('id, client_id, offer_number, title')
+          .in('id', linkedOfferIds)
+      : { data: [], error: null }
+
+  if (linkedOfferError) {
+    throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
+  }
 
   const uniqueJobIds = Array.from(new Set(rows.map((row) => row.job_id)))
 
@@ -1247,7 +1368,21 @@ export default async function FakturyPage({
             </div>
           </section>
         ) : (
-          <FakturyInteractiveTable rows={rows} clientSuggestions={clientSuggestions} />
+          <FakturyInteractiveTable
+            rows={rows}
+            clientSuggestions={clientSuggestions}
+            clientContacts={clientContacts}
+            offerSuggestions={offerSuggestions}
+            jobOfferSuggestions={((linkedOfferRows ?? []) as JobOfferOption[]).map(
+              (item) => ({
+                id: String(item.id ?? '').trim(),
+                client_id: String(item.client_id ?? '').trim(),
+                offer_number: String(item.offer_number ?? '').trim(),
+                title: String(item.title ?? '').trim(),
+              })
+            )}
+            technicianSuggestions={technicianSuggestions}
+          />
         )}
       </div>
     </main>
