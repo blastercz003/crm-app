@@ -8,6 +8,8 @@ const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const SEND_WINDOW_START_HOUR = 8
 const SEND_WINDOW_END_HOUR = 20
 const RECEIVED_INVOICE_REMINDER_HOUR = 13
+const JOB_MISSING_PP_REPEAT_INTERVAL_MS = 24 * 60 * 60 * 1000
+const JOB_MISSING_PP_TECHNICIAN_REPEAT_TYPE = 'job_missing_pp_technician_repeat'
 
 function getPragueDateParts(now: Date) {
   const formatter = new Intl.DateTimeFormat('en-GB', {
@@ -139,6 +141,13 @@ type JobRow = {
 
 type JobAttachmentRow = {
   job_id: string
+}
+
+type NotificationHistoryRow = {
+  entity_id: string | null
+  recipient_user_id: string
+  type: string
+  created_at: string
 }
 
 type JobTechnicianAssignmentRow = {
@@ -329,8 +338,7 @@ async function getJobsMissingPp(supabase: ServiceClient, now: Date) {
         .lt('end_at', cutoffIso),
       supabase
         .from('job_attachments')
-        .select('job_id')
-        .eq('category', 'predavaci_protokol'),
+        .select('job_id'),
     ])
 
   if (jobsError) {
@@ -348,6 +356,45 @@ async function getJobsMissingPp(supabase: ServiceClient, now: Date) {
   return ((jobs ?? []) as JobRow[]).filter(
     (job) => !attachmentJobIds.has(job.id)
   )
+}
+
+async function getLatestTechnicianMissingPpNotifications(
+  supabase: ServiceClient,
+  jobIds: string[],
+  technicianIds: string[]
+) {
+  if (jobIds.length === 0 || technicianIds.length === 0) {
+    return new Map<string, NotificationHistoryRow>()
+  }
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('entity_id, recipient_user_id, type, created_at')
+    .eq('category', 'jobs')
+    .in('entity_id', jobIds)
+    .in('recipient_user_id', technicianIds)
+    .in('type', ['job_missing_pp_technician', JOB_MISSING_PP_TECHNICIAN_REPEAT_TYPE])
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Automatické notifikace (historie PP) selhaly: ${error.message}`)
+  }
+
+  const latestByPair = new Map<string, NotificationHistoryRow>()
+
+  for (const row of (data ?? []) as NotificationHistoryRow[]) {
+    const entityId = String(row.entity_id ?? '').trim()
+    const recipientUserId = String(row.recipient_user_id ?? '').trim()
+
+    if (!entityId || !recipientUserId) continue
+
+    const pairKey = `${entityId}:${recipientUserId}`
+    if (!latestByPair.has(pairKey)) {
+      latestByPair.set(pairKey, row)
+    }
+  }
+
+  return latestByPair
 }
 
 function getJobAddressLabel(siteAddress: string | null | undefined) {
@@ -465,6 +512,20 @@ async function sendTechnicianMissingPpNotifications(
     assignmentsByJobId.set(jobId, next)
   }
 
+  const relevantTechnicianIds = Array.from(
+    new Set(
+      Array.from(assignmentsByJobId.values()).flatMap((technicianSet) =>
+        Array.from(technicianSet)
+      )
+    )
+  )
+
+  const latestNotificationsByPair = await getLatestTechnicianMissingPpNotifications(
+    supabase,
+    jobsWithoutAnyAttachment.map((job) => job.id),
+    relevantTechnicianIds
+  )
+
   let sent = 0
 
   for (const job of jobsWithoutAnyAttachment) {
@@ -472,22 +533,57 @@ async function sendTechnicianMissingPpNotifications(
     if (technicianIds.length === 0) continue
 
     const addressLabel = getJobAddressLabel(job.site_address)
-    const message = `Zakázka ${job.job_number} ${addressLabel} je po termínu a nemá nahraný PP.`
 
     for (const technicianId of technicianIds) {
+      const pairKey = `${job.id}:${technicianId}`
+      const latestNotification = latestNotificationsByPair.get(pairKey)
+
+      if (!latestNotification) {
+        await createNotification({
+          supabase,
+          recipientUserId: technicianId,
+          actorUserId: null,
+          category: 'jobs',
+          type: 'job_missing_pp_technician',
+          title: 'ZAKÁZKA BEZ PP',
+          message: `Zakázka ${job.job_number} ${addressLabel} je po termínu a nemá nahraný PP.`,
+          entityType: 'job',
+          entityId: job.id,
+          href: '/dashboard',
+          priority: 'high',
+          dedupeKey: `job_missing_pp_technician:${job.id}:${technicianId}`,
+          skipSelfNotification: false,
+        })
+
+        sent += 1
+        continue
+      }
+
+      const latestNotificationAt = new Date(latestNotification.created_at)
+      if (Number.isNaN(latestNotificationAt.getTime())) {
+        continue
+      }
+
+      if (
+        now.getTime() - latestNotificationAt.getTime() <
+        JOB_MISSING_PP_REPEAT_INTERVAL_MS
+      ) {
+        continue
+      }
+
       await createNotification({
         supabase,
         recipientUserId: technicianId,
         actorUserId: null,
         category: 'jobs',
-        type: 'job_missing_pp_technician',
-        title: 'ZAKÁZKA BEZ PP',
-        message,
+        type: JOB_MISSING_PP_TECHNICIAN_REPEAT_TYPE,
+        title: 'ZAKÁZKA STÁLE BEZ PP!',
+        message: `Zakázka ${job.job_number} ${addressLabel} je po termínu a chybí nahraný PP.`,
         entityType: 'job',
         entityId: job.id,
         href: '/dashboard',
         priority: 'high',
-        dedupeKey: `job_missing_pp_technician:${job.id}:${technicianId}`,
+        dedupeKey: `job_missing_pp_technician_repeat:${job.id}:${technicianId}:${latestNotification.created_at}`,
         skipSelfNotification: false,
       })
 
