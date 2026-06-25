@@ -146,8 +146,8 @@ begin
     end if;
   end if;
 
-  delete from public.asset_rental_service_settlement_custom_items
-  where settlement_id = v_settlement_id;
+  delete from public.asset_rental_service_settlement_custom_items as custom_items
+  where custom_items.settlement_id = v_settlement_id;
 
   insert into public.asset_rental_service_settlement_custom_items (
     settlement_id,
