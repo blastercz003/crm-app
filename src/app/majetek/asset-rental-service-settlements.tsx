@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -743,14 +744,28 @@ function SettlementForm({
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-wait disabled:opacity-60"
-        >
-          {submitLabel}
-        </button>
+        <SettlementSubmitButton submitLabel={submitLabel} />
       </div>
     </form>
+  )
+}
+
+function SettlementSubmitButton({
+  submitLabel,
+}: {
+  submitLabel: string
+}) {
+  const { pending } = useFormStatus()
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-wait disabled:opacity-60"
+    >
+      {pending ? 'UKLÁDÁM…' : submitLabel}
+    </button>
   )
 }
 

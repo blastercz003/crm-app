@@ -438,17 +438,6 @@ export async function upsertAssetRentalServiceSettlementAction(
     periodTo,
   })
 
-  const serviceTotalAmount =
-    electricityAmount +
-    hotWaterHeatingAmount +
-    spaceHeatingAmount +
-    commonAreaCleaningAmount +
-    coldWaterSewerAmount +
-    hotWaterSewerAmount +
-    normalizedCustomItems.reduce((sum, item) => sum + item.amount, 0)
-
-  const balanceAmount = totalAdvance - serviceTotalAmount
-
   const existingSettlement = settlementId
     ? await requireSettlement(auth.supabase, settlementId)
     : null
@@ -499,8 +488,6 @@ export async function upsertAssetRentalServiceSettlementAction(
     p_cold_water_sewer_amount: coldWaterSewerAmount,
     p_hot_water_sewer_amount: hotWaterSewerAmount,
     p_advance_payments_total_amount: totalAdvance,
-    p_service_total_amount: serviceTotalAmount,
-    p_balance_amount: balanceAmount,
     p_note: note,
     p_closed_at: closedAt,
     p_closed_by: closedBy,
