@@ -161,6 +161,20 @@ function buildDeleteFileSuccess(params: {
   }
 }
 
+function formatSettlementSaveError(error: { code?: string; message?: string; details?: string; hint?: string } | null) {
+  if (!error) {
+    return 'Vyúčtování se nepodařilo uložit.'
+  }
+
+  const message = error.message?.trim() || 'Neznámá chyba.'
+  const details = [error.details?.trim(), error.hint?.trim()]
+    .filter((value): value is string => Boolean(value))
+    .filter((value) => value !== message)
+
+  const suffix = details.length > 0 ? ` (${details.join(' | ')})` : ''
+  return `Vyúčtování se nepodařilo uložit: ${message}${suffix}`
+}
+
 function normalizeText(value: FormDataEntryValue | null) {
   return String(value ?? '').trim()
 }
@@ -495,9 +509,9 @@ export async function upsertAssetRentalServiceSettlementAction(
   }).single<{ settlement_id: string; settlement_code: string }>()
 
   if (error || !data) {
-    const message = error?.message?.toLowerCase().includes('duplicate')
+    const message = error?.code === '23505' || error?.message?.toLowerCase().includes('duplicate')
       ? 'Pro tento pronájem a období už vyúčtování existuje.'
-      : 'Vyúčtování se nepodařilo uložit.'
+      : formatSettlementSaveError(error)
     return buildCreateFailure(message)
   }
 
