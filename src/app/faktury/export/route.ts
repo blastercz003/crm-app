@@ -95,11 +95,11 @@ function buildJobSearchFilter(search: string) {
   const escaped = sanitizeSearchTerm(search)
 
   return [
-    `job_number.ilike.%${escaped}%`,
-    `company_name.ilike.%${escaped}%`,
-    `contact_person.ilike.%${escaped}%`,
-    `site_address.ilike.%${escaped}%`,
-    `store_number.ilike.%${escaped}%`,
+    `job_number_search.ilike.%${escaped}%`,
+    `company_name_search.ilike.%${escaped}%`,
+    `contact_person_search.ilike.%${escaped}%`,
+    `site_address_search.ilike.%${escaped}%`,
+    `store_number_search.ilike.%${escaped}%`,
   ].join(',')
 }
 
