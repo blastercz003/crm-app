@@ -16,20 +16,16 @@ export function JobPpRequiredToggle({
   return (
     <div
       className={`flex items-center justify-end gap-3 ${
-        compact ? 'flex-wrap' : 'flex-col items-end gap-2 sm:flex-row sm:items-center'
+        compact ? 'flex-wrap' : 'flex-col items-end sm:flex-row sm:items-center'
       }`}
     >
-      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-        {value ? 'PP vyžadován' : 'PP není vyžadován'}
-      </span>
-
       <button
         type="button"
         role="switch"
         aria-checked={value}
         disabled={disabled}
         onClick={() => onChange(!value)}
-        className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`password-page__toggle relative inline-flex h-8 w-[92px] items-center rounded-full border p-[2px] transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
           value
             ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
             : 'border-zinc-300 bg-zinc-200/90'
@@ -37,10 +33,19 @@ export function JobPpRequiredToggle({
         aria-label={value ? 'PP vyžadován' : 'PP není vyžadován'}
       >
         <span
-          className={`password-page__toggle-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
-            value ? 'translate-x-[24px]' : 'translate-x-[2px]'
+          className={`pointer-events-none absolute inset-y-[2px] inline-flex w-[44px] rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
+            value ? 'translate-x-[42px]' : 'translate-x-0'
           }`}
         />
+
+        <span className="flex w-full items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/90">
+          <span className={`${value ? 'opacity-45' : 'opacity-100'} transition duration-200`}>
+            PP ON
+          </span>
+          <span className={`${value ? 'opacity-100' : 'opacity-45'} transition duration-200`}>
+            PP OFF
+          </span>
+        </span>
       </button>
     </div>
   )
