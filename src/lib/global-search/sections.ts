@@ -38,6 +38,18 @@ export const GLOBAL_SEARCH_SECTIONS: GlobalSearchSectionConfig[] = [
     buildShowAllHref: (query) => `/jobs-portal?q=${encodeURIComponent(query)}`,
   },
   {
+    key: 'connection_points',
+    label: 'Přípojné body',
+    listHref: '/pripojne-body',
+    buildShowAllHref: (query) => `/pripojne-body?q=${encodeURIComponent(query)}`,
+  },
+  {
+    key: 'stores',
+    label: 'Prodejny',
+    listHref: '/prodejny',
+    buildShowAllHref: (query) => `/prodejny?q=${encodeURIComponent(query)}`,
+  },
+  {
     key: 'faktury',
     label: 'Faktury',
     listHref: '/faktury',

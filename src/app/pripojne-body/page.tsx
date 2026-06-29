@@ -31,7 +31,6 @@ type FolderPhotoCountRow = {
 
 type FolderCommentRow = {
   folder_id: string
-  body: string
 }
 
 function normalizeQuery(value: string) {
@@ -42,6 +41,13 @@ function normalizeQuery(value: string) {
     .toLowerCase()
 }
 
+function getSearchTokens(query: string) {
+  return normalizeQuery(query)
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+}
+
 export default async function PripojneBodyPage({
   searchParams,
 }: {
@@ -49,7 +55,7 @@ export default async function PripojneBodyPage({
 }) {
   const params = searchParams ? await searchParams : undefined
   const query = String(params?.q ?? '').trim()
-  const normalizedQuery = normalizeQuery(query)
+  const searchTokens = getSearchTokens(query)
 
   const supabase = await createClient()
   const {
@@ -75,11 +81,18 @@ export default async function PripojneBodyPage({
     redirect('/dashboard')
   }
 
-  const { data: foldersData, error: foldersError } = await supabase
+  let foldersQuery = supabase
     .from('connection_point_folders')
     .select('id, name, created_at, updated_at')
     .order('updated_at', { ascending: false })
     .order('created_at', { ascending: false })
+
+  for (const token of searchTokens) {
+    const escapedToken = token.replaceAll('%', '\\%').replaceAll('_', '\\_')
+    foldersQuery = foldersQuery.ilike('search_text', `%${escapedToken}%`)
+  }
+
+  const { data: foldersData, error: foldersError } = await foldersQuery
 
   if (foldersError) {
     throw new Error('Nepodařilo se načíst složky.')
@@ -92,17 +105,34 @@ export default async function PripojneBodyPage({
     updatedAt: String(folder.updated_at ?? ''),
   }))
 
-  const { data: photoRowsData, error: photoRowsError } = await supabase
-    .from('connection_point_folder_photos')
-    .select('folder_id')
+  const folderIds = folders.map((folder) => folder.id)
+
+  let photoRowsData: FolderPhotoCountRow[] | null = []
+  let commentRowsData: FolderCommentRow[] | null = []
+  let photoRowsError: { message: string } | null = null
+  let commentRowsError: { message: string } | null = null
+
+  if (folderIds.length > 0) {
+    const photoResponse = await supabase
+      .from('connection_point_folder_photos')
+      .select('folder_id')
+      .in('folder_id', folderIds)
+
+    photoRowsData = (photoResponse.data ?? []) as FolderPhotoCountRow[]
+    photoRowsError = photoResponse.error
+
+    const commentResponse = await supabase
+      .from('connection_point_folder_comments')
+      .select('folder_id')
+      .in('folder_id', folderIds)
+
+    commentRowsData = (commentResponse.data ?? []) as FolderCommentRow[]
+    commentRowsError = commentResponse.error
+  }
 
   if (photoRowsError) {
     throw new Error('Nepodařilo se načíst fotky ke složkám.')
   }
-
-  const { data: commentRowsData, error: commentRowsError } = await supabase
-    .from('connection_point_folder_comments')
-    .select('folder_id, body')
 
   if (commentRowsError) {
     throw new Error('Nepodařilo se načíst komentáře ke složkám.')
@@ -116,30 +146,15 @@ export default async function PripojneBodyPage({
   }
 
   const commentCounts = new Map<string, number>()
-  const commentSearchBodies = new Map<string, string[]>()
 
   for (const row of (commentRowsData ?? []) as FolderCommentRow[]) {
     const folderId = String(row.folder_id ?? '')
     if (!folderId) continue
 
     commentCounts.set(folderId, (commentCounts.get(folderId) ?? 0) + 1)
-
-    const bodies = commentSearchBodies.get(folderId) ?? []
-    bodies.push(String(row.body ?? ''))
-    commentSearchBodies.set(folderId, bodies)
   }
 
-  const visibleFolders =
-    normalizedQuery.length > 0
-      ? folders.filter((folder) => {
-          if (normalizeQuery(folder.name).includes(normalizedQuery)) return true
-
-          const bodies = commentSearchBodies.get(folder.id) ?? []
-          return bodies.some((body) => normalizeQuery(body).includes(normalizedQuery))
-        })
-      : folders
-
-  const overviewFolders = visibleFolders.map((folder) => ({
+  const overviewFolders = folders.map((folder) => ({
     ...folder,
     photoCount: photoCounts.get(folder.id) ?? 0,
     commentCount: commentCounts.get(folder.id) ?? 0,

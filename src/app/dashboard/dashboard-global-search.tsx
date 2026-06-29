@@ -270,6 +270,8 @@ function SectionResults({ section, query }: { section: GlobalSearchSectionResult
                 section.key === 'offers' ||
                 section.key === 'jobs' ||
                 section.key === 'jobs_portal' ||
+                section.key === 'connection_points' ||
+                section.key === 'stores' ||
                 section.key === 'faktury'
                   ? 'flex min-h-[88px] items-center justify-between py-3'
                   : 'py-3',
@@ -402,6 +404,44 @@ function SectionResults({ section, query }: { section: GlobalSearchSectionResult
                           {item.statusLabel}
                         </span>
                       ) : null}
+                    </div>
+                    {item.subtitle ? (
+                      <div className="mt-1 truncate text-sm text-zinc-600">{item.subtitle}</div>
+                    ) : null}
+                    {item.meta ? (
+                      <div className="mt-0.5 truncate text-sm text-zinc-600">{item.meta}</div>
+                    ) : null}
+                  </div>
+                  <span className="ml-4 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#2980B9] bg-[#2980B9] text-base font-semibold text-white transition group-hover:border-[#236f9f] group-hover:bg-[#236f9f]">
+                    →
+                  </span>
+                </>
+              ) : section.key === 'connection_points' ? (
+                <>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="truncate text-base font-semibold text-zinc-900">
+                        {item.title}
+                      </div>
+                    </div>
+                    {item.subtitle ? (
+                      <div className="mt-1 truncate text-sm text-zinc-600">{item.subtitle}</div>
+                    ) : null}
+                    {item.meta ? (
+                      <div className="mt-0.5 truncate text-sm text-zinc-600">{item.meta}</div>
+                    ) : null}
+                  </div>
+                  <span className="ml-4 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#2980B9] bg-[#2980B9] text-base font-semibold text-white transition group-hover:border-[#236f9f] group-hover:bg-[#236f9f]">
+                    →
+                  </span>
+                </>
+              ) : section.key === 'stores' ? (
+                <>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="truncate text-base font-semibold text-zinc-900">
+                        {item.title}
+                      </div>
                     </div>
                     {item.subtitle ? (
                       <div className="mt-1 truncate text-sm text-zinc-600">{item.subtitle}</div>

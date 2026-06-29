@@ -17,6 +17,8 @@ type GlobalSearchProfile = {
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
   can_view_offers: boolean | null
+  can_view_connection_points: boolean | null
+  can_view_stores: boolean | null
   jobs_sales_scope: 'MICHAL' | 'LÍDA' | null
 }
 
@@ -100,6 +102,24 @@ type FinanceJoinRow = {
     | null
 }
 
+type StoreRow = {
+  id: string
+  chain_name: string
+  store_number: string
+  city: string
+  address: string
+  phone_1: string
+  phone_2: string | null
+  phone_3: string | null
+  updated_at: string
+}
+
+type ConnectionPointFolderSearchRow = {
+  id: string
+  name: string
+  updated_at: string
+}
+
 function normalize(value: string) {
   return value
     .normalize('NFD')
@@ -110,6 +130,13 @@ function normalize(value: string) {
 
 function escapeLike(value: string) {
   return value.replaceAll('%', '\\%').replaceAll('_', '\\_').replaceAll(',', ' ').trim()
+}
+
+function getSearchTokens(query: string) {
+  return normalize(query)
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
 }
 
 function textMatchScore(value: string | null | undefined, query: string) {
@@ -779,6 +806,127 @@ async function searchFaktury(params: {
   }
 }
 
+async function searchStores(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  query: string
+}) {
+  const { supabase, query } = params
+  const searchTokens = getSearchTokens(query)
+
+  if (searchTokens.length === 0) {
+    return {
+      key: 'stores' as const,
+      label: getSectionLabel('stores'),
+      hasAccess: true,
+      totalCount: 0,
+      items: [],
+    }
+  }
+
+  let request = supabase
+    .from('stores')
+    .select('id, chain_name, store_number, city, address, phone_1, phone_2, phone_3, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(60)
+
+  for (const token of searchTokens) {
+    const escapedToken = token.replaceAll('%', '\\%').replaceAll('_', '\\_')
+    request = request.ilike('search_text', `%${escapedToken}%`)
+  }
+
+  const { data, error } = await request
+  if (error) throw new Error(`Global search stores failed: ${error.message}`)
+
+  const rows = (data ?? []) as StoreRow[]
+
+  const items = rows.map((row) => {
+    const phones = [row.phone_1, row.phone_2, row.phone_3].filter(Boolean).join(' • ')
+    const addressParts = [row.city, row.address].filter(Boolean).join(' • ')
+
+    const score =
+      textMatchScore(row.chain_name, query) * 2 +
+      textMatchScore(row.store_number, query) * 2 +
+      textMatchScore(row.city, query) * 2 +
+      textMatchScore(row.address, query) +
+      textMatchScore(row.phone_1, query) +
+      textMatchScore(row.phone_2, query) +
+      textMatchScore(row.phone_3, query) +
+      recencyScore(row.updated_at)
+
+    return {
+      id: row.id,
+      title: `${row.chain_name} • ${row.store_number}`,
+      subtitle: addressParts || null,
+      meta: phones || null,
+      updatedAt: row.updated_at,
+      href: `/prodejny?q=${encodeURIComponent(`${row.chain_name} ${row.store_number}`)}`,
+      score,
+    }
+  })
+
+  return {
+    key: 'stores' as const,
+    label: getSectionLabel('stores'),
+    hasAccess: true,
+    totalCount: rows.length,
+    items: topAndSort(items),
+  }
+}
+
+async function searchConnectionPoints(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  query: string
+}) {
+  const { supabase, query } = params
+  const searchTokens = getSearchTokens(query)
+
+  if (searchTokens.length === 0) {
+    return {
+      key: 'connection_points' as const,
+      label: getSectionLabel('connection_points'),
+      hasAccess: true,
+      totalCount: 0,
+      items: [],
+    }
+  }
+
+  let request = supabase
+    .from('connection_point_folders')
+    .select('id, name, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(60)
+
+  for (const token of searchTokens) {
+    const escapedToken = token.replaceAll('%', '\\%').replaceAll('_', '\\_')
+    request = request.ilike('search_text', `%${escapedToken}%`)
+  }
+
+  const { data, error } = await request
+  if (error) {
+    throw new Error(`Global search connection points failed: ${error.message}`)
+  }
+
+  const rows = (data ?? []) as ConnectionPointFolderSearchRow[]
+
+  const items = rows.map((row) => ({
+    id: row.id,
+    title: row.name,
+    subtitle: 'Složka přípojného bodu',
+    meta: null,
+    updatedAt: row.updated_at,
+    href: `/pripojne-body/${row.id}`,
+    score: textMatchScore(row.name, query) * 2 + recencyScore(row.updated_at),
+  }))
+
+  return {
+    key: 'connection_points' as const,
+    label: getSectionLabel('connection_points'),
+    hasAccess: true,
+    totalCount: rows.length,
+    items: topAndSort(items),
+  }
+}
+
 async function searchNotifications(query: string) {
   const notifications = await getCurrentUserNotifications({
     status: 'active',
@@ -836,7 +984,7 @@ export async function globalSearch(rawQuery: string): Promise<GlobalSearchRespon
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, role, can_view_jobs, can_view_jobs_portal, can_view_offers, jobs_sales_scope')
+    .select('id, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_connection_points, can_view_stores, jobs_sales_scope')
     .eq('id', user.id)
     .single<GlobalSearchProfile>()
 
@@ -875,6 +1023,18 @@ export async function globalSearch(rawQuery: string): Promise<GlobalSearchRespon
         })
       )
     }
+  }
+
+  if (
+    isAdmin ||
+    profile.role === 'TECHNIK' ||
+    profile.can_view_connection_points
+  ) {
+    sections.push(await searchConnectionPoints({ supabase, query }))
+  }
+
+  if (isAdmin || profile.can_view_stores) {
+    sections.push(await searchStores({ supabase, query }))
   }
 
   if (isAdmin) {

@@ -5,6 +5,8 @@ export type GlobalSearchSectionKey =
   | 'offers'
   | 'jobs'
   | 'jobs_portal'
+  | 'connection_points'
+  | 'stores'
   | 'faktury'
   | 'notifications'
 
