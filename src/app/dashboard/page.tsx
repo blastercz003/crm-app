@@ -37,6 +37,7 @@ import { getReceivedInvoiceBadgeCount } from '@/lib/received-invoices/service'
 import { DashboardThemeToggle } from '@/components/dashboard/dashboard-theme-toggle'
 import {
   DashboardGlobalSearchBody,
+  DashboardGlobalSearchHideWhenActive,
   DashboardGlobalSearchInput,
   DashboardGlobalSearchProvider,
 } from './dashboard-global-search'
@@ -1701,39 +1702,49 @@ export default async function DashboardPage({
               receivedInvoicesDueCount={receivedInvoicesDueCount}
               variant="mobile"
             />
+
+            <div className="mt-3">
+              <DashboardGlobalSearchInput
+                className="dashboard-search-input h-11 w-full rounded-2xl border border-gray-200 bg-white/96 px-4 text-center text-sm font-normal text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+              />
+            </div>
           </div>
         </section>
 
-        {showTechnicianSection && !useUnifiedDavidSection ? (
-          <TechnicianSectionLinks
-            canViewTechJobs={canViewTechJobs}
-            canViewConnectionPoints={canViewConnectionPoints}
-            canViewStores={canViewStores}
-            canViewHandoverProtocolUpload={canViewHandoverProtocolUpload}
-            includeJobsLink={showJobsInTechnicianSection}
-            handoverProtocolUploadJobs={handoverProtocolUploadJobs}
-          />
-        ) : null}
+        <DashboardGlobalSearchHideWhenActive>
+          {showTechnicianSection && !useUnifiedDavidSection ? (
+            <TechnicianSectionLinks
+              canViewTechJobs={canViewTechJobs}
+              canViewConnectionPoints={canViewConnectionPoints}
+              canViewStores={canViewStores}
+              canViewHandoverProtocolUpload={canViewHandoverProtocolUpload}
+              includeJobsLink={showJobsInTechnicianSection}
+              handoverProtocolUploadJobs={handoverProtocolUploadJobs}
+            />
+          ) : null}
+        </DashboardGlobalSearchHideWhenActive>
 
         {isTechnik ? null : (
           <>
-            <DashboardSectionLinks
-              canViewJobs={useUnifiedDavidSection ? Boolean(profile?.can_view_jobs) : showJobsInMainMenu}
-              canViewJobsPortal={Boolean(!isAdmin && profile?.can_view_jobs_portal)}
-              canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
-              canViewConnectionPoints={
-                useUnifiedDavidSection
-                  ? Boolean(profile?.can_view_connection_points)
-                  : showConnectionPointsInMainMenu
-              }
-              canViewStores={canViewStores}
-              canViewFiles={canViewFiles}
-              canViewHandoverProtocolUpload={useUnifiedDavidSection ? canViewHandoverProtocolUpload : false}
-              handoverProtocolUploadJobs={useUnifiedDavidSection ? handoverProtocolUploadJobs : []}
-              showClients={showClientsInMainMenu}
-              isAdmin={isAdmin}
-              offersOrderedCount={orderedOffersCount}
-            />
+            <DashboardGlobalSearchHideWhenActive>
+              <DashboardSectionLinks
+                canViewJobs={useUnifiedDavidSection ? Boolean(profile?.can_view_jobs) : showJobsInMainMenu}
+                canViewJobsPortal={Boolean(!isAdmin && profile?.can_view_jobs_portal)}
+                canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
+                canViewConnectionPoints={
+                  useUnifiedDavidSection
+                    ? Boolean(profile?.can_view_connection_points)
+                    : showConnectionPointsInMainMenu
+                }
+                canViewStores={canViewStores}
+                canViewFiles={canViewFiles}
+                canViewHandoverProtocolUpload={useUnifiedDavidSection ? canViewHandoverProtocolUpload : false}
+                handoverProtocolUploadJobs={useUnifiedDavidSection ? handoverProtocolUploadJobs : []}
+                showClients={showClientsInMainMenu}
+                isAdmin={isAdmin}
+                offersOrderedCount={orderedOffersCount}
+              />
+            </DashboardGlobalSearchHideWhenActive>
 
             <DashboardGlobalSearchBody>
               <div className="grid gap-6 xl:grid-cols-3">

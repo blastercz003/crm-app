@@ -542,71 +542,129 @@ export function DashboardGlobalSearchBody({ children }: { children: ReactNode })
       ) : null}
 
       {!isLoading && !error ? (
-        <div className="dashboard-global-search__layout relative flex items-start gap-0">
-          <aside className="dashboard-global-search__sidebar z-10 h-[375px] w-[320px] shrink-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
-            <div className="flex h-full flex-col justify-center gap-1 overflow-y-auto">
-              {sections.map((section) => {
-                const isActiveSection = activeSection?.key === section.key
-                return (
-                  <button
-                    key={section.key}
-                    type="button"
-                    ref={isActiveSection ? activeButtonRef : null}
-                    onClick={() => setActiveSectionKey(section.key)}
-                    className={[
-                      'dashboard-global-search__sidebar-button relative flex w-full items-center justify-between rounded-2xl border px-3 py-2 text-left transition',
-                      isActiveSection ? 'dashboard-global-search__sidebar-button--active' : '',
-                      isActiveSection
-                        ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]'
-                        : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] hover:-translate-y-[1px] hover:border-[#76a9d3]/85 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96)]',
-                    ].join(' ')}
-                  >
-                    <span className="text-sm font-medium">{section.label}</span>
-                    <span
+        <>
+          <div className="space-y-4 lg:hidden">
+            <section className="dashboard-global-search__mobile-switcher overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {sections.map((section) => {
+                  const isActiveSection = activeSection?.key === section.key
+                  return (
+                    <button
+                      key={section.key}
+                      type="button"
+                      onClick={() => setActiveSectionKey(section.key)}
+                      data-active={isActiveSection ? 'true' : 'false'}
                       className={[
-                        'dashboard-global-search__sidebar-count',
-                        'inline-flex min-w-8 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold',
-                        isActiveSection ? 'bg-white/20 text-white' : 'border border-white/75 bg-white/85 text-zinc-700',
+                        'dashboard-global-search__mobile-switcher-button shrink-0 rounded-2xl border px-3 py-2 text-left transition',
+                        isActiveSection
+                          ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]'
+                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]',
                       ].join(' ')}
                     >
-                      {section.totalCount}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </aside>
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap text-sm font-medium">{section.label}</span>
+                        <span
+                          className={[
+                            'dashboard-global-search__mobile-switcher-count inline-flex min-w-7 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold',
+                            isActiveSection ? 'bg-white/20 text-white' : 'border border-white/75 bg-white/85 text-zinc-700',
+                          ].join(' ')}
+                        >
+                          {section.totalCount}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
 
-          <div
-            ref={bridgeRef}
-            className="dashboard-global-search__bridge relative z-20 -mx-1 block h-[375px] w-[32px] shrink-0 overflow-hidden"
-          >
-            <div className="dashboard-global-search__bridge-rail absolute inset-y-6 left-1/2 w-[2px] -translate-x-1/2 rounded-full bg-zinc-300" />
-            <div
-              aria-hidden="true"
-              className="dashboard-global-search__bridge-link absolute left-0 right-0 h-10 -translate-y-1/2"
-              style={{ top: bridgeTop }}
-            >
-              <div className="dashboard-global-search__bridge-line absolute left-[2px] right-[2px] top-1/2 h-[4px] -translate-y-1/2 rounded-full bg-[#2980B9]" />
-              <div className="dashboard-global-search__bridge-dot absolute left-[1px] top-1/2 h-[8px] w-[8px] -translate-y-1/2 rounded-full bg-[#2980B9]" />
-              <div className="dashboard-global-search__bridge-dot absolute right-[1px] top-1/2 h-[8px] w-[8px] -translate-y-1/2 rounded-full bg-[#2980B9]" />
-            </div>
+            {activeSection ? (
+              <div key={activeSection.key} className="min-w-0">
+                <SectionResults section={activeSection} query={query.trim()} />
+              </div>
+            ) : (
+              <section className="dashboard-global-search__empty rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+                Nic nenalezeno.
+              </section>
+            )}
           </div>
 
-          {activeSection ? (
+          <div className="dashboard-global-search__layout relative hidden items-start gap-0 lg:flex">
+            <aside className="dashboard-global-search__sidebar z-10 h-[375px] w-[320px] shrink-0 overflow-hidden rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+              <div className="flex h-full flex-col justify-center gap-1 overflow-y-auto">
+                {sections.map((section) => {
+                  const isActiveSection = activeSection?.key === section.key
+                  return (
+                    <button
+                      key={section.key}
+                      type="button"
+                      ref={isActiveSection ? activeButtonRef : null}
+                      onClick={() => setActiveSectionKey(section.key)}
+                      className={[
+                        'dashboard-global-search__sidebar-button relative flex w-full items-center justify-between rounded-2xl border px-3 py-2 text-left transition',
+                        isActiveSection ? 'dashboard-global-search__sidebar-button--active' : '',
+                        isActiveSection
+                          ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]'
+                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] hover:-translate-y-[1px] hover:border-[#76a9d3]/85 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96)]',
+                      ].join(' ')}
+                    >
+                      <span className="text-sm font-medium">{section.label}</span>
+                      <span
+                        className={[
+                          'dashboard-global-search__sidebar-count',
+                          'inline-flex min-w-8 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold',
+                          isActiveSection ? 'bg-white/20 text-white' : 'border border-white/75 bg-white/85 text-zinc-700',
+                        ].join(' ')}
+                      >
+                        {section.totalCount}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </aside>
+
             <div
-              key={activeSection.key}
-              className="dashboard-global-search__panel z-0 min-w-0 flex-1 transition-opacity duration-200 ease-out"
+              ref={bridgeRef}
+              className="dashboard-global-search__bridge relative z-20 -mx-1 block h-[375px] w-[32px] shrink-0 overflow-hidden"
             >
-              <SectionResults section={activeSection} query={query.trim()} />
+              <div className="dashboard-global-search__bridge-rail absolute inset-y-6 left-1/2 w-[2px] -translate-x-1/2 rounded-full bg-zinc-300" />
+              <div
+                aria-hidden="true"
+                className="dashboard-global-search__bridge-link absolute left-0 right-0 h-10 -translate-y-1/2"
+                style={{ top: bridgeTop }}
+              >
+                <div className="dashboard-global-search__bridge-line absolute left-[2px] right-[2px] top-1/2 h-[4px] -translate-y-1/2 rounded-full bg-[#2980B9]" />
+                <div className="dashboard-global-search__bridge-dot absolute left-[1px] top-1/2 h-[8px] w-[8px] -translate-y-1/2 rounded-full bg-[#2980B9]" />
+                <div className="dashboard-global-search__bridge-dot absolute right-[1px] top-1/2 h-[8px] w-[8px] -translate-y-1/2 rounded-full bg-[#2980B9]" />
+              </div>
             </div>
-          ) : (
-            <section className="dashboard-global-search__empty rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
-              Nic nenalezeno.
-            </section>
-          )}
-        </div>
+
+            {activeSection ? (
+              <div
+                key={activeSection.key}
+                className="dashboard-global-search__panel z-0 min-w-0 flex-1 transition-opacity duration-200 ease-out"
+              >
+                <SectionResults section={activeSection} query={query.trim()} />
+              </div>
+            ) : (
+              <section className="dashboard-global-search__empty rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+                Nic nenalezeno.
+              </section>
+            )}
+          </div>
+        </>
       ) : null}
     </div>
   )
+}
+
+export function DashboardGlobalSearchHideWhenActive({ children }: { children: ReactNode }) {
+  const { enabled, isActive } = useSearchContext()
+
+  if (enabled && isActive) {
+    return null
+  }
+
+  return <>{children}</>
 }
