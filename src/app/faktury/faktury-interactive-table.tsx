@@ -292,11 +292,12 @@ function DesktopRow({
       </td>
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1 py-2 pr-[10px] text-center align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
-        <JobAttachmentsCell
-          jobId={row.job_id}
-          jobNumber={row.job_number}
-          hasAttachments={row.has_attachments}
-        />
+              <JobAttachmentsCell
+                jobId={row.job_id}
+                jobNumber={row.job_number}
+                hasAttachments={row.has_attachments}
+                initialPpRequired={row.pp_required ?? true}
+              />
       </td>
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pl-4 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
@@ -423,6 +424,7 @@ function MobileCard({
                 jobId={row.job_id}
                 jobNumber={row.job_number}
                 hasAttachments={row.has_attachments}
+                initialPpRequired={row.pp_required ?? true}
                 compact
               />
             </div>
@@ -779,11 +781,13 @@ function JobAttachmentsCell({
   jobId,
   jobNumber,
   hasAttachments,
+  initialPpRequired = true,
   compact = false,
 }: {
   jobId: string
   jobNumber: string
   hasAttachments: boolean
+  initialPpRequired?: boolean
   compact?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -832,6 +836,7 @@ function JobAttachmentsCell({
         <JobAttachmentsModal
           jobId={jobId}
           jobNumber={jobNumber}
+          initialPpRequired={initialPpRequired}
           onAttachmentPresenceChange={(hasItems) => setHasAnyAttachments(hasItems)}
           onClose={() => setIsOpen(false)}
         />
@@ -900,11 +905,13 @@ function CostAmountCell({
 function JobAttachmentsModal({
   jobId,
   jobNumber,
+  initialPpRequired = true,
   onAttachmentPresenceChange,
   onClose,
 }: {
   jobId: string
   jobNumber: string
+  initialPpRequired?: boolean
   onAttachmentPresenceChange: (hasItems: boolean) => void
   onClose: () => void
 }) {
@@ -917,7 +924,7 @@ function JobAttachmentsModal({
   const [categoryValue, setCategoryValue] =
     useState<JobAttachmentCategory>('predavaci_protokol')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [ppRequired, setPpRequired] = useState(true)
+  const [ppRequired, setPpRequired] = useState(initialPpRequired)
   const [isPpLoading, setIsPpLoading] = useState(true)
 
   const handleRequestClose = useCallback(() => {
