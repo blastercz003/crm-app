@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { FakturyInteractiveTable } from './faktury-interactive-table'
 import { FakturyFilterSubmitButton } from './faktury-filter-submit-button'
 import { FakturyFilterResetLink } from './faktury-filter-reset-link'
+import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
 
 export const metadata: Metadata = {
   title: 'Faktury',
@@ -31,6 +32,7 @@ export type FakturaRow = {
   technician_name: string | null
   generator_name: string | null
   marny_vyjezd: boolean | null
+  pp_required?: boolean
   job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
   info_note: string | null
@@ -752,6 +754,7 @@ export default async function FakturyPage({
   }
 
   const uniqueJobIds = Array.from(new Set(rows.map((row) => row.job_id)))
+  const jobPpNotRequiredIds = await getJobPpNotRequiredSet(supabase, uniqueJobIds)
 
   if (uniqueJobIds.length > 0) {
     const { data: attachmentRows, error: attachmentsError } = await supabase
@@ -771,7 +774,13 @@ export default async function FakturyPage({
 
     rows = rows.map((row) => ({
       ...row,
+      pp_required: !jobPpNotRequiredIds.has(row.job_id),
       has_attachments: jobIdsWithAttachments.has(row.job_id),
+    }))
+  } else {
+    rows = rows.map((row) => ({
+      ...row,
+      pp_required: !jobPpNotRequiredIds.has(row.job_id),
     }))
   }
 

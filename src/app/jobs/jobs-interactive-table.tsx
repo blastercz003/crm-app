@@ -62,6 +62,7 @@ type JobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  pp_required?: boolean
   info_alert_enabled?: boolean | null
   has_info_attachments?: boolean
   has_info_content?: boolean

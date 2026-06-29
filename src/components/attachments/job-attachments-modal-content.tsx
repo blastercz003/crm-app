@@ -39,6 +39,7 @@ export type JobAttachmentsModalContentProps = {
   selectedFiles: File[]
   fileInputRef: RefObject<HTMLInputElement | null>
   topContent?: ReactNode
+  headerContent?: ReactNode
   showCategorySelect?: boolean
   uploadButtonLabel?: string
   onCategoryChange: (value: JobAttachmentCategory) => void
@@ -97,6 +98,7 @@ export function JobAttachmentsModalContent({
   selectedFiles,
   fileInputRef,
   topContent,
+  headerContent,
   showCategorySelect = true,
   uploadButtonLabel = 'Nahrát soubory',
   onCategoryChange,
@@ -134,15 +136,19 @@ export function JobAttachmentsModalContent({
                 ) : null}
               </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isPending}
-                className="jobs-page__info-modal__attachments-close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
-                aria-label="Zavřít modal"
-              >
-                ×
-              </button>
+              <div className="flex items-start gap-3">
+                {headerContent ? <div className="pt-0.5">{headerContent}</div> : null}
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isPending}
+                  className="jobs-page__info-modal__attachments-close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Zavřít modal"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           </div>
 

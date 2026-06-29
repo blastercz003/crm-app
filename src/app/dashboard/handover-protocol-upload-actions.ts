@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getJobPpNotRequiredSet, isJobPpRequired } from '@/lib/jobs/pp-requirements'
 import { createNotificationsForAdmins } from '@/lib/notifications/createNotification'
 import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
@@ -258,6 +259,11 @@ async function isUploadAllowedForJob(
   supabase: Awaited<ReturnType<typeof createClient>>,
   jobId: string
 ) {
+  const ppRequired = await isJobPpRequired(supabase, jobId)
+  if (!ppRequired) {
+    return false
+  }
+
   const { data, error } = await supabase
     .from('jobs')
     .select('show_in_handover_protocol_upload, start_at, end_at')
@@ -540,9 +546,11 @@ export async function getHandoverProtocolUploadJobOptions(
   const firstAttachmentAtByJobId = getFirstAttachmentUploadAt(
     (attachmentRows ?? []) as HandoverProtocolAttachmentJobRow[]
   )
+  const jobPpNotRequiredIds = await getJobPpNotRequiredSet(supabase, visibleJobIds)
 
   return jobs
     .filter((job) =>
+      !jobPpNotRequiredIds.has(job.id) &&
       isHandoverProtocolJobVisible(
         job,
         firstAttachmentAtByJobId.get(job.id),

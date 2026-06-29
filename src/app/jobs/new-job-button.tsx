@@ -8,6 +8,7 @@ import {
   ActionFeedbackToast,
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
+import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { TechnicianNamesInput } from './technician-names-input'
@@ -48,6 +49,7 @@ type JobFormValues = {
   generator_name: string | null
   info_note: string | null
   marny_vyjezd?: boolean | null
+  pp_required?: boolean
 }
 
 type NewJobButtonProps = {
@@ -216,6 +218,7 @@ function JobFormShell({
   const [selectedOfferId, setSelectedOfferId] = useState('')
   const [contactPerson, setContactPerson] = useState(job?.contact_person ?? '')
   const [technicianName, setTechnicianName] = useState(job?.technician_name ?? '')
+  const [ppRequired, setPpRequired] = useState(job?.pp_required ?? true)
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
@@ -418,6 +421,7 @@ function JobFormShell({
             <input type="hidden" name="client_id" value={selectedClientId} />
             <input type="hidden" name="client_contact_id" value={selectedContactId} />
             <input type="hidden" name="offer_id" value={selectedOfferId} />
+            <input type="hidden" name="pp_required" value={ppRequired ? '1' : '0'} />
             <input
               type="hidden"
               name="company_name"
@@ -630,10 +634,15 @@ function JobFormShell({
                 </section>
 
                 <section className="rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)]">
-                  <div className="mb-3">
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <h3 className="text-sm font-semibold text-gray-900">
                       Realizace
                     </h3>
+
+                    <JobPpRequiredToggle
+                      value={ppRequired}
+                      onChange={setPpRequired}
+                    />
                   </div>
 
                   <div className="grid gap-3">

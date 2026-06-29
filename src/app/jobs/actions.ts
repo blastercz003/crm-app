@@ -12,6 +12,7 @@ import {
   joinTechnicianNames,
   resolveTechnicianNames,
 } from '@/lib/jobs/technicians'
+import { setJobPpRequired } from '@/lib/jobs/pp-requirements'
 import { createClient } from '@/lib/supabase/server'
 import {
   getPersistedJobInfoAlert,
@@ -312,6 +313,11 @@ function normalizeCheckbox(value: FormDataEntryValue | null) {
 
   const text = String(value).trim().toLowerCase()
   return text !== '' && text !== '0' && text !== 'false'
+}
+
+function normalizePpRequired(value: FormDataEntryValue | null) {
+  if (value === null) return true
+  return normalizeCheckbox(value)
 }
 
 function normalizeTechnicianText(value: FormDataEntryValue | null) {
@@ -1662,6 +1668,7 @@ export async function createJobAction(
     offer_id: string | null
   }
   createPayload.offer_id = offerSelection.offerId
+  const ppRequired = normalizePpRequired(formData.get('pp_required'))
 
   const { data: createdJob, error: createJobError } = await supabase
     .from('jobs')
@@ -1725,6 +1732,36 @@ export async function createJobAction(
       success: false,
       error:
         'Zakázka byla vytvořena, ale nepodařilo se založit finanční záznam. Založení bylo vráceno zpět.',
+    }
+  }
+
+  try {
+    await setJobPpRequired(supabase, {
+      jobId: createdJobId,
+      ppRequired,
+      updatedBy: user.id,
+    })
+  } catch (ppRequirementError) {
+    await supabase.from('job_finances').delete().eq('job_id', createdJobId)
+    await supabase.from('jobs').delete().eq('id', createdJobId)
+
+    console.error(
+      'Nepodařilo se uložit nastavení povinného PP u nové zakázky.',
+      ppRequirementError
+    )
+    await reportActionError({
+      error: ppRequirementError,
+      action: 'createJobAction',
+      section: 'jobs',
+      errorType: 'CreateJobPpRequirementError',
+      userId: user.id,
+      context: { jobId: createdJobId, ppRequired },
+    })
+
+    return {
+      success: false,
+      error:
+        'Zakázka byla vytvořena, ale nepodařilo se uložit nastavení PP. Založení bylo vráceno zpět.',
     }
   }
 
@@ -1954,6 +1991,7 @@ export async function updateJobAction(
     offer_id: string | null
   }
   updatePayload.offer_id = offerSelection.offerId
+  const ppRequired = normalizePpRequired(formData.get('pp_required'))
 
   const previousTechnicianIds = await getAssignedTechnicianIdsForJob(
     supabase,
@@ -1969,6 +2007,32 @@ export async function updateJobAction(
     return {
       success: false,
       error: 'Zakázku se nepodařilo upravit.',
+    }
+  }
+
+  try {
+    await setJobPpRequired(supabase, {
+      jobId: normalizedJobId,
+      ppRequired,
+      updatedBy: user.id,
+    })
+  } catch (ppRequirementError) {
+    console.error(
+      'Nepodařilo se uložit nastavení povinného PP u zakázky.',
+      ppRequirementError
+    )
+    await reportActionError({
+      error: ppRequirementError,
+      action: 'updateJobAction',
+      section: 'jobs',
+      errorType: 'UpdateJobPpRequirementError',
+      userId: user.id,
+      context: { jobId: normalizedJobId, ppRequired },
+    })
+
+    return {
+      success: false,
+      error: 'Zakázka byla upravena, ale nepodařilo se uložit nastavení PP.',
     }
   }
 

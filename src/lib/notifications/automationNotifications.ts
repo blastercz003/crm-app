@@ -1,5 +1,6 @@
 import { createNotification } from '@/lib/notifications/createNotification'
 import { buildAssetDetailHref } from '@/lib/majetek/detail'
+import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
@@ -361,9 +362,13 @@ async function getJobsMissingPp(supabase: ServiceClient, now: Date) {
   const attachmentJobIds = new Set(
     ((attachments ?? []) as JobAttachmentRow[]).map((row) => row.job_id)
   )
+  const jobPpNotRequiredIds = await getJobPpNotRequiredSet(
+    supabase,
+    ((jobs ?? []) as JobRow[]).map((job) => job.id)
+  )
 
   return ((jobs ?? []) as JobRow[]).filter(
-    (job) => !attachmentJobIds.has(job.id)
+    (job) => !attachmentJobIds.has(job.id) && !jobPpNotRequiredIds.has(job.id)
   )
 }
 

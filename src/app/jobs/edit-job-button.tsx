@@ -15,6 +15,7 @@ import {
   updateJobAction,
   type UpdateJobActionState,
 } from './actions'
+import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
 import { TechnicianNamesInput } from './technician-names-input'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
@@ -60,6 +61,7 @@ type JobFormValues = {
   generator_name: string | null
   info_note: string | null
   marny_vyjezd?: boolean | null
+  pp_required?: boolean
   job_status: JobStatus
   invoice_status: InvoiceStatus
 }
@@ -287,6 +289,7 @@ function JobFormShell({
   const [selectedContactId, setSelectedContactId] = useState(job.client_contact_id ?? '')
   const [contactPerson, setContactPerson] = useState(job.contact_person ?? '')
   const [technicianName, setTechnicianName] = useState(job.technician_name ?? '')
+  const [ppRequired, setPpRequired] = useState(job.pp_required ?? true)
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
 
@@ -499,6 +502,7 @@ function JobFormShell({
             <input type="hidden" name="client_id" value={selectedClientId} />
             <input type="hidden" name="client_contact_id" value={selectedContactId} />
             <input type="hidden" name="offer_id" value={selectedOfferId} />
+            <input type="hidden" name="pp_required" value={ppRequired ? '1' : '0'} />
             <input
               type="hidden"
               name="company_name"
@@ -715,10 +719,15 @@ function JobFormShell({
                 </section>
 
                 <section className="jobs-page__job-form-modal__section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
-                  <div className="mb-3">
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Realizace
                     </h3>
+
+                    <JobPpRequiredToggle
+                      value={ppRequired}
+                      onChange={setPpRequired}
+                    />
                   </div>
 
                   <div className="grid gap-3">

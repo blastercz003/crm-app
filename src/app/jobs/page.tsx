@@ -13,6 +13,7 @@ import { getJobsChangesModalDataAction } from './changes-actions'
 import { JobsForegroundRefresh } from './jobs-foreground-refresh'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 import { hasJobInfoContent } from './info-note-shared'
+import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
 
 export const metadata: Metadata = {
   title: 'Zakázky',
@@ -53,6 +54,7 @@ export type JobRow = {
   generator_name: string | null
   info_note: string | null
   marny_vyjezd?: boolean | null
+  pp_required?: boolean
   info_alert_enabled?: boolean | null
   has_info_attachments?: boolean
   has_info_content?: boolean
@@ -478,6 +480,7 @@ export default async function JobsPage({
     ? typedJobs.filter((job) => !Boolean(job.marny_vyjezd))
     : typedJobs
   const jobIds = visibleJobs.map((job) => job.id)
+  const jobPpNotRequiredIds = await getJobPpNotRequiredSet(supabase, jobIds)
   const { data: infoAttachmentRows, error: infoAttachmentsError } =
     jobIds.length > 0
       ? await supabase
@@ -517,6 +520,7 @@ export default async function JobsPage({
 
     return {
       ...job,
+      pp_required: !jobPpNotRequiredIds.has(job.id),
       has_info_attachments: hasAttachments,
       has_info_content: hasJobInfoContent({
         infoNote: job.info_note,

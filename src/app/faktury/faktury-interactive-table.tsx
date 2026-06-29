@@ -6,6 +6,11 @@ import { createPortal } from 'react-dom'
 import { EditJobButton } from '../jobs/edit-job-button'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 import { JobAttachmentsModalContent } from '@/components/attachments/job-attachments-modal-content'
+import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
+import {
+  getJobPpRequirementAction,
+  updateJobPpRequirementAction,
+} from '../jobs/pp-requirement-actions'
 import {
   downloadJobAttachmentAction,
   deleteJobAttachmentAction,
@@ -363,6 +368,7 @@ function buildEditableJob(row: FakturaRow) {
     generator_name: row.generator_name,
     info_note: row.info_note,
     marny_vyjezd: row.marny_vyjezd,
+    pp_required: row.pp_required,
     job_status: row.job_status,
     invoice_status: row.invoice_status,
   }
@@ -911,6 +917,8 @@ function JobAttachmentsModal({
   const [categoryValue, setCategoryValue] =
     useState<JobAttachmentCategory>('predavaci_protokol')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [ppRequired, setPpRequired] = useState(true)
+  const [isPpLoading, setIsPpLoading] = useState(true)
 
   const handleRequestClose = useCallback(() => {
     const hasUnsavedChanges = selectedFiles.length > 0
@@ -958,6 +966,35 @@ function JobAttachmentsModal({
       active = false
     }
   }, [jobId, onAttachmentPresenceChange])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadPpRequirement() {
+      setIsPpLoading(true)
+      const result = await getJobPpRequirementAction(jobId)
+
+      if (!active) {
+        return
+      }
+
+      if (!result.success) {
+        setErrorMessage(result.error ?? 'Nepodařilo se načíst nastavení PP.')
+        setPpRequired(true)
+        setIsPpLoading(false)
+        return
+      }
+
+      setPpRequired(result.ppRequired)
+      setIsPpLoading(false)
+    }
+
+    void loadPpRequirement()
+
+    return () => {
+      active = false
+    }
+  }, [jobId])
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
@@ -1058,6 +1095,25 @@ function JobAttachmentsModal({
     })
   }
 
+  function handlePpRequiredChange(nextValue: boolean) {
+    setErrorMessage(null)
+
+    startTransition(async () => {
+      const previousValue = ppRequired
+      setPpRequired(nextValue)
+
+      const result = await updateJobPpRequirementAction(jobId, nextValue)
+      if (!result.success) {
+        setPpRequired(previousValue)
+        setErrorMessage(result.error ?? 'Nepodařilo se uložit nastavení PP.')
+        return
+      }
+
+      setPpRequired(result.ppRequired)
+      router.refresh()
+    })
+  }
+
   const visibleItems = items
   if (typeof document === 'undefined') {
     return null
@@ -1074,6 +1130,14 @@ function JobAttachmentsModal({
       categoryOptions={ATTACHMENT_CATEGORY_OPTIONS}
       selectedFiles={selectedFiles}
       fileInputRef={fileInputRef}
+      headerContent={
+        <JobPpRequiredToggle
+          value={ppRequired}
+          onChange={handlePpRequiredChange}
+          disabled={isPending || isPpLoading}
+          compact
+        />
+      }
       onCategoryChange={setCategoryValue}
       onFilesChange={setSelectedFiles}
       onClose={handleRequestClose}
