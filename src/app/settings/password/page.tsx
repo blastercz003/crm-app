@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PushNotificationsPanel } from './push-notifications-panel'
+import { StoresAccessPanel } from './stores-access-panel'
 import { ThemeAutoToggleWidget } from './theme-auto-toggle'
 import { buildPageTitle } from '@/lib/pageTitles'
 import {
@@ -35,6 +36,7 @@ export default function ChangePasswordPage() {
   const [profileRole, setProfileRole] = useState<string | null>(null)
   const [isProfileLoaded, setIsProfileLoaded] = useState(false)
   const isTechnik = isProfileLoaded && profileRole === 'TECHNIK'
+  const isAdmin = isProfileLoaded && profileRole === 'admin'
 
   useEffect(() => {
     document.title = buildPageTitle('Nastavení')
@@ -357,6 +359,12 @@ export default function ChangePasswordPage() {
             </form>
           </section>
         </section>
+
+        {isAdmin ? (
+          <section className="grid gap-4 xl:grid-cols-3">
+            <StoresAccessPanel isAdmin={isAdmin} />
+          </section>
+        ) : null}
       </div>
     </main>
   )

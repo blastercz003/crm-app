@@ -63,12 +63,14 @@ const PRAGUE_TIME_ZONE = 'Europe/Prague'
 function TechnicianSectionLinks({
   canViewTechJobs,
   canViewConnectionPoints,
+  canViewStores,
   canViewHandoverProtocolUpload,
   includeJobsLink,
   handoverProtocolUploadJobs,
 }: {
   canViewTechJobs: boolean
   canViewConnectionPoints: boolean
+  canViewStores: boolean
   canViewHandoverProtocolUpload: boolean
   includeJobsLink?: boolean
   handoverProtocolUploadJobs: DashboardHandoverProtocolUploadJobOption[]
@@ -109,6 +111,22 @@ function TechnicianSectionLinks({
           label: 'Přípojné body',
           icon: (
             <Plug className="h-6 w-6" strokeWidth={1.9} />
+          ),
+        }
+      : null,
+    canViewStores
+      ? {
+          key: 'stores',
+          href: '/prodejny',
+          label: 'Prodejny',
+          icon: (
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M4 10.2 5.6 5h12.8l1.6 5.2" />
+              <path d="M3.5 10.5h17" />
+              <path d="M5 10.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8.5" />
+              <path d="M9 20v-5h6v5" />
+              <path d="M8 13h.01M16 13h.01" />
+            </svg>
           ),
         }
       : null,
@@ -163,6 +181,7 @@ type DashboardProfile = {
   can_view_job_attachments: boolean | null
   can_view_handover_protocol_upload: boolean | null
   can_view_all_technician_handover_uploads: boolean | null
+  can_view_stores: boolean | null
   david_dashboard_ikony: boolean | null
   dashboard_schovat_ukoly_a_schuzky: boolean | null
   dashboard_calendar: boolean | null
@@ -1172,7 +1191,7 @@ export default async function DashboardPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
+      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, can_view_stores, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
@@ -1215,6 +1234,7 @@ export default async function DashboardPage({
   const canViewConnectionPoints =
     isTechnik || Boolean(profile?.can_view_connection_points)
   const canViewFiles = isAdmin || Boolean(profile?.can_view_job_attachments)
+  const canViewStores = isAdmin || Boolean(profile?.can_view_stores)
   const canViewHandoverProtocolUpload =
     isTechnik ||
     canViewHandoverProtocolUploadSection(profile?.role ?? null, profile)
@@ -1687,6 +1707,7 @@ export default async function DashboardPage({
           <TechnicianSectionLinks
             canViewTechJobs={canViewTechJobs}
             canViewConnectionPoints={canViewConnectionPoints}
+            canViewStores={canViewStores}
             canViewHandoverProtocolUpload={canViewHandoverProtocolUpload}
             includeJobsLink={showJobsInTechnicianSection}
             handoverProtocolUploadJobs={handoverProtocolUploadJobs}
@@ -1700,6 +1721,7 @@ export default async function DashboardPage({
               canViewJobsPortal={Boolean(!isAdmin && profile?.can_view_jobs_portal)}
               canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
               canViewConnectionPoints={showConnectionPointsInMainMenu}
+              canViewStores={canViewStores}
               canViewFiles={canViewFiles}
               showClients={showClientsInMainMenu}
               isAdmin={isAdmin}

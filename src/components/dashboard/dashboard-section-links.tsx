@@ -79,11 +79,24 @@ function IconAssets() {
   return <CarFront className="h-6 w-6" strokeWidth={1.85} />
 }
 
+function IconStores() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 10.2 5.6 5h12.8l1.6 5.2" />
+      <path d="M3.5 10.5h17" />
+      <path d="M5 10.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8.5" />
+      <path d="M9 20v-5h6v5" />
+      <path d="M8 13h.01M16 13h.01" />
+    </svg>
+  )
+}
+
 export function DashboardSectionLinks({
   canViewJobs,
   canViewJobsPortal,
   canViewOffers,
   canViewConnectionPoints,
+  canViewStores,
   canViewFiles,
   showClients = true,
   isAdmin,
@@ -93,6 +106,7 @@ export function DashboardSectionLinks({
   canViewJobsPortal: boolean
   canViewOffers: boolean
   canViewConnectionPoints: boolean
+  canViewStores: boolean
   canViewFiles: boolean
   showClients?: boolean
   isAdmin: boolean
@@ -125,6 +139,13 @@ export function DashboardSectionLinks({
         icon: <Plug className="h-6 w-6" strokeWidth={1.9} />,
       },
       {
+        key: 'stores',
+        href: '/prodejny',
+        label: 'Prodejny',
+        visible: canViewStores,
+        icon: <IconStores />,
+      },
+      {
         key: 'assets',
         href: '/majetek',
         label: 'Majetek',
@@ -139,6 +160,7 @@ export function DashboardSectionLinks({
       canViewJobsPortal,
       canViewOffers,
       canViewConnectionPoints,
+      canViewStores,
       canViewFiles,
       showClients,
       isAdmin,
