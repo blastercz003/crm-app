@@ -1248,6 +1248,7 @@ export default async function DashboardPage({
   const showClientsInMainMenu = !useDavidDashboardLayout
   const showJobsInTechnicianSection =
     useDavidDashboardLayout && Boolean(profile?.can_view_jobs)
+  const useUnifiedDavidSection = useDavidDashboardLayout && !isTechnik
   const initialThemePreferences: ThemePreferences = {
     themeMode: themePreference?.theme_mode ?? 'light',
     themeAutoOverrideMode: themePreference?.theme_auto_override_mode ?? null,
@@ -1703,7 +1704,7 @@ export default async function DashboardPage({
           </div>
         </section>
 
-        {showTechnicianSection ? (
+        {showTechnicianSection && !useUnifiedDavidSection ? (
           <TechnicianSectionLinks
             canViewTechJobs={canViewTechJobs}
             canViewConnectionPoints={canViewConnectionPoints}
@@ -1717,12 +1718,18 @@ export default async function DashboardPage({
         {isTechnik ? null : (
           <>
             <DashboardSectionLinks
-              canViewJobs={showJobsInMainMenu}
+              canViewJobs={useUnifiedDavidSection ? Boolean(profile?.can_view_jobs) : showJobsInMainMenu}
               canViewJobsPortal={Boolean(!isAdmin && profile?.can_view_jobs_portal)}
               canViewOffers={Boolean(isAdmin || profile?.can_view_offers)}
-              canViewConnectionPoints={showConnectionPointsInMainMenu}
+              canViewConnectionPoints={
+                useUnifiedDavidSection
+                  ? Boolean(profile?.can_view_connection_points)
+                  : showConnectionPointsInMainMenu
+              }
               canViewStores={canViewStores}
               canViewFiles={canViewFiles}
+              canViewHandoverProtocolUpload={useUnifiedDavidSection ? canViewHandoverProtocolUpload : false}
+              handoverProtocolUploadJobs={useUnifiedDavidSection ? handoverProtocolUploadJobs : []}
               showClients={showClientsInMainMenu}
               isAdmin={isAdmin}
               offersOrderedCount={orderedOffersCount}

@@ -10,6 +10,14 @@ const SEND_WINDOW_END_HOUR = 20
 const RECEIVED_INVOICE_REMINDER_HOUR = 13
 const JOB_MISSING_PP_REPEAT_INTERVAL_MS = 24 * 60 * 60 * 1000
 const JOB_MISSING_PP_TECHNICIAN_REPEAT_TYPE = 'job_missing_pp_technician_repeat'
+const JOB_MISSING_PP_MIN_END_AT_ISO = convertPragueLocalPartsToUtcIsoString(
+  2026,
+  5,
+  30,
+  0,
+  0,
+  0
+)
 
 function getPragueDateParts(now: Date) {
   const formatter = new Intl.DateTimeFormat('en-GB', {
@@ -335,6 +343,7 @@ async function getJobsMissingPp(supabase: ServiceClient, now: Date) {
       supabase
         .from('jobs')
         .select('id, job_number, end_at, site_address, technician_name')
+        .gte('end_at', JOB_MISSING_PP_MIN_END_AT_ISO)
         .lt('end_at', cutoffIso),
       supabase
         .from('job_attachments')

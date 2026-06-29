@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { CarFront, Plug } from 'lucide-react'
+import { DashboardHandoverProtocolUploadLauncher } from '@/components/dashboard/dashboard-handover-protocol-upload-launcher'
+import type { HandoverProtocolUploadJobOption } from '@/app/dashboard/handover-protocol-upload-actions'
 
 type SectionLink = {
   key: string
@@ -98,6 +100,8 @@ export function DashboardSectionLinks({
   canViewConnectionPoints,
   canViewStores,
   canViewFiles,
+  canViewHandoverProtocolUpload = false,
+  handoverProtocolUploadJobs = [],
   showClients = true,
   isAdmin,
   offersOrderedCount,
@@ -108,6 +112,8 @@ export function DashboardSectionLinks({
   canViewConnectionPoints: boolean
   canViewStores: boolean
   canViewFiles: boolean
+  canViewHandoverProtocolUpload?: boolean
+  handoverProtocolUploadJobs?: HandoverProtocolUploadJobOption[]
   showClients?: boolean
   isAdmin: boolean
   offersOrderedCount: number
@@ -192,6 +198,10 @@ export function DashboardSectionLinks({
             </span>
           </Link>
         ))}
+
+        {canViewHandoverProtocolUpload ? (
+          <DashboardHandoverProtocolUploadLauncher jobs={handoverProtocolUploadJobs} />
+        ) : null}
       </div>
     </section>
   )
