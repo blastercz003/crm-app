@@ -23,6 +23,13 @@ type StoreUpsertPayload = {
   phone_3: string | null
 }
 
+type ExistingStoreImportRow = {
+  chain_name: string
+  store_number: string
+  phone_2: string | null
+  phone_3: string | null
+}
+
 export type AnalyzeStoresImportResult = {
   success: boolean
   error: string | null
@@ -207,15 +214,43 @@ export async function importStoresFromWorkbookAction(
     const fileBuffer = await readImportFile(formData)
     const parsed = await parseStoresImportWorkbook(fileBuffer, expectedChainName)
 
-    const payload = parsed.validRows.map<StoreUpsertPayload>((row) => ({
-      chain_name: row.chain_name,
-      store_number: row.store_number,
-      city: row.city,
-      address: row.address,
-      phone_1: row.phone_1,
-      phone_2: row.phone_2,
-      phone_3: row.phone_3,
-    }))
+    const storeNumbers = parsed.validRows.map((row) => row.store_number)
+    let existingStoresByNumber = new Map<string, ExistingStoreImportRow>()
+
+    if (storeNumbers.length > 0) {
+      const { data: existingStores, error: existingStoresError } = await access.supabase
+        .from('stores')
+        .select('chain_name, store_number, phone_2, phone_3')
+        .eq('chain_name', expectedChainName)
+        .in('store_number', storeNumbers)
+
+      if (existingStoresError) {
+        throw new Error(
+          `Nepodařilo se načíst existující prodejny pro porovnání importu: ${existingStoresError.message}`
+        )
+      }
+
+      existingStoresByNumber = new Map(
+        ((existingStores ?? []) as ExistingStoreImportRow[]).map((store) => [
+          store.store_number,
+          store,
+        ])
+      )
+    }
+
+    const payload = parsed.validRows.map<StoreUpsertPayload>((row) => {
+      const existingStore = existingStoresByNumber.get(row.store_number)
+
+      return {
+        chain_name: row.chain_name,
+        store_number: row.store_number,
+        city: row.city,
+        address: row.address,
+        phone_1: row.phone_1,
+        phone_2: row.phone_2 ?? existingStore?.phone_2 ?? null,
+        phone_3: row.phone_3 ?? existingStore?.phone_3 ?? null,
+      }
+    })
 
     if (payload.length > 0) {
       const { error } = await access.supabase.from('stores').upsert(payload, {
