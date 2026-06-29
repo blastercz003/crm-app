@@ -130,7 +130,6 @@ export async function parseStoresImportWorkbook(
     if (!raw.chain_name) reasons.push('Chybí chain_name.')
     if (!raw.store_number) reasons.push('Chybí store_number.')
     if (!raw.city) reasons.push('Chybí city.')
-    if (!raw.address) reasons.push('Chybí address.')
     if (!raw.phone_1) reasons.push('Chybí phone_1.')
 
     if (raw.chain_name && !isAllowedChain(raw.chain_name)) {

@@ -163,7 +163,7 @@ export function StoresImportModal({
                   </div>
                   <p>
                     Použij jeden `.xlsx` soubor pro jeden řetězec. Povinná pole jsou
-                    `chain_name`, `store_number`, `city`, `address`, `phone_1`.
+                    `chain_name`, `store_number`, `city`, `phone_1`.
                   </p>
                 </div>
 

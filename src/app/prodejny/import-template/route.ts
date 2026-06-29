@@ -86,7 +86,7 @@ export async function GET() {
     },
     {
       field: 'address',
-      rule: 'Povinné. Ulice a číslo popisné v samostatném poli.',
+      rule: 'Volitelné. Ulice a číslo popisné v samostatném poli může zůstat prázdné.',
     },
     {
       field: 'phone_1',
