@@ -5,6 +5,10 @@ import {
   deletePushSubscription,
   savePushSubscription,
 } from './push-actions'
+import {
+  syncPushSubscriptionWithServer,
+  type PushSubscriptionServerSyncStatus,
+} from './push-subscription-client'
 
 type PushStatus = 'checking' | 'unsupported' | 'not-configured' | 'ready' | 'enabled'
 
@@ -46,6 +50,8 @@ function urlBase64ToUint8Array(value: string) {
 export function PushNotificationsPanel() {
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
   const [status, setStatus] = useState<PushStatus>('checking')
+  const [serverSyncStatus, setServerSyncStatus] =
+    useState<PushSubscriptionServerSyncStatus>('idle')
   const [message, setMessage] = useState('')
   const [isPending, startTransition] = useTransition()
   const [isRemoving, startRemovingTransition] = useTransition()
@@ -62,24 +68,41 @@ export function PushNotificationsPanel() {
 
     async function checkPushStatus() {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        if (!cancelled) setStatus('unsupported')
+        if (!cancelled) {
+          setStatus('unsupported')
+          setServerSyncStatus('idle')
+        }
         return
       }
 
       if (!vapidPublicKey) {
-        if (!cancelled) setStatus('not-configured')
+        if (!cancelled) {
+          setStatus('not-configured')
+          setServerSyncStatus('idle')
+        }
         return
       }
 
       try {
-        const registration = await navigator.serviceWorker.ready
-        const subscription = await registration.pushManager.getSubscription()
+        if (!cancelled) {
+          setServerSyncStatus('checking')
+        }
+
+        const result = await syncPushSubscriptionWithServer()
 
         if (!cancelled) {
-          setStatus(subscription ? 'enabled' : 'ready')
+          setStatus(result.hasLocalSubscription ? 'enabled' : 'ready')
+          setServerSyncStatus(result.serverSyncStatus)
+
+          if (result.serverSyncStatus === 'resynced') {
+            setMessage('Notifikace byly automaticky obnoveny pro toto zařízení.')
+          }
         }
       } catch {
-        if (!cancelled) setStatus('ready')
+        if (!cancelled) {
+          setStatus('ready')
+          setServerSyncStatus('failed')
+        }
       }
     }
 
@@ -177,10 +200,12 @@ export function PushNotificationsPanel() {
 
       if (!result.success) {
         setMessage(result.error ?? 'Subscription se nepodařilo uložit.')
+        setServerSyncStatus('failed')
         return
       }
 
       setStatus('enabled')
+      setServerSyncStatus('synced')
       setMessage('Notifikace jsou zapnuté pro toto zařízení.')
     })
   }
@@ -219,6 +244,7 @@ export function PushNotificationsPanel() {
       }
 
       setStatus('ready')
+      setServerSyncStatus('idle')
       setMessage('Notifikace byly odebrány pro toto zařízení.')
     })
   }
@@ -279,7 +305,11 @@ export function PushNotificationsPanel() {
 
         </div>
 
-        <BadgeDiagnosticsPanel diagnostics={diagnostics} status={status} />
+        <BadgeDiagnosticsPanel
+          diagnostics={diagnostics}
+          status={status}
+          serverSyncStatus={serverSyncStatus}
+        />
       </div>
     </section>
   )
@@ -305,9 +335,11 @@ function getBrowserLabel(userAgent: string) {
 function BadgeDiagnosticsPanel({
   diagnostics,
   status,
+  serverSyncStatus,
 }: {
   diagnostics: BadgeDiagnostics | null
   status: PushStatus
+  serverSyncStatus: PushSubscriptionServerSyncStatus
 }) {
   const badgeReady = diagnostics?.hasBadgeApi === true
   const pushReady =
@@ -382,6 +414,11 @@ function BadgeDiagnosticsPanel({
           state={diagnostics?.hasPushSubscription ? 'ok' : 'neutral'}
         />
         <DiagnosticsRow
+          label="Subscription na serveru"
+          value={getServerSyncLabel(serverSyncStatus)}
+          state={getServerSyncState(serverSyncStatus)}
+        />
+        <DiagnosticsRow
           label="Bezpečný kontext"
           value={diagnostics?.isSecureContext ? 'Ano' : 'Ne'}
           state={diagnostics?.isSecureContext ? 'ok' : 'warn'}
@@ -438,4 +475,22 @@ function getSubscriptionLabel(
   if (hasPushSubscription === false) return 'Zatím není'
   if (status === 'checking') return 'Zjišťuji...'
   return 'Nelze ověřit'
+}
+
+function getServerSyncLabel(status: PushSubscriptionServerSyncStatus) {
+  if (status === 'checking') return 'Kontroluji...'
+  if (status === 'synced') return 'Uložena'
+  if (status === 'resynced') return 'Automaticky obnovena'
+  if (status === 'missing') return 'Chybí, je potřeba obnova'
+  if (status === 'failed') return 'Nelze ověřit'
+  return 'Nezkontrolováno'
+}
+
+function getServerSyncState(
+  status: PushSubscriptionServerSyncStatus
+): 'ok' | 'warn' | 'neutral' | 'pending' {
+  if (status === 'checking') return 'pending'
+  if (status === 'synced' || status === 'resynced') return 'ok'
+  if (status === 'missing' || status === 'failed') return 'warn'
+  return 'neutral'
 }

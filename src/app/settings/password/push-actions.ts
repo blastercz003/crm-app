@@ -74,6 +74,52 @@ export async function savePushSubscription(subscription: PushSubscriptionPayload
   }
 }
 
+export async function checkPushSubscriptionStatus(endpoint: string) {
+  if (!endpoint) {
+    return {
+      success: false,
+      error: 'Chybí endpoint zařízení.',
+      status: 'missing' as const,
+    }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return {
+      success: false,
+      error: 'Pro kontrolu notifikací musíš být přihlášený.',
+      status: 'missing' as const,
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, updated_at, last_seen_at')
+    .eq('user_id', user.id)
+    .eq('endpoint', endpoint)
+    .maybeSingle()
+
+  if (error) {
+    return {
+      success: false,
+      error: `Subscription se nepodařilo ověřit: ${error.message}`,
+      status: 'missing' as const,
+    }
+  }
+
+  return {
+    success: true,
+    status: data ? ('found' as const) : ('missing' as const),
+    updatedAt: data?.updated_at ?? null,
+    lastSeenAt: data?.last_seen_at ?? null,
+  }
+}
+
 export async function deletePushSubscription(endpoint: string) {
   if (!endpoint) {
     return {

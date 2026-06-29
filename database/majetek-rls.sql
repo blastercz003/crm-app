@@ -19,6 +19,7 @@ alter table public.asset_vehicle_details enable row level security;
 alter table public.asset_real_estate_details enable row level security;
 alter table public.asset_rentals enable row level security;
 alter table public.asset_rental_service_advance_history enable row level security;
+alter table public.asset_insurance_details enable row level security;
 alter table public.asset_rental_service_settlement_custom_items enable row level security;
 alter table public.asset_electricity_details enable row level security;
 alter table public.asset_electronics_details enable row level security;

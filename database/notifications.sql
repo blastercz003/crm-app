@@ -4,7 +4,7 @@ create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   recipient_user_id uuid not null references public.profiles(id) on delete cascade,
   actor_user_id uuid references public.profiles(id) on delete set null,
-  category text not null check (category in ('tasks', 'meetings', 'offers', 'system')),
+  category text not null check (category in ('assets', 'tasks', 'meetings', 'offers', 'jobs', 'system')),
   type text not null,
   title text not null,
   message text,
@@ -17,6 +17,13 @@ create table if not exists public.notifications (
   archived_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.notifications
+  drop constraint if exists notifications_category_check;
+
+alter table public.notifications
+  add constraint notifications_category_check
+  check (category in ('assets', 'tasks', 'meetings', 'offers', 'jobs', 'system'));
 
 create unique index if not exists notifications_dedupe_key_unique
   on public.notifications (dedupe_key)

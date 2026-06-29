@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import './globals.css'
 import { NavigationOverlay } from '../components/navigation/navigation-overlay'
 import { ServiceWorkerRegistration } from '../components/pwa/service-worker-registration'
+import { PushSubscriptionGuard } from '../components/pwa/push-subscription-guard'
 import {
   PwaStartupScreenController,
   PwaStartupScreenShell,
@@ -77,6 +78,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
+        <PushSubscriptionGuard />
         {shouldRenderStartupScreen ? <PwaStartupScreenShell /> : null}
         {shouldRenderStartupScreen ? <PwaStartupScreenController /> : null}
         <ThemePreferenceSync />
