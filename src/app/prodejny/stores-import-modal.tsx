@@ -131,22 +131,18 @@ export function StoresImportModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-5xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[980px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+        <div className="stores-page__modal flex max-h-[calc(100vh-2rem)] w-full max-w-[980px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Import prodejen</h2>
-                <p className="mt-2 text-sm text-gray-500">
-                  Nahraj `.xlsx` soubor pro jeden řetězec, analyzuj data a potvrď
-                  import validních řádků.
-                </p>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isPending || isImporting}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="stores-page__modal-close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Zavřít"
               >
                 ×
@@ -155,8 +151,8 @@ export function StoresImportModal({
           </div>
 
           <div className="px-4 py-4 sm:px-6">
-            <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-              <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#8dbfe0]/55 bg-[#2980B9]/8 p-4 text-sm text-[#1e5f8c] sm:flex-row sm:items-center sm:justify-between">
+            <div className="stores-page__field-panel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.82)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+              <div className="stores-page__rules-box mb-4 flex flex-col gap-3 rounded-2xl border border-[#8dbfe0]/55 bg-[#2980B9]/8 p-4 text-sm text-[#1e5f8c] sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2a6f9f]/80">
                     Šablona a pravidla
@@ -169,7 +165,7 @@ export function StoresImportModal({
 
                 <a
                   href="/prodejny/import-template"
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)] transition duration-200 hover:-translate-y-[1px] whitespace-nowrap"
+                  className="stores-page__import-button inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)] transition duration-200 hover:-translate-y-[1px] whitespace-nowrap"
                 >
                   STÁHNOUT ŠABLONU
                 </a>
@@ -186,7 +182,7 @@ export function StoresImportModal({
                       setSelectedChain(event.target.value as (typeof CHAIN_OPTIONS)[number])
                     }
                     disabled={isPending || isImporting}
-                    className="h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                    className="stores-page__field-input h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                   >
                     {CHAIN_OPTIONS.map((item) => (
                       <option key={item} value={item}>
@@ -200,7 +196,7 @@ export function StoresImportModal({
                   <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     Soubor
                   </label>
-                  <label className="relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px]">
+                  <label className="stores-page__field-input relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 hover:-translate-y-[1px]">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -223,7 +219,7 @@ export function StoresImportModal({
                   type="button"
                   onClick={analyzeFile}
                   disabled={!selectedFile || isPending || isImporting}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-semibold uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="stores-page__secondary-button inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-semibold uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isPending ? 'ANALYZUJI...' : 'ANALYZOVAT'}
                 </button>
@@ -238,7 +234,7 @@ export function StoresImportModal({
                     !analysis.success ||
                     analysis.validCount === 0
                   }
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="stores-page__primary-button inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isImporting ? 'IMPORTUJI...' : 'IMPORTOVAT VALIDNÍ'}
                 </button>
@@ -248,13 +244,13 @@ export function StoresImportModal({
 
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             {analysis.error ? (
-              <div className="mb-4 rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
+              <div className="stores-page__error mb-4 rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
                 {analysis.error}
               </div>
             ) : null}
 
             {successMessage ? (
-              <div className="mb-4 rounded-2xl border border-emerald-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(236,253,245,0.82)_100%)] px-4 py-3 text-sm text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(5,150,105,0.14)]">
+              <div className="stores-page__success mb-4 rounded-2xl border border-emerald-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(236,253,245,0.82)_100%)] px-4 py-3 text-sm text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(5,150,105,0.14)]">
                 {successMessage}
               </div>
             ) : null}
@@ -271,13 +267,13 @@ export function StoresImportModal({
                 />
               </div>
             ) : (
-              <div className="rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-6 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+              <div className="stores-page__empty-state rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-6 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                 Vyber řetězec, nahraj soubor a spusť analýzu importu.
               </div>
             )}
 
             {analysis.success && analysis.invalidRows.length > 0 ? (
-              <div className="rounded-[24px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)]">
+              <div className="stores-page__card rounded-[24px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)]">
                 <h3 className="text-base font-semibold text-gray-900">Chybné řádky</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Tyto řádky nebudou naimportovány. Validní řádky můžeš importovat i tak.

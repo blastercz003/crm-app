@@ -52,7 +52,7 @@ export function StoreEditButton({ store }: StoreEditButtonProps) {
           setState(initialState)
           setIsOpen(true)
         }}
-        className="inline-flex items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_18px_rgba(24,78,129,0.24)] transition duration-200 ease-out hover:-translate-y-[1px]"
+        className="stores-page__edit-button inline-flex items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_18px_rgba(24,78,129,0.24)] transition duration-200 ease-out hover:-translate-y-[1px]"
       >
         UPRAVIT
       </button>
@@ -108,7 +108,7 @@ function StoreEditModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+        <div className="stores-page__modal flex max-h-[calc(100vh-2rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Upravit prodejnu</h2>
@@ -121,7 +121,7 @@ function StoreEditModal({
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="stores-page__modal-close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
               aria-label="Zavřít"
             >
               ×
@@ -138,7 +138,7 @@ function StoreEditModal({
             <input type="hidden" name="store_id" value={store.id} />
 
             <div className="grid gap-4">
-              <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+              <div className="stores-page__readonly-panel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                 <div className="grid gap-4 md:grid-cols-2">
                   <ReadOnlyField label="Řetězec" value={store.chain_name} />
                   <ReadOnlyField label="Číslo prodejny" value={store.store_number} />
@@ -176,7 +176,7 @@ function StoreEditModal({
             </div>
 
             {state.error ? (
-              <div className="mt-4 rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
+              <div className="stores-page__error mt-4 rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-3 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)]">
                 {state.error}
               </div>
             ) : null}
@@ -186,14 +186,14 @@ function StoreEditModal({
                 type="button"
                 onClick={onClose}
                 disabled={isPending}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                className="stores-page__secondary-button inline-flex h-11 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 ZRUŠIT
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="stores-page__primary-button inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPending ? 'UKLÁDÁM...' : 'ULOŽIT ZMĚNY'}
               </button>
@@ -212,7 +212,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
       <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
         {label}
       </div>
-      <div className="flex min-h-11 items-center rounded-xl border border-white/75 bg-white/80 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+      <div className="stores-page__readonly-input flex min-h-11 items-center rounded-xl border border-white/75 bg-white/80 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
         {value}
       </div>
     </div>
@@ -231,7 +231,7 @@ function EditableField({
   required?: boolean
 }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+    <div className="stores-page__field-panel rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
       <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
         {label}
       </label>
@@ -239,7 +239,7 @@ function EditableField({
         name={name}
         defaultValue={defaultValue}
         required={required}
-        className="h-11 w-full rounded-xl border border-white/75 bg-white/80 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+        className="stores-page__field-input h-11 w-full rounded-xl border border-white/75 bg-white/80 px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
       />
     </div>
   )

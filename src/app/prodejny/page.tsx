@@ -65,7 +65,7 @@ function PhoneLink({ phone }: { phone: string }) {
   return (
     <a
       href={buildPhoneHref(phone)}
-      className="inline-flex w-fit rounded-lg text-sm text-[#1f5f8f] underline decoration-[#8dbfe0] decoration-2 underline-offset-2 transition duration-200 hover:text-[#17496d]"
+      className="stores-page__phone-link inline-flex w-fit rounded-lg text-sm text-[#1f5f8f] underline decoration-[#8dbfe0] decoration-2 underline-offset-2 transition duration-200 hover:text-[#17496d]"
     >
       {phone}
     </a>
@@ -94,13 +94,13 @@ function PhoneStack({
 
 function StoreCard({ store, isAdmin }: { store: StoreRow; isAdmin: boolean }) {
   return (
-    <article className="rounded-[24px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)] backdrop-blur-[12px]">
+    <article className="stores-page__card rounded-[24px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)] backdrop-blur-[12px]">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex rounded-full border border-[#8dbfe0]/70 bg-[#2980B9]/12 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#1f5f8f] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+          <span className="stores-page__chain-badge inline-flex rounded-full border border-[#8dbfe0]/70 bg-[#2980B9]/12 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#1f5f8f] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
             {store.chain_name}
           </span>
-          <span className="inline-flex rounded-full border border-zinc-200/90 bg-zinc-100/85 px-2.5 py-1 text-[11px] font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+          <span className="stores-page__store-badge inline-flex rounded-full border border-zinc-200/90 bg-zinc-100/85 px-2.5 py-1 text-[11px] font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
             Prodejna {store.store_number}
           </span>
         </div>
@@ -198,19 +198,23 @@ export default async function StoresPage({ searchParams }: StoresPageProps) {
   }
 
   return (
-    <main className="stores-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+    <main className="stores-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)] [html[data-theme='dark']_&]:bg-[linear-gradient(160deg,#0b1220_0%,#111b2e_50%,#09111f_100%)]">
       <PresenceSectionTracker section="Prodejny" route="/prodejny" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
+        className="pointer-events-none absolute inset-0 opacity-0 [html[data-theme='dark']_&]:bg-[linear-gradient(160deg,#0b1220_0%,#111b2e_50%,#09111f_100%)] [html[data-theme='dark']_&]:opacity-100"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
+        className="stores-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl [html[data-theme='dark']_&]:bg-[rgba(78,160,220,0.12)]"
+      />
+      <div
+        aria-hidden
+        className="stores-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl [html[data-theme='dark']_&]:bg-[rgba(12,87,140,0.10)]"
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+        <section className="stores-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
               <h1 className="text-3xl font-semibold leading-none tracking-tight text-gray-900">
@@ -220,27 +224,31 @@ export default async function StoresPage({ searchParams }: StoresPageProps) {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
               <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-                <div className="order-2 sm:order-1">
-                  <StoresSearchBar initialQuery={query} />
-                </div>
-
                 <div className="order-1 sm:order-2">
                   <Link
                     href="/dashboard"
-                    className="inline-flex w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800 sm:w-auto"
+                    className="clients-page__back-button inline-flex w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800 sm:w-auto"
                   >
                     ZPĚT NA DASHBOARD
                   </Link>
                 </div>
-              </div>
 
-              {isAdmin ? <StoresImportLauncher /> : null}
+                {isAdmin ? (
+                  <div className="order-2 w-full sm:order-3 sm:w-auto">
+                    <StoresImportLauncher />
+                  </div>
+                ) : null}
+
+                <div className="order-3 sm:order-1">
+                  <StoresSearchBar initialQuery={query} />
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         {!hasSearch ? (
-          <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="stores-page__empty-state rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="mx-auto max-w-xl space-y-3">
               <h2 className="text-lg font-semibold text-gray-900">
                 Vyhledávání prodejen
@@ -253,7 +261,7 @@ export default async function StoresPage({ searchParams }: StoresPageProps) {
             </div>
           </section>
         ) : stores.length === 0 ? (
-          <section className="rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="stores-page__empty-state rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <div className="mx-auto max-w-xl space-y-3">
               <h2 className="text-lg font-semibold text-gray-900">
                 Žádná prodejna neodpovídá hledání.
@@ -266,7 +274,7 @@ export default async function StoresPage({ searchParams }: StoresPageProps) {
           </section>
         ) : (
           <>
-            <section className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+            <section className="stores-page__summary rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-gray-600">
                   Nalezeno záznamů:{' '}
@@ -282,10 +290,10 @@ export default async function StoresPage({ searchParams }: StoresPageProps) {
               </div>
             </section>
 
-            <section className="hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
+            <section className="stores-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
               <div className="max-h-[72vh] overflow-auto">
                 <table className="min-w-full">
-                  <thead className="sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(245,246,248,0.92)_100%)] shadow-sm">
+                  <thead className="stores-page__table-head sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(245,246,248,0.92)_100%)] shadow-sm">
                     <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                       <th className="px-5 py-4">Řetězec</th>
                       <th className="px-5 py-4">Číslo prodejny</th>
@@ -302,7 +310,7 @@ export default async function StoresPage({ searchParams }: StoresPageProps) {
                     {stores.map((store) => (
                       <tr
                         key={store.id}
-                        className="transition duration-200 ease-out hover:bg-white/75"
+                        className="stores-page__table-row transition duration-200 ease-out hover:bg-white/75"
                       >
                         <td className="px-5 py-4 text-sm font-semibold text-gray-900">
                           {store.chain_name}
