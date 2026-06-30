@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { BSafe24AccessPanel } from './bsafe24-access-panel'
 import { PushNotificationsPanel } from './push-notifications-panel'
 import { StoresAccessPanel } from './stores-access-panel'
 import { ThemeAutoToggleWidget } from './theme-auto-toggle'
@@ -363,6 +364,7 @@ export default function ChangePasswordPage() {
         {isAdmin ? (
           <section className="grid gap-4 xl:grid-cols-3">
             <StoresAccessPanel isAdmin={isAdmin} />
+            <BSafe24AccessPanel isAdmin={isAdmin} />
           </section>
         ) : null}
       </div>

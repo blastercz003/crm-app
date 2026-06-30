@@ -93,12 +93,42 @@ function IconStores() {
   )
 }
 
+function IconBSafe24() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="0">
+      <text
+        x="12"
+        y="7.2"
+        textAnchor="middle"
+        fontSize="3.4"
+        fontWeight="700"
+        fill="currentColor"
+        letterSpacing="0.16em"
+      >
+        B-SAFE
+      </text>
+      <text
+        x="12"
+        y="20.2"
+        textAnchor="middle"
+        fontSize="12.8"
+        fontWeight="800"
+        fill="currentColor"
+        letterSpacing="-0.04em"
+      >
+        24
+      </text>
+    </svg>
+  )
+}
+
 export function DashboardSectionLinks({
   canViewJobs,
   canViewJobsPortal,
   canViewOffers,
   canViewConnectionPoints,
   canViewStores,
+  canViewBSafe24,
   canViewFiles,
   canViewHandoverProtocolUpload = false,
   handoverProtocolUploadJobs = [],
@@ -111,6 +141,7 @@ export function DashboardSectionLinks({
   canViewOffers: boolean
   canViewConnectionPoints: boolean
   canViewStores: boolean
+  canViewBSafe24: boolean
   canViewFiles: boolean
   canViewHandoverProtocolUpload?: boolean
   handoverProtocolUploadJobs?: HandoverProtocolUploadJobOption[]
@@ -152,6 +183,13 @@ export function DashboardSectionLinks({
         icon: <IconStores />,
       },
       {
+        key: 'bsafe24',
+        href: '/bsafe24',
+        label: 'B-SAFE 24',
+        visible: canViewBSafe24,
+        icon: <IconBSafe24 />,
+      },
+      {
         key: 'assets',
         href: '/majetek',
         label: 'Majetek',
@@ -167,6 +205,7 @@ export function DashboardSectionLinks({
       canViewOffers,
       canViewConnectionPoints,
       canViewStores,
+      canViewBSafe24,
       canViewFiles,
       showClients,
       isAdmin,
