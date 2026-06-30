@@ -464,7 +464,7 @@ function JobFormShell({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -473,7 +473,7 @@ function JobFormShell({
         }
       }}
     >
-      <div className="flex h-full items-center justify-center overflow-hidden">
+      <div className="flex min-h-full items-center justify-center overflow-hidden">
         <div className="jobs-page__modal-shell jobs-page__job-form-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
           <div className="jobs-page__modal-header jobs-page__job-form-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
@@ -492,7 +492,7 @@ function JobFormShell({
             </button>
           </div>
 
-          <form action={formAction} className="flex flex-col">
+          <form action={formAction} className="flex min-h-0 flex-1 flex-col">
             <input type="hidden" name="job_status" value={job.job_status} />
             <input
               type="hidden"
@@ -509,7 +509,7 @@ function JobFormShell({
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
 
-            <div className="jobs-page__job-form-modal__body px-4 py-3 sm:px-5 sm:py-4">
+            <div className="jobs-page__job-form-modal__body min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
                 <section className="jobs-page__job-form-modal__section overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
                   <div className="mb-3">
