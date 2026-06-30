@@ -33,8 +33,8 @@ export function JobPpRequiredToggle({
         aria-label={value ? 'PP vyžadován' : 'PP není vyžadován'}
       >
         <span
-          className={`pointer-events-none absolute inset-y-[2px] inline-flex w-[44px] rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition duration-200 ${
-            value ? 'translate-x-[42px]' : 'translate-x-0'
+          className={`pointer-events-none absolute inset-y-[2px] inline-flex w-[44px] rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] transition-[left] duration-200 ${
+            value ? 'left-[46px]' : 'left-[2px]'
           }`}
         />
 
