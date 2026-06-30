@@ -25,7 +25,7 @@ export function JobPpRequiredToggle({
         aria-checked={value}
         disabled={disabled}
         onClick={() => onChange(!value)}
-        className={`password-page__toggle relative inline-flex h-8 w-[92px] items-center rounded-full border p-[2px] disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`password-page__toggle relative inline-flex h-8 w-[76px] items-center rounded-full border p-[2px] disabled:cursor-not-allowed disabled:opacity-60 ${
           value
             ? 'border-[#5f9dca] bg-[#4f92cb]'
             : 'border-zinc-300 bg-zinc-200'
@@ -33,16 +33,16 @@ export function JobPpRequiredToggle({
         aria-label={value ? 'PP vyžadován' : 'PP není vyžadován'}
       >
         <span
-          className={`pointer-events-none absolute inset-y-[2px] inline-flex w-[44px] rounded-full bg-white transition-[left] duration-150 ${
-            value ? 'left-[46px]' : 'left-[2px]'
+          className={`pointer-events-none absolute top-1/2 inline-flex h-6 w-6 -translate-y-1/2 rounded-full bg-white transition-[left] duration-150 ${
+            value ? 'left-[48px]' : 'left-[2px]'
           }`}
         />
 
-        <span className="pointer-events-none flex w-full items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-white">
-          <span className={value ? 'opacity-50' : 'opacity-100'}>
+        <span className="pointer-events-none flex w-full items-center justify-between px-2 text-[9px] font-semibold uppercase tracking-[0.04em] text-white">
+          <span className={`whitespace-nowrap transition-opacity duration-150 ${value ? 'opacity-100' : 'opacity-0'}`}>
             PP ON
           </span>
-          <span className={value ? 'opacity-100' : 'opacity-50'}>
+          <span className={`whitespace-nowrap -translate-x-2 transition-opacity duration-150 ${value ? 'opacity-0' : 'opacity-100'}`}>
             PP OFF
           </span>
         </span>
