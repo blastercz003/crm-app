@@ -100,10 +100,12 @@ export async function PATCH(request: Request) {
     )
   }
 
-  const { error } = await access.supabase
+  const { data, error } = await access.supabase
     .from('profiles')
     .update({ can_view_bsafe24: canViewBSafe24 })
     .eq('id', userId)
+    .select('id, can_view_bsafe24')
+    .single<Pick<BSafe24AccessProfile, 'id' | 'can_view_bsafe24'>>()
 
   if (error) {
     return NextResponse.json(
@@ -112,5 +114,18 @@ export async function PATCH(request: Request) {
     )
   }
 
-  return NextResponse.json({ success: true })
+  if (!data || data.id !== userId) {
+    return NextResponse.json(
+      { error: 'Uložení oprávnění B-SAFE 24 se nepotvrdilo v databázi.' },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json({
+    success: true,
+    profile: {
+      id: data.id,
+      can_view_bsafe24: Boolean(data.can_view_bsafe24),
+    },
+  })
 }

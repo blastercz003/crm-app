@@ -24,6 +24,7 @@ type BSafe24PageProps = {
 
 type ProfilePermissionRow = {
   role: string | null
+  name: string | null
   can_view_bsafe24: boolean | null
 }
 
@@ -108,14 +109,38 @@ type OwnerStat = {
   owner: 'JIŘÍ' | 'MICHAL' | 'LÍDA'
   activeCount: number
   activeMonthlyFeeTotal: number
+  commissionTotal: number | null
 }
 
 type TotalStat = {
   activeCount: number
   activeMonthlyFeeTotal: number
+  commissionTotal: number
 }
 
 const SALES_OWNER_OPTIONS = ['JIŘÍ', 'MICHAL', 'LÍDA'] as const
+
+function normalizeProfileSalesOwner(
+  name: string | null | undefined
+): (typeof SALES_OWNER_OPTIONS)[number] | null {
+  const normalized = String(name ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase()
+
+  if (normalized === 'JIRI') return 'JIŘÍ'
+  if (normalized === 'MICHAL') return 'MICHAL'
+  if (normalized === 'LIDA') return 'LÍDA'
+
+  return null
+}
+
+function getOwnerCommissionRate(owner: (typeof SALES_OWNER_OPTIONS)[number]) {
+  if (owner === 'MICHAL') return 0.5
+  if (owner === 'LÍDA') return 0.2
+  return 0
+}
 const CONTRACT_SORT_OPTIONS: Array<{ value: ContractSortOption; label: string }> = [
   { value: 'client_asc', label: 'Klient A–Z' },
   { value: 'client_desc', label: 'Klient Z–A' },
@@ -217,6 +242,25 @@ function getSelectedOwnersLabel(selectedOwners: Array<(typeof SALES_OWNER_OPTION
   }
 
   return selectedOwners.join(', ')
+}
+
+function getStatusFilterLabel(statusFilter: ContractFilterStatus) {
+  if (statusFilter === 'active') {
+    return 'Aktivní'
+  }
+
+  if (statusFilter === 'inactive') {
+    return 'Neaktivní'
+  }
+
+  return 'Všechny'
+}
+
+function getSortFilterLabel(sortFilter: ContractSortOption) {
+  return (
+    CONTRACT_SORT_OPTIONS.find((option) => option.value === sortFilter)?.label ??
+    'Klient A–Z'
+  )
 }
 
 function contractMatchesQuery(
@@ -355,8 +399,8 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
     <span
       className={
         isActive
-          ? 'inline-flex rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] [html[data-theme=\'dark\']_&]:border-[rgba(16,185,129,0.25)] [html[data-theme=\'dark\']_&]:bg-[rgba(6,78,59,0.45)] [html[data-theme=\'dark\']_&]:text-emerald-200'
-          : 'inline-flex rounded-full border border-zinc-200/90 bg-zinc-100/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme=\'dark\']_&]:bg-[rgba(30,41,59,0.74)] [html[data-theme=\'dark\']_&]:text-slate-300'
+          ? 'bsafe24-status-badge bsafe24-status-badge--active inline-flex min-w-[104px] items-center justify-center rounded-full border border-emerald-200/90 bg-emerald-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
+          : 'bsafe24-status-badge bsafe24-status-badge--inactive inline-flex min-w-[104px] items-center justify-center rounded-full border border-zinc-200/90 bg-zinc-100/90 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
       }
     >
       {isActive ? 'Aktivní' : 'Neaktivní'}
@@ -376,7 +420,7 @@ function MobileContractCard({
   isAdmin: boolean
 }) {
   return (
-    <article className="rounded-[24px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_16px_34px_rgba(0,0,0,0.24)]">
+    <article className="rounded-[24px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_16px_34px_rgba(0,0,0,0.24)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
@@ -389,7 +433,7 @@ function MobileContractCard({
         <StatusBadge isActive={contract.isActive} />
       </div>
 
-      <div className="mt-4 grid gap-3">
+      <div className="mt-3 grid gap-2.5">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
             Klient
@@ -399,67 +443,40 @@ function MobileContractCard({
           </div>
         </div>
 
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-            Osoba
-          </div>
-          <div className="mt-1 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-            {contract.contactPerson?.trim() || '—'}
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-            Obchodník
-          </div>
-          <div className="mt-1 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-            {contract.salesOwner}
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-            Adresa
-          </div>
-          <div className="mt-1 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-            {contract.firstBackupAddress || '—'}
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-            Výkon
-          </div>
-          <div className="mt-1 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-            {contract.firstBackupGeneratorPower?.trim() || '—'}
-          </div>
-        </div>
-
-        <div className="flex items-end justify-between gap-3 pt-1">
-          <div className="grid gap-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-                Paušál
-              </div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-                {formatCurrency(contract.monthlyFee)}
-              </div>
+        <div className="grid grid-cols-3 gap-3 pt-1">
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
+              Výkon
             </div>
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-                Dojezd
-              </div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-                {formatDriveTimeHours(contract.driveTimeHours)}
-              </div>
+            <div className="mt-1 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+              {contract.firstBackupGeneratorPower?.trim() || '—'}
             </div>
           </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
+              Paušál
+            </div>
+            <div className="mt-1 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+              {formatCurrency(contract.monthlyFee)}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
+              Dojezd
+            </div>
+            <div className="mt-1 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+              {formatDriveTimeHours(contract.driveTimeHours)}
+            </div>
+          </div>
+        </div>
 
+        <div className="flex justify-end pt-1">
           <DetailPlaceholder
             clientOptions={clientOptions}
             clientContacts={clientContacts}
             contract={contract}
             isAdmin={isAdmin}
+            className="justify-end"
           />
         </div>
       </div>
@@ -472,11 +489,13 @@ function DetailPlaceholder({
   clientContacts,
   contract,
   isAdmin,
+  className,
 }: {
   clientOptions: ClientOption[]
   clientContacts: ClientContactOption[]
   contract: BSafe24ContractViewModel
   isAdmin: boolean
+  className?: string
 }) {
   return (
     <BSafe24ContractRowActions
@@ -484,6 +503,9 @@ function DetailPlaceholder({
       clientContacts={clientContacts}
       files={contract.files}
       isAdmin={isAdmin}
+      canUploadFiles={true}
+      canDeleteFiles={isAdmin}
+      className={className}
       contract={{
         id: contract.id,
         contract_number: contract.contractNumber,
@@ -529,7 +551,7 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, can_view_bsafe24')
+    .select('role, name, can_view_bsafe24')
     .eq('id', user.id)
     .single()
 
@@ -539,54 +561,66 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
 
   const typedProfile = profile as ProfilePermissionRow | null
   const isAdmin = typedProfile?.role === 'admin'
+  const allowedSalesOwner = isAdmin
+    ? null
+    : normalizeProfileSalesOwner(typedProfile?.name)
 
-  if (!isAdmin && !typedProfile?.can_view_bsafe24) {
+  if (!isAdmin && (!typedProfile?.can_view_bsafe24 || !allowedSalesOwner)) {
     redirect('/dashboard')
   }
 
-  const [
-    { data: contractsData, error: contractsError },
-    { data: backupAddressesData, error: backupAddressesError },
-    { data: filesData, error: filesError },
-    { data: clientsData, error: clientsError },
-    { data: clientContactsData, error: clientContactsError },
-  ] =
-    await Promise.all([
-      supabase
-        .from('bsafe24_contracts')
-        .select(
-          'id, contract_number, client_id, client_contact_id, client_name, contact_person, client_address, sales_owner, monthly_fee, drive_time_hours, is_active, internal_note, updated_at'
-        )
-        .order('contract_number', { ascending: false }),
-      supabase
-        .from('bsafe24_backup_addresses')
-        .select('id, contract_id, sort_order, address, contact_person, generator_power')
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('bsafe24_files')
-        .select(
-          'id, contract_id, file_type, file_name, display_name, storage_bucket, storage_path, mime_type, file_size_bytes, uploaded_by, created_at'
-        )
-        .order('created_at', { ascending: false }),
-      isAdmin
-        ? supabase
-            .from('clients')
-            .select('id, name, address, contact_person')
-            .order('name', { ascending: true })
-        : Promise.resolve({ data: [], error: null }),
-      isAdmin
-        ? supabase
-            .from('client_contacts')
-            .select('id, client_id, name, is_primary')
-            .order('is_primary', { ascending: false })
-            .order('name', { ascending: true })
-        : Promise.resolve({ data: [], error: null }),
-    ])
+  const contractsQuery = supabase
+    .from('bsafe24_contracts')
+    .select(
+      'id, contract_number, client_id, client_contact_id, client_name, contact_person, client_address, sales_owner, monthly_fee, drive_time_hours, is_active, internal_note, updated_at'
+    )
+    .order('contract_number', { ascending: false })
+
+  const { data: contractsData, error: contractsError } = await (isAdmin
+    ? contractsQuery
+    : contractsQuery.eq('sales_owner', allowedSalesOwner!))
 
   if (contractsError) {
     throw new Error('Nepodařilo se načíst smlouvy B-SAFE 24.')
   }
+
+  const contractIds = ((contractsData ?? []) as BSafe24ContractRow[]).map((contract) =>
+    String(contract.id)
+  )
+
+  const [
+    { data: backupAddressesData, error: backupAddressesError },
+    { data: filesData, error: filesError },
+    { data: clientsData, error: clientsError },
+    { data: clientContactsData, error: clientContactsError },
+  ] = await Promise.all([
+    contractIds.length > 0
+      ? supabase
+          .from('bsafe24_backup_addresses')
+          .select('id, contract_id, sort_order, address, contact_person, generator_power')
+          .in('contract_id', contractIds)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+    contractIds.length > 0
+      ? supabase
+          .from('bsafe24_files')
+          .select(
+            'id, contract_id, file_type, file_name, display_name, storage_bucket, storage_path, mime_type, file_size_bytes, uploaded_by, created_at'
+          )
+          .in('contract_id', contractIds)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from('clients')
+      .select('id, name, address, contact_person')
+      .order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+  ])
 
   if (backupAddressesError) {
     throw new Error('Nepodařilo se načíst zálohované adresy B-SAFE 24.')
@@ -628,20 +662,30 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
     files: (filesData ?? []) as BSafe24FileDatabaseRow[],
   })
 
-  const ownerStats = SALES_OWNER_OPTIONS.map<OwnerStat>((owner) => {
-    const activeContracts = contracts.filter(
-      (contract) => contract.salesOwner === owner && contract.isActive
-    )
+  const ownerStats = (isAdmin ? SALES_OWNER_OPTIONS : [allowedSalesOwner!]).map<OwnerStat>(
+    (owner) => {
+      const activeContracts = contracts.filter(
+        (contract) => contract.salesOwner === owner && contract.isActive
+      )
 
-    return {
-      owner,
-      activeCount: activeContracts.length,
-      activeMonthlyFeeTotal: activeContracts.reduce(
-        (sum, contract) => sum + contract.monthlyFee,
-        0
-      ),
+      return {
+        owner,
+        activeCount: activeContracts.length,
+        activeMonthlyFeeTotal: activeContracts.reduce(
+          (sum, contract) => sum + contract.monthlyFee,
+          0
+        ),
+        commissionTotal:
+          getOwnerCommissionRate(owner) > 0
+            ? activeContracts.reduce(
+                (sum, contract) =>
+                  sum + contract.monthlyFee * getOwnerCommissionRate(owner),
+                0
+              )
+            : null,
+      }
     }
-  })
+  )
 
   const totalStats = contracts
     .filter((contract) => contract.isActive)
@@ -650,12 +694,18 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
         activeCount: accumulator.activeCount + 1,
         activeMonthlyFeeTotal:
           accumulator.activeMonthlyFeeTotal + contract.monthlyFee,
+        commissionTotal:
+          accumulator.commissionTotal +
+          contract.monthlyFee * getOwnerCommissionRate(contract.salesOwner),
       }),
       {
         activeCount: 0,
         activeMonthlyFeeTotal: 0,
+        commissionTotal: 0,
       }
     )
+
+  const effectiveSelectedOwners = isAdmin ? selectedOwners : []
 
   const visibleContracts = sortContracts(
     contracts.filter((contract) => {
@@ -671,7 +721,10 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
         return false
       }
 
-      if (selectedOwners.length > 0 && !selectedOwners.includes(contract.salesOwner)) {
+      if (
+        effectiveSelectedOwners.length > 0 &&
+        !effectiveSelectedOwners.includes(contract.salesOwner)
+      ) {
         return false
       }
 
@@ -681,7 +734,10 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
   )
 
   const hasActiveFilters = Boolean(
-    query || statusFilter !== 'all' || selectedOwners.length > 0 || sortFilter !== 'client_asc'
+    query ||
+      statusFilter !== 'all' ||
+      effectiveSelectedOwners.length > 0 ||
+      sortFilter !== 'client_asc'
   )
 
   return (
@@ -727,7 +783,7 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
 
               <Link
                 href="/dashboard"
-                className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)] sm:w-auto"
+                className="clients-page__back-button inline-flex h-11 w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-gray-800 sm:w-auto"
               >
                 ZPĚT NA DASHBOARD
               </Link>
@@ -745,7 +801,79 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
 
         <section className="relative z-30 overflow-visible rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_20px_44px_rgba(0,0,0,0.24)]">
           <div className="space-y-4">
-            <div className="grid gap-3 lg:grid-cols-4">
+            <div className="lg:hidden">
+              <details className="group w-full">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                  <span className="inline-flex items-center gap-2">PŘEHLED</span>
+                  <span className="text-xs text-zinc-500 transition group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400">
+                    ⌄
+                  </span>
+                </summary>
+
+                <div className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                  <div className="grid gap-3">
+                    {ownerStats.map((stat) => (
+                      <div
+                        key={stat.owner}
+                        className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]"
+                      >
+                        <div className="text-base font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                          {stat.owner}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-3 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                          <span>Aktivní smlouvy</span>
+                          <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                            {stat.activeCount}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                          <span>Paušál / měsíc</span>
+                          <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                            {formatCurrency(stat.activeMonthlyFeeTotal)}
+                          </span>
+                        </div>
+                        {stat.commissionTotal !== null ? (
+                          <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                            <span>Provize</span>
+                            <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                              {formatCurrency(stat.commissionTotal)}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+
+                    {isAdmin ? (
+                      <div className="rounded-2xl border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(35,111,159,0.12)] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(16,49,99,0.42)_0%,rgba(18,36,73,0.34)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                        <div className="text-base font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                          Všechny smlouvy
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                          <span>Aktivní smlouvy</span>
+                          <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                            {totalStats.activeCount}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                          <span>Paušál / měsíc</span>
+                          <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                            {formatCurrency(totalStats.activeMonthlyFeeTotal)}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                          <span>Provize</span>
+                          <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                            {formatCurrency(totalStats.commissionTotal)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            <div className={`hidden gap-3 lg:grid ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-1'}`}>
               {ownerStats.map((stat) => (
                 <div
                   key={stat.owner}
@@ -766,54 +894,322 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                       {formatCurrency(stat.activeMonthlyFeeTotal)}
                     </span>
                   </div>
+                  {stat.commissionTotal !== null ? (
+                    <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                      <span>Provize</span>
+                      <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                        {formatCurrency(stat.commissionTotal)}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               ))}
 
-              <div className="rounded-2xl border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(35,111,159,0.12)] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(16,49,99,0.42)_0%,rgba(18,36,73,0.34)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
-                <div className="text-base font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-                  Všechny smlouvy
+              {isAdmin ? (
+                <div className="rounded-2xl border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(35,111,159,0.12)] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(16,49,99,0.42)_0%,rgba(18,36,73,0.34)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                  <div className="text-base font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                    Všechny smlouvy
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                    <span>Aktivní smlouvy</span>
+                    <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                      {totalStats.activeCount}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                    <span>Paušál / měsíc</span>
+                    <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                      {formatCurrency(totalStats.activeMonthlyFeeTotal)}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                    <span>Provize</span>
+                    <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                      {formatCurrency(totalStats.commissionTotal)}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-                  <span>Aktivní smlouvy</span>
-                  <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-                    {totalStats.activeCount}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-                  <span>Paušál / měsíc</span>
-                  <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-                    {formatCurrency(totalStats.activeMonthlyFeeTotal)}
-                  </span>
-                </div>
-              </div>
+              ) : null}
             </div>
 
             <form action="/bsafe24" method="get" className="space-y-4">
               <input type="hidden" name="q" value={query} />
 
-              <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,320px)_260px_auto] lg:items-end">
-                <div>
-                  <label
-                    htmlFor="bsafe24-status"
-                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400"
-                  >
-                    Stav smlouvy
-                  </label>
-                  <div className="relative min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.72)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                    <select
-                      id="bsafe24-status"
-                      name="status"
-                      defaultValue={statusFilter}
-                      className="block h-10 w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none [html[data-theme='dark']_&]:text-[#f8fbff]"
-                    >
-                      <option value="all">Všechny</option>
-                      <option value="active">Aktivní</option>
-                      <option value="inactive">Neaktivní</option>
-                    </select>
-                    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
+              <div className="lg:hidden">
+                <details className="group w-full">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                    <span className="inline-flex items-center gap-2">
+                      FILTRY
+                      {hasActiveFilters ? (
+                        <span className="bsafe24-filter-active-badge inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.07em] text-[#236f9f] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[rgba(30,64,175,0.24)] [html[data-theme='dark']_&]:text-sky-200">
+                          FILTR AKTIVNÍ
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="text-xs text-zinc-500 transition group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400">
+                      ⌄
+                    </span>
+                  </summary>
+
+                  <div className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-400">
+                      <span className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        Stav:{' '}
+                        <span className="ml-1 font-medium">
+                          {statusFilter === 'all'
+                            ? 'Všechny'
+                            : statusFilter === 'active'
+                              ? 'Aktivní'
+                              : 'Neaktivní'}
+                        </span>
+                      </span>
+                      {query ? (
+                        <span className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                          Hledání: <span className="ml-1 font-medium">{query}</span>
+                        </span>
+                      ) : null}
+                      {isAdmin
+                        ? effectiveSelectedOwners.map((owner) => (
+                            <span
+                              key={`mobile-${owner}`}
+                              className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                            >
+                              Obchodník: <span className="ml-1 font-medium">{owner}</span>
+                            </span>
+                          ))
+                        : null}
+                      {sortFilter !== 'client_asc' ? (
+                        <span className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                          Řazení:
+                          <span className="ml-1 font-medium">
+                            {CONTRACT_SORT_OPTIONS.find((option) => option.value === sortFilter)?.label}
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="grid gap-3">
+                      <div>
+                        <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                          Stav smlouvy
+                        </div>
+                        <details className="group relative">
+                          <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 marker:content-none [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                            <span className="truncate font-medium">
+                              {getStatusFilterLabel(statusFilter)}
+                            </span>
+                            <span className="ml-3 shrink-0 text-xs text-zinc-500 transition duration-200 group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400">
+                              ⌄
+                            </span>
+                          </summary>
+
+                          <div className="bsafe24-filter-panel mt-2 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,247,251,0.94)_100%)] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_18px_40px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            <div className="space-y-2">
+                              {[
+                                { value: 'all', label: 'Všechny' },
+                                { value: 'active', label: 'Aktivní' },
+                                { value: 'inactive', label: 'Neaktivní' },
+                              ].map((option) => {
+                                const checked = statusFilter === option.value
+
+                                return (
+                                  <label
+                                    key={option.value}
+                                    data-selected={checked ? 'true' : 'false'}
+                                    className={`bsafe24-filter-option flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition duration-200 ${
+                                      checked
+                                        ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.22)]'
+                                        : 'border-white/75 bg-white/88 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.06)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.18)]'
+                                    }`}
+                                  >
+                                    <span>{option.label}</span>
+                                    <input
+                                      type="radio"
+                                      name="status"
+                                      value={option.value}
+                                      defaultChecked={checked}
+                                      className="h-4 w-4 border-white/70 text-[#2f77af] focus:ring-[#9dc7e5]"
+                                    />
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+
+                      {isAdmin ? (
+                        <div>
+                          <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                            Obchodník
+                          </div>
+                          <details className="group relative">
+                            <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 marker:content-none [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                              <span className="truncate font-medium">
+                                {getSelectedOwnersLabel(selectedOwners)}
+                              </span>
+                              <span className="ml-3 shrink-0 text-xs text-zinc-500 transition duration-200 group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400">
+                                ⌄
+                              </span>
+                            </summary>
+
+                            <div className="bsafe24-filter-panel mt-2 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,247,251,0.94)_100%)] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_18px_40px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
+                              <div className="space-y-2">
+                                {SALES_OWNER_OPTIONS.map((owner) => {
+                                  const checked = selectedOwners.includes(owner)
+
+                                  return (
+                                    <label
+                                      key={owner}
+                                      data-selected={checked ? 'true' : 'false'}
+                                      className={`bsafe24-filter-option flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition duration-200 ${
+                                        checked
+                                          ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.22)]'
+                                          : 'border-white/75 bg-white/88 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.06)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.18)]'
+                                      }`}
+                                    >
+                                      <span>{owner}</span>
+                                      <input
+                                        type="checkbox"
+                                        name="owner"
+                                        value={owner}
+                                        defaultChecked={checked}
+                                        className="h-4 w-4 rounded border-white/70 text-[#2f77af] focus:ring-[#9dc7e5]"
+                                      />
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </details>
+                        </div>
+                      ) : null}
+
+                      <div>
+                        <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                          Řazení
+                        </div>
+                        <details className="group relative">
+                          <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 marker:content-none [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                            <span className="truncate font-medium">
+                              {getSortFilterLabel(sortFilter)}
+                            </span>
+                            <span className="ml-3 shrink-0 text-xs text-zinc-500 transition duration-200 group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400">
+                              ⌄
+                            </span>
+                          </summary>
+
+                          <div className="bsafe24-filter-panel mt-2 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,247,251,0.94)_100%)] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_18px_40px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            <div className="space-y-2">
+                              {CONTRACT_SORT_OPTIONS.map((option) => {
+                                const checked = sortFilter === option.value
+
+                                return (
+                                  <label
+                                    key={option.value}
+                                    data-selected={checked ? 'true' : 'false'}
+                                    className={`bsafe24-filter-option flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition duration-200 ${
+                                      checked
+                                        ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.22)]'
+                                        : 'border-white/75 bg-white/88 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.06)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.18)]'
+                                    }`}
+                                  >
+                                    <span>{option.label}</span>
+                                    <input
+                                      type="radio"
+                                      name="sort"
+                                      value={option.value}
+                                      defaultChecked={checked}
+                                      className="h-4 w-4 border-white/70 text-[#2f77af] focus:ring-[#9dc7e5]"
+                                    />
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+
+                      <div className="flex items-center gap-2 border-t border-gray-100 pt-3 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
+                        <button
+                          type="submit"
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)] [html[data-theme='dark']_&]:hover:bg-[linear-gradient(155deg,rgba(22,35,58,0.98)_0%,rgba(16,26,43,0.96)_100%)]"
+                        >
+                          Použít filtry
+                        </button>
+
+                        <Link
+                          href="/bsafe24"
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]"
+                        >
+                          Reset
+                        </Link>
+                      </div>
+                    </div>
                   </div>
+                </details>
+              </div>
+
+              <div
+                className={`grid gap-4 lg:items-end ${
+                  isAdmin
+                    ? 'lg:grid-cols-[220px_minmax(0,320px)_260px_auto]'
+                    : 'lg:grid-cols-[220px_260px_auto]'
+                } hidden lg:grid`}
+              >
+                <div>
+                  <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                    Stav smlouvy
+                  </div>
+                  <details className="group relative">
+                    <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 marker:content-none hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                      <span className="truncate font-medium">
+                        {getStatusFilterLabel(statusFilter)}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="ml-3 shrink-0 text-xs text-zinc-500 transition duration-200 group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400"
+                      >
+                        ⌄
+                      </span>
+                    </summary>
+
+                    <div className="bsafe24-filter-panel absolute left-0 top-[calc(100%+0.5rem)] z-20 w-full min-w-[220px] rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,247,251,0.94)_100%)] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_18px_40px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
+                      <div className="space-y-2">
+                        {[
+                          { value: 'all', label: 'Všechny' },
+                          { value: 'active', label: 'Aktivní' },
+                          { value: 'inactive', label: 'Neaktivní' },
+                        ].map((option) => {
+                          const checked = statusFilter === option.value
+
+                          return (
+                            <label
+                              key={option.value}
+                              data-selected={checked ? 'true' : 'false'}
+                              className={`bsafe24-filter-option flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition duration-200 ${
+                                checked
+                                  ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.22)]'
+                                  : 'border-white/75 bg-white/88 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.06)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.18)]'
+                              }`}
+                            >
+                              <span>{option.label}</span>
+                              <input
+                                type="radio"
+                                name="status"
+                                value={option.value}
+                                defaultChecked={checked}
+                                className="h-4 w-4 border-white/70 text-[#2f77af] focus:ring-[#9dc7e5]"
+                              />
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </details>
                 </div>
 
+                {isAdmin ? (
                 <div>
                   <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                     Obchodník
@@ -831,7 +1227,7 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                       </span>
                     </summary>
 
-                    <div className="absolute left-0 top-[calc(100%+0.5rem)] z-20 w-full min-w-[240px] rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,247,251,0.94)_100%)] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_18px_40px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="bsafe24-filter-panel absolute left-0 top-[calc(100%+0.5rem)] z-20 w-full min-w-[240px] rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,247,251,0.94)_100%)] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_18px_40px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
                       <div className="space-y-2">
                         {SALES_OWNER_OPTIONS.map((owner) => {
                           const checked = selectedOwners.includes(owner)
@@ -839,7 +1235,8 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                           return (
                             <label
                               key={owner}
-                              className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition duration-200 ${
+                              data-selected={checked ? 'true' : 'false'}
+                              className={`bsafe24-filter-option flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition duration-200 ${
                                 checked
                                   ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.22)]'
                                   : 'border-white/75 bg-white/88 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.06)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.18)]'
@@ -860,35 +1257,60 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                     </div>
                   </details>
                 </div>
+                ) : null}
 
                 <div>
-                  <label
-                    htmlFor="bsafe24-sort"
-                    className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400"
-                  >
+                  <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                     Řazení
-                  </label>
-                  <div className="relative min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.72)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                    <select
-                      id="bsafe24-sort"
-                      name="sort"
-                      defaultValue={sortFilter}
-                      className="block h-10 w-full appearance-none border-0 bg-transparent px-3 pr-8 text-sm text-gray-900 outline-none [html[data-theme='dark']_&]:text-[#f8fbff]"
-                    >
-                      {CONTRACT_SORT_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
                   </div>
+                  <details className="group relative">
+                    <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 marker:content-none hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+                      <span className="truncate font-medium">
+                        {getSortFilterLabel(sortFilter)}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="ml-3 shrink-0 text-xs text-zinc-500 transition duration-200 group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400"
+                      >
+                        ⌄
+                      </span>
+                    </summary>
+
+                    <div className="bsafe24-filter-panel absolute left-0 top-[calc(100%+0.5rem)] z-20 w-full min-w-[260px] rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,247,251,0.94)_100%)] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_18px_40px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
+                      <div className="space-y-2">
+                        {CONTRACT_SORT_OPTIONS.map((option) => {
+                          const checked = sortFilter === option.value
+
+                          return (
+                            <label
+                              key={option.value}
+                              data-selected={checked ? 'true' : 'false'}
+                              className={`bsafe24-filter-option flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition duration-200 ${
+                                checked
+                                  ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_22px_rgba(24,78,129,0.22)]'
+                                  : 'border-white/75 bg-white/88 text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.06)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.18)]'
+                              }`}
+                            >
+                              <span>{option.label}</span>
+                              <input
+                                type="radio"
+                                name="sort"
+                                value={option.value}
+                                defaultChecked={checked}
+                                className="h-4 w-4 border-white/70 text-[#2f77af] focus:ring-[#9dc7e5]"
+                              />
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </details>
                 </div>
 
                 <div className="flex items-end gap-2 lg:justify-end">
                   <button
                     type="submit"
-                    className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)] [html[data-theme='dark']_&]:hover:bg-[linear-gradient(155deg,rgba(22,35,58,0.98)_0%,rgba(16,26,43,0.96)_100%)]"
                   >
                     Použít filtry
                   </button>
@@ -903,25 +1325,27 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
               </div>
             </form>
 
-            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-400">
-              <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="hidden flex-wrap items-center gap-2 text-xs text-zinc-600 lg:flex [html[data-theme='dark']_&]:text-slate-400">
+              <span className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 Stav: <span className="ml-1 font-medium">{statusFilter === 'all' ? 'Všechny' : statusFilter === 'active' ? 'Aktivní' : 'Neaktivní'}</span>
               </span>
               {query ? (
-                <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <span className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   Hledání: <span className="ml-1 font-medium">{query}</span>
                 </span>
               ) : null}
-              {selectedOwners.map((owner) => (
+              {isAdmin
+                ? effectiveSelectedOwners.map((owner) => (
                 <span
                   key={owner}
-                  className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                 >
                   Obchodník: <span className="ml-1 font-medium">{owner}</span>
                 </span>
-              ))}
+                ))
+                : null}
               {sortFilter !== 'client_asc' ? (
-                <span className="inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <span className="bsafe24-filter-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   Řazení:
                   <span className="ml-1 font-medium">
                     {CONTRACT_SORT_OPTIONS.find((option) => option.value === sortFilter)?.label}
@@ -929,7 +1353,7 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                 </span>
               ) : null}
               {hasActiveFilters ? (
-                <span className="inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-2.5 py-1 font-semibold text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[rgba(30,64,175,0.24)] [html[data-theme='dark']_&]:text-sky-200">
+                <span className="bsafe24-filter-active-badge inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-2.5 py-1 font-semibold text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[rgba(30,64,175,0.24)] [html[data-theme='dark']_&]:text-sky-200">
                   Filtr aktivní
                 </span>
               ) : null}
@@ -958,38 +1382,50 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
         ) : (
           <>
             <section className="hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_20px_44px_rgba(0,0,0,0.24)]">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-hidden">
                 <table className="min-w-full table-fixed border-separate border-spacing-0">
+                  <colgroup>
+                    <col className="w-[120px]" />
+                    <col className="w-[220px]" />
+                    <col className="w-[160px]" />
+                    <col className="w-[120px]" />
+                    <col className="w-[220px]" />
+                    <col className="w-[128px]" />
+                    <col className="w-[100px]" />
+                    <col className="w-[100px]" />
+                    <col className="w-[124px]" />
+                    <col className="w-[176px]" />
+                  </colgroup>
                   <thead className="sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(245,246,248,0.92)_100%)] shadow-sm [html[data-theme='dark']_&]:bg-[linear-gradient(180deg,rgba(18,28,46,0.98)_0%,rgba(12,20,34,0.96)_100%)]">
                     <tr>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[120px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Smlouva
                       </th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[220px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Klient
                       </th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[160px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Osoba
                       </th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[120px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Obchodník
                       </th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[220px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Adresa
                       </th>
-                      <th className="w-[140px] px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[128px] px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Paušál
                       </th>
-                      <th className="w-[110px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[100px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Dojezd
                       </th>
-                      <th className="w-[110px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[100px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Výkon
                       </th>
-                      <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[124px] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Stav
                       </th>
-                      <th className="w-[220px] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[176px] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Detaily
                       </th>
                     </tr>
@@ -998,48 +1434,48 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                     {visibleContracts.map((contract, index) => (
                       <tr
                         key={contract.id}
-                        className={`transition duration-200 ease-out hover:bg-white/75 [html[data-theme='dark']_&]:hover:bg-[rgba(30,41,59,0.38)] ${
-                          index % 2 === 0
-                            ? 'bg-white/55 [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.18)]'
-                            : 'bg-transparent'
+                        className={`transition duration-200 ease-out hover:bg-white/75 [html[data-theme='dark']_&]:bg-[rgba(12,20,34,0.94)] [html[data-theme='dark']_&]:hover:bg-[rgba(24,37,60,0.88)] ${
+                          index % 2 === 0 ? 'bg-white/55' : 'bg-transparent'
                         }`}
                       >
-                        <td className="px-4 py-2.5 text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                        <td className="w-[120px] px-4 py-2.5 text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
                           {contract.contractNumber}
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-zinc-800 [html[data-theme='dark']_&]:text-slate-200">
-                          <div className="truncate" title={contract.clientName}>
+                        <td className="w-[220px] px-4 py-2.5 text-xs text-zinc-800 [html[data-theme='dark']_&]:text-slate-200">
+                          <div className="min-w-0 truncate" title={contract.clientName}>
                             {contract.clientName}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                        <td className="w-[160px] px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
                           <div className="truncate" title={contract.contactPerson?.trim() || '—'}>
                             {contract.contactPerson?.trim() || '—'}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-                          {contract.salesOwner}
+                        <td className="w-[120px] px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                          <div className="truncate" title={contract.salesOwner}>
+                            {contract.salesOwner}
+                          </div>
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                        <td className="w-[220px] px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
                           <div className="truncate" title={contract.firstBackupAddress || '—'}>
                             {contract.firstBackupAddress || '—'}
                           </div>
                         </td>
-                        <td className="w-[140px] whitespace-nowrap px-4 py-2.5 text-right text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                        <td className="w-[128px] whitespace-nowrap px-4 py-2.5 text-right text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
                           {formatCurrency(contract.monthlyFee)}
                         </td>
-                        <td className="w-[110px] whitespace-nowrap px-4 py-2.5 text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                        <td className="w-[100px] whitespace-nowrap px-4 py-2.5 text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
                           {formatDriveTimeHours(contract.driveTimeHours)}
                         </td>
-                        <td className="w-[110px] whitespace-nowrap px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                        <td className="w-[100px] whitespace-nowrap px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
                           <div className="truncate" title={contract.firstBackupGeneratorPower || '—'}>
                             {contract.firstBackupGeneratorPower || '—'}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="w-[124px] px-4 py-2.5 text-center">
                           <StatusBadge isActive={contract.isActive} />
                         </td>
-                        <td className="w-[220px] px-4 py-2.5 text-center">
+                        <td className="w-[176px] px-3 py-2.5 text-center">
                           <DetailPlaceholder
                             clientOptions={clientOptions}
                             clientContacts={clientContacts}

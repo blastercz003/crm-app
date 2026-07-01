@@ -100,12 +100,33 @@ export function BSafe24AccessPanel({ isAdmin }: BSafe24AccessPanelProps) {
       })
 
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
+        | {
+            error?: string
+            profile?: {
+              id: string
+              can_view_bsafe24: boolean
+            }
+          }
         | null
 
       if (!response.ok) {
         throw new Error(payload?.error || 'Nepodařilo se uložit přístup.')
       }
+
+      if (!payload?.profile || payload.profile.id !== profile.id) {
+        throw new Error('Server nepotvrdil uložený stav přístupu.')
+      }
+
+      setProfiles((currentProfiles) =>
+        currentProfiles.map((item) =>
+          item.id === profile.id
+            ? {
+                ...item,
+                can_view_bsafe24: payload.profile?.can_view_bsafe24 ?? item.can_view_bsafe24,
+              }
+            : item
+        )
+      )
     } catch (saveError) {
       setProfiles((currentProfiles) =>
         currentProfiles.map((item) =>

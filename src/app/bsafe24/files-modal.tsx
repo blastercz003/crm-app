@@ -17,7 +17,8 @@ type BSafe24FilesModalLauncherProps = {
   contractId: string
   contractNumber: string
   initialFiles: BSafe24FileRow[]
-  isAdmin: boolean
+  canUpload: boolean
+  canDelete: boolean
   className?: string
   label?: string
 }
@@ -67,7 +68,8 @@ export function BSafe24FilesModalLauncher({
   contractId,
   contractNumber,
   initialFiles,
-  isAdmin,
+  canUpload,
+  canDelete,
   className,
   label,
 }: BSafe24FilesModalLauncherProps) {
@@ -91,7 +93,8 @@ export function BSafe24FilesModalLauncher({
           contractId={contractId}
           contractNumber={contractNumber}
           initialFiles={initialFiles}
-          isAdmin={isAdmin}
+          canUpload={canUpload}
+          canDelete={canDelete}
           onClose={() => setIsOpen(false)}
         />
       ) : null}
@@ -103,13 +106,15 @@ function BSafe24FilesModal({
   contractId,
   contractNumber,
   initialFiles,
-  isAdmin,
+  canUpload,
+  canDelete,
   onClose,
 }: {
   contractId: string
   contractNumber: string
   initialFiles: BSafe24FileRow[]
-  isAdmin: boolean
+  canUpload: boolean
+  canDelete: boolean
   onClose: () => void
 }) {
   const router = useRouter()
@@ -233,9 +238,11 @@ function BSafe24FilesModal({
               <h2 className="text-lg font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
                 Soubory B-SAFE 24
               </h2>
-              <p className="mt-2 text-sm text-gray-500 [html[data-theme='dark']_&]:text-slate-400">
-                Smlouva {contractNumber}
-              </p>
+              <div className="mt-2 flex justify-start">
+                <span className="inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.26)]">
+                  SMLOUVA {contractNumber}
+                </span>
+              </div>
             </div>
 
             <button
@@ -249,7 +256,7 @@ function BSafe24FilesModal({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
-            {isAdmin ? (
+            {canUpload ? (
               <section className="rounded-[26px] border border-white/78 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(243,247,251,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                   <div>
@@ -264,7 +271,7 @@ function BSafe24FilesModal({
                       onChange={(event) =>
                         setSelectedFiles(Array.from(event.target.files ?? []))
                       }
-                      className="block h-12 w-full rounded-2xl border border-white/70 bg-white/92 px-4 py-3 text-sm text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition placeholder:text-zinc-400 focus:border-[#5b9bd5] focus:ring-2 focus:ring-[#5b9bd5]/20 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:placeholder:text-slate-500"
+                      className="block h-12 w-full rounded-2xl border border-white/70 bg-white/92 px-4 py-3 text-sm text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition placeholder:text-zinc-400 focus:border-[#5b9bd5] focus:ring-2 focus:ring-[#5b9bd5]/20 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:placeholder:text-slate-500 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                     />
                     <p className="mt-3 text-sm text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                       Max. velikost jednoho PDF souboru je 10 MB.
@@ -282,7 +289,7 @@ function BSafe24FilesModal({
                         onChange={(event) =>
                           setCategory(event.target.value as BSafe24FileCategory)
                         }
-                        className="h-12 w-full rounded-2xl border border-white/70 bg-white/92 px-4 text-sm text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition focus:border-[#5b9bd5] focus:ring-2 focus:ring-[#5b9bd5]/20 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme='dark']_&]:text-slate-100"
+                        className="h-12 w-full rounded-2xl border border-white/70 bg-white/92 px-4 text-sm text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition focus:border-[#5b9bd5] focus:ring-2 focus:ring-[#5b9bd5]/20 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                       >
                         {FILE_CATEGORY_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -296,7 +303,7 @@ function BSafe24FilesModal({
                       type="button"
                       disabled={isBusy || selectedFiles.length === 0}
                       onClick={handleUpload}
-                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-zinc-400/65 bg-[linear-gradient(155deg,#8b8b91_0%,#6f6f74_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_22px_rgba(63,63,70,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,#4f92cb_0%,#2b679a_100%)]"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)] [html[data-theme='dark']_&]:hover:bg-[linear-gradient(155deg,rgba(22,35,58,0.98)_0%,rgba(16,26,43,0.96)_100%)]"
                     >
                       {isBusy ? 'NAHRÁVÁNÍ...' : 'NAHRÁT SOUBORY'}
                     </button>
@@ -354,7 +361,7 @@ function BSafe24FilesModal({
                             variant="secondary"
                             disabled={isBusy}
                           />
-                          {isAdmin ? (
+                          {canDelete ? (
                             <ActionButton
                               label="SMAZAT"
                               onClick={() => handleDelete(file.id)}
@@ -409,7 +416,7 @@ function BSafe24FilesModal({
                             disabled={isBusy}
                             className="w-full"
                           />
-                          {isAdmin ? (
+                          {canDelete ? (
                             <ActionButton
                               label="SMAZAT"
                               onClick={() => handleDelete(file.id)}
@@ -450,8 +457,8 @@ function ActionButton({
     variant === 'primary'
       ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_8px_18px_rgba(24,78,129,0.24)]'
       : variant === 'danger'
-        ? 'border-red-200/90 bg-white/92 text-red-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(239,68,68,0.08)] [html[data-theme=\'dark\']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme=\'dark\']_&]:text-red-300'
-        : 'border-white/70 bg-white/92 text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme=\'dark\']_&]:text-slate-200'
+        ? 'border-red-200/90 bg-white/92 text-red-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(239,68,68,0.08)] [html[data-theme=\'dark\']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme=\'dark\']_&]:text-red-300 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.22)]'
+        : 'border-white/70 bg-white/92 text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme=\'dark\']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.82)] [html[data-theme=\'dark\']_&]:text-slate-200 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.22)]'
 
   return (
     <button

@@ -52,7 +52,11 @@ export type BSafe24FileUrlActionState = {
 type CurrentProfile = {
   id: string
   role: string | null
+  name?: string | null
+  can_view_bsafe24?: boolean | null
 }
+
+type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
 type ClientSnapshotRow = {
   id: string
@@ -80,6 +84,20 @@ const initialState: UpsertBSafe24ContractActionState = {
 const BSAFE24_FILES_BUCKET = 'bsafe24-files'
 const MAX_BSAFE24_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const ALLOWED_BSAFE24_FILE_MIME_TYPES = new Set(['application/pdf'])
+
+function normalizeProfileSalesOwner(name: string | null | undefined): SalesOwner | null {
+  const normalized = String(name ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase()
+
+  if (normalized === 'JIRI') return 'JIŘÍ'
+  if (normalized === 'MICHAL') return 'MICHAL'
+  if (normalized === 'LIDA') return 'LÍDA'
+
+  return null
+}
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -225,6 +243,43 @@ async function requireAdminUser() {
   return { supabase, user, profile }
 }
 
+async function requireBSafe24UserAccess() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, role, name, can_view_bsafe24')
+    .eq('id', user.id)
+    .single<CurrentProfile>()
+
+  if (profileError || !profile) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
+
+  const isAdmin = profile.role === 'admin'
+  const allowedSalesOwner = normalizeProfileSalesOwner(profile.name)
+
+  if (!isAdmin) {
+    if (!profile.can_view_bsafe24) {
+      throw new Error('Do sekce B-SAFE 24 nemáš přístup.')
+    }
+
+    if (!allowedSalesOwner) {
+      throw new Error('Uživatel nemá přiřazeného obchodníka pro B-SAFE 24.')
+    }
+  }
+
+  return { supabase, user, profile, isAdmin, allowedSalesOwner }
+}
+
 async function loadClientSnapshot(params: {
   supabase: Awaited<ReturnType<typeof createClient>>
   clientId: string
@@ -282,30 +337,30 @@ async function loadClientContactSnapshot(params: {
 async function ensureBSafe24ContractAccess(params: {
   supabase: Awaited<ReturnType<typeof createClient>>
   contractId: string
+  isAdmin: boolean
+  allowedSalesOwner: SalesOwner | null
   requireAdmin?: boolean
 }) {
-  const { supabase, contractId, requireAdmin = false } = params
+  const { supabase, contractId, isAdmin, allowedSalesOwner, requireAdmin = false } = params
 
   const { data, error } = await supabase
     .from('bsafe24_contracts')
-    .select('id')
+    .select('id, sales_owner')
     .eq('id', contractId)
-    .maybeSingle<{ id: string }>()
+    .maybeSingle<{ id: string; sales_owner: SalesOwner }>()
 
   if (error || !data) {
     throw new Error('Smlouva B-SAFE 24 nebyla nalezena.')
   }
 
   if (requireAdmin) {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', (await supabase.auth.getUser()).data.user?.id ?? '')
-      .maybeSingle<{ role: string | null }>()
-
-    if (profileError || profile?.role !== 'admin') {
+    if (!isAdmin) {
       throw new Error('Soubory B-SAFE 24 může upravovat pouze administrátor.')
     }
+  }
+
+  if (!isAdmin && allowedSalesOwner && data.sales_owner !== allowedSalesOwner) {
+    throw new Error('K této smlouvě B-SAFE 24 nemáš přístup.')
   }
 
   return data
@@ -576,7 +631,8 @@ export async function uploadBSafe24FilesAction(
   files: File[]
 ): Promise<BSafe24UploadFilesActionState> {
   try {
-    const { supabase, user } = await requireAdminUser()
+    const { supabase, user, isAdmin, allowedSalesOwner } =
+      await requireBSafe24UserAccess()
     const normalizedContractId = String(contractId ?? '').trim()
     const category = normalizeFileCategory(String(categoryValue ?? '').trim())
     const cleanFiles = files.filter((file) => file instanceof File)
@@ -588,7 +644,8 @@ export async function uploadBSafe24FilesAction(
     await ensureBSafe24ContractAccess({
       supabase,
       contractId: normalizedContractId,
-      requireAdmin: true,
+      isAdmin,
+      allowedSalesOwner,
     })
 
     if (cleanFiles.length === 0) {
@@ -840,14 +897,7 @@ async function getBSafe24FileUrl(
   download: boolean
 ): Promise<BSafe24FileUrlActionState> {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return { success: false, error: 'Chybí přihlášení.', signedUrl: null }
-    }
+    const { supabase, isAdmin, allowedSalesOwner } = await requireBSafe24UserAccess()
 
     const normalizedFileId = String(fileId ?? '').trim()
     if (!normalizedFileId) {
@@ -856,13 +906,25 @@ async function getBSafe24FileUrl(
 
     const { data: row, error: rowError } = await supabase
       .from('bsafe24_files')
-      .select('display_name, storage_bucket, storage_path')
+      .select('display_name, storage_bucket, storage_path, contract_id')
       .eq('id', normalizedFileId)
-      .single<{ display_name: string; storage_bucket: string; storage_path: string }>()
+      .single<{
+        display_name: string
+        storage_bucket: string
+        storage_path: string
+        contract_id: string
+      }>()
 
     if (rowError || !row) {
       return { success: false, error: 'Soubor nebyl nalezen.', signedUrl: null }
     }
+
+    await ensureBSafe24ContractAccess({
+      supabase,
+      contractId: row.contract_id,
+      isAdmin,
+      allowedSalesOwner,
+    })
 
     const { data, error } = await supabase.storage
       .from(String(row.storage_bucket))
