@@ -69,6 +69,7 @@ type BSafe24ContractViewModel = {
   internalNote: string | null
   updatedAt: string
   firstBackupAddress: string | null
+  firstBackupGeneratorPower: string | null
   backupAddresses: Array<{
     address: string
     contact_person: string | null
@@ -289,6 +290,8 @@ function buildContractViewModels(params: {
     )
 
     const firstBackupAddress = contractBackupAddresses[0]?.address?.trim() || null
+    const firstBackupGeneratorPower =
+      contractBackupAddresses[0]?.generator_power?.trim() || null
     const contractFiles = [...(filesByContract.get(contract.id) ?? [])].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
@@ -335,6 +338,7 @@ function buildContractViewModels(params: {
       internalNote: contract.internal_note,
       updatedAt: contract.updated_at,
       firstBackupAddress,
+      firstBackupGeneratorPower,
       backupAddresses: contractBackupAddresses.map((address) => ({
         address: address.address,
         contact_person: address.contact_person,
@@ -419,6 +423,15 @@ function MobileContractCard({
           </div>
           <div className="mt-1 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
             {contract.firstBackupAddress || '—'}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
+            Výkon
+          </div>
+          <div className="mt-1 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+            {contract.firstBackupGeneratorPower?.trim() || '—'}
           </div>
         </div>
 
@@ -970,10 +983,13 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                       <th className="w-[110px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Dojezd
                       </th>
+                      <th className="w-[110px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Výkon
+                      </th>
                       <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Stav
                       </th>
-                      <th className="w-[320px] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      <th className="w-[220px] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                         Detaily
                       </th>
                     </tr>
@@ -988,31 +1004,42 @@ export default async function BSafe24Page({ searchParams }: BSafe24PageProps) {
                             : 'bg-transparent'
                         }`}
                       >
-                        <td className="px-4 py-3 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                        <td className="px-4 py-2.5 text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
                           {contract.contractNumber}
                         </td>
-                        <td className="px-4 py-3 text-sm text-zinc-800 [html[data-theme='dark']_&]:text-slate-200">
-                          {contract.clientName}
+                        <td className="px-4 py-2.5 text-xs text-zinc-800 [html[data-theme='dark']_&]:text-slate-200">
+                          <div className="truncate" title={contract.clientName}>
+                            {contract.clientName}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-                          {contract.contactPerson?.trim() || '—'}
+                        <td className="px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                          <div className="truncate" title={contract.contactPerson?.trim() || '—'}>
+                            {contract.contactPerson?.trim() || '—'}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                        <td className="px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
                           {contract.salesOwner}
                         </td>
-                        <td className="px-4 py-3 text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
-                          {contract.firstBackupAddress || '—'}
+                        <td className="px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                          <div className="truncate" title={contract.firstBackupAddress || '—'}>
+                            {contract.firstBackupAddress || '—'}
+                          </div>
                         </td>
-                        <td className="w-[140px] whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                        <td className="w-[140px] whitespace-nowrap px-4 py-2.5 text-right text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
                           {formatCurrency(contract.monthlyFee)}
                         </td>
-                        <td className="w-[110px] whitespace-nowrap px-4 py-3 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+                        <td className="w-[110px] whitespace-nowrap px-4 py-2.5 text-xs font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
                           {formatDriveTimeHours(contract.driveTimeHours)}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="w-[110px] whitespace-nowrap px-4 py-2.5 text-xs text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                          <div className="truncate" title={contract.firstBackupGeneratorPower || '—'}>
+                            {contract.firstBackupGeneratorPower || '—'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
                           <StatusBadge isActive={contract.isActive} />
                         </td>
-                        <td className="w-[320px] px-4 py-3 text-center">
+                        <td className="w-[220px] px-4 py-2.5 text-center">
                           <DetailPlaceholder
                             clientOptions={clientOptions}
                             clientContacts={clientContacts}
