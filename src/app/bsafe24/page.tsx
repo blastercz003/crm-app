@@ -219,13 +219,11 @@ function formatDriveTimeHours(value: number | null) {
   }
 
   const roundedValue = Math.trunc(value)
-  const lastDigit = roundedValue % 10
-  const lastTwoDigits = roundedValue % 100
 
   const unit =
     roundedValue === 1
       ? 'HODINA'
-      : lastDigit >= 2 && lastDigit <= 4 && (lastTwoDigits < 12 || lastTwoDigits > 14)
+      : roundedValue >= 2 && roundedValue <= 4
         ? 'HODINY'
         : 'HODIN'
 
