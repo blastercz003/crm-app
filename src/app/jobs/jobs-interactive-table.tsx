@@ -44,6 +44,9 @@ type OfferOption = {
   client_id: string
   offer_number: string
   title: string
+  realization_starts_at: string | null
+  realization_ends_at: string | null
+  realization_address: string | null
 }
 
 type JobRow = {

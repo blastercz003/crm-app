@@ -69,6 +69,9 @@ export type LoadJobAttachmentsActionState = {
   success: boolean
   error: string | null
   items: JobAttachment[]
+  offerOrderFiles: OfferOrderAttachment[]
+  offerOrderReference: string | null
+  hasLinkedOffer: boolean
 }
 
 export type UploadJobAttachmentsActionState = {
@@ -105,6 +108,30 @@ export type OpenJobAttachmentActionState =
     }
 
 export type DownloadJobAttachmentActionState =
+  | {
+      success: true
+      error: null
+      signedUrl: string
+    }
+  | {
+      success: false
+      error: string
+      signedUrl: null
+    }
+
+export type OpenOfferOrderAttachmentActionState =
+  | {
+      success: true
+      error: null
+      signedUrl: string
+    }
+  | {
+      success: false
+      error: string
+      signedUrl: null
+    }
+
+export type DownloadOfferOrderAttachmentActionState =
   | {
       success: true
       error: null
@@ -162,7 +189,29 @@ type JobFinanceCostItemRow = {
 
 type JobAttachmentAccessRow = {
   id: string
+  offer_id: string | null
 }
+
+type OfferOrderAttachmentRow = {
+  id: string
+  offer_id: string
+  file_name: string
+  storage_path: string
+  mime_type: string
+  file_size_bytes: number
+  created_at: string
+}
+
+export type OfferOrderAttachment = {
+  id: string
+  offerId: string
+  fileName: string
+  mimeType: string
+  fileSizeBytes: number
+  createdAt: string
+}
+
+const OFFER_ORDER_ATTACHMENTS_BUCKET = 'offer-orders'
 
 function isMissingSupplierColumnError(error: {
   message?: string | null
@@ -537,7 +586,7 @@ async function getJobAttachmentAccessRow(
 ) {
   const { data, error } = await supabase
     .from('jobs')
-    .select('id')
+    .select('id, offer_id')
     .eq('id', jobId)
     .single()
 
@@ -553,6 +602,17 @@ async function getJobAttachmentAccessRow(
     success: true as const,
     error: null,
     jobRow: data as JobAttachmentAccessRow,
+  }
+}
+
+function mapOfferOrderAttachmentRow(row: OfferOrderAttachmentRow): OfferOrderAttachment {
+  return {
+    id: String(row.id),
+    offerId: String(row.offer_id),
+    fileName: String(row.file_name ?? ''),
+    mimeType: String(row.mime_type ?? ''),
+    fileSizeBytes: Number(row.file_size_bytes) || 0,
+    createdAt: String(row.created_at ?? ''),
   }
 }
 
@@ -1077,18 +1137,41 @@ export async function getJobAttachmentsAction(
     await requireFinanceAdminAccess()
 
   if (!user) {
-    return { success: false, error: accessError, items: [] }
+    return {
+      success: false,
+      error: accessError,
+      items: [],
+      offerOrderFiles: [],
+      offerOrderReference: null,
+      hasLinkedOffer: false,
+    }
   }
 
   const normalizedJobId = String(jobId ?? '').trim()
   if (!normalizedJobId) {
-    return { success: false, error: 'Chybí ID zakázky.', items: [] }
+    return {
+      success: false,
+      error: 'Chybí ID zakázky.',
+      items: [],
+      offerOrderFiles: [],
+      offerOrderReference: null,
+      hasLinkedOffer: false,
+    }
   }
 
   const access = await getJobAttachmentAccessRow(supabase, normalizedJobId)
   if (!access.success) {
-    return { success: false, error: access.error, items: [] }
+    return {
+      success: false,
+      error: access.error,
+      items: [],
+      offerOrderFiles: [],
+      offerOrderReference: null,
+      hasLinkedOffer: false,
+    }
   }
+
+  const linkedOfferId = String((access.jobRow.offer_id ?? '')).trim() || null
 
   const { data, error } = await supabase
     .from('job_attachments')
@@ -1103,14 +1186,141 @@ export async function getJobAttachmentsAction(
       success: false,
       error: 'Přílohy se nepodařilo načíst.',
       items: [],
+      offerOrderFiles: [],
+      offerOrderReference: null,
+      hasLinkedOffer: Boolean(linkedOfferId),
     }
+  }
+
+  let offerOrderFiles: OfferOrderAttachment[] = []
+  let offerOrderReference: string | null = null
+
+  if (linkedOfferId) {
+    const [{ data: offerOrderRows, error: offerOrderError }, { data: offerRow, error: offerError }] =
+      await Promise.all([
+        supabase
+          .from('offer_order_files')
+          .select('id, offer_id, file_name, storage_path, mime_type, file_size_bytes, created_at')
+          .eq('offer_id', linkedOfferId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('offers')
+          .select('id, order_reference')
+          .eq('id', linkedOfferId)
+          .single(),
+      ])
+
+    if (offerOrderError) {
+      return {
+        success: false,
+        error: 'Objednávkové podklady se nepodařilo načíst.',
+        items: ((data ?? []) as JobAttachmentRow[]).map(mapJobAttachmentRow),
+        offerOrderFiles: [],
+        offerOrderReference: null,
+        hasLinkedOffer: true,
+      }
+    }
+
+    if (offerError) {
+      return {
+        success: false,
+        error: 'Nepodařilo se načíst navázanou nabídku zakázky.',
+        items: ((data ?? []) as JobAttachmentRow[]).map(mapJobAttachmentRow),
+        offerOrderFiles: [],
+        offerOrderReference: null,
+        hasLinkedOffer: true,
+      }
+    }
+
+    offerOrderFiles = ((offerOrderRows ?? []) as OfferOrderAttachmentRow[]).map(
+      mapOfferOrderAttachmentRow
+    )
+    offerOrderReference =
+      String((offerRow as { order_reference?: string | null } | null)?.order_reference ?? '').trim() ||
+      null
   }
 
   return {
     success: true,
     error: null,
     items: ((data ?? []) as JobAttachmentRow[]).map(mapJobAttachmentRow),
+    offerOrderFiles,
+    offerOrderReference,
+    hasLinkedOffer: Boolean(linkedOfferId),
   }
+}
+
+export async function openOfferOrderAttachmentAction(
+  offerOrderFileId: string
+): Promise<OpenOfferOrderAttachmentActionState> {
+  const { supabase, user, error: accessError } = await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError, signedUrl: null }
+  }
+
+  const normalizedAttachmentId = String(offerOrderFileId ?? '').trim()
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID souboru.', signedUrl: null }
+  }
+
+  const { data: row, error } = await supabase
+    .from('offer_order_files')
+    .select('id, storage_path')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (error || !row) {
+    return { success: false, error: 'Soubor nebyl nalezen.', signedUrl: null }
+  }
+
+  const { data, error: signedUrlError } = await supabase.storage
+    .from(OFFER_ORDER_ATTACHMENTS_BUCKET)
+    .createSignedUrl(String((row as { storage_path: string }).storage_path), 60 * 10)
+
+  if (signedUrlError || !data?.signedUrl) {
+    return { success: false, error: 'Nepodařilo se vytvořit odkaz na soubor.', signedUrl: null }
+  }
+
+  return { success: true, error: null, signedUrl: data.signedUrl }
+}
+
+export async function downloadOfferOrderAttachmentAction(
+  offerOrderFileId: string
+): Promise<DownloadOfferOrderAttachmentActionState> {
+  const { supabase, user, error: accessError } = await requireFinanceAdminAccess()
+
+  if (!user) {
+    return { success: false, error: accessError, signedUrl: null }
+  }
+
+  const normalizedAttachmentId = String(offerOrderFileId ?? '').trim()
+  if (!normalizedAttachmentId) {
+    return { success: false, error: 'Chybí ID souboru.', signedUrl: null }
+  }
+
+  const { data: row, error } = await supabase
+    .from('offer_order_files')
+    .select('id, file_name, storage_path')
+    .eq('id', normalizedAttachmentId)
+    .single()
+
+  if (error || !row) {
+    return { success: false, error: 'Soubor nebyl nalezen.', signedUrl: null }
+  }
+
+  const typedRow = row as { file_name: string; storage_path: string }
+  const { data, error: signedUrlError } = await supabase.storage
+    .from(OFFER_ORDER_ATTACHMENTS_BUCKET)
+    .createSignedUrl(String(typedRow.storage_path), 60 * 10, {
+      download: String(typedRow.file_name ?? '').trim() || undefined,
+    })
+
+  if (signedUrlError || !data?.signedUrl) {
+    return { success: false, error: 'Nepodařilo se vytvořit odkaz pro stažení.', signedUrl: null }
+  }
+
+  return { success: true, error: null, signedUrl: data.signedUrl }
 }
 
 export async function uploadJobAttachmentsAction(

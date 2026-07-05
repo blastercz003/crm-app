@@ -32,6 +32,9 @@ type OfferOption = {
   client_id: string
   offer_number: string
   title: string
+  realization_starts_at: string | null
+  realization_ends_at: string | null
+  realization_address: string | null
 }
 
 type JobFormValues = {
@@ -217,6 +220,9 @@ function JobFormShell({
   const [selectedContactId, setSelectedContactId] = useState(job?.client_contact_id ?? '')
   const [selectedOfferId, setSelectedOfferId] = useState('')
   const [contactPerson, setContactPerson] = useState(job?.contact_person ?? '')
+  const [startAt, setStartAt] = useState(toDateTimeLocalValue(job?.start_at))
+  const [endAt, setEndAt] = useState(toDateTimeLocalValue(job?.end_at))
+  const [siteAddress, setSiteAddress] = useState(job?.site_address ?? '')
   const [technicianName, setTechnicianName] = useState(job?.technician_name ?? '')
   const [ppRequired, setPpRequired] = useState(job?.pp_required ?? true)
   const [companyTouched, setCompanyTouched] = useState(false)
@@ -231,6 +237,10 @@ function JobFormShell({
   const selectedClientOffers = offerSuggestions.filter(
     (offer) => offer.client_id === selectedClientId
   )
+  const selectedOffer = useMemo(
+    () => selectedClientOffers.find((offer) => offer.id === selectedOfferId) ?? null,
+    [selectedClientOffers, selectedOfferId]
+  )
 
   const companySelectionIsValid =
     Boolean(selectedClientId) &&
@@ -243,6 +253,14 @@ function JobFormShell({
   const submitLabel = 'ULOŽIT ZAKÁZKU'
 
   useBodyScrollLock(true)
+
+  useEffect(() => {
+    if (!selectedOffer) return
+
+    setStartAt(toDateTimeLocalValue(selectedOffer.realization_starts_at))
+    setEndAt(toDateTimeLocalValue(selectedOffer.realization_ends_at))
+    setSiteAddress(selectedOffer.realization_address ?? '')
+  }, [selectedOffer])
 
   function setAutocompleteSelection(start: number, end: number) {
     requestAnimationFrame(() => {
@@ -575,7 +593,8 @@ function JobFormShell({
                         name="start_at"
                         type="datetime-local"
                         required
-                        defaultValue={toDateTimeLocalValue(job?.start_at)}
+                        value={startAt}
+                        onChange={(event) => setStartAt(event.target.value)}
                         className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
@@ -592,7 +611,8 @@ function JobFormShell({
                         name="end_at"
                         type="datetime-local"
                         required
-                        defaultValue={toDateTimeLocalValue(job?.end_at)}
+                        value={endAt}
+                        onChange={(event) => setEndAt(event.target.value)}
                         className="h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
@@ -608,7 +628,8 @@ function JobFormShell({
                         id={`${mode}-site_address`}
                         name="site_address"
                         type="text"
-                        defaultValue={job?.site_address ?? ''}
+                        value={siteAddress}
+                        onChange={(event) => setSiteAddress(event.target.value)}
                         placeholder="Adresa realizace"
                         className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />

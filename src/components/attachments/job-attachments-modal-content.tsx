@@ -24,6 +24,13 @@ export type JobAttachment = {
   createdAt: string
 }
 
+export type SecondaryAttachmentItem = {
+  id: string
+  fileName: string
+  fileSizeBytes: number
+  createdAt: string
+}
+
 export type JobAttachmentsModalContentProps = {
   title?: string
   jobBadgeLabel?: string
@@ -40,6 +47,10 @@ export type JobAttachmentsModalContentProps = {
   fileInputRef: RefObject<HTMLInputElement | null>
   topContent?: ReactNode
   headerContent?: ReactNode
+  secondarySectionDescription?: ReactNode
+  secondaryItems?: SecondaryAttachmentItem[]
+  secondaryEmptyMessage?: string
+  secondarySectionVisible?: boolean
   showCategorySelect?: boolean
   uploadButtonLabel?: string
   onCategoryChange: (value: JobAttachmentCategory) => void
@@ -49,6 +60,8 @@ export type JobAttachmentsModalContentProps = {
   onOpenAttachment: (attachmentId: string) => void
   onDownloadAttachment: (attachmentId: string) => void
   onDeleteAttachment: (attachmentId: string, displayName: string) => void
+  onOpenSecondaryAttachment?: (attachmentId: string) => void
+  onDownloadSecondaryAttachment?: (attachmentId: string) => void
   showDeleteAttachment?: boolean
 }
 
@@ -99,6 +112,10 @@ export function JobAttachmentsModalContent({
   fileInputRef,
   topContent,
   headerContent,
+  secondarySectionDescription,
+  secondaryItems = [],
+  secondaryEmptyMessage = 'Zatím nejsou nahrané žádné podklady k objednávce.',
+  secondarySectionVisible = false,
   showCategorySelect = true,
   uploadButtonLabel = 'Nahrát soubory',
   onCategoryChange,
@@ -108,6 +125,8 @@ export function JobAttachmentsModalContent({
   onOpenAttachment,
   onDownloadAttachment,
   onDeleteAttachment,
+  onOpenSecondaryAttachment,
+  onDownloadSecondaryAttachment,
   showDeleteAttachment = true,
 }: JobAttachmentsModalContentProps) {
   return (
@@ -390,6 +409,142 @@ export function JobAttachmentsModalContent({
                 </tbody>
               </table>
             </div>
+
+            {secondarySectionVisible ? (
+              <div className="mt-6">
+                {secondarySectionDescription ? (
+                  <div className="mb-3 text-sm text-gray-600">{secondarySectionDescription}</div>
+                ) : null}
+
+                <div className="grid gap-3 md:hidden">
+                  {!isLoading && secondaryItems.length === 0 ? (
+                    <div className="jobs-page__info-modal__empty-state rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-6 text-center text-sm text-gray-500">
+                      {secondaryEmptyMessage}
+                    </div>
+                  ) : null}
+
+                  {secondaryItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="jobs-page__info-modal__attachment-card min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                    >
+                      <div className="min-w-0">
+                        <p
+                          className="block w-full truncate text-sm font-semibold text-gray-900"
+                          title={item.fileName}
+                        >
+                          {item.fileName}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 text-[12px] leading-5 text-gray-600">
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-baseline gap-1">
+                            <span className="shrink-0 font-medium text-gray-900">Velikost:</span>
+                            <span className="min-w-0 truncate whitespace-nowrap">
+                              {formatFileSize(item.fileSizeBytes)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-baseline justify-end gap-1 text-right">
+                            <span className="shrink-0 font-medium text-gray-900">Nahráno:</span>
+                            <span className="min-w-0 truncate whitespace-nowrap">
+                              {formatDateTime(item.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid min-w-0 w-full grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onOpenSecondaryAttachment?.(item.id)}
+                          disabled={isPending}
+                          className="jobs-page__info-modal__attachment-open inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 py-1.5 text-[11px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                        >
+                          OTEVŘÍT
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDownloadSecondaryAttachment?.(item.id)}
+                          disabled={isPending}
+                          className="jobs-page__info-modal__attachment-download inline-flex h-9 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 py-1.5 text-[11px] font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                        >
+                          STÁHNOUT
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="jobs-page__info-modal__attachment-card mt-3 hidden overflow-x-auto rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] md:block">
+                  <table className="w-full table-fixed bg-transparent">
+                    <thead>
+                      <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                        <th className="px-3 py-3">Název</th>
+                        <th className="w-[100px] px-3 py-3 text-right">Velikost</th>
+                        <th className="w-[160px] px-3 py-3">Nahráno</th>
+                        <th className="w-[220px] px-3 py-3 text-right">Akce</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!isLoading && secondaryItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-3 py-6 text-center text-sm text-gray-500">
+                            {secondaryEmptyMessage}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {secondaryItems.map((item) => (
+                        <tr key={item.id} className="border-t border-white/70">
+                          <td className="max-w-0 px-3 py-2">
+                            <span
+                              className="block w-full truncate text-sm text-gray-900"
+                              title={item.fileName}
+                            >
+                              {item.fileName}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right text-sm text-gray-700">
+                            {formatFileSize(item.fileSizeBytes)}
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-700">
+                            <span
+                              className="block max-w-[160px] truncate whitespace-nowrap"
+                              title={formatDateTime(item.createdAt)}
+                            >
+                              {formatDateTime(item.createdAt)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => onOpenSecondaryAttachment?.(item.id)}
+                                disabled={isPending}
+                                className="jobs-page__info-modal__attachment-open shrink-0 rounded-lg border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1.5 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                              >
+                                OTEVŘÍT
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onDownloadSecondaryAttachment?.(item.id)}
+                                disabled={isPending}
+                                className="jobs-page__info-modal__attachment-download shrink-0 rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                              >
+                                STÁHNOUT
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

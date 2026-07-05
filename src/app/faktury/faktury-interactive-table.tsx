@@ -12,16 +12,19 @@ import {
   updateJobPpRequirementAction,
 } from '../jobs/pp-requirement-actions'
 import {
+  downloadOfferOrderAttachmentAction,
   downloadJobAttachmentAction,
   deleteJobAttachmentAction,
   deleteFinanceCostItemsAction,
   getJobAttachmentsAction,
   getFinanceCostItemsAction,
+  openOfferOrderAttachmentAction,
   saveFinanceCostItemsAction,
   uploadJobAttachmentsAction,
   updateFinanceInlineFieldAction,
   type FinanceCostItem,
   type FinanceCostItemInput,
+  type OfferOrderAttachment,
 } from './actions'
 import type {
   JobAttachment,
@@ -57,6 +60,9 @@ type JobOfferOption = {
   client_id: string
   offer_number: string
   title: string
+  realization_starts_at: string | null
+  realization_ends_at: string | null
+  realization_address: string | null
 }
 
 type CostPreset = {
@@ -918,6 +924,9 @@ function JobAttachmentsModal({
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [items, setItems] = useState<JobAttachment[]>([])
+  const [offerOrderFiles, setOfferOrderFiles] = useState<OfferOrderAttachment[]>([])
+  const [offerOrderReference, setOfferOrderReference] = useState<string | null>(null)
+  const [hasLinkedOffer, setHasLinkedOffer] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -957,12 +966,18 @@ function JobAttachmentsModal({
       if (!result.success) {
         setErrorMessage(result.error ?? 'Přílohy se nepodařilo načíst.')
         setItems([])
+        setOfferOrderFiles([])
+        setOfferOrderReference(null)
+        setHasLinkedOffer(false)
         onAttachmentPresenceChange(false)
         setIsLoading(false)
         return
       }
 
       setItems(result.items)
+      setOfferOrderFiles(result.offerOrderFiles)
+      setOfferOrderReference(result.offerOrderReference)
+      setHasLinkedOffer(result.hasLinkedOffer)
       onAttachmentPresenceChange(result.items.length > 0)
       setIsLoading(false)
     }
@@ -1043,6 +1058,9 @@ function JobAttachmentsModal({
         const refreshed = await getJobAttachmentsAction(jobId)
         if (refreshed.success) {
           setItems(refreshed.items)
+          setOfferOrderFiles(refreshed.offerOrderFiles)
+          setOfferOrderReference(refreshed.offerOrderReference)
+          setHasLinkedOffer(refreshed.hasLinkedOffer)
           onAttachmentPresenceChange(refreshed.items.length > 0)
         }
 
@@ -1070,6 +1088,34 @@ function JobAttachmentsModal({
       const result = await downloadJobAttachmentAction(attachmentId)
       if (!result.success || !result.signedUrl) {
         setErrorMessage(result.error ?? 'Přílohu se nepodařilo stáhnout.')
+        return
+      }
+
+      window.open(result.signedUrl, '_blank', 'noopener,noreferrer')
+    })
+  }
+
+  function handleOpenOfferOrderAttachment(attachmentId: string) {
+    setErrorMessage(null)
+
+    startTransition(async () => {
+      const result = await openOfferOrderAttachmentAction(attachmentId)
+      if (!result.success || !result.signedUrl) {
+        setErrorMessage(result.error ?? 'Podklad k objednávce se nepodařilo otevřít.')
+        return
+      }
+
+      window.open(result.signedUrl, '_blank', 'noopener,noreferrer')
+    })
+  }
+
+  function handleDownloadOfferOrderAttachment(attachmentId: string) {
+    setErrorMessage(null)
+
+    startTransition(async () => {
+      const result = await downloadOfferOrderAttachmentAction(attachmentId)
+      if (!result.success || !result.signedUrl) {
+        setErrorMessage(result.error ?? 'Podklad k objednávce se nepodařilo stáhnout.')
         return
       }
 
@@ -1152,6 +1198,27 @@ function JobAttachmentsModal({
       onOpenAttachment={handleOpenAttachment}
       onDownloadAttachment={handleDownloadAttachment}
       onDeleteAttachment={handleDeleteAttachment}
+      secondarySectionVisible
+      secondarySectionDescription={
+        hasLinkedOffer && offerOrderReference ? (
+          <span>
+            Číslo objednávky: <strong>{offerOrderReference}</strong>
+          </span>
+        ) : null
+      }
+      secondaryItems={offerOrderFiles.map((item) => ({
+        id: item.id,
+        fileName: item.fileName,
+        fileSizeBytes: item.fileSizeBytes,
+        createdAt: item.createdAt,
+      }))}
+      secondaryEmptyMessage={
+        hasLinkedOffer
+          ? 'K této navázané nabídce zatím nejsou nahrané žádné podklady k objednávce.'
+          : 'Podklady k objednávce nelze načíst, protože tato zakázka není napojená na žádnou nabídku.'
+      }
+      onOpenSecondaryAttachment={handleOpenOfferOrderAttachment}
+      onDownloadSecondaryAttachment={handleDownloadOfferOrderAttachment}
     />,
     document.body
   )

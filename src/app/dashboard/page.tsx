@@ -214,6 +214,9 @@ type DashboardOfferOption = {
   client_id: string
   offer_number: string
   title: string
+  realization_starts_at: string | null
+  realization_ends_at: string | null
+  realization_address: string | null
 }
 
 type DashboardTask = {
@@ -1514,7 +1517,9 @@ export default async function DashboardPage({
       .order('name', { ascending: true }),
     supabase
       .from('offers')
-      .select('id, client_id, offer_number, title, offer_type, status')
+      .select(
+        'id, client_id, offer_number, title, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
+      )
       .eq('offer_type', 'classic')
       .neq('status', 'realizace')
       .order('offer_number', { ascending: false }),
@@ -1576,7 +1581,15 @@ export default async function DashboardPage({
       Boolean(String(item.client_id ?? '').trim()) &&
       Boolean(String(item.offer_number ?? '').trim()) &&
       Boolean(String(item.title ?? '').trim())
-  )
+  ).map((item) => ({
+    id: String(item.id ?? '').trim(),
+    client_id: String(item.client_id ?? '').trim(),
+    offer_number: String(item.offer_number ?? '').trim(),
+    title: String(item.title ?? '').trim(),
+    realization_starts_at: item.realization_starts_at ?? null,
+    realization_ends_at: item.realization_ends_at ?? null,
+    realization_address: item.realization_address ?? null,
+  }))
   const clientNameById = new Map(quickActionClients.map((client) => [client.id, client.name]))
 
   const offerIds = dashboardOffers.map((offer) => offer.id)

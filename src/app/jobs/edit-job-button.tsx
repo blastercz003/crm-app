@@ -42,6 +42,9 @@ type OfferOption = {
   client_id: string
   offer_number: string
   title: string
+  realization_starts_at: string | null
+  realization_ends_at: string | null
+  realization_address: string | null
 }
 
 type JobFormValues = {
@@ -270,6 +273,9 @@ function JobFormShell({
         client_id: clientId,
         offer_number: offerNumber,
         title,
+        realization_starts_at: offer.realization_starts_at ?? null,
+        realization_ends_at: offer.realization_ends_at ?? null,
+        realization_address: offer.realization_address ?? null,
       })
     }
 

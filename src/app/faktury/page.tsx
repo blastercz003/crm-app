@@ -126,6 +126,9 @@ type JobOfferOption = {
   client_id: string
   offer_number: string
   title: string
+  realization_starts_at: string | null
+  realization_ends_at: string | null
+  realization_address: string | null
 }
 
 type FinanceStatsJoinRow = {
@@ -604,7 +607,9 @@ export default async function FakturyPage({
       .order('name', { ascending: true }),
     supabase
       .from('offers')
-      .select('id, client_id, offer_number, title, offer_type, status')
+      .select(
+        'id, client_id, offer_number, title, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
+      )
       .eq('offer_type', 'classic')
       .neq('status', 'realizace')
       .order('offer_number', { ascending: false }),
@@ -686,6 +691,9 @@ export default async function FakturyPage({
       client_id: String(item.client_id ?? '').trim(),
       offer_number: String(item.offer_number ?? '').trim(),
       title: String(item.title ?? '').trim(),
+      realization_starts_at: item.realization_starts_at ?? null,
+      realization_ends_at: item.realization_ends_at ?? null,
+      realization_address: item.realization_address ?? null,
     }))
     .filter((item) => item.id && item.client_id && item.offer_number && item.title)
 
@@ -1388,6 +1396,9 @@ export default async function FakturyPage({
                 client_id: String(item.client_id ?? '').trim(),
                 offer_number: String(item.offer_number ?? '').trim(),
                 title: String(item.title ?? '').trim(),
+                realization_starts_at: item.realization_starts_at ?? null,
+                realization_ends_at: item.realization_ends_at ?? null,
+                realization_address: item.realization_address ?? null,
               })
             )}
             technicianSuggestions={technicianSuggestions}
