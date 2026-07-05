@@ -520,7 +520,7 @@ export function OfferOrderDetailPanel({
                     {formatOfferOrderFileDate(file.createdAt)}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap justify-end gap-2 sm:ml-auto sm:justify-end">
                   <button
                     type="button"
                     onClick={() => handleOpenFile(file.id)}
