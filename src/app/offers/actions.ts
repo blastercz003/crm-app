@@ -158,7 +158,7 @@ function sanitizeOfferOrderFileName(value: string) {
 
 function buildOfferOrderStoragePath(offerId: string, fileName: string) {
   const safeName = sanitizeOfferOrderFileName(fileName)
-  return `${offerId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
+  return `offer/${offerId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
 }
 
 function isOfferOrderPdfMimeType(mimeType: string) {
