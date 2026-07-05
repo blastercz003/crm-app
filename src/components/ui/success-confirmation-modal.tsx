@@ -8,6 +8,8 @@ type SuccessConfirmationModalProps = {
   message: string
   confirmLabel?: string
   onConfirm: () => void
+  secondaryLabel?: string
+  onSecondary?: () => void
 }
 
 export function SuccessConfirmationModal({
@@ -16,6 +18,8 @@ export function SuccessConfirmationModal({
   message,
   confirmLabel = 'OK',
   onConfirm,
+  secondaryLabel,
+  onSecondary,
 }: SuccessConfirmationModalProps) {
   if (!isOpen || typeof document === 'undefined') {
     return null
@@ -55,13 +59,25 @@ export function SuccessConfirmationModal({
               {message}
             </p>
 
-            <button
-              type="button"
-              onClick={onConfirm}
-              className="mt-5 inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
-            >
-              {confirmLabel}
-            </button>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {secondaryLabel && onSecondary ? (
+                <button
+                  type="button"
+                  onClick={onSecondary}
+                  className="inline-flex h-10 min-w-[156px] items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+                >
+                  {secondaryLabel}
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="inline-flex h-10 min-w-[156px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]"
+              >
+                {confirmLabel}
+              </button>
+            </div>
           </div>
         </div>
       </div>

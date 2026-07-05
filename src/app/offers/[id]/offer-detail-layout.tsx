@@ -5,7 +5,6 @@ import {
   markOfferInProgress,
   rejectOffer,
   sendOfferToClient,
-  setOfferClientOutcome,
   setOfferPresetChoice,
   toggleOfferPresetItem,
   updateOfferDetails,
@@ -53,6 +52,10 @@ import { SaveOfferButton } from './save-offer-button'
 import { RejectOfferWithReasonButton } from '@/app/offers/reject-offer-with-reason-button'
 import { OfferInfoCards } from './offer-info-cards'
 import { OfferServicesToggleGrid } from './offer-services-toggle-grid'
+import {
+  OfferOrderDetailPanel,
+  OfferOrderTransitionButton,
+} from '@/app/offers/offer-order-modal'
 
 const STATUS_LABELS: Record<OfferStatus, string> = {
   draft: 'Rozpracovaná',
@@ -302,11 +305,13 @@ export function OfferDetailLayout({
   const author = profileById.get(offer.created_by)
   const lastEditor = offer.last_edited_by ? profileById.get(offer.last_edited_by) : null
   const canManageInProgressNotes = isAdmin || offer.created_by === profile.id
+  const canManageOfferOrderData = isAdmin || offer.created_by === profile.id
   const showApprovalBox =
     offer.status !== 'sent_to_client' &&
     offer.status !== 'in_progress' &&
     offer.status !== 'ordered' &&
-    offer.status !== 'rejected'
+    offer.status !== 'rejected' &&
+    offer.status !== 'realizace'
   const canShowInProgressEntryBox = offer.status === 'sent_to_client'
   const canShowInProgressDetailBox = offer.status === 'in_progress'
   const isFinalClientOutcome =
@@ -676,14 +681,11 @@ export function OfferDetailLayout({
                   </div>
 
                   <div className="grid gap-2 border-t border-orange-300 pt-3">
-                    <form action={setOfferClientOutcome.bind(null, offer.id, 'ordered')}>
-                      <button
-                        type="submit"
-                        className="offers-detail-page__approval-button offers-detail-page__approval-button--ordered inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px]"
-                      >
-                        OBJEDNÁNO
-                      </button>
-                    </form>
+                    <OfferOrderTransitionButton
+                      offerId={offer.id}
+                      offerNumber={offer.offer_number}
+                      currentStatus={offer.status}
+                    />
                     <RejectOfferWithReasonButton offerId={offer.id} />
                   </div>
                 </div>
@@ -747,6 +749,15 @@ export function OfferDetailLayout({
                   </div>
                 ) : null}
               </section>
+            ) : null}
+
+            {offer.status === 'ordered' || offer.status === 'realizace' ? (
+              <OfferOrderDetailPanel
+                offerId={offer.id}
+                offerNumber={offer.offer_number}
+                currentStatus={offer.status}
+                canEdit={canManageOfferOrderData}
+              />
             ) : null}
 
             <OfferInfoCards

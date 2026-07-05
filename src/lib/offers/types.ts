@@ -35,6 +35,7 @@ export type OfferRow = {
   prepared_by_name: string | null
   prepared_by_phone: string | null
   prepared_by_email: string | null
+  order_reference: string | null
   intro_note: string | null
   internal_note: string | null
   terms_note: string | null
@@ -79,6 +80,17 @@ export type OfferProgressNoteRow = {
   offer_id: string
   author_user_id: string
   note: string
+  created_at: string
+}
+
+export type OfferOrderFileRow = {
+  id: string
+  offer_id: string
+  storage_path: string
+  file_name: string
+  mime_type: string
+  file_size_bytes: number
+  uploaded_by: string
   created_at: string
 }
 

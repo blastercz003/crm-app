@@ -6,6 +6,7 @@ import { createNotification } from '@/lib/notifications/createNotification'
 import { reportActionError } from '@/lib/errors/reportActionError'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 import { getOfferApprover, getOfferRuntimeContext } from '@/lib/offers/permissions'
+import { optimizeUploadFile } from '@/lib/uploads/optimize-upload-file'
 import {
   BSAFE24_BACKUP_LOCATION_COUNT_GROUP_LABEL,
   BSAFE24_BACKUP_LOCATION_COUNT_PRESETS,
@@ -20,7 +21,7 @@ import {
   OFFER_SERVICE_GROUP_LABEL,
   OFFER_SERVICE_PRESETS,
 } from '@/lib/offers/presets'
-import type { OfferRow, OfferStatus, OfferType } from '@/lib/offers/types'
+import type { OfferOrderFileRow, OfferRow, OfferStatus, OfferType } from '@/lib/offers/types'
 
 export type OfferFormActionState = {
   success: boolean
@@ -43,6 +44,83 @@ export type SaveOfferItemsActionState = {
   success: boolean
   error: string | null
 }
+
+export type OfferOrderFileListItem = {
+  id: string
+  fileName: string
+  mimeType: string
+  fileSizeBytes: number
+  createdAt: string
+}
+
+export type OfferOrderData = {
+  orderReference: string | null
+  files: OfferOrderFileListItem[]
+}
+
+export type UploadOfferOrderFileActionState =
+  | {
+      success: true
+      error: null
+      fileId: string
+      orderReference: string | null
+    }
+  | {
+      success: false
+      error: string
+      fileId: null
+      orderReference: string | null
+    }
+
+export type SaveOfferOrderReferenceActionState =
+  | {
+      success: true
+      error: null
+      orderReference: string | null
+    }
+  | {
+      success: false
+      error: string
+      orderReference: string | null
+    }
+
+export type OpenOfferOrderFileActionState =
+  | {
+      success: true
+      error: null
+      signedUrl: string
+    }
+  | {
+      success: false
+      error: string
+      signedUrl: null
+    }
+
+export type DownloadOfferOrderFileActionState =
+  | {
+      success: true
+      error: null
+      signedUrl: string
+    }
+  | {
+      success: false
+      error: string
+      signedUrl: null
+    }
+
+const OFFER_ORDER_FILES_BUCKET = 'offer-orders'
+const OFFER_ORDER_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024
+const OFFER_ORDER_ALLOWED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+  'image/bmp',
+  'image/tiff',
+])
+const OFFER_ORDER_ALLOWED_PDF_MIME_TYPES = new Set(['application/pdf'])
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -70,6 +148,120 @@ function getOptionalNumber(formData: FormData, key: string) {
 
   const parsed = Number(raw)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function sanitizeOfferOrderFileName(value: string) {
+  const normalized = String(value ?? '').trim().replace(/\s+/g, ' ')
+  const safe = normalized.replace(/[^a-zA-Z0-9._\-() ,'!*$&@=;:+?]/g, '_')
+  return safe.length > 0 ? safe : 'soubor'
+}
+
+function buildOfferOrderStoragePath(offerId: string, fileName: string) {
+  const safeName = sanitizeOfferOrderFileName(fileName)
+  return `${offerId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
+}
+
+function isOfferOrderPdfMimeType(mimeType: string) {
+  return OFFER_ORDER_ALLOWED_PDF_MIME_TYPES.has(mimeType)
+}
+
+function isOfferOrderImageMimeType(mimeType: string) {
+  return OFFER_ORDER_ALLOWED_IMAGE_MIME_TYPES.has(mimeType)
+}
+
+function normalizeOrderReference(value: string | null | undefined) {
+  const normalized = String(value ?? '').trim().replace(/\s+/g, ' ')
+  return normalized.length > 0 ? normalized : null
+}
+
+async function prepareOfferOrderUploadFile(file: File) {
+  const originalMimeType = String(file.type ?? '').trim().toLowerCase()
+
+  if (!isOfferOrderPdfMimeType(originalMimeType) && !isOfferOrderImageMimeType(originalMimeType)) {
+    throw new Error('Podporované jsou pouze PDF a obrázky.')
+  }
+
+  if (isOfferOrderPdfMimeType(originalMimeType)) {
+    if (file.size > OFFER_ORDER_MAX_FILE_SIZE_BYTES) {
+      throw new Error(`Soubor "${file.name}" překračuje limit 2 MB.`)
+    }
+
+    return file
+  }
+
+  let optimizedFile = file
+
+  try {
+    optimizedFile = await optimizeUploadFile(file)
+  } catch {
+    optimizedFile = file
+  }
+
+  if (optimizedFile.size <= OFFER_ORDER_MAX_FILE_SIZE_BYTES) {
+    return optimizedFile
+  }
+
+  if (file.size <= OFFER_ORDER_MAX_FILE_SIZE_BYTES) {
+    return file
+  }
+
+  throw new Error(`Soubor "${file.name}" překračuje limit 2 MB i po optimalizaci.`)
+}
+
+async function updateOfferOrderReferenceInternal(params: {
+  supabase: Awaited<ReturnType<typeof getOfferRuntimeContext>>['supabase']
+  profileId: string
+  offer: OfferRow
+  nextValue: string | null
+}) {
+  const { supabase, profileId, offer, nextValue } = params
+  const previousValue = normalizeOrderReference(offer.order_reference)
+  const normalizedNextValue = normalizeOrderReference(nextValue)
+
+  if (previousValue === normalizedNextValue) {
+    return normalizedNextValue
+  }
+
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('offers')
+    .update({
+      order_reference: normalizedNextValue,
+      last_edited_by: profileId,
+      updated_at: now,
+    })
+    .eq('id', offer.id)
+
+  if (error) {
+    throw new Error(`Nepodařilo se uložit číslo objednávky: ${error.message}`)
+  }
+
+  await logUserActivity({
+    action: normalizedNextValue
+      ? `Změnil číslo objednávky u nabídky ${offer.offer_number} na ${normalizedNextValue}`
+      : `Vymazal číslo objednávky u nabídky ${offer.offer_number}`,
+    section: 'Nabídky',
+    route: `/offers/${offer.id}`,
+    userId: profileId,
+  })
+
+  return normalizedNextValue
+}
+
+async function getOfferOrderFilesCount(
+  supabase: Awaited<ReturnType<typeof getOfferRuntimeContext>>['supabase'],
+  offerId: string
+) {
+  const { count, error } = await supabase
+    .from('offer_order_files')
+    .select('id', { count: 'exact', head: true })
+    .eq('offer_id', offerId)
+
+  if (error) {
+    throw new Error(`Nepodařilo se ověřit podklady k objednávce: ${error.message}`)
+  }
+
+  return count ?? 0
 }
 
 function getDateTimeOrNull(formData: FormData, key: string) {
@@ -1873,6 +2065,259 @@ export async function addOfferProgressNote(offerId: string, formData: FormData) 
   revalidatePath(`/clients/${offer.client_id}`)
   revalidatePath('/dashboard')
   revalidatePath('/notifications')
+}
+
+export async function getOfferOrderData(offerId: string): Promise<OfferOrderData> {
+  const { supabase, offer } = await loadOfferForAction(offerId)
+
+  const { data, error } = await supabase
+    .from('offer_order_files')
+    .select('id, file_name, mime_type, file_size_bytes, created_at')
+    .eq('offer_id', offer.id)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Nepodařilo se načíst podklady k objednávce: ${error.message}`)
+  }
+
+  const files = ((data ?? []) as Array<Pick<OfferOrderFileRow, 'id' | 'file_name' | 'mime_type' | 'file_size_bytes' | 'created_at'>>).map(
+    (row) => ({
+      id: row.id,
+      fileName: row.file_name,
+      mimeType: row.mime_type,
+      fileSizeBytes: row.file_size_bytes,
+      createdAt: row.created_at,
+    })
+  )
+
+  return {
+    orderReference: normalizeOrderReference(offer.order_reference),
+    files,
+  }
+}
+
+export async function saveOfferOrderReferenceAction(
+  offerId: string,
+  orderReferenceInput: string | null
+): Promise<SaveOfferOrderReferenceActionState> {
+  try {
+    const { supabase, profile, offer } = await loadOfferForAction(offerId)
+    if (offer.status === 'realizace') {
+      return {
+        success: false,
+        error: 'Ve stavu Realizace už nelze číslo objednávky upravovat.',
+        orderReference: normalizeOrderReference(offer.order_reference),
+      }
+    }
+
+    const orderReference = await updateOfferOrderReferenceInternal({
+      supabase,
+      profileId: profile.id,
+      offer,
+      nextValue: orderReferenceInput,
+    })
+
+    revalidatePath('/offers')
+    revalidatePath(`/offers/${offerId}`)
+    revalidatePath(`/clients/${offer.client_id}`)
+    revalidatePath('/dashboard')
+
+    return { success: true, error: null, orderReference }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Nepodařilo se uložit číslo objednávky.',
+      orderReference: normalizeOrderReference(orderReferenceInput),
+    }
+  }
+}
+
+export async function uploadOfferOrderFileAction(
+  offerId: string,
+  formData: FormData
+): Promise<UploadOfferOrderFileActionState> {
+  try {
+    const { supabase, profile, offer } = await loadOfferForAction(offerId)
+    if (offer.status === 'realizace') {
+      return {
+        success: false,
+        error: 'Ve stavu Realizace už nelze nahrávat další podklady k objednávce.',
+        fileId: null,
+        orderReference: normalizeOrderReference(offer.order_reference),
+      }
+    }
+
+    const fileEntry = formData.get('file')
+
+    if (!(fileEntry instanceof File) || fileEntry.size <= 0) {
+      return { success: false, error: 'Vyber soubor k nahrání.', fileId: null, orderReference: normalizeOrderReference(offer.order_reference) }
+    }
+
+    const preparedFile = await prepareOfferOrderUploadFile(fileEntry)
+    const orderReferenceInput = getOptionalString(formData, 'order_reference')
+    const storagePath = buildOfferOrderStoragePath(offer.id, preparedFile.name)
+    const uploadBuffer = Buffer.from(await preparedFile.arrayBuffer())
+    const contentType = String(preparedFile.type ?? fileEntry.type ?? '').trim().toLowerCase() || 'application/octet-stream'
+
+    const { error: uploadError } = await supabase.storage
+      .from(OFFER_ORDER_FILES_BUCKET)
+      .upload(storagePath, uploadBuffer, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType,
+      })
+
+    if (uploadError) {
+      throw new Error(`Soubor "${fileEntry.name}" se nepodařilo nahrát (${uploadError.message}).`)
+    }
+
+    const now = new Date().toISOString()
+    const { data: insertedRow, error: insertError } = await supabase
+      .from('offer_order_files')
+      .insert({
+        offer_id: offer.id,
+        storage_path: storagePath,
+        file_name: sanitizeOfferOrderFileName(preparedFile.name),
+        mime_type: contentType,
+        file_size_bytes: preparedFile.size,
+        uploaded_by: profile.id,
+        created_at: now,
+      })
+      .select('id')
+      .single()
+
+    if (insertError || !insertedRow) {
+      await supabase.storage.from(OFFER_ORDER_FILES_BUCKET).remove([storagePath])
+      throw new Error(`Metadata souboru "${fileEntry.name}" se nepodařilo uložit.`)
+    }
+
+    const resolvedOrderReference = await updateOfferOrderReferenceInternal({
+      supabase,
+      profileId: profile.id,
+      offer,
+      nextValue: orderReferenceInput,
+    })
+
+    await logUserActivity({
+      action: `Nahrál podklad k objednávce pro nabídku ${offer.offer_number}: ${sanitizeOfferOrderFileName(preparedFile.name)}`,
+      section: 'Nabídky',
+      route: `/offers/${offer.id}`,
+      userId: profile.id,
+    })
+
+    revalidatePath('/offers')
+    revalidatePath(`/offers/${offerId}`)
+    revalidatePath(`/clients/${offer.client_id}`)
+    revalidatePath('/dashboard')
+
+    return {
+      success: true,
+      error: null,
+      fileId: String((insertedRow as { id: string }).id),
+      orderReference: resolvedOrderReference,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Nepodařilo se nahrát podklad k objednávce.',
+      fileId: null,
+      orderReference: normalizeOrderReference(getOptionalString(formData, 'order_reference')),
+    }
+  }
+}
+
+export async function openOfferOrderFileAction(
+  offerOrderFileId: string
+): Promise<OpenOfferOrderFileActionState> {
+  try {
+    const { supabase } = await getOfferRuntimeContext()
+    const normalizedId = String(offerOrderFileId ?? '').trim()
+
+    if (!normalizedId) {
+      return { success: false, error: 'Chybí ID souboru.', signedUrl: null }
+    }
+
+    const { data: row, error: rowError } = await supabase
+      .from('offer_order_files')
+      .select('id, storage_path')
+      .eq('id', normalizedId)
+      .single()
+
+    if (rowError || !row) {
+      return { success: false, error: 'Soubor nebyl nalezen.', signedUrl: null }
+    }
+
+    const { data, error } = await supabase.storage
+      .from(OFFER_ORDER_FILES_BUCKET)
+      .createSignedUrl(String((row as { storage_path: string }).storage_path), 60 * 10)
+
+    if (error || !data?.signedUrl) {
+      return { success: false, error: 'Nepodařilo se vytvořit odkaz na soubor.', signedUrl: null }
+    }
+
+    return { success: true, error: null, signedUrl: data.signedUrl }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Nepodařilo se vytvořit odkaz na soubor.',
+      signedUrl: null,
+    }
+  }
+}
+
+export async function downloadOfferOrderFileAction(
+  offerOrderFileId: string
+): Promise<DownloadOfferOrderFileActionState> {
+  try {
+    const { supabase } = await getOfferRuntimeContext()
+    const normalizedId = String(offerOrderFileId ?? '').trim()
+
+    if (!normalizedId) {
+      return { success: false, error: 'Chybí ID souboru.', signedUrl: null }
+    }
+
+    const { data: row, error: rowError } = await supabase
+      .from('offer_order_files')
+      .select('id, file_name, storage_path')
+      .eq('id', normalizedId)
+      .single()
+
+    if (rowError || !row) {
+      return { success: false, error: 'Soubor nebyl nalezen.', signedUrl: null }
+    }
+
+    const typedRow = row as { file_name: string; storage_path: string }
+    const { data, error } = await supabase.storage
+      .from(OFFER_ORDER_FILES_BUCKET)
+      .createSignedUrl(String(typedRow.storage_path), 60 * 10, {
+        download: String(typedRow.file_name ?? '').trim() || undefined,
+      })
+
+    if (error || !data?.signedUrl) {
+      return { success: false, error: 'Nepodařilo se vytvořit odkaz pro stažení.', signedUrl: null }
+    }
+
+    return { success: true, error: null, signedUrl: data.signedUrl }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Nepodařilo se vytvořit odkaz pro stažení.',
+      signedUrl: null,
+    }
+  }
+}
+
+export async function finalizeOfferOrderedStatusAction(offerId: string) {
+  const { supabase, offer } = await loadOfferForAction(offerId)
+  const attachmentsCount = await getOfferOrderFilesCount(supabase, offer.id)
+
+  if (attachmentsCount <= 0) {
+    throw new Error('Před změnou stavu na Objednáno musí být nahrán alespoň jeden soubor.')
+  }
+
+  await setOfferStatusFromList(offerId, 'ordered')
 }
 
 export async function createOffer(formData: FormData) {

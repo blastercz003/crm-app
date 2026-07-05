@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
-import { setOfferStatusFromList } from '@/app/offers/actions'
+import {
+  setOfferStatusFromList,
+} from '@/app/offers/actions'
 import type { OfferStatus } from '@/lib/offers/types'
 import {
   ActionFeedbackToast,
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
+import { OfferOrderModal } from './offer-order-modal'
 
 const STATUS_BADGE_WIDTH_CLASS = 'w-[150px]'
 
@@ -98,6 +101,7 @@ export function OfferStatusButton({
   const [isOpen, setIsOpen] = useState(false)
   const [isRejectOpen, setIsRejectOpen] = useState(false)
   const [isRealizaceConfirmOpen, setIsRealizaceConfirmOpen] = useState(false)
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rejectError, setRejectError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -119,6 +123,11 @@ export function OfferStatusButton({
     }
     if (nextStatus === 'realizace') {
       setIsRealizaceConfirmOpen(true)
+      return
+    }
+    if (nextStatus === 'ordered') {
+      setIsOpen(false)
+      setIsOrderModalOpen(true)
       return
     }
 
@@ -234,6 +243,26 @@ export function OfferStatusButton({
           onConfirm={confirmRealizace}
         />
       ) : null}
+
+      <OfferOrderModal
+        isOpen={isOrderModalOpen}
+        offerId={offerId}
+        offerNumber={offerNumber}
+        currentStatus={currentStatus}
+        canFinalizeStatus={currentStatus !== 'ordered' && currentStatus !== 'realizace'}
+        onClose={() => setIsOrderModalOpen(false)}
+        onStatusFinalized={() => {
+          showToast(buildStatusChangedToast(currentStatus, 'ordered'))
+          setIsOrderModalOpen(false)
+        }}
+        onError={(message) => {
+          showToast({
+            title: 'CHYBA',
+            message,
+            tone: 'error',
+          })
+        }}
+      />
     </>
   )
 }
