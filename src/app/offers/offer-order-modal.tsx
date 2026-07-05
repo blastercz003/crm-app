@@ -226,12 +226,12 @@ export function OfferOrderModal({
             <div aria-hidden className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
             <div aria-hidden className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
 
-            <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+            <div className="offers-page__order-modal__header relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
               <div className="flex flex-col items-start">
-                <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+                <h2 className="offers-page__order-modal__title text-lg font-semibold tracking-tight text-gray-900">
                   Objednávka k nabídce
                 </h2>
-                <div className="mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
+                <div className="offers-page__order-modal__number mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
                   {offerNumber}
                 </div>
               </div>
@@ -239,7 +239,7 @@ export function OfferOrderModal({
                 type="button"
                 onClick={onClose}
                 disabled={isUploadPending || isFinalizePending}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="offers-page__order-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Zavřít"
               >
                 ✕
@@ -247,11 +247,11 @@ export function OfferOrderModal({
             </div>
 
             {isLoading ? (
-              <div className="relative rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-4 py-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
+              <div className="offers-page__order-modal__loading relative rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-4 py-4 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
                 Načítám podklady k objednávce…
               </div>
             ) : loadError ? (
-              <div className="relative rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+              <div className="offers-page__order-modal__error relative rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
                 {loadError}
               </div>
             ) : (
@@ -259,7 +259,7 @@ export function OfferOrderModal({
                 <div className="grid gap-2">
                   <label
                     htmlFor={`order-reference-${offerId}`}
-                    className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+                    className="offers-page__order-modal__label text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
                   >
                     Číslo objednávky
                   </label>
@@ -270,12 +270,12 @@ export function OfferOrderModal({
                     onChange={(event) => setOrderReference(event.target.value)}
                     disabled={isReadOnly || isUploadPending || isFinalizePending}
                     placeholder="Volitelné číslo objednávky"
-                    className="h-11 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="offers-page__order-modal__input h-11 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef] disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </div>
 
                 {!isReadOnly ? (
-                  <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.08)]">
+                  <div className="offers-page__order-modal__section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.08)]">
                     <div className="grid gap-3">
                       <input
                         type="file"
@@ -286,20 +286,22 @@ export function OfferOrderModal({
                           setSelectedFile(nextFile)
                           setUploadError(null)
                         }}
-                        className="block w-full text-sm text-gray-700 file:mr-3 file:rounded-xl file:border-0 file:bg-[#2f77af] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#286897]"
+                        className="offers-page__order-modal__file-input block w-full text-sm text-gray-700 file:mr-3 file:rounded-xl file:border-0 file:bg-[#2f77af] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#286897]"
                       />
-                      <div className="text-xs text-gray-500">
+                      <div className="offers-page__order-modal__hint text-xs text-gray-500">
                         Povolené soubory: PDF nebo obrázek. Maximální velikost 2 MB.
                       </div>
                       {uploadError ? (
-                        <div className="text-sm font-medium text-red-700">{uploadError}</div>
+                        <div className="offers-page__order-modal__upload-error text-sm font-medium text-red-700">
+                          {uploadError}
+                        </div>
                       ) : null}
                       <div className="flex justify-end">
                         <button
                           type="button"
                           onClick={handleUpload}
                           disabled={!selectedFile || isUploadPending || isFinalizePending}
-                          className="inline-flex h-10 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="offers-page__order-modal__primary-action inline-flex h-10 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isUploadPending ? 'Nahrávám…' : 'NAHRÁT SOUBOR'}
                         </button>
@@ -308,32 +310,32 @@ export function OfferOrderModal({
                   </div>
                 ) : null}
 
-                <div className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.08)]">
-                  <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                <div className="offers-page__order-modal__section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.08)]">
+                  <div className="offers-page__order-modal__label mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                     Nahrané soubory
                   </div>
 
                   {hasFiles ? (
-                    <div className="space-y-3">
+                    <div className="offers-page__order-modal__files space-y-3">
                       {orderData?.files.map((file) => (
                         <div
                           key={file.id}
-                          className="flex flex-col gap-3 rounded-xl border border-[#d6dee8] bg-white/80 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)] sm:flex-row sm:items-center sm:justify-between"
+                          className="offers-page__order-modal__file-card flex flex-col gap-3 rounded-xl border border-[#d6dee8] bg-white/80 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)] sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-gray-900">
+                            <div className="offers-page__order-modal__file-name truncate text-sm font-semibold text-gray-900">
                               {file.fileName}
                             </div>
-                            <div className="mt-1 text-xs text-gray-500">
+                            <div className="offers-page__order-modal__file-date mt-1 text-xs text-gray-500">
                               {formatOfferOrderFileDate(file.createdAt)}
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="offers-page__order-modal__file-actions flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={() => handleOpenFile(file.id)}
                               disabled={isUploadPending || isFinalizePending}
-                              className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="offers-page__order-modal__file-action inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               ZOBRAZIT
                             </button>
@@ -341,7 +343,7 @@ export function OfferOrderModal({
                               type="button"
                               onClick={() => handleDownloadFile(file.id)}
                               disabled={isUploadPending || isFinalizePending}
-                              className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="offers-page__order-modal__file-action inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               STÁHNOUT
                             </button>
@@ -350,7 +352,7 @@ export function OfferOrderModal({
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
+                    <div className="offers-page__order-modal__empty rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.08)]">
                       Zatím nejsou nahrané žádné soubory.
                     </div>
                   )}
@@ -362,7 +364,7 @@ export function OfferOrderModal({
                       type="button"
                       onClick={handleFinalizeStatus}
                       disabled={!hasFiles || isUploadPending || isFinalizePending}
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="offers-page__order-modal__finalize-action inline-flex h-10 items-center justify-center rounded-xl border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_20px_rgba(16,185,129,0.24)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {isFinalizePending ? 'Ukládám…' : 'ULOŽIT STAV NABÍDKY'}
                     </button>
@@ -474,13 +476,13 @@ export function OfferOrderDetailPanel({
   return (
     <>
       {toast ? <ActionFeedbackToast toast={toast} isVisible={isVisible} /> : null}
-      <section className="offers-detail-page__final-panel min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+      <section className="offers-detail-page__final-panel offers-detail-page__order-files-panel min-w-0 rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
+            <div className="offers-detail-page__order-files-title text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-900">
               Podklady k objednávce
             </div>
-            <div className="mt-2 text-sm text-gray-600">
+            <div className="offers-detail-page__order-files-reference mt-2 text-sm text-gray-600">
               {orderData?.orderReference ? (
                 <>
                   <span className="font-semibold text-gray-900">Číslo objednávky:</span>{' '}
@@ -496,42 +498,44 @@ export function OfferOrderDetailPanel({
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px]"
+              className="offers-detail-page__order-files-open inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px]"
             >
               OTEVŘÍT PODKLADY
             </button>
           ) : null}
         </div>
 
-        <div className="mt-4 space-y-3 border-t border-gray-100 pt-3">
+        <div className="offers-detail-page__order-files-list mt-4 space-y-3 border-t border-gray-100 pt-3">
           {isLoading ? (
-            <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+            <div className="offers-detail-page__order-files-empty rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
               Načítám podklady k objednávce…
             </div>
           ) : (orderData?.files.length ?? 0) > 0 ? (
             orderData?.files.map((file) => (
               <div
                 key={file.id}
-                className="flex flex-col gap-3 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] sm:flex-row sm:items-center sm:justify-between"
+                className="offers-detail-page__order-files-card flex flex-col gap-3 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-gray-800">{file.fileName}</div>
-                  <div className="mt-1 text-[11px] text-gray-500">
+                  <div className="offers-detail-page__order-files-name truncate text-sm font-semibold text-gray-800">
+                    {file.fileName}
+                  </div>
+                  <div className="offers-detail-page__order-files-date mt-1 text-[11px] text-gray-500">
                     {formatOfferOrderFileDate(file.createdAt)}
                   </div>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2 sm:ml-auto sm:justify-end">
+                <div className="offers-detail-page__order-files-actions flex flex-wrap justify-end gap-2 sm:ml-auto sm:justify-end">
                   <button
                     type="button"
                     onClick={() => handleOpenFile(file.id)}
-                    className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                    className="offers-detail-page__order-files-action inline-flex h-9 min-w-[124px] items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px]"
                   >
                     ZOBRAZIT
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDownloadFile(file.id)}
-                    className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                    className="offers-detail-page__order-files-action inline-flex h-9 min-w-[124px] items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px]"
                   >
                     STÁHNOUT
                   </button>
@@ -539,7 +543,7 @@ export function OfferOrderDetailPanel({
               </div>
             ))
           ) : (
-            <div className="rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
+            <div className="offers-detail-page__order-files-empty rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
               Zatím nejsou nahrané žádné podklady k objednávce.
             </div>
           )}
