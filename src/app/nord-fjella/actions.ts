@@ -42,6 +42,12 @@ export type UpdateNordFjellaReservationActionState = {
   reservationId?: string
 }
 
+export type DeleteNordFjellaReservationActionState = {
+  success: boolean
+  error: string | null
+  deletedReservationId: string | null
+}
+
 export type UpdateNordFjellaSettingsActionState = {
   success: boolean
   error: string | null
@@ -1118,6 +1124,127 @@ export async function updateNordFjellaReservationAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Změny se nepodařilo uložit.',
+    }
+  }
+}
+
+export async function deleteNordFjellaReservationAction(
+  reservationId: string
+): Promise<DeleteNordFjellaReservationActionState> {
+  try {
+    const { supabase } = await requireNordFjellaUser()
+    const normalizedReservationId = String(reservationId ?? '').trim()
+
+    if (!normalizedReservationId) {
+      return {
+        success: false,
+        error: 'Chybí ID rezervace.',
+        deletedReservationId: null,
+      }
+    }
+
+    const { data: existingReservation, error: existingReservationError } = await supabase
+      .from('nord_fjella_reservations')
+      .select('id')
+      .eq('id', normalizedReservationId)
+      .single<{ id: string }>()
+
+    if (existingReservationError || !existingReservation) {
+      return {
+        success: false,
+        error: 'Rezervace nebyla nalezena.',
+        deletedReservationId: null,
+      }
+    }
+
+    const { data: reservationFiles, error: reservationFilesError } = await supabase
+      .from('nord_fjella_reservation_files')
+      .select('id, storage_bucket, storage_path')
+      .eq('reservation_id', normalizedReservationId)
+      .returns<
+        Array<{
+          id: string
+          storage_bucket: string
+          storage_path: string
+        }>
+      >()
+
+    if (reservationFilesError) {
+      return {
+        success: false,
+        error: 'Nepodařilo se načíst soubory rezervace ke smazání.',
+        deletedReservationId: null,
+      }
+    }
+
+    for (const file of reservationFiles ?? []) {
+      const bucket = String(file.storage_bucket ?? '').trim()
+      const path = String(file.storage_path ?? '').trim()
+
+      if (!bucket || !path) continue
+
+      const { error: storageError } = await supabase.storage.from(bucket).remove([path])
+
+      if (storageError) {
+        return {
+          success: false,
+          error: 'Nepodařilo se smazat navázané soubory rezervace.',
+          deletedReservationId: null,
+        }
+      }
+    }
+
+    const { error: deleteFilesError } = await supabase
+      .from('nord_fjella_reservation_files')
+      .delete()
+      .eq('reservation_id', normalizedReservationId)
+
+    if (deleteFilesError) {
+      return {
+        success: false,
+        error: 'Nepodařilo se smazat evidenci souborů rezervace.',
+        deletedReservationId: null,
+      }
+    }
+
+    const { error: deleteItemsError } = await supabase
+      .from('nord_fjella_reservation_items')
+      .delete()
+      .eq('reservation_id', normalizedReservationId)
+
+    if (deleteItemsError) {
+      return {
+        success: false,
+        error: 'Nepodařilo se smazat doplňkové položky rezervace.',
+        deletedReservationId: null,
+      }
+    }
+
+    const { error: deleteReservationError } = await supabase
+      .from('nord_fjella_reservations')
+      .delete()
+      .eq('id', normalizedReservationId)
+
+    if (deleteReservationError) {
+      return {
+        success: false,
+        error: 'Nepodařilo se smazat samotnou rezervaci.',
+        deletedReservationId: null,
+      }
+    }
+
+    revalidatePath('/nord-fjella')
+
+    return {
+      success: true,
+      error: null,
+      deletedReservationId: normalizedReservationId,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Rezervaci se nepodařilo smazat.',
+      deletedReservationId: null,
     }
   }
 }

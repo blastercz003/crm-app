@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
-import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { useFormStatus } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type {
   NordFjellaGuestRow,
@@ -11,6 +11,7 @@ import type {
   NordFjellaReservationRow,
 } from '@/lib/nord-fjella/types'
 import {
+  deleteNordFjellaReservationAction,
   updateNordFjellaReservationAction,
   type UpdateNordFjellaReservationActionState,
 } from './actions'
@@ -33,6 +34,35 @@ const inputClassName =
 
 const selectClassName =
   'clients-modal__select h-11 w-full rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+
+function ReservationDetailFooterActions({ onCancel }: { onCancel: () => void }) {
+  const { pending } = useFormStatus()
+
+  return (
+    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={pending}
+        className="clients-modal__cancel inline-flex items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        ZRUŠIT
+      </button>
+
+      <button
+        type="submit"
+        disabled={pending}
+        aria-busy={pending}
+        className="clients-modal__submit inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {pending ? (
+          <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        ) : null}
+        {pending ? 'UKLÁDÁM...' : 'ULOŽIT ZMĚNY'}
+      </button>
+    </div>
+  )
+}
 
 export function ReservationDetailButton({
   guests,
@@ -109,6 +139,9 @@ function ReservationDetailModal({
   const [cityTaxPersonCount, setCityTaxPersonCount] = useState(String(reservation.city_tax_person_count))
   const [hasManualCityTaxPersonCount, setHasManualCityTaxPersonCount] = useState(false)
   const [isGuestMenuOpen, setIsGuestMenuOpen] = useState(false)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeletePending, startDeleteTransition] = useTransition()
   const guestMenuRef = useRef<HTMLDivElement | null>(null)
 
   useBodyScrollLock(true)
@@ -190,6 +223,22 @@ function ReservationDetailModal({
   function getSafeGuestCount(value: string) {
     const parsed = Number(value)
     return Number.isFinite(parsed) ? Math.max(parsed, 0) : 0
+  }
+
+  function handleDeleteReservation() {
+    setDeleteError(null)
+
+    startDeleteTransition(async () => {
+      const result = await deleteNordFjellaReservationAction(reservation.id)
+
+      if (!result.success) {
+        setDeleteError(result.error ?? 'Rezervaci se nepodařilo smazat.')
+        return
+      }
+
+      setIsDeleteConfirmOpen(false)
+      onClose()
+    })
   }
 
   const modalContent = (
@@ -873,13 +922,71 @@ function ReservationDetailModal({
               </div>
             </div>
 
-            <MobileModalActions
-              submitLabel="ULOŽIT ZMĚNY"
-              pendingSubmitLabel="UKLÁDÁM..."
-              onCancel={onClose}
-              visualStyle="client-modal"
-            />
+            <div className="clients-modal__footer shrink-0 border-t border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteError(null)
+                    setIsDeleteConfirmOpen(true)
+                  }}
+                  className="inline-flex items-center justify-center rounded-2xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] [html[data-theme='dark']_&]:border-red-400/20 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(62,19,27,0.82)_0%,rgba(50,14,24,0.88)_100%)] [html[data-theme='dark']_&]:text-red-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.24)]"
+                >
+                  SMAZAT
+                </button>
+
+                <ReservationDetailFooterActions onCancel={onClose} />
+              </div>
+            </div>
           </form>
+
+          {isDeleteConfirmOpen ? (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/36 p-4 backdrop-blur-[4px]">
+              <div className="clients-modal__shell w-full max-w-md rounded-[28px] border border-red-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.95)_0%,rgba(254,242,242,0.92)_56%,rgba(255,228,230,0.88)_100%)] p-5 shadow-[0_28px_64px_rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:border-red-400/18 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.98)_0%,rgba(20,20,32,0.96)_52%,rgba(38,18,24,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.42)]">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-600 [html[data-theme='dark']_&]:text-red-300">
+                    Potvrzení smazání
+                  </p>
+                  <h3 className="text-xl font-semibold text-zinc-950 [html[data-theme='dark']_&]:text-slate-50">
+                    Smazat rezervaci?
+                  </h3>
+                  <p className="text-sm leading-6 text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                    Trvale se smaže záznam {reservation.reservation_number}, jeho doplňkové položky i
+                    nahrané doklady hosta. Záznam hosta v databázi zůstane zachovaný.
+                  </p>
+                </div>
+
+                {deleteError ? (
+                  <div className="mt-4 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 [html[data-theme='dark']_&]:border-red-400/20 [html[data-theme='dark']_&]:bg-red-500/10 [html[data-theme='dark']_&]:text-red-200">
+                    {deleteError}
+                  </div>
+                ) : null}
+
+                <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isDeletePending) return
+                      setIsDeleteConfirmOpen(false)
+                      setDeleteError(null)
+                    }}
+                    disabled={isDeletePending}
+                    className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(39,39,42,0.08)] [html[data-theme='dark']_&]:border-slate-400/18 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.22)] disabled:opacity-60"
+                  >
+                    ZRUŠIT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteReservation}
+                    disabled={isDeletePending}
+                    className="inline-flex items-center justify-center rounded-2xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.92)_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_28px_rgba(185,28,28,0.24)] disabled:opacity-60"
+                  >
+                    {isDeletePending ? 'MAŽU REZERVACI...' : 'SMAZAT REZERVACI'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
