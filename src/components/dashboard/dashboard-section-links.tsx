@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { CarFront, Plug } from 'lucide-react'
@@ -122,6 +123,21 @@ function IconBSafe24() {
   )
 }
 
+function IconNordFjella() {
+  return (
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/nord-fjella-logo-dark.png"
+        alt="Nord Fjella"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
+  )
+}
+
 export function DashboardSectionLinks({
   canViewJobs,
   canViewJobsPortal,
@@ -129,6 +145,7 @@ export function DashboardSectionLinks({
   canViewConnectionPoints,
   canViewStores,
   canViewBSafe24,
+  canViewNordFjella,
   canViewFiles,
   canViewHandoverProtocolUpload = false,
   handoverProtocolUploadJobs = [],
@@ -142,6 +159,7 @@ export function DashboardSectionLinks({
   canViewConnectionPoints: boolean
   canViewStores: boolean
   canViewBSafe24: boolean
+  canViewNordFjella: boolean
   canViewFiles: boolean
   canViewHandoverProtocolUpload?: boolean
   handoverProtocolUploadJobs?: HandoverProtocolUploadJobOption[]
@@ -190,6 +208,13 @@ export function DashboardSectionLinks({
         icon: <IconBSafe24 />,
       },
       {
+        key: 'nord-fjella',
+        href: '/nord-fjella',
+        label: 'Nord Fjella',
+        visible: canViewNordFjella,
+        icon: <IconNordFjella />,
+      },
+      {
         key: 'assets',
         href: '/majetek',
         label: 'Majetek',
@@ -206,6 +231,7 @@ export function DashboardSectionLinks({
       canViewConnectionPoints,
       canViewStores,
       canViewBSafe24,
+      canViewNordFjella,
       canViewFiles,
       showClients,
       isAdmin,

@@ -184,6 +184,7 @@ type DashboardProfile = {
   can_view_all_technician_handover_uploads: boolean | null
   can_view_stores: boolean | null
   can_view_bsafe24: boolean | null
+  can_view_nord_fjella: boolean | null
   david_dashboard_ikony: boolean | null
   dashboard_schovat_ukoly_a_schuzky: boolean | null
   dashboard_calendar: boolean | null
@@ -1196,7 +1197,7 @@ export default async function DashboardPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, can_view_stores, can_view_bsafe24, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
+      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, can_view_stores, can_view_bsafe24, can_view_nord_fjella, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
@@ -1241,6 +1242,7 @@ export default async function DashboardPage({
   const canViewFiles = isAdmin || Boolean(profile?.can_view_job_attachments)
   const canViewStores = isAdmin || Boolean(profile?.can_view_stores)
   const canViewBSafe24 = isAdmin || Boolean(profile?.can_view_bsafe24)
+  const canViewNordFjella = isAdmin || Boolean(profile?.can_view_nord_fjella)
   const canViewHandoverProtocolUpload =
     isTechnik ||
     canViewHandoverProtocolUploadSection(profile?.role ?? null, profile)
@@ -1753,6 +1755,7 @@ export default async function DashboardPage({
                 }
                 canViewStores={canViewStores}
                 canViewBSafe24={canViewBSafe24}
+                canViewNordFjella={canViewNordFjella}
                 canViewFiles={canViewFiles}
                 canViewHandoverProtocolUpload={useUnifiedDavidSection ? canViewHandoverProtocolUpload : false}
                 handoverProtocolUploadJobs={useUnifiedDavidSection ? handoverProtocolUploadJobs : []}
