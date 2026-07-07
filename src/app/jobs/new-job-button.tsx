@@ -237,10 +237,6 @@ function JobFormShell({
   const selectedClientOffers = offerSuggestions.filter(
     (offer) => offer.client_id === selectedClientId
   )
-  const selectedOffer = useMemo(
-    () => selectedClientOffers.find((offer) => offer.id === selectedOfferId) ?? null,
-    [selectedClientOffers, selectedOfferId]
-  )
 
   const companySelectionIsValid =
     Boolean(selectedClientId) &&
@@ -254,13 +250,20 @@ function JobFormShell({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (!selectedOffer) return
+  function handleOfferChange(nextOfferId: string) {
+    setSelectedOfferId(nextOfferId)
 
-    setStartAt(toDateTimeLocalValue(selectedOffer.realization_starts_at))
-    setEndAt(toDateTimeLocalValue(selectedOffer.realization_ends_at))
-    setSiteAddress(selectedOffer.realization_address ?? '')
-  }, [selectedOffer])
+    const nextOffer =
+      selectedClientOffers.find((offer) => offer.id === nextOfferId) ?? null
+
+    if (!nextOffer) {
+      return
+    }
+
+    setStartAt(toStoredOfferDateTimeLocalValue(nextOffer.realization_starts_at))
+    setEndAt(toStoredOfferDateTimeLocalValue(nextOffer.realization_ends_at))
+    setSiteAddress(nextOffer.realization_address ?? '')
+  }
 
   function setAutocompleteSelection(start: number, end: number) {
     requestAnimationFrame(() => {
@@ -536,7 +539,7 @@ function JobFormShell({
                       <select
                         id={`${mode}-offer_id`}
                         value={selectedOfferId}
-                        onChange={(event) => setSelectedOfferId(event.target.value)}
+                        onChange={(event) => handleOfferChange(event.target.value)}
                         disabled={!selectedClientId}
                         className="h-10 w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef] disabled:cursor-not-allowed disabled:opacity-60"
                       >
@@ -766,6 +769,19 @@ function toDateTimeLocalValue(value: string | null | undefined) {
   const date = new Date(value)
   const offsetMs = date.getTimezoneOffset() * 60_000
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
+}
+
+function toStoredOfferDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) return ''
+
+  const normalized = String(value).trim()
+  const match = normalized.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/)
+
+  if (match) {
+    return `${match[1]}T${match[2]}`
+  }
+
+  return toDateTimeLocalValue(value)
 }
 
 function normalizeSearchText(value: string) {
