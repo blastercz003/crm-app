@@ -6997,6 +6997,10 @@ html[data-theme='dark'] .nord-fjella-calendar-shell .fc .fc-popover-body {
 }
 
 @media (max-width: 768px) {
+  .nord-fjella-calendar-shell .fc .fc-header-toolbar {
+    display: none;
+  }
+
   .calendar-shell .fc .fc-toolbar {
     flex-direction: column;
     align-items: stretch;

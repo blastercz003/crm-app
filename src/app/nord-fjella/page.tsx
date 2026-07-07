@@ -596,9 +596,9 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
           </div>
         </section>
 
-        <section className="nord-fjella-panel relative z-30 overflow-visible rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+        <section className="nord-fjella-panel relative z-30 overflow-visible rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_20px_44px_rgba(2,8,23,0.32)]">
           <div className="space-y-4">
-            <div className="grid gap-3 lg:grid-cols-4">
+            <div className="hidden gap-3 lg:grid lg:grid-cols-4">
               <div className="nord-fjella-card offers-page__stats-card offers-page__stats-card--draft rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
                 <div className="offers-page__stats-card-label text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
                   Aktivní rezervace
@@ -633,7 +633,147 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
               </div>
             </div>
 
-            <form action="/nord-fjella" method="get" className="space-y-4">
+            <form action="/nord-fjella" method="get" className="lg:hidden">
+              <input type="hidden" name="q" value={query} />
+              <details className="group w-full">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-white [html[data-theme='dark']_&]:shadow-[0_8px_16px_rgba(2,8,23,0.22)]">
+                  <span className="inline-flex items-center gap-2">
+                    Filtry
+                    {hasActiveFilters ? (
+                      <span className="inline-flex items-center rounded-full border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.07em] text-[#236f9f] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[rgba(30,64,175,0.24)] [html[data-theme='dark']_&]:text-sky-200">
+                        Filtr aktivní
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-xs text-zinc-500 transition group-open:rotate-180 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
+                </summary>
+
+                <div className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(2,8,23,0.24)]">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Stav záznamu
+                      </div>
+                      <div className="nord-fjella-input-shell relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+                        <select
+                          name="status"
+                          defaultValue={statusFilter}
+                          className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none [html[data-theme='dark']_&]:text-slate-200"
+                        >
+                          <option value="all">Všechny</option>
+                          {STATUS_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Typ záznamu
+                      </div>
+                      <div className="nord-fjella-input-shell relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+                        <select
+                          name="type"
+                          defaultValue={typeFilter}
+                          className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none [html[data-theme='dark']_&]:text-slate-200"
+                        >
+                          <option value="all">Všechny</option>
+                          {RECORD_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Platební stav
+                      </div>
+                      <div className="nord-fjella-input-shell relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+                        <select
+                          name="payment"
+                          defaultValue={paymentFilter}
+                          className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none [html[data-theme='dark']_&]:text-slate-200"
+                        >
+                          <option value="all">Všechny</option>
+                          {PAYMENT_STATUS_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Vyúčtování
+                      </div>
+                      <div className="nord-fjella-input-shell relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+                        <select
+                          name="settlement"
+                          defaultValue={settlementFilter}
+                          className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none [html[data-theme='dark']_&]:text-slate-200"
+                        >
+                          <option value="all">Všechny</option>
+                          {SETTLEMENT_STATUS_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Řazení
+                      </div>
+                      <div className="nord-fjella-input-shell relative min-w-0 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+                        <select
+                          name="sort"
+                          defaultValue={sortFilter}
+                          className="block h-10 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-4 pr-9 text-sm text-gray-900 outline-none [html[data-theme='dark']_&]:text-slate-200"
+                        >
+                          {SORT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">⌄</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 border-t border-gray-100 pt-3 [html[data-theme='dark']_&]:border-white/10">
+                    <button
+                      type="submit"
+                      className="offers-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+                    >
+                      Použít filtry
+                    </button>
+                    <Link
+                      href="/nord-fjella"
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(2,8,23,0.22)]"
+                    >
+                      Reset
+                    </Link>
+                  </div>
+                </div>
+              </details>
+            </form>
+
+            <form action="/nord-fjella" method="get" className="hidden space-y-4 lg:block">
               <div className="grid gap-4 lg:grid-cols-[220px_220px_240px_220px_auto] lg:items-end">
                 <div>
                   <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
@@ -743,7 +883,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                   </button>
                   <Link
                     href="/nord-fjella"
-                    className="nord-fjella-chip inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-300"
+                    className="nord-fjella-chip inline-flex h-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(2,8,23,0.22)]"
                   >
                     Reset
                   </Link>
@@ -912,21 +1052,23 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                     </div>
 
                     <div className="mt-4 space-y-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
-                          Host / typ
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
+                            Host / typ
+                          </div>
+                          <div className="mt-1 text-sm text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                            {getGuestLabel(row)}
+                          </div>
                         </div>
-                        <div className="mt-1 text-sm text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                          {getGuestLabel(row)}
-                        </div>
-                      </div>
 
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
-                          Termín
-                        </div>
-                        <div className="mt-1 text-sm text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                          {formatDate(row.stay_start_date)} - {formatDate(row.stay_end_date)}
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
+                            Termín
+                          </div>
+                          <div className="mt-1 text-sm text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                            {formatDate(row.stay_start_date)} - {formatDate(row.stay_end_date)}
+                          </div>
                         </div>
                       </div>
 
@@ -949,29 +1091,32 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {row.record_type === 'reservation' ? (
-                          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getPaymentBadgeClass(row.payment_status)}`}>
-                            {getPaymentStatusLabel(row.payment_status)}
-                          </span>
-                        ) : null}
-                        <SettlementPreviewButton
-                          reservation={row}
-                          reservationItems={rowItems}
-                          settings={settings}
-                        />
-                      </div>
+                      <div className="flex items-end justify-between gap-3 pt-2">
+                        <div className="min-h-9">
+                          {row.record_type === 'reservation' ? (
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getPaymentBadgeClass(row.payment_status)}`}>
+                              {getPaymentStatusLabel(row.payment_status)}
+                            </span>
+                          ) : null}
+                        </div>
 
-                      {isAdmin ? (
-                        <div className="pt-2">
-                          <ReservationDetailButton
-                            guests={guests}
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <SettlementPreviewButton
                             reservation={row}
                             reservationItems={rowItems}
-                            reservationFiles={reservationFilesByReservationId.get(row.id) ?? []}
+                            settings={settings}
                           />
+
+                          {isAdmin ? (
+                            <ReservationDetailButton
+                              guests={guests}
+                              reservation={row}
+                              reservationItems={rowItems}
+                              reservationFiles={reservationFilesByReservationId.get(row.id) ?? []}
+                            />
+                          ) : null}
                         </div>
-                      ) : null}
+                      </div>
                     </div>
                   </article>
                 )

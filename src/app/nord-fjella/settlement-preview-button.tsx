@@ -155,7 +155,7 @@ function SettlementPreviewModal({
     >
       <div className="flex min-h-[calc(100dvh-2rem)] items-start justify-center py-2 sm:min-h-full sm:items-center sm:py-4">
         <div className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-3xl sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
-          <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="clients-modal__header flex shrink-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="clients-modal__title text-lg font-semibold tracking-tight sm:text-xl">
                 Vyúčtování pobytu
@@ -165,7 +165,7 @@ function SettlementPreviewModal({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
               <a
                 href={`/nord-fjella/${reservation.id}/settlement-pdf`}
                 target="_blank"
@@ -185,10 +185,10 @@ function SettlementPreviewModal({
             </div>
           </div>
 
-          <div className="clients-modal__body nord-fjella-modal-body min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-              <section className="space-y-5">
-                <div className="nord-fjella-modal-card p-5">
+          <div className="clients-modal__body nord-fjella-modal-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <section className="min-w-0 space-y-5">
+                <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-3">
                       <div className="relative h-14 w-40 overflow-hidden p-2">
@@ -240,7 +240,7 @@ function SettlementPreviewModal({
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="nord-fjella-modal-subtle-card p-4">
+                  <div className="nord-fjella-modal-subtle-card rounded-2xl border border-white/80 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">
                       Objednatel
                     </div>
@@ -258,7 +258,7 @@ function SettlementPreviewModal({
                     <div className="mt-1 text-sm text-gray-600">{reservation.guest_phone || '—'}</div>
                   </div>
 
-                  <div className="nord-fjella-modal-subtle-card p-4">
+                  <div className="nord-fjella-modal-subtle-card rounded-2xl border border-white/80 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">
                       Pobyt
                     </div>
@@ -272,11 +272,63 @@ function SettlementPreviewModal({
                   </div>
                 </div>
 
-                <div className="nord-fjella-modal-card overflow-hidden">
+                <div className="nord-fjella-modal-card overflow-hidden rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <div className="border-b border-zinc-100 px-5 py-4 [html[data-theme='dark']_&]:border-slate-400/12">
                     <h3 className="text-base font-semibold text-gray-900">Položky vyúčtování</h3>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="grid gap-3 p-4 sm:hidden">
+                    {summary.lines.map((line) => (
+                      <div
+                        key={line.key}
+                        className="nord-fjella-modal-subtle-card rounded-2xl border border-white/80 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium text-gray-900">{line.label}</div>
+                            {line.note ? <div className="mt-1 text-xs text-gray-500">{line.note}</div> : null}
+                          </div>
+                          <div className="shrink-0 text-right text-sm font-semibold text-gray-900">
+                            {formatCurrency(line.total)}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-700">
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+                              Množství
+                            </div>
+                            <div className="mt-1">{line.quantity.toLocaleString('cs-CZ')}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+                              Jedn.
+                            </div>
+                            <div className="mt-1">{line.unit}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+                              Cena
+                            </div>
+                            <div className="mt-1">{formatCurrency(line.unitPrice)}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+                              DPH
+                            </div>
+                            <div className="mt-1">
+                              {line.vatMode === 'vat_12'
+                                ? '12 %'
+                                : line.vatMode === 'vat_21'
+                                  ? '21 %'
+                                  : '0 %'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="hidden overflow-x-auto sm:block">
                     <table className="min-w-full">
                       <thead className="bg-zinc-50/80 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 [html[data-theme='dark']_&]:bg-slate-950/28 [html[data-theme='dark']_&]:text-slate-400">
                         <tr>
@@ -319,8 +371,8 @@ function SettlementPreviewModal({
                 </div>
               </section>
 
-              <aside className="space-y-4">
-                <div className="nord-fjella-modal-card p-5">
+              <aside className="min-w-0 space-y-4">
+                <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <h3 className="text-base font-semibold text-gray-900">Souhrn úhrad</h3>
                   <div className="mt-4 space-y-3 text-sm text-gray-700">
                     <div className="flex items-center justify-between gap-3">
@@ -360,7 +412,7 @@ function SettlementPreviewModal({
                   </div>
                 </div>
 
-                <div className="nord-fjella-modal-card p-5">
+                <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <h3 className="text-base font-semibold text-gray-900">DPH a režimy</h3>
                   <div className="mt-4 space-y-3 text-sm text-gray-700">
                     <div className="flex items-center justify-between gap-3">
@@ -378,7 +430,7 @@ function SettlementPreviewModal({
                   </div>
                 </div>
 
-                <div className="nord-fjella-modal-card p-5">
+                <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <h3 className="text-base font-semibold text-gray-900">Platební údaje</h3>
                   <div className="mt-4 space-y-2 text-sm text-gray-700">
                     <div>Účet: <span className="font-semibold text-gray-900">{settings?.provider_bank_account?.trim() || 'Nenastaveno'}</span></div>
@@ -388,7 +440,7 @@ function SettlementPreviewModal({
                   </div>
 
                   {qrCodeDataUrl ? (
-                    <div className="nord-fjella-modal-subtle-card mt-5 p-4">
+                    <div className="nord-fjella-modal-subtle-card mt-5 rounded-2xl border border-white/80 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                       <div className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">
                         QR platba
                       </div>
@@ -412,7 +464,7 @@ function SettlementPreviewModal({
                 </div>
 
                 {reservation.public_note?.trim() ? (
-                  <div className="nord-fjella-modal-card p-5">
+                  <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                     <h3 className="text-base font-semibold text-gray-900">Poznámka pro hosta</h3>
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">
                       {reservation.public_note}

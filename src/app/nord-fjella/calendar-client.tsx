@@ -6,7 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import csLocale from '@fullcalendar/core/locales/cs'
-import type { EventClickArg } from '@fullcalendar/core'
+import type { DatesSetArg, EventClickArg } from '@fullcalendar/core'
 
 export type NordFjellaCalendarEvent = {
   id: string
@@ -51,7 +51,7 @@ function CalendarModeButton({
       onClick={onClick}
       data-active={active}
       className={[
-        'inline-flex h-9 min-w-[92px] items-center justify-center whitespace-nowrap rounded-full px-3 text-[13px] font-medium transition duration-200 ease-out sm:h-10 sm:min-w-[104px] sm:px-4 sm:text-sm',
+        'inline-flex h-9 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 text-[13px] font-medium transition duration-200 ease-out sm:h-10 sm:min-w-[104px] sm:flex-none sm:px-4 sm:text-sm',
         active
           ? 'border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
           : 'border border-transparent bg-transparent text-zinc-600 shadow-none hover:-translate-y-[1px] hover:text-zinc-900 [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:hover:text-white',
@@ -87,6 +87,7 @@ export default function NordFjellaCalendarClient({
   events,
 }: NordFjellaCalendarClientProps) {
   const [mode, setMode] = useState<CalendarMode>('month')
+  const [currentRangeLabel, setCurrentRangeLabel] = useState('')
   const calendarRef = useRef<FullCalendar | null>(null)
 
   const sortedEvents = useMemo(
@@ -125,6 +126,10 @@ export default function NordFjellaCalendarClient({
     calendarApi.today()
   }
 
+  function handleDatesSet(arg: DatesSetArg) {
+    setCurrentRangeLabel(arg.view.title)
+  }
+
   return (
     <section className="nord-fjella-panel rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
       <div className="flex flex-col gap-4">
@@ -135,7 +140,58 @@ export default function NordFjellaCalendarClient({
             </h2>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-col gap-3 sm:hidden">
+            <div className="flex justify-center">
+              <div className="nord-fjella-chip-group inline-flex w-full items-center gap-1 rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)]">
+                <CalendarModeButton active={mode === 'month'} label="Měsíc" onClick={() => setMode('month')} />
+                <CalendarModeButton active={mode === 'week'} label="Týden" onClick={() => setMode('week')} />
+                <CalendarModeButton active={mode === 'list'} label="Seznam" onClick={() => setMode('list')} />
+              </div>
+            </div>
+
+            {mode !== 'list' ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="nord-fjella-chip-group inline-flex w-fit items-center gap-0 rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)]">
+                    <button
+                      type="button"
+                      onClick={() => handleCalendarNavigation('prev')}
+                      className="inline-flex h-9 min-w-[52px] items-center justify-center rounded-full px-3 text-[20px] font-medium leading-none text-zinc-700 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-zinc-900 [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
+                      aria-label="Předchozí období"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalendarNavigation('next')}
+                      className="inline-flex h-9 min-w-[52px] items-center justify-center rounded-full px-3 text-[20px] font-medium leading-none text-zinc-700 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-zinc-900 [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
+                      aria-label="Následující období"
+                    >
+                      ›
+                    </button>
+                  </div>
+
+                  <div className="nord-fjella-chip-group inline-flex w-fit items-center gap-1 rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)]">
+                    <button
+                      type="button"
+                      onClick={() => handleCalendarNavigation('today')}
+                      className="inline-flex h-9 min-w-[92px] items-center justify-center whitespace-nowrap rounded-full px-3 text-[13px] font-medium text-zinc-600 transition duration-200 ease-out hover:-translate-y-[1px] hover:text-zinc-900 [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
+                    >
+                      Dnes
+                    </button>
+                  </div>
+                </div>
+
+                {currentRangeLabel ? (
+                  <div className="pt-1 text-center text-2xl font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                    {currentRangeLabel}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+
+          <div className="hidden flex-wrap items-center justify-end gap-2 sm:flex">
             {mode !== 'list' ? (
               <>
                 <div className="nord-fjella-chip-group inline-flex w-fit items-center gap-0 rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)]">
@@ -177,7 +233,7 @@ export default function NordFjellaCalendarClient({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-400">
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-400 sm:justify-start">
           <span className="nord-fjella-chip inline-flex items-center gap-2 rounded-full border border-white/75 bg-white/90 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)]">
             <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#16a34a]" />
             Rezervace
@@ -273,6 +329,7 @@ export default function NordFjellaCalendarClient({
               dayMaxEventRows={4}
               events={events}
               eventClick={handleEventClick}
+              datesSet={handleDatesSet}
               headerToolbar={{
                 left: '',
                 center: 'title',
