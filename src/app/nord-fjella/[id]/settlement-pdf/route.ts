@@ -474,7 +474,10 @@ function SettlementDocument({
               View,
               {
                 key: line.key,
-                style: [styles.tableRow, index === summary.lines.length - 1 ? styles.tableRowLast : null],
+                style:
+                  index === summary.lines.length - 1
+                    ? [styles.tableRow, styles.tableRowLast]
+                    : styles.tableRow,
               },
               h(
                 View,
@@ -724,7 +727,7 @@ export async function GET(_request: Request, context: RouteContext) {
       })
     )
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
