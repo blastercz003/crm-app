@@ -655,6 +655,25 @@ function revalidateAllRelatedPaths() {
   revalidatePath('/faktury')
 }
 
+async function syncJobClientOrderNumberToFinance(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  jobId: string
+  clientOrderNumber: string | null
+}) {
+  const { supabase, jobId, clientOrderNumber } = params
+
+  const { error } = await supabase
+    .from('job_finances')
+    .update({
+      client_order_number: clientOrderNumber,
+    })
+    .eq('job_id', jobId)
+
+  if (error) {
+    throw new Error('Nepodařilo se synchronizovat objednávku do fakturace.')
+  }
+}
+
 async function jobHasInfoAttachments(
   supabase: Awaited<ReturnType<typeof createClient>>,
   jobId: string
@@ -1550,6 +1569,7 @@ async function getJobPayload(
   const endAt = parseDateTimeLocalAsPrague(formData.get('end_at'))
   const siteAddress = normalizeText(formData.get('site_address'))
   const storeNumber = normalizeText(formData.get('store_number'))
+  const clientOrderNumber = normalizeText(formData.get('client_order_number'))
   const generatorName = normalizeText(formData.get('generator_name'))
   const infoNote = normalizeText(formData.get('info_note'))
   const marnyVyjezd = normalizeCheckbox(formData.get('marny_vyjezd'))
@@ -1598,6 +1618,7 @@ async function getJobPayload(
       end_at: endAt,
       site_address: siteAddress,
       store_number: storeNumber,
+      client_order_number: clientOrderNumber,
       technician_name: technicianSelection.technicianLabel,
       generator_name: generatorName,
       info_note: infoNote,
@@ -1723,6 +1744,7 @@ export async function createJobAction(
     .from('job_finances')
     .insert({
       job_id: createdJobId,
+      client_order_number: createPayload.client_order_number,
     })
 
   if (createFinanceError) {
@@ -2007,6 +2029,32 @@ export async function updateJobAction(
     return {
       success: false,
       error: 'Zakázku se nepodařilo upravit.',
+    }
+  }
+
+  try {
+    await syncJobClientOrderNumberToFinance({
+      supabase,
+      jobId: normalizedJobId,
+      clientOrderNumber: updatePayload.client_order_number,
+    })
+  } catch (syncError) {
+    console.error(
+      'Nepodařilo se synchronizovat objednávku zakázky do fakturace.',
+      syncError
+    )
+    await reportActionError({
+      error: syncError,
+      action: 'updateJobAction',
+      section: 'jobs',
+      errorType: 'UpdateJobClientOrderNumberSyncError',
+      userId: user.id,
+      context: { jobId: normalizedJobId },
+    })
+
+    return {
+      success: false,
+      error: 'Zakázka byla upravena, ale nepodařilo se synchronizovat objednávku do fakturace.',
     }
   }
 

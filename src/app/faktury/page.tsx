@@ -35,7 +35,8 @@ export type FakturaRow = {
   pp_required?: boolean
   job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
-  info_note: string | null
+  job_info_note: string | null
+  client_order_number: string | null
   invoice_number: string | null
   sale_amount: number | null
   cost_amount: number | null
@@ -59,7 +60,7 @@ type FakturySearchParams = {
 type JobFinanceJoinRow = {
   id: string
   job_id: string
-  info_note: string | null
+  client_order_number: string | null
   invoice_number: string | null
   sale_amount: number | null
   cost_amount: number | null
@@ -79,6 +80,7 @@ type JobFinanceJoinRow = {
           store_number: string | null
           technician_name: string | null
           generator_name: string | null
+          info_note: string | null
           marny_vyjezd: boolean | null
           job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
           invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
@@ -98,6 +100,7 @@ type JobFinanceJoinRow = {
         store_number: string | null
         technician_name: string | null
         generator_name: string | null
+        info_note: string | null
         marny_vyjezd: boolean | null
         job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
         invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
@@ -126,6 +129,7 @@ type JobOfferOption = {
   client_id: string
   offer_number: string
   title: string
+  order_reference?: string | null
   realization_starts_at: string | null
   realization_ends_at: string | null
   realization_address: string | null
@@ -177,7 +181,7 @@ function buildFinanceSearchFilter(search: string) {
 
   return [
     `invoice_number.ilike.%${escaped}%`,
-    `info_note.ilike.%${escaped}%`,
+    `client_order_number.ilike.%${escaped}%`,
   ].join(',')
 }
 
@@ -530,7 +534,7 @@ export default async function FakturyPage({
   let request = supabase.from('job_finances').select(`
       id,
       job_id,
-      info_note,
+      client_order_number,
       invoice_number,
       sale_amount,
       cost_amount,
@@ -549,6 +553,7 @@ export default async function FakturyPage({
         store_number,
         technician_name,
         generator_name,
+        info_note,
         marny_vyjezd,
         job_status,
         invoice_status
@@ -608,7 +613,7 @@ export default async function FakturyPage({
     supabase
       .from('offers')
       .select(
-        'id, client_id, offer_number, title, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
+        'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
       )
       .eq('offer_type', 'classic')
       .neq('status', 'realizace')
@@ -691,6 +696,7 @@ export default async function FakturyPage({
       client_id: String(item.client_id ?? '').trim(),
       offer_number: String(item.offer_number ?? '').trim(),
       title: String(item.title ?? '').trim(),
+      order_reference: String(item.order_reference ?? '').trim() || null,
       realization_starts_at: item.realization_starts_at ?? null,
       realization_ends_at: item.realization_ends_at ?? null,
       realization_address: item.realization_address ?? null,
@@ -727,10 +733,11 @@ export default async function FakturyPage({
         store_number: job.store_number,
         technician_name: job.technician_name,
         generator_name: job.generator_name,
+        job_info_note: job.info_note,
         marny_vyjezd: job.marny_vyjezd,
         job_status: job.job_status,
         invoice_status: job.invoice_status,
-        info_note: item.info_note,
+        client_order_number: item.client_order_number,
         invoice_number: item.invoice_number,
         sale_amount:
           typeof item.sale_amount === 'number' ? item.sale_amount : null,
@@ -753,7 +760,7 @@ export default async function FakturyPage({
     linkedOfferIds.length > 0
       ? await supabase
           .from('offers')
-          .select('id, client_id, offer_number, title')
+          .select('id, client_id, offer_number, title, order_reference')
           .in('id', linkedOfferIds)
       : { data: [], error: null }
 
@@ -944,7 +951,7 @@ export default async function FakturyPage({
                   type="text"
                   name="q"
                   defaultValue={query}
-                  placeholder="Hledat firmu, osobu, fakturu, info, adresu"
+                  placeholder="Hledat firmu, osobu, fakturu, objednávku, adresu"
                   className="jobs-page__search-input w-full min-w-0 rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] sm:w-56 lg:w-72"
                 />
 
@@ -1396,6 +1403,7 @@ export default async function FakturyPage({
                 client_id: String(item.client_id ?? '').trim(),
                 offer_number: String(item.offer_number ?? '').trim(),
                 title: String(item.title ?? '').trim(),
+                order_reference: String(item.order_reference ?? '').trim() || null,
                 realization_starts_at: item.realization_starts_at ?? null,
                 realization_ends_at: item.realization_ends_at ?? null,
                 realization_address: item.realization_address ?? null,

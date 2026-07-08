@@ -44,6 +44,7 @@ type OfferOption = {
   client_id: string
   offer_number: string
   title: string
+  order_reference?: string | null
   realization_starts_at: string | null
   realization_ends_at: string | null
   realization_address: string | null
@@ -62,6 +63,7 @@ type JobRow = {
   end_at: string
   site_address: string | null
   store_number: string | null
+  client_order_number?: string | null
   technician_name: string | null
   generator_name: string | null
   info_note: string | null

@@ -15,7 +15,7 @@ type JobIdRow = {
 type JobFinanceJoinRow = {
   id: string
   job_id: string
-  info_note: string | null
+  client_order_number: string | null
   invoice_number: string | null
   sale_amount: number | null
   cost_amount: number | null
@@ -54,7 +54,7 @@ type FakturaExportRow = {
   end_at: string
   site_address: string | null
   store_number: string | null
-  info_note: string | null
+  client_order_number: string | null
   invoice_number: string | null
   sale_amount: number | null
   cost_amount: number | null
@@ -87,7 +87,7 @@ function buildFinanceSearchFilter(search: string) {
 
   return [
     `invoice_number.ilike.%${escaped}%`,
-    `info_note.ilike.%${escaped}%`,
+    `client_order_number.ilike.%${escaped}%`,
   ].join(',')
 }
 
@@ -242,7 +242,7 @@ export async function GET(request: NextRequest) {
     let requestBuilder = supabase.from('job_finances').select(`
       id,
       job_id,
-      info_note,
+      client_order_number,
       invoice_number,
       sale_amount,
       cost_amount,
@@ -323,7 +323,7 @@ export async function GET(request: NextRequest) {
         end_at: job.end_at,
         site_address: job.site_address,
         store_number: job.store_number,
-        info_note: item.info_note,
+        client_order_number: item.client_order_number,
         invoice_number: item.invoice_number,
         sale_amount:
           typeof item.sale_amount === 'number' ? item.sale_amount : null,
@@ -371,7 +371,7 @@ export async function GET(request: NextRequest) {
     { header: 'Konec', key: 'end_at', width: 22 },
     { header: 'Adresa', key: 'site_address', width: 32 },
     { header: 'Prodejna', key: 'store_number', width: 12 },
-    { header: 'Info', key: 'info_note', width: 24 },
+    { header: 'OBJ', key: 'client_order_number', width: 24 },
     { header: 'Faktura', key: 'invoice_number', width: 16 },
     { header: 'Prodej', key: 'sale_amount', width: 14 },
     { header: 'Náklad', key: 'cost_amount', width: 14 },
@@ -392,7 +392,7 @@ export async function GET(request: NextRequest) {
       end_at: formatDateTimeForExcel(row.end_at),
       site_address: row.site_address ?? '',
       store_number: row.store_number ?? '',
-      info_note: row.info_note ?? '',
+      client_order_number: row.client_order_number ?? '',
       invoice_number: row.invoice_number ?? '',
       sale_amount: row.sale_amount,
       cost_amount: row.cost_amount,

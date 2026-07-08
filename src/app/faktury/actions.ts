@@ -148,7 +148,7 @@ type ProfileRoleRow = {
 }
 
 const FINANCE_EDITABLE_FIELDS = [
-  'info_note',
+  'client_order_number',
   'invoice_number',
   'sale_amount',
 ] as const
@@ -1014,7 +1014,7 @@ export async function updateFinanceInlineFieldAction(
     }
   }
 
-  if (field === 'info_note' || field === 'invoice_number') {
+  if (field === 'client_order_number' || field === 'invoice_number') {
     const normalizedText = normalizeText(value)
 
     const { error } = await supabase
@@ -1028,9 +1028,25 @@ export async function updateFinanceInlineFieldAction(
       return {
         success: false,
         error:
-          field === 'info_note'
-            ? 'Info se nepodařilo uložit.'
+          field === 'client_order_number'
+            ? 'Číslo objednávky se nepodařilo uložit.'
             : 'Číslo faktury se nepodařilo uložit.',
+      }
+    }
+
+    if (field === 'client_order_number') {
+      const { error: syncJobError } = await supabase
+        .from('jobs')
+        .update({
+          client_order_number: normalizedText,
+        })
+        .eq('id', String(financeRow.job_id))
+
+      if (syncJobError) {
+        return {
+          success: false,
+          error: 'Číslo objednávky se uložilo do fakturace, ale nepodařilo se propsat do zakázky.',
+        }
       }
     }
 

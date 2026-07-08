@@ -32,7 +32,7 @@ import type {
 } from '@/lib/job-attachments'
 import type { FakturaRow, SalesOwner } from './page'
 
-type InlineEditableFinanceField = 'info_note' | 'invoice_number' | 'sale_amount'
+type InlineEditableFinanceField = 'client_order_number' | 'invoice_number' | 'sale_amount'
 
 type FakturyInteractiveTableProps = {
   rows: FakturaRow[]
@@ -60,6 +60,7 @@ type JobOfferOption = {
   client_id: string
   offer_number: string
   title: string
+  order_reference?: string | null
   realization_starts_at: string | null
   realization_ends_at: string | null
   realization_address: string | null
@@ -170,7 +171,7 @@ export function FakturyInteractiveTable({
                 <th className="w-[120px] px-1.5 py-2 text-left">Konec</th>
                 <th className="w-[160px] px-1.5 py-2 text-left">Adresa</th>
                 <th className="w-[56px] px-1.5 py-2 text-center">Prodejna</th>
-                <th className="w-[112px] px-1.5 py-2 text-center">Info</th>
+                <th className="w-[112px] px-1.5 py-2 text-center">OBJ</th>
                 <th className="w-[32px] px-0 py-2 pr-[10px] text-center">DATA</th>
                 <th className="w-[120px] px-1.5 py-2 pl-4 text-center">Faktura</th>
                 <th className="w-[120px] px-1.5 py-2 pl-4 text-center">Prodej</th>
@@ -286,13 +287,13 @@ function DesktopRow({
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <FinanceEditableCell
           financeId={row.id}
-          field="info_note"
-          value={row.info_note}
+          field="client_order_number"
+          value={row.client_order_number}
           type="text"
           emptyLabel="-"
           align="left"
           formatter={(value) => (typeof value === 'string' ? value : '')}
-          title={row.info_note ?? '-'}
+          title={row.client_order_number ?? '-'}
           emptyVariant="plain"
         />
       </td>
@@ -373,7 +374,7 @@ function buildEditableJob(row: FakturaRow) {
     store_number: row.store_number,
     technician_name: row.technician_name,
     generator_name: row.generator_name,
-    info_note: row.info_note,
+    info_note: row.job_info_note,
     marny_vyjezd: row.marny_vyjezd,
     pp_required: row.pp_required,
     job_status: row.job_status,
@@ -473,8 +474,8 @@ function MobileCard({
         </div>
 
         <div className="col-span-2 min-w-0">
-          <span className="font-medium text-gray-900">Info:</span>{' '}
-          <span className="break-words">{row.info_note || '—'}</span>
+          <span className="font-medium text-gray-900">OBJ:</span>{' '}
+          <span className="break-words">{row.client_order_number || '—'}</span>
         </div>
       </div>
 

@@ -42,6 +42,7 @@ type OfferOption = {
   client_id: string
   offer_number: string
   title: string
+  order_reference?: string | null
   realization_starts_at: string | null
   realization_ends_at: string | null
   realization_address: string | null
@@ -60,6 +61,7 @@ type JobFormValues = {
   end_at: string
   site_address: string | null
   store_number: string | null
+  client_order_number?: string | null
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
@@ -273,6 +275,7 @@ function JobFormShell({
         client_id: clientId,
         offer_number: offerNumber,
         title,
+        order_reference: offer.order_reference ?? null,
         realization_starts_at: offer.realization_starts_at ?? null,
         realization_ends_at: offer.realization_ends_at ?? null,
         realization_address: offer.realization_address ?? null,
@@ -294,6 +297,10 @@ function JobFormShell({
   const [selectedOfferId, setSelectedOfferId] = useState(job.offer_id ?? '')
   const [selectedContactId, setSelectedContactId] = useState(job.client_contact_id ?? '')
   const [contactPerson, setContactPerson] = useState(job.contact_person ?? '')
+  const [startAt, setStartAt] = useState(toDateTimeLocalValue(job.start_at))
+  const [endAt, setEndAt] = useState(toDateTimeLocalValue(job.end_at))
+  const [siteAddress, setSiteAddress] = useState(job.site_address ?? '')
+  const [clientOrderNumber, setClientOrderNumber] = useState(job.client_order_number ?? '')
   const [technicianName, setTechnicianName] = useState(job.technician_name ?? '')
   const [ppRequired, setPpRequired] = useState(job.pp_required ?? true)
   const [companyTouched, setCompanyTouched] = useState(false)
@@ -442,6 +449,22 @@ function JobFormShell({
     setContactPerson(nextContact?.name ?? '')
   }
 
+  function handleOfferChange(nextOfferId: string) {
+    setSelectedOfferId(nextOfferId)
+
+    const nextOffer =
+      selectedClientOffers.find((offer) => offer.id === nextOfferId) ?? null
+
+    if (!nextOffer) {
+      return
+    }
+
+    setStartAt(toStoredOfferDateTimeLocalValue(nextOffer.realization_starts_at))
+    setEndAt(toStoredOfferDateTimeLocalValue(nextOffer.realization_ends_at))
+    setSiteAddress(nextOffer.realization_address ?? '')
+    setClientOrderNumber(nextOffer.order_reference ?? '')
+  }
+
   const companyStatusText = (() => {
     const trimmedValue = companyName.trim()
 
@@ -565,30 +588,6 @@ function JobFormShell({
 
                     <div>
                       <label
-                        htmlFor={`${mode}-offer_id`}
-                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
-                      >
-                        Číslo nabídky
-                      </label>
-                      <select
-                        id={`${mode}-offer_id`}
-                        value={selectedOfferId}
-                        onChange={(event) => setSelectedOfferId(event.target.value)}
-                        disabled={!selectedClientId}
-                        className="jobs-page__job-form-modal__field h-10 w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <option value="">Bez nabídky</option>
-                        {selectedClientOffers.map((offer) => (
-                          <option key={offer.id} value={offer.id}>
-                            {`${offer.offer_number} - ${truncateOfferTitle(offer.title)}`}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">Volitelné pole.</p>
-                    </div>
-
-                    <div>
-                      <label
                         htmlFor={`${mode}-contact_person`}
                         className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
                       >
@@ -623,6 +622,48 @@ function JobFormShell({
                           className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                         />
                       )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor={`${mode}-offer_id`}
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
+                      >
+                        Číslo nabídky
+                      </label>
+                      <select
+                        id={`${mode}-offer_id`}
+                        value={selectedOfferId}
+                        onChange={(event) => handleOfferChange(event.target.value)}
+                        disabled={!selectedClientId}
+                        className="jobs-page__job-form-modal__field h-10 w-full appearance-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="">Bez nabídky</option>
+                        {selectedClientOffers.map((offer) => (
+                          <option key={offer.id} value={offer.id}>
+                            {`${offer.offer_number} - ${truncateOfferTitle(offer.title)}`}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">Volitelné pole.</p>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor={`${mode}-client_order_number`}
+                        className="jobs-page__job-form-modal__label mb-1 block text-sm font-medium text-gray-700"
+                      >
+                        Objednávka
+                      </label>
+                      <input
+                        id={`${mode}-client_order_number`}
+                        name="client_order_number"
+                        type="text"
+                        value={clientOrderNumber}
+                        onChange={(event) => setClientOrderNumber(event.target.value)}
+                        placeholder="Číslo objednávky klienta"
+                        className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      />
                     </div>
 
                     <div>
@@ -666,7 +707,8 @@ function JobFormShell({
                         name="start_at"
                         type="datetime-local"
                         required
-                        defaultValue={toDateTimeLocalValue(job.start_at)}
+                        value={startAt}
+                        onChange={(event) => setStartAt(event.target.value)}
                         className="jobs-page__job-form-modal__field h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
@@ -683,7 +725,8 @@ function JobFormShell({
                         name="end_at"
                         type="datetime-local"
                         required
-                        defaultValue={toDateTimeLocalValue(job.end_at)}
+                        value={endAt}
+                        onChange={(event) => setEndAt(event.target.value)}
                         className="jobs-page__job-form-modal__field h-10 w-full min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
@@ -699,7 +742,8 @@ function JobFormShell({
                         id={`${mode}-site_address`}
                         name="site_address"
                         type="text"
-                        defaultValue={job.site_address ?? ''}
+                        value={siteAddress}
+                        onChange={(event) => setSiteAddress(event.target.value)}
                         placeholder="Adresa realizace"
                         className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
@@ -721,6 +765,7 @@ function JobFormShell({
                         className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
                     </div>
+
                   </div>
                 </section>
 
@@ -900,6 +945,19 @@ function toDateTimeLocalValue(value: string | null | undefined) {
   if (!year || !month || !day || !hour || !minute) return ''
 
   return `${year}-${month}-${day}T${hour}:${minute}`
+}
+
+function toStoredOfferDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) return ''
+
+  const normalized = String(value).trim()
+  const match = normalized.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/)
+
+  if (match) {
+    return `${match[1]}T${match[2]}`
+  }
+
+  return toDateTimeLocalValue(value)
 }
 
 function normalizeSearchText(value: string) {

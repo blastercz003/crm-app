@@ -80,6 +80,7 @@ type JobRow = {
 
 type FinanceJoinRow = {
   id: string
+  client_order_number: string | null
   invoice_number: string | null
   sale_amount: number | null
   job:
@@ -755,14 +756,14 @@ async function searchFaktury(params: {
 
   let request = supabase
     .from('job_finances')
-    .select('id, invoice_number, sale_amount, job:jobs(id, job_number, company_name, contact_person, start_at, invoice_status)')
+    .select('id, client_order_number, invoice_number, sale_amount, job:jobs(id, job_number, company_name, contact_person, start_at, invoice_status)')
     .order('created_at', { ascending: false })
     .limit(60)
 
   if (jobIds.length > 0) {
-    request = request.or(`invoice_number.ilike.%${escaped}%,info_note.ilike.%${escaped}%,job_id.in.(${jobIds.join(',')})`)
+    request = request.or(`invoice_number.ilike.%${escaped}%,client_order_number.ilike.%${escaped}%,job_id.in.(${jobIds.join(',')})`)
   } else {
-    request = request.or(`invoice_number.ilike.%${escaped}%,info_note.ilike.%${escaped}%`)
+    request = request.or(`invoice_number.ilike.%${escaped}%,client_order_number.ilike.%${escaped}%`)
   }
 
   const { data, error } = await request
@@ -777,6 +778,7 @@ async function searchFaktury(params: {
 
       const score =
         textMatchScore(row.invoice_number, query) * 2 +
+        textMatchScore(row.client_order_number, query) * 2 +
         textMatchScore(job.job_number, query) * 2 +
         textMatchScore(job.company_name, query) * 2 +
         textMatchScore(job.contact_person, query) +

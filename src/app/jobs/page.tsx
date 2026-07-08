@@ -50,6 +50,7 @@ export type JobRow = {
   end_at: string
   site_address: string | null
   store_number: string | null
+  client_order_number: string | null
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
@@ -87,6 +88,7 @@ type JobOfferOption = {
   client_id: string
   offer_number: string
   title: string
+  order_reference?: string | null
   realization_starts_at: string | null
   realization_ends_at: string | null
   realization_address: string | null
@@ -452,7 +454,7 @@ export default async function JobsPage({
     supabase
       .from('offers')
       .select(
-        'id, client_id, offer_number, title, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
+        'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
       )
       .eq('offer_type', 'classic')
       .neq('status', 'realizace')
@@ -511,7 +513,7 @@ export default async function JobsPage({
       ? await supabase
           .from('offers')
           .select(
-            'id, client_id, offer_number, title, realization_starts_at, realization_ends_at, realization_address'
+            'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address'
           )
           .in('id', linkedOfferIds)
       : { data: [], error: null }
@@ -556,6 +558,7 @@ export default async function JobsPage({
       client_id: String(item.client_id ?? '').trim(),
       offer_number: String(item.offer_number ?? '').trim(),
       title: String(item.title ?? '').trim(),
+      order_reference: String(item.order_reference ?? '').trim() || null,
       realization_starts_at: item.realization_starts_at ?? null,
       realization_ends_at: item.realization_ends_at ?? null,
       realization_address: item.realization_address ?? null,
@@ -567,6 +570,7 @@ export default async function JobsPage({
       client_id: String(item.client_id ?? '').trim(),
       offer_number: String(item.offer_number ?? '').trim(),
       title: String(item.title ?? '').trim(),
+      order_reference: String(item.order_reference ?? '').trim() || null,
       realization_starts_at: item.realization_starts_at ?? null,
       realization_ends_at: item.realization_ends_at ?? null,
       realization_address: item.realization_address ?? null,

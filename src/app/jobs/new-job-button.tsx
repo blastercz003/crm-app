@@ -32,6 +32,7 @@ type OfferOption = {
   client_id: string
   offer_number: string
   title: string
+  order_reference?: string | null
   realization_starts_at: string | null
   realization_ends_at: string | null
   realization_address: string | null
@@ -48,6 +49,7 @@ type JobFormValues = {
   end_at: string
   site_address: string | null
   store_number: string | null
+  client_order_number?: string | null
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
@@ -223,6 +225,7 @@ function JobFormShell({
   const [startAt, setStartAt] = useState(toDateTimeLocalValue(job?.start_at))
   const [endAt, setEndAt] = useState(toDateTimeLocalValue(job?.end_at))
   const [siteAddress, setSiteAddress] = useState(job?.site_address ?? '')
+  const [clientOrderNumber, setClientOrderNumber] = useState(job?.client_order_number ?? '')
   const [technicianName, setTechnicianName] = useState(job?.technician_name ?? '')
   const [ppRequired, setPpRequired] = useState(job?.pp_required ?? true)
   const [companyTouched, setCompanyTouched] = useState(false)
@@ -257,12 +260,14 @@ function JobFormShell({
       selectedClientOffers.find((offer) => offer.id === nextOfferId) ?? null
 
     if (!nextOffer) {
+      setClientOrderNumber('')
       return
     }
 
     setStartAt(toStoredOfferDateTimeLocalValue(nextOffer.realization_starts_at))
     setEndAt(toStoredOfferDateTimeLocalValue(nextOffer.realization_ends_at))
     setSiteAddress(nextOffer.realization_address ?? '')
+    setClientOrderNumber(nextOffer.order_reference ?? '')
   }
 
   function setAutocompleteSelection(start: number, end: number) {
@@ -488,7 +493,6 @@ function JobFormShell({
                       <p className={`mt-2 text-sm ${companyStatusClassName}`}>
                         {companyStatusText}
                       </p>
-
                     </div>
 
                     <div>
@@ -553,6 +557,24 @@ function JobFormShell({
                       <p className="mt-1 text-xs text-gray-500">
                         Volitelné pole.
                       </p>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor={`${mode}-client_order_number`}
+                        className="mb-1 block text-sm font-medium text-gray-700"
+                      >
+                        Objednávka
+                      </label>
+                      <input
+                        id={`${mode}-client_order_number`}
+                        name="client_order_number"
+                        type="text"
+                        value={clientOrderNumber}
+                        onChange={(event) => setClientOrderNumber(event.target.value)}
+                        placeholder="Číslo objednávky klienta"
+                        className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
+                      />
                     </div>
 
                     <div>
@@ -654,6 +676,7 @@ function JobFormShell({
                         className="h-10 w-full rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
                     </div>
+
                   </div>
                 </section>
 
