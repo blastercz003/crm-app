@@ -75,7 +75,7 @@ export function SettlementPreviewButton({
         }
         className={`inline-flex h-9 items-center justify-center rounded-xl border px-3 text-xs font-medium uppercase tracking-[0.04em] transition duration-200 ${
           canOpenSettlement
-            ? 'border-[#8dbfe0]/85 bg-[linear-gradient(155deg,#f3f9fd_0%,#dceef9_100%)] text-[#1f5f8f] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(35,111,159,0.12)] hover:-translate-y-[1px] [html[data-theme=\'dark\']_&]:border-slate-400/18 [html[data-theme=\'dark\']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme=\'dark\']_&]:text-slate-100 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.22)]'
+            ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] [html[data-theme=\'dark\']_&]:border-slate-400/18 [html[data-theme=\'dark\']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme=\'dark\']_&]:text-slate-100 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.22)]'
             : 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400 shadow-none [html[data-theme=\'dark\']_&]:border-slate-400/14 [html[data-theme=\'dark\']_&]:bg-slate-800/60 [html[data-theme=\'dark\']_&]:text-slate-500'
         }`}
       >
@@ -170,7 +170,7 @@ function SettlementPreviewModal({
                 href={`/nord-fjella/${reservation.id}/settlement-pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="clients-modal__submit inline-flex h-9 items-center justify-center rounded-xl px-3 text-xs font-medium uppercase tracking-[0.04em] transition duration-200 hover:-translate-y-[1px]"
+                className="clients-modal__submit inline-flex h-9 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] [html[data-theme='dark']_&]:border-slate-400/18 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.22)] [html[data-theme='dark']_&]:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_14px_28px_rgba(0,0,0,0.28)]"
               >
                 Stáhnout PDF
               </a>
