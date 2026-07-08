@@ -372,6 +372,7 @@ function buildEditableJob(row: FakturaRow) {
     end_at: row.end_at,
     site_address: row.site_address,
     store_number: row.store_number,
+    client_order_number: row.client_order_number,
     technician_name: row.technician_name,
     generator_name: row.generator_name,
     info_note: row.job_info_note,

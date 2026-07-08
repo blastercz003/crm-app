@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import {
   useActionState,
   useEffect,
@@ -156,6 +157,7 @@ function EditJobModal({
   technicianSuggestions: string[]
   onClose: () => void
 }) {
+  const router = useRouter()
   const [state, formAction] = useActionState(
     updateJobAction.bind(null, job.id),
     initialUpdateState
@@ -164,9 +166,10 @@ function EditJobModal({
 
   useEffect(() => {
     if (state.success) {
+      router.refresh()
       onClose()
     }
-  }, [onClose, state.success])
+  }, [onClose, router, state.success])
 
   function handleDeleteClick() {
     const isConfirmed = window.confirm(
@@ -183,6 +186,7 @@ function EditJobModal({
         return
       }
 
+      router.refresh()
       onClose()
     })
   }
