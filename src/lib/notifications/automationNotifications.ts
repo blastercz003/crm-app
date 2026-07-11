@@ -117,7 +117,6 @@ type AutomationRunResult = {
     tasksOverdue: number
     jobsMissingPp: number
     jobsMissingPpTechnicians: number
-    unreadOlderThan6h: number
     receivedInvoicesDue: number
     assetInsuranceExpiring6w: number
   }
@@ -167,10 +166,6 @@ type JobTechnicianAssignmentRow = {
 type TechnicianProfileRow = {
   id: string
   role: string | null
-}
-
-type RecipientRow = {
-  recipient_user_id: string
 }
 
 type AdminRow = {
@@ -608,48 +603,6 @@ async function sendTechnicianMissingPpNotifications(
   return sent
 }
 
-async function sendUnreadNotificationReminder(supabase: ServiceClient, now: Date) {
-  const cutoffIso = getIsoHoursAgo(6, now)
-  const pragueDateKey = getPragueDateKey(now)
-
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('recipient_user_id')
-    .is('read_at', null)
-    .is('archived_at', null)
-    .lt('created_at', cutoffIso)
-
-  if (error) {
-    throw new Error(`Automatické notifikace (připomínka notifikací) selhaly: ${error.message}`)
-  }
-
-  const recipientIds = Array.from(
-    new Set(((data ?? []) as RecipientRow[]).map((row) => row.recipient_user_id))
-  )
-
-  await Promise.all(
-    recipientIds.map((recipientUserId) =>
-      createNotification({
-        supabase,
-        recipientUserId,
-        actorUserId: null,
-        category: 'system',
-        type: 'unread_notification_6h',
-        title: 'NEVYŘÍZENÁ NOTIFIKACE',
-        message: 'Jedna nebo více notifikací čeká na otevření déle než 6 hodin.',
-        entityType: 'notification',
-        entityId: null,
-        href: '/notifications?status=unread',
-        priority: 'normal',
-        dedupeKey: `unread_notification_6h:${recipientUserId}:${pragueDateKey}`,
-        skipSelfNotification: false,
-      })
-    )
-  )
-
-  return recipientIds.length
-}
-
 async function sendReceivedInvoiceDueNotifications(
   supabase: ServiceClient,
   now: Date
@@ -813,7 +766,6 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
         tasksOverdue: 0,
         jobsMissingPp: 0,
         jobsMissingPpTechnicians: 0,
-        unreadOlderThan6h: 0,
         receivedInvoicesDue: 0,
         assetInsuranceExpiring6w: 0,
       },
@@ -826,13 +778,12 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
     throw new Error('Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro automatické notifikace.')
   }
 
-  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, jobsMissingPpTechnicians, unreadOlderThan6h, receivedInvoicesDue, assetInsuranceExpiring6w] =
+  const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, jobsMissingPpTechnicians, receivedInvoicesDue, assetInsuranceExpiring6w] =
     await Promise.all([
       sendMeetingOverdue24hNotifications(supabase, now),
       sendTaskOverdueNotifications(supabase, now),
       sendJobMissingPpNotifications(supabase, now),
       sendTechnicianMissingPpNotifications(supabase, now),
-      sendUnreadNotificationReminder(supabase, now),
       sendReceivedInvoiceDueNotifications(supabase, now),
       sendAssetInsuranceExpiryNotifications(supabase, now),
     ])
@@ -843,7 +794,6 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       tasksOverdue +
       jobsMissingPp +
       jobsMissingPpTechnicians +
-      unreadOlderThan6h +
       receivedInvoicesDue +
       assetInsuranceExpiring6w,
     skippedOutsideWindow: false,
@@ -852,7 +802,6 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       tasksOverdue,
       jobsMissingPp,
       jobsMissingPpTechnicians,
-      unreadOlderThan6h,
       receivedInvoicesDue,
       assetInsuranceExpiring6w,
     },

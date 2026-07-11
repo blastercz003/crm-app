@@ -1741,7 +1741,7 @@ function CostItemsModal({
                                 type="button"
                                 onClick={() => handleDuplicateRow(row.id)}
                                 disabled={isPending}
-                                className="jobs-page__modal-cancel faktury-page__costs-modal__copy-button inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="jobs-page__modal-cancel faktury-page__costs-modal__copy-button inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-2 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 title="Duplikovat řádek"
                               >
                                 Kopie
@@ -1750,7 +1750,7 @@ function CostItemsModal({
                                 type="button"
                                 onClick={() => handleRemoveRow(row.id)}
                                 disabled={isPending}
-                                className="faktury-page__costs-modal__delete-button inline-flex h-9 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                className="faktury-page__costs-modal__delete-button inline-flex h-10 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-xs font-medium uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                 title="Smazat řádek"
                               >
                                 SMAZAT
@@ -1984,7 +1984,7 @@ function CostItemsModal({
                                     type="button"
                                     onClick={() => handleRemoveRow(row.id)}
                                     disabled={isPending}
-                                    className="faktury-page__costs-modal__delete-button inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="faktury-page__costs-modal__delete-button inline-flex h-10 w-[72px] shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-2 text-xs font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                     title="Smazat řádek"
                                   >
                                     SMAZAT
