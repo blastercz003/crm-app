@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { reportActionError } from '@/lib/errors/reportActionError'
+import { syncProvizeRecordsFromJobFinances } from '@/lib/provize/service'
 import {
   cancelJobCalendarItem,
   syncJobCalendarItem,
@@ -619,6 +620,8 @@ function mapOfferOrderAttachmentRow(row: OfferOrderAttachmentRow): OfferOrderAtt
 function revalidateFinancePaths(jobId?: string | null) {
   revalidatePath('/faktury')
   revalidatePath('/zakazky-techniku')
+  revalidatePath('/provize')
+  revalidatePath('/dashboard')
 
   if (jobId) {
     revalidatePath(`/jobs/${jobId}`)
@@ -649,6 +652,33 @@ async function getFinanceAccessRow(
     success: true as const,
     error: null,
     financeRow: financeRow as JobFinanceAccessRow,
+  }
+}
+
+async function syncProvizeAfterFinanceChange(params: {
+  action: string
+  userId: string
+  financeId: string
+  jobId: string
+  changedField: 'invoice_number' | 'sale_amount' | 'cost_amount'
+}) {
+  try {
+    await syncProvizeRecordsFromJobFinances()
+  } catch (error) {
+    console.error('Provize sync after finance change failed:', error)
+
+    await reportActionError({
+      error,
+      action: params.action,
+      section: 'faktury',
+      errorType: 'ProvizeSyncAfterFinanceChangeError',
+      userId: params.userId,
+      context: {
+        financeId: params.financeId,
+        jobId: params.jobId,
+        changedField: params.changedField,
+      },
+    })
   }
 }
 
@@ -893,6 +923,14 @@ export async function saveFinanceCostItemsAction(
     }
   }
 
+  await syncProvizeAfterFinanceChange({
+    action: 'saveFinanceCostItemsAction',
+    userId: user.id,
+    financeId: normalizedFinanceId,
+    jobId: String(financeAccess.financeRow.job_id),
+    changedField: 'cost_amount',
+  })
+
   revalidateFinancePaths(financeAccess.financeRow.job_id)
 
   return {
@@ -958,6 +996,14 @@ export async function deleteFinanceCostItemsAction(
       error: 'Náklad se nepodařilo vymazat.',
     }
   }
+
+  await syncProvizeAfterFinanceChange({
+    action: 'deleteFinanceCostItemsAction',
+    userId: user.id,
+    financeId: normalizedFinanceId,
+    jobId: String(financeAccess.financeRow.job_id),
+    changedField: 'cost_amount',
+  })
 
   revalidateFinancePaths(financeAccess.financeRow.job_id)
 
@@ -1102,6 +1148,14 @@ export async function updateFinanceInlineFieldAction(
           context: { financeId: normalizedFinanceId, jobId: financeRow.job_id },
         })
       }
+
+      await syncProvizeAfterFinanceChange({
+        action: 'updateFinanceInlineFieldAction',
+        userId: user.id,
+        financeId: normalizedFinanceId,
+        jobId: String(financeRow.job_id),
+        changedField: 'invoice_number',
+      })
     }
 
     revalidateFinancePaths(String(financeRow.job_id))
@@ -1137,6 +1191,14 @@ export async function updateFinanceInlineFieldAction(
           : 'Náklad se nepodařilo uložit.',
     }
   }
+
+  await syncProvizeAfterFinanceChange({
+    action: 'updateFinanceInlineFieldAction',
+    userId: user.id,
+    financeId: normalizedFinanceId,
+    jobId: String(financeRow.job_id),
+    changedField: 'sale_amount',
+  })
 
   revalidateFinancePaths(String(financeRow.job_id))
 

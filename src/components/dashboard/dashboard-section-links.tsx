@@ -70,6 +70,21 @@ function IconFinance() {
   )
 }
 
+function IconCommission() {
+  return (
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/provize-icon.png"
+        alt="Provize"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
+  )
+}
+
 function IconFiles() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -146,6 +161,7 @@ export function DashboardSectionLinks({
   canViewStores,
   canViewBSafe24,
   canViewNordFjella,
+  canViewProvize,
   canViewFiles,
   canViewHandoverProtocolUpload = false,
   handoverProtocolUploadJobs = [],
@@ -160,6 +176,7 @@ export function DashboardSectionLinks({
   canViewStores: boolean
   canViewBSafe24: boolean
   canViewNordFjella: boolean
+  canViewProvize: boolean
   canViewFiles: boolean
   canViewHandoverProtocolUpload?: boolean
   handoverProtocolUploadJobs?: HandoverProtocolUploadJobOption[]
@@ -215,6 +232,13 @@ export function DashboardSectionLinks({
         icon: <IconNordFjella />,
       },
       {
+        key: 'provize',
+        href: '/provize',
+        label: 'Provize',
+        visible: canViewProvize,
+        icon: <IconCommission />,
+      },
+      {
         key: 'assets',
         href: '/majetek',
         label: 'Majetek',
@@ -232,6 +256,7 @@ export function DashboardSectionLinks({
       canViewStores,
       canViewBSafe24,
       canViewNordFjella,
+      canViewProvize,
       canViewFiles,
       showClients,
       isAdmin,

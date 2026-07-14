@@ -5,6 +5,12 @@ type JobPpRequiredToggleProps = {
   onChange: (nextValue: boolean) => void
   disabled?: boolean
   compact?: boolean
+  className?: string
+  thumbClassName?: string
+  thumbCheckedClassName?: string
+  thumbUncheckedClassName?: string
+  onLabel?: string
+  offLabel?: string
 }
 
 export function JobPpRequiredToggle({
@@ -12,6 +18,12 @@ export function JobPpRequiredToggle({
   onChange,
   disabled = false,
   compact = false,
+  className,
+  thumbClassName,
+  thumbCheckedClassName,
+  thumbUncheckedClassName,
+  onLabel = 'PP ON',
+  offLabel = 'PP OFF',
 }: JobPpRequiredToggleProps) {
   return (
     <div
@@ -29,21 +41,23 @@ export function JobPpRequiredToggle({
           value
             ? 'border-[#5f9dca] bg-[#4f92cb]'
             : 'border-zinc-300 bg-zinc-200'
-        }`}
+        } ${className ?? ''}`}
         aria-label={value ? 'PP vyžadován' : 'PP není vyžadován'}
       >
         <span
           className={`pointer-events-none absolute top-1/2 inline-flex h-6 w-6 -translate-y-1/2 rounded-full bg-white transition-[left] duration-150 ${
-            value ? 'left-[48px]' : 'left-[2px]'
-          }`}
+            value
+              ? (thumbCheckedClassName ?? 'left-[48px]')
+              : (thumbUncheckedClassName ?? 'left-[2px]')
+          } ${thumbClassName ?? ''}`}
         />
 
         <span className="pointer-events-none flex w-full items-center justify-between px-2 text-[9px] font-semibold uppercase tracking-[0.04em] text-white">
           <span className={`whitespace-nowrap transition-opacity duration-150 ${value ? 'opacity-100' : 'opacity-0'}`}>
-            PP ON
+            {onLabel}
           </span>
           <span className={`whitespace-nowrap -translate-x-2 transition-opacity duration-150 ${value ? 'opacity-0' : 'opacity-100'}`}>
-            PP OFF
+            {offLabel}
           </span>
         </span>
       </button>
