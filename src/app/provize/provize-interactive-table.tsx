@@ -175,49 +175,53 @@ function MobileCard({ row, isAdmin }: { row: ProvizeRow; isAdmin: boolean }) {
     <article className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-base font-semibold text-gray-900">{row.jobNumber}</div>
-          <div className="mt-1 text-sm text-gray-500">{row.companyName}</div>
+          <div className="text-[14px] font-semibold text-gray-900">{row.jobNumber}</div>
+          <div className="mt-1 text-[13px] text-gray-500">{row.companyName}</div>
         </div>
-        <span className="inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
+        <span className="inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
           {row.salesOwner}
         </span>
       </div>
 
-      <dl className="mt-4 grid gap-2 text-sm">
-        <MobileDataRow label="Začátek" value={row.startLabel} />
-        <MobileDataRow label="Konec" value={row.endLabel} />
-        <MobileDataRow label="Adresa" value={row.siteAddress || '—'} />
-        <MobileDataRow label="Prodejna" value={row.storeNumber || '—'} />
-        <MobileDataRow label="Faktura" value={row.invoiceNumber} />
-        <MobileDataRow label="Prodej" value={row.saleAmountLabel} />
-        <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
-          <dt className="text-gray-500">Zisk</dt>
-          <dd className="mt-2">
-            <ProfitEditableCell
-              key={`${row.id}:${row.profitAmount}:mobile`}
-              row={row}
-              isAdmin={isAdmin}
-              compact
-            />
-          </dd>
+      <dl className="mt-4 grid gap-2 text-[12px]">
+        <div className="grid grid-cols-2 gap-2">
+          <MobileDataRow label="Faktura" value={row.invoiceNumber} />
+          <MobileDataRow label="Prodej" value={row.saleAmountLabel} />
+          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-[12px] text-gray-500">Zisk</dt>
+              <dd>
+                <ProfitEditableCell
+                  key={`${row.id}:${row.profitAmount}:mobile`}
+                  row={row}
+                  isAdmin={isAdmin}
+                  compact
+                />
+              </dd>
+            </div>
+          </div>
+          <MobileDataRow label="Provize" value={row.commissionAmountLabel} emphasized accent />
         </div>
-        <MobileDataRow label="Provize" value={row.commissionAmountLabel} />
-        <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
-          <dt className="text-gray-500">K vyplacení</dt>
-          <dd className="mt-2">
-            <ApprovalToggle
-              key={`${row.id}:${row.approvedForPayout}:mobile`}
-              row={row}
-              isAdmin={isAdmin}
-              compact
-            />
-          </dd>
-        </div>
-        <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
-          <dt className="text-gray-500">Vyplaceno</dt>
-          <dd className="mt-2">
-            <PaidBadge isPaid={row.isPaid} />
-          </dd>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-[10px] text-gray-500">K vyplacení</dt>
+              <ApprovalToggle
+                key={`${row.id}:${row.approvedForPayout}:mobile`}
+                row={row}
+                isAdmin={isAdmin}
+                compact
+              />
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-[10px] text-gray-500">Vyplaceno</dt>
+              <dd>
+                <PaidBadge isPaid={row.isPaid} />
+              </dd>
+            </div>
+          </div>
         </div>
       </dl>
     </article>
@@ -310,6 +314,55 @@ function ProfitEditableCell({
       <span className={`${compact ? 'flex w-full items-center justify-between gap-3' : 'inline-flex items-center justify-center'} text-[12px] font-normal text-gray-900`}>
         <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
       </span>
+    )
+  }
+
+  if (compact) {
+    if (isEditing && !row.isPaid) {
+      return (
+        <input
+          autoFocus
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          value={draftValue}
+          disabled={isPending}
+          onChange={(event) => setDraftValue(event.target.value)}
+          onBlur={saveValue}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              saveValue()
+            }
+
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              cancelEditing()
+            }
+          }}
+          className="h-8 w-[92px] rounded-xl border border-[#9dc7e5] bg-white/95 px-2.5 text-right text-[12px] font-medium text-gray-900 outline-none ring-2 ring-[#b9d8ef]"
+        />
+      )
+    }
+
+    if (isLocked) {
+      return (
+        <span className="inline-flex items-center justify-end text-[12px] font-normal text-gray-900">
+          <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
+        </span>
+      )
+    }
+
+    return (
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={() => setIsEditing(true)}
+        className="inline-flex items-center justify-end text-[12px] font-normal text-gray-900 transition duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+        title="Upravit zisk pro provize"
+      >
+        <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
+      </button>
     )
   }
 
@@ -418,14 +471,38 @@ function PaidBadge({ isPaid }: { isPaid: boolean }) {
 function MobileDataRow({
   label,
   value,
+  emphasized = false,
+  accent = false,
 }: {
   label: string
   value: string
+  emphasized?: boolean
+  accent?: boolean
 }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="text-right font-medium text-gray-900">{value}</dd>
+      <dt
+        className={`${
+          accent
+            ? 'font-semibold text-[#236f9f]'
+            : emphasized
+              ? 'font-semibold text-gray-900'
+              : 'text-gray-500'
+        }`}
+      >
+        {label}
+      </dt>
+      <dd
+        className={`text-right ${
+          accent
+            ? 'font-semibold text-[#236f9f]'
+            : emphasized
+              ? 'font-semibold text-gray-900'
+              : 'font-medium text-gray-900'
+        }`}
+      >
+        {value}
+      </dd>
     </div>
   )
 }
