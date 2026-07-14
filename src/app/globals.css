@@ -331,7 +331,7 @@ html[data-theme='dark'] .nord-fjella-back-button:hover {
     rgba(31, 31, 35, 0.96) 55%,
     rgba(20, 20, 24, 0.96) 100%
   ) !important;
-  color: #ffffff !important;
+  color: #f8fbff !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 16px 28px rgba(0, 0, 0, 0.38) !important;
 }
 
@@ -2648,7 +2648,7 @@ html[data-theme='dark'] .clients-page__detail-button:hover {
     rgba(42, 64, 97, 0.99) 0%,
     rgba(27, 43, 70, 0.97) 100%
   ) !important;
-  color: #ffffff !important;
+  color: #f8fbff !important;
 }
 
 html[data-theme='dark'] .clients-page__contact-edit-button {
@@ -15102,4 +15102,452 @@ html[data-theme='dark'] .bsafe24-status-badge--inactive {
   background: linear-gradient(155deg, rgba(30, 41, 59, 0.42) 0%, rgba(15, 23, 42, 0.34) 100%) !important;
   color: #cbd5e1 !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+}
+
+html[data-theme='dark'] .provize-page__filter-shell {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 18px 42px rgba(2, 6, 23, 0.3) !important;
+}
+
+html[data-theme='dark'] .provize-page__filter-divider {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+html[data-theme='dark'] .provize-page__payout-button {
+  border-color: rgba(78, 160, 220, 0.3) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(56, 125, 177, 0.94) 0%,
+    rgba(38, 97, 141, 0.92) 52%,
+    rgba(27, 73, 111, 0.94) 100%
+  ) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 24px rgba(11, 33, 56, 0.34) !important;
+}
+
+html[data-theme='dark'] .provize-page__payout-button:hover {
+  border-color: rgba(96, 165, 250, 0.38) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(67, 142, 195, 0.96) 0%,
+    rgba(45, 111, 160, 0.94) 52%,
+    rgba(32, 82, 124, 0.96) 100%
+  ) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .provize-page__history-button {
+  border-color: rgba(84, 170, 232, 0.42) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(40, 92, 144, 0.92) 0%,
+    rgba(28, 70, 114, 0.94) 52%,
+    rgba(20, 51, 87, 0.96) 100%
+  ) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 28px rgba(13, 39, 66, 0.34) !important;
+}
+
+html[data-theme='dark'] .provize-page__history-button:hover {
+  border-color: rgba(125, 211, 252, 0.52) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(54, 112, 170, 0.96) 0%,
+    rgba(36, 84, 131, 0.96) 52%,
+    rgba(25, 60, 99, 0.98) 100%
+  ) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .provize-profit-pill {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  color: #f8fbff !important;
+  box-shadow: 0 10px 22px rgba(8, 20, 37, 0.22) !important;
+}
+
+html[data-theme='dark'] input.provize-profit-pill {
+  border-color: rgba(84, 170, 232, 0.24) !important;
+  background: rgba(15, 23, 42, 0.94) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    0 0 0 2px rgba(84, 170, 232, 0.18),
+    0 10px 22px rgba(8, 20, 37, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-approval-pill,
+html[data-theme='dark'] .provize-paid-badge {
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .provize-approval-pill.border-emerald-300\/90,
+html[data-theme='dark'] .provize-paid-badge.border-emerald-300\/90 {
+  border-color: rgba(52, 211, 153, 0.22) !important;
+  background: rgba(6, 78, 59, 0.26) !important;
+  color: #bbf7d0 !important;
+}
+
+html[data-theme='dark'] .provize-approval-pill.border-zinc-300 {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  background: rgba(30, 41, 59, 0.32) !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .provize-paid-badge.border-red-300\/90 {
+  border-color: rgba(248, 113, 113, 0.24) !important;
+  background: rgba(127, 29, 29, 0.24) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(8, 13, 23, 0.98) 0%,
+    rgba(12, 20, 34, 0.96) 52%,
+    rgba(9, 15, 27, 0.98) 100%
+  ) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 36px 84px rgba(0, 0, 0, 0.34) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__header {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__panel,
+html[data-theme='dark'] .provize-payout-modal__subpanel,
+html[data-theme='dark'] .provize-payout-modal__info-card,
+html[data-theme='dark'] .provize-payout-modal__empty {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(12, 20, 34, 0.92) 100%
+  ) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 28px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__mini-card {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__mini-card--accent {
+  border-color: rgba(78, 160, 220, 0.2) !important;
+  background: rgba(18, 36, 73, 0.62) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__field {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__field::placeholder {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal .text-gray-900,
+html[data-theme='dark'] .provize-payout-modal .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal .text-gray-700,
+html[data-theme='dark'] .provize-payout-modal .text-zinc-700,
+html[data-theme='dark'] .provize-payout-modal .text-zinc-600 {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal .text-gray-600,
+html[data-theme='dark'] .provize-payout-modal .text-gray-500,
+html[data-theme='dark'] .provize-payout-modal .text-zinc-500,
+html[data-theme='dark'] .provize-payout-modal .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__secondary-button {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(12, 20, 34, 0.92) 100%
+  ) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__danger-button {
+  border-color: rgba(248, 113, 113, 0.26) !important;
+  background: rgba(127, 29, 29, 0.18) !important;
+  color: #fecaca !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__count-badge {
+  border-color: rgba(84, 170, 232, 0.24) !important;
+  background: rgba(18, 36, 73, 0.62) !important;
+  color: #8fd0ff !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__secondary-accent-button {
+  border-color: rgba(84, 170, 232, 0.26) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(24, 45, 78, 0.94) 0%,
+    rgba(18, 36, 66, 0.92) 52%,
+    rgba(14, 28, 53, 0.94) 100%
+  ) !important;
+  color: #8fd0ff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(8, 20, 37, 0.28) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__summary-ghost-button {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 22px rgba(8, 20, 37, 0.18) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__summary-preview-button {
+  border-color: rgba(84, 170, 232, 0.24) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 22px rgba(8, 20, 37, 0.18) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__summary-confirm-button {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 24px rgba(8, 20, 37, 0.2) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__summary-panel {
+  border-color: rgba(84, 170, 232, 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 20px 44px rgba(24, 78, 129, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__remove-button {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__remove-button:hover {
+  border-color: rgba(248, 113, 113, 0.2) !important;
+  background: rgba(127, 29, 29, 0.16) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .provize-history-modal {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(8, 13, 23, 0.98) 0%,
+    rgba(12, 20, 34, 0.96) 52%,
+    rgba(9, 15, 27, 0.98) 100%
+  ) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 36px 84px rgba(0, 0, 0, 0.34) !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__header {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__close {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(12, 20, 34, 0.92) 100%
+  ) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__close:hover {
+  border-color: rgba(78, 160, 220, 0.22) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(22, 34, 54, 0.98) 0%,
+    rgba(14, 23, 38, 0.96) 100%
+  ) !important;
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__panel,
+html[data-theme='dark'] .provize-history-modal__subpanel,
+html[data-theme='dark'] .provize-history-modal__info-card,
+html[data-theme='dark'] .provize-history-modal__empty,
+html[data-theme='dark'] .provize-history-modal__owner-card,
+html[data-theme='dark'] .provize-history-modal__batch-card--idle {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(12, 20, 34, 0.92) 100%
+  ) !important;
+  color: #e5edf7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 28px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__batch-card--active {
+  border-color: rgba(78, 160, 220, 0.28) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(56, 125, 177, 0.98) 0%,
+    rgba(41, 105, 152, 0.96) 52%,
+    rgba(30, 86, 129, 0.96) 100%
+  ) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 36px rgba(11, 33, 56, 0.3) !important;
+}
+
+html[data-theme='dark'] .provize-history-modal .text-gray-900,
+html[data-theme='dark'] .provize-history-modal .text-zinc-900 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .provize-history-modal .text-gray-700,
+html[data-theme='dark'] .provize-history-modal .text-zinc-700,
+html[data-theme='dark'] .provize-history-modal .text-zinc-600 {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .provize-history-modal .text-gray-600,
+html[data-theme='dark'] .provize-history-modal .text-gray-500,
+html[data-theme='dark'] .provize-history-modal .text-zinc-500,
+html[data-theme='dark'] .provize-history-modal .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__secondary-button {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(12, 20, 34, 0.92) 100%
+  ) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__secondary-button:hover {
+  border-color: rgba(78, 160, 220, 0.22) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(22, 34, 54, 0.98) 0%,
+    rgba(14, 23, 38, 0.96) 100%
+  ) !important;
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .provize-history-modal__count-badge {
+  border-color: rgba(84, 170, 232, 0.22) !important;
+  background: rgba(18, 36, 73, 0.62) !important;
+  color: #8fd0ff !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__close {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(12, 20, 34, 0.92) 100%
+  ) !important;
+  color: #cbd5e1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__close:hover {
+  border-color: rgba(78, 160, 220, 0.22) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(22, 34, 54, 0.98) 0%,
+    rgba(14, 23, 38, 0.96) 100%
+  ) !important;
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__owner-card--idle {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(12, 20, 34, 0.92) 100%
+  ) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 18px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__owner-card--active {
+  border-color: rgba(78, 160, 220, 0.28) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(56, 125, 177, 0.98) 0%,
+    rgba(41, 105, 152, 0.96) 52%,
+    rgba(30, 86, 129, 0.96) 100%
+  ) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 36px rgba(11, 33, 56, 0.3) !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__owner-card--idle .text-gray-900,
+html[data-theme='dark'] .provize-payout-modal__owner-card--idle .text-zinc-900,
+html[data-theme='dark'] .provize-payout-modal__owner-card--idle .text-gray-700 {
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .provize-payout-modal__owner-card--idle .text-gray-600,
+html[data-theme='dark'] .provize-payout-modal__owner-card--idle .text-gray-500,
+html[data-theme='dark'] .provize-payout-modal__owner-card--idle .text-zinc-500 {
+  color: #94a3b8 !important;
 }

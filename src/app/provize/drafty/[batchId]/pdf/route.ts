@@ -15,10 +15,9 @@ import {
 } from '@react-pdf/renderer'
 import { reportRouteError } from '@/lib/errors/reportRouteError'
 import {
-  getProvizeHistoryBatchById,
-  requireProvizeHistoryAccess,
-  type ProvizeHistoryBatch,
-} from '@/lib/provize/history'
+  getProvizePayoutDraftPreviewAction,
+  type ProvizePayoutDraftData,
+} from '@/app/provize/payout-actions'
 
 export const runtime = 'nodejs'
 
@@ -28,7 +27,7 @@ const arialRegularPath = path.join(process.cwd(), 'public', 'fonts', 'Arial.ttf'
 const arialBoldPath = path.join(process.cwd(), 'public', 'fonts', 'Arial-Bold.ttf')
 
 Font.register({
-  family: 'ProvizeArial',
+  family: 'ProvizeArialDraft',
   fonts: [
     { src: arialRegularPath, fontWeight: 400 },
     { src: arialBoldPath, fontWeight: 700 },
@@ -42,7 +41,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     fontSize: 10,
     color: '#111827',
-    fontFamily: 'ProvizeArial',
+    fontFamily: 'ProvizeArialDraft',
   },
   header: {
     flexDirection: 'row',
@@ -218,13 +217,13 @@ function formatDateTime(value: string) {
   }).format(new Date(value))
 }
 
-function buildFileName(salesOwner: string, confirmedAt: string) {
+function buildFileName(salesOwner: string, updatedAt: string) {
   const datePart = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Prague',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(new Date(confirmedAt))
+  }).format(new Date(updatedAt))
 
   const ownerPart = salesOwner
     .normalize('NFKD')
@@ -234,19 +233,19 @@ function buildFileName(salesOwner: string, confirmedAt: string) {
     .replaceAll(/-+/g, '-')
     .replaceAll(/^-|-$/g, '')
 
-  return `provize-${ownerPart || 'obchodnik'}-${datePart}.pdf`
+  return `provize-nahled-${ownerPart || 'obchodnik'}-${datePart}.pdf`
 }
 
-function chunkItems(batch: ProvizeHistoryBatch, size: number) {
-  const chunks: typeof batch.items[] = []
-  for (let index = 0; index < batch.items.length; index += size) {
-    chunks.push(batch.items.slice(index, index + size))
+function chunkItems(draft: ProvizePayoutDraftData, size: number) {
+  const chunks: typeof draft.items[] = []
+  for (let index = 0; index < draft.items.length; index += size) {
+    chunks.push(draft.items.slice(index, index + size))
   }
   return chunks
 }
 
-function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
-  const pages = chunkItems(batch, 14)
+function DraftPreviewPdfDocument({ draft }: { draft: ProvizePayoutDraftData }) {
+  const pages = chunkItems(draft, 14)
 
   return h(
     Document,
@@ -254,7 +253,7 @@ function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
     ...pages.map((items, pageIndex) =>
       h(
         Page,
-        { key: `${batch.id}-${pageIndex + 1}`, size: 'A4', style: styles.page },
+        { key: `${draft.batchId}-${pageIndex + 1}`, size: 'A4', style: styles.page },
         h(
           View,
           null,
@@ -265,11 +264,11 @@ function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
             h(
               View,
               { style: styles.titleWrap },
-              h(Text, { style: styles.title }, 'Vyúčtování provizí'),
+              h(Text, { style: styles.title }, 'Náhled vyúčtování provizí'),
               h(
                 Text,
                 { style: styles.subtitle },
-                `Obchodník: ${batch.salesOwner} | Potvrzeno: ${formatDateTime(batch.confirmedAt)}`
+                `Obchodník: ${draft.salesOwner} | Aktualizováno: ${formatDateTime(draft.updatedAt)}`
               )
             )
           ),
@@ -290,25 +289,25 @@ function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
                         View,
                         { style: styles.summaryItem },
                         h(Text, { style: styles.label }, 'Obchodník'),
-                        h(Text, { style: styles.value }, batch.salesOwner)
+                        h(Text, { style: styles.value }, draft.salesOwner)
                       ),
                       h(
                         View,
                         { style: styles.summaryItem },
                         h(Text, { style: styles.label }, 'Počet zakázek'),
-                        h(Text, { style: styles.value }, String(batch.itemCount))
+                        h(Text, { style: styles.value }, String(draft.items.length))
                       ),
                       h(
                         View,
                         { style: styles.summaryItem },
                         h(Text, { style: styles.label }, 'Provize ze zakázek'),
-                        h(Text, { style: styles.value }, formatCurrency(batch.commissionSubtotal))
+                        h(Text, { style: styles.value }, formatCurrency(draft.commissionSubtotal))
                       ),
                       h(
                         View,
                         { style: styles.summaryItem },
                         h(Text, { style: styles.label }, 'Bonusy a odpočty'),
-                        h(Text, { style: styles.value }, formatCurrency(batch.adjustmentTotal))
+                        h(Text, { style: styles.value }, formatCurrency(draft.adjustmentTotal))
                       )
                     )
                   ),
@@ -316,8 +315,8 @@ function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
                     View,
                     { style: styles.summaryPrimary },
                     h(Text, { style: styles.summaryPrimaryLabel }, 'K finální výplatě'),
-                    h(Text, { style: styles.summaryPrimaryValue }, formatCurrency(batch.payoutTotal)),
-                    h(Text, { style: styles.summaryPrimaryHint }, 'Potvrzená částka této výplatní dávky.')
+                    h(Text, { style: styles.summaryPrimaryValue }, formatCurrency(draft.payoutTotal)),
+                    h(Text, { style: styles.summaryPrimaryHint }, 'Předpokládaná částka dle aktuálního draftu.')
                   )
                 )
               )
@@ -327,9 +326,9 @@ function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
                 View,
                 { style: styles.section },
                 h(Text, { style: styles.sectionTitle }, 'Bonusy a odpočty'),
-                batch.adjustments.length === 0
-                  ? h(Text, { style: styles.rowText }, 'Tato dávka nemá žádné bonusy ani odpočty.')
-                  : batch.adjustments.map((item) =>
+                draft.adjustments.length === 0
+                  ? h(Text, { style: styles.rowText }, 'Tento draft nemá žádné bonusy ani odpočty.')
+                  : draft.adjustments.map((item) =>
                       h(
                         View,
                         { key: item.id, style: styles.adjustmentRow },
@@ -367,7 +366,7 @@ function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
             ...items.map((item) =>
               h(
                 View,
-                { key: item.id, style: styles.tableRow },
+                { key: item.provizeRecordId, style: styles.tableRow },
                 h(Text, { style: [styles.colJob, styles.rowText] }, item.jobNumber),
                 h(Text, { style: [styles.colCompany, styles.rowText] }, item.companyName),
                 h(Text, { style: [styles.colInvoice, styles.rowText] }, item.invoiceNumber),
@@ -383,7 +382,7 @@ function ProvizeBatchPdfDocument({ batch }: { batch: ProvizeHistoryBatch }) {
           h(
             Text,
             { style: styles.footerNote },
-            `Vygenerováno ${formatDateTime(new Date().toISOString())}`
+            `Náhled vygenerován ${formatDateTime(new Date().toISOString())}`
           )
         )
       )
@@ -398,37 +397,35 @@ export async function GET(
   const { batchId } = await context.params
 
   try {
-    const access = await requireProvizeHistoryAccess()
+    const result = await getProvizePayoutDraftPreviewAction(batchId)
 
-    if (!access.success) {
-      return NextResponse.json({ error: access.error }, { status: 403 })
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 403 })
     }
 
-    const batch = await getProvizeHistoryBatchById(access, batchId)
-    const document = h(ProvizeBatchPdfDocument, { batch }) as ReactElement<DocumentProps>
+    const document = h(DraftPreviewPdfDocument, { draft: result.draft }) as ReactElement<DocumentProps>
     const buffer = await renderToBuffer(document)
 
     return new NextResponse(buffer as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${buildFileName(batch.salesOwner, batch.confirmedAt)}"`,
+        'Content-Disposition': `inline; filename="${buildFileName(result.draft.salesOwner, result.draft.updatedAt)}"`,
         'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
-    const access = await requireProvizeHistoryAccess().catch(() => null)
     await reportRouteError({
       error,
-      route: '/app/provize/vyplaty/[batchId]/pdf',
+      route: '/app/provize/drafty/[batchId]/pdf',
       section: 'provize',
-      errorType: 'ProvizeBatchPdfError',
-      userId: access && access.success ? access.userId : null,
+      errorType: 'ProvizeDraftPreviewPdfError',
+      userId: null,
       context: { batchId },
     })
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'PDF dávky se nepodařilo vygenerovat.' },
+      { error: error instanceof Error ? error.message : 'Draft PDF náhled se nepodařilo vygenerovat.' },
       { status: 500 }
     )
   }

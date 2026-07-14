@@ -614,7 +614,7 @@ export default async function ProvizePage({
         </section>
 
         <section className="grid gap-5 xl:grid-cols-2">
-          <section className="jobs-page__filters-shell rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+          <section className="jobs-page__filters-shell provize-page__filter-shell rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_20px_44px_rgba(0,0,0,0.24)]">
             <details id="provize-mobile-filters" className="group mb-2 lg:hidden">
               <summary className="jobs-page__filters-summary flex h-10 cursor-pointer list-none items-center justify-between gap-2.5 rounded-xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(242,247,252,0.88)_100%)] px-3 text-[12px] font-semibold uppercase tracking-[0.07em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_16px_rgba(15,23,42,0.08)]">
                 <span className="inline-flex items-center gap-2">
@@ -631,7 +631,7 @@ export default async function ProvizePage({
               <form
                 action="/provize"
                 method="get"
-                className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]"
               >
                 <input type="hidden" name="q" value={query} />
 
@@ -701,7 +701,7 @@ export default async function ProvizePage({
 
                 </div>
 
-                <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+                <div className="provize-page__filter-divider flex items-center gap-2 border-t border-gray-100 pt-3 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
                   <button
                     type="submit"
                     className="jobs-page__filter-submit inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
@@ -717,9 +717,9 @@ export default async function ProvizePage({
                   </Link>
                 </div>
 
-                <div className="border-t border-gray-100 pt-3 text-[11px] text-gray-500">
+                <div className="provize-page__filter-divider border-t border-gray-100 pt-3 text-[11px] text-gray-500 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:text-slate-400">
                   Aktivní:{' '}
-                  <span className="font-medium text-gray-700">
+                  <span className="font-medium text-gray-700 [html[data-theme='dark']_&]:text-slate-300">
                     {activeFilterSummary || 'bez omezení'}
                   </span>
                 </div>
@@ -794,7 +794,7 @@ export default async function ProvizePage({
                 />
               </div>
 
-              <div className="hidden flex-col gap-2 border-t border-gray-100 pt-4 lg:flex">
+              <div className="provize-page__filter-divider hidden flex-col gap-2 border-t border-gray-100 pt-4 lg:flex [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="submit"
@@ -813,7 +813,7 @@ export default async function ProvizePage({
                   {isAdmin ? (
                     <ProvizePayoutModalLauncher
                       owners={SALES_OWNER_OPTIONS}
-                      buttonClassName="inline-flex h-10 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px]"
+                      buttonClassName="provize-page__payout-button inline-flex h-10 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(78,160,220,0.3)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(56,125,177,0.94)_0%,rgba(38,97,141,0.92)_52%,rgba(27,73,111,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_rgba(11,33,56,0.34)] [html[data-theme='dark']_&:hover]:border-[rgba(96,165,250,0.38)] [html[data-theme='dark']_&:hover]:bg-[linear-gradient(155deg,rgba(67,142,195,0.96)_0%,rgba(45,111,160,0.94)_52%,rgba(32,82,124,0.96)_100%)]"
                     />
                   ) : null}
 
@@ -822,13 +822,13 @@ export default async function ProvizePage({
                       isAdmin={isAdmin}
                       currentSalesOwner={currentSalesOwner}
                       owners={SALES_OWNER_OPTIONS}
-                      buttonClassName="inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                      buttonClassName="provize-page__history-button inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.42)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(40,92,144,0.92)_0%,rgba(28,70,114,0.94)_52%,rgba(20,51,87,0.96)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_28px_rgba(13,39,66,0.34)] [html[data-theme='dark']_&:hover]:border-[rgba(125,211,252,0.52)] [html[data-theme='dark']_&:hover]:bg-[linear-gradient(155deg,rgba(54,112,170,0.96)_0%,rgba(36,84,131,0.96)_52%,rgba(25,60,99,0.98)_100%)] [html[data-theme='dark']_&:hover]:text-[#f8fbff]"
                     />
                   ) : null}
                 </div>
               </div>
 
-              <div className="hidden border-t border-gray-100 pt-3 text-[11px] text-gray-500 lg:block">
+              <div className="provize-page__filter-divider hidden border-t border-gray-100 pt-3 text-[11px] text-gray-500 lg:block [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
                 Aktivní:{' '}
                 <span className="font-medium text-gray-700">
                   {activeFilterSummary || 'bez omezení'}
@@ -840,7 +840,7 @@ export default async function ProvizePage({
               {isAdmin ? (
                 <ProvizePayoutModalLauncher
                   owners={SALES_OWNER_OPTIONS}
-                  buttonClassName="inline-flex h-10 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[11px] font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200"
+                  buttonClassName="provize-page__payout-button inline-flex h-10 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2 text-[11px] font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 [html[data-theme='dark']_&]:border-[rgba(78,160,220,0.3)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(56,125,177,0.94)_0%,rgba(38,97,141,0.92)_52%,rgba(27,73,111,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_24px_rgba(11,33,56,0.34)]"
                 />
               ) : null}
 
@@ -849,7 +849,7 @@ export default async function ProvizePage({
                   isAdmin={isAdmin}
                   currentSalesOwner={currentSalesOwner}
                   owners={SALES_OWNER_OPTIONS}
-                  buttonClassName="inline-flex h-10 w-full items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 text-[11px] font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200"
+                  buttonClassName="provize-page__history-button inline-flex h-10 w-full items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2 text-[11px] font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.42)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(40,92,144,0.92)_0%,rgba(28,70,114,0.94)_52%,rgba(20,51,87,0.96)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_28px_rgba(13,39,66,0.34)]"
                 />
               ) : null}
             </div>
@@ -867,13 +867,13 @@ export default async function ProvizePage({
                 </div>
               </div>
 
-              <div className="inline-flex rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
+              <div className="inline-flex rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.26)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(24,45,78,0.94)_0%,rgba(18,36,66,0.92)_52%,rgba(14,28,53,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(8,20,37,0.32)]">
                 <Link
                   href={yearHref}
                   className={`inline-flex h-8 items-center justify-center rounded-xl px-3 text-xs font-medium ${
                     yearScope === 'year'
-                      ? 'bg-zinc-900 text-white shadow-[0_8px_16px_rgba(24,24,27,0.18)]'
-                      : 'text-gray-600 transition hover:bg-white/80'
+                      ? 'bg-zinc-900 text-white shadow-[0_8px_16px_rgba(24,24,27,0.18)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.92)] [html[data-theme=\'dark\']_&]:text-[#f8fbff] [html[data-theme=\'dark\']_&]:shadow-[0_8px_16px_rgba(0,0,0,0.28)]'
+                      : 'text-gray-600 transition hover:bg-white/80 [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:hover:bg-white/10 [html[data-theme=\'dark\']_&]:hover:text-[#f8fbff]'
                   }`}
                   aria-current={yearScope === 'year' ? 'page' : undefined}
                 >
@@ -883,8 +883,8 @@ export default async function ProvizePage({
                   href={allTimeHref}
                   className={`inline-flex h-8 items-center justify-center rounded-xl px-3 text-xs font-medium ${
                     yearScope === 'all'
-                      ? 'bg-zinc-900 text-white shadow-[0_8px_16px_rgba(24,24,27,0.18)]'
-                      : 'text-gray-600 transition hover:bg-white/80'
+                      ? 'bg-zinc-900 text-white shadow-[0_8px_16px_rgba(24,24,27,0.18)] [html[data-theme=\'dark\']_&]:bg-[rgba(15,23,42,0.92)] [html[data-theme=\'dark\']_&]:text-[#f8fbff] [html[data-theme=\'dark\']_&]:shadow-[0_8px_16px_rgba(0,0,0,0.28)]'
+                      : 'text-gray-600 transition hover:bg-white/80 [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:hover:bg-white/10 [html[data-theme=\'dark\']_&]:hover:text-[#f8fbff]'
                   }`}
                   aria-current={yearScope === 'all' ? 'page' : undefined}
                 >
@@ -937,8 +937,8 @@ export default async function ProvizePage({
 
         {rows.length === 0 ? (
           <>
-            <section className="jobs-page__table-shell provize-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
-              <div className="border-b border-white/70 px-5 py-4">
+            <section className="jobs-page__table-shell provize-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_20px_44px_rgba(0,0,0,0.24)] lg:block">
+              <div className="border-b border-white/70 px-5 py-4 [html[data-theme='dark']_&]:border-b-transparent">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                   Přehled zakázek pro provize
                 </div>
@@ -961,7 +961,7 @@ export default async function ProvizePage({
                     <col className="w-[132px]" />
                     <col className="w-[120px]" />
                   </colgroup>
-                  <thead className="sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(249,250,251,0.96)_100%)] shadow-[0_1px_0_0_#e5e7eb] backdrop-blur">
+                  <thead className="sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(249,250,251,0.96)_100%)] shadow-[0_1px_0_0_#e5e7eb] backdrop-blur [html[data-theme='dark']_&]:shadow-none">
                     <tr className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                       <th className="px-2 py-3 text-left">Zakázka</th>
                       <th className="px-2 py-3 text-left">Obchodník</th>
@@ -1042,7 +1042,7 @@ function FilterSelect({
     <div>
       <label
         htmlFor={id}
-        className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500"
+        className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 [html[data-theme='dark']_&]:text-slate-400"
       >
         {label}
       </label>
@@ -1050,7 +1050,7 @@ function FilterSelect({
         id={id}
         name={name}
         defaultValue={defaultValue}
-        className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+        className="h-10 w-full rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme='dark']_&]:text-[#f8fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_8px_18px_rgba(0,0,0,0.18)] [html[data-theme='dark']_&]:focus:border-[rgba(84,170,232,0.34)] [html[data-theme='dark']_&]:focus:ring-[rgba(84,170,232,0.22)]"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -1117,25 +1117,29 @@ function StatsCard({
 }) {
   return (
     <article
-      className={`rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_20px_rgba(15,23,42,0.08)] ${
+      className={`rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_20px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.22)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(24,45,78,0.56)_0%,rgba(18,36,66,0.48)_52%,rgba(14,28,53,0.52)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_14px_28px_rgba(8,20,37,0.24)] ${
         className ?? ''
       }`}
     >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 [html[data-theme='dark']_&]:text-slate-300">
         {label}
       </div>
       <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500">
+          <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">
             Nevyplacené
           </div>
-          <div className="mt-0.5 text-lg font-semibold text-gray-900">{unpaidValue}</div>
+          <div className="mt-0.5 text-lg font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+            {unpaidValue}
+          </div>
         </div>
         <div>
-          <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500">
+          <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">
             Vyplacené
           </div>
-          <div className="mt-0.5 text-lg font-semibold text-gray-900">{paidValue}</div>
+          <div className="mt-0.5 text-lg font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
+            {paidValue}
+          </div>
         </div>
       </div>
     </article>

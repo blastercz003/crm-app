@@ -157,8 +157,8 @@ function ProvizeHistoryModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-[1320px] flex-col overflow-hidden rounded-[30px] border border-zinc-200 bg-white shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
-          <div className="border-b border-white/70 px-4 py-4 sm:px-6">
+        <div className="provize-history-modal flex max-h-[calc(100vh-1.5rem)] w-full max-w-[1320px] flex-col overflow-hidden rounded-[30px] border border-zinc-200 bg-white shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+          <div className="provize-history-modal__header border-b border-white/70 px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#236f9f]">
@@ -180,7 +180,7 @@ function ProvizeHistoryModal({
                 type="button"
                 onClick={onClose}
                 disabled={isPending}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                className="provize-history-modal__close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Zavřít"
               >
                 ×
@@ -197,7 +197,7 @@ function ProvizeHistoryModal({
                     type="button"
                     onClick={() => loadOwnerHistory(owner)}
                     disabled={isPending}
-                    className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 text-left text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="provize-history-modal__owner-card rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 text-left text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#236f9f]">
                       Obchodník
@@ -212,7 +212,7 @@ function ProvizeHistoryModal({
             ) : (
               <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
                 <aside className="space-y-5">
-                  <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                  <div className="provize-history-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
@@ -232,7 +232,7 @@ function ProvizeHistoryModal({
                             setPayload(null)
                             setErrorMessage(null)
                           }}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                          className="provize-history-modal__secondary-button inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
                         >
                           ZMĚNIT
                         </button>
@@ -240,7 +240,7 @@ function ProvizeHistoryModal({
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                  <div className="provize-history-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                       Výplatní dávky
                     </div>
@@ -268,10 +268,10 @@ function ProvizeHistoryModal({
                               key={batch.id}
                               type="button"
                               onClick={() => setSelectedBatchId(batch.id)}
-                              className={`block w-full rounded-[24px] border p-4 text-left transition duration-200 ${
+                              className={`provize-history-modal__batch-card block w-full rounded-[24px] border p-4 text-left transition duration-200 ${
                                 isActive
-                                  ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(24,78,129,0.24)]'
-                                  : 'border-white/75 bg-white/78 text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] hover:-translate-y-[1px]'
+                                  ? 'provize-history-modal__batch-card--active border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(24,78,129,0.24)]'
+                                  : 'provize-history-modal__batch-card--idle border-white/75 bg-white/78 text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] hover:-translate-y-[1px]'
                               }`}
                             >
                               <div className="flex items-start justify-between gap-3">
@@ -302,7 +302,7 @@ function ProvizeHistoryModal({
                 <section className="space-y-5">
                   {selectedBatch ? (
                     <>
-                      <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                      <div className="provize-history-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#236f9f]">
@@ -313,7 +313,7 @@ function ProvizeHistoryModal({
                             </div>
                           </div>
 
-                          <span className="inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
+                          <span className="provize-history-modal__count-badge inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
                             {selectedBatch.salesOwner}
                           </span>
                         </div>
@@ -330,7 +330,7 @@ function ProvizeHistoryModal({
 
                           <a
                             href={`/provize/vyplaty/${selectedBatch.id}/export`}
-                            className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
+                            className="provize-history-modal__secondary-button inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
                           >
                             EXPORT XLSX
                           </a>
@@ -373,7 +373,7 @@ function ProvizeHistoryModal({
                         </div>
                       </div>
 
-                      <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                      <div className="provize-history-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                           Bonusy a odpočty
                         </div>
@@ -388,7 +388,7 @@ function ProvizeHistoryModal({
                             selectedBatch.adjustments.map((item) => (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between gap-3 rounded-[22px] border border-white/75 bg-white/78 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
+                              className="provize-history-modal__subpanel flex items-center justify-between gap-3 rounded-[22px] border border-white/75 bg-white/78 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
                               >
                                 <div>
                                   <div className="text-sm font-semibold text-gray-900">
@@ -408,7 +408,7 @@ function ProvizeHistoryModal({
                         </div>
                       </div>
 
-                      <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                      <div className="provize-history-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
@@ -427,7 +427,7 @@ function ProvizeHistoryModal({
                           {selectedBatch.items.map((item) => (
                             <article
                               key={item.id}
-                              className="rounded-[24px] border border-white/75 bg-white/78 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
+                              className="provize-history-modal__subpanel rounded-[24px] border border-white/75 bg-white/78 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
                             >
                               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                 <div className="min-w-0 flex-1">
@@ -435,7 +435,7 @@ function ProvizeHistoryModal({
                                     <span className="text-base font-semibold text-gray-900">
                                       {item.jobNumber}
                                     </span>
-                                    <span className="inline-flex rounded-full border border-white/75 bg-[#eef5fb] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
+                                    <span className="provize-history-modal__count-badge inline-flex rounded-full border border-white/75 bg-[#eef5fb] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
                                       {item.invoiceNumber}
                                     </span>
                                   </div>
@@ -480,7 +480,7 @@ function ProvizeHistoryModal({
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-white/78 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+    <div className="provize-history-modal__info-card rounded-2xl border border-white/75 bg-white/78 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
         {label}
       </div>
@@ -512,7 +512,7 @@ function SummaryRow({
 
 function EmptyStateText({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#cfd8e3] bg-white/60 px-4 py-5 text-sm text-gray-500">
+    <div className="provize-history-modal__empty rounded-2xl border border-dashed border-[#cfd8e3] bg-white/60 px-4 py-5 text-sm text-gray-500">
       {text}
     </div>
   )

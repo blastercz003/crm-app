@@ -19,12 +19,12 @@ export function ProvizeInteractiveTable({
 }: ProvizeInteractiveTableProps) {
   return (
     <>
-      <section className="jobs-page__table-shell provize-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
-        <div className="h-px border-b border-white/70" />
+      <section className="jobs-page__table-shell provize-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_20px_44px_rgba(0,0,0,0.24)] lg:block">
+        <div className="h-px border-b border-white/70 [html[data-theme='dark']_&]:border-b-transparent" />
 
         <table className="jobs-page__table w-full min-w-[1180px] table-fixed px-1">
           <ProvizeTableColgroup />
-          <thead className="shadow-[0_1px_0_0_#e5e7eb]">
+          <thead className="shadow-[0_1px_0_0_#e5e7eb] [html[data-theme='dark']_&]:shadow-none">
             <tr className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
               <th className="px-2 py-2.5 text-left">Zakázka</th>
               <th className="px-2 py-2.5 text-left">Obchodník</th>
@@ -151,7 +151,7 @@ function DesktopRow({ row, isAdmin }: { row: ProvizeRow; isAdmin: boolean }) {
       </td>
       <td
         title={row.commissionAmountLabel}
-        className="border-y border-[#cfd8e3] px-2 py-2 text-center text-[12px] font-semibold text-[#236f9f]"
+        className="border-y border-[#cfd8e3] px-2 py-2 text-center text-[12px] font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-[#4ea0dc]"
       >
         <span className="block truncate whitespace-nowrap">{row.commissionAmountLabel}</span>
       </td>
@@ -172,13 +172,13 @@ function DesktopRow({ row, isAdmin }: { row: ProvizeRow; isAdmin: boolean }) {
 
 function MobileCard({ row, isAdmin }: { row: ProvizeRow; isAdmin: boolean }) {
   return (
-    <article className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
+    <article className="rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_20px_44px_rgba(0,0,0,0.24)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[14px] font-semibold text-gray-900">{row.jobNumber}</div>
-          <div className="mt-1 text-[13px] text-gray-500">{row.companyName}</div>
+          <div className="text-[14px] font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">{row.jobNumber}</div>
+          <div className="mt-1 text-[13px] text-gray-500 [html[data-theme='dark']_&]:text-slate-300">{row.companyName}</div>
         </div>
-        <span className="inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
+        <span className="inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#236f9f] [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.18)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.72)] [html[data-theme='dark']_&]:text-[#4ea0dc]">
           {row.salesOwner}
         </span>
       </div>
@@ -187,9 +187,9 @@ function MobileCard({ row, isAdmin }: { row: ProvizeRow; isAdmin: boolean }) {
         <div className="grid grid-cols-2 gap-2">
           <MobileDataRow label="Faktura" value={row.invoiceNumber} />
           <MobileDataRow label="Prodej" value={row.saleAmountLabel} />
-          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
+          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)]">
             <div className="flex items-center justify-between gap-2">
-              <dt className="text-[12px] text-gray-500">Zisk</dt>
+              <dt className="text-[12px] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">Zisk</dt>
               <dd>
                 <ProfitEditableCell
                   key={`${row.id}:${row.profitAmount}:mobile`}
@@ -203,9 +203,9 @@ function MobileCard({ row, isAdmin }: { row: ProvizeRow; isAdmin: boolean }) {
           <MobileDataRow label="Provize" value={row.commissionAmountLabel} emphasized accent />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
+          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)]">
             <div className="flex items-center justify-between gap-2">
-              <dt className="text-[10px] text-gray-500">K vyplacení</dt>
+              <dt className="text-[10px] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">K vyplacení</dt>
               <ApprovalToggle
                 key={`${row.id}:${row.approvedForPayout}:mobile`}
                 row={row}
@@ -214,9 +214,9 @@ function MobileCard({ row, isAdmin }: { row: ProvizeRow; isAdmin: boolean }) {
               />
             </div>
           </div>
-          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
+          <div className="rounded-2xl border border-white/75 bg-white/70 px-3 py-2 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)]">
             <div className="flex items-center justify-between gap-2">
-              <dt className="text-[10px] text-gray-500">Vyplaceno</dt>
+              <dt className="text-[10px] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">Vyplaceno</dt>
               <dd>
                 <PaidBadge isPaid={row.isPaid} />
               </dd>
@@ -300,18 +300,18 @@ function ProfitEditableCell({
             cancelEditing()
           }
         }}
-        className={`h-9 w-full rounded-xl border border-[#9dc7e5] bg-white/95 px-2.5 text-[12px] font-semibold text-gray-900 outline-none ring-2 ring-[#b9d8ef] ${compact ? 'text-right' : 'text-center'}`}
+        className={`provize-profit-pill h-9 w-full rounded-xl border border-[#9dc7e5] bg-white/95 px-2.5 text-[12px] font-semibold text-gray-900 outline-none ring-2 ring-[#b9d8ef] ${compact ? 'text-right' : 'text-center'}`}
       />
     )
   }
 
   const buttonClass = compact
-    ? 'flex w-full items-center justify-between gap-3 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
-    : 'inline-flex h-9 min-w-[96px] max-w-full items-center justify-center overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
+    ? 'provize-profit-pill flex w-full items-center justify-between gap-3 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
+    : 'provize-profit-pill inline-flex h-9 min-w-[96px] max-w-full items-center justify-center overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
 
   if (!isAdmin) {
     return (
-      <span className={`${compact ? 'flex w-full items-center justify-between gap-3' : 'inline-flex items-center justify-center'} text-[12px] font-normal text-gray-900`}>
+      <span className={`${compact ? 'flex w-full items-center justify-between gap-3' : 'inline-flex items-center justify-center'} text-[12px] font-normal text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]`}>
         <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
       </span>
     )
@@ -340,14 +340,14 @@ function ProfitEditableCell({
               cancelEditing()
             }
           }}
-          className="h-8 w-[92px] rounded-xl border border-[#9dc7e5] bg-white/95 px-2.5 text-right text-[12px] font-medium text-gray-900 outline-none ring-2 ring-[#b9d8ef]"
+          className="provize-profit-pill h-8 w-[92px] rounded-xl border border-[#9dc7e5] bg-white/95 px-2.5 text-right text-[12px] font-medium text-gray-900 outline-none ring-2 ring-[#b9d8ef]"
         />
       )
     }
 
     if (isLocked) {
       return (
-        <span className="inline-flex items-center justify-end text-[12px] font-normal text-gray-900">
+        <span className="inline-flex items-center justify-end text-[12px] font-normal text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
           <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
         </span>
       )
@@ -358,7 +358,7 @@ function ProfitEditableCell({
         type="button"
         disabled={isPending}
         onClick={() => setIsEditing(true)}
-        className="inline-flex items-center justify-end text-[12px] font-normal text-gray-900 transition duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center justify-end text-[12px] font-normal text-gray-900 transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 [html[data-theme='dark']_&]:text-[#f8fbff]"
         title="Upravit zisk pro provize"
       >
         <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
@@ -368,9 +368,9 @@ function ProfitEditableCell({
 
   if (isLocked) {
     return (
-      <span className={`${buttonClass} ${compact ? '' : 'text-center'} text-[12px] font-semibold text-gray-900`}>
+      <span className={`${buttonClass} ${compact ? '' : 'text-center'} text-[12px] font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]`}>
         <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
-        {compact && row.isPaid ? <span className="text-[11px] uppercase tracking-[0.08em] text-gray-500">Uzamčeno</span> : null}
+        {compact && row.isPaid ? <span className="text-[11px] uppercase tracking-[0.08em] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">Uzamčeno</span> : null}
       </span>
     )
   }
@@ -380,11 +380,11 @@ function ProfitEditableCell({
       type="button"
       disabled={isPending}
       onClick={() => setIsEditing(true)}
-      className={`${buttonClass} text-[12px] font-semibold text-gray-900 transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60`}
+      className={`${buttonClass} text-[12px] font-semibold text-gray-900 transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 [html[data-theme='dark']_&]:text-[#f8fbff]`}
       title="Upravit zisk pro provize"
     >
       <span className="block truncate whitespace-nowrap">{row.profitAmountLabel}</span>
-      {compact ? <span className="text-[11px] uppercase tracking-[0.08em] text-[#236f9f]">Upravit</span> : null}
+      {compact ? <span className="text-[11px] uppercase tracking-[0.08em] text-[#236f9f] [html[data-theme='dark']_&]:text-[#4ea0dc]">Upravit</span> : null}
     </button>
   )
 }
@@ -425,7 +425,7 @@ function ApprovalToggle({
   if (!isAdmin) {
     return (
       <span
-        className={`inline-flex min-w-[68px] items-center justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] ${
+        className={`provize-approval-pill inline-flex min-w-[68px] items-center justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] ${
           value
             ? 'border-emerald-300/90 bg-emerald-50 text-emerald-700'
             : 'border-zinc-300 bg-white/80 text-zinc-500'
@@ -457,7 +457,7 @@ function ApprovalToggle({
 function PaidBadge({ isPaid }: { isPaid: boolean }) {
   return (
     <span
-      className={`inline-flex min-w-[68px] items-center justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] ${
+      className={`provize-paid-badge inline-flex min-w-[68px] items-center justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] ${
         isPaid
           ? 'border-emerald-300/90 bg-emerald-50 text-emerald-700'
           : 'border-red-300/90 bg-red-50 text-red-700'
@@ -480,14 +480,14 @@ function MobileDataRow({
   accent?: boolean
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-white/75 bg-white/70 px-3 py-2">
+    <div className="flex items-center justify-between rounded-2xl border border-white/75 bg-white/70 px-3 py-2 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.82)]">
       <dt
         className={`${
           accent
-            ? 'font-semibold text-[#236f9f]'
+            ? 'font-semibold text-[#236f9f] [html[data-theme=\'dark\']_&]:text-[#4ea0dc]'
             : emphasized
-              ? 'font-semibold text-gray-900'
-              : 'text-gray-500'
+              ? 'font-semibold text-gray-900 [html[data-theme=\'dark\']_&]:text-[#f8fbff]'
+              : 'text-gray-500 [html[data-theme=\'dark\']_&]:text-slate-400'
         }`}
       >
         {label}
@@ -495,10 +495,10 @@ function MobileDataRow({
       <dd
         className={`text-right ${
           accent
-            ? 'font-semibold text-[#236f9f]'
+            ? 'font-semibold text-[#236f9f] [html[data-theme=\'dark\']_&]:text-[#4ea0dc]'
             : emphasized
-              ? 'font-semibold text-gray-900'
-              : 'font-medium text-gray-900'
+              ? 'font-semibold text-gray-900 [html[data-theme=\'dark\']_&]:text-[#f8fbff]'
+              : 'font-medium text-gray-900 [html[data-theme=\'dark\']_&]:text-[#f8fbff]'
         }`}
       >
         {value}

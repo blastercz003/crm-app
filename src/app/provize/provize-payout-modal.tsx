@@ -105,6 +105,7 @@ function ProvizePayoutModal({
   const [selectedOwner, setSelectedOwner] = useState<ProvizeSalesOwner | null>(null)
   const [draft, setDraft] = useState<ProvizePayoutDraftData | null>(null)
   const [adjustmentRows, setAdjustmentRows] = useState<DraftAdjustmentFormRow[]>([])
+  const [previewReadyBatchId, setPreviewReadyBatchId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const { toast, isVisible, showToast } = useAnimatedActionToast()
 
@@ -156,6 +157,7 @@ function ProvizePayoutModal({
     setSelectedOwner(null)
     setDraft(null)
     setAdjustmentRows([])
+    setPreviewReadyBatchId(null)
   }
 
   function openOwnerDraft(owner: ProvizeSalesOwner) {
@@ -167,6 +169,7 @@ function ProvizePayoutModal({
         return
       }
 
+      setPreviewReadyBatchId(null)
       hydrateDraft(result.draft)
     })
   }
@@ -190,16 +193,17 @@ function ProvizePayoutModal({
     return result.draft
   }
 
-  function handleSavePreview() {
+  function handleGeneratePreview() {
     if (!draft) return
 
     startTransition(async () => {
       const savedDraft = await persistDraft()
       if (!savedDraft) return
 
+      setPreviewReadyBatchId(savedDraft.batchId)
       showToast({
         title: 'Náhled uložen',
-        message: `Draft dávka pro ${savedDraft.salesOwner} byla uložená.`,
+        message: `Draft dávka pro ${savedDraft.salesOwner} je připravená pro PDF náhled.`,
         tone: 'success',
       })
     })
@@ -223,6 +227,7 @@ function ProvizePayoutModal({
         return
       }
 
+      setPreviewReadyBatchId(null)
       hydrateDraft(result.draft)
       router.refresh()
     })
@@ -243,6 +248,7 @@ function ProvizePayoutModal({
         return
       }
 
+      setPreviewReadyBatchId(null)
       router.refresh()
       showToast({
         title: 'Provize potvrzeny',
@@ -282,6 +288,11 @@ function ProvizePayoutModal({
     })
   }
 
+  const previewPdfHref =
+    draft && previewReadyBatchId === draft.batchId
+      ? `/provize/drafty/${draft.batchId}/pdf`
+      : null
+
   if (typeof document === 'undefined') {
     return null
   }
@@ -299,8 +310,8 @@ function ProvizePayoutModal({
         }}
       >
         <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-center">
-          <div className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-[1260px] flex-col overflow-hidden rounded-[30px] border border-zinc-200 bg-white shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
-            <div className="border-b border-white/70 px-4 py-4 sm:px-6">
+          <div className="provize-payout-modal flex max-h-[calc(100vh-1.5rem)] w-full max-w-[1260px] flex-col overflow-hidden rounded-[30px] border border-zinc-200 bg-white shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+            <div className="provize-payout-modal__header border-b border-white/70 px-4 py-4 sm:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#236f9f]">
@@ -322,7 +333,7 @@ function ProvizePayoutModal({
                   type="button"
                   onClick={onClose}
                   disabled={isPending}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="provize-payout-modal__close inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="Zavřít"
                 >
                   ×
@@ -339,10 +350,10 @@ function ProvizePayoutModal({
                       type="button"
                       onClick={() => openOwnerDraft(owner)}
                       disabled={isPending}
-                      className={`rounded-[28px] border border-white/75 p-6 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] transition duration-200 ${
+                      className={`provize-payout-modal__owner-card rounded-[28px] border border-white/75 p-6 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] transition duration-200 ${
                         selectedOwner === owner
-                          ? 'bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white'
-                          : 'bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] text-gray-900 hover:-translate-y-[1px]'
+                          ? 'provize-payout-modal__owner-card--active bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white'
+                          : 'provize-payout-modal__owner-card--idle bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] text-gray-900 hover:-translate-y-[1px]'
                       }`}
                     >
                       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
@@ -358,7 +369,7 @@ function ProvizePayoutModal({
               ) : (
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
                   <section className="space-y-5">
-                    <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                    <div className="provize-payout-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
@@ -373,7 +384,7 @@ function ProvizePayoutModal({
                             type="button"
                             onClick={handleDeleteDraft}
                             disabled={isPending}
-                            className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-medium uppercase text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="provize-payout-modal__danger-button inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-medium uppercase text-rose-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             SMAZAT DRAFT
                           </button>
@@ -382,7 +393,7 @@ function ProvizePayoutModal({
                             onClick={() => {
                               resetDraftState()
                             }}
-                            className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
+                            className="provize-payout-modal__secondary-button inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-4 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]"
                           >
                             ZMĚNIT OBCHODNÍKA
                           </button>
@@ -396,7 +407,7 @@ function ProvizePayoutModal({
                       </div>
                     </div>
 
-                    <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                    <div className="provize-payout-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
@@ -406,7 +417,7 @@ function ProvizePayoutModal({
                             Přehled zakázek, které budou součástí této výplatní dávky.
                           </div>
                         </div>
-                        <span className="inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
+                        <span className="provize-payout-modal__count-badge inline-flex rounded-full border border-[#76a9d3]/70 bg-[linear-gradient(155deg,rgba(233,244,252,0.92)_0%,rgba(217,235,248,0.86)_100%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#236f9f]">
                           {previewItems.length} položek
                         </span>
                       </div>
@@ -418,10 +429,10 @@ function ProvizePayoutModal({
                           previewItems.map((item) => (
                             <article
                               key={item.provizeRecordId}
-                              className="rounded-[20px] border border-white/75 bg-white/78 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
+                              className="provize-payout-modal__subpanel rounded-[20px] border border-white/75 bg-white/78 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
                             >
                               <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-[88px_96px_108px_108px_112px_92px] xl:items-center">
-                                  <div className="rounded-xl border border-white/75 bg-[#f8fbfe] px-2.5 py-2">
+                                  <div className="provize-payout-modal__mini-card rounded-xl border border-white/75 bg-[#f8fbfe] px-2.5 py-2">
                                     <div className="text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
                                       Zakázka
                                     </div>
@@ -430,7 +441,7 @@ function ProvizePayoutModal({
                                     </div>
                                   </div>
 
-                                  <div className="rounded-xl border border-white/75 bg-[#eef5fb] px-2.5 py-2">
+                                  <div className="provize-payout-modal__mini-card provize-payout-modal__mini-card--accent rounded-xl border border-white/75 bg-[#eef5fb] px-2.5 py-2">
                                     <div className="text-[9px] font-semibold uppercase tracking-[0.1em] text-[#236f9f]">
                                       Faktura
                                     </div>
@@ -439,7 +450,7 @@ function ProvizePayoutModal({
                                     </div>
                                   </div>
 
-                                  <div className="rounded-xl border border-white/75 bg-[#f8fbfe] px-2.5 py-2">
+                                  <div className="provize-payout-modal__mini-card rounded-xl border border-white/75 bg-[#f8fbfe] px-2.5 py-2">
                                     <div className="text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
                                       Prodej
                                     </div>
@@ -448,7 +459,7 @@ function ProvizePayoutModal({
                                     </div>
                                   </div>
 
-                                  <div className="rounded-xl border border-white/75 bg-[#f8fbfe] px-2.5 py-2">
+                                  <div className="provize-payout-modal__mini-card rounded-xl border border-white/75 bg-[#f8fbfe] px-2.5 py-2">
                                     <div className="text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-500">
                                       Zisk
                                     </div>
@@ -457,7 +468,7 @@ function ProvizePayoutModal({
                                     </div>
                                   </div>
 
-                                  <div className="rounded-xl border border-white/75 bg-[#eef5fb] px-2.5 py-2">
+                                  <div className="provize-payout-modal__mini-card provize-payout-modal__mini-card--accent rounded-xl border border-white/75 bg-[#eef5fb] px-2.5 py-2">
                                     <div className="text-[9px] font-semibold uppercase tracking-[0.1em] text-[#236f9f]">
                                       Provize
                                     </div>
@@ -473,7 +484,7 @@ function ProvizePayoutModal({
                                         handleToggleCandidate(item.provizeRecordId, false)
                                       }
                                       disabled={isPending}
-                                      className="inline-flex h-8 w-full items-center justify-center rounded-xl border border-[#d9e3ed] bg-white px-2 text-[10px] font-medium uppercase tracking-[0.05em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="provize-payout-modal__remove-button inline-flex h-8 w-full items-center justify-center rounded-xl border border-[#d9e3ed] bg-white px-2 text-[10px] font-medium uppercase tracking-[0.05em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                       Odebrat
                                     </button>
@@ -485,7 +496,7 @@ function ProvizePayoutModal({
                       </div>
                     </div>
 
-                    <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                    <div className="provize-payout-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                         Kandidáti mimo dávku
                       </div>
@@ -500,7 +511,7 @@ function ProvizePayoutModal({
                           draft.candidates.map((item) => (
                             <article
                               key={item.provizeRecordId}
-                              className="flex flex-col gap-3 rounded-[22px] border border-white/75 bg-white/75 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] md:flex-row md:items-center md:justify-between"
+                              className="provize-payout-modal__subpanel flex flex-col gap-3 rounded-[22px] border border-white/75 bg-white/75 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] md:flex-row md:items-center md:justify-between"
                             >
                               <div className="min-w-0">
                                 <div className="text-sm font-semibold text-gray-900">
@@ -528,7 +539,7 @@ function ProvizePayoutModal({
                   </section>
 
                   <aside className="space-y-5">
-                    <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
+                    <div className="provize-payout-modal__panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                         Bonusy a odpočty
                       </div>
@@ -544,7 +555,7 @@ function ProvizePayoutModal({
                         {adjustmentRows.map((item) => (
                           <div
                             key={item.id}
-                            className="rounded-[22px] border border-white/75 bg-white/78 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
+                            className="provize-payout-modal__subpanel rounded-[22px] border border-white/75 bg-white/78 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
                           >
                             <div className="grid gap-3">
                               <select
@@ -563,7 +574,7 @@ function ProvizePayoutModal({
                                     )
                                   )
                                 }
-                                className="h-10 rounded-xl border border-white/75 bg-[#f8fbfe] px-3 text-sm text-gray-900"
+                                className="provize-payout-modal__field h-10 rounded-xl border border-white/75 bg-[#f8fbfe] px-3 text-sm text-gray-900"
                               >
                                 <option value="bonus">Bonus (+)</option>
                                 <option value="deduction">Odpočet (-)</option>
@@ -582,7 +593,7 @@ function ProvizePayoutModal({
                                   )
                                 }
                                 placeholder="Název položky"
-                                className="h-10 rounded-xl border border-white/75 bg-[#f8fbfe] px-3 text-sm text-gray-900"
+                                className="provize-payout-modal__field h-10 rounded-xl border border-white/75 bg-[#f8fbfe] px-3 text-sm text-gray-900"
                               />
 
                               <input
@@ -599,7 +610,7 @@ function ProvizePayoutModal({
                                   )
                                 }
                                 placeholder="0"
-                                className="h-10 rounded-xl border border-white/75 bg-[#f8fbfe] px-3 text-sm text-gray-900"
+                                className="provize-payout-modal__field h-10 rounded-xl border border-white/75 bg-[#f8fbfe] px-3 text-sm text-gray-900"
                               />
                             </div>
 
@@ -611,7 +622,7 @@ function ProvizePayoutModal({
                                     current.filter((row) => row.id !== item.id)
                                   )
                                 }
-                                className="inline-flex h-9 items-center justify-center rounded-xl border border-[#d9e3ed] bg-white px-3 text-xs font-medium uppercase text-gray-700"
+                                className="provize-payout-modal__remove-button inline-flex h-9 items-center justify-center rounded-xl border border-[#d9e3ed] bg-white px-3 text-xs font-medium uppercase text-gray-700"
                               >
                                 ODEBRAT
                               </button>
@@ -633,13 +644,13 @@ function ProvizePayoutModal({
                             },
                           ])
                         }
-                        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,rgba(233,244,252,0.96)_0%,rgba(217,235,248,0.92)_100%)] px-4 text-sm font-medium uppercase text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.12)] transition duration-200 hover:-translate-y-[1px]"
+                        className="provize-payout-modal__secondary-accent-button mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,rgba(233,244,252,0.96)_0%,rgba(217,235,248,0.92)_100%)] px-4 text-sm font-medium uppercase text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.12)] transition duration-200 hover:-translate-y-[1px]"
                       >
                         PŘIDAT POLOŽKU
                       </button>
                     </div>
 
-                    <div className="rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_20px_44px_rgba(24,78,129,0.28)]">
+                    <div className="provize-payout-modal__summary-panel rounded-[28px] border border-white/75 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_20px_44px_rgba(24,78,129,0.28)]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/78">
                         Souhrn dávky
                       </div>
@@ -661,18 +672,29 @@ function ProvizePayoutModal({
                       <div className="mt-5 space-y-3">
                         <button
                           type="button"
-                          onClick={handleSavePreview}
+                          onClick={handleGeneratePreview}
                           disabled={isPending}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-white/30 bg-white/12 px-4 text-sm font-semibold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="provize-payout-modal__summary-ghost-button inline-flex h-11 w-full items-center justify-center rounded-2xl border border-white/30 bg-white/12 px-4 text-sm font-semibold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          ZOBRAZIT NÁHLED
+                          GENEROVAT NÁHLED
                         </button>
+
+                        {previewPdfHref ? (
+                          <a
+                            href={previewPdfHref}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="provize-payout-modal__summary-preview-button inline-flex h-11 w-full items-center justify-center rounded-2xl border border-white/30 bg-white/12 px-4 text-sm font-semibold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] transition duration-200 hover:-translate-y-[1px]"
+                          >
+                            NÁHLED PDF
+                          </a>
+                        ) : null}
 
                         <button
                           type="button"
                           onClick={handleConfirm}
                           disabled={isPending || previewItems.length === 0}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-white/40 bg-white px-4 text-sm font-semibold uppercase text-[#225f8a] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_12px_24px_rgba(12,49,81,0.18)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="provize-payout-modal__summary-confirm-button inline-flex h-11 w-full items-center justify-center rounded-2xl border border-white/40 bg-white px-4 text-sm font-semibold uppercase text-[#225f8a] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_12px_24px_rgba(12,49,81,0.18)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           POTVRDIT PROVIZE
                         </button>
@@ -694,7 +716,7 @@ function ProvizePayoutModal({
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/75 bg-white/78 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+    <div className="provize-payout-modal__info-card rounded-2xl border border-white/75 bg-white/78 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
         {label}
       </div>
@@ -726,7 +748,7 @@ function SummaryRow({
 
 function EmptyStateText({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#cfd8e3] bg-white/60 px-4 py-5 text-sm text-gray-500">
+    <div className="provize-payout-modal__empty rounded-2xl border border-dashed border-[#cfd8e3] bg-white/60 px-4 py-5 text-sm text-gray-500">
       {text}
     </div>
   )

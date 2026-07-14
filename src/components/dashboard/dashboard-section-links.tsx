@@ -3,7 +3,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { CarFront, Plug } from 'lucide-react'
 import { DashboardHandoverProtocolUploadLauncher } from '@/components/dashboard/dashboard-handover-protocol-upload-launcher'
 import type { HandoverProtocolUploadJobOption } from '@/app/dashboard/handover-protocol-upload-actions'
 
@@ -18,55 +17,76 @@ type SectionLink = {
 
 function IconClients() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1" />
-      <circle cx="9.5" cy="7" r="3.2" />
-      <path d="M22 19v-1a4 4 0 0 0-3-3.85" />
-      <path d="M16 3.2a3.2 3.2 0 0 1 0 6.2" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/clients-icon-v2.png"
+        alt="Klienti"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
 function IconJobs() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="3" y="6" width="18" height="14" rx="2.4" />
-      <path d="M9 6V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V6" />
-      <path d="M3 11h18" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/jobs-icon-v2.png"
+        alt="Zakázky"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
 function IconPortal() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="3" y="3" width="8" height="8" rx="1.8" />
-      <rect x="13" y="3" width="8" height="8" rx="1.8" />
-      <rect x="3" y="13" width="8" height="8" rx="1.8" />
-      <path d="M13 17h8" />
-      <path d="M17 13v8" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/jobs-icon-v2.png"
+        alt="Portál zakázek"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
 function IconOffers() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M8 3h7l4 4v13a1 1 0 0 1-1 1H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-      <path d="M15 3v4h4" />
-      <path d="M9 12h6M9 16h6" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/offers-icon-v2.png"
+        alt="Nabídky"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
 function IconFinance() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="3" y="5" width="18" height="14" rx="2.4" />
-      <path d="M3 10h18" />
-      <circle cx="8" cy="14.5" r="1.2" />
-      <path d="M12 14.5h6" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/finance-icon-v2.png"
+        alt="Finance"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
@@ -87,25 +107,61 @@ function IconCommission() {
 
 function IconFiles() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5Z" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/files-icon-v2.png"
+        alt="Soubory"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
+  )
+}
+
+function IconConnectionPoints() {
+  return (
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/connection-points-icon-v2.png"
+        alt="Přípojné body"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
 function IconAssets() {
-  return <CarFront className="h-6 w-6" strokeWidth={1.85} />
+  return (
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/majetek-icon.png"
+        alt="Majetek"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
+  )
 }
 
 function IconStores() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M4 10.2 5.6 5h12.8l1.6 5.2" />
-      <path d="M3.5 10.5h17" />
-      <path d="M5 10.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8.5" />
-      <path d="M9 20v-5h6v5" />
-      <path d="M8 13h.01M16 13h.01" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/stores-icon-v2.png"
+        alt="Prodejny"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
@@ -208,7 +264,7 @@ export function DashboardSectionLinks({
         href: '/pripojne-body',
         label: 'Přípojné body',
         visible: canViewConnectionPoints,
-        icon: <Plug className="h-6 w-6" strokeWidth={1.9} />,
+        icon: <IconConnectionPoints />,
       },
       {
         key: 'stores',

@@ -140,6 +140,16 @@ type DeleteDraftActionResult =
       error: string
     }
 
+export type DraftPreviewResult =
+  | {
+      success: true
+      draft: ProvizePayoutDraftData
+    }
+  | {
+      success: false
+      error: string
+    }
+
 function revalidateProvizePaths() {
   revalidatePath('/provize')
   revalidatePath('/dashboard')
@@ -1055,6 +1065,32 @@ export async function deleteProvizePayoutDraftAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Draft dávku se nepodařilo smazat.',
+    }
+  }
+}
+
+export async function getProvizePayoutDraftPreviewAction(
+  batchId: string
+): Promise<DraftPreviewResult> {
+  const access = await requireProvizeAdmin()
+
+  if (!access.success) {
+    return { success: false, error: access.error }
+  }
+
+  try {
+    const batch = await getDraftBatchById(batchId)
+    const draft = await buildDraftData(batch, true)
+
+    return {
+      success: true,
+      draft,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Draft náhled se nepodařilo načíst.',
     }
   }
 }
