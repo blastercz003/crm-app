@@ -7,6 +7,7 @@ import { EditJobButton } from '../jobs/edit-job-button'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 import { JobAttachmentsModalContent } from '@/components/attachments/job-attachments-modal-content'
 import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
+import { normalizeTechnicianSearchText } from '@/lib/jobs/technicians'
 import {
   getJobPpRequirementAction,
   updateJobPpRequirementAction,
@@ -41,6 +42,12 @@ type FakturyInteractiveTableProps = {
   offerSuggestions: JobOfferOption[]
   jobOfferSuggestions: JobOfferOption[]
   technicianSuggestions: string[]
+  technicianOptions: TechnicianOption[]
+}
+
+type TechnicianOption = {
+  id: string
+  name: string
 }
 
 type ClientOption = {
@@ -76,6 +83,7 @@ type CostRowDraft = {
   id: string
   label: string
   supplier: string
+  technicianId: string | null
   presetKey: string | null
   unitPrice: string
   quantity: string
@@ -139,6 +147,7 @@ export function FakturyInteractiveTable({
   offerSuggestions,
   jobOfferSuggestions,
   technicianSuggestions,
+  technicianOptions,
 }: FakturyInteractiveTableProps) {
   return (
     <>
@@ -190,6 +199,7 @@ export function FakturyInteractiveTable({
                   offerSuggestions={offerSuggestions}
                   jobOfferSuggestions={jobOfferSuggestions}
                   technicianSuggestions={technicianSuggestions}
+                  technicianOptions={technicianOptions}
                 />
               ))}
             </tbody>
@@ -207,6 +217,7 @@ export function FakturyInteractiveTable({
             offerSuggestions={offerSuggestions}
             jobOfferSuggestions={jobOfferSuggestions}
             technicianSuggestions={technicianSuggestions}
+            technicianOptions={technicianOptions}
           />
         ))}
       </section>
@@ -221,6 +232,7 @@ function DesktopRow({
   offerSuggestions,
   jobOfferSuggestions,
   technicianSuggestions,
+  technicianOptions,
 }: {
   row: FakturaRow
   clientSuggestions: ClientOption[]
@@ -228,6 +240,7 @@ function DesktopRow({
   offerSuggestions: JobOfferOption[]
   jobOfferSuggestions: JobOfferOption[]
   technicianSuggestions: string[]
+  technicianOptions: TechnicianOption[]
 }) {
   const isFinanceCompleted =
     Boolean(row.invoice_number?.trim()) &&
@@ -348,6 +361,7 @@ function DesktopRow({
           financeId={row.id}
           jobNumber={row.job_number}
           value={row.cost_amount}
+          technicianOptions={technicianOptions}
         />
       </td>
 
@@ -390,6 +404,7 @@ function MobileCard({
   offerSuggestions,
   jobOfferSuggestions,
   technicianSuggestions,
+  technicianOptions,
 }: {
   row: FakturaRow
   clientSuggestions: ClientOption[]
@@ -397,6 +412,7 @@ function MobileCard({
   offerSuggestions: JobOfferOption[]
   jobOfferSuggestions: JobOfferOption[]
   technicianSuggestions: string[]
+  technicianOptions: TechnicianOption[]
 }) {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false)
   const isFinanceCompleted =
@@ -525,6 +541,7 @@ function MobileCard({
               financeId={row.id}
               jobNumber={row.job_number}
               value={row.cost_amount}
+              technicianOptions={technicianOptions}
               compact
             />
           </MobileFinanceRow>
@@ -857,11 +874,13 @@ function CostAmountCell({
   financeId,
   jobNumber,
   value,
+  technicianOptions,
   compact = false,
 }: {
   financeId: string
   jobNumber: string
   value: number | null
+  technicianOptions: TechnicianOption[]
   compact?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -903,6 +922,7 @@ function CostAmountCell({
         <CostItemsModal
           financeId={financeId}
           jobNumber={jobNumber}
+          technicianOptions={technicianOptions}
           onClose={() => setIsOpen(false)}
         />
       ) : null}
@@ -1229,10 +1249,12 @@ function JobAttachmentsModal({
 function CostItemsModal({
   financeId,
   jobNumber,
+  technicianOptions,
   onClose,
 }: {
   financeId: string
   jobNumber: string
+  technicianOptions: TechnicianOption[]
   onClose: () => void
 }) {
   const router = useRouter()
@@ -1344,6 +1366,25 @@ function CostItemsModal({
           ? {
               ...row,
               [field]: nextValue,
+              ...(field === 'supplier' ? { technicianId: null } : {}),
+            }
+          : row
+      )
+    )
+  }
+
+  function handleSupplierChange(
+    rowId: string,
+    supplier: string,
+    technicianId: string | null
+  ) {
+    setRows((currentRows) =>
+      currentRows.map((row) =>
+        row.id === rowId
+          ? {
+              ...row,
+              supplier,
+              technicianId,
             }
           : row
       )
@@ -1630,14 +1671,13 @@ function CostItemsModal({
                               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                                 Dodavatel
                               </div>
-                              <input
-                                type="text"
-                                value={row.supplier}
+                              <CostSupplierInput
+                                row={row}
+                                technicianOptions={technicianOptions}
                                 disabled={isPending}
-                                onChange={(event) =>
-                                  handleRowChange(row.id, 'supplier', event.target.value)
+                                onChange={(supplier, technicianId) =>
+                                  handleSupplierChange(row.id, supplier, technicianId)
                                 }
-                                placeholder="Dodavatel"
                                 className={`h-10 w-full px-3 disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass}`}
                               />
                             </div>
@@ -1862,14 +1902,13 @@ function CostItemsModal({
                             </td>
 
                             <td className="border-b border-white/70 px-3 py-3 align-middle">
-                              <input
-                                type="text"
-                                value={row.supplier}
+                              <CostSupplierInput
+                                row={row}
+                                technicianOptions={technicianOptions}
                                 disabled={isPending}
-                                onChange={(event) =>
-                                  handleRowChange(row.id, 'supplier', event.target.value)
+                                onChange={(supplier, technicianId) =>
+                                  handleSupplierChange(row.id, supplier, technicianId)
                                 }
-                                placeholder="Dodavatel"
                                 className={`h-10 w-full px-3 disabled:cursor-not-allowed disabled:opacity-60 ${rowInputBaseClass}`}
                               />
                             </td>
@@ -2181,6 +2220,95 @@ function createDraftId() {
   return `cost-row-${Math.random().toString(36).slice(2, 10)}`
 }
 
+function isTechnicianStatisticsPreset(presetKey: string | null) {
+  return presetKey === 'doprava' || presetKey === 'prace-technika'
+}
+
+function resolveCostTechnicianOption(
+  value: string,
+  technicianOptions: TechnicianOption[]
+) {
+  const normalizedValue = normalizeTechnicianSearchText(value)
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  const exactMatch = technicianOptions.find(
+    (option) => normalizeTechnicianSearchText(option.name) === normalizedValue
+  )
+
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  if (normalizedValue.length < 3) {
+    return null
+  }
+
+  const prefixMatches = technicianOptions.filter((option) =>
+    normalizeTechnicianSearchText(option.name).startsWith(normalizedValue)
+  )
+
+  return prefixMatches.length === 1 ? prefixMatches[0] : null
+}
+
+function CostSupplierInput({
+  row,
+  technicianOptions,
+  disabled,
+  onChange,
+  className,
+}: {
+  row: CostRowDraft
+  technicianOptions: TechnicianOption[]
+  disabled: boolean
+  onChange: (supplier: string, technicianId: string | null) => void
+  className: string
+}) {
+  const tracksTechnician = isTechnicianStatisticsPreset(row.presetKey)
+  const suggestionsId = `cost-technicians-${row.id}`
+
+  function handleValueChange(value: string) {
+    if (!tracksTechnician) {
+      onChange(value, null)
+      return
+    }
+
+    const technician = resolveCostTechnicianOption(value, technicianOptions)
+
+    if (technician) {
+      onChange(technician.name, technician.id)
+      return
+    }
+
+    onChange(value, null)
+  }
+
+  return (
+    <>
+      <input
+        type="text"
+        value={row.supplier}
+        disabled={disabled}
+        list={tracksTechnician ? suggestionsId : undefined}
+        autoComplete="off"
+        onChange={(event) => handleValueChange(event.target.value)}
+        onBlur={(event) => handleValueChange(event.currentTarget.value)}
+        placeholder="Dodavatel"
+        className={className}
+      />
+      {tracksTechnician ? (
+        <datalist id={suggestionsId}>
+          {technicianOptions.map((option) => (
+            <option key={option.id} value={option.name} />
+          ))}
+        </datalist>
+      ) : null}
+    </>
+  )
+}
+
 function formatNumberInput(value: number) {
   if (Number.isInteger(value)) {
     return String(value)
@@ -2194,6 +2322,7 @@ function createPresetDraftRow(preset: CostPreset, isBase = false): CostRowDraft 
     id: createDraftId(),
     label: preset.label,
     supplier: '',
+    technicianId: null,
     presetKey: preset.key,
     unitPrice: formatNumberInput(preset.defaultUnitPrice),
     quantity: '0',
@@ -2206,6 +2335,7 @@ function createCustomDraftRow(): CostRowDraft {
     id: createDraftId(),
     label: '',
     supplier: '',
+    technicianId: null,
     presetKey: null,
     unitPrice: '',
     quantity: '',
@@ -2235,6 +2365,7 @@ function buildDraftRowsFromItems(items: FinanceCostItem[]) {
       id: item.id,
       label: preset.label,
       supplier: item.supplier ?? '',
+      technicianId: item.technicianId,
       presetKey: preset.key,
       unitPrice: formatNumberInput(item.unitPrice),
       quantity: formatNumberInput(item.quantity),
@@ -2246,6 +2377,7 @@ function buildDraftRowsFromItems(items: FinanceCostItem[]) {
     id: item.id,
     label: item.label,
     supplier: item.supplier ?? '',
+    technicianId: item.technicianId,
     presetKey: item.presetKey,
     unitPrice: formatNumberInput(item.unitPrice),
     quantity: formatNumberInput(item.quantity),
@@ -2292,6 +2424,8 @@ function getDraftRowsFromStorage(financeId: string) {
       id: typeof row.id === 'string' ? row.id : createDraftId(),
       label: typeof row.label === 'string' ? row.label : '',
       supplier: typeof row.supplier === 'string' ? row.supplier : '',
+      technicianId:
+        typeof row.technicianId === 'string' ? row.technicianId : null,
       presetKey: typeof row.presetKey === 'string' ? row.presetKey : null,
       unitPrice: typeof row.unitPrice === 'string' ? row.unitPrice : '',
       quantity: typeof row.quantity === 'string' ? row.quantity : '',
@@ -2315,6 +2449,7 @@ function normalizeDraftRows(rows: CostRowDraft[]) {
     id: row.id,
     label: row.label,
     supplier: row.supplier,
+    technicianId: row.technicianId,
     presetKey: row.presetKey,
     unitPrice: row.unitPrice,
     quantity: row.quantity,
@@ -2509,6 +2644,9 @@ function prepareRowsForSave(
     items.push({
       label,
       supplier: row.supplier.trim() || null,
+      technicianId: isTechnicianStatisticsPreset(row.presetKey)
+        ? row.technicianId
+        : null,
       presetKey: row.presetKey,
       sortOrder: items.length,
       unitPrice: unitPrice.value,

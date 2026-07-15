@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { FakturyInteractiveTable } from './faktury-interactive-table'
 import { FakturyFilterSubmitButton } from './faktury-filter-submit-button'
 import { FakturyFilterResetLink } from './faktury-filter-reset-link'
+import { FakturyStatisticsModalLauncher } from './statistics-modal'
 import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
 
 export const metadata: Metadata = {
@@ -703,13 +704,18 @@ export default async function FakturyPage({
     }))
     .filter((item) => item.id && item.client_id && item.offer_number && item.title)
 
-  const technicianSuggestions = ((technicianProfilesResponse.data ?? []) as {
+  const technicianOptions = ((technicianProfilesResponse.data ?? []) as {
     id: string
     name: string | null
     can_be_assigned_as_technician: boolean | null
   }[])
-    .map((item) => String(item.name ?? '').trim())
-    .filter((name): name is string => Boolean(name))
+    .map((item) => ({
+      id: String(item.id ?? '').trim(),
+      name: String(item.name ?? '').trim(),
+    }))
+    .filter((item) => item.id && item.name)
+
+  const technicianSuggestions = technicianOptions.map((item) => item.name)
 
   let rows: FakturaRow[] = ((data ?? []) as JobFinanceJoinRow[])
     .map((item) => {
@@ -962,6 +968,10 @@ export default async function FakturyPage({
                   HLEDAT
                 </button>
               </form>
+
+              <FakturyStatisticsModalLauncher
+                className="faktury-page__statistics-button inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)] [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.38)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(38,91,140,0.92)_0%,rgba(25,63,103,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f5fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_22px_rgba(0,0,0,0.24)]"
+              />
 
               <Link
   href="/dashboard"
@@ -1410,6 +1420,7 @@ export default async function FakturyPage({
               })
             )}
             technicianSuggestions={technicianSuggestions}
+            technicianOptions={technicianOptions}
           />
         )}
       </div>

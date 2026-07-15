@@ -33,6 +33,7 @@ export type FinanceCostItem = {
   id: string
   label: string
   supplier: string | null
+  technicianId: string | null
   presetKey: string | null
   sortOrder: number
   unitPrice: number
@@ -43,6 +44,7 @@ export type FinanceCostItem = {
 export type FinanceCostItemInput = {
   label: string
   supplier?: string | null
+  technicianId?: string | null
   presetKey?: string | null
   sortOrder: number
   unitPrice: number
@@ -181,6 +183,7 @@ type JobFinanceCostItemRow = {
   id: string
   label: string
   supplier: string | null
+  technician_id: string | null
   preset_key: string | null
   sort_order: number | null
   unit_price: number | string | null
@@ -309,6 +312,7 @@ function mapFinanceCostItemRow(row: JobFinanceCostItemRow): FinanceCostItem {
     id: String(row.id),
     label: String(row.label ?? '').trim(),
     supplier: normalizeOptionalPresetKey(row.supplier),
+    technicianId: normalizeOptionalPresetKey(row.technician_id),
     presetKey: normalizeOptionalPresetKey(row.preset_key),
     sortOrder:
       typeof row.sort_order === 'number' && row.sort_order >= 0
@@ -719,7 +723,7 @@ export async function getFinanceCostItemsAction(
   let { data, error } = await supabase
     .from('job_finance_cost_items')
     .select(
-      'id, label, supplier, preset_key, sort_order, unit_price, quantity, line_total'
+      'id, label, supplier, technician_id, preset_key, sort_order, unit_price, quantity, line_total'
     )
     .eq('job_finance_id', normalizedFinanceId)
     .order('sort_order', { ascending: true })
@@ -728,7 +732,9 @@ export async function getFinanceCostItemsAction(
   if (error && isMissingSupplierColumnError(error)) {
     const fallbackResponse = await supabase
       .from('job_finance_cost_items')
-      .select('id, label, preset_key, sort_order, unit_price, quantity, line_total')
+      .select(
+        'id, label, technician_id, preset_key, sort_order, unit_price, quantity, line_total'
+      )
       .eq('job_finance_id', normalizedFinanceId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
@@ -798,9 +804,51 @@ export async function saveFinanceCostItemsAction(
     }
   }
 
+  const statisticsPresetKeys = new Set(['doprava', 'prace-technika'])
+  const requestedTechnicianIds = Array.from(
+    new Set(
+      items
+        .filter((item) =>
+          statisticsPresetKeys.has(String(item.presetKey ?? '').trim())
+        )
+        .map((item) => String(item.technicianId ?? '').trim())
+        .filter(Boolean)
+    )
+  )
+
+  if (requestedTechnicianIds.length > 0) {
+    const { data: technicianRows, error: techniciansError } = await supabase
+      .from('profiles')
+      .select('id')
+      .in('id', requestedTechnicianIds)
+      .eq('can_be_assigned_as_technician', true)
+
+    const validTechnicianIds = new Set(
+      (technicianRows ?? []).map((row) => String(row.id))
+    )
+
+    if (
+      techniciansError ||
+      requestedTechnicianIds.some((technicianId) =>
+        !validTechnicianIds.has(technicianId)
+      )
+    ) {
+      return {
+        success: false,
+        error: 'Vybraného technika se nepodařilo ověřit.',
+        totalCost: null,
+      }
+    }
+  }
+
   const normalizedItems = items.map((item, index) => {
     const label = String(item.label ?? '').trim()
     const supplier = normalizeOptionalPresetKey(item.supplier)
+    const presetKey = normalizeOptionalPresetKey(item.presetKey)
+    const technicianId =
+      presetKey && statisticsPresetKeys.has(presetKey)
+        ? normalizeOptionalPresetKey(item.technicianId)
+        : null
     const unitPrice = normalizeFiniteNumber(item.unitPrice)
     const quantity = normalizeFiniteNumber(item.quantity)
     const sortOrder =
@@ -841,7 +889,8 @@ export async function saveFinanceCostItemsAction(
         job_finance_id: normalizedFinanceId,
         label,
         supplier,
-        preset_key: normalizeOptionalPresetKey(item.presetKey),
+        technician_id: technicianId,
+        preset_key: presetKey,
         sort_order: sortOrder,
         unit_price: unitPrice,
         quantity,
