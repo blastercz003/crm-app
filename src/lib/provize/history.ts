@@ -5,6 +5,7 @@ import {
   type ProvizeSalesOwner,
 } from '@/lib/provize/access'
 import { getServiceRoleClient } from '@/lib/supabase/service'
+import { calculateProvizeCostAmount } from '@/lib/provize/service'
 
 type ProfileAccessRow = {
   role: string | null
@@ -230,7 +231,7 @@ export async function getProvizeHistoryPayload(
       companyName: item.company_name,
       invoiceNumber: item.invoice_number,
       saleAmount: normalizeWholeCurrency(item.sale_amount),
-      costAmount: normalizeWholeCurrency(item.cost_amount),
+      costAmount: calculateProvizeCostAmount(item.sale_amount, item.profit_amount),
       profitAmount: normalizeWholeCurrency(item.profit_amount),
       commissionRate: Number(item.commission_rate),
       commissionAmount: normalizeWholeCurrency(item.commission_amount),

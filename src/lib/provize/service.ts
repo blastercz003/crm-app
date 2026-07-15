@@ -69,6 +69,13 @@ export function roundCommissionAmount(value: number) {
   return Math.round(Number.isFinite(value) ? value : 0)
 }
 
+export function calculateProvizeCostAmount(saleAmount: number, profitAmount: number) {
+  const normalizedSale = Math.round(Number.isFinite(saleAmount) ? saleAmount : 0)
+  const normalizedProfit = Math.round(Number.isFinite(profitAmount) ? profitAmount : 0)
+
+  return normalizedSale - normalizedProfit
+}
+
 export function getEffectiveProfitAmount(row: Pick<ProvizeRecordRow, 'base_profit_amount' | 'manual_profit_amount'>) {
   return typeof row.manual_profit_amount === 'number'
     ? row.manual_profit_amount

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import type { ProvizeSalesOwner } from '@/lib/provize/access'
 import {
+  calculateProvizeCostAmount,
   getCommissionRateForSalesOwner,
   roundCommissionAmount,
   type ProvizeRecordRow,
@@ -222,15 +223,20 @@ function mapRecordToDraftSnapshot(
   profitAmount: number
 ): ProvizePayoutDraftRecord {
   const commissionRate = getCommissionRateForSalesOwner(record.sales_owner)
+  const normalizedSale = normalizeWholeCurrency(record.sale_amount)
   const normalizedProfit = normalizeWholeCurrency(profitAmount)
+  const costAmount =
+    typeof record.manual_profit_amount === 'number'
+      ? calculateProvizeCostAmount(normalizedSale, normalizedProfit)
+      : normalizeWholeCurrency(record.cost_amount)
 
   return {
     provizeRecordId: record.id,
     jobNumber: record.job_number,
     companyName: record.company_name,
     invoiceNumber: record.invoice_number,
-    saleAmount: normalizeWholeCurrency(record.sale_amount),
-    costAmount: normalizeWholeCurrency(record.cost_amount),
+    saleAmount: normalizedSale,
+    costAmount,
     profitAmount: normalizedProfit,
     commissionRate,
     commissionAmount: roundCommissionAmount(normalizedProfit * commissionRate),
@@ -564,12 +570,22 @@ async function persistDraftState(
       const commissionRate = getCommissionRateForSalesOwner(batch.sales_owner)
       const commissionAmount = roundCommissionAmount(item.profitAmount * commissionRate)
       const existingItem = currentItemsByRecordId.get(item.provizeRecordId)
+      const saleAmount = normalizeWholeCurrency(
+        existingItem?.sale_amount ?? record.sale_amount
+      )
+      const hasManualProfit =
+        typeof record.manual_profit_amount === 'number' ||
+        item.profitAmount !== normalizeWholeCurrency(record.base_profit_amount)
+      const costAmount = hasManualProfit
+        ? calculateProvizeCostAmount(saleAmount, item.profitAmount)
+        : normalizeWholeCurrency(existingItem?.cost_amount ?? record.cost_amount)
 
       if (existingItem) {
         const { error: updateItemError } = await supabase
           .from('provize_payout_batch_items')
           .update({
             sort_order: item.sortOrder,
+            cost_amount: costAmount,
             profit_amount: item.profitAmount,
             commission_rate: commissionRate,
             commission_amount: commissionAmount,
@@ -596,8 +612,8 @@ async function persistDraftState(
             site_address: record.site_address,
             store_number: record.store_number,
             invoice_number: record.invoice_number,
-            sale_amount: normalizeWholeCurrency(record.sale_amount),
-            cost_amount: normalizeWholeCurrency(record.cost_amount),
+            sale_amount: saleAmount,
+            cost_amount: costAmount,
             profit_amount: item.profitAmount,
             commission_rate: commissionRate,
             commission_amount: commissionAmount,
@@ -815,6 +831,11 @@ export async function toggleProvizePayoutDraftItemAction(
       )
       const commissionRate = getCommissionRateForSalesOwner(batch.sales_owner)
       const commissionAmount = roundCommissionAmount(profitAmount * commissionRate)
+      const saleAmount = normalizeWholeCurrency(record.sale_amount)
+      const costAmount =
+        typeof record.manual_profit_amount === 'number'
+          ? calculateProvizeCostAmount(saleAmount, profitAmount)
+          : normalizeWholeCurrency(record.cost_amount)
 
       const { data: existingItem } = await supabase
         .from('provize_payout_batch_items')
@@ -852,8 +873,8 @@ export async function toggleProvizePayoutDraftItemAction(
             site_address: record.site_address,
             store_number: record.store_number,
             invoice_number: record.invoice_number,
-            sale_amount: normalizeWholeCurrency(record.sale_amount),
-            cost_amount: normalizeWholeCurrency(record.cost_amount),
+            sale_amount: saleAmount,
+            cost_amount: costAmount,
             profit_amount: profitAmount,
             commission_rate: commissionRate,
             commission_amount: commissionAmount,
