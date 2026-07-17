@@ -27,6 +27,23 @@ export type FinanceStatisticsTechnician = {
   jobs: FinanceStatisticsJob[]
 }
 
+export type FinanceStatisticsSalesOwner = {
+  name: 'JIŘÍ' | 'MICHAL' | 'LÍDA'
+  jobCount: number
+}
+
+export type FinanceStatisticsCustomer = {
+  name: string
+  jobCount: number
+  sale: number
+  profit: number
+}
+
+export type FinanceStatisticsGenerator = {
+  name: string
+  jobCount: number
+}
+
 export type FinanceStatisticsPayload = {
   view: FinanceStatisticsView
   anchorDate: string
@@ -43,8 +60,17 @@ export type FinanceStatisticsPayload = {
     hours: number
     averageKilometersPerJob: number
     averageHoursPerJob: number
+    sale: number
+    cost: number
+    profit: number
+    financialJobCount: number
+    standbyCount: number
   }
   technicians: FinanceStatisticsTechnician[]
+  salesOwners: FinanceStatisticsSalesOwner[]
+  customers: FinanceStatisticsCustomer[]
+  generators: FinanceStatisticsGenerator[]
+  jobsWithoutGeneratorCount: number
 }
 
 export type FinanceStatisticsActionResult =
@@ -69,22 +95,28 @@ type TechnicianProfileRow = {
 type StatisticsFinanceRow = {
   id: string
   job_id: string
+  sale_amount: number | string | null
+  cost_amount: number | string | null
   job:
     | {
         id: string
         job_number: string
         company_name: string
+        sales_owner: string
         start_at: string
         marny_vyjezd: boolean | null
         job_status: string
+        generator_name: string | null
       }
     | {
         id: string
         job_number: string
         company_name: string
+        sales_owner: string
         start_at: string
         marny_vyjezd: boolean | null
         job_status: string
+        generator_name: string | null
       }[]
     | null
 }
@@ -105,6 +137,12 @@ type CalendarDate = {
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const STATISTICS_PRESET_KEYS = ['doprava', 'prace-technika'] as const
+const ALL_STATISTICS_PRESET_KEYS = [...STATISTICS_PRESET_KEYS, 'pohotovost'] as const
+const SALES_OWNERS: FinanceStatisticsSalesOwner['name'][] = [
+  'JIŘÍ',
+  'MICHAL',
+  'LÍDA',
+]
 
 function formatCalendarDate(value: CalendarDate) {
   return `${String(value.year).padStart(4, '0')}-${String(value.month).padStart(2, '0')}-${String(value.day).padStart(2, '0')}`
@@ -248,6 +286,15 @@ function normalizeQuantity(value: number | string | null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 }
 
+function normalizeMoney(value: number | string | null) {
+  const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function normalizeGroupKey(value: string) {
+  return value.trim().toLocaleUpperCase('cs-CZ')
+}
+
 function roundMetric(value: number) {
   return Math.round(value * 100) / 100
 }
@@ -305,13 +352,17 @@ export async function getFinanceStatisticsAction(
             `
               id,
               job_id,
+              sale_amount,
+              cost_amount,
               job:jobs!inner (
                 id,
                 job_number,
                 company_name,
+                sales_owner,
                 start_at,
                 marny_vyjezd,
-                job_status
+                job_status,
+                generator_name
               )
             `
           )
@@ -350,8 +401,7 @@ export async function getFinanceStatisticsAction(
         .from('job_finance_cost_items')
         .select('job_finance_id, technician_id, preset_key, quantity')
         .in('job_finance_id', financeIds)
-        .in('preset_key', [...STATISTICS_PRESET_KEYS])
-        .not('technician_id', 'is', null)
+        .in('preset_key', [...ALL_STATISTICS_PRESET_KEYS])
 
       if (error) {
         throw new Error('Nepodařilo se načíst výkony techniků pro statistiku.')
@@ -382,12 +432,19 @@ export async function getFinanceStatisticsAction(
 
     let totalKilometers = 0
     let totalHours = 0
+    let standbyCount = 0
 
     for (const item of costItems) {
+      const quantity = normalizeQuantity(item.quantity)
+
+      if (item.preset_key === 'pohotovost') {
+        standbyCount += quantity
+        continue
+      }
+
       const technicianId = String(item.technician_id ?? '')
       const technician = techniciansById.get(technicianId)
       const job = jobsByFinanceId.get(item.job_finance_id)
-      const quantity = normalizeQuantity(item.quantity)
 
       if (!technician || !job || quantity <= 0) {
         continue
@@ -436,7 +493,13 @@ export async function getFinanceStatisticsAction(
       technicianStats.set(technicianId, current)
     }
 
-    const uniqueJobs = new Map<string, NonNullable<ReturnType<typeof getJob>>>()
+    const uniqueJobs = new Map<
+      string,
+      {
+        job: NonNullable<ReturnType<typeof getJob>>
+        finance: StatisticsFinanceRow
+      }
+    >()
 
     for (const row of finances) {
       const job = getJob(row)
@@ -444,13 +507,110 @@ export async function getFinanceStatisticsAction(
       if (!job) continue
 
       const jobNumber = String(job.job_number ?? '').trim()
-      uniqueJobs.set(jobNumber || String(job.id), job)
+      uniqueJobs.set(jobNumber || String(job.id), { job, finance: row })
     }
 
     const jobCount = uniqueJobs.size
-    const wastedTripCount = Array.from(uniqueJobs.values()).filter((job) =>
+    const uniqueJobEntries = Array.from(uniqueJobs.values())
+    const wastedTripCount = uniqueJobEntries.filter(({ job }) =>
       Boolean(job.marny_vyjezd)
     ).length
+    const salesOwnerCounts = new Map<FinanceStatisticsSalesOwner['name'], number>(
+      SALES_OWNERS.map((name) => [name, 0])
+    )
+    const customersByKey = new Map<
+      string,
+      FinanceStatisticsCustomer
+    >()
+    const generatorsByKey = new Map<
+      string,
+      { name: string; jobIds: Set<string> }
+    >()
+    let jobsWithoutGeneratorCount = 0
+    let sale = 0
+    let cost = 0
+    let profit = 0
+    let financialJobCount = 0
+
+    for (const { job, finance } of uniqueJobEntries) {
+      const jobKey = String(job.job_number ?? '').trim() || String(job.id)
+      const owner = String(job.sales_owner ?? '').trim() as FinanceStatisticsSalesOwner['name']
+
+      if (salesOwnerCounts.has(owner)) {
+        salesOwnerCounts.set(owner, (salesOwnerCounts.get(owner) ?? 0) + 1)
+      }
+
+      const saleAmount = normalizeMoney(finance.sale_amount)
+      const costAmount = normalizeMoney(finance.cost_amount)
+      const hasCompleteFinance = saleAmount !== null && costAmount !== null
+
+      if (hasCompleteFinance) {
+        sale += saleAmount
+        cost += costAmount
+        profit += saleAmount - costAmount
+        financialJobCount += 1
+      }
+
+      const customerName = String(job.company_name ?? '').trim() || 'Bez zákazníka'
+      const customerKey = normalizeGroupKey(customerName)
+      const customer = customersByKey.get(customerKey) ?? {
+        name: customerName,
+        jobCount: 0,
+        sale: 0,
+        profit: 0,
+      }
+
+      customer.jobCount += 1
+
+      if (hasCompleteFinance) {
+        customer.sale += saleAmount
+        customer.profit += saleAmount - costAmount
+      }
+
+      customersByKey.set(customerKey, customer)
+
+      const generatorName = String(job.generator_name ?? '').trim()
+
+      if (!generatorName) {
+        jobsWithoutGeneratorCount += 1
+      } else {
+        const generatorKey = normalizeGroupKey(generatorName)
+        const generator = generatorsByKey.get(generatorKey) ?? {
+          name: generatorName,
+          jobIds: new Set<string>(),
+        }
+
+        generator.jobIds.add(jobKey)
+        generatorsByKey.set(generatorKey, generator)
+      }
+    }
+
+    const salesOwners = SALES_OWNERS.map((name) => ({
+      name,
+      jobCount: salesOwnerCounts.get(name) ?? 0,
+    }))
+    const customers = Array.from(customersByKey.values())
+      .map((customer) => ({
+        ...customer,
+        sale: roundMetric(customer.sale),
+        profit: roundMetric(customer.profit),
+      }))
+      .sort(
+        (a, b) =>
+          b.jobCount - a.jobCount ||
+          b.sale - a.sale ||
+          a.name.localeCompare(b.name, 'cs')
+      )
+      .slice(0, 10)
+    const generators = Array.from(generatorsByKey.values())
+      .map((generator) => ({
+        name: generator.name,
+        jobCount: generator.jobIds.size,
+      }))
+      .sort(
+        (a, b) =>
+          b.jobCount - a.jobCount || a.name.localeCompare(b.name, 'cs')
+      )
     const technicians = Array.from(technicianStats.values())
       .map((technician) => ({
         id: technician.id,
@@ -495,8 +655,17 @@ export async function getFinanceStatisticsAction(
           hours: roundMetric(totalHours),
           averageKilometersPerJob: getAverage(totalKilometers, jobCount),
           averageHoursPerJob: getAverage(totalHours, jobCount),
+          sale: roundMetric(sale),
+          cost: roundMetric(cost),
+          profit: roundMetric(profit),
+          financialJobCount,
+          standbyCount: roundMetric(standbyCount),
         },
         technicians,
+        salesOwners,
+        customers,
+        generators,
+        jobsWithoutGeneratorCount,
       },
     }
   } catch (error) {
