@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
@@ -578,7 +578,225 @@ function LightboxModal({
   onClose: () => void
 }) {
   const isOpen = Boolean(photo)
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const imageRef = useRef<HTMLImageElement | null>(null)
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>())
+  const gestureRef = useRef<
+    | { mode: 'pan'; pointerId: number; startX: number; startY: number; panX: number; panY: number }
+    | {
+        mode: 'pinch'
+        distance: number
+        midpointX: number
+        midpointY: number
+        scale: number
+        panX: number
+        panY: number
+      }
+    | null
+  >(null)
+  const tapCandidateRef = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null)
+  const transformRef = useRef({ scale: 1, x: 0, y: 0 })
+  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 })
+  const [isInteracting, setIsInteracting] = useState(false)
   useBodyScrollLock(isOpen)
+
+  function constrainTransform(next: { scale: number; x: number; y: number }) {
+    const stage = stageRef.current
+    const image = imageRef.current
+    const scale = Math.min(4, Math.max(1, next.scale))
+
+    if (!stage || !image || scale === 1) {
+      return { scale, x: 0, y: 0 }
+    }
+
+    const currentScale = Math.max(transformRef.current.scale, 0.001)
+    const imageRect = image.getBoundingClientRect()
+    const stageRect = stage.getBoundingClientRect()
+    const baseWidth = imageRect.width / currentScale
+    const baseHeight = imageRect.height / currentScale
+    const maxX = Math.max(0, (baseWidth * scale - stageRect.width) / 2)
+    const maxY = Math.max(0, (baseHeight * scale - stageRect.height) / 2)
+
+    return {
+      scale,
+      x: Math.min(maxX, Math.max(-maxX, next.x)),
+      y: Math.min(maxY, Math.max(-maxY, next.y)),
+    }
+  }
+
+  function updateTransform(next: { scale: number; x: number; y: number }) {
+    const constrained = constrainTransform(next)
+    transformRef.current = constrained
+    setTransform(constrained)
+  }
+
+  function resetTransform() {
+    updateTransform({ scale: 1, x: 0, y: 0 })
+  }
+
+  function getTwoPointerGesture() {
+    const points = Array.from(pointersRef.current.values())
+    if (points.length < 2) return null
+
+    const [first, second] = points
+    return {
+      distance: Math.hypot(second.x - first.x, second.y - first.y),
+      midpointX: (first.x + second.x) / 2,
+      midpointY: (first.y + second.y) / 2,
+    }
+  }
+
+  function startGesture() {
+    if (pointersRef.current.size >= 2) {
+      const pinch = getTwoPointerGesture()
+      if (!pinch) return
+
+      gestureRef.current = {
+        mode: 'pinch',
+        ...pinch,
+        scale: transformRef.current.scale,
+        panX: transformRef.current.x,
+        panY: transformRef.current.y,
+      }
+      return
+    }
+
+    const firstPointer = Array.from(pointersRef.current.entries())[0]
+    if (!firstPointer) {
+      gestureRef.current = null
+      return
+    }
+
+    const [pointerId, point] = firstPointer
+    gestureRef.current = {
+      mode: 'pan',
+      pointerId,
+      startX: point.x,
+      startY: point.y,
+      panX: transformRef.current.x,
+      panY: transformRef.current.y,
+    }
+  }
+
+  function zoomAtPoint(clientX: number, clientY: number) {
+    const stage = stageRef.current
+    if (!stage) return
+
+    if (transformRef.current.scale > 1.05) {
+      resetTransform()
+      return
+    }
+
+    const stageRect = stage.getBoundingClientRect()
+    const relativeX = clientX - (stageRect.left + stageRect.width / 2)
+    const relativeY = clientY - (stageRect.top + stageRect.height / 2)
+    const nextScale = 2.5
+
+    updateTransform({
+      scale: nextScale,
+      x: relativeX - (relativeX - transformRef.current.x) * nextScale,
+      y: relativeY - (relativeY - transformRef.current.y) * nextScale,
+    })
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    setIsInteracting(true)
+
+    if (pointersRef.current.size === 1) {
+      tapCandidateRef.current = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        moved: false,
+      }
+    } else {
+      tapCandidateRef.current = null
+    }
+
+    startGesture()
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!pointersRef.current.has(event.pointerId)) return
+    event.preventDefault()
+
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+
+    const tapCandidate = tapCandidateRef.current
+    if (
+      tapCandidate?.pointerId === event.pointerId &&
+      Math.hypot(event.clientX - tapCandidate.x, event.clientY - tapCandidate.y) > 8
+    ) {
+      tapCandidate.moved = true
+    }
+
+    const gesture = gestureRef.current
+    if (!gesture) return
+
+    if (gesture.mode === 'pinch') {
+      const pinch = getTwoPointerGesture()
+      const stage = stageRef.current
+      if (!pinch || !stage || gesture.distance <= 0) return
+
+      const nextScale = Math.min(4, Math.max(1, gesture.scale * (pinch.distance / gesture.distance)))
+      const stageRect = stage.getBoundingClientRect()
+      const startRelativeX = gesture.midpointX - (stageRect.left + stageRect.width / 2)
+      const startRelativeY = gesture.midpointY - (stageRect.top + stageRect.height / 2)
+      const currentRelativeX = pinch.midpointX - (stageRect.left + stageRect.width / 2)
+      const currentRelativeY = pinch.midpointY - (stageRect.top + stageRect.height / 2)
+      const contentX = (startRelativeX - gesture.panX) / gesture.scale
+      const contentY = (startRelativeY - gesture.panY) / gesture.scale
+
+      updateTransform({
+        scale: nextScale,
+        x: currentRelativeX - contentX * nextScale,
+        y: currentRelativeY - contentY * nextScale,
+      })
+      return
+    }
+
+    if (gesture.pointerId === event.pointerId && transformRef.current.scale > 1) {
+      updateTransform({
+        scale: transformRef.current.scale,
+        x: gesture.panX + event.clientX - gesture.startX,
+        y: gesture.panY + event.clientY - gesture.startY,
+      })
+    }
+  }
+
+  function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    const pointerCountBeforeRelease = pointersRef.current.size
+    pointersRef.current.delete(event.pointerId)
+
+    const tapCandidate = tapCandidateRef.current
+    if (
+      pointerCountBeforeRelease === 1 &&
+      tapCandidate?.pointerId === event.pointerId &&
+      !tapCandidate.moved
+    ) {
+      const now = Date.now()
+      const lastTap = lastTapRef.current
+
+      if (
+        lastTap &&
+        now - lastTap.time < 320 &&
+        Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 32
+      ) {
+        zoomAtPoint(event.clientX, event.clientY)
+        lastTapRef.current = null
+      } else {
+        lastTapRef.current = { time: now, x: event.clientX, y: event.clientY }
+      }
+    }
+
+    tapCandidateRef.current = null
+    startGesture()
+    setIsInteracting(pointersRef.current.size > 0)
+  }
 
   if (!isOpen || typeof document === 'undefined' || !photo) return null
 
@@ -596,29 +814,50 @@ function LightboxModal({
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{photo.displayName}</div>
-              <div className="truncate text-xs text-white/70">{formatDateTime(photo.createdAt)}</div>
+              <div className="flex items-center gap-2 truncate text-xs text-white/70">
+                <span>{formatDateTime(photo.createdAt)}</span>
+                <span aria-hidden>·</span>
+                <span>{transform.scale.toFixed(1)}×</span>
+              </div>
             </div>
             <button
               type="button"
               onClick={onClose}
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-sm font-medium text-white transition hover:bg-white/18"
+              aria-label="Zavřít náhled fotografie"
             >
               ✕
             </button>
           </div>
-          <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+          <div
+            ref={stageRef}
+            className="relative flex min-h-0 flex-1 touch-none select-none items-center justify-center overflow-hidden p-4"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerEnd}
+            onPointerCancel={handlePointerEnd}
+          >
             {photo.signedUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                ref={imageRef}
                 src={photo.signedUrl}
                 alt={photo.displayName}
-                className="max-h-[calc(100vh-140px)] max-w-full rounded-2xl object-contain shadow-[0_24px_50px_rgba(0,0,0,0.22)]"
+                draggable={false}
+                className="max-h-[calc(100vh-140px)] max-w-full rounded-2xl object-contain shadow-[0_24px_50px_rgba(0,0,0,0.22)] will-change-transform"
+                style={{
+                  transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`,
+                  transition: isInteracting ? 'none' : 'transform 180ms ease-out',
+                }}
               />
             ) : (
               <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/80">
                 Náhled se nepodařilo načíst.
               </div>
             )}
+            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/10 bg-zinc-950/55 px-3 py-1.5 text-[10px] text-white/70 backdrop-blur-md">
+              Přibliž dvěma prsty · dvojitým klepnutím přibliž nebo resetuj
+            </div>
           </div>
         </div>
       </div>
