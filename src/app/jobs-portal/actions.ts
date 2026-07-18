@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { syncDispatcherCalendarsForJobId } from '@/lib/jobs/dispatcher-calendar-sync'
 import {
   getPersistedJobInfoAlert,
   normalizeJobInfoText,
@@ -166,6 +167,12 @@ export async function updatePortalJobInfoAction(
     }
   }
 
+  try {
+    await syncDispatcherCalendarsForJobId(normalizedJobId)
+  } catch (calendarError) {
+    console.error('Synchronizace dispečerského kalendáře z portálu selhala.', calendarError)
+  }
+
   revalidatePath('/jobs')
   revalidatePath('/jobs-portal')
 
@@ -299,6 +306,12 @@ export async function updatePortalJobInfoAlertAction(
       success: false,
       error: 'Alert info zakázky se nepodařilo uložit.',
     }
+  }
+
+  try {
+    await syncDispatcherCalendarsForJobId(normalizedJobId)
+  } catch (calendarError) {
+    console.error('Synchronizace dispečerského kalendáře z portálu selhala.', calendarError)
   }
 
   revalidatePath('/jobs')

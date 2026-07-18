@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NewJobButton } from './new-job-button'
 import { JobsInteractiveTable } from './jobs-interactive-table'
 import { PrintJobsButton } from './print-jobs-button'
+import { DispatcherCalendarButton } from './dispatcher-calendar-button'
 import { ChangesLauncher } from './changes-launcher'
 import { JobFilterSubmitButton } from './job-filter-submit-button'
 import { JobFilterResetLink } from './job-filter-reset-link'
@@ -100,6 +101,18 @@ type ProfilePermissionRow = {
   skryt_marny_vyjezd: boolean | null
 }
 
+type DispatcherCalendarFeedRow = {
+  token: string
+  enabled: boolean
+  disabled_at: string | null
+}
+
+type DispatcherGoogleCalendarRow = {
+  calendar_id: string | null
+  enabled: boolean
+  disabled_at: string | null
+}
+
 type JobsSearchParams = {
   q?: string | string[]
   status?: string | string[]
@@ -107,6 +120,8 @@ type JobsSearchParams = {
   sort?: string | string[]
   date_from?: string | string[]
   date_to?: string | string[]
+  dispatcher_calendar_status?: string | string[]
+  dispatcher_calendar_error?: string | string[]
 }
 
 function getSingleParam(value: string | string[] | undefined) {
@@ -281,6 +296,12 @@ export default async function JobsPage({
   const sortParam = getSingleParam(params?.sort)
   const dateFromParam = getSingleParam(params?.date_from)
   const dateToParam = getSingleParam(params?.date_to)
+  const dispatcherCalendarStatus = getSingleParam(
+    params?.dispatcher_calendar_status
+  )
+  const dispatcherCalendarError = getSingleParam(
+    params?.dispatcher_calendar_error
+  )
 
   const query = queryParam.trim()
   const jobStatus = isJobStatus(statusParam) ? statusParam : ''
@@ -362,6 +383,47 @@ export default async function JobsPage({
   if (!isAdmin && !typedProfile?.can_view_jobs) {
     redirect('/dashboard')
   }
+
+  const [dispatcherFeedResponse, dispatcherGoogleResponse] = await Promise.all([
+    supabase
+      .from('dispatcher_job_calendar_feeds')
+      .select('token, enabled, disabled_at')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('dispatcher_job_google_calendar_integrations')
+      .select('calendar_id, enabled, disabled_at')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ])
+
+  if (dispatcherFeedResponse.error) {
+    throw new Error('Nepodařilo se načíst stav dispečerského kalendáře.')
+  }
+  if (dispatcherGoogleResponse.error) {
+    throw new Error('Nepodařilo se načíst stav Google kalendáře dispečera.')
+  }
+
+  const dispatcherFeed =
+    dispatcherFeedResponse.data as DispatcherCalendarFeedRow | null
+  const dispatcherGoogle =
+    dispatcherGoogleResponse.data as DispatcherGoogleCalendarRow | null
+  const isDispatcherCalendarActivated = Boolean(
+    dispatcherFeed?.enabled && !dispatcherFeed.disabled_at
+  )
+  const dispatcherCalendarFeedPath = dispatcherFeed?.token
+    ? `/api/dispatcher-job-calendars/${dispatcherFeed.token}`
+    : null
+  const isDispatcherGoogleConnected = Boolean(
+    dispatcherGoogle?.enabled &&
+      !dispatcherGoogle.disabled_at &&
+      dispatcherGoogle.calendar_id
+  )
+  const dispatcherCalendarMessage = dispatcherCalendarStatus.startsWith('created:')
+    ? `Google kalendář byl připojen a synchronizoval ${dispatcherCalendarStatus.slice(8)} zakázek.`
+    : dispatcherCalendarStatus === 'connected'
+      ? 'Google kalendář byl úspěšně připojen.'
+      : null
 
   const clientsRequest = supabase
     .from('clients')
@@ -825,7 +887,7 @@ export default async function JobsPage({
                     </div>
                   </div>
 
-                  <div className="jobs-page__filter-divider flex items-center gap-2 border-t border-gray-100 pt-3">
+                  <div className="jobs-page__filter-divider flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
                     <JobFilterSubmitButton className="jobs-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800">
                       POUŽÍT FILTRY
                     </JobFilterSubmitButton>
@@ -838,6 +900,17 @@ export default async function JobsPage({
                     </JobFilterResetLink>
 
                     <PrintJobsButton className="jobs-page__print-button" />
+                    <DispatcherCalendarButton
+                      className="basis-full w-full px-3"
+                      initiallyActivated={isDispatcherCalendarActivated}
+                      initialFeedPath={dispatcherCalendarFeedPath}
+                      initialGoogleConnected={isDispatcherGoogleConnected}
+                      initialGoogleConfigured={Boolean(
+                        process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                      )}
+                      initialMessage={dispatcherCalendarMessage}
+                      initialError={dispatcherCalendarError || null}
+                    />
                   </div>
                 </div>
                 </details>
@@ -1058,6 +1131,16 @@ export default async function JobsPage({
                       className="jobs-page__changes-button"
                     />
                     <PrintJobsButton className="jobs-page__print-button" />
+                    <DispatcherCalendarButton
+                      initiallyActivated={isDispatcherCalendarActivated}
+                      initialFeedPath={dispatcherCalendarFeedPath}
+                      initialGoogleConnected={isDispatcherGoogleConnected}
+                      initialGoogleConfigured={Boolean(
+                        process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                      )}
+                      initialMessage={dispatcherCalendarMessage}
+                      initialError={dispatcherCalendarError || null}
+                    />
 
                     <JobFilterSubmitButton className="jobs-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 sm:order-5">
                       POUŽÍT FILTRY

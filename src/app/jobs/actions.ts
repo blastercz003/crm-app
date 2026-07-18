@@ -30,6 +30,11 @@ import {
   disconnectJobGoogleCalendar,
   syncJobGoogleCalendarItem,
 } from '@/lib/jobs/google-calendar'
+import {
+  cancelDispatcherCalendarsForJob,
+  syncDispatcherCalendarsForJob,
+} from '@/lib/jobs/dispatcher-calendar-sync'
+import type { DispatcherCalendarJobRow } from '@/lib/jobs/dispatcher-calendar-feed'
 import { canViewTechJobsSection } from '@/lib/auth/access'
 
 export type CreateJobActionState = {
@@ -1142,7 +1147,8 @@ async function getJobCalendarSnapshot(
         info_note,
         job_status,
         invoice_status,
-        evidence_status
+        evidence_status,
+        marny_vyjezd
       `
     )
     .eq('id', jobId)
@@ -1154,7 +1160,7 @@ async function getJobCalendarSnapshot(
     )
   }
 
-  return data as JobCalendarJobRow
+  return data as JobCalendarJobRow & DispatcherCalendarJobRow
 }
 
 async function syncJobCalendarItemSafely(params: {
@@ -1276,34 +1282,33 @@ async function syncJobCalendarForTechniciansSafely(params: {
   errorType: string
   userIdForErrorLog?: string | null
 }) {
-  if (params.technicianIds.length === 0) {
-    return
-  }
-
   const supabase = await createClient()
   const job = await getJobCalendarSnapshot(supabase, params.jobId)
 
   await Promise.all(
-    params.technicianIds.map((technicianId) =>
-      Promise.all([
-        syncJobCalendarItemSafely({
-          jobId: params.jobId,
-          userId: technicianId,
-          job,
-          action: params.action,
-          errorType: params.errorType,
-          userIdForErrorLog: params.userIdForErrorLog,
-        }),
-        syncJobGoogleCalendarItemSafely({
-          jobId: params.jobId,
-          userId: technicianId,
-          job,
-          action: params.action,
-          errorType: `${params.errorType}Google`,
-          userIdForErrorLog: params.userIdForErrorLog,
-        }),
-      ])
-    )
+    [
+      syncDispatcherCalendarsForJob(job),
+      ...params.technicianIds.map((technicianId) =>
+        Promise.all([
+          syncJobCalendarItemSafely({
+            jobId: params.jobId,
+            userId: technicianId,
+            job,
+            action: params.action,
+            errorType: params.errorType,
+            userIdForErrorLog: params.userIdForErrorLog,
+          }),
+          syncJobGoogleCalendarItemSafely({
+            jobId: params.jobId,
+            userId: technicianId,
+            job,
+            action: params.action,
+            errorType: `${params.errorType}Google`,
+            userIdForErrorLog: params.userIdForErrorLog,
+          }),
+        ])
+      ),
+    ]
   )
 }
 
@@ -3638,6 +3643,23 @@ export async function deleteJobAction(
       success: false,
       error: 'Zakázku se nepodařilo smazat.',
     }
+  }
+
+  try {
+    await cancelDispatcherCalendarsForJob(normalizedJobId)
+  } catch (calendarError) {
+    console.error(
+      'Nepodařilo se zrušit zakázku v dispečerských kalendářích.',
+      calendarError
+    )
+    await reportActionError({
+      error: calendarError,
+      action: 'deleteJobAction',
+      section: 'jobs',
+      errorType: 'DeleteDispatcherCalendarCancelError',
+      userId: user.id,
+      context: { jobId: normalizedJobId },
+    })
   }
 
   try {

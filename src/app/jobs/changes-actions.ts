@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { syncDispatcherCalendarsForJobId } from '@/lib/jobs/dispatcher-calendar-sync'
 import { reportActionError } from '@/lib/errors/reportActionError'
 
 type ProfilePermissionRow = {
@@ -369,6 +370,18 @@ export async function acknowledgeAllJobChangesAction(): Promise<
           success: false,
           error: 'Nepodařilo se hromadně přepnout nové zakázky na ZAPSANO.',
         }
+      }
+
+      const calendarResults = await Promise.allSettled(
+        newJobIds.map((jobId) => syncDispatcherCalendarsForJobId(jobId))
+      )
+      const calendarErrors = calendarResults.filter(
+        (result) => result.status === 'rejected'
+      )
+      if (calendarErrors.length > 0) {
+        console.error(
+          `Synchronizace dispečerských kalendářů selhala u ${calendarErrors.length} zakázek.`
+        )
       }
     }
 
