@@ -2,8 +2,9 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { unstable_noStore as noStore } from 'next/cache'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
-import type { OfferClient, OfferItemRow, OfferProfile, OfferRow, OfferStatus } from '@/lib/offers/types'
+import type { OfferClient, OfferProfile, OfferRow, OfferStatus } from '@/lib/offers/types'
 import { formatCurrency, getOfferTotals } from '@/lib/offers/calculations'
+import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
 import { NewOfferButton } from './new-offer-button'
 import { CopyOfferButton } from './copy-offer-button'
 import { OfferNoteInput } from './offer-note-input'
@@ -16,6 +17,7 @@ import {
   getOfferTypeBadgeClass,
 } from './offer-type-badge'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
+import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 
 export const metadata: Metadata = {
   title: 'Nabídky',
@@ -119,16 +121,6 @@ function buildSearchFilterWithClients(search: string, clientIds: string[]) {
   return `${baseFilter},client_id.in.(${clientIds.join(',')})`
 }
 
-function getOfferTotalWithoutVat(items: OfferItemForTotal[]) {
-  return items.reduce((sum, item) => {
-    const quantity = Number(item.quantity) || 0
-    const unitPrice = Number(item.unit_price_without_vat) || 0
-    const discount = Math.min(Math.max(Number(item.discount_percent) || 0, 0), 100)
-    const net = quantity * unitPrice * (1 - discount / 100)
-    return sum + net
-  }, 0)
-}
-
 function getOfferUnitPriceWithoutVat(items: OfferItemForTotal[]) {
   return items.reduce((sum, item) => {
     const unitPrice = Number(item.unit_price_without_vat) || 0
@@ -148,23 +140,6 @@ function getOfferListPriceWithoutVat(offer: OfferRow, items: OfferItemForTotal[]
   )
 
   return getOfferUnitPriceWithoutVat(serviceItems)
-}
-
-async function loadOfferListTotal(
-  supabase: Awaited<ReturnType<typeof getOfferRuntimeContext>>['supabase'],
-  offer: OfferRow
-) {
-  const { data, error } = await supabase
-    .from('offer_items')
-    .select('offer_id, item_section, quantity, unit_price_without_vat, discount_percent, vat_rate')
-    .eq('offer_id', offer.id)
-    .order('position', { ascending: true })
-
-  if (error) {
-    throw new Error(`Nepodařilo se načíst položky nabídky ${offer.offer_number}: ${error.message}`)
-  }
-
-  return getOfferListPriceWithoutVat(offer, (data ?? []) as OfferItemForTotal[])
 }
 
 function getStatusLabel(status: string) {
@@ -321,12 +296,33 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'cs'))
   const selectedAuthor = authorId ? profileById.get(authorId) : null
 
-  const offerTotalsById = new Map<string, number>()
-  await Promise.all(
-    offers.map(async (offer) => {
-      const total = await loadOfferListTotal(supabase, offer)
-      offerTotalsById.set(offer.id, total)
-    })
+  const offerItemsResponse = await querySupabaseInBatches<OfferItemForTotal>({
+    values: offers.map((offer) => offer.id),
+    batchSize: 75,
+    queryBatch: (offerIds) =>
+      supabase
+        .from('offer_items')
+        .select('offer_id, item_section, quantity, unit_price_without_vat, discount_percent, vat_rate')
+        .in('offer_id', offerIds)
+        .order('position', { ascending: true }),
+  })
+
+  if (offerItemsResponse.error) {
+    throw new Error(`Nepodařilo se načíst ceny nabídek: ${offerItemsResponse.error.message}`)
+  }
+
+  const itemsByOfferId = new Map<string, OfferItemForTotal[]>()
+  for (const item of offerItemsResponse.data ?? []) {
+    const offerItems = itemsByOfferId.get(item.offer_id) ?? []
+    offerItems.push(item)
+    itemsByOfferId.set(item.offer_id, offerItems)
+  }
+
+  const offerTotalsById = new Map(
+    offers.map((offer) => [
+      offer.id,
+      getOfferListPriceWithoutVat(offer, itemsByOfferId.get(offer.id) ?? []),
+    ])
   )
 
   const visibleClientOptions = clients.map((client) => ({
@@ -353,6 +349,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   return (
     <main className="offers-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <PresenceSectionTracker section="Nabídky" route="/offers" />
+      <SafeRealtimeRefresh scopes={['offers']} />
       <div
         aria-hidden
         className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
@@ -677,7 +674,6 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
               {sortedOffers.map((offer) => {
                 const client = clientById.get(offer.client_id)
                 const total = offerTotalsById.get(offer.id) ?? 0
-
                 return (
                   <article
                     key={offer.id}
@@ -767,7 +763,6 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     const client = clientById.get(offer.client_id)
                     const author = profileById.get(offer.created_by)
                     const total = offerTotalsById.get(offer.id) ?? 0
-
                     return (
                       <div
                         key={offer.id}

@@ -3,11 +3,13 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 import { FakturyInteractiveTable } from './faktury-interactive-table'
 import { FakturyFilterSubmitButton } from './faktury-filter-submit-button'
 import { FakturyFilterResetLink } from './faktury-filter-reset-link'
 import { FakturyStatisticsModalLauncher } from './statistics-modal'
 import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
+import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
 
 export const metadata: Metadata = {
   title: 'Faktury',
@@ -154,6 +156,11 @@ type FinanceStatsJoinRow = {
 type JobAttachmentJobIdRow = {
   job_id: string
 }
+
+type LinkedJobOfferRow = Pick<
+  JobOfferOption,
+  'id' | 'client_id' | 'offer_number' | 'title' | 'order_reference'
+>
 
 const SALES_OWNER_OPTIONS: SalesOwner[] = ['JIŘÍ', 'MICHAL', 'LÍDA']
 
@@ -763,12 +770,14 @@ export default async function FakturyPage({
   )
 
   const { data: linkedOfferRows, error: linkedOfferError } =
-    linkedOfferIds.length > 0
-      ? await supabase
+    await querySupabaseInBatches<LinkedJobOfferRow>({
+      values: linkedOfferIds,
+      queryBatch: (offerIdBatch) =>
+        supabase
           .from('offers')
           .select('id, client_id, offer_number, title, order_reference')
-          .in('id', linkedOfferIds)
-      : { data: [], error: null }
+          .in('id', offerIdBatch),
+    })
 
   if (linkedOfferError) {
     throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
@@ -778,10 +787,15 @@ export default async function FakturyPage({
   const jobPpNotRequiredIds = await getJobPpNotRequiredSet(supabase, uniqueJobIds)
 
   if (uniqueJobIds.length > 0) {
-    const { data: attachmentRows, error: attachmentsError } = await supabase
-      .from('job_attachments')
-      .select('job_id')
-      .in('job_id', uniqueJobIds)
+    const { data: attachmentRows, error: attachmentsError } =
+      await querySupabaseInBatches<JobAttachmentJobIdRow>({
+        values: uniqueJobIds,
+        queryBatch: (jobIdBatch) =>
+          supabase
+            .from('job_attachments')
+            .select('job_id')
+            .in('job_id', jobIdBatch),
+      })
 
     if (attachmentsError) {
       throw new Error('Nepodařilo se načíst stav příloh.')
@@ -919,6 +933,7 @@ export default async function FakturyPage({
 
   return (
     <main className="jobs-page faktury-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <SafeRealtimeRefresh scopes={['finances', 'jobs', 'offers']} />
       <div
         aria-hidden
         className="jobs-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 import {
   canViewProvizeSection,
   resolveProvizeSalesOwnerName,
@@ -549,6 +550,7 @@ export default async function ProvizePage({
 
   return (
     <main className="jobs-page provize-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <SafeRealtimeRefresh scopes={['finances', 'jobs', 'provize']} />
       <div
         aria-hidden
         className="jobs-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"

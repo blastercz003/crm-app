@@ -10,6 +10,8 @@ import {
   PwaStartupScreenShell,
 } from '../components/pwa/pwa-startup-screen'
 import { ThemePreferenceSync } from '@/components/theme/theme-preference-sync'
+import { AppRealtimeCoordinator } from '@/components/realtime/app-realtime-coordinator'
+import { NotificationRealtimeSync } from '@/components/realtime/notification-realtime-sync'
 import { APP_TITLE } from '@/lib/pageTitles'
 import {
   THEME_COLORS,
@@ -79,6 +81,8 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
         <PushSubscriptionGuard />
+        <AppRealtimeCoordinator />
+        <NotificationRealtimeSync />
         {shouldRenderStartupScreen ? <PwaStartupScreenShell /> : null}
         {shouldRenderStartupScreen ? <PwaStartupScreenController /> : null}
         <ThemePreferenceSync />

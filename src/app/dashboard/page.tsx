@@ -32,6 +32,7 @@ import {
 } from '@/lib/notifications/getNotifications'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
+import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 import { DashboardStartupReadyBridge } from '@/components/pwa/pwa-startup-screen'
 import { getReceivedInvoiceBadgeCount } from '@/lib/received-invoices/service'
 import { DashboardThemeToggle } from '@/components/dashboard/dashboard-theme-toggle'
@@ -1673,6 +1674,9 @@ export default async function DashboardPage({
           />
           <main className="relative z-10 flex flex-1 flex-col">
             <AppBadgeSync count={notificationStats.unread} />
+            <SafeRealtimeRefresh
+              scopes={['jobs', 'meetings', 'notifications', 'offers', 'tasks']}
+            />
             <DashboardStartupReadyBridge />
             <div className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="dashboard-card dashboard-card--strong rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { trackUserPresenceAction } from '@/app/dashboard/online-presence-actions'
+import { trackUserPresence } from '@/lib/dashboard/dashboard-background-client'
 
 type PresenceSectionTrackerProps = {
   section: string
@@ -16,7 +16,7 @@ export function PresenceSectionTracker({ section, route }: PresenceSectionTracke
       if (isStopped) return
 
       try {
-        await trackUserPresenceAction({
+        await trackUserPresence({
           section,
           route,
         })

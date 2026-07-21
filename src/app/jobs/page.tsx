@@ -15,6 +15,7 @@ import { JobsForegroundRefresh } from './jobs-foreground-refresh'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 import { hasJobInfoContent } from './info-note-shared'
 import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
+import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
 
 export const metadata: Metadata = {
   title: 'Zakázky',
@@ -112,6 +113,22 @@ type DispatcherGoogleCalendarRow = {
   enabled: boolean
   disabled_at: string | null
 }
+
+type JobInfoAttachmentRow = {
+  job_id: string | null
+}
+
+type LinkedOfferRow = Pick<
+  JobOfferOption,
+  | 'id'
+  | 'client_id'
+  | 'offer_number'
+  | 'title'
+  | 'order_reference'
+  | 'realization_starts_at'
+  | 'realization_ends_at'
+  | 'realization_address'
+>
 
 type JobsSearchParams = {
   q?: string | string[]
@@ -551,12 +568,14 @@ export default async function JobsPage({
   const jobIds = visibleJobs.map((job) => job.id)
   const jobPpNotRequiredIds = await getJobPpNotRequiredSet(supabase, jobIds)
   const { data: infoAttachmentRows, error: infoAttachmentsError } =
-    jobIds.length > 0
-      ? await supabase
+    await querySupabaseInBatches<JobInfoAttachmentRow>({
+      values: jobIds,
+      queryBatch: (jobIdBatch) =>
+        supabase
           .from('job_info_attachments')
           .select('job_id')
-          .in('job_id', jobIds)
-      : { data: [], error: null }
+          .in('job_id', jobIdBatch),
+    })
 
   if (infoAttachmentsError) {
     throw new Error('Nepodařilo se načíst fotky k info zakázek.')
@@ -571,14 +590,16 @@ export default async function JobsPage({
   )
 
   const { data: linkedOfferRows, error: linkedOfferError } =
-    linkedOfferIds.length > 0
-      ? await supabase
+    await querySupabaseInBatches<LinkedOfferRow>({
+      values: linkedOfferIds,
+      queryBatch: (offerIdBatch) =>
+        supabase
           .from('offers')
           .select(
             'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address'
           )
-          .in('id', linkedOfferIds)
-      : { data: [], error: null }
+          .in('id', offerIdBatch),
+    })
 
   if (linkedOfferError) {
     throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')

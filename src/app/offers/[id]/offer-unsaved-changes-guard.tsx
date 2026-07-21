@@ -35,11 +35,15 @@ export function OfferUnsavedChangesGuard({ formId, message }: OfferUnsavedChange
 
     const markDirty = () => {
       isOfferFormDirty = true
+      form.dataset.realtimeRefreshBlock = 'true'
     }
 
     const markClean = () => {
       isOfferFormDirty = false
+      delete form.dataset.realtimeRefreshBlock
     }
+
+    markClean()
 
     const handleGuardedClick = (event: MouseEvent) => {
       if (!isOfferFormDirty) return
@@ -63,6 +67,7 @@ export function OfferUnsavedChangesGuard({ formId, message }: OfferUnsavedChange
     guardedLinks.forEach((link) => link.addEventListener('click', handleGuardedClick))
 
     return () => {
+      delete form.dataset.realtimeRefreshBlock
       form.removeEventListener('input', markDirty)
       form.removeEventListener('change', markDirty)
       form.removeEventListener('submit', markClean)

@@ -5,13 +5,15 @@ import { createPortal } from 'react-dom'
 import {
   deleteReceivedInvoiceAction,
   getReceivedInvoiceDownloadUrlAction,
-  getReceivedInvoicePreviewUrlAction,
-  getReceivedInvoicesAction,
   setReceivedInvoiceDueDateAction,
   toggleReceivedInvoiceStatusAction,
   uploadMultipleReceivedInvoicesAction,
   uploadSingleReceivedInvoiceAction,
 } from '@/app/dashboard/received-invoices-actions'
+import {
+  getReceivedInvoicePreviewUrl,
+  getReceivedInvoicesForDashboard,
+} from '@/lib/dashboard/dashboard-background-client'
 import type { ReceivedInvoiceFilter, ReceivedInvoiceRow } from '@/lib/received-invoices/types'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import Image from 'next/image'
@@ -242,7 +244,7 @@ export function ReceivedInvoicesModal({
 
     startTransition(async () => {
       setError(null)
-      const result = await getReceivedInvoicesAction(filter)
+      const result = await getReceivedInvoicesForDashboard(filter)
       if (!result.success) {
         setRows([])
         setSelectedId(null)
@@ -286,7 +288,7 @@ export function ReceivedInvoicesModal({
     let cancelled = false
 
     startTransition(async () => {
-      const result = await getReceivedInvoicePreviewUrlAction(selectedInvoiceId)
+      const result = await getReceivedInvoicePreviewUrl(selectedInvoiceId)
       if (cancelled) return
 
       if (!result.success) {
@@ -304,7 +306,7 @@ export function ReceivedInvoicesModal({
 
   function refreshData() {
     startTransition(async () => {
-      const result = await getReceivedInvoicesAction(filter)
+      const result = await getReceivedInvoicesForDashboard(filter)
       if (!result.success) {
         setError(result.error ?? 'Nepodařilo se načíst faktury.')
         return

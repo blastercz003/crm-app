@@ -8,6 +8,7 @@ import {
   getCurrentUserNotifications,
 } from '@/lib/notifications/getNotifications'
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
+import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import type {
   NotificationCategoryFilter,
@@ -353,6 +354,7 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
         className="notifications-page__glow--secondary pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl"
       />
       <AppBadgeSync count={stats.unread} />
+      <SafeRealtimeRefresh scopes={['notifications']} />
       <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
         <section className="notifications-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

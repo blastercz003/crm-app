@@ -10,7 +10,6 @@ import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
 import {
-  getMyDashboardQuickNoteAction,
   clearMyDashboardQuickNoteAction,
   upsertMyDashboardQuickNoteAction,
 } from '@/app/dashboard/quick-notes-actions'
@@ -19,11 +18,12 @@ import {
   sendManualNotificationForAdminAction,
 } from '@/app/dashboard/manual-notifications-actions'
 import {
-  getPresenceOverviewForAdminAction,
-  getUserActivityForAdminAction,
-  trackUserPresenceAction,
-} from '@/app/dashboard/online-presence-actions'
-import { getTodayJobsForDashboardAction } from '@/app/dashboard/today-jobs-actions'
+  getPresenceOverviewForAdmin,
+  getMyDashboardQuickNote,
+  getTodayJobsForDashboard,
+  getUserActivityForAdmin,
+  trackUserPresence,
+} from '@/lib/dashboard/dashboard-background-client'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   readDashboardQuickCreateEnabled,
@@ -720,11 +720,11 @@ export function DashboardMobileQuickActions({
       if (shouldStopHeartbeat) return
 
       let result:
-        | Awaited<ReturnType<typeof trackUserPresenceAction>>
+        | Awaited<ReturnType<typeof trackUserPresence>>
         | null = null
 
       try {
-        result = await trackUserPresenceAction({
+        result = await trackUserPresence({
           route: '/dashboard',
           section: 'Dashboard',
         })
@@ -759,7 +759,7 @@ export function DashboardMobileQuickActions({
     let isCancelled = false
 
     const refreshPresenceOverview = async () => {
-      const result = await getPresenceOverviewForAdminAction(presencePeriod)
+      const result = await getPresenceOverviewForAdmin(presencePeriod)
 
       if (isCancelled) return
 
@@ -807,7 +807,7 @@ export function DashboardMobileQuickActions({
 
     const loadActivity = async () => {
       setIsActivityLoading(true)
-      const result = await getUserActivityForAdminAction(selectedPresenceUserId, 30, presencePeriod)
+      const result = await getUserActivityForAdmin(selectedPresenceUserId, 30, presencePeriod)
       if (isCancelled) return
 
       if (!result.success) {
@@ -908,7 +908,7 @@ export function DashboardMobileQuickActions({
     }
     setTodayJobsError(null)
 
-    const result = await getTodayJobsForDashboardAction()
+    const result = await getTodayJobsForDashboard()
     if (!result.success) {
       setTodayJobs([])
       setTodayJobsError(result.error ?? 'Nepodařilo se načíst dnešní zakázky.')
@@ -946,7 +946,7 @@ export function DashboardMobileQuickActions({
 
     let isCancelled = false
     ;(async () => {
-      const result = await getMyDashboardQuickNoteAction()
+      const result = await getMyDashboardQuickNote()
       if (isCancelled) return
       if (result.success) {
         const initialContent = result.content ?? ''
@@ -1196,7 +1196,7 @@ export function DashboardMobileQuickActions({
     closeTodayJobsImmediately()
     setActiveAction(action)
     closeSheet()
-    void trackUserPresenceAction({
+    void trackUserPresence({
       route: '/dashboard',
       section: 'Dashboard',
       action: `Spustil rychlou akci: ${action}`,
@@ -1305,7 +1305,7 @@ export function DashboardMobileQuickActions({
     closeTodayJobsImmediately()
     triggerHaptic(10)
     setIsPresenceModalOpen(true)
-    const result = await trackUserPresenceAction({
+    const result = await trackUserPresence({
       route: '/dashboard',
       section: 'Dashboard',
       action: 'Otevřel sledovač online stavu',

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getOfferRuntimeContext } from '@/lib/offers/permissions'
 import { joinTitleParts } from '@/lib/pageTitles'
+import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 import type {
   OfferClient,
   OfferClientContact,
@@ -139,8 +140,18 @@ export default async function OfferDetailPage({ params, searchParams }: OfferDet
   }
 
   if (offer.offer_type === 'bsafe24') {
-    return <BSafe24OfferDetail {...detailProps} />
+    return (
+      <>
+        <SafeRealtimeRefresh scopes={['offers']} />
+        <BSafe24OfferDetail {...detailProps} />
+      </>
+    )
   }
 
-  return <ClassicOfferDetail {...detailProps} />
+  return (
+    <>
+      <SafeRealtimeRefresh scopes={['offers']} />
+      <ClassicOfferDetail {...detailProps} />
+    </>
+  )
 }

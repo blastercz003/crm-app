@@ -1,3 +1,5 @@
+import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
+
 type SupabaseLike = {
   from: (table: string) => unknown
 }
@@ -47,9 +49,11 @@ export async function getJobPpNotRequiredSet(
     }
   }
 
-  const { data, error } = await table
-    .select('job_id, pp_required')
-    .in('job_id', normalizedJobIds)
+  const { data, error } = await querySupabaseInBatches<JobPpRequirementRow>({
+    values: normalizedJobIds,
+    queryBatch: (jobIdBatch) =>
+      table.select('job_id, pp_required').in('job_id', jobIdBatch),
+  })
 
   if (error) {
     throw new Error(`Nepodařilo se načíst nastavení PP: ${error.message}`)
