@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
-import { EditJobButton } from '../jobs/edit-job-button'
+import {
+  EditJobButton,
+  EditJobModalController,
+} from '../jobs/edit-job-button'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 import { JobAttachmentsModalContent } from '@/components/attachments/job-attachments-modal-content'
 import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
@@ -149,6 +152,8 @@ export function FakturyInteractiveTable({
   technicianSuggestions,
   technicianOptions,
 }: FakturyInteractiveTableProps) {
+  const [editingRow, setEditingRow] = useState<FakturaRow | null>(null)
+
   return (
     <>
       <section className="jobs-page__table-shell faktury-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
@@ -194,12 +199,8 @@ export function FakturyInteractiveTable({
                 <DesktopRow
                   key={row.id}
                   row={row}
-                  clientSuggestions={clientSuggestions}
-                  clientContacts={clientContacts}
-                  offerSuggestions={offerSuggestions}
-                  jobOfferSuggestions={jobOfferSuggestions}
-                  technicianSuggestions={technicianSuggestions}
                   technicianOptions={technicianOptions}
+                  onEditJob={setEditingRow}
                 />
               ))}
             </tbody>
@@ -212,35 +213,35 @@ export function FakturyInteractiveTable({
           <MobileCard
             key={row.id}
             row={row}
-            clientSuggestions={clientSuggestions}
-            clientContacts={clientContacts}
-            offerSuggestions={offerSuggestions}
-            jobOfferSuggestions={jobOfferSuggestions}
-            technicianSuggestions={technicianSuggestions}
             technicianOptions={technicianOptions}
+            onEditJob={setEditingRow}
           />
         ))}
       </section>
+
+      {editingRow ? (
+        <EditJobModalController
+          job={buildEditableJob(editingRow)}
+          clientSuggestions={clientSuggestions}
+          clientContacts={clientContacts}
+          offerSuggestions={offerSuggestions}
+          jobOfferSuggestions={jobOfferSuggestions}
+          technicianSuggestions={technicianSuggestions}
+          onClose={() => setEditingRow(null)}
+        />
+      ) : null}
     </>
   )
 }
 
 function DesktopRow({
   row,
-  clientSuggestions,
-  clientContacts,
-  offerSuggestions,
-  jobOfferSuggestions,
-  technicianSuggestions,
   technicianOptions,
+  onEditJob,
 }: {
   row: FakturaRow
-  clientSuggestions: ClientOption[]
-  clientContacts: ClientContactOption[]
-  offerSuggestions: JobOfferOption[]
-  jobOfferSuggestions: JobOfferOption[]
-  technicianSuggestions: string[]
   technicianOptions: TechnicianOption[]
+  onEditJob: (row: FakturaRow) => void
 }) {
   const isFinanceCompleted =
     Boolean(row.invoice_number?.trim()) &&
@@ -259,11 +260,7 @@ function DesktopRow({
       <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <EditJobButton
           job={editableJob}
-          clientSuggestions={clientSuggestions}
-          clientContacts={clientContacts}
-          offerSuggestions={offerSuggestions}
-          jobOfferSuggestions={jobOfferSuggestions}
-          technicianSuggestions={technicianSuggestions}
+          onOpen={() => onEditJob(row)}
           className="jobs-page__job-number-button block h-8 rounded-lg px-1 py-1 text-center text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]"
         >
           <span className="block truncate leading-6 text-gray-900">
@@ -399,20 +396,12 @@ function buildEditableJob(row: FakturaRow) {
 
 function MobileCard({
   row,
-  clientSuggestions,
-  clientContacts,
-  offerSuggestions,
-  jobOfferSuggestions,
-  technicianSuggestions,
   technicianOptions,
+  onEditJob,
 }: {
   row: FakturaRow
-  clientSuggestions: ClientOption[]
-  clientContacts: ClientContactOption[]
-  offerSuggestions: JobOfferOption[]
-  jobOfferSuggestions: JobOfferOption[]
-  technicianSuggestions: string[]
   technicianOptions: TechnicianOption[]
+  onEditJob: (row: FakturaRow) => void
 }) {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false)
   const isFinanceCompleted =
@@ -434,11 +423,7 @@ function MobileCard({
           <div className="flex items-center gap-2">
             <EditJobButton
               job={editableJob}
-              clientSuggestions={clientSuggestions}
-              clientContacts={clientContacts}
-              offerSuggestions={offerSuggestions}
-              jobOfferSuggestions={jobOfferSuggestions}
-              technicianSuggestions={technicianSuggestions}
+              onOpen={() => onEditJob(row)}
               className="jobs-page__job-number-button min-w-0 text-sm font-semibold leading-tight text-gray-900 hover:underline"
             >
               <span className="block truncate">{row.job_number}</span>

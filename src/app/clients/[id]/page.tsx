@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { cleanTitlePart } from '@/lib/pageTitles'
@@ -39,18 +40,22 @@ type ClientAccessRow = {
   user_id: string
 }
 
+const getClientById = cache(async (id: string) => {
+  const supabase = await createClient()
+  return supabase
+    .from('clients')
+    .select('id, name, ico, contact_person, contact_phone, contact_email, address, note, created_by, created_at')
+    .eq('id', id)
+    .maybeSingle<ClientRow>()
+})
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('clients')
-    .select('name')
-    .eq('id', id)
-    .maybeSingle<Pick<ClientRow, 'name'>>()
+  const { data } = await getClientById(id)
 
   const clientName = cleanTitlePart(data?.name)
 
@@ -493,8 +498,6 @@ export default async function ClientDetailPage({
   const isAdmin = typedProfile?.role === 'admin'
   const canViewJobs = isAdmin || Boolean(typedProfile?.can_view_jobs)
 
-  const clientRequest = supabase.from('clients').select('*').eq('id', id)
-
   const jobsRequest = canViewJobs
     ? supabase
         .from('jobs')
@@ -524,7 +527,7 @@ export default async function ClientDetailPage({
     ownerProfilesResponse,
     sharedAccessResponse,
   ] = await Promise.all([
-    clientRequest.single(),
+    getClientById(id),
     supabase
       .from('client_contacts')
       .select('id, client_id, name, phone, email, role, note, is_primary')

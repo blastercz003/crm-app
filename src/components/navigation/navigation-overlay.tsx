@@ -1,9 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import styles from './navigation-overlay.module.css'
 
 export const NAVIGATION_OVERLAY_START_EVENT = 'navigation-overlay:start'
+
+const MINIMUM_VISIBLE_MS = 350
+const POST_ROUTE_HOLD_MS = 180
+const EXIT_TRANSITION_MS = 280
+const NAVIGATION_SAFETY_TIMEOUT_MS = 15_000
+
+type OverlayPhase = 'hidden' | 'entering' | 'active' | 'exiting'
 
 function isModifiedEvent(event: MouseEvent) {
   return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
@@ -41,11 +49,15 @@ export function NavigationOverlay() {
 
   const routeKey = `${pathname}?${searchParams.toString()}`
 
-  const [visible, setVisible] = useState(false)
-  const [isNavigating, setIsNavigating] = useState(false)
+  const [phase, setPhase] = useState<OverlayPhase>('hidden')
 
   const previousRouteKeyRef = useRef(routeKey)
+  const isNavigatingRef = useRef(false)
+  const navigationStartedAtRef = useRef<number | null>(null)
+  const entryAnimationFrameRef = useRef<number | null>(null)
   const hideTimeoutRef = useRef<number | null>(null)
+  const exitTimeoutRef = useRef<number | null>(null)
+  const safetyTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     function showOverlay() {
@@ -53,9 +65,32 @@ export function NavigationOverlay() {
         window.clearTimeout(hideTimeoutRef.current)
         hideTimeoutRef.current = null
       }
+      if (exitTimeoutRef.current) {
+        window.clearTimeout(exitTimeoutRef.current)
+        exitTimeoutRef.current = null
+      }
+      if (entryAnimationFrameRef.current) {
+        window.cancelAnimationFrame(entryAnimationFrameRef.current)
+      }
+      if (safetyTimeoutRef.current) {
+        window.clearTimeout(safetyTimeoutRef.current)
+      }
 
-      setVisible(true)
-      setIsNavigating(true)
+      navigationStartedAtRef.current = Date.now()
+      isNavigatingRef.current = true
+      setPhase('entering')
+
+      entryAnimationFrameRef.current = window.requestAnimationFrame(() => {
+        setPhase('active')
+        entryAnimationFrameRef.current = null
+      })
+
+      safetyTimeoutRef.current = window.setTimeout(() => {
+        isNavigatingRef.current = false
+        setPhase('hidden')
+        navigationStartedAtRef.current = null
+        safetyTimeoutRef.current = null
+      }, NAVIGATION_SAFETY_TIMEOUT_MS)
     }
 
     function handleDocumentClick(event: MouseEvent) {
@@ -78,10 +113,24 @@ export function NavigationOverlay() {
 
     document.addEventListener('click', handleDocumentClick, true)
     window.addEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
+    window.addEventListener('popstate', showOverlay)
 
     return () => {
       document.removeEventListener('click', handleDocumentClick, true)
       window.removeEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
+      window.removeEventListener('popstate', showOverlay)
+      if (hideTimeoutRef.current) {
+        window.clearTimeout(hideTimeoutRef.current)
+      }
+      if (exitTimeoutRef.current) {
+        window.clearTimeout(exitTimeoutRef.current)
+      }
+      if (entryAnimationFrameRef.current) {
+        window.cancelAnimationFrame(entryAnimationFrameRef.current)
+      }
+      if (safetyTimeoutRef.current) {
+        window.clearTimeout(safetyTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -89,16 +138,32 @@ export function NavigationOverlay() {
     const previousRouteKey = previousRouteKeyRef.current
     const routeChanged = routeKey !== previousRouteKey
 
-    if (routeChanged && isNavigating) {
+    if (routeChanged && isNavigatingRef.current) {
+      if (safetyTimeoutRef.current) {
+        window.clearTimeout(safetyTimeoutRef.current)
+        safetyTimeoutRef.current = null
+      }
       if (hideTimeoutRef.current) {
         window.clearTimeout(hideTimeoutRef.current)
       }
 
+      const elapsed = navigationStartedAtRef.current
+        ? Date.now() - navigationStartedAtRef.current
+        : MINIMUM_VISIBLE_MS
+      const remainingVisibleTime = Math.max(0, MINIMUM_VISIBLE_MS - elapsed)
+      const hideDelay = remainingVisibleTime + POST_ROUTE_HOLD_MS
+
       hideTimeoutRef.current = window.setTimeout(() => {
-        setVisible(false)
-        setIsNavigating(false)
+        isNavigatingRef.current = false
+        setPhase('exiting')
+        navigationStartedAtRef.current = null
         hideTimeoutRef.current = null
-      }, 180)
+
+        exitTimeoutRef.current = window.setTimeout(() => {
+          setPhase('hidden')
+          exitTimeoutRef.current = null
+        }, EXIT_TRANSITION_MS)
+      }, hideDelay)
     }
 
     previousRouteKeyRef.current = routeKey
@@ -109,46 +174,168 @@ export function NavigationOverlay() {
         hideTimeoutRef.current = null
       }
     }
-  }, [routeKey, isNavigating])
+  }, [routeKey])
+
+  const isRendered = phase !== 'hidden'
+  const isActive = phase === 'active'
 
   return (
+    <div
+      aria-hidden="true"
+      className={[
+        'navigation-overlay__backdrop',
+        'fixed inset-0 z-[999]',
+        styles.backdrop,
+        isRendered
+          ? `pointer-events-auto ${styles.backdropRendered}`
+          : 'pointer-events-none',
+        isActive ? styles.backdropActive : '',
+      ].join(' ')}
+    >
       <div
-        aria-hidden="true"
-        className={[
-          'navigation-overlay__backdrop',
-          'fixed inset-0 z-[999] transition-opacity duration-200',
-          visible
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0',
-        ].join(' ')}
-      >
-        <div className="absolute inset-0 bg-white/18 backdrop-blur-[6px]" />
+        className={`absolute inset-0 bg-white/18 ${styles.blurLayer}`}
+      />
 
-        <div className="relative flex min-h-full items-center justify-center">
-          <div
-            className={[
-              'navigation-overlay__dots',
-              'flex items-center gap-3 rounded-full px-6 py-5 transition-all duration-200',
-              visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
-            ].join(' ')}
-          >
-          <LoadingDot delay="0ms" />
-          <LoadingDot delay="140ms" />
-          <LoadingDot delay="280ms" />
+      <div className="relative flex min-h-full items-center justify-center">
+        <div
+          className={[
+            'navigation-overlay__loader',
+            styles.loader,
+            isActive ? 'scale-100 opacity-100' : 'scale-90 opacity-0',
+          ].join(' ')}
+        >
+          <GooeyBlobLoader />
         </div>
       </div>
     </div>
   )
 }
 
-function LoadingDot({ delay }: { delay: string }) {
+function GooeyBlobLoader() {
+  const instanceId = useId().replaceAll(':', '')
+  const filterId = `navigation-goo-${instanceId}`
+  const gradientId = `navigation-gradient-${instanceId}`
+  const coreGradientId = `navigation-core-gradient-${instanceId}`
+  const sheenGradientId = `navigation-sheen-gradient-${instanceId}`
+  const shapeId = `navigation-shape-${instanceId}`
+  const maskId = `navigation-mask-${instanceId}`
+
   return (
-    <span
-      className="navigation-overlay__dot h-4 w-4 rounded-full bg-[#2980B9] shadow-[0_0_18px_rgba(41,128,185,0.35)] opacity-25"
-      style={{
-        animation: 'navigation-loading-dot-pulse 1.1s ease-in-out infinite',
-        animationDelay: delay,
-      }}
-    />
+    <svg
+      className={`navigation-overlay__blob ${styles.blob}`}
+      viewBox="0 0 120 120"
+      role="presentation"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient
+          id={gradientId}
+          x1="20"
+          y1="15"
+          x2="102"
+          y2="108"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0" stopColor="var(--blob-base)" />
+          <stop offset="0.48" stopColor="var(--blob-balance)" />
+          <stop offset="0.72" stopColor="var(--blob-mid)" />
+          <stop offset="0.88" stopColor="var(--blob-deep)" />
+          <stop offset="1" stopColor="var(--blob-primary)" />
+        </linearGradient>
+        <radialGradient id={coreGradientId} cx="48%" cy="45%" r="55%">
+          <stop offset="0" stopColor="var(--blob-highlight)" stopOpacity="0.72" />
+          <stop offset="0.42" stopColor="var(--blob-base)" stopOpacity="0.34" />
+          <stop offset="1" stopColor="var(--blob-base)" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={sheenGradientId} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="var(--blob-highlight)" stopOpacity="0" />
+          <stop offset="0.42" stopColor="var(--blob-highlight)" stopOpacity="0.16" />
+          <stop offset="0.58" stopColor="var(--blob-highlight)" stopOpacity="0.82" />
+          <stop offset="1" stopColor="var(--blob-highlight)" stopOpacity="0" />
+        </linearGradient>
+        <filter
+          id={filterId}
+          x="-30"
+          y="-30"
+          width="180"
+          height="180"
+          filterUnits="userSpaceOnUse"
+          colorInterpolationFilters="sRGB"
+        >
+          <feGaussianBlur in="SourceGraphic" stdDeviation="5.5" result="blur" />
+          <feColorMatrix
+            in="blur"
+            type="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9"
+            result="goo"
+          />
+          <feBlend in="SourceGraphic" in2="goo" mode="normal" />
+        </filter>
+        <g id={shapeId}>
+          <BlobCircles />
+        </g>
+        <mask
+          id={maskId}
+          x="-30"
+          y="-30"
+          width="180"
+          height="180"
+          maskUnits="userSpaceOnUse"
+        >
+          <g fill="white" filter={`url(#${filterId})`}>
+            <use href={`#${shapeId}`} />
+          </g>
+        </mask>
+      </defs>
+
+      <g className={styles.body}>
+        <g
+          className="navigation-overlay__blob-goo"
+          fill={`url(#${gradientId})`}
+          filter={`url(#${filterId})`}
+        >
+          <use href={`#${shapeId}`} />
+        </g>
+
+        <circle
+          className={styles.energyCore}
+          cx="60"
+          cy="60"
+          r="29"
+          fill={`url(#${coreGradientId})`}
+          mask={`url(#${maskId})`}
+        />
+
+        <g mask={`url(#${maskId})`} transform="rotate(-28 60 60)">
+          <rect
+            className={styles.sheen}
+            x="-72"
+            y="-28"
+            width="28"
+            height="176"
+            fill={`url(#${sheenGradientId})`}
+          />
+        </g>
+      </g>
+    </svg>
+  )
+}
+
+function BlobCircles() {
+  return (
+    <>
+      <g className={styles.core}>
+        <circle cx="60" cy="60" r="25" />
+      </g>
+      <g className={`${styles.orbit} ${styles.orbitOne}`}>
+        <circle cx="60" cy="60" r="17" />
+      </g>
+      <g className={`${styles.orbit} ${styles.orbitTwo}`}>
+        <circle cx="60" cy="60" r="16" />
+      </g>
+      <g className={`${styles.orbit} ${styles.orbitThree}`}>
+        <circle cx="60" cy="60" r="15" />
+      </g>
+    </>
   )
 }

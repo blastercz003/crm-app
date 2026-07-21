@@ -49,7 +49,7 @@ type OfferOption = {
   realization_address: string | null
 }
 
-type JobFormValues = {
+export type JobFormValues = {
   id: string
   job_number: string
   company_name: string
@@ -74,7 +74,7 @@ type JobFormValues = {
 
 type EditJobButtonProps = {
   job: JobFormValues
-  clientSuggestions: ClientOption[]
+  clientSuggestions?: ClientOption[]
   clientContacts?: ClientContactOption[]
   offerSuggestions?: OfferOption[]
   jobOfferSuggestions?: OfferOption[]
@@ -82,6 +82,7 @@ type EditJobButtonProps = {
   className?: string
   children?: React.ReactNode
   isAdmin?: boolean
+  onOpen?: () => void
 }
 
 const initialUpdateState: UpdateJobActionState = {
@@ -91,7 +92,7 @@ const initialUpdateState: UpdateJobActionState = {
 
 export function EditJobButton({
   job,
-  clientSuggestions,
+  clientSuggestions = [],
   clientContacts = [],
   offerSuggestions = [],
   jobOfferSuggestions = [],
@@ -99,18 +100,8 @@ export function EditJobButton({
   className,
   children,
   isAdmin = true,
+  onOpen,
 }: EditJobButtonProps) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  function openModal() {
-    if (!isAdmin) return
-    setIsOpen(true)
-  }
-
-  function closeModal() {
-    setIsOpen(false)
-  }
-
   const resolvedClassName =
     className ??
     'inline-flex items-center justify-center rounded-lg px-1 py-1 text-[12px] font-semibold text-gray-900 transition hover:bg-black/[0.025]'
@@ -119,9 +110,52 @@ export function EditJobButton({
     return <span className={resolvedClassName}>{children ?? job.job_number}</span>
   }
 
+  if (onOpen) {
+    return (
+      <button type="button" onClick={onOpen} className={resolvedClassName}>
+        {children ?? job.job_number}
+      </button>
+    )
+  }
+
+  return (
+    <UncontrolledEditJobButton
+      job={job}
+      clientSuggestions={clientSuggestions}
+      clientContacts={clientContacts}
+      offerSuggestions={offerSuggestions}
+      jobOfferSuggestions={jobOfferSuggestions}
+      technicianSuggestions={technicianSuggestions}
+      className={resolvedClassName}
+    >
+      {children}
+    </UncontrolledEditJobButton>
+  )
+}
+
+function UncontrolledEditJobButton({
+  job,
+  clientSuggestions = [],
+  clientContacts = [],
+  offerSuggestions = [],
+  jobOfferSuggestions = [],
+  technicianSuggestions = [],
+  className,
+  children,
+}: Omit<EditJobButtonProps, 'isAdmin' | 'onOpen'>) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  function openModal() {
+    setIsOpen(true)
+  }
+
+  function closeModal() {
+    setIsOpen(false)
+  }
+
   return (
     <>
-      <button type="button" onClick={openModal} className={resolvedClassName}>
+      <button type="button" onClick={openModal} className={className}>
         {children ?? job.job_number}
       </button>
 
@@ -137,6 +171,30 @@ export function EditJobButton({
         />
       ) : null}
     </>
+  )
+}
+
+export function EditJobModalController({
+  job,
+  clientSuggestions = [],
+  clientContacts = [],
+  offerSuggestions = [],
+  jobOfferSuggestions = [],
+  technicianSuggestions = [],
+  onClose,
+}: Omit<EditJobButtonProps, 'className' | 'children' | 'isAdmin' | 'onOpen'> & {
+  onClose: () => void
+}) {
+  return (
+    <EditJobModal
+      job={job}
+      clientSuggestions={clientSuggestions}
+      clientContacts={clientContacts}
+      offerSuggestions={offerSuggestions}
+      jobOfferSuggestions={jobOfferSuggestions}
+      technicianSuggestions={technicianSuggestions}
+      onClose={onClose}
+    />
   )
 }
 

@@ -322,6 +322,76 @@ export async function getJobsChangesModalDataAction(): Promise<
   }
 }
 
+export async function getJobsChangesBadgeCountAction(): Promise<
+  JobChangesActionResult<{ badgeCount: number }>
+> {
+  const { supabase, user, error: accessError, hideMarnyVyjezdy } =
+    await requireJobsAccess()
+
+  if (!user) {
+    return {
+      success: false,
+      error: accessError,
+    }
+  }
+
+  try {
+    const clearedAt = await getClearedAt(supabase)
+    const nextWorkWeekEnd = getNextWorkWeekEnd()
+    const to = `${nextWorkWeekEnd}T23:59:59`
+
+    const [newJobsResponse, updatedJobsResponse] = await Promise.all([
+      supabase
+        .from('jobs')
+        .select('id, marny_vyjezd')
+        .eq('evidence_status', 'nove')
+        .lte('start_at', to),
+      supabase
+        .from('job_changes_queue')
+        .select('job_id, jobs!inner(evidence_status, marny_vyjezd)')
+        .eq('kind', 'updated_job')
+        .gt('updated_at', clearedAt)
+        .eq('jobs.evidence_status', 'zapsano'),
+    ])
+
+    if (newJobsResponse.error || updatedJobsResponse.error) {
+      return {
+        success: false,
+        error: 'Nepodařilo se načíst počet změn zakázek.',
+      }
+    }
+
+    const newJobsCount = (newJobsResponse.data ?? []).filter(
+      (row) => !hideMarnyVyjezdy || !Boolean(row.marny_vyjezd)
+    ).length
+    const updatedJobsCount = (updatedJobsResponse.data ?? []).filter((row) => {
+      const relation = Array.isArray(row.jobs) ? row.jobs[0] : row.jobs
+      return !hideMarnyVyjezdy || !Boolean(relation?.marny_vyjezd)
+    }).length
+
+    return {
+      success: true,
+      error: null,
+      data: {
+        badgeCount: newJobsCount + updatedJobsCount,
+      },
+    }
+  } catch (error) {
+    console.error(error)
+    await reportActionError({
+      error,
+      action: 'getJobsChangesBadgeCountAction',
+      section: 'jobs',
+      errorType: 'JobsChangesBadgeCountActionError',
+      userId: user.id,
+    })
+    return {
+      success: false,
+      error: 'Nepodařilo se načíst počet změn zakázek.',
+    }
+  }
+}
+
 export async function acknowledgeAllJobChangesAction(): Promise<
   JobChangesActionResult<{ acknowledged: true }>
 > {

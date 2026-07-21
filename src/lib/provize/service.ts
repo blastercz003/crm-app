@@ -86,6 +86,55 @@ function normalizeMoney(value: number) {
   return Number(value.toFixed(2))
 }
 
+type ProvizeSyncPayload = {
+  job_finance_id: string
+  job_id: string
+  sales_owner: ProvizeSalesOwner
+  job_number: string
+  company_name: string
+  start_at: string
+  end_at: string
+  site_address: string | null
+  store_number: string | null
+  invoice_number: string
+  sale_amount: number
+  cost_amount: number
+  base_profit_amount: number
+}
+
+function buildProvizeSyncPayload(
+  item: EligibleFinanceJoinRow
+): ProvizeSyncPayload | null {
+  const job = Array.isArray(item.job) ? item.job[0] : item.job
+
+  if (!job) return null
+
+  const salesOwner = String(job.sales_owner ?? '').trim().toUpperCase()
+  const invoiceNumber = String(item.invoice_number ?? '').trim()
+
+  if (!isProvizeEligibleOwner(salesOwner)) return null
+  if (!invoiceNumber) return null
+  if (typeof item.sale_amount !== 'number' || typeof item.cost_amount !== 'number') {
+    return null
+  }
+
+  return {
+    job_finance_id: item.id,
+    job_id: item.job_id,
+    sales_owner: salesOwner,
+    job_number: String(job.job_number ?? '').trim(),
+    company_name: String(job.company_name ?? '').trim(),
+    start_at: job.start_at,
+    end_at: job.end_at,
+    site_address: job.site_address?.trim() ?? null,
+    store_number: job.store_number?.trim() ?? null,
+    invoice_number: invoiceNumber,
+    sale_amount: normalizeMoney(item.sale_amount),
+    cost_amount: normalizeMoney(item.cost_amount),
+    base_profit_amount: normalizeMoney(item.sale_amount - item.cost_amount),
+  }
+}
+
 export async function syncProvizeRecordsFromJobFinances() {
   const supabase = getServiceRoleClient()
 
@@ -118,55 +167,8 @@ export async function syncProvizeRecordsFromJobFinances() {
   }
 
   const payload = ((data ?? []) as EligibleFinanceJoinRow[])
-    .map((item) => {
-      const job = Array.isArray(item.job) ? item.job[0] : item.job
-
-      if (!job) return null
-
-      const salesOwner = String(job.sales_owner ?? '').trim().toUpperCase()
-      const invoiceNumber = String(item.invoice_number ?? '').trim()
-
-      if (!isProvizeEligibleOwner(salesOwner)) return null
-      if (!invoiceNumber) return null
-      if (typeof item.sale_amount !== 'number' || typeof item.cost_amount !== 'number') {
-        return null
-      }
-
-      return {
-        job_finance_id: item.id,
-        job_id: item.job_id,
-        sales_owner: salesOwner,
-        job_number: String(job.job_number ?? '').trim(),
-        company_name: String(job.company_name ?? '').trim(),
-        start_at: job.start_at,
-        end_at: job.end_at,
-        site_address: job.site_address?.trim() ?? null,
-        store_number: job.store_number?.trim() ?? null,
-        invoice_number: invoiceNumber,
-        sale_amount: normalizeMoney(item.sale_amount),
-        cost_amount: normalizeMoney(item.cost_amount),
-        base_profit_amount: normalizeMoney(item.sale_amount - item.cost_amount),
-      }
-    })
-    .filter(
-      (
-        item
-      ): item is {
-        job_finance_id: string
-        job_id: string
-        sales_owner: ProvizeSalesOwner
-        job_number: string
-        company_name: string
-        start_at: string
-        end_at: string
-        site_address: string | null
-        store_number: string | null
-        invoice_number: string
-        sale_amount: number
-        cost_amount: number
-        base_profit_amount: number
-      } => Boolean(item)
-    )
+    .map(buildProvizeSyncPayload)
+    .filter((item): item is ProvizeSyncPayload => Boolean(item))
 
   const eligibleFinanceIds = payload.map((item) => item.job_finance_id)
 
@@ -200,4 +202,74 @@ export async function syncProvizeRecordsFromJobFinances() {
     syncedCount: payload.length,
     prunedCount: (prunedRows ?? []).length,
   }
+}
+
+export async function syncProvizeRecordFromJobFinance(financeId: string) {
+  const normalizedFinanceId = String(financeId ?? '').trim()
+
+  if (!normalizedFinanceId) {
+    throw new Error('Chybí ID finančního záznamu pro synchronizaci provize.')
+  }
+
+  const supabase = getServiceRoleClient()
+
+  if (!supabase) {
+    throw new Error('Chybí Supabase service role client pro sekci Provize.')
+  }
+
+  const { data, error } = await supabase
+    .from('job_finances')
+    .select(`
+      id,
+      job_id,
+      invoice_number,
+      sale_amount,
+      cost_amount,
+      job:jobs!inner (
+        id,
+        job_number,
+        company_name,
+        sales_owner,
+        start_at,
+        end_at,
+        site_address,
+        store_number
+      )
+    `)
+    .eq('id', normalizedFinanceId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`Nepodařilo se načíst podklad pro provizi: ${error.message}`)
+  }
+
+  const payload = data
+    ? buildProvizeSyncPayload(data as EligibleFinanceJoinRow)
+    : null
+
+  if (payload) {
+    const { error: upsertError } = await supabase
+      .from('provize_records')
+      .upsert(payload, { onConflict: 'job_finance_id' })
+
+    if (upsertError) {
+      throw new Error(`Nepodařilo se synchronizovat provizní záznam: ${upsertError.message}`)
+    }
+
+    return { synced: true, pruned: false }
+  }
+
+  const { data: prunedRows, error: pruneError } = await supabase
+    .from('provize_records')
+    .delete()
+    .eq('job_finance_id', normalizedFinanceId)
+    .is('confirmed_batch_id', null)
+    .is('current_draft_batch_id', null)
+    .select('id')
+
+  if (pruneError) {
+    throw new Error(`Nepodařilo se odklidit nezpůsobilý provizní záznam: ${pruneError.message}`)
+  }
+
+  return { synced: false, pruned: (prunedRows ?? []).length > 0 }
 }

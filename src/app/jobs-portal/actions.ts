@@ -25,6 +25,11 @@ type ProfilePermissionRow = {
   role: string | null
 }
 
+type PortalJobStateRow = {
+  sales_owner: string | null
+  job_status: string | null
+}
+
 async function jobHasInfoAttachments(
   supabase: Awaited<ReturnType<typeof createClient>>,
   jobId: string
@@ -41,11 +46,15 @@ async function jobHasInfoAttachments(
   return (count ?? 0) > 0
 }
 
-export async function updatePortalJobInfoAction(
-  jobId: string,
-  _prevState: UpdatePortalJobInfoActionState,
+async function persistPortalJobInfo({
+  jobId,
+  formData,
+  saveError,
+}: {
+  jobId: string
   formData: FormData
-): Promise<UpdatePortalJobInfoActionState> {
+  saveError: string
+}): Promise<UpdatePortalJobInfoActionState> {
   const supabase = await createClient()
 
   const {
@@ -53,10 +62,7 @@ export async function updatePortalJobInfoAction(
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return {
-      success: false,
-      error: 'Nejsi přihlášený.',
-    }
+    return { success: false, error: 'Nejsi přihlášený.' }
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -81,38 +87,42 @@ export async function updatePortalJobInfoAction(
   }
 
   const normalizedJobId = String(jobId ?? '').trim()
+  if (!normalizedJobId) {
+    return { success: false, error: 'Chybí ID zakázky.' }
+  }
+
   const infoNote = normalizeJobInfoText(formData.get('info_note')?.toString())
   const requestedAlertEnabled = parseJobInfoAlertValue(
     formData.get('info_alert_enabled')
   )
 
-  if (!normalizedJobId) {
+  const [jobStateResponse, attachmentsResponse] = await Promise.all([
+    supabase
+      .from('jobs')
+      .select('sales_owner, job_status')
+      .eq('id', normalizedJobId)
+      .maybeSingle(),
+    jobHasInfoAttachments(supabase, normalizedJobId)
+      .then((hasAttachments) => ({ hasAttachments, error: null }))
+      .catch(() => ({ hasAttachments: false, error: true })),
+  ])
+
+  if (jobStateResponse.error || !jobStateResponse.data) {
+    return { success: false, error: 'Zakázka nebyla nalezena.' }
+  }
+
+  if (attachmentsResponse.error) {
     return {
       success: false,
-      error: 'Chybí ID zakázky.',
+      error: 'Nepodařilo se ověřit stav zakázky.',
     }
   }
 
-  const { data: jobScopeRow, error: jobScopeError } = await supabase
-    .from('jobs')
-    .select('sales_owner')
-    .eq('id', normalizedJobId)
-    .maybeSingle()
-
-  if (jobScopeError || !jobScopeRow) {
-    return {
-      success: false,
-      error: 'Zakázka nebyla nalezena.',
-    }
-  }
-
-  const jobSalesOwner = String(
-    (jobScopeRow as { sales_owner?: string | null }).sales_owner ?? ''
-  ).trim()
+  const jobState = jobStateResponse.data as PortalJobStateRow
+  const jobSalesOwner = String(jobState.sales_owner ?? '').trim()
 
   if (
     typedProfile.role !== 'admin' &&
-    jobSalesOwner &&
     typedProfile.jobs_sales_scope !== jobSalesOwner
   ) {
     return {
@@ -121,35 +131,11 @@ export async function updatePortalJobInfoAction(
     }
   }
 
-  const { data: jobStateRow, error: jobStateError } = await supabase
-    .from('jobs')
-    .select('job_status')
-    .eq('id', normalizedJobId)
-    .maybeSingle()
-
-  if (jobStateError || !jobStateRow) {
-    return {
-      success: false,
-      error: 'Nepodařilo se ověřit stav zakázky.',
-    }
-  }
-
-  let hasAttachments = false
-
-  try {
-    hasAttachments = await jobHasInfoAttachments(supabase, normalizedJobId)
-  } catch {
-    return {
-      success: false,
-      error: 'Nepodařilo se ověřit stav zakázky.',
-    }
-  }
-
   const infoAlertEnabled = getPersistedJobInfoAlert({
     requestedAlertEnabled,
     infoNote,
-    hasAttachments,
-    jobStatus: (jobStateRow as { job_status?: string | null }).job_status ?? null,
+    hasAttachments: attachmentsResponse.hasAttachments,
+    jobStatus: jobState.job_status,
   })
 
   const { error } = await supabase
@@ -161,10 +147,7 @@ export async function updatePortalJobInfoAction(
     .eq('id', normalizedJobId)
 
   if (error) {
-    return {
-      success: false,
-      error: 'Info k zakázce se nepodařilo uložit.',
-    }
+    return { success: false, error: saveError }
   }
 
   try {
@@ -176,10 +159,19 @@ export async function updatePortalJobInfoAction(
   revalidatePath('/jobs')
   revalidatePath('/jobs-portal')
 
-  return {
-    success: true,
-    error: null,
-  }
+  return { success: true, error: null }
+}
+
+export async function updatePortalJobInfoAction(
+  jobId: string,
+  _prevState: UpdatePortalJobInfoActionState,
+  formData: FormData
+): Promise<UpdatePortalJobInfoActionState> {
+  return persistPortalJobInfo({
+    jobId,
+    formData,
+    saveError: 'Info k zakázce se nepodařilo uložit.',
+  })
 }
 
 export async function updatePortalJobInfoAlertAction(
@@ -187,138 +179,9 @@ export async function updatePortalJobInfoAlertAction(
   _prevState: UpdatePortalJobInfoAlertActionState,
   formData: FormData
 ): Promise<UpdatePortalJobInfoAlertActionState> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return {
-      success: false,
-      error: 'Nejsi přihlášený.',
-    }
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('can_view_jobs_portal, jobs_sales_scope, role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError || !profile) {
-    return {
-      success: false,
-      error: 'Nepodařilo se ověřit oprávnění uživatele.',
-    }
-  }
-
-  const typedProfile = profile as ProfilePermissionRow
-  if (!(typedProfile.role === 'admin' || typedProfile.can_view_jobs_portal === true)) {
-    return {
-      success: false,
-      error: 'Nemáš oprávnění upravovat info zakázky.',
-    }
-  }
-
-  const normalizedJobId = String(jobId ?? '').trim()
-  const infoNote = normalizeJobInfoText(formData.get('info_note')?.toString())
-  const requestedAlertEnabled = parseJobInfoAlertValue(
-    formData.get('info_alert_enabled')
-  )
-
-  if (!normalizedJobId) {
-    return {
-      success: false,
-      error: 'Chybí ID zakázky.',
-    }
-  }
-
-  const { data: jobScopeRow, error: jobScopeError } = await supabase
-    .from('jobs')
-    .select('sales_owner')
-    .eq('id', normalizedJobId)
-    .maybeSingle()
-
-  if (jobScopeError || !jobScopeRow) {
-    return {
-      success: false,
-      error: 'Zakázka nebyla nalezena.',
-    }
-  }
-
-  const jobSalesOwner = String(
-    (jobScopeRow as { sales_owner?: string | null }).sales_owner ?? ''
-  ).trim()
-
-  if (
-    typedProfile.role !== 'admin' &&
-    jobSalesOwner &&
-    typedProfile.jobs_sales_scope !== jobSalesOwner
-  ) {
-    return {
-      success: false,
-      error: 'Nemáš oprávnění upravovat tuto zakázku.',
-    }
-  }
-
-  const { data: jobStateRow, error: jobStateError } = await supabase
-    .from('jobs')
-    .select('job_status')
-    .eq('id', normalizedJobId)
-    .maybeSingle()
-
-  if (jobStateError || !jobStateRow) {
-    return {
-      success: false,
-      error: 'Nepodařilo se ověřit stav zakázky.',
-    }
-  }
-
-  let hasAttachments = false
-
-  try {
-    hasAttachments = await jobHasInfoAttachments(supabase, normalizedJobId)
-  } catch {
-    return {
-      success: false,
-      error: 'Nepodařilo se ověřit stav zakázky.',
-    }
-  }
-
-  const infoAlertEnabled = getPersistedJobInfoAlert({
-    requestedAlertEnabled,
-    infoNote,
-    hasAttachments,
-    jobStatus: (jobStateRow as { job_status?: string | null }).job_status ?? null,
+  return persistPortalJobInfo({
+    jobId,
+    formData,
+    saveError: 'Alert info zakázky se nepodařilo uložit.',
   })
-
-  const { error } = await supabase
-    .from('jobs')
-    .update({
-      info_note: infoNote,
-      info_alert_enabled: infoAlertEnabled,
-    })
-    .eq('id', normalizedJobId)
-
-  if (error) {
-    return {
-      success: false,
-      error: 'Alert info zakázky se nepodařilo uložit.',
-    }
-  }
-
-  try {
-    await syncDispatcherCalendarsForJobId(normalizedJobId)
-  } catch (calendarError) {
-    console.error('Synchronizace dispečerského kalendáře z portálu selhala.', calendarError)
-  }
-
-  revalidatePath('/jobs')
-  revalidatePath('/jobs-portal')
-
-  return {
-    success: true,
-    error: null,
-  }
 }

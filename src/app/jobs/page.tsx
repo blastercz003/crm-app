@@ -10,7 +10,7 @@ import { DispatcherCalendarButton } from './dispatcher-calendar-button'
 import { ChangesLauncher } from './changes-launcher'
 import { JobFilterSubmitButton } from './job-filter-submit-button'
 import { JobFilterResetLink } from './job-filter-reset-link'
-import { getJobsChangesModalDataAction } from './changes-actions'
+import { getJobsChangesBadgeCountAction } from './changes-actions'
 import { JobsForegroundRefresh } from './jobs-foreground-refresh'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 import { hasJobInfoContent } from './info-note-shared'
@@ -64,6 +64,7 @@ export type JobRow = {
   job_status: JobStatus
   invoice_status: InvoiceStatus
   evidence_status: EvidenceStatus
+  handover_protocol_is_sent?: boolean | null
   created_at: string
   updated_at: string
 }
@@ -401,75 +402,25 @@ export default async function JobsPage({
     redirect('/dashboard')
   }
 
-  const [dispatcherFeedResponse, dispatcherGoogleResponse] = await Promise.all([
-    supabase
+  const dispatcherFeedPromise = supabase
       .from('dispatcher_job_calendar_feeds')
       .select('token, enabled, disabled_at')
       .eq('user_id', user.id)
-      .maybeSingle(),
-    supabase
+      .maybeSingle()
+  const dispatcherGooglePromise = supabase
       .from('dispatcher_job_google_calendar_integrations')
       .select('calendar_id, enabled, disabled_at')
       .eq('user_id', user.id)
-      .maybeSingle(),
-  ])
-
-  if (dispatcherFeedResponse.error) {
-    throw new Error('Nepodařilo se načíst stav dispečerského kalendáře.')
-  }
-  if (dispatcherGoogleResponse.error) {
-    throw new Error('Nepodařilo se načíst stav Google kalendáře dispečera.')
-  }
-
-  const dispatcherFeed =
-    dispatcherFeedResponse.data as DispatcherCalendarFeedRow | null
-  const dispatcherGoogle =
-    dispatcherGoogleResponse.data as DispatcherGoogleCalendarRow | null
-  const isDispatcherCalendarActivated = Boolean(
-    dispatcherFeed?.enabled && !dispatcherFeed.disabled_at
-  )
-  const dispatcherCalendarFeedPath = dispatcherFeed?.token
-    ? `/api/dispatcher-job-calendars/${dispatcherFeed.token}`
-    : null
-  const isDispatcherGoogleConnected = Boolean(
-    dispatcherGoogle?.enabled &&
-      !dispatcherGoogle.disabled_at &&
-      dispatcherGoogle.calendar_id
-  )
-  const dispatcherCalendarMessage = dispatcherCalendarStatus.startsWith('created:')
-    ? `Google kalendář byl připojen a synchronizoval ${dispatcherCalendarStatus.slice(8)} zakázek.`
-    : dispatcherCalendarStatus === 'connected'
-      ? 'Google kalendář byl úspěšně připojen.'
-      : null
+      .maybeSingle()
 
   const clientsRequest = supabase
     .from('clients')
     .select('id, name')
     .order('name', { ascending: true })
 
-  const { data: clientSuggestionsData, error: clientsError } =
-    await clientsRequest
-
-  if (clientsError) {
-    throw new Error('Nepodařilo se načíst firmy pro našeptávání.')
-  }
-
-  const clientOptions = Array.from(
-    new Map(
-      ((clientSuggestionsData ?? []) as ClientSuggestionRow[])
-        .map((item) => ({
-          id: String(item.id ?? '').trim(),
-          name: item.name?.trim() ?? '',
-        }))
-        .filter(
-          (item): item is ClientOption =>
-            Boolean(item.id) && Boolean(item.name)
-        )
-        .map((item) => [item.id, item])
-    ).values()
+  let request = supabase.from('jobs').select(
+    'id, job_number, client_id, offer_id, client_contact_id, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, client_order_number, technician_name, generator_name, info_note, marny_vyjezd, info_alert_enabled, job_status, invoice_status, evidence_status, created_at, updated_at'
   )
-
-  let request = supabase.from('jobs').select('*')
 
   if (query) {
     request = request.or(buildSearchFilter(query))
@@ -503,6 +454,47 @@ export default async function JobsPage({
     request = request.order('job_number', { ascending: false })
   }
 
+  const jobsPromise = Promise.resolve(request)
+  const offerSuggestionsPromise = Promise.resolve(
+    supabase
+      .from('offers')
+      .select(
+        'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
+      )
+      .eq('offer_type', 'classic')
+      .neq('status', 'realizace')
+      .order('offer_number', { ascending: false })
+  )
+  const technicianProfilesPromise = Promise.resolve(
+    supabase
+      .from('profiles')
+      .select('id, name, can_be_assigned_as_technician')
+      .eq('can_be_assigned_as_technician', true)
+      .order('name', { ascending: true })
+  )
+
+  const { data: clientSuggestionsData, error: clientsError } =
+    await clientsRequest
+
+  if (clientsError) {
+    throw new Error('Nepodařilo se načíst firmy pro našeptávání.')
+  }
+
+  const clientOptions = Array.from(
+    new Map(
+      ((clientSuggestionsData ?? []) as ClientSuggestionRow[])
+        .map((item) => ({
+          id: String(item.id ?? '').trim(),
+          name: item.name?.trim() ?? '',
+        }))
+        .filter(
+          (item): item is ClientOption =>
+            Boolean(item.id) && Boolean(item.name)
+        )
+        .map((item) => [item.id, item])
+    ).values()
+  )
+
   let contactsRequest = supabase
     .from('client_contacts')
     .select('id, client_id, name, is_primary')
@@ -527,22 +519,15 @@ export default async function JobsPage({
     { data: clientContactsData, error: contactsError },
     { data: offerSuggestionsData, error: offerSuggestionsError },
     { data: technicianProfilesData, error: technicianProfilesError },
+    dispatcherFeedResponse,
+    dispatcherGoogleResponse,
   ] = await Promise.all([
-    request,
+    jobsPromise,
     contactsRequest,
-    supabase
-      .from('offers')
-      .select(
-        'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
-      )
-      .eq('offer_type', 'classic')
-      .neq('status', 'realizace')
-      .order('offer_number', { ascending: false }),
-    supabase
-      .from('profiles')
-      .select('id, name, can_be_assigned_as_technician')
-      .eq('can_be_assigned_as_technician', true)
-      .order('name', { ascending: true }),
+    offerSuggestionsPromise,
+    technicianProfilesPromise,
+    dispatcherFeedPromise,
+    dispatcherGooglePromise,
   ])
 
   if (error) {
@@ -561,26 +546,39 @@ export default async function JobsPage({
     throw new Error('Nepodařilo se načíst techniky pro našeptávání.')
   }
 
+  if (dispatcherFeedResponse.error) {
+    throw new Error('Nepodařilo se načíst stav dispečerského kalendáře.')
+  }
+  if (dispatcherGoogleResponse.error) {
+    throw new Error('Nepodařilo se načíst stav Google kalendáře dispečera.')
+  }
+
+  const dispatcherFeed =
+    dispatcherFeedResponse.data as DispatcherCalendarFeedRow | null
+  const dispatcherGoogle =
+    dispatcherGoogleResponse.data as DispatcherGoogleCalendarRow | null
+  const isDispatcherCalendarActivated = Boolean(
+    dispatcherFeed?.enabled && !dispatcherFeed.disabled_at
+  )
+  const dispatcherCalendarFeedPath = dispatcherFeed?.token
+    ? `/api/dispatcher-job-calendars/${dispatcherFeed.token}`
+    : null
+  const isDispatcherGoogleConnected = Boolean(
+    dispatcherGoogle?.enabled &&
+      !dispatcherGoogle.disabled_at &&
+      dispatcherGoogle.calendar_id
+  )
+  const dispatcherCalendarMessage = dispatcherCalendarStatus.startsWith('created:')
+    ? `Google kalendář byl připojen a synchronizoval ${dispatcherCalendarStatus.slice(8)} zakázek.`
+    : dispatcherCalendarStatus === 'connected'
+      ? 'Google kalendář byl úspěšně připojen.'
+      : null
+
   const typedJobs = (jobs ?? []) as JobRow[]
   const visibleJobs = hideMarnyVyjezdy
     ? typedJobs.filter((job) => !Boolean(job.marny_vyjezd))
     : typedJobs
   const jobIds = visibleJobs.map((job) => job.id)
-  const jobPpNotRequiredIds = await getJobPpNotRequiredSet(supabase, jobIds)
-  const { data: infoAttachmentRows, error: infoAttachmentsError } =
-    await querySupabaseInBatches<JobInfoAttachmentRow>({
-      values: jobIds,
-      queryBatch: (jobIdBatch) =>
-        supabase
-          .from('job_info_attachments')
-          .select('job_id')
-          .in('job_id', jobIdBatch),
-    })
-
-  if (infoAttachmentsError) {
-    throw new Error('Nepodařilo se načíst fotky k info zakázek.')
-  }
-
   const linkedOfferIds = Array.from(
     new Set(
       visibleJobs
@@ -588,10 +586,34 @@ export default async function JobsPage({
         .filter((offerId) => Boolean(offerId))
     )
   )
+  const loadedOffersById = new Map(
+    ((offerSuggestionsData ?? []) as LinkedOfferRow[]).map((offer) => [offer.id, offer] as const)
+  )
+  const loadedLinkedOfferRows = linkedOfferIds.flatMap((offerId) => {
+    const offer = loadedOffersById.get(offerId)
+    return offer ? [offer] : []
+  })
+  const missingLinkedOfferIds = linkedOfferIds.filter(
+    (offerId) => !loadedOffersById.has(offerId)
+  )
 
-  const { data: linkedOfferRows, error: linkedOfferError } =
-    await querySupabaseInBatches<LinkedOfferRow>({
-      values: linkedOfferIds,
+  const [
+    jobPpNotRequiredIds,
+    infoAttachmentsResponse,
+    missingLinkedOffersResponse,
+    jobChangesData,
+  ] = await Promise.all([
+    getJobPpNotRequiredSet(supabase, jobIds),
+    querySupabaseInBatches<JobInfoAttachmentRow>({
+      values: jobIds,
+      queryBatch: (jobIdBatch) =>
+        supabase
+          .from('job_info_attachments')
+          .select('job_id')
+          .in('job_id', jobIdBatch),
+    }),
+    querySupabaseInBatches<LinkedOfferRow>({
+      values: missingLinkedOfferIds,
       queryBatch: (offerIdBatch) =>
         supabase
           .from('offers')
@@ -599,16 +621,31 @@ export default async function JobsPage({
             'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address'
           )
           .in('id', offerIdBatch),
-    })
+    }),
+    getJobsChangesBadgeCountAction(),
+  ])
 
-  if (linkedOfferError) {
+  const { data: infoAttachmentRows, error: infoAttachmentsError } =
+    infoAttachmentsResponse
+
+  if (infoAttachmentsError) {
+    throw new Error('Nepodařilo se načíst fotky k info zakázek.')
+  }
+
+  if (missingLinkedOffersResponse.error) {
     throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
   }
 
+  const linkedOfferRows = [
+    ...loadedLinkedOfferRows,
+    ...(missingLinkedOffersResponse.data ?? []),
+  ]
+  const jobIdsWithInfoAttachments = new Set(
+    (infoAttachmentRows ?? []).map((row) => String(row.job_id ?? '').trim())
+  )
+
   const jobsWithInfoState = visibleJobs.map((job) => {
-    const hasAttachments = (infoAttachmentRows ?? []).some(
-      (row) => String((row as { job_id?: string | null }).job_id ?? '') === job.id
-    )
+    const hasAttachments = jobIdsWithInfoAttachments.has(job.id)
 
     return {
       ...job,
@@ -622,7 +659,6 @@ export default async function JobsPage({
     }
   })
 
-  const jobChangesData = await getJobsChangesModalDataAction()
   const jobChangesCount = jobChangesData.success
     ? (jobChangesData.data?.badgeCount ?? 0)
     : 0

@@ -7,14 +7,19 @@ type LogUserActivityInput = {
   userId?: string | null
 }
 
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>
+
 function normalizeText(value: string | null | undefined) {
   const trimmed = String(value ?? '').trim()
   return trimmed.length > 0 ? trimmed : null
 }
 
-export async function logUserActivity(input: LogUserActivityInput) {
+export async function logUserActivity(
+  input: LogUserActivityInput,
+  existingClient?: ServerSupabaseClient
+) {
   try {
-    const supabase = await createClient()
+    const supabase = existingClient ?? await createClient()
 
     const action = normalizeText(input.action)
     if (!action) return
@@ -35,23 +40,35 @@ export async function logUserActivity(input: LogUserActivityInput) {
     const section = normalizeText(input.section)
     const nowIso = new Date().toISOString()
 
-    await supabase.from('user_activity_log').insert({
-      user_id: actorUserId,
-      route,
-      section,
-      action,
-      created_at: nowIso,
+    const { error: rpcError } = await supabase.rpc('record_user_activity', {
+      p_user_id: actorUserId,
+      p_route: route,
+      p_section: section,
+      p_action: action,
+      p_created_at: nowIso,
     })
 
-    await supabase
-      .from('user_presence')
-      .update({
-        last_route: route,
-        last_section: section,
-        last_action: action,
-        last_action_at: nowIso,
-      })
-      .eq('user_id', actorUserId)
+    if (!rpcError) return
+
+    // Keep activity logging compatible until the optimized RPC is deployed.
+    await Promise.all([
+      supabase.from('user_activity_log').insert({
+        user_id: actorUserId,
+        route,
+        section,
+        action,
+        created_at: nowIso,
+      }),
+      supabase
+        .from('user_presence')
+        .update({
+          last_route: route,
+          last_section: section,
+          last_action: action,
+          last_action_at: nowIso,
+        })
+        .eq('user_id', actorUserId),
+    ])
   } catch {
     // Best effort logging only: never break primary action flow.
   }

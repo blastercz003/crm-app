@@ -9,7 +9,7 @@ import {
   updateJobInlineFieldAction,
   updateJobStatusAction,
 } from './actions'
-import { EditJobButton } from './edit-job-button'
+import { EditJobButton, EditJobModalController } from './edit-job-button'
 import { HandoverProtocolButton } from './handover-protocol-button'
 import { InfoNoteButton } from './info-note-button'
 import { TechnicianNamesInput } from './technician-names-input'
@@ -142,6 +142,7 @@ export function JobsInteractiveTable({
   collapseReadOnlyMobileActions = false,
 }: JobsInteractiveTableProps) {
   const [visibleJobs, setVisibleJobs] = useState(jobs)
+  const [editingJob, setEditingJob] = useState<JobRow | null>(null)
 
   useEffect(() => {
     setVisibleJobs(jobs)
@@ -215,15 +216,13 @@ export function JobsInteractiveTable({
                 key={job.id}
                 job={job}
                 clientSuggestions={clientSuggestions}
-                clientContacts={clientContacts}
-                offerSuggestions={offerSuggestions}
-                jobOfferSuggestions={jobOfferSuggestions}
                 technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
                 allowEditing={allowEditing}
                 showReadOnlyInfo={showReadOnlyInfo}
                 showEvidenceColumn={showEvidenceColumn}
                 showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
+                onEditJob={setEditingJob}
               />
             ))}
           </tbody>
@@ -236,10 +235,6 @@ export function JobsInteractiveTable({
               <MobileCard
                 key={job.id}
                 job={job}
-                clientSuggestions={clientSuggestions}
-                clientContacts={clientContacts}
-                offerSuggestions={offerSuggestions}
-                jobOfferSuggestions={jobOfferSuggestions}
                 technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
                 allowEditing={allowEditing}
@@ -247,9 +242,22 @@ export function JobsInteractiveTable({
                 showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
                 collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
                 onJobUpdate={updateVisibleJob}
+                onEditJob={setEditingJob}
               />
             ))}
           </section>
+
+      {editingJob ? (
+        <EditJobModalController
+          job={editingJob}
+          clientSuggestions={clientSuggestions}
+          clientContacts={clientContacts}
+          offerSuggestions={offerSuggestions}
+          jobOfferSuggestions={jobOfferSuggestions}
+          technicianSuggestions={technicianSuggestions}
+          onClose={() => setEditingJob(null)}
+        />
+      ) : null}
     </>
   )
 }
@@ -257,39 +265,31 @@ export function JobsInteractiveTable({
 function DesktopRow({
   job,
   clientSuggestions,
-  clientContacts,
-  offerSuggestions,
-  jobOfferSuggestions,
   technicianSuggestions,
   isAdmin,
   allowEditing,
   showReadOnlyInfo,
   showEvidenceColumn,
   showHandoverProtocolPdfColumn,
+  onEditJob,
 }: {
   job: JobRow
   clientSuggestions: ClientOption[]
-  clientContacts: ClientContactOption[]
-  offerSuggestions: OfferOption[]
-  jobOfferSuggestions: OfferOption[]
   technicianSuggestions: string[]
   isAdmin: boolean
   allowEditing: boolean
   showReadOnlyInfo: boolean
   showEvidenceColumn: boolean
   showHandoverProtocolPdfColumn: boolean
+  onEditJob: (job: JobRow) => void
 }) {
   return (
     <tr className="jobs-page__table-row group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
       <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
         <EditJobButton
           job={job}
-          clientSuggestions={clientSuggestions}
-          clientContacts={clientContacts}
-          offerSuggestions={offerSuggestions}
-          jobOfferSuggestions={jobOfferSuggestions}
-          technicianSuggestions={technicianSuggestions}
           isAdmin={isAdmin}
+          onOpen={() => onEditJob(job)}
           className="jobs-page__job-edit-button jobs-page__job-number-button inline-flex items-center justify-start px-1 py-1 text-[12px] font-bold leading-tight"
         >
           <span className="block truncate print:text-[11px]">
@@ -424,10 +424,6 @@ function DesktopRow({
 
 function MobileCard({
   job,
-  clientSuggestions,
-  clientContacts,
-  offerSuggestions,
-  jobOfferSuggestions,
   technicianSuggestions,
   isAdmin,
   allowEditing,
@@ -435,12 +431,9 @@ function MobileCard({
   showHandoverProtocolPdfColumn,
   collapseReadOnlyMobileActions,
   onJobUpdate,
+  onEditJob,
 }: {
   job: JobRow
-  clientSuggestions: ClientOption[]
-  clientContacts: ClientContactOption[]
-  offerSuggestions: OfferOption[]
-  jobOfferSuggestions: OfferOption[]
   technicianSuggestions: string[]
   isAdmin: boolean
   allowEditing: boolean
@@ -448,6 +441,7 @@ function MobileCard({
   showHandoverProtocolPdfColumn: boolean
   collapseReadOnlyMobileActions: boolean
   onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
+  onEditJob: (job: JobRow) => void
 }) {
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const showInfoAlertDot = Boolean(job.info_alert_enabled) && Boolean(job.has_info_content)
@@ -466,12 +460,9 @@ function MobileCard({
           <div className="flex min-w-0 items-center gap-1.5">
             <EditJobButton
               job={job}
-              clientSuggestions={clientSuggestions}
-              clientContacts={clientContacts}
-              offerSuggestions={offerSuggestions}
-              jobOfferSuggestions={jobOfferSuggestions}
               className="jobs-page__job-edit-button text-sm font-semibold leading-tight text-gray-900 hover:underline"
               isAdmin={isAdmin}
+              onOpen={() => onEditJob(job)}
             >
               {job.job_number}
             </EditJobButton>

@@ -2,8 +2,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { EditClientButton } from './edit-client-button'
 import { NewClientButton } from './new-client-button'
+import { ClientEditModalController } from './client-edit-modal-controller'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 
 type ClientRow = {
@@ -59,38 +59,47 @@ export default async function ClientsPage({
     redirect('/login')
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError) {
-    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
-  }
-
-  const isAdmin = (profile as ProfileRow | null)?.role === 'admin'
-
   let request = supabase
     .from('clients')
-    .select('*')
+    .select('id, name, ico, contact_person, contact_phone, contact_email, address, note, created_by, created_at')
     .order('name', { ascending: true })
 
   if (query) {
     request = request.or(buildSearchFilter(query))
   }
 
-  const { data: clients, error } = await request
+  const [profileResponse, clientsResponse] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single(),
+    request,
+  ])
+
+  const { data: profile, error: profileError } = profileResponse
+  const { data: clients, error } = clientsResponse
+
+  if (profileError) {
+    throw new Error('Nepodařilo se ověřit oprávnění uživatele.')
+  }
 
   if (error) {
     throw new Error('Nepodařilo se načíst klienty.')
   }
 
+  const isAdmin = (profile as ProfileRow | null)?.role === 'admin'
   const typedClients = (clients ?? []) as ClientRow[]
 
   return (
     <main className="clients-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
       <PresenceSectionTracker section="Klienti" route="/clients" />
+      <ClientEditModalController
+        clients={typedClients.filter(
+          (client) => isAdmin || client.created_by === user.id
+        )}
+        canDeleteClient={isAdmin}
+      />
       <div
         aria-hidden
         className="clients-page__glow clients-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"
@@ -267,11 +276,13 @@ export default async function ClientsPage({
                           <td className="px-5 py-4">
                             <div className="flex justify-end gap-2">
                               {canManageClient ? (
-                                <EditClientButton
-                                  client={client}
-                                  canDeleteClient={isAdmin}
+                                <button
+                                  type="button"
+                                  data-client-edit-id={client.id}
                                   className={secondaryGlassButtonClass}
-                                />
+                                >
+                                  UPRAVIT
+                                </button>
                               ) : null}
 
                               <Link
@@ -338,11 +349,13 @@ export default async function ClientsPage({
 
                     <div className="mt-4 flex flex-wrap justify-end gap-2">
                       {canManageClient ? (
-                        <EditClientButton
-                          client={client}
-                          canDeleteClient={isAdmin}
+                        <button
+                          type="button"
+                          data-client-edit-id={client.id}
                           className={secondaryGlassButtonClass}
-                        />
+                        >
+                          UPRAVIT
+                        </button>
                       ) : null}
 
                       <Link

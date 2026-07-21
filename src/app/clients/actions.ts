@@ -59,6 +59,17 @@ function normalizeIcoComparable(value: string) {
   return value.replaceAll(/\s+/g, '').trim()
 }
 
+function escapeLikePattern(value: string) {
+  return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')
+}
+
+function buildFlexibleIcoPattern(value: string) {
+  return normalizeIcoComparable(value)
+    .split('')
+    .map(escapeLikePattern)
+    .join('%')
+}
+
 type DuplicateCandidateClient = {
   id: string
   name: string
@@ -199,22 +210,56 @@ async function assertNoDuplicateClientOnCreate(params: {
 
   const isAdmin = profile?.role === 'admin'
 
-  let query = supabase
-    .from('clients')
-    .select('id, name, ico, contact_email')
-    .limit(400)
-
-  if (!isAdmin) {
-    query = query.eq('created_by', userId)
+  function restrictToOwner<Query extends { eq: (column: string, value: string) => Query }>(
+    query: Query
+  ) {
+    return isAdmin ? query : query.eq('created_by', userId)
   }
 
-  const { data: clients, error } = await query
+  const emptyResult = Promise.resolve({
+    data: [] as DuplicateCandidateClient[],
+    error: null,
+  })
+  const [nameResponse, icoResponse, emailResponse] = await Promise.all([
+    normalizedName
+      ? restrictToOwner(
+          supabase
+            .from('clients')
+            .select('id, name, ico, contact_email')
+            .ilike('name', escapeLikePattern(name))
+            .limit(1)
+        )
+      : emptyResult,
+    normalizedIco
+      ? restrictToOwner(
+          supabase
+            .from('clients')
+            .select('id, name, ico, contact_email')
+            .ilike('ico', buildFlexibleIcoPattern(ico))
+            .limit(1)
+        )
+      : emptyResult,
+    normalizedEmail
+      ? restrictToOwner(
+          supabase
+            .from('clients')
+            .select('id, name, ico, contact_email')
+            .ilike('contact_email', escapeLikePattern(contactEmail))
+            .limit(1)
+        )
+      : emptyResult,
+  ])
 
-  if (error) {
+  if (nameResponse.error || icoResponse.error || emailResponse.error) {
     throw new Error('Nepodařilo se ověřit duplicitu klienta.')
   }
 
-  const duplicate = ((clients ?? []) as DuplicateCandidateClient[]).find((client) => {
+  const candidates = [
+    ...(nameResponse.data ?? []),
+    ...(icoResponse.data ?? []),
+    ...(emailResponse.data ?? []),
+  ] as DuplicateCandidateClient[]
+  const duplicate = candidates.find((client) => {
     const sameName =
       normalizedName.length > 0 &&
       normalizeDuplicateComparable(client.name) === normalizedName
@@ -395,7 +440,7 @@ async function createClientContactValues(formData: FormData) {
     section: 'Klienti',
     route: `/clients/${clientId}`,
     userId: user.id,
-  })
+  }, supabase)
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${clientId}`)
@@ -464,7 +509,7 @@ async function updateClientContactValues(formData: FormData) {
     section: 'Klienti',
     route: `/clients/${clientId}`,
     userId: user.id,
-  })
+  }, supabase)
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${clientId}`)
@@ -534,7 +579,7 @@ async function insertClientRecord(formData: FormData) {
     section: 'Klienti',
     route: '/clients',
     userId: user.id,
-  })
+  }, supabase)
 
   revalidatePath('/clients')
 
@@ -591,7 +636,7 @@ async function updateClientValues(formData: FormData) {
     section: 'Klienti',
     route: `/clients/${id}`,
     userId: user.id,
-  })
+  }, supabase)
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${id}`)
@@ -713,7 +758,7 @@ export async function changeClientOwnerAction(
       section: 'Klienti',
       route: `/clients/${clientId}`,
       userId: user.id,
-    })
+    }, supabase)
 
     revalidatePath('/clients')
     revalidatePath(`/clients/${clientId}`)
@@ -775,7 +820,7 @@ export async function deleteClientRecord(formData: FormData) {
     section: 'Klienti',
     route: '/clients',
     userId: user.id,
-  })
+  }, supabase)
 
   revalidatePath('/clients')
   redirect('/clients')
@@ -900,7 +945,7 @@ export async function deleteClientContact(formData: FormData) {
     section: 'Klienti',
     route: `/clients/${clientId}`,
     userId: user.id,
-  })
+  }, supabase)
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${clientId}`)

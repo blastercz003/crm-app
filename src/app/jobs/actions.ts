@@ -1276,13 +1276,14 @@ async function cancelJobGoogleCalendarItemSafely(params: {
 }
 
 async function syncJobCalendarForTechniciansSafely(params: {
+  supabase?: Awaited<ReturnType<typeof createClient>>
   jobId: string
   technicianIds: string[]
   action: string
   errorType: string
   userIdForErrorLog?: string | null
 }) {
-  const supabase = await createClient()
+  const supabase = params.supabase ?? (await createClient())
   const job = await getJobCalendarSnapshot(supabase, params.jobId)
 
   await Promise.all(
@@ -1860,6 +1861,7 @@ export async function createJobAction(
 
   try {
     await syncJobCalendarForTechniciansSafely({
+      supabase,
       jobId: createdJobId,
       technicianIds: technicianIds ?? [],
       action: 'createJobAction',
@@ -1983,11 +1985,15 @@ export async function updateJobAction(
     }
   }
 
-  const { data: currentJob, error: currentJobError } = await supabase
-    .from('jobs')
-    .select('job_number, start_at, end_at, site_address, technician_name, offer_id')
-    .eq('id', normalizedJobId)
-    .single()
+  const [currentJobResponse, previousTechnicianIds] = await Promise.all([
+    supabase
+      .from('jobs')
+      .select('job_number, start_at, end_at, site_address, technician_name, offer_id')
+      .eq('id', normalizedJobId)
+      .single(),
+    getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
+  ])
+  const { data: currentJob, error: currentJobError } = currentJobResponse
 
   if (currentJobError || !currentJob) {
     return {
@@ -2019,11 +2025,6 @@ export async function updateJobAction(
   }
   updatePayload.offer_id = offerSelection.offerId
   const ppRequired = normalizePpRequired(formData.get('pp_required'))
-
-  const previousTechnicianIds = await getAssignedTechnicianIdsForJob(
-    supabase,
-    normalizedJobId
-  )
 
   const { error } = await supabase
     .from('jobs')
@@ -2240,6 +2241,7 @@ export async function updateJobAction(
 
     try {
       await syncJobCalendarForTechniciansSafely({
+        supabase,
         jobId: normalizedJobId,
         technicianIds: nextTechnicianIds,
         action: 'updateJobAction',
@@ -2255,6 +2257,7 @@ export async function updateJobAction(
   } else {
     try {
       await syncJobCalendarForTechniciansSafely({
+        supabase,
         jobId: normalizedJobId,
         technicianIds: previousTechnicianIds,
         action: 'updateJobAction',
@@ -2411,6 +2414,7 @@ export async function updateJobInfoAction(
 
   try {
     await syncJobCalendarForTechniciansSafely({
+      supabase,
       jobId: normalizedJobId,
       technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
       action: 'updateJobInfoAction',
@@ -2510,6 +2514,7 @@ export async function updateJobInfoAlertAction(
 
   try {
     await syncJobCalendarForTechniciansSafely({
+      supabase,
       jobId: normalizedJobId,
       technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
       action: 'updateJobInfoAlertAction',
@@ -2554,8 +2559,6 @@ export async function updateJobStatusAction(
     }
   }
 
-  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
-
   const jobStatusRaw = String(formData.get('job_status') ?? '').trim()
 
   if (
@@ -2579,10 +2582,12 @@ export async function updateJobStatusAction(
           job_status: jobStatusRaw,
         }
 
-  const { error } = await supabase
+  const { data: updatedJob, error } = await supabase
     .from('jobs')
     .update(statusUpdate)
     .eq('id', normalizedJobId)
+    .select('job_number')
+    .single()
 
   if (error) {
     return {
@@ -2614,6 +2619,7 @@ export async function updateJobStatusAction(
 
   try {
     await syncJobCalendarForTechniciansSafely({
+      supabase,
       jobId: normalizedJobId,
       technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
       action: 'updateJobStatusAction',
@@ -2628,7 +2634,7 @@ export async function updateJobStatusAction(
   }
 
   await logUserActivity({
-    action: `Změnil stav zakázky ${jobNumberForLog || normalizedJobId} na ${getJobStatusActivityLabel(jobStatusRaw)}`,
+    action: `Změnil stav zakázky ${updatedJob?.job_number || normalizedJobId} na ${getJobStatusActivityLabel(jobStatusRaw)}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -2677,8 +2683,6 @@ export async function updateJobInvoiceStatusAction(
     }
   }
 
-  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
-
   const invoiceStatusRaw = String(formData.get('invoice_status') ?? '').trim()
 
   if (
@@ -2692,12 +2696,14 @@ export async function updateJobInvoiceStatusAction(
     }
   }
 
-  const { error } = await supabase
+  const { data: updatedJob, error } = await supabase
     .from('jobs')
     .update({
       invoice_status: invoiceStatusRaw,
     })
     .eq('id', normalizedJobId)
+    .select('job_number')
+    .single()
 
   if (error) {
     return {
@@ -2729,6 +2735,7 @@ export async function updateJobInvoiceStatusAction(
 
   try {
     await syncJobCalendarForTechniciansSafely({
+      supabase,
       jobId: normalizedJobId,
       technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
       action: 'updateJobInvoiceStatusAction',
@@ -2743,7 +2750,7 @@ export async function updateJobInvoiceStatusAction(
   }
 
   await logUserActivity({
-    action: `Změnil stav fakturace zakázky ${jobNumberForLog || normalizedJobId} na ${getInvoiceStatusActivityLabel(invoiceStatusRaw)}`,
+    action: `Změnil stav fakturace zakázky ${updatedJob?.job_number || normalizedJobId} na ${getInvoiceStatusActivityLabel(invoiceStatusRaw)}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -2805,14 +2812,14 @@ export async function updateJobSalesOwnerAction(
     }
   }
 
-  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
-
-  const { error } = await supabase
+  const { data: updatedJob, error } = await supabase
     .from('jobs')
     .update({
       sales_owner: salesOwnerRaw,
     })
     .eq('id', normalizedJobId)
+    .select('job_number')
+    .single()
 
   if (error) {
     return {
@@ -2843,7 +2850,7 @@ export async function updateJobSalesOwnerAction(
   }
 
   await logUserActivity({
-    action: `Změnil obchodníka zakázky ${jobNumberForLog || normalizedJobId} na ${salesOwnerRaw}`,
+    action: `Změnil obchodníka zakázky ${updatedJob?.job_number || normalizedJobId} na ${salesOwnerRaw}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -2895,14 +2902,14 @@ export async function updateJobEvidenceStatusAction(
     }
   }
 
-  const jobNumberForLog = await getJobNumberForLog(supabase, normalizedJobId)
-
-  const { error } = await supabase
+  const { data: updatedJob, error } = await supabase
     .from('jobs')
     .update({
       evidence_status: evidenceStatusRaw,
     })
     .eq('id', normalizedJobId)
+    .select('job_number')
+    .single()
 
   if (error) {
     return {
@@ -2912,7 +2919,7 @@ export async function updateJobEvidenceStatusAction(
   }
 
   await logUserActivity({
-    action: `Změnil stav evidence zakázky ${jobNumberForLog || normalizedJobId} na ${getEvidenceStatusActivityLabel(evidenceStatusRaw)}`,
+    action: `Změnil stav evidence zakázky ${updatedJob?.job_number || normalizedJobId} na ${getEvidenceStatusActivityLabel(evidenceStatusRaw)}`,
     section: 'Zakázky',
     route: '/jobs',
     userId: user.id,
@@ -2920,6 +2927,7 @@ export async function updateJobEvidenceStatusAction(
 
   try {
     await syncJobCalendarForTechniciansSafely({
+      supabase,
       jobId: normalizedJobId,
       technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
       action: 'updateJobEvidenceStatusAction',
@@ -3047,6 +3055,7 @@ export async function updateJobInlineFieldAction(
 
     try {
       await syncJobCalendarForTechniciansSafely({
+        supabase,
         jobId: normalizedJobId,
         technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
         action: 'updateJobInlineFieldAction',
@@ -3133,6 +3142,7 @@ export async function updateJobInlineFieldAction(
 
     try {
       await syncJobCalendarForTechniciansSafely({
+        supabase,
         jobId: normalizedJobId,
         technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
         action: 'updateJobInlineFieldAction',
@@ -3243,6 +3253,7 @@ export async function updateJobInlineFieldAction(
 
     try {
       await syncJobCalendarForTechniciansSafely({
+        supabase,
         jobId: normalizedJobId,
         technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
         action: 'updateJobInlineFieldAction',
@@ -3310,6 +3321,7 @@ export async function updateJobInlineFieldAction(
 
     try {
       await syncJobCalendarForTechniciansSafely({
+        supabase,
         jobId: normalizedJobId,
         technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
         action: 'updateJobInlineFieldAction',
@@ -3430,6 +3442,7 @@ export async function updateJobInlineFieldAction(
 
     try {
       await syncJobCalendarForTechniciansSafely({
+        supabase,
         jobId: normalizedJobId,
         technicianIds: technicianSelection.technicianIds,
         action: 'updateJobInlineFieldAction',
@@ -3551,6 +3564,7 @@ export async function updateJobInlineFieldAction(
 
   try {
     await syncJobCalendarForTechniciansSafely({
+      supabase,
       jobId: normalizedJobId,
       technicianIds: await getAssignedTechnicianIdsForJob(
         supabase,

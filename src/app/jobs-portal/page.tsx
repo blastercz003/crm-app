@@ -7,6 +7,7 @@ import { JobsPortalTable } from './jobs-portal-table'
 import { JobsPortalFilterSubmitButton } from './jobs-portal-filter-submit-button'
 import { JobsPortalFilterResetLink } from './jobs-portal-filter-reset-link'
 import { hasJobInfoContent } from '@/app/jobs/info-note-shared'
+import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
 
 export const metadata: Metadata = {
   title: 'Portál zakázek',
@@ -346,35 +347,7 @@ export default async function JobsPortalPage({
   }
 
   const typedJobs = (jobs ?? []) as PortalJobRow[]
-  const jobIds = typedJobs.map((job) => job.id)
-  const { data: infoAttachmentRows, error: infoAttachmentsError } =
-    jobIds.length > 0
-      ? await supabase
-          .from('job_info_attachments')
-          .select('job_id')
-          .in('job_id', jobIds)
-      : { data: [], error: null }
-
-  if (infoAttachmentsError) {
-    throw new Error('Nepodařilo se načíst fotky k info zakázek.')
-  }
-
-  const jobsWithInfoState = typedJobs.map((job) => {
-    const hasAttachments = (infoAttachmentRows ?? []).some(
-      (row) => String((row as { job_id?: string | null }).job_id ?? '') === job.id
-    )
-
-    return {
-      ...job,
-      has_info_attachments: hasAttachments,
-      has_info_content: hasJobInfoContent({
-        infoNote: job.info_note,
-        hasAttachments,
-      }),
-      info_alert_enabled: Boolean(job.info_alert_enabled),
-    }
-  })
-  const filteredJobs = jobsWithInfoState.filter((job) => {
+  const filteredJobsWithoutInfoState = typedJobs.filter((job) => {
     const effectiveStatus = getEffectiveJobStatus(job)
 
     if (jobStatus && effectiveStatus !== jobStatus) {
@@ -390,6 +363,39 @@ export default async function JobsPortalPage({
     }
 
     return true
+  })
+  const visibleJobIds = filteredJobsWithoutInfoState.map((job) => job.id)
+  const { data: infoAttachmentRows, error: infoAttachmentsError } =
+    await querySupabaseInBatches<{ job_id: string | null }>({
+      values: visibleJobIds,
+      queryBatch: (jobIdBatch) =>
+        supabase
+          .from('job_info_attachments')
+          .select('job_id')
+          .in('job_id', jobIdBatch),
+    })
+
+  if (infoAttachmentsError) {
+    throw new Error('Nepodařilo se načíst fotky k info zakázek.')
+  }
+
+  const jobIdsWithInfoAttachments = new Set(
+    (infoAttachmentRows ?? [])
+      .map((row) => String(row.job_id ?? '').trim())
+      .filter(Boolean)
+  )
+  const filteredJobs = filteredJobsWithoutInfoState.map((job) => {
+    const hasAttachments = jobIdsWithInfoAttachments.has(job.id)
+
+    return {
+      ...job,
+      has_info_attachments: hasAttachments,
+      has_info_content: hasJobInfoContent({
+        infoNote: job.info_note,
+        hasAttachments,
+      }),
+      info_alert_enabled: Boolean(job.info_alert_enabled),
+    }
   })
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo

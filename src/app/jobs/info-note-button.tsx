@@ -38,13 +38,13 @@ type InfoNoteButtonProps = {
   deleteAttachmentAction?: InfoNoteDeleteAction
 }
 
-type InfoNoteUpdateAction = (
+export type InfoNoteUpdateAction = (
   jobId: string,
   prevState: UpdateJobInfoActionState,
   formData: FormData
 ) => Promise<UpdateJobInfoActionState>
 
-type InfoNoteAlertAction = (
+export type InfoNoteAlertAction = (
   jobId: string,
   prevState: UpdateJobInfoAlertActionState,
   formData: FormData
@@ -56,16 +56,16 @@ type InfoNoteGetAttachmentsResult = {
   items: JobInfoAttachmentItem[]
 }
 
-type InfoNoteGetAttachmentsAction = (
+export type InfoNoteGetAttachmentsAction = (
   jobId: string
 ) => Promise<InfoNoteGetAttachmentsResult>
 
-type InfoNoteUploadAction = (
+export type InfoNoteUploadAction = (
   jobId: string,
   formData: FormData
 ) => Promise<{ success: boolean; error: string | null }>
 
-type InfoNoteDeleteAction = (
+export type InfoNoteDeleteAction = (
   jobId: string,
   attachmentId: string
 ) => Promise<{ success: boolean; error: string | null }>
@@ -95,6 +95,51 @@ async function forceDownloadFile(url: string, fileName: string) {
   link.click()
   link.remove()
   URL.revokeObjectURL(objectUrl)
+}
+
+export function InfoNoteTriggerButton({
+  hasInfoContent,
+  showAlertDot,
+  onClick,
+  variant = 'table',
+  compact = false,
+  className = '',
+}: {
+  hasInfoContent: boolean
+  showAlertDot: boolean
+  onClick: () => void
+  variant?: 'table' | 'mobile'
+  compact?: boolean
+  className?: string
+}) {
+  const label = hasInfoContent ? 'ZOBRAZIT' : 'PŘIDAT'
+  const stateClassName = hasInfoContent
+    ? 'jobs-page__info-button--filled'
+    : 'jobs-page__info-button--empty'
+  const filledLightClass =
+    'border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800'
+  const emptyLightClass =
+    'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
+  const stateLightClass = hasInfoContent ? filledLightClass : emptyLightClass
+  const resolvedClassName =
+    variant === 'mobile'
+      ? `inline-flex items-center justify-center rounded-xl font-medium transition duration-200 ${
+          compact ? 'h-8 min-w-0 w-full px-2 text-[11px]' : 'min-w-[88px] px-3 py-2 text-xs'
+        } ${stateClassName} ${stateLightClass} ${className}`
+      : `inline-flex min-w-[88px] items-center justify-center rounded-xl px-3 py-2 text-xs font-medium transition duration-200 ${stateClassName} ${stateLightClass} ${className}`
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative ${resolvedClassName}`}
+    >
+      {showAlertDot ? (
+        <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
+      ) : null}
+      {label}
+    </button>
+  )
 }
 
 export function InfoNoteButton({
@@ -186,43 +231,16 @@ export function InfoNoteButton({
     setIsOpen(false)
   }
 
-  const buttonLabel = currentHasInfoContent ? 'ZOBRAZIT' : 'PŘIDAT'
-  const mobileButtonLabel = currentHasInfoContent ? 'ZOBRAZIT' : 'PŘIDAT'
-  const stateClassName = currentHasInfoContent
-    ? 'jobs-page__info-button--filled'
-    : 'jobs-page__info-button--empty'
-  const filledLightClass =
-    'border border-zinc-900 bg-zinc-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] hover:-translate-y-[1px] hover:bg-zinc-800'
-  const emptyLightClass =
-    'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
-
-  const resolvedClassName =
-    variant === 'mobile'
-      ? `inline-flex items-center justify-center rounded-xl font-medium transition duration-200 ${
-          compact ? 'h-8 min-w-0 w-full px-2 text-[11px]' : 'min-w-[88px] px-3 py-2 text-xs'
-        } ${
-          currentHasInfoContent
-            ? `jobs-page__info-button--filled ${filledLightClass}`
-            : `jobs-page__info-button--empty ${emptyLightClass}`
-        } ${className}`
-      : `inline-flex min-w-[88px] items-center justify-center rounded-xl px-3 py-2 text-xs font-medium transition duration-200 ${
-          currentHasInfoContent
-            ? `jobs-page__info-button--filled ${filledLightClass}`
-            : `jobs-page__info-button--empty ${emptyLightClass}`
-        } ${className}`
-
   return (
     <>
-      <button
-        type="button"
+      <InfoNoteTriggerButton
+        hasInfoContent={currentHasInfoContent}
+        showAlertDot={shouldShowAlertDot}
         onClick={openModal}
-        className={`relative ${stateClassName} ${resolvedClassName}`}
-      >
-        {shouldShowAlertDot ? (
-          <span className="job-info-alert-dot absolute right-[5px] top-[5px] h-1.5 w-1.5 rounded-full bg-[#ff3b30]" />
-        ) : null}
-        {variant === 'mobile' ? mobileButtonLabel : buttonLabel}
-      </button>
+        variant={variant}
+        compact={compact}
+        className={className}
+      />
 
       {isOpen ? (
         <InfoNoteModal
@@ -248,7 +266,7 @@ export function InfoNoteButton({
   )
 }
 
-function InfoNoteModal({
+export function InfoNoteModal({
   jobId,
   jobNumber,
   jobStatus,

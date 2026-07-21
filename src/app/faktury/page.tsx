@@ -153,6 +153,13 @@ type FinanceStatsJoinRow = {
     | null
 }
 
+type FinanceMonthlyOverviewRow = {
+  overview_year: number
+  overview_month: number
+  sale_amount: number | string | null
+  profit_amount: number | string | null
+}
+
 type JobAttachmentJobIdRow = {
   job_id: string
 }
@@ -245,18 +252,6 @@ function getPreviousMonthRange() {
     from: `${year}-${month}-01`,
     to: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
   }
-}
-
-function getProfit(saleAmount: number | null, costAmount: number | null) {
-  const sale = typeof saleAmount === 'number' ? saleAmount : 0
-  const cost = typeof costAmount === 'number' ? costAmount : 0
-  return sale - cost
-}
-
-function hasCompleteFinanceValues(
-  row: Pick<FakturaRow, 'sale_amount' | 'cost_amount'>
-): row is { sale_amount: number; cost_amount: number } {
-  return Number.isFinite(row.sale_amount) && Number.isFinite(row.cost_amount)
 }
 
 const MONTH_LABELS_CS = [
@@ -606,7 +601,7 @@ export default async function FakturyPage({
     clientContactsResponse,
     offerSuggestionsResponse,
     technicianProfilesResponse,
-    statsResponse,
+    overviewResponse,
   ] = await Promise.all([
     request,
     supabase
@@ -631,29 +626,7 @@ export default async function FakturyPage({
       .select('id, name, can_be_assigned_as_technician')
       .eq('can_be_assigned_as_technician', true)
       .order('name', { ascending: true }),
-    supabase.from('job_finances').select(`
-      sale_amount,
-      cost_amount,
-      job:jobs!inner (
-        id,
-        client_id,
-        offer_id,
-        client_contact_id,
-        job_number,
-        company_name,
-        contact_person,
-        sales_owner,
-        start_at,
-        end_at,
-        site_address,
-        store_number,
-        technician_name,
-        generator_name,
-        marny_vyjezd,
-        job_status,
-        invoice_status
-      )
-    `),
+    supabase.rpc('get_faktury_monthly_overview'),
   ])
 
   const { data, error } = financeResponse
@@ -676,10 +649,6 @@ export default async function FakturyPage({
 
   if (technicianProfilesResponse.error) {
     throw new Error('Nepodařilo se načíst techniky pro našeptávání.')
-  }
-
-  if (statsResponse.error) {
-    throw new Error('Nepodařilo se načíst přehled fakturace.')
   }
 
   const clientSuggestions = ((clientSuggestionsResponse.data ?? []) as ClientSuggestionRow[])
@@ -769,55 +738,63 @@ export default async function FakturyPage({
     )
   )
 
-  const { data: linkedOfferRows, error: linkedOfferError } =
-    await querySupabaseInBatches<LinkedJobOfferRow>({
-      values: linkedOfferIds,
+  const loadedOffersById = new Map(
+    offerSuggestions.map((offer) => [offer.id, offer] as const)
+  )
+  const loadedLinkedOfferRows = linkedOfferIds.flatMap((offerId) => {
+    const offer = loadedOffersById.get(offerId)
+    return offer ? [offer] : []
+  })
+  const missingLinkedOfferIds = linkedOfferIds.filter(
+    (offerId) => !loadedOffersById.has(offerId)
+  )
+  const uniqueJobIds = Array.from(new Set(rows.map((row) => row.job_id)))
+
+  const [
+    missingLinkedOffersResponse,
+    jobPpNotRequiredIds,
+    attachmentsResponse,
+  ] = await Promise.all([
+    querySupabaseInBatches<LinkedJobOfferRow>({
+      values: missingLinkedOfferIds,
       queryBatch: (offerIdBatch) =>
         supabase
           .from('offers')
           .select('id, client_id, offer_number, title, order_reference')
           .in('id', offerIdBatch),
-    })
+    }),
+    getJobPpNotRequiredSet(supabase, uniqueJobIds),
+    querySupabaseInBatches<JobAttachmentJobIdRow>({
+      values: uniqueJobIds,
+      queryBatch: (jobIdBatch) =>
+        supabase
+          .from('job_attachments')
+          .select('job_id')
+          .in('job_id', jobIdBatch),
+    }),
+  ])
 
-  if (linkedOfferError) {
+  if (missingLinkedOffersResponse.error) {
     throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
   }
 
-  const uniqueJobIds = Array.from(new Set(rows.map((row) => row.job_id)))
-  const jobPpNotRequiredIds = await getJobPpNotRequiredSet(supabase, uniqueJobIds)
-
-  if (uniqueJobIds.length > 0) {
-    const { data: attachmentRows, error: attachmentsError } =
-      await querySupabaseInBatches<JobAttachmentJobIdRow>({
-        values: uniqueJobIds,
-        queryBatch: (jobIdBatch) =>
-          supabase
-            .from('job_attachments')
-            .select('job_id')
-            .in('job_id', jobIdBatch),
-      })
-
-    if (attachmentsError) {
-      throw new Error('Nepodařilo se načíst stav příloh.')
-    }
-
-    const jobIdsWithAttachments = new Set(
-      ((attachmentRows ?? []) as JobAttachmentJobIdRow[]).map((row) =>
-        String(row.job_id)
-      )
-    )
-
-    rows = rows.map((row) => ({
-      ...row,
-      pp_required: !jobPpNotRequiredIds.has(row.job_id),
-      has_attachments: jobIdsWithAttachments.has(row.job_id),
-    }))
-  } else {
-    rows = rows.map((row) => ({
-      ...row,
-      pp_required: !jobPpNotRequiredIds.has(row.job_id),
-    }))
+  if (attachmentsResponse.error) {
+    throw new Error('Nepodařilo se načíst stav příloh.')
   }
+
+  const linkedOfferRows = [
+    ...loadedLinkedOfferRows,
+    ...(missingLinkedOffersResponse.data ?? []),
+  ]
+  const jobIdsWithAttachments = new Set(
+    (attachmentsResponse.data ?? []).map((row) => String(row.job_id))
+  )
+
+  rows = rows.map((row) => ({
+    ...row,
+    pp_required: !jobPpNotRequiredIds.has(row.job_id),
+    has_attachments: jobIdsWithAttachments.has(row.job_id),
+  }))
 
   if (sort === 'start_nearest') {
     rows = [...rows].sort((a, b) => {
@@ -845,28 +822,71 @@ export default async function FakturyPage({
     rows = [...rows].sort(compareByJobNumberDesc)
   }
 
-  const statRows = ((statsResponse.data ?? []) as FinanceStatsJoinRow[])
-    .map((item) => {
-      const job = Array.isArray(item.job) ? item.job[0] : item.job
+  let monthlyOverviewRows: FinanceMonthlyOverviewRow[]
 
-      if (!job) return null
+  if (overviewResponse.error) {
+    // The fallback keeps deployments safe while the optional aggregation RPC is rolled out.
+    const fallbackResponse = await supabase.from('job_finances').select(`
+      sale_amount,
+      cost_amount,
+      job:jobs!inner (
+        start_at,
+        end_at
+      )
+    `)
 
-      return {
-        sale_amount: typeof item.sale_amount === 'number' ? item.sale_amount : null,
-        cost_amount: typeof item.cost_amount === 'number' ? item.cost_amount : null,
-        start_at: job.start_at,
-        end_at: job.end_at,
+    if (fallbackResponse.error) {
+      throw new Error('Nepodařilo se načíst přehled fakturace.')
+    }
+
+    const fallbackRows = ((fallbackResponse.data ?? []) as FinanceStatsJoinRow[])
+      .map<FinanceMonthlyOverviewRow | null>((item) => {
+        const job = Array.isArray(item.job) ? item.job[0] : item.job
+
+        if (!job) return null
+
+        const rowDate = resolveFinanceStatDate(job.start_at, job.end_at)
+        if (Number.isNaN(rowDate.getTime())) return null
+
+        const hasCompleteValues =
+          Number.isFinite(item.sale_amount) && Number.isFinite(item.cost_amount)
+
+        return {
+          overview_year: rowDate.getUTCFullYear(),
+          overview_month: rowDate.getUTCMonth() + 1,
+          sale_amount: hasCompleteValues ? Number(item.sale_amount) : 0,
+          profit_amount: hasCompleteValues
+            ? Number(item.sale_amount) - Number(item.cost_amount)
+            : 0,
+        }
+      })
+      .filter((item): item is FinanceMonthlyOverviewRow => Boolean(item))
+
+    const fallbackByMonth = new Map<string, FinanceMonthlyOverviewRow>()
+
+    for (const row of fallbackRows) {
+      const key = `${row.overview_year}-${row.overview_month}`
+      const current = fallbackByMonth.get(key)
+
+      if (current) {
+        current.sale_amount = Number(current.sale_amount) + Number(row.sale_amount)
+        current.profit_amount =
+          Number(current.profit_amount) + Number(row.profit_amount)
+      } else {
+        fallbackByMonth.set(key, { ...row })
       }
-    })
-    .filter((item): item is { sale_amount: number | null; cost_amount: number | null; start_at: string; end_at: string } =>
-      Boolean(item)
-    )
+    }
+
+    monthlyOverviewRows = Array.from(fallbackByMonth.values())
+  } else {
+    monthlyOverviewRows = (overviewResponse.data ?? []) as FinanceMonthlyOverviewRow[]
+  }
+
   const overviewYearOptions = Array.from(
     new Set(
-      statRows
-        .map((row) => resolveFinanceStatDate(row.start_at, row.end_at))
-        .filter((date) => !Number.isNaN(date.getTime()))
-        .map((date) => date.getUTCFullYear())
+      monthlyOverviewRows
+        .map((row) => Number(row.overview_year))
+        .filter((year) => Number.isInteger(year))
     )
   ).sort((a, b) => b - a)
 
@@ -881,15 +901,14 @@ export default async function FakturyPage({
   const monthlySaleByYear = Array.from({ length: 12 }, () => 0)
   const monthlyProfitByYear = Array.from({ length: 12 }, () => 0)
 
-  for (const row of statRows) {
-    const rowDate = resolveFinanceStatDate(row.start_at, row.end_at)
-    if (Number.isNaN(rowDate.getTime())) continue
-    if (rowDate.getUTCFullYear() !== selectedOverviewYear) continue
-    if (!hasCompleteFinanceValues(row)) continue
+  for (const row of monthlyOverviewRows) {
+    if (Number(row.overview_year) !== selectedOverviewYear) continue
 
-    const monthIndex = rowDate.getUTCMonth()
-    monthlySaleByYear[monthIndex] += row.sale_amount
-    monthlyProfitByYear[monthIndex] += getProfit(row.sale_amount, row.cost_amount)
+    const monthIndex = Number(row.overview_month) - 1
+    if (monthIndex < 0 || monthIndex > 11) continue
+
+    monthlySaleByYear[monthIndex] += Number(row.sale_amount) || 0
+    monthlyProfitByYear[monthIndex] += Number(row.profit_amount) || 0
   }
 
   const activeFilterSummary = [

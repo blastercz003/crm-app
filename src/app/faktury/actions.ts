@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { reportActionError } from '@/lib/errors/reportActionError'
-import { syncProvizeRecordsFromJobFinances } from '@/lib/provize/service'
+import { syncProvizeRecordFromJobFinance } from '@/lib/provize/service'
 import {
   cancelJobCalendarItem,
   syncJobCalendarItem,
@@ -667,7 +667,7 @@ async function syncProvizeAfterFinanceChange(params: {
   changedField: 'invoice_number' | 'sale_amount' | 'cost_amount'
 }) {
   try {
-    await syncProvizeRecordsFromJobFinances()
+    await syncProvizeRecordFromJobFinance(params.financeId)
   } catch (error) {
     console.error('Provize sync after finance change failed:', error)
 

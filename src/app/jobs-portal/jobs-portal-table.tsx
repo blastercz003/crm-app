@@ -1,11 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   updatePortalJobInfoAction,
   updatePortalJobInfoAlertAction,
 } from './actions'
-import { InfoNoteButton } from '@/app/jobs/info-note-button'
+import {
+  InfoNoteModal,
+  InfoNoteTriggerButton,
+} from '@/app/jobs/info-note-button'
+import {
+  deleteJobInfoAttachmentAction,
+  getJobInfoAttachmentsAction,
+  uploadJobInfoAttachmentAction,
+} from '@/app/jobs/info-note-attachments-actions'
+import {
+  hasJobInfoContent,
+  isJobCompletedStatus,
+} from '@/app/jobs/info-note-shared'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 
 type PortalJobRow = {
@@ -50,6 +62,76 @@ function getEffectiveJobStatus(job: Pick<PortalJobRow, 'job_status' | 'end_at'>)
 }
 
 export function JobsPortalTable({ jobs }: JobsPortalTableProps) {
+  const [displayJobs, setDisplayJobs] = useState(jobs)
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDisplayJobs(jobs)
+  }, [jobs])
+
+  const selectedJob = selectedJobId
+    ? displayJobs.find((job) => job.id === selectedJobId) ?? null
+    : null
+
+  const updateDisplayedJob = useCallback((
+    jobId: string,
+    state: {
+      infoNote: string | null
+      hasAttachments: boolean
+      infoAlertEnabled?: boolean
+    }
+  ) => {
+    setDisplayJobs((currentJobs) =>
+      currentJobs.map((job) => {
+        if (job.id !== jobId) return job
+
+        const hasInfoContent = hasJobInfoContent({
+          infoNote: state.infoNote,
+          hasAttachments: state.hasAttachments,
+        })
+
+        return {
+          ...job,
+          info_note: state.infoNote,
+          has_info_attachments: state.hasAttachments,
+          has_info_content: hasInfoContent,
+          info_alert_enabled:
+            state.infoAlertEnabled ??
+            (hasInfoContent ? job.info_alert_enabled : false),
+        }
+      })
+    )
+  }, [])
+
+  const handlePersistedStateChange = useCallback(
+    ({ infoNote, hasAttachments }: {
+      infoNote: string | null
+      hasAttachments: boolean
+    }) => {
+      if (!selectedJobId) return
+      updateDisplayedJob(selectedJobId, { infoNote, hasAttachments })
+    },
+    [selectedJobId, updateDisplayedJob]
+  )
+
+  const handleSaveSuccess = useCallback(
+    ({ infoNote, hasAttachments, infoAlertEnabled }: {
+      infoNote: string | null
+      hasAttachments: boolean
+      infoAlertEnabled: boolean
+    }) => {
+      if (!selectedJobId) return
+      updateDisplayedJob(selectedJobId, {
+        infoNote,
+        hasAttachments,
+        infoAlertEnabled,
+      })
+    },
+    [selectedJobId, updateDisplayedJob]
+  )
+
+  const handleCloseInfo = useCallback(() => setSelectedJobId(null), [])
+
   return (
     <>
       <section className="jobs-page__table-shell jobs-portal-page__table-shell hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
@@ -71,23 +153,58 @@ export function JobsPortalTable({ jobs }: JobsPortalTableProps) {
           </thead>
 
           <tbody className="jobs-page__table-body">
-            {jobs.map((job) => (
-              <DesktopRow key={job.id} job={job} />
+            {displayJobs.map((job) => (
+              <DesktopRow
+                key={job.id}
+                job={job}
+                onOpenInfo={() => setSelectedJobId(job.id)}
+              />
             ))}
           </tbody>
         </table>
       </section>
 
       <section className="jobs-portal-page__mobile-shell grid gap-3 lg:hidden">
-        {jobs.map((job) => (
-          <MobileCard key={job.id} job={job} />
+        {displayJobs.map((job) => (
+          <MobileCard
+            key={job.id}
+            job={job}
+            onOpenInfo={() => setSelectedJobId(job.id)}
+          />
         ))}
       </section>
+
+      {selectedJob ? (
+        <InfoNoteModal
+          key={selectedJob.id}
+          jobId={selectedJob.id}
+          jobNumber={selectedJob.job_number}
+          jobStatus={selectedJob.job_status}
+          initialValue={selectedJob.info_note}
+          initialHasAttachments={Boolean(selectedJob.has_info_attachments)}
+          initialAlertEnabled={Boolean(selectedJob.info_alert_enabled)}
+          readOnly={false}
+          onPersistedStateChange={handlePersistedStateChange}
+          onSaveSuccess={handleSaveSuccess}
+          onClose={handleCloseInfo}
+          updateInfoAction={updatePortalJobInfoAction}
+          updateInfoAlertAction={updatePortalJobInfoAlertAction}
+          getAttachmentsAction={getJobInfoAttachmentsAction}
+          uploadAttachmentAction={uploadJobInfoAttachmentAction}
+          deleteAttachmentAction={deleteJobInfoAttachmentAction}
+        />
+      ) : null}
     </>
   )
 }
 
-function DesktopRow({ job }: { job: PortalJobRow }) {
+function DesktopRow({
+  job,
+  onOpenInfo,
+}: {
+  job: PortalJobRow
+  onOpenInfo: () => void
+}) {
   return (
     <tr className="jobs-page__table-row group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
       <ReadOnlyCell
@@ -106,15 +223,14 @@ function DesktopRow({ job }: { job: PortalJobRow }) {
 
       <td className="jobs-page__table-row border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <div className="flex items-center justify-center gap-2">
-          <InfoNoteButton
-            jobId={job.id}
-            jobNumber={job.job_number}
-            infoNote={job.info_note}
-            hasInfoAttachments={Boolean(job.has_info_attachments)}
-            infoAlertEnabled={Boolean(job.info_alert_enabled)}
-            jobStatus={job.job_status}
-            updateInfoAction={updatePortalJobInfoAction}
-            updateInfoAlertAction={updatePortalJobInfoAlertAction}
+          <InfoNoteTriggerButton
+            hasInfoContent={Boolean(job.has_info_content)}
+            showAlertDot={
+              !isJobCompletedStatus(job.job_status) &&
+              Boolean(job.has_info_content) &&
+              Boolean(job.info_alert_enabled)
+            }
+            onClick={onOpenInfo}
           />
         </div>
       </td>
@@ -126,9 +242,18 @@ function DesktopRow({ job }: { job: PortalJobRow }) {
   )
 }
 
-function MobileCard({ job }: { job: PortalJobRow }) {
+function MobileCard({
+  job,
+  onOpenInfo,
+}: {
+  job: PortalJobRow
+  onOpenInfo: () => void
+}) {
   const [isActionsOpen, setIsActionsOpen] = useState(false)
-  const showInfoAlertDot = Boolean(job.info_alert_enabled) && Boolean(job.has_info_content)
+  const showInfoAlertDot =
+    !isJobCompletedStatus(job.job_status) &&
+    Boolean(job.info_alert_enabled) &&
+    Boolean(job.has_info_content)
 
   return (
     <div className="jobs-page__mobile-card jobs-portal-page__mobile-card overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
@@ -213,17 +338,12 @@ function MobileCard({ job }: { job: PortalJobRow }) {
 
       {isActionsOpen ? (
         <div className="mt-0 flex justify-end">
-          <InfoNoteButton
-            jobId={job.id}
-            jobNumber={job.job_number}
-            infoNote={job.info_note}
-            hasInfoAttachments={Boolean(job.has_info_attachments)}
-            infoAlertEnabled={Boolean(job.info_alert_enabled)}
-            jobStatus={job.job_status}
+          <InfoNoteTriggerButton
+            hasInfoContent={Boolean(job.has_info_content)}
+            showAlertDot={showInfoAlertDot}
+            onClick={onOpenInfo}
             variant="mobile"
             compact
-            updateInfoAction={updatePortalJobInfoAction}
-            updateInfoAlertAction={updatePortalJobInfoAlertAction}
           />
         </div>
       ) : null}

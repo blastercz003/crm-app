@@ -3626,7 +3626,6 @@ html[data-theme='dark'] .navigation-overlay__backdrop .absolute.inset-0 {
       transparent 46%
     ),
     linear-gradient(160deg, rgba(8, 13, 23, 0.62) 0%, rgba(10, 16, 29, 0.62) 100%) !important;
-  backdrop-filter: blur(2px);
 }
 
 html[data-theme='dark'] .navigation-overlay__dots {

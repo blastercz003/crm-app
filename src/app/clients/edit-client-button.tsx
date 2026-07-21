@@ -8,17 +8,19 @@ import {
   type UpdateClientActionState,
 } from './actions'
 
+export type ClientForEditing = {
+  id: string
+  name: string
+  ico: string | null
+  contact_person: string | null
+  contact_phone: string | null
+  contact_email: string | null
+  address: string | null
+  note: string | null
+}
+
 type EditClientButtonProps = {
-  client: {
-    id: string
-    name: string
-    ico: string | null
-    contact_person: string | null
-    contact_phone: string | null
-    contact_email: string | null
-    address: string | null
-    note: string | null
-  }
+  client: ClientForEditing
   className?: string
   label?: string
   canDeleteClient?: boolean
@@ -76,12 +78,12 @@ export function EditClientButton({
   )
 }
 
-function EditClientModal({
+export function EditClientModal({
   client,
   canDeleteClient,
   onClose,
 }: {
-  client: EditClientButtonProps['client']
+  client: ClientForEditing
   canDeleteClient: boolean
   onClose: () => void
 }) {
