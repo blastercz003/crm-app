@@ -174,9 +174,7 @@ export function NavigationOverlay() {
         'navigation-overlay__backdrop',
         'fixed inset-0 z-[999]',
         styles.backdrop,
-        isRendered
-          ? `pointer-events-auto ${styles.backdropRendered}`
-          : 'pointer-events-none',
+        isRendered ? 'pointer-events-auto' : 'pointer-events-none',
         isActive ? styles.backdropActive : '',
       ].join(' ')}
     >

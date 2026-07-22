@@ -1,4 +1,4 @@
-import { cache, Suspense } from 'react'
+import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
@@ -44,20 +44,12 @@ export const metadata: Metadata = {
   },
 }
 
-const getCachedThemePreferences = cache(getServerThemePreferences)
-
-export async function generateViewport(): Promise<Viewport> {
-  const themePreferences = await getCachedThemePreferences()
-  const initialTheme = resolveThemeAppearanceMode(themePreferences)
-
-  return {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover',
-    themeColor: THEME_COLORS[initialTheme],
-  }
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 }
 
 export default async function RootLayout({
@@ -65,7 +57,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const themePreferences = await getCachedThemePreferences()
+  const themePreferences = await getServerThemePreferences()
   const initialTheme = resolveThemeAppearanceMode(themePreferences)
   const requestHeaders = await headers()
   const shouldRenderStartupScreen = requestHeaders.get('x-benergy-skip-startup-screen') !== '1'
@@ -79,6 +71,9 @@ export default async function RootLayout({
       data-startup-overlay={shouldRenderStartupScreen ? 'pending' : 'hide'}
       suppressHydrationWarning
     >
+      <head>
+        <meta name="theme-color" content={THEME_COLORS[initialTheme]} />
+      </head>
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
         <PushSubscriptionGuard />
