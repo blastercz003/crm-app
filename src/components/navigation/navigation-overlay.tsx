@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { usePathname, useSearchParams } from 'next/navigation'
 import styles from './navigation-overlay.module.css'
 
@@ -12,7 +11,7 @@ const POST_ROUTE_HOLD_MS = 180
 const EXIT_TRANSITION_MS = 280
 const NAVIGATION_SAFETY_TIMEOUT_MS = 15_000
 
-type OverlayPhase = 'hidden' | 'entering' | 'active' | 'exiting'
+type OverlayPhase = 'hidden' | 'active' | 'exiting'
 
 function isModifiedEvent(event: MouseEvent) {
   return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
@@ -55,7 +54,6 @@ export function NavigationOverlay() {
   const previousRouteKeyRef = useRef(routeKey)
   const isNavigatingRef = useRef(false)
   const navigationStartedAtRef = useRef<number | null>(null)
-  const entryAnimationFrameRef = useRef<number | null>(null)
   const hideTimeoutRef = useRef<number | null>(null)
   const exitTimeoutRef = useRef<number | null>(null)
   const safetyTimeoutRef = useRef<number | null>(null)
@@ -70,23 +68,13 @@ export function NavigationOverlay() {
         window.clearTimeout(exitTimeoutRef.current)
         exitTimeoutRef.current = null
       }
-      if (entryAnimationFrameRef.current) {
-        window.cancelAnimationFrame(entryAnimationFrameRef.current)
-      }
       if (safetyTimeoutRef.current) {
         window.clearTimeout(safetyTimeoutRef.current)
       }
 
       navigationStartedAtRef.current = Date.now()
       isNavigatingRef.current = true
-      flushSync(() => {
-        setPhase('entering')
-      })
-
-      entryAnimationFrameRef.current = window.requestAnimationFrame(() => {
-        setPhase('active')
-        entryAnimationFrameRef.current = null
-      })
+      setPhase('active')
 
       safetyTimeoutRef.current = window.setTimeout(() => {
         isNavigatingRef.current = false
@@ -127,9 +115,6 @@ export function NavigationOverlay() {
       }
       if (exitTimeoutRef.current) {
         window.clearTimeout(exitTimeoutRef.current)
-      }
-      if (entryAnimationFrameRef.current) {
-        window.cancelAnimationFrame(entryAnimationFrameRef.current)
       }
       if (safetyTimeoutRef.current) {
         window.clearTimeout(safetyTimeoutRef.current)
@@ -189,9 +174,7 @@ export function NavigationOverlay() {
         'navigation-overlay__backdrop',
         'fixed inset-0 z-[999]',
         styles.backdrop,
-        isRendered
-          ? `pointer-events-auto ${styles.backdropRendered}`
-          : 'pointer-events-none',
+        isRendered ? 'pointer-events-auto' : 'pointer-events-none',
         isActive ? styles.backdropActive : '',
       ].join(' ')}
     >
@@ -207,14 +190,15 @@ export function NavigationOverlay() {
             isActive ? 'scale-100 opacity-100' : 'scale-90 opacity-0',
           ].join(' ')}
         >
-          <GooeyBlobLoader />
+          <GooeyBlobLoader isAnimating={isRendered} />
         </div>
       </div>
     </div>
   )
 }
 
-function GooeyBlobLoader() {
+function GooeyBlobLoader({ isAnimating }: { isAnimating: boolean }) {
+  const svgRef = useRef<SVGSVGElement | null>(null)
   const instanceId = useId().replaceAll(':', '')
   const filterId = `navigation-goo-${instanceId}`
   const gradientId = `navigation-gradient-${instanceId}`
@@ -223,9 +207,25 @@ function GooeyBlobLoader() {
   const shapeId = `navigation-shape-${instanceId}`
   const maskId = `navigation-mask-${instanceId}`
 
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+
+    if (isAnimating) {
+      svg.unpauseAnimations()
+    } else {
+      svg.pauseAnimations()
+    }
+  }, [isAnimating])
+
   return (
     <svg
-      className={`navigation-overlay__blob ${styles.blob}`}
+      ref={svgRef}
+      className={[
+        'navigation-overlay__blob',
+        styles.blob,
+        isAnimating ? styles.blobAnimating : '',
+      ].join(' ')}
       viewBox="0 0 120 120"
       role="presentation"
       focusable="false"
