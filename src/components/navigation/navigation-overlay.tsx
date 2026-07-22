@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { usePathname, useSearchParams } from 'next/navigation'
 import styles from './navigation-overlay.module.css'
 
@@ -78,7 +79,9 @@ export function NavigationOverlay() {
 
       navigationStartedAtRef.current = Date.now()
       isNavigatingRef.current = true
-      setPhase('entering')
+      flushSync(() => {
+        setPhase('entering')
+      })
 
       entryAnimationFrameRef.current = window.requestAnimationFrame(() => {
         setPhase('active')

@@ -3614,6 +3614,11 @@ html[data-theme='dark'] .password-page__loading-dot {
   opacity: 0.62 !important;
 }
 
+#app-shell a[href],
+#app-shell button {
+  touch-action: manipulation;
+}
+
 html[data-theme='dark'] .navigation-overlay__backdrop .absolute.inset-0 {
   background: radial-gradient(
       circle at 20% 20%,
