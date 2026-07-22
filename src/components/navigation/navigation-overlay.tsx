@@ -10,17 +10,8 @@ const MINIMUM_VISIBLE_MS = 350
 const POST_ROUTE_HOLD_MS = 180
 const EXIT_TRANSITION_MS = 280
 const NAVIGATION_SAFETY_TIMEOUT_MS = 15_000
-const POINTER_MOVE_TOLERANCE_PX = 10
-const DUPLICATE_CLICK_WINDOW_MS = 1_000
 
 type OverlayPhase = 'hidden' | 'entering' | 'active' | 'exiting'
-
-type PendingTouchNavigation = {
-  anchor: HTMLAnchorElement
-  pointerId: number
-  startX: number
-  startY: number
-}
 
 function isModifiedEvent(event: MouseEvent) {
   return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
@@ -69,10 +60,6 @@ export function NavigationOverlay() {
   const safetyTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
-    let pendingTouchNavigation: PendingTouchNavigation | null = null
-    let touchStartedAnchor: HTMLAnchorElement | null = null
-    let suppressTouchClickUntil = 0
-
     function showOverlay() {
       if (hideTimeoutRef.current) {
         window.clearTimeout(hideTimeoutRef.current)
@@ -106,100 +93,29 @@ export function NavigationOverlay() {
       }, NAVIGATION_SAFETY_TIMEOUT_MS)
     }
 
-    function getInternalNavigationAnchor(target: EventTarget | null) {
-      if (!(target instanceof Element)) return null
-
-      const anchor = target.closest('a')
-      if (!(anchor instanceof HTMLAnchorElement)) return null
-
-      const currentUrl = new URL(window.location.href)
-      return shouldHandleAnchor(anchor, currentUrl) ? anchor : null
-    }
-
-    function resetPendingTouchNavigation() {
-      pendingTouchNavigation = null
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (event.pointerType === 'mouse') return
-      if (!event.isPrimary || event.button !== 0) return
-      if (isModifiedEvent(event)) return
-
-      const anchor = getInternalNavigationAnchor(event.target)
-      if (!anchor) return
-
-      pendingTouchNavigation = {
-        anchor,
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-      }
-    }
-
-    function handlePointerMove(event: PointerEvent) {
-      const pending = pendingTouchNavigation
-      if (!pending || pending.pointerId !== event.pointerId) return
-
-      const distanceX = event.clientX - pending.startX
-      const distanceY = event.clientY - pending.startY
-      const movedTooFar =
-        Math.hypot(distanceX, distanceY) > POINTER_MOVE_TOLERANCE_PX
-
-      if (movedTooFar) resetPendingTouchNavigation()
-    }
-
-    function handlePointerUp(event: PointerEvent) {
-      const pending = pendingTouchNavigation
-      resetPendingTouchNavigation()
-
-      if (!pending || pending.pointerId !== event.pointerId) return
-      if (!event.isPrimary || event.button !== 0) return
-      if (isModifiedEvent(event)) return
-
-      const releasedAnchor = getInternalNavigationAnchor(event.target)
-      if (releasedAnchor !== pending.anchor) return
-
-      touchStartedAnchor = pending.anchor
-      suppressTouchClickUntil = Date.now() + DUPLICATE_CLICK_WINDOW_MS
-      showOverlay()
-    }
-
     function handleDocumentClick(event: MouseEvent) {
       if (event.defaultPrevented) return
       if (isModifiedEvent(event)) return
       if (event.button !== 0) return
 
-      const anchor = getInternalNavigationAnchor(event.target)
-      if (!anchor) return
+      const target = event.target
+      if (!(target instanceof Element)) return
 
-      const isDuplicateTouchClick =
-        anchor === touchStartedAnchor && Date.now() <= suppressTouchClickUntil
+      const anchor = target.closest('a')
+      if (!(anchor instanceof HTMLAnchorElement)) return
 
-      touchStartedAnchor = null
-      suppressTouchClickUntil = 0
+      const currentUrl = new URL(window.location.href)
 
-      if (isDuplicateTouchClick) return
+      if (!shouldHandleAnchor(anchor, currentUrl)) return
 
       showOverlay()
     }
 
-    document.addEventListener('pointerdown', handlePointerDown, true)
-    document.addEventListener('pointermove', handlePointerMove, true)
-    document.addEventListener('pointerup', handlePointerUp, true)
-    document.addEventListener('pointercancel', resetPendingTouchNavigation, true)
-    document.addEventListener('contextmenu', resetPendingTouchNavigation, true)
-    document.addEventListener('scroll', resetPendingTouchNavigation, true)
     document.addEventListener('click', handleDocumentClick, true)
     window.addEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
     window.addEventListener('popstate', showOverlay)
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true)
-      document.removeEventListener('pointermove', handlePointerMove, true)
-      document.removeEventListener('pointerup', handlePointerUp, true)
-      document.removeEventListener('pointercancel', resetPendingTouchNavigation, true)
-      document.removeEventListener('contextmenu', resetPendingTouchNavigation, true)
-      document.removeEventListener('scroll', resetPendingTouchNavigation, true)
       document.removeEventListener('click', handleDocumentClick, true)
       window.removeEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
       window.removeEventListener('popstate', showOverlay)
@@ -262,7 +178,6 @@ export function NavigationOverlay() {
 
   const isRendered = phase !== 'hidden'
   const isActive = phase === 'active'
-  const blocksInteraction = phase === 'active' || phase === 'exiting'
 
   return (
     <div
@@ -272,9 +187,7 @@ export function NavigationOverlay() {
         'fixed inset-0 z-[999]',
         styles.backdrop,
         isRendered
-          ? `${styles.backdropRendered} ${
-              blocksInteraction ? 'pointer-events-auto' : 'pointer-events-none'
-            }`
+          ? `pointer-events-auto ${styles.backdropRendered}`
           : 'pointer-events-none',
         isActive ? styles.backdropActive : '',
       ].join(' ')}
