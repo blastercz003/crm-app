@@ -1,11 +1,5 @@
 .backdrop {
   visibility: visible;
-  opacity: 0;
-  will-change: opacity;
-}
-
-.backdropRendered {
-  opacity: 1;
 }
 
 .loader {
