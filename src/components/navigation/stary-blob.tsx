@@ -1,10 +1,10 @@
-'use client'
+// Archived previous blob implementation. It is intentionally not used by the app.\n'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import styles from './navigation-overlay.module.css'
+import styles from './stary-blob.module.css'
 
-export const NAVIGATION_OVERLAY_START_EVENT = 'navigation-overlay:start'
+export const LEGACY_BLOB_OVERLAY_START_EVENT = 'navigation-overlay:start'
 
 const MINIMUM_VISIBLE_MS = 350
 const POST_ROUTE_HOLD_MS = 180
@@ -43,7 +43,7 @@ function shouldHandleAnchor(anchor: HTMLAnchorElement, currentUrl: URL) {
   return true
 }
 
-export function NavigationOverlay() {
+export function StaryBlobOverlay() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -112,12 +112,12 @@ export function NavigationOverlay() {
     }
 
     document.addEventListener('click', handleDocumentClick, true)
-    window.addEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
+    window.addEventListener(LEGACY_BLOB_OVERLAY_START_EVENT, showOverlay)
     window.addEventListener('popstate', showOverlay)
 
     return () => {
       document.removeEventListener('click', handleDocumentClick, true)
-      window.removeEventListener(NAVIGATION_OVERLAY_START_EVENT, showOverlay)
+      window.removeEventListener(LEGACY_BLOB_OVERLAY_START_EVENT, showOverlay)
       window.removeEventListener('popstate', showOverlay)
       if (hideTimeoutRef.current) {
         window.clearTimeout(hideTimeoutRef.current)
@@ -288,7 +288,7 @@ function GooeyBlobLoader() {
         </mask>
       </defs>
 
-      <g>
+      <g className={styles.body}>
         <g
           className="navigation-overlay__blob-goo"
           fill={`url(#${gradientId})`}
@@ -324,42 +324,19 @@ function GooeyBlobLoader() {
 function BlobCircles() {
   return (
     <>
-      <g className={styles.mainCore}>
+      <g className={styles.core}>
         <circle cx="60" cy="60" r="25" />
       </g>
-
-      <g transform="rotate(-30 60 60)">
-        <g className={styles.satellite}>
-          <circle cx="0" cy="0" r="17" />
-          <animateMotion
-            dur="2.6s"
-            path="M 84 60 A 24 21 0 1 1 36 60 A 24 21 0 1 1 84 60"
-            repeatCount="indefinite"
-          />
-        </g>
+      <g className={`${styles.orbit} ${styles.orbitOne}`}>
+        <circle cx="60" cy="60" r="17" />
       </g>
-
-      <g transform="rotate(110 60 60)">
-        <g className={styles.satellite}>
-          <circle cx="0" cy="0" r="15" />
-          <animateMotion
-            dur="3.7s"
-            path="M 87 60 A 27 24 0 1 0 33 60 A 27 24 0 1 0 87 60"
-            repeatCount="indefinite"
-          />
-        </g>
+      <g className={`${styles.orbit} ${styles.orbitTwo}`}>
+        <circle cx="60" cy="60" r="16" />
       </g>
-
-      <g transform="rotate(225 60 60)">
-        <g className={styles.satellite}>
-          <circle cx="0" cy="0" r="14" />
-          <animateMotion
-            dur="5.1s"
-            path="M 85 60 A 25 28 0 1 1 35 60 A 25 28 0 1 1 85 60"
-            repeatCount="indefinite"
-          />
-        </g>
+      <g className={`${styles.orbit} ${styles.orbitThree}`}>
+        <circle cx="60" cy="60" r="15" />
       </g>
     </>
   )
 }
+
