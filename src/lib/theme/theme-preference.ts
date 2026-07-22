@@ -27,7 +27,7 @@ export const DEFAULT_THEME_PREFERENCES: ThemePreferences = {
   themeAutoOverrideUntil: null,
 }
 export const THEME_COLORS: Record<ThemeAppearanceMode, string> = {
-  light: '#f8fbff',
+  light: '#f8fafc',
   dark: '#0b1220',
 }
 
