@@ -1,6 +1,7 @@
 'use server'
 
 import { reportActionError } from '@/lib/errors/reportActionError'
+import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
 import { createClient } from '@/lib/supabase/server'
 
 export type FinanceStatisticsView = 'week' | 'month' | 'year'
@@ -30,18 +31,42 @@ export type FinanceStatisticsTechnician = {
 export type FinanceStatisticsSalesOwner = {
   name: 'JIŘÍ' | 'MICHAL' | 'LÍDA'
   jobCount: number
+  sale: number
+  cost: number
+  profit: number
+  averageProfitPerJob: number
+  profitMargin: number
+  financialJobCount: number
 }
 
 export type FinanceStatisticsCustomer = {
   name: string
   jobCount: number
   sale: number
+  cost: number
   profit: number
+  financialJobCount: number
+  averageProfitPerJob: number
+  profitMargin: number
 }
 
 export type FinanceStatisticsGenerator = {
   name: string
   jobCount: number
+  sale: number
+  cost: number
+  profit: number
+  financialJobCount: number
+  averageProfitPerJob: number
+  profitMargin: number
+}
+
+export type FinanceStatisticsTrendPoint = {
+  key: string
+  label: string
+  jobCount: number
+  sale: number
+  profit: number
 }
 
 export type FinanceStatisticsPayload = {
@@ -68,9 +93,26 @@ export type FinanceStatisticsPayload = {
   }
   technicians: FinanceStatisticsTechnician[]
   salesOwners: FinanceStatisticsSalesOwner[]
+  customerSummary: {
+    customerCount: number
+    repeatCustomerCount: number
+    averageJobsPerCustomer: number
+    averageSalePerCustomer: number
+    averageProfitPerCustomer: number
+    topThreeSaleShare: number
+  }
   customers: FinanceStatisticsCustomer[]
+  generatorSummary: {
+    generatorCount: number
+    assignedJobCount: number
+    unassignedJobCount: number
+    assignmentRate: number
+    averageJobsPerGenerator: number
+    topThreeUsageShare: number
+  }
   generators: FinanceStatisticsGenerator[]
   jobsWithoutGeneratorCount: number
+  trend: FinanceStatisticsTrendPoint[]
 }
 
 export type FinanceStatisticsActionResult =
@@ -303,6 +345,91 @@ function getAverage(total: number, count: number) {
   return count > 0 ? roundMetric(total / count) : 0
 }
 
+function getCalendarDayDifference(from: CalendarDate, to: CalendarDate) {
+  const fromTime = Date.UTC(from.year, from.month - 1, from.day)
+  const toTime = Date.UTC(to.year, to.month - 1, to.day)
+
+  return Math.floor((toTime - fromTime) / 86_400_000)
+}
+
+function createTrendPoints(
+  view: FinanceStatisticsView,
+  period: ReturnType<typeof getPeriod>
+): FinanceStatisticsTrendPoint[] {
+  const emptyPoint = (key: string, label: string): FinanceStatisticsTrendPoint => ({
+    key,
+    label,
+    jobCount: 0,
+    sale: 0,
+    profit: 0,
+  })
+
+  if (view === 'week') {
+    const dayLabels = ['PO', 'ÚT', 'ST', 'ČT', 'PÁ', 'SO', 'NE']
+
+    return dayLabels.map((label, index) => {
+      const date = shiftCalendarDate(period.from, index)
+
+      return emptyPoint(
+        formatCalendarDate(date),
+        `${label} ${date.day}.`
+      )
+    })
+  }
+
+  if (view === 'month') {
+    const lastDay = shiftCalendarDate(period.toExclusive, -1).day
+    const bucketCount = Math.ceil(lastDay / 7)
+
+    return Array.from({ length: bucketCount }, (_, index) => {
+      const fromDay = index * 7 + 1
+      const toDay = Math.min(fromDay + 6, lastDay)
+
+      return emptyPoint(
+        `week-${index + 1}`,
+        `${fromDay}.–${toDay}.`
+      )
+    })
+  }
+
+  const monthLabels = [
+    'LED',
+    'ÚNO',
+    'BŘE',
+    'DUB',
+    'KVĚ',
+    'ČVN',
+    'ČVC',
+    'SRP',
+    'ZÁŘ',
+    'ŘÍJ',
+    'LIS',
+    'PRO',
+  ]
+
+  return monthLabels.map((label, index) =>
+    emptyPoint(`${period.from.year}-${index + 1}`, label)
+  )
+}
+
+function getTrendPointIndex(
+  view: FinanceStatisticsView,
+  period: ReturnType<typeof getPeriod>,
+  startAt: string
+) {
+  const date = getPragueDateTimeParts(new Date(startAt))
+
+  if (view === 'week') {
+    return getCalendarDayDifference(period.from, date)
+  }
+
+  if (view === 'month') {
+    return Math.floor((date.day - 1) / 7)
+  }
+
+  return date.month - 1
+}
+
 function getJob(row: StatisticsFinanceRow) {
   return Array.isArray(row.job) ? row.job[0] ?? null : row.job
 }
@@ -397,11 +524,17 @@ export async function getFinanceStatisticsAction(
     let costItems: StatisticsCostItemRow[] = []
 
     if (financeIds.length > 0) {
-      const { data, error } = await supabase
-        .from('job_finance_cost_items')
-        .select('job_finance_id, technician_id, preset_key, quantity')
-        .in('job_finance_id', financeIds)
-        .in('preset_key', [...ALL_STATISTICS_PRESET_KEYS])
+      const { data, error } =
+        await querySupabaseInBatches<StatisticsCostItemRow>({
+          values: financeIds,
+          batchSize: 75,
+          queryBatch: (financeIdBatch) =>
+            supabase
+              .from('job_finance_cost_items')
+              .select('job_finance_id, technician_id, preset_key, quantity')
+              .in('job_finance_id', financeIdBatch)
+              .in('preset_key', [...ALL_STATISTICS_PRESET_KEYS]),
+        })
 
       if (error) {
         throw new Error('Nepodařilo se načíst výkony techniků pro statistiku.')
@@ -515,29 +648,56 @@ export async function getFinanceStatisticsAction(
     const wastedTripCount = uniqueJobEntries.filter(({ job }) =>
       Boolean(job.marny_vyjezd)
     ).length
-    const salesOwnerCounts = new Map<FinanceStatisticsSalesOwner['name'], number>(
-      SALES_OWNERS.map((name) => [name, 0])
+    const salesOwnerStats = new Map<
+      FinanceStatisticsSalesOwner['name'],
+      Omit<FinanceStatisticsSalesOwner, 'averageProfitPerJob' | 'profitMargin'>
+    >(
+      SALES_OWNERS.map((name) => [
+        name,
+        {
+          name,
+          jobCount: 0,
+          sale: 0,
+          cost: 0,
+          profit: 0,
+          financialJobCount: 0,
+        },
+      ])
     )
     const customersByKey = new Map<
       string,
-      FinanceStatisticsCustomer
+      Omit<FinanceStatisticsCustomer, 'averageProfitPerJob' | 'profitMargin'>
     >()
     const generatorsByKey = new Map<
       string,
-      { name: string; jobIds: Set<string> }
+      {
+        name: string
+        jobIds: Set<string>
+        sale: number
+        cost: number
+        profit: number
+        financialJobCount: number
+      }
     >()
     let jobsWithoutGeneratorCount = 0
     let sale = 0
     let cost = 0
     let profit = 0
     let financialJobCount = 0
+    const trend = createTrendPoints(view, period)
 
     for (const { job, finance } of uniqueJobEntries) {
       const jobKey = String(job.job_number ?? '').trim() || String(job.id)
       const owner = String(job.sales_owner ?? '').trim() as FinanceStatisticsSalesOwner['name']
+      const ownerStats = salesOwnerStats.get(owner)
+      const trendPoint = trend[getTrendPointIndex(view, period, job.start_at)]
 
-      if (salesOwnerCounts.has(owner)) {
-        salesOwnerCounts.set(owner, (salesOwnerCounts.get(owner) ?? 0) + 1)
+      if (ownerStats) {
+        ownerStats.jobCount += 1
+      }
+
+      if (trendPoint) {
+        trendPoint.jobCount += 1
       }
 
       const saleAmount = normalizeMoney(finance.sale_amount)
@@ -549,6 +709,18 @@ export async function getFinanceStatisticsAction(
         cost += costAmount
         profit += saleAmount - costAmount
         financialJobCount += 1
+
+        if (ownerStats) {
+          ownerStats.sale += saleAmount
+          ownerStats.cost += costAmount
+          ownerStats.profit += saleAmount - costAmount
+          ownerStats.financialJobCount += 1
+        }
+
+        if (trendPoint) {
+          trendPoint.sale += saleAmount
+          trendPoint.profit += saleAmount - costAmount
+        }
       }
 
       const customerName = String(job.company_name ?? '').trim() || 'Bez zákazníka'
@@ -557,14 +729,18 @@ export async function getFinanceStatisticsAction(
         name: customerName,
         jobCount: 0,
         sale: 0,
+        cost: 0,
         profit: 0,
+        financialJobCount: 0,
       }
 
       customer.jobCount += 1
 
       if (hasCompleteFinance) {
         customer.sale += saleAmount
+        customer.cost += costAmount
         customer.profit += saleAmount - costAmount
+        customer.financialJobCount += 1
       }
 
       customersByKey.set(customerKey, customer)
@@ -578,22 +754,57 @@ export async function getFinanceStatisticsAction(
         const generator = generatorsByKey.get(generatorKey) ?? {
           name: generatorName,
           jobIds: new Set<string>(),
+          sale: 0,
+          cost: 0,
+          profit: 0,
+          financialJobCount: 0,
         }
 
         generator.jobIds.add(jobKey)
+
+        if (hasCompleteFinance) {
+          generator.sale += saleAmount
+          generator.cost += costAmount
+          generator.profit += saleAmount - costAmount
+          generator.financialJobCount += 1
+        }
+
         generatorsByKey.set(generatorKey, generator)
       }
     }
 
-    const salesOwners = SALES_OWNERS.map((name) => ({
-      name,
-      jobCount: salesOwnerCounts.get(name) ?? 0,
-    }))
+    const salesOwners = SALES_OWNERS.map((name) => {
+      const owner = salesOwnerStats.get(name)!
+
+      return {
+        ...owner,
+        sale: roundMetric(owner.sale),
+        cost: roundMetric(owner.cost),
+        profit: roundMetric(owner.profit),
+        averageProfitPerJob: getAverage(
+          owner.profit,
+          owner.financialJobCount
+        ),
+        profitMargin:
+          owner.sale !== 0
+            ? roundMetric((owner.profit / owner.sale) * 100)
+            : 0,
+      }
+    })
     const customers = Array.from(customersByKey.values())
       .map((customer) => ({
         ...customer,
         sale: roundMetric(customer.sale),
+        cost: roundMetric(customer.cost),
         profit: roundMetric(customer.profit),
+        averageProfitPerJob: getAverage(
+          customer.profit,
+          customer.financialJobCount
+        ),
+        profitMargin:
+          customer.sale !== 0
+            ? roundMetric((customer.profit / customer.sale) * 100)
+            : 0,
       }))
       .sort(
         (a, b) =>
@@ -601,16 +812,63 @@ export async function getFinanceStatisticsAction(
           b.sale - a.sale ||
           a.name.localeCompare(b.name, 'cs')
       )
-      .slice(0, 10)
+    const customerCount = customers.length
+    const repeatCustomerCount = customers.filter(
+      (customer) => customer.jobCount > 1
+    ).length
+    const topThreeSale = [...customers]
+      .sort((a, b) => b.sale - a.sale)
+      .slice(0, 3)
+      .reduce((sum, customer) => sum + customer.sale, 0)
+    const customerSummary = {
+      customerCount,
+      repeatCustomerCount,
+      averageJobsPerCustomer: getAverage(jobCount, customerCount),
+      averageSalePerCustomer: getAverage(sale, customerCount),
+      averageProfitPerCustomer: getAverage(profit, customerCount),
+      topThreeSaleShare:
+        sale > 0 ? roundMetric((topThreeSale / sale) * 100) : 0,
+    }
     const generators = Array.from(generatorsByKey.values())
       .map((generator) => ({
         name: generator.name,
         jobCount: generator.jobIds.size,
+        sale: roundMetric(generator.sale),
+        cost: roundMetric(generator.cost),
+        profit: roundMetric(generator.profit),
+        financialJobCount: generator.financialJobCount,
+        averageProfitPerJob: getAverage(
+          generator.profit,
+          generator.financialJobCount
+        ),
+        profitMargin:
+          generator.sale !== 0
+            ? roundMetric((generator.profit / generator.sale) * 100)
+            : 0,
       }))
       .sort(
         (a, b) =>
           b.jobCount - a.jobCount || a.name.localeCompare(b.name, 'cs')
       )
+    const assignedJobCount = Math.max(jobCount - jobsWithoutGeneratorCount, 0)
+    const topThreeGeneratorJobs = generators
+      .slice(0, 3)
+      .reduce((sum, generator) => sum + generator.jobCount, 0)
+    const generatorSummary = {
+      generatorCount: generators.length,
+      assignedJobCount,
+      unassignedJobCount: jobsWithoutGeneratorCount,
+      assignmentRate:
+        jobCount > 0 ? roundMetric((assignedJobCount / jobCount) * 100) : 0,
+      averageJobsPerGenerator: getAverage(
+        assignedJobCount,
+        generators.length
+      ),
+      topThreeUsageShare:
+        assignedJobCount > 0
+          ? roundMetric((topThreeGeneratorJobs / assignedJobCount) * 100)
+          : 0,
+    }
     const technicians = Array.from(technicianStats.values())
       .map((technician) => ({
         id: technician.id,
@@ -663,9 +921,16 @@ export async function getFinanceStatisticsAction(
         },
         technicians,
         salesOwners,
+        customerSummary,
         customers,
+        generatorSummary,
         generators,
         jobsWithoutGeneratorCount,
+        trend: trend.map((point) => ({
+          ...point,
+          sale: roundMetric(point.sale),
+          profit: roundMetric(point.profit),
+        })),
       },
     }
   } catch (error) {
