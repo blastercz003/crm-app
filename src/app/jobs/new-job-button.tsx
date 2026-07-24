@@ -426,7 +426,7 @@ function JobFormShell({
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
           }}
         >
-          <div className="jobs-page__modal-header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+          <div className="jobs-page__modal-header jobs-page__job-form-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 {title}
@@ -436,7 +436,7 @@ function JobFormShell({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
+              className="jobs-page__job-form-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
               aria-label="Zavřít"
             >
               ✕
@@ -454,16 +454,16 @@ function JobFormShell({
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
-              <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
-                <section className="overflow-hidden rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
+              <div className="grid gap-3 xl:grid-cols-[1.08fr_0.87fr_1.05fr]">
+                <section className="jobs-page__job-form-modal__section overflow-hidden rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-3 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
                   <div className="mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Základ zakázky
                     </h3>
                   </div>
 
-                  <div className="grid gap-3">
-                    <div>
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    <div className="xl:col-span-2">
                       <label
                         htmlFor={`${mode}-client-search`}
                         className="mb-1 block text-sm font-medium text-gray-700"
@@ -495,7 +495,7 @@ function JobFormShell({
                       </p>
                     </div>
 
-                    <div>
+                    <div className="xl:col-span-2">
                       <label
                         htmlFor={`${mode}-contact_person`}
                         className="mb-1 block text-sm font-medium text-gray-700"
@@ -533,12 +533,12 @@ function JobFormShell({
                       )}
                     </div>
 
-                    <div>
+                    <div className="xl:col-span-2">
                       <label
                         htmlFor={`${mode}-offer_id`}
                         className="mb-1 block text-sm font-medium text-gray-700"
                       >
-                        Číslo nabídky
+                        Číslo nabídky <span className="text-[10px] font-normal text-gray-500">(volitelné)</span>
                       </label>
                       <select
                         id={`${mode}-offer_id`}
@@ -554,9 +554,6 @@ function JobFormShell({
                           </option>
                         ))}
                       </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Volitelné pole.
-                      </p>
                     </div>
 
                     <div>
@@ -598,9 +595,9 @@ function JobFormShell({
                   </div>
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
+                <section className="jobs-page__job-form-modal__section overflow-hidden rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-3 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)] sm:overflow-visible">
                   <div className="mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Termín a místo
                     </h3>
                   </div>
@@ -680,16 +677,11 @@ function JobFormShell({
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)]">
-                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                <section className="jobs-page__job-form-modal__section rounded-2xl border border-white/65 bg-[linear-gradient(165deg,rgba(255,255,255,0.84)_0%,rgba(250,252,254,0.76)_48%,rgba(246,249,252,0.70)_100%)] p-3 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_8px_20px_rgba(148,163,184,0.1)]">
+                  <div className="mb-3">
+                    <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Realizace
                     </h3>
-
-                    <JobPpRequiredToggle
-                      value={ppRequired}
-                      onChange={setPpRequired}
-                    />
                   </div>
 
                   <div className="grid gap-3">
@@ -728,17 +720,6 @@ function JobFormShell({
                       />
                     </div>
 
-                    <label className="jobs-page__job-form-modal__checkbox-card flex h-10 items-center gap-3 rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(247,249,252,0.9)_100%)] px-3 text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
-                      <input
-                        type="checkbox"
-                        name="marny_vyjezd"
-                        value="1"
-                        defaultChecked={false}
-                        className="jobs-page__job-form-modal__checkbox-input h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
-                      />
-                      <span>MARNÝ VÝJEZD</span>
-                    </label>
-
                     <div>
                       <label
                         htmlFor={`${mode}-info_note`}
@@ -749,11 +730,30 @@ function JobFormShell({
                       <textarea
                         id={`${mode}-info_note`}
                         name="info_note"
-                        rows={5}
+                        rows={4}
                         defaultValue={job?.info_note ?? ''}
                         placeholder="Libovolná interní poznámka k zakázce"
                         className="w-full resize-none rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.94)_100%)] px-3 py-2.5 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(148,163,184,0.12)] transition placeholder:text-gray-400 focus:border-[#c2cfdd] focus:ring-2 focus:ring-[#dbe5ef]"
                       />
+                    </div>
+
+                    <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-3">
+                      <JobPpRequiredToggle
+                        value={ppRequired}
+                        onChange={setPpRequired}
+                        compact
+                      />
+
+                      <label className="jobs-page__job-form-modal__checkbox-card flex h-8 min-w-0 items-center gap-2 rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(247,249,252,0.9)_100%)] px-2.5 text-[11px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                        <input
+                          type="checkbox"
+                          name="marny_vyjezd"
+                          value="1"
+                          defaultChecked={false}
+                          className="jobs-page__job-form-modal__checkbox-input h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+                        />
+                        <span className="whitespace-nowrap">MARNÝ VÝJEZD</span>
+                      </label>
                     </div>
                   </div>
                 </section>
