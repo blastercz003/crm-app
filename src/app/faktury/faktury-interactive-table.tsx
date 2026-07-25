@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import {
@@ -37,6 +44,13 @@ import type {
 import type { FakturaRow, SalesOwner } from './page'
 
 type InlineEditableFinanceField = 'client_order_number' | 'invoice_number' | 'sale_amount'
+type OptimisticFinanceField = InlineEditableFinanceField | 'cost_amount'
+type OptimisticFinanceValue = string | number | null
+type OptimisticFinanceChangeHandler = (
+  financeId: string,
+  field: OptimisticFinanceField,
+  value: OptimisticFinanceValue
+) => void
 
 type FakturyInteractiveTableProps = {
   rows: FakturaRow[]
@@ -153,6 +167,33 @@ export function FakturyInteractiveTable({
   technicianOptions,
 }: FakturyInteractiveTableProps) {
   const [editingRow, setEditingRow] = useState<FakturaRow | null>(null)
+  const [displayedRows, applyOptimisticFinanceChange] = useOptimistic(
+    rows,
+    (
+      currentRows,
+      change: {
+        financeId: string
+        field: OptimisticFinanceField
+        value: OptimisticFinanceValue
+      }
+    ) =>
+      currentRows.map((row) =>
+        row.id === change.financeId
+          ? {
+              ...row,
+              [change.field]: change.value,
+            }
+          : row
+      )
+  )
+
+  const handleOptimisticFinanceChange: OptimisticFinanceChangeHandler = (
+    financeId,
+    field,
+    value
+  ) => {
+    applyOptimisticFinanceChange({ financeId, field, value })
+  }
 
   return (
     <>
@@ -195,12 +236,13 @@ export function FakturyInteractiveTable({
             </thead>
 
             <tbody className="jobs-page__table-body">
-              {rows.map((row) => (
+              {displayedRows.map((row) => (
                 <DesktopRow
                   key={row.id}
                   row={row}
                   technicianOptions={technicianOptions}
                   onEditJob={setEditingRow}
+                  onOptimisticFinanceChange={handleOptimisticFinanceChange}
                 />
               ))}
             </tbody>
@@ -209,12 +251,13 @@ export function FakturyInteractiveTable({
       </section>
 
       <section className="faktury-page__mobile-shell grid gap-3 lg:hidden">
-        {rows.map((row) => (
+        {displayedRows.map((row) => (
           <MobileCard
             key={row.id}
             row={row}
             technicianOptions={technicianOptions}
             onEditJob={setEditingRow}
+            onOptimisticFinanceChange={handleOptimisticFinanceChange}
           />
         ))}
       </section>
@@ -238,10 +281,12 @@ function DesktopRow({
   row,
   technicianOptions,
   onEditJob,
+  onOptimisticFinanceChange,
 }: {
   row: FakturaRow
   technicianOptions: TechnicianOption[]
   onEditJob: (row: FakturaRow) => void
+  onOptimisticFinanceChange: OptimisticFinanceChangeHandler
 }) {
   const isFinanceCompleted =
     Boolean(row.invoice_number?.trim()) &&
@@ -305,6 +350,7 @@ function DesktopRow({
           formatter={(value) => (typeof value === 'string' ? value : '')}
           title={row.client_order_number ?? '-'}
           emptyVariant="plain"
+          onOptimisticChange={onOptimisticFinanceChange}
         />
       </td>
 
@@ -329,6 +375,7 @@ function DesktopRow({
           title={row.invoice_number ?? 'Doplnit'}
           filledVariant="invoice"
           emptyVariant="action"
+          onOptimisticChange={onOptimisticFinanceChange}
         />
       </td>
 
@@ -350,6 +397,7 @@ function DesktopRow({
           }
           filledVariant="strong"
           emptyVariant="action"
+          onOptimisticChange={onOptimisticFinanceChange}
         />
       </td>
 
@@ -359,6 +407,7 @@ function DesktopRow({
           jobNumber={row.job_number}
           value={row.cost_amount}
           technicianOptions={technicianOptions}
+          onOptimisticChange={onOptimisticFinanceChange}
         />
       </td>
 
@@ -398,10 +447,12 @@ function MobileCard({
   row,
   technicianOptions,
   onEditJob,
+  onOptimisticFinanceChange,
 }: {
   row: FakturaRow
   technicianOptions: TechnicianOption[]
   onEditJob: (row: FakturaRow) => void
+  onOptimisticFinanceChange: OptimisticFinanceChangeHandler
 }) {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false)
   const isFinanceCompleted =
@@ -496,6 +547,7 @@ function MobileCard({
               title={row.invoice_number ?? 'Doplnit'}
               filledVariant="invoice"
               emptyVariant="action"
+              onOptimisticChange={onOptimisticFinanceChange}
             />
           </MobileFinanceRow>
 
@@ -518,6 +570,7 @@ function MobileCard({
               }
               filledVariant="strong"
               emptyVariant="action"
+              onOptimisticChange={onOptimisticFinanceChange}
             />
           </MobileFinanceRow>
 
@@ -528,6 +581,7 @@ function MobileCard({
               value={row.cost_amount}
               technicianOptions={technicianOptions}
               compact
+              onOptimisticChange={onOptimisticFinanceChange}
             />
           </MobileFinanceRow>
 
@@ -595,6 +649,7 @@ function FinanceEditableCell({
   title,
   filledVariant = 'default',
   emptyVariant = 'action',
+  onOptimisticChange,
 }: {
   financeId: string
   field: InlineEditableFinanceField
@@ -607,6 +662,7 @@ function FinanceEditableCell({
   title?: string
   filledVariant?: 'default' | 'invoice' | 'strong'
   emptyVariant?: 'plain' | 'action'
+  onOptimisticChange: OptimisticFinanceChangeHandler
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState(toDraftValue(value, type))
@@ -638,24 +694,39 @@ function FinanceEditableCell({
       return
     }
 
+    const optimisticValue = parseOptimisticInlineValue(normalizedDraft, type)
+
+    if (!optimisticValue.success) {
+      alert(optimisticValue.error)
+      return
+    }
+
+    setIsEditing(false)
+
     startTransition(async () => {
-      const formData = new FormData()
-      formData.set('field', field)
-      formData.set('value', normalizedDraft)
+      onOptimisticChange(financeId, field, optimisticValue.value)
 
-      const result = await updateFinanceInlineFieldAction(
-        financeId,
-        { success: false, error: null },
-        formData
-      )
+      try {
+        const formData = new FormData()
+        formData.set('field', field)
+        formData.set('value', normalizedDraft)
 
-      if (!result.success) {
-        alert(result.error ?? 'Změnu se nepodařilo uložit.')
-        cancelEditing()
-        return
+        const result = await updateFinanceInlineFieldAction(
+          financeId,
+          { success: false, error: null },
+          formData
+        )
+
+        if (!result.success) {
+          alert(result.error ?? 'Změnu se nepodařilo uložit.')
+        }
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? `Změnu se nepodařilo uložit (${error.message}).`
+            : 'Změnu se nepodařilo uložit.'
+        )
       }
-
-      setIsEditing(false)
     })
   }
 
@@ -703,6 +774,7 @@ function FinanceEditableCell({
     return (
       <button
         type="button"
+        disabled={isPending}
         onClick={() => setIsEditing(true)}
         className={`${EDITABLE_CELL_BASE_CLASS} ${
           compact ? EDITABLE_CELL_COMPACT_CLASS : ''
@@ -726,6 +798,7 @@ function FinanceEditableCell({
     return (
       <button
         type="button"
+        disabled={isPending}
         onClick={() => setIsEditing(true)}
         className={`${EDITABLE_CELL_BASE_CLASS} ${
           compact ? EDITABLE_CELL_COMPACT_CLASS : ''
@@ -762,6 +835,7 @@ function FinanceEditableCell({
   return (
     <button
       type="button"
+      disabled={isPending}
       onClick={() => setIsEditing(true)}
       className={`${EDITABLE_CELL_BASE_CLASS} ${
         compact ? EDITABLE_CELL_COMPACT_CLASS : ''
@@ -861,14 +935,17 @@ function CostAmountCell({
   value,
   technicianOptions,
   compact = false,
+  onOptimisticChange,
 }: {
   financeId: string
   jobNumber: string
   value: number | null
   technicianOptions: TechnicianOption[]
   compact?: boolean
+  onOptimisticChange: OptimisticFinanceChangeHandler
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const hasValue = typeof value === 'number'
   const title = hasValue ? formatMoney(value) : 'Doplnit náklady'
 
@@ -876,12 +953,14 @@ function CostAmountCell({
     <>
       <button
         type="button"
+        disabled={isSaving}
         onClick={() => setIsOpen(true)}
+        aria-busy={isSaving}
         className={`${EDITABLE_CELL_BASE_CLASS} ${
           compact ? EDITABLE_CELL_COMPACT_CLASS : ''
         } text-right ${
           compact ? 'text-sm' : ''
-        } ${hasValue ? 'font-semibold text-gray-700 hover:bg-black/[0.025]' : ''}`}
+        } ${hasValue ? 'font-semibold text-gray-700 hover:bg-black/[0.025]' : ''} disabled:cursor-wait`}
         title={title}
       >
         {hasValue ? (
@@ -909,6 +988,10 @@ function CostAmountCell({
           jobNumber={jobNumber}
           technicianOptions={technicianOptions}
           onClose={() => setIsOpen(false)}
+          onOptimisticCostChange={(nextValue) =>
+            onOptimisticChange(financeId, 'cost_amount', nextValue)
+          }
+          onSavingChange={setIsSaving}
         />
       ) : null}
     </>
@@ -1236,11 +1319,15 @@ function CostItemsModal({
   jobNumber,
   technicianOptions,
   onClose,
+  onOptimisticCostChange,
+  onSavingChange,
 }: {
   financeId: string
   jobNumber: string
   technicianOptions: TechnicianOption[]
   onClose: () => void
+  onOptimisticCostChange: (value: number | null) => void
+  onSavingChange: (isSaving: boolean) => void
 }) {
   const router = useRouter()
   const [rows, setRows] = useState<CostRowDraft[]>(() => createBaseDraftRows())
@@ -1449,20 +1536,45 @@ function CostItemsModal({
     }
 
     setErrorMessage(null)
+    const optimisticTotal = prepared.items.reduce(
+      (sum, item) => sum + Math.round(item.unitPrice * item.quantity),
+      0
+    )
+
+    onSavingChange(true)
 
     startTransition(async () => {
-      const result = await saveFinanceCostItemsAction(financeId, prepared.items)
+      onOptimisticCostChange(optimisticTotal)
 
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Náklady se nepodařilo uložit.')
-        return
+      try {
+        const result = await saveFinanceCostItemsAction(financeId, prepared.items)
+
+        if (!result.success) {
+          alert(result.error ?? 'Náklady se nepodařilo uložit.')
+          return
+        }
+
+        if (
+          typeof result.totalCost === 'number' &&
+          result.totalCost !== optimisticTotal
+        ) {
+          onOptimisticCostChange(result.totalCost)
+        }
+
+        clearDraftRowsStorage(financeId)
+        router.refresh()
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? `Náklady se nepodařilo uložit (${error.message}).`
+            : 'Náklady se nepodařilo uložit.'
+        )
+      } finally {
+        onSavingChange(false)
       }
-
-      clearDraftRowsStorage(financeId)
-      setSavedSnapshot(serializeDraftRows(rows))
-      router.refresh()
-      onClose()
     })
+
+    onClose()
   }
 
   function handleDeleteCosts() {
@@ -1475,19 +1587,33 @@ function CostItemsModal({
     }
 
     setErrorMessage(null)
+    onSavingChange(true)
 
     startTransition(async () => {
-      const result = await deleteFinanceCostItemsAction(financeId)
+      onOptimisticCostChange(null)
 
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Náklady se nepodařilo smazat.')
-        return
+      try {
+        const result = await deleteFinanceCostItemsAction(financeId)
+
+        if (!result.success) {
+          alert(result.error ?? 'Náklady se nepodařilo smazat.')
+          return
+        }
+
+        clearDraftRowsStorage(financeId)
+        router.refresh()
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? `Náklady se nepodařilo smazat (${error.message}).`
+            : 'Náklady se nepodařilo smazat.'
+        )
+      } finally {
+        onSavingChange(false)
       }
-
-      clearDraftRowsStorage(financeId)
-      router.refresh()
-      onClose()
     })
+
+    onClose()
   }
 
   const totalCost = getDraftRowsTotal(rows)
@@ -2662,6 +2788,57 @@ function toDraftValue(value: string | number | null, type: 'text' | 'number') {
   }
 
   return ''
+}
+
+function parseOptimisticInlineValue(
+  value: string,
+  type: 'text' | 'number'
+):
+  | {
+      success: true
+      value: string | number | null
+    }
+  | {
+      success: false
+      error: string
+    } {
+  if (type === 'text') {
+    const normalized = value.trim()
+    return {
+      success: true,
+      value: normalized || null,
+    }
+  }
+
+  const normalized = value.trim().replace(/\s+/g, '').replace(',', '.')
+
+  if (!normalized) {
+    return {
+      success: true,
+      value: null,
+    }
+  }
+
+  if (!/^-?\d+$/.test(normalized)) {
+    return {
+      success: false,
+      error: 'Zadej celé číslo ve správném formátu.',
+    }
+  }
+
+  const parsed = Number(normalized)
+
+  if (!Number.isFinite(parsed)) {
+    return {
+      success: false,
+      error: 'Zadej platnou číselnou hodnotu.',
+    }
+  }
+
+  return {
+    success: true,
+    value: parsed,
+  }
 }
 
 function formatMoney(value: number) {

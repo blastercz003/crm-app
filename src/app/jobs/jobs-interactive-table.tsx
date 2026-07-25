@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -222,6 +221,7 @@ export function JobsInteractiveTable({
                 showReadOnlyInfo={showReadOnlyInfo}
                 showEvidenceColumn={showEvidenceColumn}
                 showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
+                onJobUpdate={updateVisibleJob}
                 onEditJob={setEditingJob}
               />
             ))}
@@ -271,6 +271,7 @@ function DesktopRow({
   showReadOnlyInfo,
   showEvidenceColumn,
   showHandoverProtocolPdfColumn,
+  onJobUpdate,
   onEditJob,
 }: {
   job: JobRow
@@ -281,6 +282,7 @@ function DesktopRow({
   showReadOnlyInfo: boolean
   showEvidenceColumn: boolean
   showHandoverProtocolPdfColumn: boolean
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
   onEditJob: (job: JobRow) => void
 }) {
   return (
@@ -300,7 +302,11 @@ function DesktopRow({
 
       {showEvidenceColumn ? (
         <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
-          <EvidenceStatusButton job={job} canEdit={allowEditing} />
+          <EvidenceStatusButton
+            job={job}
+            canEdit={allowEditing}
+            onJobUpdate={onJobUpdate}
+          />
         </td>
       ) : null}
 
@@ -311,6 +317,7 @@ function DesktopRow({
         canEdit={allowEditing && isAdmin}
         clientSuggestions={clientSuggestions}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
       <EditableCell
         job={job}
@@ -319,6 +326,7 @@ function DesktopRow({
         printHidden
         canEdit={allowEditing && isAdmin}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
       <EditableCell
         job={job}
@@ -327,6 +335,7 @@ function DesktopRow({
         type="datetime"
         canEdit={allowEditing && isAdmin}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
       <EditableCell
         job={job}
@@ -335,6 +344,7 @@ function DesktopRow({
         type="datetime"
         canEdit={allowEditing && isAdmin}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
       <EditableCell
         job={job}
@@ -342,6 +352,7 @@ function DesktopRow({
         value={job.site_address}
         canEdit={allowEditing && isAdmin}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
       <EditableCell
         job={job}
@@ -350,6 +361,7 @@ function DesktopRow({
         printHidden
         canEdit={allowEditing && isAdmin}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
       <EditableCell
         job={job}
@@ -357,6 +369,7 @@ function DesktopRow({
         value={job.technician_name}
         canEdit={allowEditing}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
       <EditableCell
         job={job}
@@ -364,6 +377,7 @@ function DesktopRow({
         value={job.generator_name}
         canEdit={allowEditing}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
@@ -416,7 +430,11 @@ function DesktopRow({
       ) : null}
 
       <td className="rounded-r-2xl border border-l-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
-        <JobStatusButton job={job} canEdit={allowEditing} />
+        <JobStatusButton
+          job={job}
+          canEdit={allowEditing}
+          onJobUpdate={onJobUpdate}
+        />
       </td>
     </tr>
   )
@@ -487,7 +505,11 @@ function MobileCard({
           </p>
         </div>
 
-        <JobStatusButton job={job} canEdit={allowEditing} />
+        <JobStatusButton
+          job={job}
+          canEdit={allowEditing}
+          onJobUpdate={onJobUpdate}
+        />
       </div>
 
       <div className="mt-0 grid grid-cols-1 gap-x-2 gap-y-0 text-[12px] leading-5 text-gray-600 min-[300px]:grid-cols-[17.5ch_minmax(12ch,1fr)]">
@@ -633,6 +655,7 @@ function MobileCard({
             compact
             compactClassName="min-w-0 w-full px-2 text-[11px]"
             canEdit={allowEditing}
+            onJobUpdate={onJobUpdate}
           />
           <MobileAssignmentButton
             job={job}
@@ -809,48 +832,61 @@ function MobileAssignmentButton({
       return
     }
 
+    const finalizedTechnician = technicianChanged
+      ? finalizeTechnicianInputValue(technicianValue, technicianSuggestions)
+      : { value: originalTechnician, error: null }
+
+    if (finalizedTechnician.error) {
+      alert(finalizedTechnician.error)
+      return
+    }
+
+    const nextTechnician = finalizedTechnician.value
+    const nextGenerator = generatorValue
+    const optimisticValues: Partial<JobRow> = {}
+
+    if (technicianChanged) {
+      optimisticValues.technician_name = nextTechnician || null
+    }
+
+    if (generatorChanged) {
+      optimisticValues.generator_name = nextGenerator || null
+    }
+
     isSavingRef.current = true
     setIsSaving(true)
+    onJobUpdate(job.id, optimisticValues)
+    setIsOpen(false)
 
     startTransition(async () => {
       try {
         let hasError = false
-        let normalizedTechnicianValue: string | null = null
 
         if (technicianChanged) {
-          const finalizedTechnician = finalizeTechnicianInputValue(
-            technicianValue,
-            technicianSuggestions
-          )
+          if (nextTechnician !== originalTechnician) {
+            const technicianFormData = new FormData()
+            technicianFormData.set('field', 'technician_name')
+            technicianFormData.set('value', nextTechnician)
 
-          if (finalizedTechnician.error) {
-            alert(finalizedTechnician.error)
-            hasError = true
-          } else {
-            normalizedTechnicianValue = finalizedTechnician.value
+            const technicianResult = await updateJobInlineFieldAction(
+              job.id,
+              { success: false, error: null },
+              technicianFormData
+            )
 
-            if (normalizedTechnicianValue !== originalTechnician) {
-              const technicianFormData = new FormData()
-              technicianFormData.set('field', 'technician_name')
-              technicianFormData.set('value', normalizedTechnicianValue)
-
-              const technicianResult = await updateJobInlineFieldAction(
-                job.id,
-                { success: false, error: null },
-                technicianFormData
-              )
-
-              if (!technicianResult.success) {
-                alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
-                hasError = true
-              } else {
-                setTechnicianValue(normalizedTechnicianValue)
-                setIsTechnicianDirty(false)
-              }
+            if (!technicianResult.success) {
+              onJobUpdate(job.id, {
+                technician_name: job.technician_name,
+              })
+              alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
+              hasError = true
             } else {
-              setTechnicianValue(normalizedTechnicianValue)
+              setTechnicianValue(nextTechnician)
               setIsTechnicianDirty(false)
             }
+          } else {
+            setTechnicianValue(nextTechnician)
+            setIsTechnicianDirty(false)
           }
         }
 
@@ -866,6 +902,9 @@ function MobileAssignmentButton({
           )
 
           if (!generatorResult.success) {
+            onJobUpdate(job.id, {
+              generator_name: job.generator_name,
+            })
             alert(generatorResult.error ?? 'Agregát se nepodařilo uložit.')
             hasError = true
           } else {
@@ -874,25 +913,11 @@ function MobileAssignmentButton({
         }
 
         if (hasError) {
+          setIsOpen(true)
           return
         }
 
-        const nextValues: Partial<JobRow> = {}
-
-        if (normalizedTechnicianValue !== null) {
-          nextValues.technician_name = normalizedTechnicianValue
-        }
-
-        if (generatorChanged) {
-          nextValues.generator_name = generatorValue
-        }
-
-        if (Object.keys(nextValues).length > 0) {
-          onJobUpdate(job.id, nextValues)
-        }
-
         setSuccessMessage('Změny zakázky byly úspěšně uloženy.')
-        setIsOpen(false)
       } finally {
         isSavingRef.current = false
         setIsSaving(false)
@@ -904,6 +929,7 @@ function MobileAssignmentButton({
     <>
       <button
         type="button"
+        disabled={isSaving || isPending}
         onClick={openModal}
         className={`inline-flex h-8 items-center justify-center font-bold uppercase ${
           compact ? 'min-w-0 w-full px-2 text-[11px]' : 'min-w-[96px] px-3 text-[11px]'
@@ -997,6 +1023,7 @@ function EditableCell({
   canEdit,
   clientSuggestions = [],
   technicianSuggestions = [],
+  onJobUpdate,
 }: {
   job: JobRow
   field: InlineEditableField
@@ -1006,6 +1033,7 @@ function EditableCell({
   canEdit: boolean
   clientSuggestions?: ClientOption[]
   technicianSuggestions?: string[]
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   if (field === 'company_name') {
     return (
@@ -1015,6 +1043,7 @@ function EditableCell({
         printHidden={printHidden}
         canEdit={canEdit}
         clientSuggestions={clientSuggestions}
+        onJobUpdate={onJobUpdate}
       />
     )
   }
@@ -1027,6 +1056,7 @@ function EditableCell({
         printHidden={printHidden}
         canEdit={canEdit}
         technicianSuggestions={technicianSuggestions}
+        onJobUpdate={onJobUpdate}
       />
     )
   }
@@ -1039,6 +1069,7 @@ function EditableCell({
       type={type}
       printHidden={printHidden}
       canEdit={canEdit}
+      onJobUpdate={onJobUpdate}
     />
   )
 }
@@ -1050,6 +1081,7 @@ function EditableGenericCell({
   type = 'text',
   printHidden = false,
   canEdit,
+  onJobUpdate,
 }: {
   job: JobRow
   field: Exclude<InlineEditableField, 'company_name' | 'technician_name'>
@@ -1057,6 +1089,7 @@ function EditableGenericCell({
   type?: 'text' | 'datetime'
   printHidden?: boolean
   canEdit: boolean
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState(
@@ -1088,6 +1121,10 @@ function EditableGenericCell({
       return
     }
 
+    const optimisticValue = draftValue || null
+    onJobUpdate(job.id, { [field]: optimisticValue })
+    setIsEditing(false)
+
     startTransition(async () => {
       const formData = new FormData()
       formData.set('field', field)
@@ -1100,12 +1137,12 @@ function EditableGenericCell({
       )
 
       if (!result.success) {
+        onJobUpdate(job.id, { [field]: value })
+        setDraftValue(originalValue)
         alert(result.error ?? 'Změnu se nepodařilo uložit.')
-        cancelEditing()
+        setIsEditing(true)
         return
       }
-
-      setIsEditing(false)
     })
   }
 
@@ -1165,6 +1202,7 @@ function EditableGenericCell({
     <td className={cellClassName}>
       <button
         type="button"
+        disabled={isPending}
         onClick={() => setIsEditing(true)}
         className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title={displayValue}
@@ -1181,12 +1219,14 @@ function EditableCompanyCell({
   printHidden = false,
   canEdit,
   clientSuggestions,
+  onJobUpdate,
 }: {
   job: JobRow
   value: string | null
   printHidden?: boolean
   canEdit: boolean
   clientSuggestions: ClientOption[]
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -1313,10 +1353,26 @@ function EditableCompanyCell({
       return
     }
 
+    const previousValues: Partial<JobRow> = {
+      company_name: value ?? '',
+      client_id: job.client_id ?? null,
+      contact_person: job.contact_person,
+      client_contact_id: job.client_contact_id ?? null,
+    }
+    const nextCompanyName = companyName.trim()
+
+    onJobUpdate(job.id, {
+      company_name: nextCompanyName,
+      client_id: selectedClientId,
+      contact_person: null,
+      client_contact_id: null,
+    })
+    setIsEditing(false)
+
     startTransition(async () => {
       const formData = new FormData()
       formData.set('field', 'company_name')
-      formData.set('value', companyName.trim())
+      formData.set('value', nextCompanyName)
       formData.set('client_id', selectedClientId)
 
       const result = await updateJobInlineFieldAction(
@@ -1326,12 +1382,13 @@ function EditableCompanyCell({
       )
 
       if (!result.success) {
+        onJobUpdate(job.id, previousValues)
+        setCompanyName(value ?? '')
+        setSelectedClientId(job.client_id ?? '')
         alert(result.error ?? 'Firmu se nepodařilo uložit.')
-        cancelEditing()
+        setIsEditing(true)
         return
       }
-
-      setIsEditing(false)
     })
   }
 
@@ -1386,6 +1443,7 @@ function EditableCompanyCell({
     <td className={cellClassName}>
       <button
         type="button"
+        disabled={isPending}
         onClick={startEditing}
         className="jobs-page__company-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-900 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title={displayValue}
@@ -1402,14 +1460,15 @@ function EditableTechnicianCell({
   printHidden = false,
   canEdit,
   technicianSuggestions,
+  onJobUpdate,
 }: {
   job: JobRow
   value: string | null
   printHidden?: boolean
   canEdit: boolean
   technicianSuggestions: string[]
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
-  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [technicianValue, setTechnicianValue] = useState(value ?? '')
@@ -1442,6 +1501,10 @@ function EditableTechnicianCell({
       return
     }
 
+    onJobUpdate(job.id, { technician_name: finalizedTechnician.value || null })
+    setTechnicianValue(finalizedTechnician.value)
+    setIsEditing(false)
+
     startTransition(async () => {
       const formData = new FormData()
       formData.set('field', 'technician_name')
@@ -1454,14 +1517,12 @@ function EditableTechnicianCell({
       )
 
       if (!result.success) {
+        onJobUpdate(job.id, { technician_name: value })
+        setTechnicianValue(originalValue)
         alert(result.error ?? 'Technika se nepodařilo uložit.')
-        cancelEditing()
+        setIsEditing(true)
         return
       }
-
-      setTechnicianValue(finalizedTechnician.value)
-      setIsEditing(false)
-      router.refresh()
     })
   }
 
@@ -1521,6 +1582,7 @@ function EditableTechnicianCell({
     <td className={cellClassName}>
       <button
         type="button"
+        disabled={isPending}
         onClick={startEditing}
         className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 transition hover:bg-black/[0.025] hover:text-gray-900 print:px-0 print:py-0 print:text-[11px] print:hover:bg-transparent"
         title={displayValue}
@@ -1534,9 +1596,11 @@ function EditableTechnicianCell({
 function JobStatusButton({
   job,
   canEdit,
+  onJobUpdate,
 }: {
   job: JobRow
   canEdit: boolean
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -1562,7 +1626,15 @@ function JobStatusButton({
   ]
 
   function saveStatus(nextStatus: JobStatus) {
-    if (!canEdit) return
+    if (!canEdit || isPending || nextStatus === job.job_status) {
+      setIsOpen(false)
+      return
+    }
+
+    const previousStatus = job.job_status
+
+    onJobUpdate(job.id, { job_status: nextStatus })
+    setIsOpen(false)
 
     startTransition(async () => {
       const formData = new FormData()
@@ -1575,11 +1647,10 @@ function JobStatusButton({
       )
 
       if (!result.success) {
+        onJobUpdate(job.id, { job_status: previousStatus })
+        setIsOpen(true)
         alert(result.error ?? 'Stav zakázky se nepodařilo uložit.')
-        return
       }
-
-      setIsOpen(false)
     })
   }
 
@@ -1587,6 +1658,7 @@ function JobStatusButton({
     <>
       <button
         type="button"
+        disabled={isPending}
         onClick={() => setIsOpen(true)}
         data-status={meta.value}
         className={`jobs-page__job-status-button inline-flex h-8 ${STATUS_BUTTON_WIDTH_CLASS} max-w-full items-center justify-center rounded-xl px-3 text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] print:min-w-0 print:px-2 print:text-[10px] ${meta.className}`}
@@ -1731,11 +1803,13 @@ function EvidenceStatusButton({
   compact = false,
   compactClassName,
   canEdit,
+  onJobUpdate,
 }: {
   job: JobRow
   compact?: boolean
   compactClassName?: string
   canEdit: boolean
+  onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -1765,7 +1839,15 @@ function EvidenceStatusButton({
   }[] = [getEvidenceStatusMeta('nove'), getEvidenceStatusMeta('zapsano')]
 
   function saveEvidenceStatus(nextStatus: EvidenceStatus) {
-    if (!canEdit) return
+    if (!canEdit || isPending || nextStatus === job.evidence_status) {
+      setIsOpen(false)
+      return
+    }
+
+    const previousStatus = job.evidence_status
+
+    onJobUpdate(job.id, { evidence_status: nextStatus })
+    setIsOpen(false)
 
     startTransition(async () => {
       const formData = new FormData()
@@ -1778,11 +1860,10 @@ function EvidenceStatusButton({
       )
 
       if (!result.success) {
+        onJobUpdate(job.id, { evidence_status: previousStatus })
+        setIsOpen(true)
         alert(result.error ?? 'Stav evidence se nepodařilo uložit.')
-        return
       }
-
-      setIsOpen(false)
     })
   }
 
@@ -1790,6 +1871,7 @@ function EvidenceStatusButton({
     <>
       <button
         type="button"
+        disabled={isPending}
         onClick={() => setIsOpen(true)}
         data-status={meta.value}
         className={`inline-flex h-8 ${

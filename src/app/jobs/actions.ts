@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { createNotification } from '@/lib/notifications/createNotification'
 import { reportActionError } from '@/lib/errors/reportActionError'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
@@ -2596,48 +2597,60 @@ export async function updateJobStatusAction(
     }
   }
 
-  try {
-    await enqueueUpdatedJobChangeIfWritten({
-      supabase,
-      jobId: normalizedJobId,
-      fields: ['job_status'],
-    })
-  } catch (queueError) {
-    console.error('Nepodařilo se zapsat změnu stavu do fronty změn.', queueError)
-    await reportActionError({
-      error: queueError,
-      action: 'updateJobStatusAction',
-      section: 'jobs',
-      errorType: 'JobStatusQueueWriteError',
-      userId: user.id,
-      context: {
+  after(async () => {
+    try {
+      await enqueueUpdatedJobChangeIfWritten({
+        supabase,
         jobId: normalizedJobId,
-        jobStatus: jobStatusRaw,
-      },
-    })
-  }
+        fields: ['job_status'],
+      })
+    } catch (queueError) {
+      console.error('Nepodařilo se zapsat změnu stavu do fronty změn.', queueError)
+      await reportActionError({
+        error: queueError,
+        action: 'updateJobStatusAction',
+        section: 'jobs',
+        errorType: 'JobStatusQueueWriteError',
+        userId: user.id,
+        context: {
+          jobId: normalizedJobId,
+          jobStatus: jobStatusRaw,
+        },
+      })
+    }
 
-  try {
-    await syncJobCalendarForTechniciansSafely({
-      supabase,
-      jobId: normalizedJobId,
-      technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
-      action: 'updateJobStatusAction',
-      errorType: 'UpdateJobStatusCalendarSyncError',
-      userIdForErrorLog: user.id,
-    })
-  } catch (calendarError) {
-    console.error(
-      'Nepodařilo se synchronizovat kalendář po změně stavu zakázky.',
-      calendarError
-    )
-  }
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        supabase,
+        jobId: normalizedJobId,
+        technicianIds: await getAssignedTechnicianIdsForJob(
+          supabase,
+          normalizedJobId
+        ),
+        action: 'updateJobStatusAction',
+        errorType: 'UpdateJobStatusCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po změně stavu zakázky.',
+        calendarError
+      )
+    }
 
-  await logUserActivity({
-    action: `Změnil stav zakázky ${updatedJob?.job_number || normalizedJobId} na ${getJobStatusActivityLabel(jobStatusRaw)}`,
-    section: 'Zakázky',
-    route: '/jobs',
-    userId: user.id,
+    try {
+      await logUserActivity({
+        action: `Změnil stav zakázky ${updatedJob?.job_number || normalizedJobId} na ${getJobStatusActivityLabel(jobStatusRaw)}`,
+        section: 'Zakázky',
+        route: '/jobs',
+        userId: user.id,
+      })
+    } catch (activityError) {
+      console.error(
+        'Nepodařilo se zapsat aktivitu po změně stavu zakázky.',
+        activityError
+      )
+    }
   })
 
   revalidateAllRelatedPaths()
@@ -2918,28 +2931,40 @@ export async function updateJobEvidenceStatusAction(
     }
   }
 
-  await logUserActivity({
-    action: `Změnil stav evidence zakázky ${updatedJob?.job_number || normalizedJobId} na ${getEvidenceStatusActivityLabel(evidenceStatusRaw)}`,
-    section: 'Zakázky',
-    route: '/jobs',
-    userId: user.id,
-  })
+  after(async () => {
+    try {
+      await logUserActivity({
+        action: `Změnil stav evidence zakázky ${updatedJob?.job_number || normalizedJobId} na ${getEvidenceStatusActivityLabel(evidenceStatusRaw)}`,
+        section: 'Zakázky',
+        route: '/jobs',
+        userId: user.id,
+      })
+    } catch (activityError) {
+      console.error(
+        'Nepodařilo se zapsat aktivitu po změně evidence zakázky.',
+        activityError
+      )
+    }
 
-  try {
-    await syncJobCalendarForTechniciansSafely({
-      supabase,
-      jobId: normalizedJobId,
-      technicianIds: await getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
-      action: 'updateJobEvidenceStatusAction',
-      errorType: 'UpdateJobEvidenceCalendarSyncError',
-      userIdForErrorLog: user.id,
-    })
-  } catch (calendarError) {
-    console.error(
-      'Nepodařilo se synchronizovat kalendář po změně evidence.',
-      calendarError
-    )
-  }
+    try {
+      await syncJobCalendarForTechniciansSafely({
+        supabase,
+        jobId: normalizedJobId,
+        technicianIds: await getAssignedTechnicianIdsForJob(
+          supabase,
+          normalizedJobId
+        ),
+        action: 'updateJobEvidenceStatusAction',
+        errorType: 'UpdateJobEvidenceCalendarSyncError',
+        userIdForErrorLog: user.id,
+      })
+    } catch (calendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat kalendář po změně evidence.',
+        calendarError
+      )
+    }
+  })
 
   revalidateAllRelatedPaths()
 

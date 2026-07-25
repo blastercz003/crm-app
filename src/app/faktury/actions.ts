@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { reportActionError } from '@/lib/errors/reportActionError'
 import { syncProvizeRecordFromJobFinance } from '@/lib/provize/service'
@@ -686,6 +687,18 @@ async function syncProvizeAfterFinanceChange(params: {
   }
 }
 
+function scheduleProvizeAfterFinanceChange(
+  params: Parameters<typeof syncProvizeAfterFinanceChange>[0]
+) {
+  after(async () => {
+    try {
+      await syncProvizeAfterFinanceChange(params)
+    } catch (error) {
+      console.error('Background Provize sync after finance change failed:', error)
+    }
+  })
+}
+
 export async function getFinanceCostItemsAction(
   financeId: string
 ): Promise<LoadFinanceCostItemsActionState> {
@@ -972,7 +985,7 @@ export async function saveFinanceCostItemsAction(
     }
   }
 
-  await syncProvizeAfterFinanceChange({
+  scheduleProvizeAfterFinanceChange({
     action: 'saveFinanceCostItemsAction',
     userId: user.id,
     financeId: normalizedFinanceId,
@@ -1046,7 +1059,7 @@ export async function deleteFinanceCostItemsAction(
     }
   }
 
-  await syncProvizeAfterFinanceChange({
+  scheduleProvizeAfterFinanceChange({
     action: 'deleteFinanceCostItemsAction',
     userId: user.id,
     financeId: normalizedFinanceId,
@@ -1146,59 +1159,75 @@ export async function updateFinanceInlineFieldAction(
     }
 
     if (field === 'invoice_number') {
-      try {
-        const technicianIds = await getAssignedTechnicianIdsForJob(
-          supabase,
-          String(financeRow.job_id)
-        )
+      after(async () => {
+        try {
+          const technicianIds = await getAssignedTechnicianIdsForJob(
+            supabase,
+            String(financeRow.job_id)
+          )
 
-        if (normalizedText) {
-          await cancelJobCalendarForTechniciansSafely({
-            jobId: String(financeRow.job_id),
-            technicianIds,
-            action: 'updateFinanceInlineFieldAction',
-            errorType: 'UpdateFinanceCalendarCancelError',
-            userIdForErrorLog: user.id,
-          })
-          await cancelJobGoogleCalendarForTechniciansSafely({
-            jobId: String(financeRow.job_id),
-            technicianIds,
-            action: 'updateFinanceInlineFieldAction',
-            errorType: 'UpdateFinanceGoogleCalendarCancelError',
-            userIdForErrorLog: user.id,
-          })
-        } else {
-          await syncJobCalendarForTechniciansSafely({
-            jobId: String(financeRow.job_id),
-            technicianIds,
-            action: 'updateFinanceInlineFieldAction',
-            errorType: 'UpdateFinanceCalendarSyncError',
-            userIdForErrorLog: user.id,
-          })
-          await syncJobGoogleCalendarForTechniciansSafely({
-            jobId: String(financeRow.job_id),
-            technicianIds,
-            action: 'updateFinanceInlineFieldAction',
-            errorType: 'UpdateFinanceGoogleCalendarSyncError',
-            userIdForErrorLog: user.id,
-          })
+          if (normalizedText) {
+            await Promise.all([
+              cancelJobCalendarForTechniciansSafely({
+                jobId: String(financeRow.job_id),
+                technicianIds,
+                action: 'updateFinanceInlineFieldAction',
+                errorType: 'UpdateFinanceCalendarCancelError',
+                userIdForErrorLog: user.id,
+              }),
+              cancelJobGoogleCalendarForTechniciansSafely({
+                jobId: String(financeRow.job_id),
+                technicianIds,
+                action: 'updateFinanceInlineFieldAction',
+                errorType: 'UpdateFinanceGoogleCalendarCancelError',
+                userIdForErrorLog: user.id,
+              }),
+            ])
+          } else {
+            await Promise.all([
+              syncJobCalendarForTechniciansSafely({
+                jobId: String(financeRow.job_id),
+                technicianIds,
+                action: 'updateFinanceInlineFieldAction',
+                errorType: 'UpdateFinanceCalendarSyncError',
+                userIdForErrorLog: user.id,
+              }),
+              syncJobGoogleCalendarForTechniciansSafely({
+                jobId: String(financeRow.job_id),
+                technicianIds,
+                action: 'updateFinanceInlineFieldAction',
+                errorType: 'UpdateFinanceGoogleCalendarSyncError',
+                userIdForErrorLog: user.id,
+              }),
+            ])
+          }
+        } catch (calendarError) {
+          console.error(
+            'Nepodařilo se synchronizovat kalendář po změně čísla faktury.',
+            calendarError
+          )
+          try {
+            await reportActionError({
+              error: calendarError,
+              action: 'updateFinanceInlineFieldAction',
+              section: 'faktury',
+              errorType: 'UpdateFinanceCalendarSyncError',
+              userId: user.id,
+              context: {
+                financeId: normalizedFinanceId,
+                jobId: financeRow.job_id,
+              },
+            })
+          } catch (reportError) {
+            console.error(
+              'Nepodařilo se zapsat chybu kalendářové synchronizace.',
+              reportError
+            )
+          }
         }
-      } catch (calendarError) {
-        console.error(
-          'Nepodařilo se synchronizovat kalendář po změně čísla faktury.',
-          calendarError
-        )
-        await reportActionError({
-          error: calendarError,
-          action: 'updateFinanceInlineFieldAction',
-          section: 'faktury',
-          errorType: 'UpdateFinanceCalendarSyncError',
-          userId: user.id,
-          context: { financeId: normalizedFinanceId, jobId: financeRow.job_id },
-        })
-      }
+      })
 
-      await syncProvizeAfterFinanceChange({
+      scheduleProvizeAfterFinanceChange({
         action: 'updateFinanceInlineFieldAction',
         userId: user.id,
         financeId: normalizedFinanceId,
@@ -1241,7 +1270,7 @@ export async function updateFinanceInlineFieldAction(
     }
   }
 
-  await syncProvizeAfterFinanceChange({
+  scheduleProvizeAfterFinanceChange({
     action: 'updateFinanceInlineFieldAction',
     userId: user.id,
     financeId: normalizedFinanceId,

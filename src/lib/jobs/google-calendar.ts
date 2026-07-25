@@ -8,6 +8,8 @@ const JOB_GOOGLE_CALENDAR_UID_PREFIX = 'b-energy-zakazky-technika-google'
 const GOOGLE_OAUTH_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created'
 const GOOGLE_OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const GOOGLE_REQUEST_TIMEOUT_MS = 8_000
+const GOOGLE_REQUEST_RETRY_DELAY_MS = 250
 
 type GoogleOAuthTokenResponse = {
   access_token: string
@@ -189,12 +191,87 @@ async function readGoogleError(response: Response) {
   return text
 }
 
+function canRetryGoogleRequest(method: string) {
+  return method === 'GET' || method === 'DELETE'
+}
+
+function isRetryableGoogleStatus(status: number) {
+  return status === 429 || status >= 500
+}
+
+async function fetchGoogle(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const method = String(options.method ?? 'GET').toUpperCase()
+  const maxAttempts = canRetryGoogleRequest(method) ? 2 : 1
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController()
+    const parentSignal = options.signal
+    const abortFromParent = () => controller.abort(parentSignal?.reason)
+    const timeoutId = setTimeout(
+      () => controller.abort(new Error('Google API request timeout')),
+      GOOGLE_REQUEST_TIMEOUT_MS
+    )
+
+    if (parentSignal) {
+      if (parentSignal.aborted) {
+        abortFromParent()
+      } else {
+        parentSignal.addEventListener('abort', abortFromParent, { once: true })
+      }
+    }
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      })
+
+      if (
+        attempt < maxAttempts &&
+        isRetryableGoogleStatus(response.status)
+      ) {
+        await response.body?.cancel()
+        await new Promise((resolve) =>
+          setTimeout(resolve, GOOGLE_REQUEST_RETRY_DELAY_MS)
+        )
+        continue
+      }
+
+      return response
+    } catch (error) {
+      if (attempt < maxAttempts && !parentSignal?.aborted) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, GOOGLE_REQUEST_RETRY_DELAY_MS)
+        )
+        continue
+      }
+
+      if (controller.signal.aborted && !parentSignal?.aborted) {
+        throw new Error(
+          `Google API neodpovědělo do ${GOOGLE_REQUEST_TIMEOUT_MS / 1000} sekund.`,
+          { cause: error }
+        )
+      }
+
+      throw error
+    } finally {
+      clearTimeout(timeoutId)
+      parentSignal?.removeEventListener('abort', abortFromParent)
+    }
+  }
+
+  throw new Error('Google API požadavek se nepodařilo dokončit.')
+}
+
 async function fetchGoogleJson<T>(
   url: string,
   options: RequestInit,
   accessToken: string
 ) {
-  const response = await fetch(url, {
+  const response = await fetchGoogle(url, {
     ...options,
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -225,7 +302,7 @@ async function exchangeGoogleAuthorizationCode(
     throw new Error('Chybí Google OAuth konfigurace.')
   }
 
-  const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+  const response = await fetchGoogle(GOOGLE_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -254,7 +331,7 @@ async function refreshGoogleAccessToken(refreshToken: string) {
     throw new Error('Chybí Google OAuth konfigurace.')
   }
 
-  const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+  const response = await fetchGoogle(GOOGLE_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -281,18 +358,21 @@ async function refreshGoogleAccessToken(refreshToken: string) {
 }
 
 async function createGoogleCalendar(accessToken: string) {
-  const response = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      summary: JOB_GOOGLE_CALENDAR_NAME,
-      timeZone: JOB_GOOGLE_CALENDAR_TIME_ZONE,
-      description: 'Kalendář zakázek technika B-ENERGY.',
-    }),
-  })
+  const response = await fetchGoogle(
+    'https://www.googleapis.com/calendar/v3/calendars',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        summary: JOB_GOOGLE_CALENDAR_NAME,
+        timeZone: JOB_GOOGLE_CALENDAR_TIME_ZONE,
+        description: 'Kalendář zakázek technika B-ENERGY.',
+      }),
+    }
+  )
 
   if (!response.ok) {
     throw new Error(await readGoogleError(response))
@@ -319,7 +399,7 @@ async function ensureGoogleCalendarId({
   accessToken: string
 }) {
   if (integration.calendar_id) {
-    const response = await fetch(
+    const response = await fetchGoogle(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
         integration.calendar_id
       )}`,
@@ -429,7 +509,7 @@ async function fetchGoogleEventById(
   eventId: string,
   accessToken: string
 ) {
-  const response = await fetch(
+  const response = await fetchGoogle(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       calendarId
     )}/events/${encodeURIComponent(eventId)}`,
@@ -504,7 +584,7 @@ async function deleteGoogleEvent({
   eventId: string
   accessToken: string
 }) {
-  const response = await fetch(
+  const response = await fetchGoogle(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       calendarId
     )}/events/${encodeURIComponent(eventId)}?sendUpdates=none`,
@@ -526,7 +606,7 @@ async function deleteGoogleEvent({
 }
 
 async function deleteGoogleCalendar(calendarId: string, accessToken: string) {
-  const response = await fetch(
+  const response = await fetchGoogle(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`,
     {
       method: 'DELETE',
@@ -841,7 +921,7 @@ export async function completeJobGoogleCalendarOAuth(params: {
   let calendarId = existingIntegration?.calendar_id ?? null
 
   if (calendarId) {
-    const response = await fetch(
+    const response = await fetchGoogle(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`,
       {
         headers: {
