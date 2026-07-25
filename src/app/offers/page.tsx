@@ -739,14 +739,15 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
             </section>
 
             <section className="offers-page__table-shell hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block">
-              <div className="max-h-[70vh] overflow-auto">
-                <div
-                  className="offers-page__table-head sticky top-0 z-20 grid min-w-[1320px] bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(245,249,253,0.95)_100%)] pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 shadow-[0_1px_0_0_#e5e7eb]"
-                  style={{
-                    gridTemplateColumns:
-                      '11% 9% 14% 4% 8% 17% 11% 10% 16%',
-                  }}
-                >
+              <div className="overflow-x-auto">
+                <div className="min-w-[1320px]">
+                  <div
+                    className="offers-page__table-head grid bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(245,249,253,0.95)_100%)] pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 shadow-[0_1px_0_0_#e5e7eb]"
+                    style={{
+                      gridTemplateColumns:
+                        '11% 9% 14% 4% 8% 17% 11% 10% 16%',
+                    }}
+                  >
                   <div className="px-2 py-2">Nabídka</div>
                   <div className="px-2 py-2">Typ</div>
                   <div className="px-2 py-2">Klient</div>
@@ -756,9 +757,9 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   <div className="px-2 py-2 text-right">Cena bez DPH</div>
                   <div className="px-2 py-2 text-center">Stav</div>
                   <div className="px-2 py-2 text-center">Akce</div>
-                </div>
+                  </div>
 
-                <div className="offers-page__table-body grid min-w-[1320px] gap-2 pt-2">
+                  <div className="offers-page__table-body grid max-h-[calc(90vh-42px)] gap-2 overflow-y-auto pt-2">
                   {sortedOffers.map((offer) => {
                     const client = clientById.get(offer.client_id)
                     const author = profileById.get(offer.created_by)
@@ -841,6 +842,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       </div>
                     )
                   })}
+                  </div>
                 </div>
               </div>
             </section>

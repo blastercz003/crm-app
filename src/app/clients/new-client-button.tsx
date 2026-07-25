@@ -29,6 +29,10 @@ const initialCreateState: CreateClientActionState = {
 
 const glassInputClass =
   'clients-modal__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+const clientFormPanelClass =
+  'clients-form__panel rounded-[22px] border p-3.5 sm:p-4'
+const clientFormPanelTitleClass =
+  'clients-form__panel-title mb-3 text-[11px] font-semibold uppercase tracking-[0.18em]'
 
 export function NewClientButton({
   className,
@@ -132,7 +136,7 @@ export function CreateClientModal({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
-          className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
+          className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100dvh-2rem)] sm:max-h-[760px] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
         >
           <div
             aria-hidden="true"
@@ -167,8 +171,11 @@ export function CreateClientModal({
             <PendingFormLock message="Ukládám klienta, čekej prosím..." />
             <PendingFieldset className="flex min-h-0 flex-1 flex-col">
             <div className="clients-modal__body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch] sm:px-5 sm:py-4">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
+              <div className="space-y-4">
+                <section className={clientFormPanelClass}>
+                  <h3 className={clientFormPanelTitleClass}>Firma</h3>
+                  <div className="grid gap-3 sm:grid-cols-6">
+                <div className="space-y-2 sm:col-span-6">
                   <label
                     htmlFor="name"
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -185,7 +192,7 @@ export function CreateClientModal({
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2">
                   <label
                     htmlFor="ico"
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -201,7 +208,7 @@ export function CreateClientModal({
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-4">
                   <label
                     htmlFor="address"
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -216,8 +223,13 @@ export function CreateClientModal({
                     className={glassInputClass}
                   />
                 </div>
+                  </div>
+                </section>
 
-                <div className="space-y-2 sm:col-start-1">
+                <section className={clientFormPanelClass}>
+                  <h3 className={clientFormPanelTitleClass}>Hlavní kontakt</h3>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-2">
                   <label
                     htmlFor="contact_person"
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -232,8 +244,6 @@ export function CreateClientModal({
                     className={glassInputClass}
                   />
                 </div>
-
-                <div aria-hidden="true" className="hidden sm:block" />
 
                 <div className="space-y-2">
                   <label
@@ -266,8 +276,12 @@ export function CreateClientModal({
                     className={glassInputClass}
                   />
                 </div>
+                  </div>
+                </section>
 
-                <div className="space-y-2 sm:col-span-2">
+                <section className={clientFormPanelClass}>
+                  <h3 className={clientFormPanelTitleClass}>Poznámka</h3>
+                <div className="space-y-2">
                   <label
                     htmlFor="note"
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -277,11 +291,12 @@ export function CreateClientModal({
                   <textarea
                     id="note"
                     name="note"
-                    rows={5}
+                    rows={4}
                     placeholder="Doplňující informace o klientovi, preferencích nebo spolupráci."
-                    className={glassInputClass}
+                    className={`${glassInputClass} min-h-[130px] resize-y sm:min-h-[140px]`}
                   />
                 </div>
+                </section>
               </div>
 
               {state.error ? (

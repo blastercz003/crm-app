@@ -65,6 +65,10 @@ const selectArrowStyle = {
 } as const
 
 const labelClassName = 'clients-modal__label task-form__label mb-2 block text-sm font-medium text-gray-700'
+const modalPanelClass =
+  'task-form__panel rounded-[22px] border p-3.5 sm:p-4'
+const modalPanelTitleClass =
+  'task-form__panel-title mb-3 text-[11px] font-semibold uppercase tracking-[0.18em]'
 
 function normalizeSearchText(value: string) {
   return value
@@ -235,6 +239,24 @@ export default function TaskForm({
       ? 'UKLÁDÁM...'
       : 'Ukládám...'
 
+  const taskNoteField = (
+    <div className={modalMode ? '' : 'md:col-span-2'}>
+      <label htmlFor="note" className={labelClassName}>
+        Zadání úkolu
+      </label>
+      <textarea
+        id="note"
+        name="note"
+        rows={modalMode ? 4 : 6}
+        defaultValue={initialValues?.note ?? ''}
+        className={`${inputClassName} resize-y ${
+          modalMode ? 'min-h-[140px] sm:min-h-[150px]' : 'min-h-[220px]'
+        }`}
+        placeholder="Popište zadání úkolu"
+      />
+    </div>
+  )
+
   return (
     <form action={action} className={modalMode ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
       <PendingFormLock />
@@ -245,7 +267,12 @@ export default function TaskForm({
         <input type="hidden" name="client_id" value={selectedClientId} />
         <input type="hidden" name="client_contact_id" value={selectedContactId} />
         <div className={modalMode ? 'min-h-0 flex-1 overflow-y-auto pb-4' : ''}>
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={modalMode ? 'space-y-4' : 'grid gap-5 md:grid-cols-2'}>
+        <section className={modalMode ? modalPanelClass : 'contents'}>
+          {modalMode ? (
+            <h3 className={modalPanelTitleClass}>Zadání úkolu</h3>
+          ) : null}
+          <div className={modalMode ? 'space-y-3' : 'contents'}>
         <div className="md:col-span-2">
           <label htmlFor="title" className={labelClassName}>
             Název úkolu
@@ -260,7 +287,15 @@ export default function TaskForm({
             placeholder="Např. Zavolat klientovi kvůli termínu schůzky"
           />
         </div>
+          {modalMode ? taskNoteField : null}
+          </div>
+        </section>
 
+        <section className={modalMode ? modalPanelClass : 'contents'}>
+          {modalMode ? (
+            <h3 className={modalPanelTitleClass}>Klient a odpovědnost</h3>
+          ) : null}
+          <div className={modalMode ? 'grid gap-3 md:grid-cols-2' : 'contents'}>
         <div className="md:col-span-2">
           <label htmlFor="company_name" className={labelClassName}>
             Firma
@@ -285,7 +320,7 @@ export default function TaskForm({
             }`}
           />
 
-          <div className="task-form__company-status mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
+          <div className={`task-form__company-status mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] ${modalMode ? 'px-3 py-2.5' : 'px-4 py-3'}`}>
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
               Napojení na klienta
             </div>
@@ -363,7 +398,14 @@ export default function TaskForm({
             ))}
           </select>
         </div>
+          </div>
+        </section>
 
+        <section className={modalMode ? modalPanelClass : 'contents'}>
+          {modalMode ? (
+            <h3 className={modalPanelTitleClass}>Termín a režim</h3>
+          ) : null}
+          <div className={modalMode ? 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4' : 'contents'}>
         <div className="min-w-0">
           <label htmlFor="due_date" className={labelClassName}>
             Termín
@@ -431,20 +473,10 @@ export default function TaskForm({
             Opakování vyžaduje termín. Po dokončení se automaticky vytvoří další výskyt.
           </p>
         </div>
+          </div>
+        </section>
 
-        <div className="md:col-span-2">
-          <label htmlFor="note" className={labelClassName}>
-            Zadání úkolu
-          </label>
-          <textarea
-            id="note"
-            name="note"
-            rows={6}
-            defaultValue={initialValues?.note ?? ''}
-            className={`${inputClassName} min-h-[220px] resize-y`}
-            placeholder="Popište zadání úkolu"
-          />
-        </div>
+        {!modalMode ? taskNoteField : null}
         </div>
 
         {error ? (

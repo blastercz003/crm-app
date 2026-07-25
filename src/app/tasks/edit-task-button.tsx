@@ -161,7 +161,7 @@ function EditTaskModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="clients-modal__shell tasks-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
+        <div className="clients-modal__shell tasks-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
           <span
             aria-hidden
             className="clients-modal__shell-frame tasks-modal__shell-frame pointer-events-none absolute inset-0 rounded-3xl border border-white/65"
@@ -179,10 +179,6 @@ function EditTaskModal({
               <h2 className="clients-modal__title tasks-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
                 Upravit úkol
               </h2>
-              <p className="clients-modal__subtitle mt-1 text-sm text-gray-500">
-                Změň stav, prioritu, termín, poznámku, přiřazeného uživatele i
-                vazbu na klienta.
-              </p>
             </div>
 
             <button
@@ -195,7 +191,7 @@ function EditTaskModal({
             </button>
           </div>
 
-          <div className="clients-modal__body tasks-modal__body min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+          <div className="clients-modal__body tasks-modal__body min-h-0 flex flex-1 flex-col px-4 py-3 sm:px-5 sm:py-4">
             <TaskForm
               action={formAction}
               users={users}
@@ -206,6 +202,7 @@ function EditTaskModal({
               cancelLabel="ZRUŠIT"
               initialValues={task}
               error={state.error}
+              modalMode
               extraActions={
                 <button
                   type="submit"

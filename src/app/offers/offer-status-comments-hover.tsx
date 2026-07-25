@@ -144,12 +144,12 @@ export function OfferStatusCommentsHover({
         ? createPortal(
             <>
               <div
-                className="fixed inset-0 z-[90] bg-zinc-900/10 backdrop-blur-[2px]"
+                className="dashboard-offers-module__modal-overlay fixed inset-0 z-[90] bg-zinc-900/10 backdrop-blur-[2px]"
                 onClick={() => setIsModalOpen(false)}
               />
 
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <div className="w-full max-w-[680px] rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
+                <div className="dashboard-offers-module__modal w-full max-w-[680px] rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
                   <CommentsDetailModalContent
                     offerNumber={offerNumber}
                     comments={comments}
@@ -184,17 +184,17 @@ function CommentsDetailModalContent({
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <div className="dashboard-offers-module__modal-eyebrow text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
             KOMENTÁŘE NABÍDKY
           </div>
-          <div className="mt-1 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)]">
+          <div className="dashboard-offers-module__offer-pill mt-1 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)]">
             {offerNumber}
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+          className="dashboard-offers-module__modal-close inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
           aria-label="Zavřít detail komentářů"
         >
           X
@@ -202,15 +202,15 @@ function CommentsDetailModalContent({
       </div>
 
       {isLoading ? (
-        <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+        <div className="dashboard-offers-module__modal-empty rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
           Nacitam komentare...
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(254,242,242,0.84)_100%)] px-4 py-8 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_30px_rgba(185,28,28,0.14)]">
+        <div className="dashboard-offers-module__modal-error rounded-2xl border border-red-200/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(254,242,242,0.84)_100%)] px-4 py-8 text-sm text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_30px_rgba(185,28,28,0.14)]">
           {error}
         </div>
       ) : comments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+        <div className="dashboard-offers-module__modal-empty rounded-2xl border border-dashed border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
           Tato nabidka zatim nema zadne komentare.
         </div>
       ) : (
@@ -218,17 +218,17 @@ function CommentsDetailModalContent({
           {comments.map((comment) => (
             <div
               key={comment.id}
-              className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+              className="dashboard-offers-module__comment-item rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                <div className="dashboard-offers-module__comment-author text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                   {comment.authorName ?? 'Neznamy uzivatel'}
                 </div>
-                <div className="shrink-0 text-[11px] text-zinc-500">
+                <div className="dashboard-offers-module__comment-meta shrink-0 text-[11px] text-zinc-500">
                   {formatDateTime(comment.createdAt)}
                 </div>
               </div>
-              <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-800">
+              <div className="dashboard-offers-module__comment-body mt-1 whitespace-pre-wrap text-sm text-zinc-800">
                 {comment.note}
               </div>
             </div>
@@ -240,7 +240,7 @@ function CommentsDetailModalContent({
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
+          className="dashboard-offers-module__modal-button dashboard-offers-module__modal-button--close inline-flex h-10 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px]"
         >
           ZAVŘÍT
         </button>

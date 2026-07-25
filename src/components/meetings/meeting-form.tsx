@@ -58,6 +58,10 @@ const glassFieldBaseClass =
 
 const glassFieldClass = glassFieldBaseClass
 const glassSelectClass = `${glassFieldBaseClass} h-[46px] appearance-none bg-no-repeat py-0 pr-10`
+const modalPanelClass =
+  'meetings-form__panel rounded-[22px] border p-3.5 sm:p-4'
+const modalPanelTitleClass =
+  'meetings-form__panel-title mb-3 text-[11px] font-semibold uppercase tracking-[0.18em]'
 function formatDateTimeLocalInput(value?: string | null) {
   if (!value) return ''
 
@@ -281,8 +285,13 @@ export function MeetingForm({
         <input type="hidden" name="client_contact_id" value={selectedContactId} />
 
         <div className={modalMode ? 'min-h-0 flex-1 overflow-y-auto pb-4' : ''}>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="meetings-form__field space-y-2 sm:col-span-2">
+          <div className={modalMode ? 'space-y-4' : 'grid gap-5 sm:grid-cols-2'}>
+            <section className={modalMode ? modalPanelClass : 'contents'}>
+              {modalMode ? (
+                <h3 className={modalPanelTitleClass}>Klient a kontakt</h3>
+              ) : null}
+              <div className={modalMode ? 'grid gap-3 sm:grid-cols-6' : 'contents'}>
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-6' : 'sm:col-span-2'}`}>
           <label
             htmlFor="company_name"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -309,7 +318,7 @@ export function MeetingForm({
             }`}
           />
 
-          <div className="meetings-form__info mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]">
+          <div className={`meetings-form__info mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] ${modalMode ? 'px-3 py-2.5' : 'px-4 py-3'}`}>
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
               Napojení na klienta
             </div>
@@ -327,7 +336,7 @@ export function MeetingForm({
           ) : null}
         </div>
 
-            <div className="meetings-form__field space-y-2">
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-2' : ''}`}>
           <label
             htmlFor="contact_person"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -366,7 +375,7 @@ export function MeetingForm({
           )}
         </div>
 
-            <div className="meetings-form__field space-y-2">
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-2' : ''}`}>
           <label
             htmlFor="contact_phone"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -385,7 +394,7 @@ export function MeetingForm({
           />
         </div>
 
-            <div className="meetings-form__field space-y-2">
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-2' : ''}`}>
           <label
             htmlFor="contact_email"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -404,7 +413,7 @@ export function MeetingForm({
           />
         </div>
 
-            <div className="meetings-form__field space-y-2 sm:col-span-2">
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-6' : 'sm:col-span-2'}`}>
           <label
             htmlFor="address"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -421,8 +430,15 @@ export function MeetingForm({
             className={glassFieldClass}
           />
         </div>
+              </div>
+            </section>
 
-            <div className="meetings-form__field space-y-2 sm:col-span-2">
+            <section className={modalMode ? modalPanelClass : 'contents'}>
+              {modalMode ? (
+                <h3 className={modalPanelTitleClass}>Schůzka</h3>
+              ) : null}
+              <div className={modalMode ? 'grid gap-3 sm:grid-cols-6' : 'contents'}>
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-6' : 'sm:col-span-2'}`}>
           <label htmlFor="title" className="meetings-form__label text-sm font-medium text-gray-900">
             Název schůzky
           </label>
@@ -437,7 +453,7 @@ export function MeetingForm({
           />
         </div>
 
-            <div className="meetings-form__field min-w-0 space-y-2">
+            <div className={`meetings-form__field min-w-0 space-y-2 ${modalMode ? 'sm:col-span-4' : ''}`}>
           <label
             htmlFor="meeting_datetime"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -456,7 +472,7 @@ export function MeetingForm({
           />
         </div>
 
-        <div className="meetings-form__field min-w-0 space-y-2">
+        <div className={`meetings-form__field min-w-0 space-y-2 ${modalMode ? 'sm:col-span-2' : ''}`}>
           <label htmlFor="status" className="meetings-form__label text-sm font-medium text-gray-900">
             Stav
           </label>
@@ -471,7 +487,7 @@ export function MeetingForm({
           </select>
         </div>
 
-            <div className="meetings-form__field space-y-2 sm:col-span-2">
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-3' : 'sm:col-span-2'}`}>
           <label
             htmlFor="pre_meeting_note"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -481,13 +497,13 @@ export function MeetingForm({
           <textarea
             id="pre_meeting_note"
             name="pre_meeting_note"
-            rows={4}
+            rows={modalMode ? 3 : 4}
             defaultValue={initialValues?.pre_meeting_note ?? ''}
             className={glassFieldClass}
           />
         </div>
 
-            <div className="meetings-form__field space-y-2 sm:col-span-2">
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-3' : 'sm:col-span-2'}`}>
           <label
             htmlFor="result_note"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -497,13 +513,20 @@ export function MeetingForm({
           <textarea
             id="result_note"
             name="result_note"
-            rows={4}
+            rows={modalMode ? 3 : 4}
             defaultValue={initialValues?.result_note ?? ''}
             className={glassFieldClass}
           />
         </div>
+              </div>
+            </section>
 
-            <div className="meetings-form__field space-y-2 sm:col-span-2">
+            <section className={modalMode ? modalPanelClass : 'contents'}>
+              {modalMode ? (
+                <h3 className={modalPanelTitleClass}>Navazující úkol</h3>
+              ) : null}
+              <div className={modalMode ? 'grid gap-3 sm:grid-cols-6' : 'contents'}>
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-6' : 'sm:col-span-2'}`}>
           <label
             htmlFor="follow_up_task"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -520,7 +543,7 @@ export function MeetingForm({
           />
         </div>
 
-        <div className="meetings-form__field space-y-2 sm:col-span-2">
+        <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-6' : 'sm:col-span-2'}`}>
           <label
             htmlFor="follow_up_task_note"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -530,14 +553,14 @@ export function MeetingForm({
           <textarea
             id="follow_up_task_note"
             name="follow_up_task_note"
-            rows={4}
+            rows={modalMode ? 3 : 4}
             defaultValue={initialValues?.follow_up_task_note ?? ''}
             placeholder="Doplňující informace, které se mají propsat do poznámky úkolu"
             className={glassFieldClass}
           />
         </div>
 
-            <div className="meetings-form__field space-y-2">
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-3' : ''}`}>
           <label
             htmlFor="follow_up_task_due_date"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -554,7 +577,7 @@ export function MeetingForm({
           />
         </div>
 
-        <div className="meetings-form__field space-y-2">
+        <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-3' : ''}`}>
           <label
             htmlFor="follow_up_task_priority"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -572,6 +595,8 @@ export function MeetingForm({
             <option value="high">{getPriorityLabel('high')}</option>
           </select>
         </div>
+              </div>
+            </section>
           </div>
 
         {error ? (
@@ -587,7 +612,6 @@ export function MeetingForm({
           onCancel={onCancel}
           cancelHref={cancelHref}
           cancelLabel={cancelLabel}
-          modalMode={modalMode}
         />
       </PendingFieldset>
     </form>
@@ -648,14 +672,12 @@ function MeetingFormActions({
   onCancel,
   cancelHref,
   cancelLabel,
-  modalMode = false,
 }: {
   submitLabel: string
   pendingSubmitLabel: string
   onCancel?: () => void
   cancelHref?: string
   cancelLabel: string
-  modalMode?: boolean
 }) {
   const { pending } = useFormStatus()
 

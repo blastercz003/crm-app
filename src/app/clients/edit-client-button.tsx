@@ -33,6 +33,10 @@ const initialUpdateState: UpdateClientActionState = {
 
 const glassInputClass =
   'clients-modal__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+const clientFormPanelClass =
+  'clients-form__panel rounded-[22px] border p-3.5 sm:p-4'
+const clientFormPanelTitleClass =
+  'clients-form__panel-title mb-3 text-[11px] font-semibold uppercase tracking-[0.18em]'
 
 export function EditClientButton({
   client,
@@ -119,7 +123,7 @@ export function EditClientModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="clients-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100dvh-2rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
+        <div className="clients-modal__shell relative flex h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100dvh-2rem)] sm:max-h-[760px] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
           <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
@@ -141,8 +145,11 @@ export function EditClientModal({
             <input type="hidden" name="id" value={client.id} />
 
             <div className="clients-modal__body min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
+              <div className="space-y-4">
+                <section className={clientFormPanelClass}>
+                  <h3 className={clientFormPanelTitleClass}>Firma</h3>
+                  <div className="grid gap-3 sm:grid-cols-6">
+                <div className="space-y-2 sm:col-span-6">
                   <label
                     htmlFor={`edit-name-${client.id}`}
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -160,7 +167,7 @@ export function EditClientModal({
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2">
                   <label
                     htmlFor={`edit-ico-${client.id}`}
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -177,6 +184,28 @@ export function EditClientModal({
                   />
                 </div>
 
+                <div className="space-y-2 sm:col-span-4">
+                  <label
+                    htmlFor={`edit-address-${client.id}`}
+                    className="clients-modal__label text-sm font-medium text-gray-900"
+                  >
+                    Adresa
+                  </label>
+                  <input
+                    id={`edit-address-${client.id}`}
+                    name="address"
+                    type="text"
+                    defaultValue={client.address ?? ''}
+                    placeholder="Např. Ulice 123, 110 00 Praha"
+                    className={glassInputClass}
+                  />
+                </div>
+                  </div>
+                </section>
+
+                <section className={clientFormPanelClass}>
+                  <h3 className={clientFormPanelTitleClass}>Hlavní kontakt</h3>
+                  <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-2">
                   <label
                     htmlFor={`edit-contact-person-${client.id}`}
@@ -228,24 +257,12 @@ export function EditClientModal({
                   />
                 </div>
 
-                <div className="space-y-2 sm:col-span-2">
-                  <label
-                    htmlFor={`edit-address-${client.id}`}
-                    className="clients-modal__label text-sm font-medium text-gray-900"
-                  >
-                    Adresa
-                  </label>
-                  <input
-                    id={`edit-address-${client.id}`}
-                    name="address"
-                    type="text"
-                    defaultValue={client.address ?? ''}
-                    placeholder="Např. Ulice 123, 110 00 Praha"
-                    className={glassInputClass}
-                  />
-                </div>
+                  </div>
+                </section>
 
-                <div className="space-y-2 sm:col-span-2">
+                <section className={clientFormPanelClass}>
+                  <h3 className={clientFormPanelTitleClass}>Poznámka</h3>
+                <div className="space-y-2">
                   <label
                     htmlFor={`edit-note-${client.id}`}
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -255,12 +272,13 @@ export function EditClientModal({
                   <textarea
                     id={`edit-note-${client.id}`}
                     name="note"
-                    rows={5}
+                    rows={4}
                     defaultValue={client.note ?? ''}
                     placeholder="Doplňující informace o klientovi, preferencích nebo spolupráci."
-                    className={glassInputClass}
+                    className={`${glassInputClass} min-h-[130px] resize-y sm:min-h-[140px]`}
                   />
                 </div>
+                </section>
               </div>
 
               {state.error ? (
@@ -270,12 +288,12 @@ export function EditClientModal({
               ) : null}
             </div>
 
-            <div className="clients-modal__footer flex shrink-0 flex-col gap-3 border-t border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+            <div className="clients-modal__footer flex shrink-0 flex-col gap-2.5 border-t border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-4">
               {canDeleteClient ? (
                 <button
                   type="submit"
                   formAction={deleteClientRecord}
-                  className="clients-modal__delete inline-flex items-center justify-center rounded-2xl border border-red-300 bg-[linear-gradient(155deg,rgba(239,68,68,0.95)_0%,rgba(220,38,38,0.98)_55%,rgba(185,28,28,1)_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_14px_28px_rgba(185,28,28,0.24)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_18px_32px_rgba(185,28,28,0.3)]"
+                  className="clients-modal__delete order-2 inline-flex items-center justify-center rounded-2xl border border-red-300 bg-[linear-gradient(155deg,rgba(239,68,68,0.95)_0%,rgba(220,38,38,0.98)_55%,rgba(185,28,28,1)_100%)] px-4 py-2 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_24px_rgba(185,28,28,0.2)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_16px_28px_rgba(185,28,28,0.26)] sm:order-1 sm:py-2.5 sm:text-sm"
                 >
                   SMAZAT KLIENTA
                 </button>
@@ -283,7 +301,7 @@ export function EditClientModal({
                 <div className="hidden sm:block" />
               )}
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="order-1 grid grid-cols-2 gap-2.5 sm:order-2 sm:flex sm:gap-3 sm:justify-end">
                 <button
                   type="button"
                   onClick={onClose}
