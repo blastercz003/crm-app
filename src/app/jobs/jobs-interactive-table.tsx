@@ -804,7 +804,17 @@ function MobileAssignmentButton({
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isSaving, setIsSaving] = useState(false)
+  const [isFeedbackPending, setIsFeedbackPending] = useState(false)
   const isSavingRef = useRef(false)
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current)
+      }
+    }
+  }, [])
 
   function openModal() {
     setTechnicianValue(job.technician_name ?? '')
@@ -855,8 +865,27 @@ function MobileAssignmentButton({
 
     isSavingRef.current = true
     setIsSaving(true)
+    setIsFeedbackPending(true)
     onJobUpdate(job.id, optimisticValues)
-    setIsOpen(false)
+
+    feedbackTimerRef.current = setTimeout(() => {
+      feedbackTimerRef.current = null
+      setIsFeedbackPending(false)
+      setIsOpen(false)
+      setSuccessMessage('Změny zakázky byly úspěšně uloženy.')
+    }, 500)
+
+    const showSaveError = (message: string) => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current)
+        feedbackTimerRef.current = null
+      }
+
+      setIsFeedbackPending(false)
+      setSuccessMessage(null)
+      setIsOpen(true)
+      alert(message)
+    }
 
     startTransition(async () => {
       try {
@@ -878,7 +907,9 @@ function MobileAssignmentButton({
               onJobUpdate(job.id, {
                 technician_name: job.technician_name,
               })
-              alert(technicianResult.error ?? 'Technika se nepodařilo uložit.')
+              showSaveError(
+                technicianResult.error ?? 'Technika se nepodařilo uložit.'
+              )
               hasError = true
             } else {
               setTechnicianValue(nextTechnician)
@@ -905,7 +936,9 @@ function MobileAssignmentButton({
             onJobUpdate(job.id, {
               generator_name: job.generator_name,
             })
-            alert(generatorResult.error ?? 'Agregát se nepodařilo uložit.')
+            showSaveError(
+              generatorResult.error ?? 'Agregát se nepodařilo uložit.'
+            )
             hasError = true
           } else {
             setIsGeneratorDirty(false)
@@ -913,11 +946,15 @@ function MobileAssignmentButton({
         }
 
         if (hasError) {
+          if (feedbackTimerRef.current) {
+            clearTimeout(feedbackTimerRef.current)
+            feedbackTimerRef.current = null
+          }
+          setIsFeedbackPending(false)
+          setSuccessMessage(null)
           setIsOpen(true)
           return
         }
-
-        setSuccessMessage('Změny zakázky byly úspěšně uloženy.')
       } finally {
         isSavingRef.current = false
         setIsSaving(false)
@@ -943,7 +980,11 @@ function MobileAssignmentButton({
           title="UPRAVIT ZAKÁZKU"
           description={`ZAKÁZKA ${job.job_number.toUpperCase()}`}
           descriptionAsBadge
-          onClose={() => setIsOpen(false)}
+          onClose={() => {
+            if (!isFeedbackPending) {
+              setIsOpen(false)
+            }
+          }}
         >
           <div className="space-y-3">
             <label className="block">
@@ -958,7 +999,7 @@ function MobileAssignmentButton({
                   setTechnicianValue(nextValue)
                   setIsTechnicianDirty(nextValue !== (job.technician_name ?? ''))
                 }}
-                disabled={isPending || !canEdit}
+                disabled={isPending || isFeedbackPending || !canEdit}
                 className="h-11 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:bg-gray-50"
               />
             </label>
@@ -970,7 +1011,7 @@ function MobileAssignmentButton({
               <input
                 type="text"
                 value={generatorValue}
-                disabled={isPending || !canEdit}
+                disabled={isPending || isFeedbackPending || !canEdit}
                 onChange={(event) => {
                   const nextValue = event.target.value
                   setGeneratorValue(nextValue)
@@ -984,6 +1025,7 @@ function MobileAssignmentButton({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
+                disabled={isFeedbackPending}
                 className={`inline-flex h-10 items-center justify-center px-4 text-sm font-medium uppercase tracking-[0.04em] ${GLASS_SECONDARY_BUTTON_CLASS}`}
               >
                 ZRUŠIT
@@ -993,10 +1035,12 @@ function MobileAssignmentButton({
                 <button
                   type="button"
                   onClick={saveAssignments}
-                  disabled={isPending || isSaving}
+                  disabled={isPending || isSaving || isFeedbackPending}
                   className="jobs-page__mobile-modal-submit inline-flex h-10 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isPending || isSaving ? 'UKLÁDÁM…' : 'ULOŽIT'}
+                  {isPending || isSaving || isFeedbackPending
+                    ? 'UKLÁDÁM…'
+                    : 'ULOŽIT'}
                 </button>
               ) : null}
             </div>
