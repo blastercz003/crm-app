@@ -1,6 +1,7 @@
 'use server'
 
 import { reportActionError } from '@/lib/errors/reportActionError'
+import { resolveCzechCityFromAddress } from '@/lib/czech-map/resolve-city'
 import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
 import { createClient } from '@/lib/supabase/server'
 
@@ -69,6 +70,14 @@ export type FinanceStatisticsTrendPoint = {
   profit: number
 }
 
+export type FinanceStatisticsMapJob = {
+  id: string
+  companyName: string
+  startAt: string
+  latitude: number
+  longitude: number
+}
+
 export type FinanceStatisticsPayload = {
   view: FinanceStatisticsView
   anchorDate: string
@@ -113,6 +122,7 @@ export type FinanceStatisticsPayload = {
   generators: FinanceStatisticsGenerator[]
   jobsWithoutGeneratorCount: number
   trend: FinanceStatisticsTrendPoint[]
+  mapJobs: FinanceStatisticsMapJob[]
 }
 
 export type FinanceStatisticsActionResult =
@@ -146,6 +156,7 @@ type StatisticsFinanceRow = {
         company_name: string
         sales_owner: string
         start_at: string
+        site_address: string | null
         marny_vyjezd: boolean | null
         job_status: string
         generator_name: string | null
@@ -156,6 +167,7 @@ type StatisticsFinanceRow = {
         company_name: string
         sales_owner: string
         start_at: string
+        site_address: string | null
         marny_vyjezd: boolean | null
         job_status: string
         generator_name: string | null
@@ -487,6 +499,7 @@ export async function getFinanceStatisticsAction(
                 company_name,
                 sales_owner,
                 start_at,
+                site_address,
                 marny_vyjezd,
                 job_status,
                 generator_name
@@ -645,6 +658,21 @@ export async function getFinanceStatisticsAction(
 
     const jobCount = uniqueJobs.size
     const uniqueJobEntries = Array.from(uniqueJobs.values())
+    const mapJobs = uniqueJobEntries.flatMap(({ job }) => {
+      const city = resolveCzechCityFromAddress(job.site_address)
+
+      if (!city) return []
+
+      return [
+        {
+          id: String(job.id),
+          companyName: String(job.company_name ?? '').trim(),
+          startAt: job.start_at,
+          latitude: city.latitude,
+          longitude: city.longitude,
+        },
+      ]
+    })
     const wastedTripCount = uniqueJobEntries.filter(({ job }) =>
       Boolean(job.marny_vyjezd)
     ).length
@@ -931,6 +959,7 @@ export async function getFinanceStatisticsAction(
           sale: roundMetric(point.sale),
           profit: roundMetric(point.profit),
         })),
+        mapJobs,
       },
     }
   } catch (error) {

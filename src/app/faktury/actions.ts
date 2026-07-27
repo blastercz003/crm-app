@@ -289,6 +289,32 @@ function normalizeOptionalPresetKey(value: unknown) {
   return text.length > 0 ? text : null
 }
 
+function getInvoiceStatusForFinanceChange(params: {
+  previousInvoiceNumber: string | null
+  nextInvoiceNumber: string | null
+}) {
+  const previousValue = String(params.previousInvoiceNumber ?? '')
+    .trim()
+    .toUpperCase()
+  const nextValue = String(params.nextInvoiceNumber ?? '').trim().toUpperCase()
+  const previousWasInvoice =
+    previousValue.length > 0 && previousValue !== 'STORNO'
+
+  if (nextValue && nextValue !== 'STORNO') {
+    return 'vyfakturovano' as const
+  }
+
+  if (nextValue === 'STORNO') {
+    return 'bez_faktury' as const
+  }
+
+  if (previousWasInvoice) {
+    return 'k_fakturaci' as const
+  }
+
+  return null
+}
+
 function normalizeFiniteNumber(value: unknown) {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : null
@@ -1159,6 +1185,51 @@ export async function updateFinanceInlineFieldAction(
     }
 
     if (field === 'invoice_number') {
+      const nextInvoiceStatus = getInvoiceStatusForFinanceChange({
+        previousInvoiceNumber:
+          String(financeRow.invoice_number ?? '').trim() || null,
+        nextInvoiceNumber: normalizedText,
+      })
+
+      if (nextInvoiceStatus) {
+        const { error: syncInvoiceStatusError } = await supabase
+          .from('jobs')
+          .update({
+            invoice_status: nextInvoiceStatus,
+          })
+          .eq('id', String(financeRow.job_id))
+
+        if (syncInvoiceStatusError) {
+          const { error: rollbackError } = await supabase
+            .from('job_finances')
+            .update({
+              invoice_number: financeRow.invoice_number,
+            })
+            .eq('id', normalizedFinanceId)
+
+          if (rollbackError) {
+            await reportActionError({
+              error: rollbackError,
+              action: 'updateFinanceInlineFieldAction',
+              section: 'faktury',
+              errorType: 'InvoiceStatusSyncRollbackError',
+              userId: user.id,
+              context: {
+                financeId: normalizedFinanceId,
+                jobId: financeRow.job_id,
+              },
+            })
+          }
+
+          return {
+            success: false,
+            error: rollbackError
+              ? 'Číslo faktury se uložilo, ale stav fakturace se nepodařilo synchronizovat ani bezpečně vrátit. Obnov stránku a zkontroluj záznam.'
+              : 'Stav fakturace se nepodařilo synchronizovat. Změna čísla faktury byla vrácena.',
+          }
+        }
+      }
+
       after(async () => {
         try {
           const technicianIds = await getAssignedTechnicianIdsForJob(

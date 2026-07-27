@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import { CircleGauge } from 'lucide-react'
 import {
   EditJobButton,
   EditJobModalController,
@@ -42,6 +43,7 @@ import type {
   JobAttachmentCategory,
 } from '@/lib/job-attachments'
 import type { FakturaRow, SalesOwner } from './page'
+import { Job360Modal } from './job-360-modal'
 
 type InlineEditableFinanceField = 'client_order_number' | 'invoice_number' | 'sale_amount'
 type OptimisticFinanceField = InlineEditableFinanceField | 'cost_amount'
@@ -167,6 +169,7 @@ export function FakturyInteractiveTable({
   technicianOptions,
 }: FakturyInteractiveTableProps) {
   const [editingRow, setEditingRow] = useState<FakturaRow | null>(null)
+  const [job360Row, setJob360Row] = useState<FakturaRow | null>(null)
   const [displayedRows, applyOptimisticFinanceChange] = useOptimistic(
     rows,
     (
@@ -242,6 +245,7 @@ export function FakturyInteractiveTable({
                   row={row}
                   technicianOptions={technicianOptions}
                   onEditJob={setEditingRow}
+                  onOpenJob360={setJob360Row}
                   onOptimisticFinanceChange={handleOptimisticFinanceChange}
                 />
               ))}
@@ -273,6 +277,14 @@ export function FakturyInteractiveTable({
           onClose={() => setEditingRow(null)}
         />
       ) : null}
+
+      {job360Row ? (
+        <Job360Modal
+          financeId={job360Row.id}
+          jobNumber={job360Row.job_number}
+          onClose={() => setJob360Row(null)}
+        />
+      ) : null}
     </>
   )
 }
@@ -281,11 +293,13 @@ function DesktopRow({
   row,
   technicianOptions,
   onEditJob,
+  onOpenJob360,
   onOptimisticFinanceChange,
 }: {
   row: FakturaRow
   technicianOptions: TechnicianOption[]
   onEditJob: (row: FakturaRow) => void
+  onOpenJob360: (row: FakturaRow) => void
   onOptimisticFinanceChange: OptimisticFinanceChangeHandler
 }) {
   const isFinanceCompleted =
@@ -302,7 +316,7 @@ function DesktopRow({
           : '[background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
       }`}
     >
-      <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
+      <td className="relative rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
         <EditJobButton
           job={editableJob}
           onOpen={() => onEditJob(row)}
@@ -312,6 +326,17 @@ function DesktopRow({
             {row.job_number}
           </span>
         </EditJobButton>
+
+        <button
+          type="button"
+          onClick={() => onOpenJob360(row)}
+          className="absolute right-0 top-1 z-20 inline-flex h-6 w-6 translate-x-[7px] items-center justify-center rounded-full border border-[#9ab8d0]/65 bg-white/85 text-[#47738f] opacity-90 shadow-[0_3px_9px_rgba(15,23,42,0.14)] backdrop-blur transition duration-200 hover:scale-110 hover:border-[#4f92cb] hover:bg-[#eaf4fb] hover:text-[#2f78b1] focus:scale-110 focus:outline-none focus:ring-2 focus:ring-[#4f92cb]/45 group-hover:border-[#65a0cc] group-hover:bg-[#e6f1f9] group-hover:text-[#2f78b1] [html[data-theme='dark']_&]:border-[#6594b8]/45 [html[data-theme='dark']_&]:bg-[#15283a]/90 [html[data-theme='dark']_&]:text-[#91b8d4] [html[data-theme='dark']_&]:shadow-[0_4px_10px_rgba(0,0,0,0.35)] [html[data-theme='dark']_&]:hover:border-[#73add7] [html[data-theme='dark']_&]:hover:bg-[#1b3851] [html[data-theme='dark']_&]:hover:text-[#b5daf4]"
+          title="Zakázka 360 – kompletní náhled"
+          aria-label={`Otevřít Zakázku 360 pro zakázku ${row.job_number}`}
+          aria-haspopup="dialog"
+        >
+          <CircleGauge className="h-3.5 w-3.5" strokeWidth={1.9} />
+        </button>
       </td>
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pr-3 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">

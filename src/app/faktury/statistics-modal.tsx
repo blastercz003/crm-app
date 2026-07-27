@@ -8,6 +8,7 @@ import {
   type FinanceStatisticsPayload,
   type FinanceStatisticsView,
 } from './statistics-actions'
+import { StatisticsMap } from './statistics-map'
 
 type FakturyStatisticsModalLauncherProps = {
   className: string
@@ -479,6 +480,11 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
           />
         </SummaryPanel>
       </section>
+
+      <StatisticsMap
+        key={`${payload.view}:${payload.period.from}:${payload.period.to}`}
+        jobs={payload.mapJobs}
+      />
 
       <SummaryTrendChart
         payload={payload}
