@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
@@ -1466,24 +1467,14 @@ export function DashboardMobileQuickActions({
             borderRadius: '999px',
           }}
         >
-          <svg
-            viewBox="0 0 24 24"
-            className={`h-6 w-6 ${getIconSpinClass('invoices')}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <Image
+            src="/received-invoices-icon.png"
+            alt=""
+            width={24}
+            height={24}
+            className={`h-6 w-6 object-contain ${getIconSpinClass('invoices')}`}
             aria-hidden="true"
-          >
-            <rect x="0.8" y="3.5" width="22.4" height="16.6" rx="3.3" />
-            <rect x="2.9" y="5.3" width="18.2" height="13" rx="2.3" />
-            <circle cx="12" cy="11.8" r="3.1" />
-            <path d="M13.9 9.9c-1.5 0-2.55.76-3.05 1.9" />
-            <path d="M10.35 11.35h3.85" />
-            <path d="M10.15 12.35h3.65" />
-            <path d="M10.95 12.95c.5 1.08 1.55 1.75 3 1.75" />
-          </svg>
+          />
           {receivedInvoicesDueCount > 0 ? (
             <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-red-600 bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
               {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
@@ -1716,24 +1707,14 @@ export function DashboardMobileQuickActions({
             borderRadius: '999px',
           }}
         >
-          <svg
-            viewBox="0 0 24 24"
-            className={`h-7 w-7 ${getIconSpinClass('invoices')}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <Image
+            src="/received-invoices-icon.png"
+            alt=""
+            width={28}
+            height={28}
+            className={`h-7 w-7 object-contain ${getIconSpinClass('invoices')}`}
             aria-hidden="true"
-          >
-            <rect x="0.8" y="3.5" width="22.4" height="16.6" rx="3.3" />
-            <rect x="2.9" y="5.3" width="18.2" height="13" rx="2.3" />
-            <circle cx="12" cy="11.8" r="3.1" />
-            <path d="M13.9 9.9c-1.5 0-2.55.76-3.05 1.9" />
-            <path d="M10.35 11.35h3.85" />
-            <path d="M10.15 12.35h3.65" />
-            <path d="M10.95 12.95c.5 1.08 1.55 1.75 3 1.75" />
-          </svg>
+          />
           {receivedInvoicesDueCount > 0 ? (
             <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-red-600 bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
               {receivedInvoicesDueCount > 99 ? '99+' : receivedInvoicesDueCount}
