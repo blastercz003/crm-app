@@ -12,12 +12,14 @@ import {
 import type {
   NordFjellaGuestRow,
   NordFjellaPaymentStatus,
+  NordFjellaPaymentRow,
   NordFjellaReservationFileRow,
   NordFjellaRecordType,
   NordFjellaReservationItemRow,
   NordFjellaReservationRow,
   NordFjellaReservationStatus,
   NordFjellaSettingsRow,
+  NordFjellaStayGuestRow,
   NordFjellaSettlementStatus,
 } from '@/lib/nord-fjella/types'
 import { NewReservationButton } from './new-reservation-button'
@@ -27,6 +29,7 @@ import NordFjellaCalendarClient, {
 import { ReservationDetailButton } from './reservation-detail-button'
 import { SettingsButton } from './settings-button'
 import { SettlementPreviewButton } from './settlement-preview-button'
+import { ReportsButton } from './reports-button'
 
 export const metadata: Metadata = {
   title: 'Nord Fjella',
@@ -438,7 +441,11 @@ function toCalendarEvent(
 }
 
 function getPaidAmount(row: NordFjellaReservationRow) {
-  return Number(row.deposit_paid_amount ?? 0) + Number(row.balance_paid_amount ?? 0)
+  return (
+    Number(row.deposit_paid_amount ?? 0) +
+    Number(row.balance_paid_amount ?? 0) -
+    Number(row.payment_refund_amount ?? 0)
+  )
 }
 
 export default async function NordFjellaPage({ searchParams }: NordFjellaPageProps) {
@@ -492,7 +499,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
     redirect('/dashboard')
   }
 
-  const [settingsResult, reservationsResult, guestsResult, reservationItemsResult, reservationFilesResult] = await Promise.all([
+  const [settingsResult, reservationsResult, guestsResult, reservationItemsResult, reservationFilesResult, stayGuestsResult, paymentsResult] = await Promise.all([
     supabase
       .from('nord_fjella_settings')
       .select('*')
@@ -517,6 +524,17 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
       .select('*')
       .order('reservation_id', { ascending: true })
       .order('created_at', { ascending: false }),
+    supabase
+      .from('nord_fjella_stay_guests')
+      .select('*')
+      .order('reservation_id', { ascending: true })
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('nord_fjella_payments')
+      .select('*')
+      .order('transaction_date', { ascending: true })
+      .order('created_at', { ascending: true }),
   ])
 
   if (settingsResult.error) {
@@ -539,13 +557,30 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
     throw new Error('Nepodařilo se načíst soubory rezervací Nord Fjella.')
   }
 
+  const stayGuestsTableMissing =
+    stayGuestsResult.error?.code === '42P01' || stayGuestsResult.error?.code === 'PGRST205'
+
+  if (stayGuestsResult.error && !stayGuestsTableMissing) {
+    throw new Error('Nepodařilo se načíst evidenci ubytovaných osob.')
+  }
+
+  const paymentsTableMissing =
+    paymentsResult.error?.code === '42P01' || paymentsResult.error?.code === 'PGRST205'
+
+  if (paymentsResult.error && !paymentsTableMissing) {
+    throw new Error('Nepodařilo se načíst platební knihu.')
+  }
+
   const settings = settingsResult.data
   const rows = (reservationsResult.data ?? []) as NordFjellaReservationRow[]
   const guests = (guestsResult.data ?? []) as NordFjellaGuestRow[]
   const reservationItems = (reservationItemsResult.data ?? []) as NordFjellaReservationItemRow[]
   const reservationFiles = (reservationFilesResult.data ?? []) as NordFjellaReservationFileRow[]
+  const stayGuests = (stayGuestsTableMissing ? [] : (stayGuestsResult.data ?? [])) as NordFjellaStayGuestRow[]
+  const payments = (paymentsTableMissing ? [] : (paymentsResult.data ?? [])) as NordFjellaPaymentRow[]
   const reservationItemsByReservationId = new Map<string, NordFjellaReservationItemRow[]>()
   const reservationFilesByReservationId = new Map<string, NordFjellaReservationFileRow[]>()
+  const stayGuestsByReservationId = new Map<string, NordFjellaStayGuestRow[]>()
 
   for (const item of reservationItems) {
     const currentItems = reservationItemsByReservationId.get(item.reservation_id) ?? []
@@ -557,6 +592,12 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
     const currentFiles = reservationFilesByReservationId.get(file.reservation_id) ?? []
     currentFiles.push(file)
     reservationFilesByReservationId.set(file.reservation_id, currentFiles)
+  }
+
+  for (const stayGuest of stayGuests) {
+    const currentGuests = stayGuestsByReservationId.get(stayGuest.reservation_id) ?? []
+    currentGuests.push(stayGuest)
+    stayGuestsByReservationId.set(stayGuest.reservation_id, currentGuests)
   }
 
   const filteredRows = rows
@@ -645,21 +686,24 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
       const remaining = Math.max(settlement.remainingToPay, 0)
       const requestedDeposit = Number(row.requested_deposit_amount ?? 0)
       const paidDeposit = Number(row.deposit_paid_amount ?? 0)
-      const overdueDeposit =
-        row.deposit_due_date &&
-        row.deposit_due_date < today &&
-        requestedDeposit > paidDeposit
-          ? requestedDeposit - paidDeposit
-          : 0
+      const overdueAmount =
+        row.balance_due_date && row.balance_due_date < today && remaining > 0
+          ? remaining
+          : row.deposit_due_date &&
+              row.deposit_due_date < today &&
+              requestedDeposit > paidDeposit
+            ? requestedDeposit - paidDeposit
+            : 0
 
       return {
-        total: summary.total + settlement.subtotalExcludingDeposit,
+        contracted: summary.contracted + settlement.servicesGrossTotal,
+        received: summary.received + Math.max(settlement.paidTotal, 0),
         remaining: summary.remaining + remaining,
-        overdueAmount: summary.overdueAmount + overdueDeposit,
-        overdueCount: summary.overdueCount + (overdueDeposit > 0 ? 1 : 0),
+        overdueAmount: summary.overdueAmount + overdueAmount,
+        overdueCount: summary.overdueCount + (overdueAmount > 0 ? 1 : 0),
       }
     },
-    { total: 0, remaining: 0, overdueAmount: 0, overdueCount: 0 }
+    { contracted: 0, received: 0, remaining: 0, overdueAmount: 0, overdueCount: 0 }
   )
   const pendingSettlementCount = rows.filter(
     (row) =>
@@ -793,7 +837,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                 </summary>
 
                 <div className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(2,8,23,0.24)]">
-                  <div className="rounded-xl border border-[#8dbfe0]/50 bg-[linear-gradient(155deg,rgba(229,244,252,0.62)_0%,rgba(204,231,247,0.42)_100%)] p-3 [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.16)] [html[data-theme='dark']_&]:bg-[rgba(30,64,175,0.12)]">
+                  <div className="rounded-xl border border-[#8dbfe0]/50 bg-[linear-gradient(155deg,rgba(229,244,252,0.62)_0%,rgba(204,231,247,0.42)_100%)] p-3 [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.2)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(24,45,72,0.9)_0%,rgba(15,31,52,0.86)_100%)]">
                     <div className="flex items-center justify-between gap-3 text-xs">
                       <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
                         Dnes {todayReservation ? 'obsazeno' : todayBlock ? 'blokováno' : 'volno'}
@@ -809,7 +853,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                       />
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
-                      <span>{activeReservedCount} aktivních · {arrivalsNextSevenDays} příjezdů</span>
+                      <span>{rows.length} záznamů celkem · {activeReservedCount} aktivních · {arrivalsNextSevenDays} příjezdů</span>
                       <span className="font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
                         K úhradě {formatCompactCurrency(activeFinancialSummary.remaining)}
                       </span>
@@ -1050,45 +1094,47 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                 <div className="mt-2 grid grid-cols-3 gap-3 border-y border-zinc-200/70 py-1.5 [html[data-theme='dark']_&]:border-slate-400/10">
                   <div>
                     <div className="truncate text-[10px] uppercase tracking-[0.1em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-                      Hodnota aktivních
+                      Nasmlouváno
                     </div>
                     <div className="mt-0.5 truncate text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                      {formatCompactCurrency(activeFinancialSummary.total)}
+                      {formatCompactCurrency(activeFinancialSummary.contracted)}
                     </div>
                   </div>
                   <div>
                     <div className="truncate text-[10px] uppercase tracking-[0.1em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-                      Zbývá uhradit
+                      Přijato
                     </div>
                     <div className="mt-0.5 truncate text-sm font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
-                      {formatCompactCurrency(activeFinancialSummary.remaining)}
+                      {formatCompactCurrency(activeFinancialSummary.received)}
                     </div>
                   </div>
                   <div>
                     <div className="truncate text-[10px] uppercase tracking-[0.1em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-                      Po splatnosti
+                      K inkasu
                     </div>
                     <div
                       className={`mt-0.5 truncate text-sm font-semibold ${
-                        activeFinancialSummary.overdueCount > 0
-                          ? 'text-amber-700 [html[data-theme=\'dark\']_&]:text-amber-200'
+                        activeFinancialSummary.remaining > 0
+                          ? 'text-[#236f9f] [html[data-theme=\'dark\']_&]:text-sky-200'
                           : 'text-zinc-900 [html[data-theme=\'dark\']_&]:text-white'
                       }`}
                     >
-                      {activeFinancialSummary.overdueCount > 0
-                        ? `${activeFinancialSummary.overdueCount} · ${formatCompactCurrency(activeFinancialSummary.overdueAmount)}`
-                        : '0'}
+                      {formatCompactCurrency(activeFinancialSummary.remaining)}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                  <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{rows.length}</strong> záznamů celkem</span>
                   <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{activeReservedCount}</strong> aktivních</span>
                   <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{arrivalsNextSevenDays}</strong> příjezdů / 7 dní</span>
                   <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{departuresNextSevenDays}</strong> odjezdů</span>
                   <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{pendingSettlementCount}</strong> vyúčtování</span>
+                  <span className={activeFinancialSummary.overdueCount > 0 ? 'text-amber-700 [html[data-theme=\'dark\']_&]:text-amber-200' : undefined}>
+                    <strong>{activeFinancialSummary.overdueCount}</strong> po splatnosti · {formatCompactCurrency(activeFinancialSummary.overdueAmount)}
+                  </span>
                   <span title={formatCurrency(pendingDepositAmount)}>
-                    <strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{pendingDepositRows.length}</strong> kaucí
+                    <strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{pendingDepositRows.length}</strong> kaucí · {formatCompactCurrency(pendingDepositAmount)}
                   </span>
                 </div>
 
@@ -1239,9 +1285,12 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                   Přehled pronájmů a blokací termínu
                 </p>
               </div>
-              <span className="nord-fjella-chip inline-flex min-w-9 items-center justify-center rounded-full border border-white/75 bg-white/90 px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme='dark']_&]:text-slate-200">
-                {filteredRows.length}
-              </span>
+              <ReportsButton
+                reservations={rows}
+                reservationItems={reservationItems}
+                stayGuests={stayGuests}
+                payments={payments}
+              />
             </div>
 
             {rows.length === 0 ? (
@@ -1266,6 +1315,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
               <div className="grid min-w-0 max-h-[760px] gap-2 overflow-y-auto p-4 sm:p-5 xl:max-h-[680px]">
                 {filteredRows.map((row) => {
                   const rowItems = reservationItemsByReservationId.get(row.id) ?? []
+                  const rowStayGuests = stayGuestsByReservationId.get(row.id) ?? []
                   const total = getReservationTotal(row, rowItems)
                   const paid = getPaidAmount(row)
                   const remaining = Math.max(total - paid, 0)
@@ -1300,6 +1350,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                               reservation={row}
                               reservationItems={rowItems}
                               reservationFiles={reservationFilesByReservationId.get(row.id) ?? []}
+                              stayGuests={stayGuestsByReservationId.get(row.id) ?? []}
                               compact
                             />
                           ) : null}
@@ -1315,6 +1366,16 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                             <>
                               <span className="mx-1.5 text-zinc-300 [html[data-theme='dark']_&]:text-slate-600">•</span>
                               <span>{row.adult_count} dosp. / {row.child_count} dětí</span>
+                              <span className="mx-1.5 text-zinc-300 [html[data-theme='dark']_&]:text-slate-600">•</span>
+                              <span
+                                className={
+                                  rowStayGuests.length === row.adult_count + row.child_count
+                                    ? 'text-emerald-700 [html[data-theme=\'dark\']_&]:text-emerald-300'
+                                    : 'font-medium text-amber-700 [html[data-theme=\'dark\']_&]:text-amber-300'
+                                }
+                              >
+                                evidence {rowStayGuests.length}/{row.adult_count + row.child_count}
+                              </span>
                               <span className="mx-1.5 text-zinc-300 [html[data-theme='dark']_&]:text-slate-600">•</span>
                               <span className="font-medium text-zinc-900 [html[data-theme='dark']_&]:text-white">
                                 {formatCurrency(total)}

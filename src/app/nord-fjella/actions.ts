@@ -13,8 +13,10 @@ import type {
   NordFjellaReservationFileDocumentType,
   NordFjellaReservationFileRow,
   NordFjellaRecordType,
+  NordFjellaReservationRow,
   NordFjellaReservationItemType,
   NordFjellaReservationStatus,
+  NordFjellaStayGuestRow,
   NordFjellaSettlementStatus,
   NordFjellaVatMode,
 } from '@/lib/nord-fjella/types'
@@ -51,6 +53,18 @@ export type DeleteNordFjellaReservationActionState = {
 export type UpdateNordFjellaSettingsActionState = {
   success: boolean
   error: string | null
+}
+
+export type NordFjellaStayGuestActionState = {
+  success: boolean
+  error: string | null
+  stayGuest?: NordFjellaStayGuestRow
+}
+
+export type DeleteNordFjellaStayGuestActionState = {
+  success: boolean
+  error: string | null
+  deletedStayGuestId: string | null
 }
 
 export type NordFjellaReservationFileActionState = {
@@ -102,6 +116,22 @@ function normalizeUuid(value: FormDataEntryValue | null) {
   )
     ? normalized
     : null
+}
+
+function splitNordFjellaPersonName(value: string) {
+  const parts = value.split(/\s+/).filter(Boolean)
+
+  if (parts.length <= 1) {
+    return {
+      firstName: parts[0] ?? 'Host',
+      lastName: 'neuvedeno',
+    }
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  }
 }
 
 function parseRequiredNumber(value: string, label: string) {
@@ -246,11 +276,72 @@ function normalizeItemType(value: unknown): NordFjellaReservationItemType {
 }
 
 function normalizeVatMode(value: unknown): NordFjellaVatMode {
-  if (value === 'vat_21' || value === 'vat_exempt') {
+  if (value === 'vat_21' || value === 'vat_exempt' || value === 'outside_vat') {
     return value
   }
 
   return 'vat_12'
+}
+
+type SyncedPaymentInput = {
+  sourceKey: string
+  transactionType:
+    | 'deposit'
+    | 'balance'
+    | 'refund'
+    | 'security_deposit_received'
+    | 'security_deposit_refund'
+    | 'security_deposit_withheld'
+  direction: 'in' | 'out' | 'internal'
+  amount: number | null
+  transactionDate: string | null
+  paymentMethod: NordFjellaPaymentMethod | null
+  note?: string | null
+}
+
+async function replaceSyncedPayments(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  reservationId: string
+  profileId: string
+  payments: SyncedPaymentInput[]
+}) {
+  const { supabase, reservationId, profileId, payments } = params
+  const sourceKeys = payments.map((payment) => payment.sourceKey)
+  const { error: deleteError } = await supabase
+    .from('nord_fjella_payments')
+    .delete()
+    .eq('reservation_id', reservationId)
+    .in('source_key', sourceKeys)
+
+  if (deleteError) {
+    throw new Error('Nepodařilo se aktualizovat platební knihu.')
+  }
+
+  const rows = payments
+    .filter(
+      (payment) =>
+        Number(payment.amount ?? 0) > 0 &&
+        Boolean(payment.transactionDate)
+    )
+    .map((payment) => ({
+      reservation_id: reservationId,
+      source_key: payment.sourceKey,
+      transaction_type: payment.transactionType,
+      direction: payment.direction,
+      amount: Number(payment.amount),
+      transaction_date: payment.transactionDate as string,
+      payment_method: payment.paymentMethod,
+      note: payment.note ?? null,
+      created_by: profileId,
+      updated_by: profileId,
+    }))
+
+  if (rows.length === 0) return
+
+  const { error: insertError } = await supabase.from('nord_fjella_payments').insert(rows)
+  if (insertError) {
+    throw new Error('Nepodařilo se uložit platební knihu.')
+  }
 }
 
 function parseReservationItemsPayload(formData: FormData) {
@@ -642,6 +733,14 @@ export async function createNordFjellaReservationAction(
     let balancePaidAt: string | null = null
     let balancePaymentMethod: NordFjellaPaymentMethod | null = null
     let cancellationFeeAmount: number | null = null
+    let cancellationFeeVatRate = 12
+    let taxableSupplyDate: string | null = null
+    let balanceDueDate: string | null = null
+    let externalDocumentNumber: string | null = null
+    let paymentRefundAmount: number | null = null
+    let paymentRefundAt: string | null = null
+    let paymentRefundMethod: NordFjellaPaymentMethod | null = null
+    let securityDepositWithheldAt: string | null = null
 
     if (recordType === 'reservation') {
       reservationStatus = normalizeReservationStatus(formData.get('reservation_status'))
@@ -752,6 +851,22 @@ export async function createNordFjellaReservationAction(
         getString(formData, 'cancellation_fee_amount'),
         'Storno poplatek'
       )
+      cancellationFeeVatRate = parseNonNegativeNumber(
+        getString(formData, 'cancellation_fee_vat_rate') || '12',
+        'DPH storno poplatku'
+      )
+      taxableSupplyDate = normalizeOptionalString(formData.get('taxable_supply_date')) || endDate
+      balanceDueDate = normalizeOptionalString(formData.get('balance_due_date'))
+      externalDocumentNumber = normalizeOptionalString(formData.get('external_document_number'))
+      paymentRefundAmount = parseOptionalNonNegativeNumber(
+        getString(formData, 'payment_refund_amount'),
+        'Vrácená platba'
+      )
+      paymentRefundAt = normalizeOptionalString(formData.get('payment_refund_at'))
+      paymentRefundMethod = normalizePaymentMethod(formData.get('payment_refund_method'))
+      securityDepositWithheldAt = normalizeOptionalString(
+        formData.get('security_deposit_withheld_at')
+      )
 
       if (adultCount + childCount <= 0) {
         throw new Error('Zadej alespoň jednoho hosta.')
@@ -786,6 +901,10 @@ export async function createNordFjellaReservationAction(
       stay_end_date: endDate,
       adult_count: adultCount,
       child_count: childCount,
+      price_basis: 'excluding_vat',
+      taxable_supply_date: taxableSupplyDate,
+      balance_due_date: balanceDueDate,
+      external_document_number: externalDocumentNumber,
       accommodation_night_rate: accommodationNightRate,
       accommodation_vat_rate: accommodationVatRate,
       city_tax_rate: cityTaxRate,
@@ -808,6 +927,11 @@ export async function createNordFjellaReservationAction(
       balance_paid_at: balancePaidAt,
       balance_payment_method: balancePaymentMethod,
       cancellation_fee_amount: cancellationFeeAmount,
+      cancellation_fee_vat_rate: cancellationFeeVatRate,
+      payment_refund_amount: paymentRefundAmount,
+      payment_refund_at: paymentRefundAt,
+      payment_refund_method: paymentRefundMethod,
+      security_deposit_withheld_at: securityDepositWithheldAt,
       internal_note: internalNote,
       public_note: publicNote,
       created_by: profile.id,
@@ -834,6 +958,99 @@ export async function createNordFjellaReservationAction(
         reservationId: insertedReservation.id,
         items: reservationItems,
       })
+
+      await replaceSyncedPayments({
+        supabase,
+        reservationId: insertedReservation.id,
+        profileId: profile.id,
+        payments: [
+          {
+            sourceKey: 'form_deposit',
+            transactionType: 'deposit',
+            direction: 'in',
+            amount: depositPaidAmount,
+            transactionDate: depositPaidAt,
+            paymentMethod: depositPaymentMethod,
+          },
+          {
+            sourceKey: 'form_balance',
+            transactionType: 'balance',
+            direction: 'in',
+            amount: balancePaidAmount,
+            transactionDate: balancePaidAt,
+            paymentMethod: balancePaymentMethod,
+          },
+          {
+            sourceKey: 'form_refund',
+            transactionType: 'refund',
+            direction: 'out',
+            amount: paymentRefundAmount,
+            transactionDate: paymentRefundAt,
+            paymentMethod: paymentRefundMethod,
+          },
+          {
+            sourceKey: 'form_security_received',
+            transactionType: 'security_deposit_received',
+            direction: 'in',
+            amount: securityDepositReceived ? securityDepositAmount : null,
+            transactionDate: securityDepositReceivedAt,
+            paymentMethod: null,
+          },
+          {
+            sourceKey: 'form_security_refund',
+            transactionType: 'security_deposit_refund',
+            direction: 'out',
+            amount: securityDepositRefundAmount,
+            transactionDate: securityDepositRefundedAt,
+            paymentMethod: null,
+          },
+          {
+            sourceKey: 'form_security_withheld',
+            transactionType: 'security_deposit_withheld',
+            direction: 'internal',
+            amount: securityDepositWithheldAmount,
+            transactionDate: securityDepositWithheldAt,
+            paymentMethod: null,
+            note: securityDepositWithheldReason,
+          },
+        ],
+      })
+
+      const primaryGuestName = guestFullName ?? guestContactName ?? ''
+      const { firstName, lastName } = splitNordFjellaPersonName(primaryGuestName)
+      const primaryGuestTaxNights =
+        cityTaxPersonCount > 0 ? Math.max(getDateDifferenceInDays(startDate, endDate), 0) : 0
+      const { error: stayGuestError } = await supabase
+        .from('nord_fjella_stay_guests')
+        .insert({
+          reservation_id: insertedReservation.id,
+          sort_order: 0,
+          is_primary: true,
+          guest_category: 'adult',
+          first_name: firstName,
+          last_name: lastName,
+          birth_date: guestBirthDate,
+          citizenship_code: 'CZ',
+          street: guestStreet,
+          city: guestCity,
+          postal_code: guestPostalCode,
+          country: guestCountry || 'Česká republika',
+          identity_document_type: 'id_card',
+          identity_document_number: guestIdentityDocumentNumber,
+          stay_start_date: startDate,
+          stay_end_date: endDate,
+          city_tax_status: cityTaxPersonCount > 0 ? 'liable' : 'not_applicable',
+          city_tax_exemption_reason: null,
+          city_tax_rate: cityTaxRate,
+          city_tax_nights: primaryGuestTaxNights,
+          city_tax_amount: primaryGuestTaxNights * cityTaxRate,
+          created_by: profile.id,
+          updated_by: profile.id,
+        })
+
+      if (stayGuestError) {
+        throw new Error(`Rezervace byla založena, ale nepodařilo se vytvořit evidenci hlavního hosta: ${stayGuestError.message}`)
+      }
     }
 
     revalidatePath('/nord-fjella')
@@ -847,6 +1064,222 @@ export async function createNordFjellaReservationAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Pronájem se nepodařilo uložit.',
+    }
+  }
+}
+
+function getDateDifferenceInDays(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T12:00:00Z`)
+  const end = new Date(`${endDate}T12:00:00Z`)
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000)
+}
+
+export async function saveNordFjellaStayGuestAction(
+  _previousState: NordFjellaStayGuestActionState,
+  formData: FormData
+): Promise<NordFjellaStayGuestActionState> {
+  void _previousState
+
+  try {
+    const { supabase, profile } = await requireNordFjellaUser()
+    const reservationId = normalizeUuid(formData.get('reservation_id'))
+    const stayGuestId = normalizeUuid(formData.get('stay_guest_id'))
+
+    if (!reservationId) throw new Error('Chybí rezervace ubytované osoby.')
+
+    const { data: reservation, error: reservationError } = await supabase
+      .from('nord_fjella_reservations')
+      .select('id, record_type, stay_start_date, stay_end_date, city_tax_rate')
+      .eq('id', reservationId)
+      .single<Pick<NordFjellaReservationRow, 'id' | 'record_type' | 'stay_start_date' | 'stay_end_date' | 'city_tax_rate'>>()
+
+    if (reservationError || !reservation) {
+      throw new Error('Rezervaci ubytované osoby se nepodařilo načíst.')
+    }
+
+    if (reservation.record_type !== 'reservation') {
+      throw new Error('Zákonnou evidenci lze vést pouze u pronájmu.')
+    }
+
+    const firstName = getString(formData, 'first_name')
+    const lastName = getString(formData, 'last_name')
+    const birthDate = parseDateOnly(getString(formData, 'birth_date'), 'Datum narození')
+    const guestCategory = getString(formData, 'guest_category')
+    const citizenshipCode = getString(formData, 'citizenship_code').toUpperCase()
+    const street = getString(formData, 'street')
+    const city = getString(formData, 'city')
+    const postalCode = getString(formData, 'postal_code')
+    const country = getString(formData, 'country')
+    const identityDocumentType = getString(formData, 'identity_document_type')
+    const identityDocumentNumber = getString(formData, 'identity_document_number')
+    const cityTaxStatus = getString(formData, 'city_tax_status')
+    const cityTaxExemptionReason = normalizeOptionalString(formData.get('city_tax_exemption_reason'))
+    const note = normalizeOptionalString(formData.get('note'))
+    const isPrimary = formData.get('is_primary') === 'on'
+    const cityTaxRate = parseNonNegativeNumber(
+      getString(formData, 'city_tax_rate') || String(reservation.city_tax_rate),
+      'Místní poplatek'
+    )
+
+    if (!firstName || !lastName) throw new Error('Jméno a příjmení ubytované osoby je povinné.')
+    if (!birthDate) throw new Error('Datum narození ubytované osoby je povinné.')
+    if (!['adult', 'child'].includes(guestCategory)) throw new Error('Neplatná kategorie hosta.')
+    if (citizenshipCode !== 'CZ') {
+      throw new Error('Nord Fjella je nastaveno pouze pro ubytování občanů České republiky.')
+    }
+    if (!street || !city || !postalCode || !country) {
+      throw new Error('Vyplň úplnou adresu přihlášeného pobytu.')
+    }
+    if (!['id_card', 'passport', 'other'].includes(identityDocumentType)) {
+      throw new Error('Vyber platný druh dokladu.')
+    }
+    if (!identityDocumentNumber) throw new Error('Číslo dokladu je povinné.')
+    if (!['liable', 'exempt', 'not_applicable'].includes(cityTaxStatus)) {
+      throw new Error('Vyber stav místního poplatku.')
+    }
+    if (cityTaxStatus === 'exempt' && !cityTaxExemptionReason) {
+      throw new Error('U osvobození uveď jeho důvod.')
+    }
+
+    const cityTaxNights =
+      cityTaxStatus === 'liable'
+        ? Math.max(getDateDifferenceInDays(reservation.stay_start_date, reservation.stay_end_date), 0)
+        : 0
+
+    const payload = {
+      reservation_id: reservationId,
+      is_primary: isPrimary,
+      guest_category: guestCategory,
+      first_name: firstName,
+      last_name: lastName,
+      birth_date: birthDate,
+      citizenship_code: 'CZ',
+      street,
+      city,
+      postal_code: postalCode,
+      country,
+      identity_document_type: identityDocumentType,
+      identity_document_number: identityDocumentNumber,
+      stay_start_date: reservation.stay_start_date,
+      stay_end_date: reservation.stay_end_date,
+      city_tax_status: cityTaxStatus,
+      city_tax_exemption_reason: cityTaxStatus === 'exempt' ? cityTaxExemptionReason : null,
+      city_tax_rate: cityTaxRate,
+      city_tax_nights: cityTaxNights,
+      city_tax_amount: cityTaxNights * cityTaxRate,
+      note,
+      updated_by: profile.id,
+    }
+
+    if (isPrimary) {
+      const { error: primaryResetError } = await supabase
+        .from('nord_fjella_stay_guests')
+        .update({ is_primary: false, updated_by: profile.id })
+        .eq('reservation_id', reservationId)
+
+      if (primaryResetError) throw new Error(`Nepodařilo se změnit hlavního hosta: ${primaryResetError.message}`)
+    }
+
+    let savedGuest: NordFjellaStayGuestRow | null = null
+
+    if (stayGuestId) {
+      const { data, error } = await supabase
+        .from('nord_fjella_stay_guests')
+        .update(payload)
+        .eq('id', stayGuestId)
+        .eq('reservation_id', reservationId)
+        .select('*')
+        .single<NordFjellaStayGuestRow>()
+
+      if (error) throw new Error(`Ubytovanou osobu se nepodařilo uložit: ${error.message}`)
+      savedGuest = data
+    } else {
+      const { count } = await supabase
+        .from('nord_fjella_stay_guests')
+        .select('id', { count: 'exact', head: true })
+        .eq('reservation_id', reservationId)
+      const { data, error } = await supabase
+        .from('nord_fjella_stay_guests')
+        .insert({
+          ...payload,
+          sort_order: count ?? 0,
+          created_by: profile.id,
+        })
+        .select('*')
+        .single<NordFjellaStayGuestRow>()
+
+      if (error) throw new Error(`Ubytovanou osobu se nepodařilo přidat: ${error.message}`)
+      savedGuest = data
+    }
+
+    const { count: taxableGuestCount } = await supabase
+      .from('nord_fjella_stay_guests')
+      .select('id', { count: 'exact', head: true })
+      .eq('reservation_id', reservationId)
+      .eq('city_tax_status', 'liable')
+
+    await supabase
+      .from('nord_fjella_reservations')
+      .update({
+        city_tax_person_count: taxableGuestCount ?? 0,
+        city_tax_rate: cityTaxRate,
+        updated_by: profile.id,
+      })
+      .eq('id', reservationId)
+
+    revalidatePath('/nord-fjella')
+
+    return { success: true, error: null, stayGuest: savedGuest ?? undefined }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Ubytovanou osobu se nepodařilo uložit.',
+    }
+  }
+}
+
+export async function deleteNordFjellaStayGuestAction(
+  stayGuestId: string,
+  reservationId: string
+): Promise<DeleteNordFjellaStayGuestActionState> {
+  try {
+    const { supabase, profile } = await requireNordFjellaUser()
+    const normalizedStayGuestId = normalizeUuid(stayGuestId)
+    const normalizedReservationId = normalizeUuid(reservationId)
+
+    if (!normalizedStayGuestId || !normalizedReservationId) {
+      throw new Error('Chybí ubytovaná osoba nebo rezervace.')
+    }
+
+    const { error } = await supabase
+      .from('nord_fjella_stay_guests')
+      .delete()
+      .eq('id', normalizedStayGuestId)
+      .eq('reservation_id', normalizedReservationId)
+
+    if (error) throw new Error(`Ubytovanou osobu se nepodařilo odstranit: ${error.message}`)
+
+    const { count: taxableGuestCount } = await supabase
+      .from('nord_fjella_stay_guests')
+      .select('id', { count: 'exact', head: true })
+      .eq('reservation_id', normalizedReservationId)
+      .eq('city_tax_status', 'liable')
+
+    await supabase
+      .from('nord_fjella_reservations')
+      .update({
+        city_tax_person_count: taxableGuestCount ?? 0,
+        updated_by: profile.id,
+      })
+      .eq('id', normalizedReservationId)
+
+    revalidatePath('/nord-fjella')
+    return { success: true, error: null, deletedStayGuestId: normalizedStayGuestId }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Ubytovanou osobu se nepodařilo odstranit.',
+      deletedStayGuestId: null,
     }
   }
 }
@@ -937,6 +1370,14 @@ export async function updateNordFjellaReservationAction(
     let balancePaidAt: string | null = null
     let balancePaymentMethod: NordFjellaPaymentMethod | null = null
     let cancellationFeeAmount: number | null = null
+    let cancellationFeeVatRate = 12
+    let taxableSupplyDate: string | null = null
+    let balanceDueDate: string | null = null
+    let externalDocumentNumber: string | null = null
+    let paymentRefundAmount: number | null = null
+    let paymentRefundAt: string | null = null
+    let paymentRefundMethod: NordFjellaPaymentMethod | null = null
+    let securityDepositWithheldAt: string | null = null
 
     if (recordType === 'reservation') {
       reservationStatus = normalizeReservationStatus(formData.get('reservation_status'))
@@ -1047,6 +1488,22 @@ export async function updateNordFjellaReservationAction(
         getString(formData, 'cancellation_fee_amount'),
         'Storno poplatek'
       )
+      cancellationFeeVatRate = parseNonNegativeNumber(
+        getString(formData, 'cancellation_fee_vat_rate') || '12',
+        'DPH storno poplatku'
+      )
+      taxableSupplyDate = normalizeOptionalString(formData.get('taxable_supply_date')) || endDate
+      balanceDueDate = normalizeOptionalString(formData.get('balance_due_date'))
+      externalDocumentNumber = normalizeOptionalString(formData.get('external_document_number'))
+      paymentRefundAmount = parseOptionalNonNegativeNumber(
+        getString(formData, 'payment_refund_amount'),
+        'Vrácená platba'
+      )
+      paymentRefundAt = normalizeOptionalString(formData.get('payment_refund_at'))
+      paymentRefundMethod = normalizePaymentMethod(formData.get('payment_refund_method'))
+      securityDepositWithheldAt = normalizeOptionalString(
+        formData.get('security_deposit_withheld_at')
+      )
     }
 
     const { error } = await supabase
@@ -1075,6 +1532,10 @@ export async function updateNordFjellaReservationAction(
         stay_end_date: endDate,
         adult_count: adultCount,
         child_count: childCount,
+        price_basis: 'excluding_vat',
+        taxable_supply_date: taxableSupplyDate,
+        balance_due_date: balanceDueDate,
+        external_document_number: externalDocumentNumber,
         accommodation_night_rate: accommodationNightRate,
         accommodation_vat_rate: accommodationVatRate,
         city_tax_rate: cityTaxRate,
@@ -1097,6 +1558,11 @@ export async function updateNordFjellaReservationAction(
         balance_paid_at: balancePaidAt,
         balance_payment_method: balancePaymentMethod,
         cancellation_fee_amount: cancellationFeeAmount,
+        cancellation_fee_vat_rate: cancellationFeeVatRate,
+        payment_refund_amount: paymentRefundAmount,
+        payment_refund_at: paymentRefundAt,
+        payment_refund_method: paymentRefundMethod,
+        security_deposit_withheld_at: securityDepositWithheldAt,
         internal_note: internalNote,
         public_note: publicNote,
         updated_by: profile.id,
@@ -1112,6 +1578,88 @@ export async function updateNordFjellaReservationAction(
       reservationId,
       items: recordType === 'reservation' ? reservationItems : [],
     })
+
+    if (recordType === 'reservation') {
+      await replaceSyncedPayments({
+        supabase,
+        reservationId,
+        profileId: profile.id,
+        payments: [
+          {
+            sourceKey: 'form_deposit',
+            transactionType: 'deposit',
+            direction: 'in',
+            amount: depositPaidAmount,
+            transactionDate: depositPaidAt,
+            paymentMethod: depositPaymentMethod,
+          },
+          {
+            sourceKey: 'form_balance',
+            transactionType: 'balance',
+            direction: 'in',
+            amount: balancePaidAmount,
+            transactionDate: balancePaidAt,
+            paymentMethod: balancePaymentMethod,
+          },
+          {
+            sourceKey: 'form_refund',
+            transactionType: 'refund',
+            direction: 'out',
+            amount: paymentRefundAmount,
+            transactionDate: paymentRefundAt,
+            paymentMethod: paymentRefundMethod,
+          },
+          {
+            sourceKey: 'form_security_received',
+            transactionType: 'security_deposit_received',
+            direction: 'in',
+            amount: securityDepositReceived ? securityDepositAmount : null,
+            transactionDate: securityDepositReceivedAt,
+            paymentMethod: null,
+          },
+          {
+            sourceKey: 'form_security_refund',
+            transactionType: 'security_deposit_refund',
+            direction: 'out',
+            amount: securityDepositRefundAmount,
+            transactionDate: securityDepositRefundedAt,
+            paymentMethod: null,
+          },
+          {
+            sourceKey: 'form_security_withheld',
+            transactionType: 'security_deposit_withheld',
+            direction: 'internal',
+            amount: securityDepositWithheldAmount,
+            transactionDate: securityDepositWithheldAt,
+            paymentMethod: null,
+            note: securityDepositWithheldReason,
+          },
+        ],
+      })
+    }
+
+    if (recordType === 'reservation') {
+      const stayGuestNights = Math.max(getDateDifferenceInDays(startDate, endDate), 0)
+      await supabase
+        .from('nord_fjella_stay_guests')
+        .update({
+          stay_start_date: startDate,
+          stay_end_date: endDate,
+          updated_by: profile.id,
+        })
+        .eq('reservation_id', reservationId)
+
+      await supabase
+        .from('nord_fjella_stay_guests')
+        .update({
+          city_tax_rate: cityTaxRate,
+          city_tax_nights: stayGuestNights,
+          city_tax_amount: stayGuestNights * cityTaxRate,
+          updated_by: profile.id,
+        })
+        .eq('reservation_id', reservationId)
+        .eq('city_tax_status', 'liable')
+    }
 
     revalidatePath('/nord-fjella')
 
@@ -1259,6 +1807,7 @@ export async function updateNordFjellaSettingsAction(
     const { supabase } = await requireNordFjellaUser()
 
     const objectName = getString(formData, 'object_name')
+    const objectCity = getString(formData, 'object_city')
     const providerCompanyName = getString(formData, 'provider_company_name')
     const providerCompanyIdNumber = getString(formData, 'provider_company_id_number')
     const providerVatNumber = getString(formData, 'provider_vat_number')
@@ -1275,6 +1824,10 @@ export async function updateNordFjellaSettingsAction(
       getString(formData, 'default_accommodation_vat_rate'),
       'Výchozí DPH ubytování'
     )
+    const defaultCityTaxRate = parseNonNegativeNumber(
+      getString(formData, 'default_city_tax_rate'),
+      'Výchozí místní poplatek'
+    )
     const defaultCleaningFee = parseNonNegativeNumber(
       getString(formData, 'default_cleaning_fee'),
       'Výchozí úklid'
@@ -1290,6 +1843,7 @@ export async function updateNordFjellaSettingsAction(
     const publicNoteTemplate = normalizeOptionalString(formData.get('public_note_template'))
 
     if (!objectName) throw new Error('Název objektu je povinný.')
+    if (!objectCity) throw new Error('Obec objektu je povinná.')
     if (!providerCompanyName) throw new Error('Název poskytovatele je povinný.')
     if (!providerStreet) throw new Error('Ulice poskytovatele je povinná.')
     if (!providerCity) throw new Error('Město poskytovatele je povinné.')
@@ -1302,6 +1856,7 @@ export async function updateNordFjellaSettingsAction(
     const { error } = await supabase.from('nord_fjella_settings').upsert({
       singleton_key: 'primary',
       object_name: objectName,
+      object_city: objectCity,
       provider_company_name: providerCompanyName,
       provider_company_id_number: providerCompanyIdNumber,
       provider_vat_number: providerVatNumber,
@@ -1315,6 +1870,7 @@ export async function updateNordFjellaSettingsAction(
       provider_iban: providerIban,
       provider_swift: providerSwift,
       default_accommodation_vat_rate: defaultAccommodationVatRate,
+      default_city_tax_rate: defaultCityTaxRate,
       default_cleaning_fee: defaultCleaningFee,
       default_security_deposit: defaultSecurityDeposit,
       default_invoice_due_days: defaultInvoiceDueDays,

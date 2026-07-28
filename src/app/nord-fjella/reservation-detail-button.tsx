@@ -9,6 +9,7 @@ import type {
   NordFjellaReservationFileRow,
   NordFjellaReservationItemRow,
   NordFjellaReservationRow,
+  NordFjellaStayGuestRow,
 } from '@/lib/nord-fjella/types'
 import {
   deleteNordFjellaReservationAction,
@@ -18,12 +19,15 @@ import {
 import { updateNordFjellaReservationInitialState } from './action-states'
 import { ReservationItemsEditor } from './reservation-items-editor'
 import { ReservationFilesPanel } from './reservation-files-panel'
+import { StayGuestsPanel } from './stay-guests-panel'
+import { PricePreview } from './price-preview'
 
 type ReservationDetailButtonProps = {
   guests: NordFjellaGuestRow[]
   reservation: NordFjellaReservationRow
   reservationItems: NordFjellaReservationItemRow[]
   reservationFiles: NordFjellaReservationFileRow[]
+  stayGuests: NordFjellaStayGuestRow[]
   compact?: boolean
 }
 
@@ -70,6 +74,7 @@ export function ReservationDetailButton({
   reservation,
   reservationItems,
   reservationFiles,
+  stayGuests,
   compact = false,
 }: ReservationDetailButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -92,6 +97,7 @@ export function ReservationDetailButton({
           reservation={reservation}
           reservationItems={reservationItems}
           reservationFiles={reservationFiles}
+          stayGuests={stayGuests}
           onClose={() => setIsOpen(false)}
         />
       ) : null}
@@ -104,12 +110,14 @@ function ReservationDetailModal({
   reservation,
   reservationItems,
   reservationFiles,
+  stayGuests,
   onClose,
 }: {
   guests: NordFjellaGuestRow[]
   reservation: NordFjellaReservationRow
   reservationItems: NordFjellaReservationItemRow[]
   reservationFiles: NordFjellaReservationFileRow[]
+  stayGuests: NordFjellaStayGuestRow[]
   onClose: () => void
 }) {
   const [state, formAction] = useActionState<UpdateNordFjellaReservationActionState, FormData>(
@@ -140,6 +148,18 @@ function ReservationDetailModal({
   const [guestNote, setGuestNote] = useState('')
   const [adultCount, setAdultCount] = useState(String(reservation.adult_count))
   const [childCount, setChildCount] = useState(String(reservation.child_count))
+  const [stayStartDate, setStayStartDate] = useState(reservation.stay_start_date)
+  const [stayEndDate, setStayEndDate] = useState(reservation.stay_end_date)
+  const [accommodationNightRate, setAccommodationNightRate] = useState(
+    String(reservation.accommodation_night_rate)
+  )
+  const [accommodationVatRate, setAccommodationVatRate] = useState(
+    String(reservation.accommodation_vat_rate)
+  )
+  const [cleaningFee, setCleaningFee] = useState(String(reservation.cleaning_fee))
+  const [cleaningVatRate, setCleaningVatRate] = useState(
+    String(reservation.cleaning_fee_vat_rate)
+  )
   const [cityTaxPersonCount, setCityTaxPersonCount] = useState(String(reservation.city_tax_person_count))
   const [hasManualCityTaxPersonCount, setHasManualCityTaxPersonCount] = useState(false)
   const [isGuestMenuOpen, setIsGuestMenuOpen] = useState(false)
@@ -310,7 +330,8 @@ function ReservationDetailModal({
                         name="stay_start_date"
                         type="date"
                         required
-                        defaultValue={reservation.stay_start_date}
+                        value={stayStartDate}
+                        onChange={(event) => setStayStartDate(event.target.value)}
                         className={inputClassName}
                       />
                     </div>
@@ -321,7 +342,8 @@ function ReservationDetailModal({
                         name="stay_end_date"
                         type="date"
                         required
-                        defaultValue={reservation.stay_end_date}
+                        value={stayEndDate}
+                        onChange={(event) => setStayEndDate(event.target.value)}
                         className={inputClassName}
                       />
                     </div>
@@ -600,10 +622,12 @@ function ReservationDetailModal({
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-900">Cena za noc</label>
+                        <label className="text-sm font-medium text-gray-900">Cena za noc bez DPH</label>
                         <input
                           name="accommodation_night_rate"
-                          defaultValue={reservation.accommodation_night_rate}
+                          value={accommodationNightRate}
+                          onChange={(event) => setAccommodationNightRate(event.target.value)}
+                          placeholder="Zadej cenu za 1 noc bez DPH"
                           required
                           className={inputClassName}
                         />
@@ -612,7 +636,8 @@ function ReservationDetailModal({
                         <label className="text-sm font-medium text-gray-900">DPH ubytování %</label>
                         <input
                           name="accommodation_vat_rate"
-                          defaultValue={reservation.accommodation_vat_rate}
+                          value={accommodationVatRate}
+                          onChange={(event) => setAccommodationVatRate(event.target.value)}
                           required
                           className={inputClassName}
                         />
@@ -649,10 +674,12 @@ function ReservationDetailModal({
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-900">Úklid</label>
+                        <label className="text-sm font-medium text-gray-900">Úklid bez DPH</label>
                         <input
                           name="cleaning_fee"
-                          defaultValue={reservation.cleaning_fee}
+                          value={cleaningFee}
+                          onChange={(event) => setCleaningFee(event.target.value)}
+                          placeholder="Zadej cenu úklidu bez DPH"
                           required
                           className={inputClassName}
                         />
@@ -661,16 +688,26 @@ function ReservationDetailModal({
                         <label className="text-sm font-medium text-gray-900">DPH úklidu %</label>
                         <input
                           name="cleaning_fee_vat_rate"
-                          defaultValue={reservation.cleaning_fee_vat_rate}
+                          value={cleaningVatRate}
+                          onChange={(event) => setCleaningVatRate(event.target.value)}
                           required
                           className={inputClassName}
                         />
                       </div>
                     </div>
 
+                    <PricePreview
+                      stayStartDate={stayStartDate}
+                      stayEndDate={stayEndDate}
+                      accommodationNightRate={accommodationNightRate}
+                      accommodationVatRate={accommodationVatRate}
+                      cleaningFee={cleaningFee}
+                      cleaningVatRate={cleaningVatRate}
+                    />
+
                     <div className="grid gap-4 md:grid-cols-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-900">Kauce</label>
+                        <label className="text-sm font-medium text-gray-900">Kauce mimo tržby</label>
                         <input
                           name="security_deposit_amount"
                           defaultValue={reservation.security_deposit_amount}
@@ -792,12 +829,83 @@ function ReservationDetailModal({
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-900">Storno poplatek</label>
+                        <label className="text-sm font-medium text-gray-900">Splatnost doplatku</label>
+                        <input
+                          name="balance_due_date"
+                          type="date"
+                          defaultValue={reservation.balance_due_date ?? ''}
+                          className={inputClassName}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Storno poplatek bez DPH</label>
                         <input
                           name="cancellation_fee_amount"
                           defaultValue={reservation.cancellation_fee_amount ?? ''}
+                          placeholder="Zadej částku bez DPH"
                           className={inputClassName}
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">DPH storno poplatku %</label>
+                        <input
+                          name="cancellation_fee_vat_rate"
+                          defaultValue={reservation.cancellation_fee_vat_rate ?? 12}
+                          className={inputClassName}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">DUZP</label>
+                        <input
+                          name="taxable_supply_date"
+                          type="date"
+                          defaultValue={reservation.taxable_supply_date ?? reservation.stay_end_date}
+                          className={inputClassName}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Číslo externího dokladu</label>
+                        <input
+                          name="external_document_number"
+                          defaultValue={reservation.external_document_number ?? ''}
+                          placeholder="Volitelné"
+                          className={inputClassName}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Vrácená platba</label>
+                        <input
+                          name="payment_refund_amount"
+                          defaultValue={reservation.payment_refund_amount ?? ''}
+                          className={inputClassName}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Datum vrácení platby</label>
+                        <input
+                          name="payment_refund_at"
+                          type="date"
+                          defaultValue={reservation.payment_refund_at ?? ''}
+                          className={inputClassName}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Forma vrácení</label>
+                        <select
+                          name="payment_refund_method"
+                          defaultValue={reservation.payment_refund_method ?? ''}
+                          className={selectClassName}
+                        >
+                          <option value="">Nevybráno</option>
+                          <option value="bank_transfer">Bankovní převod</option>
+                          <option value="cash">Hotově</option>
+                        </select>
                       </div>
                     </div>
                     </div>
@@ -841,7 +949,7 @@ function ReservationDetailModal({
                           />
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-gray-900">
                             Zadržená část kauce
@@ -849,6 +957,15 @@ function ReservationDetailModal({
                           <input
                             name="security_deposit_withheld_amount"
                             defaultValue={reservation.security_deposit_withheld_amount ?? ''}
+                            className={inputClassName}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-900">Datum zadržení</label>
+                          <input
+                            name="security_deposit_withheld_at"
+                            type="date"
+                            defaultValue={reservation.security_deposit_withheld_at ?? ''}
                             className={inputClassName}
                           />
                         </div>
@@ -901,6 +1018,10 @@ function ReservationDetailModal({
                       />
                     </div>
                     </div>
+
+                    {recordType === 'reservation' ? (
+                      <StayGuestsPanel reservation={reservation} initialGuests={stayGuests} />
+                    ) : null}
 
                     <ReservationItemsEditor defaultItems={reservationItems} />
                     <ReservationFilesPanel

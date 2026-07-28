@@ -94,12 +94,21 @@ function SettingsModal({
               <div className="grid gap-5">
                 <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <div className="nord-fjella-modal-card-title mb-4 text-sm font-semibold text-gray-900">Objekt</div>
-                  <div className="grid gap-4">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <label className="clients-modal__label text-sm font-medium text-gray-900">Název objektu</label>
                       <input
                         name="object_name"
                         defaultValue={settings?.object_name ?? 'Nord Fjella'}
+                        required
+                        className={inputClassName}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="clients-modal__label text-sm font-medium text-gray-900">Obec objektu</label>
+                      <input
+                        name="object_city"
+                        defaultValue={settings?.object_city ?? 'Harrachov'}
                         required
                         className={inputClassName}
                       />
@@ -169,7 +178,11 @@ function SettingsModal({
                       <input name="default_accommodation_vat_rate" defaultValue={settings?.default_accommodation_vat_rate ?? 12} required className={inputClassName} />
                     </div>
                     <div className="space-y-2">
-                      <label className="clients-modal__label text-sm font-medium text-gray-900">Výchozí úklid</label>
+                      <label className="clients-modal__label text-sm font-medium text-gray-900">Místní poplatek / osoba / noc</label>
+                      <input name="default_city_tax_rate" defaultValue={settings?.default_city_tax_rate ?? 30} required className={inputClassName} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="clients-modal__label text-sm font-medium text-gray-900">Výchozí úklid bez DPH</label>
                       <input name="default_cleaning_fee" defaultValue={settings?.default_cleaning_fee ?? 0} required className={inputClassName} />
                     </div>
                     <div className="space-y-2">

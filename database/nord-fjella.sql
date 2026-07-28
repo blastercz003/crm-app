@@ -71,6 +71,8 @@ create table if not exists public.nord_fjella_settings (
   provider_bank_account text not null default '',
   provider_iban text,
   provider_swift text,
+  object_city text not null default 'Harrachov',
+  default_city_tax_rate numeric(12, 2) not null default 30 check (default_city_tax_rate >= 0),
   default_accommodation_vat_rate numeric(5, 2) not null default 12 check (default_accommodation_vat_rate >= 0),
   default_cleaning_fee numeric(12, 2) not null default 0 check (default_cleaning_fee >= 0),
   default_security_deposit numeric(12, 2) not null default 0 check (default_security_deposit >= 0),
@@ -147,6 +149,11 @@ create table if not exists public.nord_fjella_reservations (
   stay_end_date date not null,
   adult_count integer not null default 0 check (adult_count >= 0),
   child_count integer not null default 0 check (child_count >= 0),
+  price_basis text not null default 'excluding_vat'
+    check (price_basis = 'excluding_vat'),
+  taxable_supply_date date,
+  balance_due_date date,
+  external_document_number text,
   accommodation_night_rate numeric(12, 2) not null default 0 check (accommodation_night_rate >= 0),
   accommodation_vat_rate numeric(5, 2) not null default 12 check (accommodation_vat_rate >= 0),
   city_tax_rate numeric(12, 2) not null default 0 check (city_tax_rate >= 0),
@@ -171,6 +178,12 @@ create table if not exists public.nord_fjella_reservations (
   balance_payment_method text
     check (balance_payment_method in ('bank_transfer', 'cash')),
   cancellation_fee_amount numeric(12, 2) check (cancellation_fee_amount is null or cancellation_fee_amount >= 0),
+  cancellation_fee_vat_rate numeric(5, 2) not null default 12 check (cancellation_fee_vat_rate >= 0),
+  payment_refund_amount numeric(12, 2) check (payment_refund_amount is null or payment_refund_amount >= 0),
+  payment_refund_at date,
+  payment_refund_method text
+    check (payment_refund_method in ('bank_transfer', 'cash')),
+  security_deposit_withheld_at date,
   internal_note text,
   public_note text,
   created_by uuid references public.profiles(id) on delete set null,
@@ -215,6 +228,120 @@ create table if not exists public.nord_fjella_reservation_items (
   note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+alter table public.nord_fjella_settings
+  add column if not exists object_city text not null default 'Harrachov',
+  add column if not exists default_city_tax_rate numeric(12, 2) not null default 30;
+
+update public.nord_fjella_settings
+set object_city = 'Harrachov',
+    default_city_tax_rate = 30
+where singleton_key = 'primary'
+  and (
+    coalesce(nullif(trim(object_city), ''), '') = ''
+    or default_city_tax_rate = 0
+  );
+
+alter table public.nord_fjella_reservations
+  add column if not exists price_basis text not null default 'excluding_vat',
+  add column if not exists taxable_supply_date date,
+  add column if not exists balance_due_date date,
+  add column if not exists external_document_number text,
+  add column if not exists cancellation_fee_vat_rate numeric(5, 2) not null default 12,
+  add column if not exists payment_refund_amount numeric(12, 2),
+  add column if not exists payment_refund_at date,
+  add column if not exists payment_refund_method text,
+  add column if not exists security_deposit_withheld_at date;
+
+alter table public.nord_fjella_reservations
+  drop constraint if exists nord_fjella_reservations_price_basis_check,
+  add constraint nord_fjella_reservations_price_basis_check
+    check (price_basis = 'excluding_vat'),
+  drop constraint if exists nord_fjella_reservations_cancellation_fee_vat_rate_check,
+  add constraint nord_fjella_reservations_cancellation_fee_vat_rate_check
+    check (cancellation_fee_vat_rate >= 0),
+  drop constraint if exists nord_fjella_reservations_payment_refund_amount_check,
+  add constraint nord_fjella_reservations_payment_refund_amount_check
+    check (payment_refund_amount is null or payment_refund_amount >= 0),
+  drop constraint if exists nord_fjella_reservations_payment_refund_method_check,
+  add constraint nord_fjella_reservations_payment_refund_method_check
+    check (payment_refund_method in ('bank_transfer', 'cash'));
+
+alter table public.nord_fjella_reservation_items
+  drop constraint if exists nord_fjella_reservation_items_vat_mode_check,
+  add constraint nord_fjella_reservation_items_vat_mode_check
+    check (vat_mode in ('vat_12', 'vat_21', 'vat_exempt', 'outside_vat'));
+
+create table if not exists public.nord_fjella_payments (
+  id uuid primary key default gen_random_uuid(),
+  reservation_id uuid not null references public.nord_fjella_reservations(id) on delete cascade,
+  source_key text,
+  transaction_type text not null
+    check (
+      transaction_type in (
+        'deposit',
+        'balance',
+        'refund',
+        'security_deposit_received',
+        'security_deposit_refund',
+        'security_deposit_withheld'
+      )
+    ),
+  direction text not null
+    check (direction in ('in', 'out', 'internal')),
+  amount numeric(12, 2) not null check (amount > 0),
+  transaction_date date not null,
+  payment_method text
+    check (payment_method in ('bank_transfer', 'cash')),
+  note text,
+  created_by uuid references public.profiles(id) on delete set null,
+  updated_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.nord_fjella_stay_guests (
+  id uuid primary key default gen_random_uuid(),
+  reservation_id uuid not null references public.nord_fjella_reservations(id) on delete cascade,
+  sort_order integer not null default 0 check (sort_order >= 0),
+  is_primary boolean not null default false,
+  guest_category text not null default 'adult'
+    check (guest_category in ('adult', 'child')),
+  first_name text not null,
+  last_name text not null,
+  birth_date date not null,
+  citizenship_code text not null default 'CZ'
+    check (citizenship_code = 'CZ'),
+  street text not null,
+  city text not null,
+  postal_code text not null,
+  country text not null default 'Česká republika',
+  identity_document_type text not null default 'id_card'
+    check (identity_document_type in ('id_card', 'passport', 'other')),
+  identity_document_number text not null,
+  stay_start_date date not null,
+  stay_end_date date not null,
+  city_tax_status text not null default 'liable'
+    check (city_tax_status in ('liable', 'exempt', 'not_applicable')),
+  city_tax_exemption_reason text,
+  city_tax_rate numeric(12, 2) not null default 30 check (city_tax_rate >= 0),
+  city_tax_nights integer not null default 0 check (city_tax_nights >= 0),
+  city_tax_amount numeric(12, 2) not null default 0 check (city_tax_amount >= 0),
+  note text,
+  created_by uuid references public.profiles(id) on delete set null,
+  updated_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint nord_fjella_stay_guests_name_check
+    check (trim(first_name) <> '' and trim(last_name) <> ''),
+  constraint nord_fjella_stay_guests_date_range_check
+    check (stay_end_date > stay_start_date),
+  constraint nord_fjella_stay_guests_exemption_reason_check
+    check (
+      city_tax_status <> 'exempt'
+      or coalesce(nullif(trim(city_tax_exemption_reason), ''), '') <> ''
+    )
 );
 
 create or replace function public.sync_nord_fjella_guest_search_text()
@@ -263,6 +390,18 @@ before update on public.nord_fjella_reservation_items
 for each row
 execute function public.nord_fjella_set_updated_at();
 
+drop trigger if exists nord_fjella_stay_guests_set_updated_at on public.nord_fjella_stay_guests;
+create trigger nord_fjella_stay_guests_set_updated_at
+before update on public.nord_fjella_stay_guests
+for each row
+execute function public.nord_fjella_set_updated_at();
+
+drop trigger if exists nord_fjella_payments_set_updated_at on public.nord_fjella_payments;
+create trigger nord_fjella_payments_set_updated_at
+before update on public.nord_fjella_payments
+for each row
+execute function public.nord_fjella_set_updated_at();
+
 update public.nord_fjella_guests
 set search_text = public.build_nord_fjella_guest_search_text(
   guest_type,
@@ -302,10 +441,97 @@ create index if not exists nord_fjella_reservations_guest_id_idx
 create index if not exists nord_fjella_reservation_items_reservation_sort_idx
   on public.nord_fjella_reservation_items (reservation_id, sort_order, created_at asc);
 
+create index if not exists nord_fjella_stay_guests_reservation_sort_idx
+  on public.nord_fjella_stay_guests (reservation_id, sort_order, created_at asc);
+
+create index if not exists nord_fjella_stay_guests_stay_dates_idx
+  on public.nord_fjella_stay_guests (stay_start_date, stay_end_date);
+
+create unique index if not exists nord_fjella_stay_guests_one_primary_idx
+  on public.nord_fjella_stay_guests (reservation_id)
+  where is_primary;
+
+create index if not exists nord_fjella_payments_reservation_date_idx
+  on public.nord_fjella_payments (reservation_id, transaction_date, created_at);
+
+create index if not exists nord_fjella_payments_date_type_idx
+  on public.nord_fjella_payments (transaction_date, transaction_type);
+
+create unique index if not exists nord_fjella_payments_source_key_idx
+  on public.nord_fjella_payments (reservation_id, source_key)
+  where source_key is not null;
+
+insert into public.nord_fjella_stay_guests (
+  reservation_id,
+  sort_order,
+  is_primary,
+  guest_category,
+  first_name,
+  last_name,
+  birth_date,
+  street,
+  city,
+  postal_code,
+  country,
+  identity_document_type,
+  identity_document_number,
+  stay_start_date,
+  stay_end_date,
+  city_tax_status,
+  city_tax_rate,
+  city_tax_nights,
+  city_tax_amount,
+  created_by,
+  updated_by
+)
+select
+  reservation.id,
+  0,
+  true,
+  'adult',
+  split_part(trim(coalesce(reservation.guest_full_name, reservation.guest_contact_name, '')), ' ', 1),
+  regexp_replace(trim(coalesce(reservation.guest_full_name, reservation.guest_contact_name, '')), '^[^ ]+\s+', ''),
+  reservation.guest_birth_date,
+  coalesce(reservation.guest_street, ''),
+  coalesce(reservation.guest_city, ''),
+  coalesce(reservation.guest_postal_code, ''),
+  coalesce(reservation.guest_country, 'Česká republika'),
+  'id_card',
+  coalesce(reservation.guest_identity_document_number, ''),
+  reservation.stay_start_date,
+  reservation.stay_end_date,
+  case when reservation.city_tax_person_count > 0 then 'liable' else 'not_applicable' end,
+  reservation.city_tax_rate,
+  case
+    when reservation.city_tax_person_count > 0
+      then greatest(reservation.stay_end_date - reservation.stay_start_date, 0)
+    else 0
+  end,
+  case
+    when reservation.city_tax_person_count > 0
+      then reservation.city_tax_rate * greatest(reservation.stay_end_date - reservation.stay_start_date, 0)
+    else 0
+  end,
+  reservation.created_by,
+  reservation.updated_by
+from public.nord_fjella_reservations reservation
+where reservation.record_type = 'reservation'
+  and reservation.guest_birth_date is not null
+  and coalesce(nullif(trim(reservation.guest_identity_document_number), ''), '') <> ''
+  and coalesce(nullif(trim(coalesce(reservation.guest_full_name, reservation.guest_contact_name)), ''), '') <> ''
+  and position(' ' in trim(coalesce(reservation.guest_full_name, reservation.guest_contact_name, ''))) > 0
+  and not exists (
+    select 1
+    from public.nord_fjella_stay_guests stay_guest
+    where stay_guest.reservation_id = reservation.id
+  );
+
 alter table public.nord_fjella_settings enable row level security;
 alter table public.nord_fjella_guests enable row level security;
 alter table public.nord_fjella_reservations enable row level security;
 alter table public.nord_fjella_reservation_items enable row level security;
+alter table public.nord_fjella_stay_guests enable row level security;
+alter table public.nord_fjella_payments enable row level security;
 
 drop policy if exists "Users can read Nord Fjella settings" on public.nord_fjella_settings;
 create policy "Users can read Nord Fjella settings"
@@ -362,6 +588,32 @@ create policy "Users can read Nord Fjella reservation items"
 drop policy if exists "Users can manage Nord Fjella reservation items" on public.nord_fjella_reservation_items;
 create policy "Users can manage Nord Fjella reservation items"
   on public.nord_fjella_reservation_items
+  for all
+  using (public.current_user_can_view_nord_fjella())
+  with check (public.current_user_can_view_nord_fjella());
+
+drop policy if exists "Users can read Nord Fjella stay guests" on public.nord_fjella_stay_guests;
+create policy "Users can read Nord Fjella stay guests"
+  on public.nord_fjella_stay_guests
+  for select
+  using (public.current_user_can_view_nord_fjella());
+
+drop policy if exists "Users can manage Nord Fjella stay guests" on public.nord_fjella_stay_guests;
+create policy "Users can manage Nord Fjella stay guests"
+  on public.nord_fjella_stay_guests
+  for all
+  using (public.current_user_can_view_nord_fjella())
+  with check (public.current_user_can_view_nord_fjella());
+
+drop policy if exists "Users can read Nord Fjella payments" on public.nord_fjella_payments;
+create policy "Users can read Nord Fjella payments"
+  on public.nord_fjella_payments
+  for select
+  using (public.current_user_can_view_nord_fjella());
+
+drop policy if exists "Users can manage Nord Fjella payments" on public.nord_fjella_payments;
+create policy "Users can manage Nord Fjella payments"
+  on public.nord_fjella_payments
   for all
   using (public.current_user_can_view_nord_fjella())
   with check (public.current_user_can_view_nord_fjella());

@@ -250,11 +250,12 @@ export function ReservationItemsEditor({ defaultItems = [] }: ReservationItemsEd
                 </div>
 
                 <div className="space-y-2 md:col-span-3">
-                  <label className="text-sm font-medium text-gray-900">Cena za jednotku</label>
+                  <label className="text-sm font-medium text-gray-900">Jednotková cena bez DPH</label>
                   <input
                     value={item.unitPrice}
                     onChange={(event) => updateItem(item.id, { unitPrice: event.target.value })}
                     className={inputClassName}
+                    placeholder="Zadej cenu bez DPH"
                   />
                 </div>
 
@@ -272,6 +273,7 @@ export function ReservationItemsEditor({ defaultItems = [] }: ReservationItemsEd
                     <option value="vat_12">DPH 12 %</option>
                     <option value="vat_21">DPH 21 %</option>
                     <option value="vat_exempt">Osvobozeno od DPH</option>
+                    <option value="outside_vat">Mimo DPH</option>
                   </select>
                 </div>
 
@@ -287,6 +289,9 @@ export function ReservationItemsEditor({ defaultItems = [] }: ReservationItemsEd
 
                 <div className="flex items-end justify-between gap-3 md:col-span-2">
                   <div className="nord-fjella-modal-subtle-card-text text-sm font-semibold text-gray-900">
+                    <span className="mr-2 text-[10px] font-medium uppercase tracking-[0.08em] text-gray-500">
+                      Bez DPH
+                    </span>
                     {(normalizeDecimal(item.quantity) * normalizeDecimal(item.unitPrice)).toLocaleString('cs-CZ', {
                       style: 'currency',
                       currency: 'CZK',
@@ -308,7 +313,7 @@ export function ReservationItemsEditor({ defaultItems = [] }: ReservationItemsEd
       )}
 
       <div className="mt-4 text-right text-sm font-semibold text-gray-900 [html[data-theme='dark']_&]:text-white">
-        Součet doplňkových položek:{' '}
+        Součet doplňkových položek bez DPH:{' '}
         {summaryTotal.toLocaleString('cs-CZ', {
           style: 'currency',
           currency: 'CZK',

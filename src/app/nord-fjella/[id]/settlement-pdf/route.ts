@@ -309,6 +309,8 @@ function getVatModeLabel(vatMode: string) {
       return '12 %'
     case 'vat_21':
       return '21 %'
+    case 'outside_vat':
+      return 'Mimo DPH'
     default:
       return '0 %'
   }
@@ -465,9 +467,9 @@ function SettlementDocument({
             h(Text, { style: [styles.cellLabel, styles.wName] }, 'Položka'),
             h(Text, { style: [styles.cellLabel, styles.wQty] }, 'Množ.'),
             h(Text, { style: [styles.cellLabel, styles.wUnit] }, 'Jedn.'),
-            h(Text, { style: [styles.cellLabel, styles.wPrice] }, 'Cena'),
+            h(Text, { style: [styles.cellLabel, styles.wPrice] }, 'Cena bez DPH'),
             h(Text, { style: [styles.cellLabel, styles.wVat] }, 'DPH'),
-            h(Text, { style: [styles.cellLabel, styles.wTotal] }, 'Celkem')
+            h(Text, { style: [styles.cellLabel, styles.wTotal] }, 'Celkem s DPH')
           ),
           ...summary.lines.map((line, index) =>
             h(
@@ -489,7 +491,7 @@ function SettlementDocument({
               h(Text, { style: [styles.cellText, styles.wUnit] }, line.unit),
               h(Text, { style: [styles.cellText, styles.wPrice] }, formatCurrency(line.unitPrice)),
               h(Text, { style: [styles.cellText, styles.wVat] }, getVatModeLabel(line.vatMode)),
-              h(Text, { style: [styles.cellTextStrong, styles.wTotal] }, formatCurrency(line.total))
+              h(Text, { style: [styles.cellTextStrong, styles.wTotal] }, formatCurrency(line.grossTotal))
             )
           )
         )
@@ -504,8 +506,32 @@ function SettlementDocument({
           h(
             View,
             { style: styles.summaryLine },
-            h(Text, { style: styles.summaryLabel }, 'Vyúčtování pobytu'),
-            h(Text, { style: styles.summaryValue }, formatCurrency(summary.subtotalExcludingDeposit))
+            h(Text, { style: styles.summaryLabel }, 'Služby bez DPH'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.servicesNetTotal))
+          ),
+          h(
+            View,
+            { style: styles.summaryLine },
+            h(Text, { style: styles.summaryLabel }, 'DPH celkem'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.servicesVatTotal))
+          ),
+          h(
+            View,
+            { style: styles.summaryLine },
+            h(Text, { style: styles.summaryLabel }, 'Služby s DPH'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.servicesGrossTotal))
+          ),
+          h(
+            View,
+            { style: styles.summaryLine },
+            h(Text, { style: styles.summaryLabel }, 'Místní poplatek'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.outsideVatTotal))
+          ),
+          h(
+            View,
+            { style: styles.summaryLine },
+            h(Text, { style: styles.summaryLabel }, 'Celkem k úhradě'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.totalPayable))
           ),
           h(
             View,
@@ -552,20 +578,32 @@ function SettlementDocument({
           h(
             View,
             { style: styles.summaryLine },
-            h(Text, { style: styles.summaryLabel }, 'Položky v 12 %'),
-            h(Text, { style: styles.summaryValue }, formatCurrency(summary.vat12Total))
+            h(Text, { style: styles.summaryLabel }, 'Základ 12 %'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.vat12Base))
           ),
           h(
             View,
             { style: styles.summaryLine },
-            h(Text, { style: styles.summaryLabel }, 'Položky v 21 %'),
-            h(Text, { style: styles.summaryValue }, formatCurrency(summary.vat21Total))
+            h(Text, { style: styles.summaryLabel }, 'DPH 12 %'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.vat12Amount))
           ),
           h(
             View,
             { style: styles.summaryLine },
-            h(Text, { style: styles.summaryLabel }, 'Osvobozené položky'),
-            h(Text, { style: styles.summaryValue }, formatCurrency(summary.vatExemptTotal))
+            h(Text, { style: styles.summaryLabel }, 'Základ 21 %'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.vat21Base))
+          ),
+          h(
+            View,
+            { style: styles.summaryLine },
+            h(Text, { style: styles.summaryLabel }, 'DPH 21 %'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.vat21Amount))
+          ),
+          h(
+            View,
+            { style: styles.summaryLine },
+            h(Text, { style: styles.summaryLabel }, 'Mimo DPH'),
+            h(Text, { style: styles.summaryValue }, formatCurrency(summary.outsideVatTotal))
           )
         ),
         qrCodeDataUrl

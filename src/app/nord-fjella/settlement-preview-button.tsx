@@ -292,7 +292,7 @@ function SettlementPreviewModal({
                             {line.note ? <div className="mt-1 text-xs text-gray-500">{line.note}</div> : null}
                           </div>
                           <div className="shrink-0 text-right text-sm font-semibold text-gray-900">
-                            {formatCurrency(line.total)}
+                            {formatCurrency(line.grossTotal)}
                           </div>
                         </div>
 
@@ -311,7 +311,7 @@ function SettlementPreviewModal({
                           </div>
                           <div>
                             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
-                              Cena
+                              Cena bez DPH
                             </div>
                             <div className="mt-1">{formatCurrency(line.unitPrice)}</div>
                           </div>
@@ -324,7 +324,9 @@ function SettlementPreviewModal({
                                 ? '12 %'
                                 : line.vatMode === 'vat_21'
                                   ? '21 %'
-                                  : '0 %'}
+                                  : line.vatMode === 'outside_vat'
+                                    ? 'Mimo DPH'
+                                    : '0 %'}
                             </div>
                           </div>
                         </div>
@@ -339,9 +341,9 @@ function SettlementPreviewModal({
                           <th className="px-5 py-3">Položka</th>
                           <th className="px-5 py-3 text-right">Množství</th>
                           <th className="px-5 py-3">Jedn.</th>
-                          <th className="px-5 py-3 text-right">Cena</th>
+                          <th className="px-5 py-3 text-right">Cena bez DPH</th>
                           <th className="px-5 py-3">DPH</th>
-                          <th className="px-5 py-3 text-right">Celkem</th>
+                          <th className="px-5 py-3 text-right">Celkem s DPH</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -362,10 +364,12 @@ function SettlementPreviewModal({
                                 ? '12 %'
                                 : line.vatMode === 'vat_21'
                                   ? '21 %'
-                                  : '0 %'}
+                                  : line.vatMode === 'outside_vat'
+                                    ? 'Mimo DPH'
+                                    : '0 %'}
                             </td>
                             <td className="px-5 py-3 text-right font-semibold text-gray-900">
-                              {formatCurrency(line.total)}
+                              {formatCurrency(line.grossTotal)}
                             </td>
                           </tr>
                         ))}
@@ -380,8 +384,24 @@ function SettlementPreviewModal({
                   <h3 className="text-base font-semibold text-gray-900">Souhrn úhrad</h3>
                   <div className="mt-4 space-y-3 text-sm text-gray-700">
                     <div className="flex items-center justify-between gap-3">
-                      <span>Vyúčtování pobytu</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(summary.subtotalExcludingDeposit)}</span>
+                      <span>Služby bez DPH</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.servicesNetTotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>DPH celkem</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.servicesVatTotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Služby s DPH</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.servicesGrossTotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Místní poplatek mimo DPH</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.outsideVatTotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-3 [html[data-theme='dark']_&]:border-slate-400/12">
+                      <span>Celkem k úhradě</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.totalPayable)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span>Uhrazeno celkem</span>
@@ -420,16 +440,28 @@ function SettlementPreviewModal({
                   <h3 className="text-base font-semibold text-gray-900">DPH a režimy</h3>
                   <div className="mt-4 space-y-3 text-sm text-gray-700">
                     <div className="flex items-center justify-between gap-3">
-                      <span>Položky v 12 %</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vat12Total)}</span>
+                      <span>Základ 12 %</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vat12Base)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span>Položky v 21 %</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vat21Total)}</span>
+                      <span>DPH 12 %</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vat12Amount)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span>Osvobozené položky</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vatExemptTotal)}</span>
+                      <span>Základ 21 %</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vat21Base)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>DPH 21 %</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vat21Amount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Osvobozeno</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.vatExemptBase)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Mimo DPH</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(summary.outsideVatTotal)}</span>
                     </div>
                   </div>
                 </div>

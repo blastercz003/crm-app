@@ -25,7 +25,21 @@ export type NordFjellaPaymentStatus =
 
 export type NordFjellaPaymentMethod = 'bank_transfer' | 'cash'
 
-export type NordFjellaVatMode = 'vat_12' | 'vat_21' | 'vat_exempt'
+export type NordFjellaStayGuestCategory = 'adult' | 'child'
+export type NordFjellaIdentityDocumentType = 'id_card' | 'passport' | 'other'
+export type NordFjellaCityTaxStatus = 'liable' | 'exempt' | 'not_applicable'
+
+export type NordFjellaVatMode = 'vat_12' | 'vat_21' | 'vat_exempt' | 'outside_vat'
+
+export type NordFjellaPaymentTransactionType =
+  | 'deposit'
+  | 'balance'
+  | 'refund'
+  | 'security_deposit_received'
+  | 'security_deposit_refund'
+  | 'security_deposit_withheld'
+
+export type NordFjellaPaymentDirection = 'in' | 'out' | 'internal'
 
 export type NordFjellaReservationFileDocumentType =
   | 'id_card'
@@ -92,6 +106,10 @@ export type NordFjellaReservationRow = {
   stay_end_date: string
   adult_count: number
   child_count: number
+  price_basis: 'excluding_vat'
+  taxable_supply_date: string | null
+  balance_due_date: string | null
+  external_document_number: string | null
   accommodation_night_rate: number
   accommodation_vat_rate: number
   city_tax_rate: number
@@ -114,6 +132,11 @@ export type NordFjellaReservationRow = {
   balance_paid_at: string | null
   balance_payment_method: NordFjellaPaymentMethod | null
   cancellation_fee_amount: number | null
+  cancellation_fee_vat_rate: number
+  payment_refund_amount: number | null
+  payment_refund_at: string | null
+  payment_refund_method: NordFjellaPaymentMethod | null
+  security_deposit_withheld_at: string | null
   internal_note: string | null
   public_note: string | null
   created_by: string | null
@@ -137,6 +160,22 @@ export type NordFjellaReservationItemRow = {
   updated_at: string
 }
 
+export type NordFjellaPaymentRow = {
+  id: string
+  reservation_id: string
+  source_key: string | null
+  transaction_type: NordFjellaPaymentTransactionType
+  direction: NordFjellaPaymentDirection
+  amount: number
+  transaction_date: string
+  payment_method: NordFjellaPaymentMethod | null
+  note: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type NordFjellaSettingsRow = {
   singleton_key: 'primary'
   object_name: string
@@ -152,11 +191,43 @@ export type NordFjellaSettingsRow = {
   provider_bank_account: string
   provider_iban: string | null
   provider_swift: string | null
+  object_city: string
+  default_city_tax_rate: number
   default_accommodation_vat_rate: number
   default_cleaning_fee: number
   default_security_deposit: number
   default_invoice_due_days: number
   public_note_template: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type NordFjellaStayGuestRow = {
+  id: string
+  reservation_id: string
+  sort_order: number
+  is_primary: boolean
+  guest_category: NordFjellaStayGuestCategory
+  first_name: string
+  last_name: string
+  birth_date: string
+  citizenship_code: 'CZ'
+  street: string
+  city: string
+  postal_code: string
+  country: string
+  identity_document_type: NordFjellaIdentityDocumentType
+  identity_document_number: string
+  stay_start_date: string
+  stay_end_date: string
+  city_tax_status: NordFjellaCityTaxStatus
+  city_tax_exemption_reason: string | null
+  city_tax_rate: number
+  city_tax_nights: number
+  city_tax_amount: number
+  note: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
   updated_at: string
 }
