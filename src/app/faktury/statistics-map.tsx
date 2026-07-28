@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type { FinanceStatisticsMapJob } from './statistics-actions'
 import rawBoundary from '@/lib/czech-map/map-boundary.json'
+import rawRoads from '@/lib/czech-map/map-roads.json'
 
 type Coordinate = [longitude: number, latitude: number]
 
@@ -48,9 +49,15 @@ type MapCity = {
   dy?: number
 }
 
-type MapRoad = {
-  level: 'primary' | 'secondary'
-  coordinates: Coordinate[]
+type SurroundingCountry = {
+  code: string
+  name: string
+  polygons: Coordinate[][]
+}
+
+type CzechRegion = {
+  name: string
+  polygons: Coordinate[][]
 }
 
 const MAP_WIDTH = 900
@@ -63,11 +70,20 @@ const ZOOM_STEP = 0.5
 const MID_LATITUDE = 49.75
 const LONGITUDE_SCALE = Math.cos((MID_LATITUDE * Math.PI) / 180)
 
-const boundary = (
-  rawBoundary as unknown as {
+const {
+  boundary,
+  surroundingCountries,
+  czechRegions,
+} = rawBoundary as unknown as {
     boundary: Coordinate[]
+    surroundingCountries: SurroundingCountry[]
+    czechRegions: CzechRegion[]
   }
-).boundary
+
+const { motorways, primaryRoads } = rawRoads as unknown as {
+  motorways: Coordinate[][]
+  primaryRoads: Coordinate[][]
+}
 
 const MAP_CITIES: MapCity[] = [
   {
@@ -304,158 +320,86 @@ const MAP_CITIES: MapCity[] = [
   },
 ]
 
-const MAP_ROADS: MapRoad[] = [
+const SURROUNDING_CITIES: MapCity[] = [
   {
-    level: 'primary',
-    coordinates: [
-      [14.4378, 50.0755],
-      [15.2682, 49.9484],
-      [15.5912, 49.3961],
-      [16.6068, 49.1951],
-      [17.2509, 49.5938],
-      [18.2625, 49.8209],
-    ],
+    name: 'Drážďany',
+    latitude: 51.0504,
+    longitude: 13.7373,
+    tier: 'regional',
+    dx: 7,
+    dy: 11,
   },
   {
-    level: 'primary',
-    coordinates: [
-      [14.4378, 50.0755],
-      [13.9084, 49.7475],
-      [13.3736, 49.7384],
-      [12.875, 49.705],
-    ],
+    name: 'Norimberk',
+    latitude: 49.4521,
+    longitude: 11.0767,
+    tier: 'regional',
+    dx: 7,
+    dy: -6,
   },
   {
-    level: 'primary',
-    coordinates: [
-      [14.4378, 50.0755],
-      [14.316, 50.348],
-      [14.0531, 50.6611],
-      [13.78, 50.74],
-    ],
+    name: 'Řezno',
+    latitude: 49.0134,
+    longitude: 12.0956,
+    tier: 'district',
+    dx: 7,
+    dy: -6,
   },
   {
-    level: 'primary',
-    coordinates: [
-      [14.4378, 50.0755],
-      [14.9032, 50.4114],
-      [15.0543, 50.7663],
-    ],
+    name: 'Linec',
+    latitude: 48.3069,
+    longitude: 14.2858,
+    tier: 'regional',
+    dx: 7,
+    dy: -6,
   },
   {
-    level: 'primary',
-    coordinates: [
-      [14.4378, 50.0755],
-      [15.2006, 50.0281],
-      [15.8328, 50.2092],
-      [16.074, 50.034],
-      [17.2509, 49.5938],
-    ],
+    name: 'Vídeň',
+    latitude: 48.2082,
+    longitude: 16.3738,
+    tier: 'regional',
+    dx: 7,
+    dy: -6,
   },
   {
-    level: 'primary',
-    coordinates: [
-      [14.4378, 50.0755],
-      [14.6578, 49.4144],
-      [14.4743, 48.9745],
-    ],
+    name: 'Bratislava',
+    latitude: 48.1486,
+    longitude: 17.1077,
+    tier: 'regional',
+    dx: 7,
+    dy: 11,
   },
   {
-    level: 'primary',
-    coordinates: [
-      [14.4378, 50.0755],
-      [13.8, 50.15],
-      [13.39, 50.23],
-      [12.871, 50.2319],
-      [12.373, 50.079],
-    ],
+    name: 'Žilina',
+    latitude: 49.2231,
+    longitude: 18.7394,
+    tier: 'regional',
+    dx: -7,
+    dy: 11,
   },
   {
-    level: 'primary',
-    coordinates: [
-      [16.6068, 49.1951],
-      [16.76, 48.85],
-      [16.882, 48.7589],
-    ],
+    name: 'Vratislav',
+    latitude: 51.1079,
+    longitude: 17.0385,
+    tier: 'regional',
+    dx: 7,
+    dy: 11,
   },
   {
-    level: 'secondary',
-    coordinates: [
-      [13.3736, 49.7384],
-      [14.1475, 49.3088],
-      [14.4743, 48.9745],
-    ],
+    name: 'Katovice',
+    latitude: 50.2649,
+    longitude: 19.0238,
+    tier: 'regional',
+    dx: -7,
+    dy: -6,
   },
   {
-    level: 'secondary',
-    coordinates: [
-      [14.0531, 50.6611],
-      [14.5376, 50.6855],
-      [15.0543, 50.7663],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [12.871, 50.2319],
-      [13.4178, 50.4605],
-      [13.6362, 50.503],
-      [14.0531, 50.6611],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [15.8328, 50.2092],
-      [15.9127, 50.561],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [15.7812, 50.0343],
-      [15.5912, 49.3961],
-      [15.8817, 49.2149],
-      [16.0488, 48.8555],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [16.6068, 49.1951],
-      [17.4509, 49.4551],
-      [17.6628, 49.2244],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [17.2509, 49.5938],
-      [17.4509, 49.4551],
-      [17.6628, 49.2244],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [18.2625, 49.8209],
-      [17.9026, 49.9387],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [18.2625, 49.8209],
-      [18.3673, 49.6819],
-    ],
-  },
-  {
-    level: 'secondary',
-    coordinates: [
-      [16.6068, 49.1951],
-      [16.468, 49.755],
-      [15.8328, 50.2092],
-    ],
+    name: 'Krakov',
+    latitude: 50.0647,
+    longitude: 19.945,
+    tier: 'regional',
+    dx: -7,
+    dy: 11,
   },
 ]
 
@@ -504,6 +448,26 @@ function pathFromCoordinates(coordinates: Coordinate[], close = false) {
 }
 
 const boundaryPath = pathFromCoordinates(boundary, true)
+const surroundingCountryPaths = surroundingCountries.flatMap((country) =>
+  country.polygons.map((polygon, index) => ({
+    key: `${country.code}-${index}`,
+    path: pathFromCoordinates(polygon, true),
+  }))
+)
+const czechRegionPaths = czechRegions.flatMap((region) =>
+  region.polygons.map((polygon, index) => ({
+    key: `${region.name}-${index}`,
+    path: pathFromCoordinates(polygon, true),
+  }))
+)
+const motorwayPaths = motorways.map((coordinates, index) => ({
+  key: `motorway-${index}`,
+  path: pathFromCoordinates(coordinates),
+}))
+const primaryRoadPaths = primaryRoads.map((coordinates, index) => ({
+  key: `primary-road-${index}`,
+  path: pathFromCoordinates(coordinates),
+}))
 
 function positionMapJobs(jobs: FinanceStatisticsMapJob[]) {
   const jobsByLocation = new Map<string, FinanceStatisticsMapJob[]>()
@@ -638,6 +602,12 @@ export function StatisticsMap({
     setTooltip(null)
   }
 
+  function resetMapView() {
+    setZoom(MIN_ZOOM)
+    setPan({ x: 0, y: 0 })
+    setTooltip(null)
+  }
+
   function handleMapPointerDown(event: ReactPointerEvent<SVGSVGElement>) {
     if (zoom <= MIN_ZOOM || event.button !== 0) return
 
@@ -730,6 +700,13 @@ export function StatisticsMap({
 
   const cameraTransform = `translate(${MAP_CENTER.x + pan.x} ${MAP_CENTER.y + pan.y}) scale(${zoom}) translate(${-MAP_CENTER.x} ${-MAP_CENTER.y})`
   const inverseZoom = 1 / zoom
+  const zoomProgress = (zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)
+  const districtCityOpacity = 0.3 + zoomProgress * 0.58
+  const primaryRoadOpacity = 0.34 + zoomProgress * 0.12
+  const motorwayOpacity = 0.48 + zoomProgress * 0.08
+  const regionOpacity = 0.16 + zoomProgress * 0.16
+  const isViewChanged =
+    zoom !== MIN_ZOOM || Math.abs(pan.x) > 0.1 || Math.abs(pan.y) > 0.1
 
   return (
     <section className="min-w-0 rounded-[24px] border border-white/80 bg-white/72 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_28px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.15)] [html[data-theme='dark']_&]:bg-[rgba(13,23,39,0.88)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_14px_30px_rgba(0,0,0,0.24)]">
@@ -762,9 +739,6 @@ export function StatisticsMap({
           onPointerCancel={finishMapDrag}
         >
           <defs>
-            <clipPath id="statistics-czech-map-clip">
-              <path d={boundaryPath} />
-            </clipPath>
             <linearGradient
               id="statistics-map-surface"
               x1="0"
@@ -776,25 +750,6 @@ export function StatisticsMap({
               <stop offset="50%" stopColor="#dcecf6" stopOpacity="0.72" />
               <stop offset="100%" stopColor="#bfd8e8" stopOpacity="0.58" />
             </linearGradient>
-            <pattern
-              id="statistics-map-grid"
-              width="18"
-              height="18"
-              patternUnits="userSpaceOnUse"
-            >
-              <path
-                d="M 18 0 L 0 0 0 18"
-                className="fill-none stroke-[#5f91b2]/12 [html[data-theme='dark']_&]:stroke-[#7ec8f5]/10"
-                strokeWidth="0.65"
-                vectorEffect="non-scaling-stroke"
-              />
-              <circle
-                cx="0"
-                cy="0"
-                r="1"
-                className="fill-[#4c89b2]/24 [html[data-theme='dark']_&]:fill-[#7ac9f5]/22"
-              />
-            </pattern>
             <filter
               id="statistics-map-pin-shadow"
               x="-60%"
@@ -809,19 +764,6 @@ export function StatisticsMap({
                 floodColor="#0f172a"
                 floodOpacity="0.28"
               />
-            </filter>
-            <filter
-              id="statistics-map-line-glow"
-              x="-30%"
-              y="-60%"
-              width="160%"
-              height="220%"
-            >
-              <feGaussianBlur stdDeviation="2.2" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
             </filter>
             <filter
               id="statistics-map-outline-glow"
@@ -839,6 +781,47 @@ export function StatisticsMap({
           </defs>
 
           <g transform={cameraTransform}>
+            <g
+              className="fill-[#dbe7ee]/42 stroke-[#91a8b7]/42 [html[data-theme='dark']_&]:fill-[#0a1727]/72 [html[data-theme='dark']_&]:stroke-[#4c6b80]/42"
+              strokeWidth="1"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            >
+              {surroundingCountryPaths.map((country) => (
+                <path
+                  key={country.key}
+                  d={country.path}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            </g>
+
+            <g style={{ opacity: 0.22 + zoomProgress * 0.1 }}>
+              {SURROUNDING_CITIES.map((city) => {
+                const point = projectCoordinate(city.longitude, city.latitude)
+                const textAnchor = (city.dx ?? 7) < 0 ? 'end' : 'start'
+
+                return (
+                  <g
+                    key={city.name}
+                    transform={`translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) scale(${inverseZoom})`}
+                    className="fill-zinc-500 [html[data-theme='dark']_&]:fill-slate-400"
+                  >
+                    <circle cx="0" cy="0" r="1.4" fill="currentColor" />
+                    <text
+                      x={city.dx ?? 7}
+                      y={city.dy ?? -6}
+                      textAnchor={textAnchor}
+                      className="text-[7px] font-medium tracking-[0.015em]"
+                      fill="currentColor"
+                    >
+                      {city.name}
+                    </text>
+                  </g>
+                )
+              })}
+            </g>
+
             <path
               d={boundaryPath}
               fill="url(#statistics-map-surface)"
@@ -848,50 +831,60 @@ export function StatisticsMap({
               vectorEffect="non-scaling-stroke"
               filter="url(#statistics-map-outline-glow)"
             />
-            <path
-              d={boundaryPath}
-              fill="url(#statistics-map-grid)"
-              className="stroke-[#a1c6dd]/55 [html[data-theme='dark']_&]:stroke-[#6aa8cd]/42"
-              strokeWidth="0.8"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-            />
 
             <g
-              clipPath="url(#statistics-czech-map-clip)"
+              style={{ opacity: regionOpacity }}
+              className="fill-none stroke-[#527f9d] [html[data-theme='dark']_&]:stroke-[#73b5dc]"
+              strokeWidth="0.85"
+              strokeDasharray="3 3"
+              strokeLinejoin="round"
+            >
+              {czechRegionPaths.map((region) => (
+                <path
+                  key={region.key}
+                  d={region.path}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            </g>
+
+            <g
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              {MAP_ROADS.map((road, index) => {
-                const path = pathFromCoordinates(road.coordinates)
-                const isPrimary = road.level === 'primary'
+              <g
+                style={{ opacity: primaryRoadOpacity }}
+                className="stroke-[#6f8fa3] [html[data-theme='dark']_&]:stroke-[#7299b1]"
+                strokeWidth="0.8"
+              >
+                {primaryRoadPaths.map((road) => (
+                  <path
+                    key={road.key}
+                    d={road.path}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </g>
 
-                return (
-                  <g key={`${road.level}-${index}`}>
-                    {isPrimary ? (
-                      <path
-                        d={path}
-                        className="stroke-[#4fa1d5]/16 [html[data-theme='dark']_&]:stroke-[#53b7ef]/22"
-                        strokeWidth="5"
-                        vectorEffect="non-scaling-stroke"
-                        filter="url(#statistics-map-line-glow)"
-                      />
-                    ) : null}
+              <g style={{ opacity: motorwayOpacity }}>
+                {motorwayPaths.map((road) => (
+                  <g key={road.key}>
                     <path
-                      d={path}
-                      className={
-                        isPrimary
-                          ? 'stroke-[#5f94b7]/58 [html[data-theme=\'dark\']_&]:stroke-[#63b9e8]/55'
-                          : 'stroke-[#8ca9bb]/38 [html[data-theme=\'dark\']_&]:stroke-[#668ba4]/38'
-                      }
-                      strokeWidth={isPrimary ? 1.7 : 1}
-                      strokeDasharray={isPrimary ? undefined : '4 4'}
+                      d={road.path}
+                      className="stroke-white/50 [html[data-theme='dark']_&]:stroke-[#071522]/65"
+                      strokeWidth="2.7"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <path
+                      d={road.path}
+                      className="stroke-[#4d8fb9] [html[data-theme='dark']_&]:stroke-[#5eaedb]"
+                      strokeWidth="1.25"
                       vectorEffect="non-scaling-stroke"
                     />
                   </g>
-                )
-              })}
+                ))}
+              </g>
             </g>
 
             <g>
@@ -904,6 +897,9 @@ export function StatisticsMap({
                   <g
                     key={city.name}
                     transform={`translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) scale(${inverseZoom})`}
+                    style={{
+                      opacity: isRegional ? 1 : districtCityOpacity,
+                    }}
                     className={
                       isRegional
                         ? 'fill-zinc-500/58 [html[data-theme=\'dark\']_&]:fill-slate-300/54'
@@ -953,7 +949,7 @@ export function StatisticsMap({
                     key={job.id}
                     data-map-pin="true"
                     transform={`translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${inverseZoom})`}
-                    className="cursor-default outline-none"
+                    className="group cursor-default outline-none"
                     role="button"
                     tabIndex={0}
                     aria-label={`${formatMapJobDate(job.startAt)}, ${job.companyName || 'Firma neuvedena'}`}
@@ -971,6 +967,12 @@ export function StatisticsMap({
                     onFocus={() => showTooltipAtPin(job)}
                     onBlur={() => setTooltip(null)}
                   >
+                    <circle
+                      cx="0"
+                      cy="-8"
+                      r="11"
+                      className="fill-[#4aa7df]/16 opacity-70 transition duration-150 group-hover:fill-[#2996d5]/30 group-hover:opacity-100 [html[data-theme='dark']_&]:fill-[#65c7f7]/18 [html[data-theme='dark']_&]:group-hover:fill-[#76d0fb]/34"
+                    />
                     <path
                       d="M 0 2 C -2 -1 -7 -6 -7 -11 A 7 7 0 1 1 7 -11 C 7 -6 2 -1 0 2 Z"
                       className="fill-[#2980B9] stroke-white transition-transform duration-150 [html[data-theme='dark']_&]:fill-[#58afe8] [html[data-theme='dark']_&]:stroke-[#d9f0ff]"
@@ -990,6 +992,11 @@ export function StatisticsMap({
           </g>
         </svg>
 
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[5] rounded-2xl shadow-[inset_0_0_34px_rgba(78,119,145,0.13)] [html[data-theme='dark']_&]:shadow-[inset_0_0_42px_rgba(1,7,16,0.42)]"
+        />
+
         <div className="absolute right-2.5 top-2.5 z-20 grid overflow-hidden rounded-xl border border-white/80 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_20px_rgba(15,23,42,0.13)] backdrop-blur-md [html[data-theme='dark']_&]:border-[rgba(112,190,236,0.24)] [html[data-theme='dark']_&]:bg-[rgba(8,20,35,0.78)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_22px_rgba(0,0,0,0.3)]">
           <button
             type="button"
@@ -1006,11 +1013,27 @@ export function StatisticsMap({
             onClick={() => changeZoom(-1)}
             onPointerDown={(event) => event.stopPropagation()}
             disabled={zoom <= MIN_ZOOM}
-            className="inline-flex h-9 w-9 items-center justify-center text-lg font-medium leading-none text-[#2d7eae] transition hover:bg-[#dff0fa]/80 hover:text-[#1e6795] disabled:cursor-default disabled:opacity-30 [html[data-theme='dark']_&]:text-[#72c5f1] [html[data-theme='dark']_&:hover]:bg-[rgba(39,109,153,0.32)] [html[data-theme='dark']_&:hover]:text-[#a6ddfa]"
+            className={`inline-flex h-9 w-9 items-center justify-center text-lg font-medium leading-none text-[#2d7eae] transition hover:bg-[#dff0fa]/80 hover:text-[#1e6795] disabled:cursor-default disabled:opacity-30 [html[data-theme='dark']_&]:text-[#72c5f1] [html[data-theme='dark']_&:hover]:bg-[rgba(39,109,153,0.32)] [html[data-theme='dark']_&:hover]:text-[#a6ddfa] ${
+              isViewChanged
+                ? "border-b border-zinc-200/70 [html[data-theme='dark']_&]:border-[rgba(112,190,236,0.17)]"
+                : ''
+            }`}
             aria-label="Oddálit mapu"
           >
             −
           </button>
+          {isViewChanged ? (
+            <button
+              type="button"
+              onClick={resetMapView}
+              onPointerDown={(event) => event.stopPropagation()}
+              className="inline-flex h-9 w-9 items-center justify-center text-[15px] font-medium leading-none text-[#2d7eae] transition hover:bg-[#dff0fa]/80 hover:text-[#1e6795] [html[data-theme='dark']_&]:text-[#72c5f1] [html[data-theme='dark']_&:hover]:bg-[rgba(39,109,153,0.32)] [html[data-theme='dark']_&:hover]:text-[#a6ddfa]"
+              aria-label="Obnovit výchozí pohled mapy"
+              title="Výchozí pohled"
+            >
+              ⌖
+            </button>
+          ) : null}
         </div>
 
         {positionedJobs.length === 0 ? (
@@ -1041,7 +1064,7 @@ export function StatisticsMap({
           href="https://www.geonames.org/"
           target="_blank"
           rel="noreferrer"
-          className="absolute bottom-1.5 right-2 text-[8px] text-zinc-400/75 transition hover:text-zinc-600 [html[data-theme='dark']_&]:text-slate-500/75 [html[data-theme='dark']_&:hover]:text-slate-300"
+          className="absolute bottom-1.5 right-2 z-20 text-[8px] text-zinc-400/75 transition hover:text-zinc-600 [html[data-theme='dark']_&]:text-slate-500/75 [html[data-theme='dark']_&:hover]:text-slate-300"
         >
           Lokality: GeoNames
         </a>
