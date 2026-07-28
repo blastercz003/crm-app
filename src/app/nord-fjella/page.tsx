@@ -7,6 +7,7 @@ import { PresenceSectionTracker } from '@/components/presence/presence-section-t
 import { canViewNordFjellaSection } from '@/lib/nord-fjella/access'
 import {
   buildNordFjellaSettlementSummary,
+  getNordFjellaNightCount,
 } from '@/lib/nord-fjella/settlement'
 import type {
   NordFjellaGuestRow,
@@ -165,6 +166,105 @@ function formatCurrency(value: number | null | undefined) {
     currency: 'CZK',
     maximumFractionDigits: 0,
   }).format(parsed)
+}
+
+function formatCompactCurrency(value: number | null | undefined) {
+  const parsed = Number(value ?? 0)
+  const absoluteValue = Math.abs(parsed)
+
+  if (absoluteValue >= 1_000_000) {
+    return `${new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 1 }).format(parsed / 1_000_000)} mil. Kč`
+  }
+
+  if (absoluteValue >= 1_000) {
+    return `${new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 0 }).format(parsed / 1_000)} tis. Kč`
+  }
+
+  return formatCurrency(parsed)
+}
+
+function getPragueDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function addDaysToDateString(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function getCoveredNights(
+  rows: NordFjellaReservationRow[],
+  rangeStart: string,
+  rangeEnd: string
+) {
+  const nights = new Set<string>()
+
+  for (const row of rows) {
+    let cursor = row.stay_start_date > rangeStart ? row.stay_start_date : rangeStart
+    const end = row.stay_end_date < rangeEnd ? row.stay_end_date : rangeEnd
+
+    while (cursor < end) {
+      nights.add(cursor)
+      cursor = addDaysToDateString(cursor, 1)
+    }
+  }
+
+  return nights
+}
+
+type FilterOption = {
+  value: string
+  label: string
+}
+
+function FilterSelect({
+  label,
+  name,
+  defaultValue,
+  options,
+  className = '',
+}: {
+  label: string
+  name: string
+  defaultValue: string
+  options: FilterOption[]
+  className?: string
+}) {
+  return (
+    <label className={`min-w-0 ${className}`}>
+      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+        {label}
+      </span>
+      <span className="nord-fjella-input-shell relative block min-w-0 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus-within:border-[#9dc7e5] focus-within:ring-2 focus-within:ring-[#b9d8ef] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+        <select
+          name={name}
+          defaultValue={defaultValue}
+          className="block h-9 min-w-0 w-full max-w-full appearance-none border-0 bg-transparent px-3 pr-8 text-[13px] text-gray-900 outline-none [html[data-theme='dark']_&]:text-slate-200"
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400"
+        >
+          ⌄
+        </span>
+      </span>
+    </label>
+  )
 }
 
 function getGuestLabel(row: NordFjellaReservationRow) {
@@ -502,14 +602,93 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
   const calendarEvents = filteredRows.map((row) =>
     toCalendarEvent(row, reservationItemsByReservationId.get(row.id) ?? [])
   )
-  const blockCount = rows.filter((row) => row.record_type !== 'reservation').length
-  const activeReservedCount = rows.filter((row) => row.reservation_status === 'reserved').length
-  const completedStayCount = rows.filter(
-    (row) => row.record_type === 'reservation' && row.reservation_status === 'completed'
+  const today = getPragueDateString()
+  const sevenDayEnd = addDaysToDateString(today, 7)
+  const thirtyDayEnd = addDaysToDateString(today, 30)
+  const activeReservations = rows.filter(
+    (row) =>
+      row.record_type === 'reservation' &&
+      row.reservation_status === 'reserved' &&
+      row.stay_end_date > today
+  )
+  const activeBlocks = rows.filter(
+    (row) =>
+      row.record_type !== 'reservation' &&
+      row.stay_end_date > today &&
+      row.stay_start_date < thirtyDayEnd
+  )
+  const reservationNights = getCoveredNights(activeReservations, today, thirtyDayEnd)
+  const blockNights = getCoveredNights(activeBlocks, today, thirtyDayEnd)
+  const unavailableNights = new Set([...reservationNights, ...blockNights])
+  const occupancyPercent = Math.min(100, Math.round((unavailableNights.size / 30) * 100))
+  const todayReservation = activeReservations.find(
+    (row) => row.stay_start_date <= today && row.stay_end_date > today
+  )
+  const todayBlock = activeBlocks.find(
+    (row) => row.stay_start_date <= today && row.stay_end_date > today
+  )
+  const nextArrival = activeReservations
+    .filter((row) => row.stay_start_date >= today)
+    .sort((left, right) => left.stay_start_date.localeCompare(right.stay_start_date))[0]
+  const arrivalsNextSevenDays = activeReservations.filter(
+    (row) => row.stay_start_date >= today && row.stay_start_date < sevenDayEnd
   ).length
-  const cancelledReservationCount = rows.filter(
-    (row) => row.record_type === 'reservation' && row.reservation_status === 'cancelled'
+  const departuresNextSevenDays = activeReservations.filter(
+    (row) => row.stay_end_date >= today && row.stay_end_date < sevenDayEnd
   ).length
+  const activeFinancialSummary = activeReservations.reduce(
+    (summary, row) => {
+      const settlement = buildNordFjellaSettlementSummary(
+        row,
+        reservationItemsByReservationId.get(row.id) ?? []
+      )
+      const remaining = Math.max(settlement.remainingToPay, 0)
+      const requestedDeposit = Number(row.requested_deposit_amount ?? 0)
+      const paidDeposit = Number(row.deposit_paid_amount ?? 0)
+      const overdueDeposit =
+        row.deposit_due_date &&
+        row.deposit_due_date < today &&
+        requestedDeposit > paidDeposit
+          ? requestedDeposit - paidDeposit
+          : 0
+
+      return {
+        total: summary.total + settlement.subtotalExcludingDeposit,
+        remaining: summary.remaining + remaining,
+        overdueAmount: summary.overdueAmount + overdueDeposit,
+        overdueCount: summary.overdueCount + (overdueDeposit > 0 ? 1 : 0),
+      }
+    },
+    { total: 0, remaining: 0, overdueAmount: 0, overdueCount: 0 }
+  )
+  const pendingSettlementCount = rows.filter(
+    (row) =>
+      row.record_type === 'reservation' &&
+      row.reservation_status === 'completed' &&
+      row.settlement_status !== 'closed'
+  ).length
+  const pendingDepositRows = rows.filter((row) => {
+    if (row.record_type !== 'reservation' || !row.security_deposit_received) return false
+
+    const pendingAmount =
+      Number(row.security_deposit_amount ?? 0) -
+      Number(row.security_deposit_refund_amount ?? 0) -
+      Number(row.security_deposit_withheld_amount ?? 0)
+
+    return pendingAmount > 0
+  })
+  const pendingDepositAmount = pendingDepositRows.reduce(
+    (sum, row) =>
+      sum +
+      Math.max(
+        Number(row.security_deposit_amount ?? 0) -
+          Number(row.security_deposit_refund_amount ?? 0) -
+          Number(row.security_deposit_withheld_amount ?? 0),
+        0
+      ),
+    0
+  )
+  const activeReservedCount = activeReservations.length
   const hasActiveFilters =
     Boolean(query) ||
     statusFilter !== 'all' ||
@@ -596,43 +775,8 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
           </div>
         </section>
 
-        <section className="nord-fjella-panel relative z-30 overflow-visible rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] px-4 pt-3 pb-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_20px_44px_rgba(2,8,23,0.32)]">
-          <div className="space-y-4">
-            <div className="hidden gap-3 lg:grid lg:grid-cols-4">
-              <div className="nord-fjella-card offers-page__stats-card offers-page__stats-card--draft rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
-                <div className="offers-page__stats-card-label text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-                  Aktivní rezervace
-                </div>
-                <div className="offers-page__stats-card-value mt-1 text-2xl font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                  {activeReservedCount}
-                </div>
-              </div>
-              <div className="nord-fjella-card offers-page__stats-card offers-page__stats-card--draft rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
-                <div className="offers-page__stats-card-label text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-                  Blokace termínů
-                </div>
-                <div className="offers-page__stats-card-value mt-1 text-2xl font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                  {blockCount}
-                </div>
-              </div>
-              <div className="nord-fjella-card offers-page__stats-card offers-page__stats-card--draft rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
-                <div className="offers-page__stats-card-label text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-                  Storna
-                </div>
-                <div className="offers-page__stats-card-value mt-1 text-2xl font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                  {cancelledReservationCount}
-                </div>
-              </div>
-              <div className="nord-fjella-card offers-page__stats-card offers-page__stats-card--total rounded-2xl border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(35,111,159,0.12)] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.22)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(16,49,99,0.42)_0%,rgba(18,36,73,0.34)_100%)]">
-                <div className="offers-page__stats-card-label text-[11px] font-semibold uppercase tracking-[0.14em] text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
-                  Proběhlé pobyty
-                </div>
-                <div className="offers-page__stats-card-value mt-1 text-2xl font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                  {completedStayCount}
-                </div>
-              </div>
-            </div>
-
+        <section className="nord-fjella-panel relative z-30 overflow-visible rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_20px_44px_rgba(2,8,23,0.32)]">
+          <div>
             <form action="/nord-fjella" method="get" className="lg:hidden">
               <input type="hidden" name="q" value={query} />
               <details className="group w-full">
@@ -649,6 +793,29 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                 </summary>
 
                 <div className="mt-2 space-y-3 rounded-2xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(2,8,23,0.24)]">
+                  <div className="rounded-xl border border-[#8dbfe0]/50 bg-[linear-gradient(155deg,rgba(229,244,252,0.62)_0%,rgba(204,231,247,0.42)_100%)] p-3 [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.16)] [html[data-theme='dark']_&]:bg-[rgba(30,64,175,0.12)]">
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                        Dnes {todayReservation ? 'obsazeno' : todayBlock ? 'blokováno' : 'volno'}
+                      </span>
+                      <span className="text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Obsazenost 30 dní <strong className="text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">{occupancyPercent} %</strong>
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/75 [html[data-theme='dark']_&]:bg-slate-700/80">
+                      <div
+                        className="h-full rounded-full bg-[linear-gradient(90deg,#4f92cb_0%,#2b679a_100%)]"
+                        style={{ width: `${occupancyPercent}%` }}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                      <span>{activeReservedCount} aktivních · {arrivalsNextSevenDays} příjezdů</span>
+                      <span className="font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
+                        K úhradě {formatCompactCurrency(activeFinancialSummary.remaining)}
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
@@ -773,7 +940,162 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
               </details>
             </form>
 
-            <form action="/nord-fjella" method="get" className="hidden space-y-4 lg:block">
+            <div className="hidden min-w-0 gap-5 lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.85fr)]">
+              <form action="/nord-fjella" method="get" className="min-w-0">
+                <input type="hidden" name="q" value={query} />
+
+                <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4">
+                  <FilterSelect
+                    label="Stav záznamu"
+                    name="status"
+                    defaultValue={statusFilter}
+                    options={[{ value: 'all', label: 'Všechny' }, ...STATUS_OPTIONS]}
+                  />
+                  <FilterSelect
+                    label="Typ záznamu"
+                    name="type"
+                    defaultValue={typeFilter}
+                    options={[{ value: 'all', label: 'Všechny' }, ...RECORD_TYPE_OPTIONS]}
+                  />
+                  <FilterSelect
+                    label="Platební stav"
+                    name="payment"
+                    defaultValue={paymentFilter}
+                    options={[{ value: 'all', label: 'Všechny' }, ...PAYMENT_STATUS_OPTIONS]}
+                  />
+                  <FilterSelect
+                    label="Vyúčtování"
+                    name="settlement"
+                    defaultValue={settlementFilter}
+                    options={[{ value: 'all', label: 'Všechny' }, ...SETTLEMENT_STATUS_OPTIONS]}
+                  />
+                </div>
+
+                <div className="mt-3 flex min-w-0 flex-wrap items-end gap-2">
+                  <FilterSelect
+                    label="Řazení"
+                    name="sort"
+                    defaultValue={sortFilter}
+                    options={SORT_OPTIONS}
+                    className="w-full min-w-[210px] flex-1 xl:max-w-[270px]"
+                  />
+                  <button
+                    type="submit"
+                    className="offers-page__filter-submit inline-flex h-9 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-xs font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_8px_18px_rgba(24,24,27,0.22)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
+                  >
+                    Použít
+                  </button>
+                  <Link
+                    href="/nord-fjella"
+                    className="nord-fjella-chip inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-300"
+                  >
+                    Reset
+                  </Link>
+                  <span className="ml-auto inline-flex h-9 items-center whitespace-nowrap text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                    Zobrazeno&nbsp;
+                    <strong className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                      {filteredRows.length}
+                    </strong>
+                    &nbsp;z&nbsp;{rows.length}
+                  </span>
+                </div>
+              </form>
+
+              <aside className="min-w-0 border-l border-zinc-200/75 pl-5 [html[data-theme='dark']_&]:border-slate-400/12">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                    Provozní souhrn
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2 text-xs">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${
+                        todayReservation
+                          ? 'bg-[#16a34a]'
+                          : todayBlock
+                            ? 'bg-[#f59e0b]'
+                            : 'bg-[#2980b9]'
+                      }`}
+                    />
+                    <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                      Dnes {todayReservation ? 'obsazeno' : todayBlock ? 'blokováno' : 'volno'}
+                    </span>
+                    <span className="truncate text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      · další příjezd {nextArrival ? formatDate(nextArrival.stay_start_date) : '—'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2">
+                  <div className="flex items-end justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                        Obsazenost následujících 30 dní
+                      </div>
+                      <div className="mt-0.5 text-xl font-semibold tracking-tight text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                        {occupancyPercent} %
+                      </div>
+                    </div>
+                    <div className="text-right text-[11px] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                      {reservationNights.size} nocí rezervace · {blockNights.size} nocí blokace
+                    </div>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200/80 [html[data-theme='dark']_&]:bg-slate-700/80">
+                    <div
+                      className="h-full rounded-full bg-[linear-gradient(90deg,#4f92cb_0%,#2b679a_100%)]"
+                      style={{ width: `${occupancyPercent}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-3 border-y border-zinc-200/70 py-1.5 [html[data-theme='dark']_&]:border-slate-400/10">
+                  <div>
+                    <div className="truncate text-[10px] uppercase tracking-[0.1em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
+                      Hodnota aktivních
+                    </div>
+                    <div className="mt-0.5 truncate text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                      {formatCompactCurrency(activeFinancialSummary.total)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="truncate text-[10px] uppercase tracking-[0.1em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
+                      Zbývá uhradit
+                    </div>
+                    <div className="mt-0.5 truncate text-sm font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
+                      {formatCompactCurrency(activeFinancialSummary.remaining)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="truncate text-[10px] uppercase tracking-[0.1em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
+                      Po splatnosti
+                    </div>
+                    <div
+                      className={`mt-0.5 truncate text-sm font-semibold ${
+                        activeFinancialSummary.overdueCount > 0
+                          ? 'text-amber-700 [html[data-theme=\'dark\']_&]:text-amber-200'
+                          : 'text-zinc-900 [html[data-theme=\'dark\']_&]:text-white'
+                      }`}
+                    >
+                      {activeFinancialSummary.overdueCount > 0
+                        ? `${activeFinancialSummary.overdueCount} · ${formatCompactCurrency(activeFinancialSummary.overdueAmount)}`
+                        : '0'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                  <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{activeReservedCount}</strong> aktivních</span>
+                  <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{arrivalsNextSevenDays}</strong> příjezdů / 7 dní</span>
+                  <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{departuresNextSevenDays}</strong> odjezdů</span>
+                  <span><strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{pendingSettlementCount}</strong> vyúčtování</span>
+                  <span title={formatCurrency(pendingDepositAmount)}>
+                    <strong className="text-zinc-900 [html[data-theme='dark']_&]:text-white">{pendingDepositRows.length}</strong> kaucí
+                  </span>
+                </div>
+
+              </aside>
+            </div>
+
+            <form action="/nord-fjella" method="get" className="hidden">
               <div className="grid gap-4 lg:grid-cols-[220px_220px_240px_220px_auto] lg:items-end">
                 <div>
                   <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
@@ -891,7 +1213,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
               </div>
             </form>
 
-            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600 [html[data-theme='dark']_&]:text-slate-400">
+            <div className="hidden">
               {query ? (
                 <span className="nord-fjella-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
                   Hledání: <span className="ml-1 font-medium">{query}</span>
@@ -906,226 +1228,125 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
           </div>
         </section>
 
-        {rows.length === 0 ? (
-          <section className="nord-fjella-panel rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
-            <h2 className="text-xl font-semibold text-gray-900 [html[data-theme='dark']_&]:text-white">
-              Zatím tu nejsou žádné záznamy
-            </h2>
-            <p className="mt-2 text-sm text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
-              Jakmile založíš první pronájem nebo blokaci termínu, zobrazí se tady seznam i kalendář obsazenosti.
-            </p>
-          </section>
-        ) : filteredRows.length === 0 ? (
-          <section className="nord-fjella-panel rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
-            <h2 className="text-xl font-semibold text-gray-900 [html[data-theme='dark']_&]:text-white">
-              Žádný záznam neodpovídá aktuálním filtrům
-            </h2>
-            <p className="mt-2 text-sm text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
-              Zkus upravit hledání nebo změnit vybrané stavy.
-            </p>
-          </section>
-        ) : (
-          <>
-            <section className="nord-fjella-panel hidden overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:block [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(245,246,248,0.92)_100%)] shadow-sm [html[data-theme='dark']_&]:bg-[linear-gradient(180deg,rgba(18,28,46,0.98)_0%,rgba(12,20,34,0.96)_100%)]">
-                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-                      <th className="px-5 py-4">Rezervace</th>
-                      <th className="px-5 py-4">Typ / stav</th>
-                      <th className="px-5 py-4">Host</th>
-                      <th className="px-5 py-4">Termín</th>
-                      <th className="px-5 py-4">Osoby</th>
-                      <th className="px-5 py-4 text-right">Cena</th>
-                      <th className="px-5 py-4 text-right">Uhrazeno</th>
-                      <th className="px-5 py-4">Platba</th>
-                      <th className="px-5 py-4">Vyúčtování</th>
-                      <th className="px-5 py-4 text-right">Akce</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((row) => {
-                      const rowItems = reservationItemsByReservationId.get(row.id) ?? []
-                      const total = getReservationTotal(row, rowItems)
-                      const paid = getPaidAmount(row)
-
-                      return (
-                        <tr
-                          key={row.id}
-                          id={`reservation-${row.id}`}
-                          className="transition duration-200 ease-out hover:bg-white/75 [html[data-theme='dark']_&]:hover:bg-white/5"
-                        >
-                          <td className="px-5 py-4 align-middle">
-                            <div className="whitespace-nowrap text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                              {row.reservation_number}
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="flex items-center">
-                              <span className={`inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${getStatusBadgeClass(row)}`}>
-                                {row.record_type === 'reservation'
-                                  ? getStatusLabel(row.reservation_status)
-                                  : getRecordTypeLabel(row.record_type)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="max-w-[220px] truncate whitespace-nowrap text-sm font-semibold leading-none text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                              {getGuestLabel(row)}
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-middle text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-200">
-                            <div className="whitespace-nowrap leading-none">{formatDate(row.stay_start_date)} - {formatDate(row.stay_end_date)}</div>
-                          </td>
-                          <td className="px-5 py-4 align-middle text-sm text-zinc-700 [html[data-theme='dark']_&]:text-slate-200">
-                            {row.record_type === 'reservation'
-                              ? <span className="whitespace-nowrap leading-none">{`${row.adult_count} dosp. / ${row.child_count} dětí`}</span>
-                              : '—'}
-                          </td>
-                          <td className="px-5 py-4 align-middle text-right text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                            <span className="leading-none">{row.record_type === 'reservation' ? formatCurrency(total) : '—'}</span>
-                          </td>
-                          <td className="px-5 py-4 align-middle text-right text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                            <span className="leading-none">{row.record_type === 'reservation' ? formatCurrency(paid) : '—'}</span>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            {row.record_type === 'reservation' ? (
-                              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 leading-none text-[11px] font-medium ${getPaymentBadgeClass(row.payment_status)}`}>
-                                {getPaymentStatusLabel(row.payment_status)}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">—</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="flex items-center">
-                              <SettlementPreviewButton
-                                reservation={row}
-                                reservationItems={rowItems}
-                                settings={settings}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-middle text-right">
-                            {isAdmin ? (
-                              <div className="flex justify-end">
-                                <ReservationDetailButton
-                                  guests={guests}
-                                  reservation={row}
-                                  reservationItems={rowItems}
-                                  reservationFiles={reservationFilesByReservationId.get(row.id) ?? []}
-                                />
-                              </div>
-                            ) : null}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+        <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+          <section className="nord-fjella-panel flex min-w-0 flex-col overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+            <div className="flex min-h-[81px] items-center justify-between gap-3 border-b border-zinc-100/90 px-4 py-4 sm:px-5 [html[data-theme='dark']_&]:border-slate-400/10">
+              <div>
+                <h2 className="text-lg font-semibold text-zinc-900 sm:text-xl [html[data-theme='dark']_&]:text-white">
+                  Rezervace
+                </h2>
+                <p className="mt-1 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                  Přehled pronájmů a blokací termínu
+                </p>
               </div>
-            </section>
+              <span className="nord-fjella-chip inline-flex min-w-9 items-center justify-center rounded-full border border-white/75 bg-white/90 px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme='dark']_&]:text-slate-200">
+                {filteredRows.length}
+              </span>
+            </div>
 
-            <section className="grid gap-3 lg:hidden">
-              {filteredRows.map((row) => {
-                const rowItems = reservationItemsByReservationId.get(row.id) ?? []
-                const total = getReservationTotal(row, rowItems)
-                const paid = getPaidAmount(row)
+            {rows.length === 0 ? (
+              <div className="flex min-h-[300px] flex-1 flex-col items-center justify-center px-6 py-10 text-center xl:min-h-[560px]">
+                <h3 className="text-xl font-semibold text-gray-900 [html[data-theme='dark']_&]:text-white">
+                  Zatím tu nejsou žádné záznamy
+                </h3>
+                <p className="mt-2 max-w-md text-sm text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                  Jakmile založíš první pronájem nebo blokaci termínu, zobrazí se tady přehled.
+                </p>
+              </div>
+            ) : filteredRows.length === 0 ? (
+              <div className="flex min-h-[300px] flex-1 flex-col items-center justify-center px-6 py-10 text-center xl:min-h-[560px]">
+                <h3 className="text-xl font-semibold text-gray-900 [html[data-theme='dark']_&]:text-white">
+                  Žádný záznam neodpovídá filtrům
+                </h3>
+                <p className="mt-2 max-w-md text-sm text-zinc-600 [html[data-theme='dark']_&]:text-slate-300">
+                  Zkus upravit hledání nebo změnit vybrané stavy.
+                </p>
+              </div>
+            ) : (
+              <div className="grid min-w-0 max-h-[760px] gap-2 overflow-y-auto p-4 sm:p-5 xl:max-h-[680px]">
+                {filteredRows.map((row) => {
+                  const rowItems = reservationItemsByReservationId.get(row.id) ?? []
+                  const total = getReservationTotal(row, rowItems)
+                  const paid = getPaidAmount(row)
+                  const remaining = Math.max(total - paid, 0)
+                  const nights = getNordFjellaNightCount(row)
 
-                return (
-                  <article
-                    key={row.id}
-                    id={`reservation-${row.id}`}
-                    className="nord-fjella-card rounded-[24px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)] backdrop-blur-[12px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-base font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                          {row.reservation_number}
-                        </div>
-                      </div>
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${getStatusBadgeClass(row)}`}>
-                        {row.record_type === 'reservation'
-                          ? getStatusLabel(row.reservation_status)
-                          : getRecordTypeLabel(row.record_type)}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
-                            Host / typ
-                          </div>
-                          <div className="mt-1 text-sm text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                  return (
+                    <article
+                      key={row.id}
+                      id={`reservation-${row.id}`}
+                      className="nord-fjella-card min-w-0 w-full rounded-[20px] border border-white/78 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_20px_rgba(15,23,42,0.08)] backdrop-blur-[12px] transition duration-200 ease-out hover:-translate-y-[1px] sm:px-4 sm:py-3 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden whitespace-nowrap">
+                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
+                            {row.reservation_number}
+                          </span>
+                          <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
                             {getGuestLabel(row)}
-                          </div>
+                          </h3>
                         </div>
 
-                        <div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
-                            Termín
-                          </div>
-                          <div className="mt-1 text-sm text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                            {formatDate(row.stay_start_date)} - {formatDate(row.stay_end_date)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
-                            Cena
-                          </div>
-                          <div className="mt-1 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                            {row.record_type === 'reservation' ? formatCurrency(total) : '—'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-400">
-                            Uhrazeno
-                          </div>
-                          <div className="mt-1 text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">
-                            {row.record_type === 'reservation' ? formatCurrency(paid) : '—'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-end justify-between gap-3 pt-2">
-                        <div className="min-h-9">
-                          {row.record_type === 'reservation' ? (
-                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getPaymentBadgeClass(row.payment_status)}`}>
-                              {getPaymentStatusLabel(row.payment_status)}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-end gap-2">
+                        <div className="flex shrink-0 items-center gap-1.5">
                           <SettlementPreviewButton
                             reservation={row}
                             reservationItems={rowItems}
                             settings={settings}
+                            compact
                           />
-
                           {isAdmin ? (
                             <ReservationDetailButton
                               guests={guests}
                               reservation={row}
                               reservationItems={rowItems}
                               reservationFiles={reservationFilesByReservationId.get(row.id) ?? []}
+                              compact
                             />
                           ) : null}
                         </div>
                       </div>
-                    </div>
-                  </article>
-                )
-              })}
-            </section>
-          </>
-        )}
 
-        <NordFjellaCalendarClient events={calendarEvents} />
+                      <div className="mt-2 flex min-w-0 items-center gap-2 border-t border-zinc-200/70 pt-2 text-[11px] text-zinc-600 [html[data-theme='dark']_&]:border-slate-400/10 [html[data-theme='dark']_&]:text-slate-300">
+                        <div className="min-w-0 flex-1 truncate whitespace-nowrap">
+                          <span>{formatDate(row.stay_start_date)} – {formatDate(row.stay_end_date)}</span>
+                          <span className="mx-1.5 text-zinc-300 [html[data-theme='dark']_&]:text-slate-600">•</span>
+                          <span>{nights} nocí</span>
+                          {row.record_type === 'reservation' ? (
+                            <>
+                              <span className="mx-1.5 text-zinc-300 [html[data-theme='dark']_&]:text-slate-600">•</span>
+                              <span>{row.adult_count} dosp. / {row.child_count} dětí</span>
+                              <span className="mx-1.5 text-zinc-300 [html[data-theme='dark']_&]:text-slate-600">•</span>
+                              <span className="font-medium text-zinc-900 [html[data-theme='dark']_&]:text-white">
+                                {formatCurrency(total)}
+                              </span>
+                              <span className="mx-1.5 text-zinc-300 [html[data-theme='dark']_&]:text-slate-600">•</span>
+                              <span className="font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
+                                zbývá {formatCurrency(remaining)}
+                              </span>
+                            </>
+                          ) : null}
+                        </div>
+
+                        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.05em] ${getStatusBadgeClass(row)}`}>
+                          {row.record_type === 'reservation'
+                            ? getStatusLabel(row.reservation_status)
+                            : getRecordTypeLabel(row.record_type)}
+                        </span>
+                        {row.record_type === 'reservation' ? (
+                          <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[10px] font-medium ${getPaymentBadgeClass(row.payment_status)}`}>
+                            {getPaymentStatusLabel(row.payment_status)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          <NordFjellaCalendarClient events={calendarEvents} />
+        </div>
       </div>
     </main>
   )

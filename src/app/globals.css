@@ -448,6 +448,22 @@ html[data-theme='dark'] .nord-fjella-modal-body .text-zinc-400 {
   color: #94a3b8 !important;
 }
 
+.nord-fjella-modal-body input,
+.nord-fjella-modal-body select,
+.nord-fjella-modal-body textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-theme='dark'] .nord-fjella-settlement-modal-body .text-gray-600,
+html[data-theme='dark'] .nord-fjella-settlement-modal-body .text-gray-700 {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .nord-fjella-settlement-modal-body .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
 .nord-fjella-badge--owner-block {
   border-color: rgb(124 58 237 / 0.2);
   background: rgb(124 58 237 / 0.1);
@@ -7027,6 +7043,28 @@ html[data-theme='dark'] .nord-fjella-calendar-shell .fc .fc-popover-body {
 
   .calendar-shell .fc .fc-daygrid-day-frame {
     min-height: 8rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .nord-fjella-calendar-shell .fc .fc-daygrid-day-frame {
+    min-height: 5.75rem;
+  }
+
+  .nord-fjella-calendar-shell .fc .fc-daygrid-day-number {
+    min-width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.82rem;
+  }
+
+  .nord-fjella-calendar-shell .fc .fc-daygrid-event {
+    overflow: hidden;
+  }
+
+  .nord-fjella-calendar-shell .fc .fc-event-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

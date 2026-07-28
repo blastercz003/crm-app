@@ -51,9 +51,9 @@ function CalendarModeButton({
       onClick={onClick}
       data-active={active}
       className={[
-        'inline-flex h-9 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 text-[13px] font-medium transition duration-200 ease-out sm:h-10 sm:min-w-[104px] sm:flex-none sm:px-4 sm:text-sm',
+        'inline-flex h-8 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-xs font-medium transition duration-200 ease-out sm:min-w-[58px] sm:flex-none',
         active
-          ? 'border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)]'
+          ? 'border border-[#76a9d3]/75 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_58%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_5px_12px_rgba(24,78,129,0.22)]'
           : 'border border-transparent bg-transparent text-zinc-600 shadow-none hover:-translate-y-[1px] hover:text-zinc-900 [html[data-theme=\'dark\']_&]:text-slate-300 [html[data-theme=\'dark\']_&]:hover:text-white',
       ].join(' ')}
     >
@@ -131,9 +131,59 @@ export default function NordFjellaCalendarClient({
   }
 
   return (
-    <section className="nord-fjella-panel rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="nord-fjella-panel h-full min-w-0 overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)]">
+      <div className="flex min-h-[81px] flex-col justify-center gap-2 border-b border-zinc-100/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 [html[data-theme='dark']_&]:border-slate-400/10">
+        <div className="min-w-0">
+          <h2 className="whitespace-nowrap text-lg font-semibold text-zinc-900 sm:text-xl [html[data-theme='dark']_&]:text-white">
+            Obsazenost objektu
+          </h2>
+          <p className="mt-1 hidden text-xs text-zinc-500 sm:block [html[data-theme='dark']_&]:text-slate-400">
+            Kalendář rezervací a blokací
+          </p>
+        </div>
+
+        <div className="flex min-w-0 items-center justify-end gap-1.5">
+          {mode !== 'list' ? (
+            <>
+              <div className="nord-fjella-chip-group inline-flex shrink-0 items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_4px_10px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)]">
+                <button
+                  type="button"
+                  onClick={() => handleCalendarNavigation('prev')}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-medium leading-none text-zinc-600 transition hover:text-zinc-900 [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
+                  aria-label="Předchozí období"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCalendarNavigation('next')}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-medium leading-none text-zinc-600 transition hover:text-zinc-900 [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
+                  aria-label="Následující období"
+                >
+                  ›
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleCalendarNavigation('today')}
+                className="nord-fjella-chip inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-2.5 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_4px_10px_rgba(15,23,42,0.08)] transition hover:text-zinc-900 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)] [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
+              >
+                Dnes
+              </button>
+            </>
+          ) : null}
+
+          <div className="nord-fjella-chip-group inline-flex min-w-0 flex-1 items-center gap-0.5 rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] p-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_4px_10px_rgba(15,23,42,0.08)] sm:flex-none [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.78)]">
+            <CalendarModeButton active={mode === 'month'} label="Měsíc" onClick={() => setMode('month')} />
+            <CalendarModeButton active={mode === 'week'} label="Týden" onClick={() => setMode('week')} />
+            <CalendarModeButton active={mode === 'list'} label="Seznam" onClick={() => setMode('list')} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        <div className="hidden">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white sm:text-xl">
               Obsazenost objektu
@@ -255,6 +305,12 @@ export default function NordFjellaCalendarClient({
             Technická blokace
           </span>
         </div>
+
+        {mode !== 'list' && currentRangeLabel ? (
+          <div className="text-center text-lg font-semibold text-zinc-900 sm:hidden [html[data-theme='dark']_&]:text-white">
+            {currentRangeLabel}
+          </div>
+        ) : null}
 
         {mode === 'list' ? (
           <div className="grid gap-3">

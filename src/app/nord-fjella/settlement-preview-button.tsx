@@ -17,6 +17,7 @@ type SettlementPreviewButtonProps = {
   reservation: NordFjellaReservationRow
   reservationItems: NordFjellaReservationItemRow[]
   settings: NordFjellaSettingsRow | null
+  compact?: boolean
 }
 
 const NORD_FJELLA_LIGHT_THEME_LOGO = '/nord-fjella-logo-light.png'
@@ -49,6 +50,7 @@ export function SettlementPreviewButton({
   reservation,
   reservationItems,
   settings,
+  compact = false,
 }: SettlementPreviewButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const providerSettingsIssues = getNordFjellaProviderSettingsIssues(settings)
@@ -73,7 +75,9 @@ export function SettlementPreviewButton({
             ? undefined
             : `Doplň v nastavení poskytovatele: ${providerSettingsIssues.join(', ')}`
         }
-        className={`inline-flex h-9 items-center justify-center rounded-xl border px-3 text-xs font-medium uppercase tracking-[0.04em] transition duration-200 ${
+        className={`inline-flex items-center justify-center rounded-xl border font-medium uppercase tracking-[0.04em] transition duration-200 ${
+          compact ? 'h-8 px-2.5 text-[10px]' : 'h-9 px-3 text-xs'
+        } ${
           canOpenSettlement
             ? 'border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] [html[data-theme=\'dark\']_&]:border-slate-400/18 [html[data-theme=\'dark\']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme=\'dark\']_&]:text-slate-100 [html[data-theme=\'dark\']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.22)]'
             : 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400 shadow-none [html[data-theme=\'dark\']_&]:border-slate-400/14 [html[data-theme=\'dark\']_&]:bg-slate-800/60 [html[data-theme=\'dark\']_&]:text-slate-500'
@@ -185,7 +189,7 @@ function SettlementPreviewModal({
             </div>
           </div>
 
-          <div className="clients-modal__body nord-fjella-modal-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+          <div className="clients-modal__body nord-fjella-modal-body nord-fjella-settlement-modal-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
             <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
               <section className="min-w-0 space-y-5">
                 <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
@@ -246,16 +250,16 @@ function SettlementPreviewModal({
                     </div>
                     <div className="mt-2 text-base font-semibold text-gray-900">{getGuestLabel(reservation)}</div>
                     {reservation.guest_contact_name ? (
-                      <div className="mt-1 text-sm text-gray-600">{reservation.guest_contact_name}</div>
+                      <div className="mt-1 text-sm text-gray-600 [html[data-theme='dark']_&]:text-slate-300">{reservation.guest_contact_name}</div>
                     ) : null}
-                    <div className="mt-2 text-sm text-gray-600">
+                    <div className="mt-2 text-sm text-gray-600 [html[data-theme='dark']_&]:text-slate-300">
                       {[reservation.guest_street, reservation.guest_postal_code, reservation.guest_city]
                         .filter(Boolean)
                         .join(', ')}
                     </div>
-                    <div className="mt-1 text-sm text-gray-600">{reservation.guest_country || ''}</div>
-                    <div className="mt-2 text-sm text-gray-600">{reservation.guest_email || '—'}</div>
-                    <div className="mt-1 text-sm text-gray-600">{reservation.guest_phone || '—'}</div>
+                    <div className="mt-1 text-sm text-gray-600 [html[data-theme='dark']_&]:text-slate-300">{reservation.guest_country || ''}</div>
+                    <div className="mt-2 text-sm text-gray-600 [html[data-theme='dark']_&]:text-slate-300">{reservation.guest_email || '—'}</div>
+                    <div className="mt-1 text-sm text-gray-600 [html[data-theme='dark']_&]:text-slate-300">{reservation.guest_phone || '—'}</div>
                   </div>
 
                   <div className="nord-fjella-modal-subtle-card rounded-2xl border border-white/80 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
@@ -383,9 +387,9 @@ function SettlementPreviewModal({
                       <span>Uhrazeno celkem</span>
                       <span className="font-semibold text-gray-900">{formatCurrency(summary.paidTotal)}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Zbývá doplatit</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(summary.remainingToPay)}</span>
+                    <div className="nord-fjella-settlement-remaining flex items-center justify-between gap-3 rounded-xl border border-[#8dbfe0]/70 bg-[linear-gradient(155deg,rgba(229,244,252,0.72)_0%,rgba(204,231,247,0.58)_100%)] px-3 py-2 text-[#236f9f] [html[data-theme='dark']_&]:border-[rgba(96,165,250,0.20)] [html[data-theme='dark']_&]:bg-[rgba(30,64,175,0.18)] [html[data-theme='dark']_&]:text-sky-200">
+                      <span className="font-medium">Zbývá doplatit</span>
+                      <span className="font-semibold">{formatCurrency(summary.remainingToPay)}</span>
                     </div>
                     <div className="h-px bg-zinc-100 [html[data-theme='dark']_&]:bg-slate-400/12" />
                     <div className="flex items-center justify-between gap-3">

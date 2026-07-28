@@ -24,22 +24,23 @@ type ReservationDetailButtonProps = {
   reservation: NordFjellaReservationRow
   reservationItems: NordFjellaReservationItemRow[]
   reservationFiles: NordFjellaReservationFileRow[]
+  compact?: boolean
 }
 
 type GuestType = 'person' | 'company'
 type RecordType = 'reservation' | 'owner_block' | 'technical_block'
 
 const inputClassName =
-  'clients-modal__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+  'clients-modal__input min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
 
 const selectClassName =
-  'clients-modal__select h-11 w-full rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
+  'clients-modal__select h-11 min-w-0 w-full max-w-full rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
 
 function ReservationDetailFooterActions({ onCancel }: { onCancel: () => void }) {
   const { pending } = useFormStatus()
 
   return (
-    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+    <div className="contents sm:flex sm:w-full sm:flex-row sm:items-center sm:justify-end sm:gap-3">
       <button
         type="button"
         onClick={onCancel}
@@ -69,6 +70,7 @@ export function ReservationDetailButton({
   reservation,
   reservationItems,
   reservationFiles,
+  compact = false,
 }: ReservationDetailButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -77,7 +79,9 @@ export function ReservationDetailButton({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-xs font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] [html[data-theme='dark']_&]:border-slate-400/18 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.22)]"
+        className={`inline-flex items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] font-medium uppercase tracking-[0.04em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] [html[data-theme='dark']_&]:border-slate-400/18 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.22)] ${
+          compact ? 'h-8 px-2.5 text-[10px]' : 'h-9 px-4 text-xs'
+        }`}
       >
         Detail
       </button>
@@ -281,47 +285,55 @@ function ReservationDetailModal({
             <input type="hidden" name="reservation_id" value={reservation.id} />
             <div className="clients-modal__body nord-fjella-modal-body min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid gap-5">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-900">Typ záznamu</label>
-                    <select
-                      name="record_type"
-                      value={recordType}
-                      onChange={(event) => setRecordType(event.target.value as RecordType)}
-                      className={selectClassName}
-                    >
-                      <option value="reservation">Pronájem</option>
-                      <option value="owner_block">Vlastní pobyt</option>
-                      <option value="technical_block">Technická blokace</option>
-                    </select>
+                <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <div className="nord-fjella-modal-card-title mb-4 text-sm font-semibold text-gray-900">
+                    Termín a stav
                   </div>
+                  <div className="grid min-w-0 gap-4 md:grid-cols-3">
+                    <div className="min-w-0 space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Typ záznamu</label>
+                      <select
+                        name="record_type"
+                        value={recordType}
+                        onChange={(event) => setRecordType(event.target.value as RecordType)}
+                        className={selectClassName}
+                      >
+                        <option value="reservation">Pronájem</option>
+                        <option value="owner_block">Vlastní pobyt</option>
+                        <option value="technical_block">Technická blokace</option>
+                      </select>
+                    </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-900">Datum příjezdu</label>
-                    <input
-                      name="stay_start_date"
-                      type="date"
-                      required
-                      defaultValue={reservation.stay_start_date}
-                      className={inputClassName}
-                    />
-                  </div>
+                    <div className="min-w-0 space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Datum příjezdu</label>
+                      <input
+                        name="stay_start_date"
+                        type="date"
+                        required
+                        defaultValue={reservation.stay_start_date}
+                        className={inputClassName}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-900">Datum odjezdu</label>
-                    <input
-                      name="stay_end_date"
-                      type="date"
-                      required
-                      defaultValue={reservation.stay_end_date}
-                      className={inputClassName}
-                    />
+                    <div className="min-w-0 space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Datum odjezdu</label>
+                      <input
+                        name="stay_end_date"
+                        type="date"
+                        required
+                        defaultValue={reservation.stay_end_date}
+                        className={inputClassName}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {recordType === 'reservation' ? (
                   <>
-                    <div className="nord-fjella-modal-subtle-card p-4">
+                    <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      <div className="nord-fjella-modal-card-title mb-4 text-sm font-semibold text-gray-900">
+                        Host a kontaktní údaje
+                      </div>
                       <div className="grid gap-4 md:grid-cols-4">
                         <div className="space-y-2 md:col-span-2">
                           <label className="text-sm font-medium text-gray-900">Existující host</label>
@@ -389,9 +401,8 @@ function ReservationDetailModal({
                           </select>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
                       {guestType === 'person' ? (
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-gray-900">Jméno a příjmení</label>
@@ -539,7 +550,12 @@ function ReservationDetailModal({
                         />
                       </div>
                     </div>
+                    </div>
 
+                    <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      <div className="nord-fjella-modal-card-title mb-4 text-sm font-semibold text-gray-900">
+                        Cena, platby a vyúčtování
+                      </div>
                     <div className="grid gap-4 md:grid-cols-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-900">Počet dospělých</label>
@@ -784,9 +800,10 @@ function ReservationDetailModal({
                         />
                       </div>
                     </div>
+                    </div>
 
-                    <div className="nord-fjella-modal-subtle-card p-4">
-                      <div className="mb-4 text-sm font-semibold text-gray-900">Kauce</div>
+                    <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      <div className="nord-fjella-modal-card-title mb-4 text-sm font-semibold text-gray-900">Kauce</div>
                       <div className="grid gap-4 md:grid-cols-4">
                         <label className="nord-fjella-modal-subtle-card flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-gray-900">
                           <input
@@ -846,6 +863,10 @@ function ReservationDetailModal({
                       </div>
                     </div>
 
+                    <div className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                      <div className="nord-fjella-modal-card-title mb-4 text-sm font-semibold text-gray-900">
+                        Poznámky
+                      </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-900">Interní poznámka</label>
@@ -878,6 +899,7 @@ function ReservationDetailModal({
                         onChange={(event) => setGuestNote(event.target.value)}
                         className={`${inputClassName} min-h-[100px] py-3`}
                       />
+                    </div>
                     </div>
 
                     <ReservationItemsEditor defaultItems={reservationItems} />
@@ -923,7 +945,7 @@ function ReservationDetailModal({
             </div>
 
             <div className="clients-modal__footer shrink-0 border-t border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:px-5 sm:py-4">
-              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid w-full grid-cols-[0.8fr_0.8fr_1.4fr] gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
                 <button
                   type="button"
                   onClick={() => {
