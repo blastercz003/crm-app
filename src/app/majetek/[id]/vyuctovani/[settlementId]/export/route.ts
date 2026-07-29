@@ -4,9 +4,9 @@ import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { createClient } from '@/lib/supabase/server'
 import { canViewAssetsSection } from '@/lib/majetek/access'
 import {
-  calculateAdvancePaymentsForPeriod,
+  buildAdvanceCalculationFromSnapshot,
   buildSettlementLineItems,
-  type RentalServiceAdvanceHistoryRow,
+  type RentalServiceSettlementAdvanceMonthRow,
   type RentalServiceSettlementCustomItemRow,
   type RentalServiceSettlementRow,
 } from '@/lib/majetek/rental-settlements'
@@ -182,12 +182,11 @@ export async function GET(
       )
     }
 
-    const { data: historyRows, error: historyError } = await supabase
-      .from('asset_rental_service_advance_history')
-      .select('id, rental_id, effective_from, monthly_advance, note, created_at, updated_at')
-      .eq('rental_id', rental.id)
-      .order('effective_from', { ascending: true })
-      .order('created_at', { ascending: true })
+    const { data: advanceMonthRows, error: advanceMonthsError } = await supabase
+      .from('asset_rental_service_settlement_advance_months')
+      .select('id, settlement_id, month, monthly_advance, source_advance_id, source_effective_from, created_at')
+      .eq('settlement_id', settlement.id)
+      .order('month', { ascending: true })
 
     const { data: customItemRows, error: customItemError } = await supabase
       .from('asset_rental_service_settlement_custom_items')
@@ -196,17 +195,17 @@ export async function GET(
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
 
-    if (historyError) {
+    if (advanceMonthsError) {
       await reportRouteError({
-        error: historyError,
+        error: advanceMonthsError,
         route: '/app/majetek/[id]/vyuctovani/[settlementId]/export',
         section: 'majetek',
-        errorType: 'AssetSettlementExportHistoryError',
+        errorType: 'AssetSettlementExportAdvanceSnapshotError',
         userId: user.id,
         context: { assetId, settlementId },
       })
       return NextResponse.json(
-        { error: 'Nepodařilo se načíst historii záloh pro export.' },
+        { error: 'Nepodařilo se načíst měsíční snapshot záloh pro export.' },
         { status: 500 }
       )
     }
@@ -226,13 +225,9 @@ export async function GET(
       )
     }
 
-    const history = (historyRows ?? []) as RentalServiceAdvanceHistoryRow[]
+    const advanceMonths = (advanceMonthRows ?? []) as RentalServiceSettlementAdvanceMonthRow[]
     const customItems = (customItemRows ?? []) as RentalServiceSettlementCustomItemRow[]
-    const advanceCalculation = calculateAdvancePaymentsForPeriod({
-      history,
-      periodFrom: settlement.period_from,
-      periodTo: settlement.period_to,
-    })
+    const advanceCalculation = buildAdvanceCalculationFromSnapshot(advanceMonths)
     const lineItems = buildSettlementLineItems({
       settlement,
       customItems,

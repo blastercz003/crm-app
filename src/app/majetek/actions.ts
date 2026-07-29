@@ -63,6 +63,22 @@ export type DeleteAssetRentalActionState = {
   assetId?: string
 }
 
+export type UpsertAssetRentalRentActionState = {
+  success: boolean
+  error: string | null
+  assetId?: string
+  rentalId?: string
+  rentHistoryId?: string
+}
+
+export type DeleteAssetRentalRentActionState = {
+  success: boolean
+  error: string | null
+  assetId?: string
+  rentalId?: string
+  rentHistoryId?: string
+}
+
 export type UpsertAssetRentalServiceAdvanceActionState = {
   success: boolean
   error: string | null
@@ -108,6 +124,8 @@ type AssetRentalRow = {
   id: string
   asset_id: string
   tenant_name: string | null
+  start_date: string | null
+  end_date: string | null
 }
 
 type AssetRentalServiceAdvanceRow = {
@@ -253,6 +271,42 @@ function buildDeleteRentalSuccess(assetId: string): DeleteAssetRentalActionState
   return { success: true, error: null, assetId }
 }
 
+function buildRentalRentFailure(error: string): UpsertAssetRentalRentActionState {
+  return { success: false, error }
+}
+
+function buildRentalRentSuccess(params: {
+  assetId: string
+  rentalId: string
+  rentHistoryId: string
+}): UpsertAssetRentalRentActionState {
+  return {
+    success: true,
+    error: null,
+    assetId: params.assetId,
+    rentalId: params.rentalId,
+    rentHistoryId: params.rentHistoryId,
+  }
+}
+
+function buildDeleteRentalRentFailure(error: string): DeleteAssetRentalRentActionState {
+  return { success: false, error }
+}
+
+function buildDeleteRentalRentSuccess(params: {
+  assetId: string
+  rentalId: string
+  rentHistoryId: string
+}): DeleteAssetRentalRentActionState {
+  return {
+    success: true,
+    error: null,
+    assetId: params.assetId,
+    rentalId: params.rentalId,
+    rentHistoryId: params.rentHistoryId,
+  }
+}
+
 function buildRentalAdvanceFailure(error: string): UpsertAssetRentalServiceAdvanceActionState {
   return { success: false, error }
 }
@@ -382,7 +436,7 @@ async function requireRental(
 ) {
   const { data, error } = await supabase
     .from('asset_rentals')
-    .select('id, asset_id, tenant_name')
+    .select('id, asset_id, tenant_name, start_date, end_date')
     .eq('id', rentalId)
     .maybeSingle<AssetRentalRow>()
 
@@ -1006,7 +1060,7 @@ export async function upsertAssetRentalAction(
     p_tenant_contact: normalizeOptionalText(formData.get('tenant_contact')),
     p_start_date: startDate,
     p_end_date: endDate,
-    p_monthly_rent: normalizeCurrency(formData.get('monthly_rent')),
+    p_monthly_rent: formData.has('monthly_rent') ? normalizeCurrency(formData.get('monthly_rent')) : null,
     p_deposit_amount: normalizeCurrency(formData.get('deposit_amount')),
     p_note: normalizeOptionalText(formData.get('note')),
     p_service_advance_id: hasServiceAdvanceInput ? resolvedServiceAdvanceId : null,
@@ -1079,6 +1133,122 @@ export async function deleteAssetRentalAction(
   return buildDeleteRentalSuccess(assetId)
 }
 
+export async function upsertAssetRentalRentAction(
+  _prevState: UpsertAssetRentalRentActionState,
+  formData: FormData
+): Promise<UpsertAssetRentalRentActionState> {
+  const auth = await requireAssetsAdmin()
+  if (auth.error) return buildRentalRentFailure(auth.error)
+
+  const rentalId = normalizeText(formData.get('rental_id'))
+  if (!rentalId) return buildRentalRentFailure('Chybí ID pronájmu.')
+
+  const effectiveFrom = normalizeMonthStart(formData.get('effective_from'))
+  if (!effectiveFrom) {
+    return buildRentalRentFailure('Měsíc platnosti nájemného je povinný.')
+  }
+
+  const monthlyRent = normalizeCurrency(formData.get('monthly_rent'))
+  if (monthlyRent === null) {
+    return buildRentalRentFailure('Výše nájemného je povinná.')
+  }
+
+  const note = normalizeOptionalText(formData.get('note'))
+  const rentHistoryId = normalizeOptionalText(formData.get('rent_history_id'))
+
+  let rental: AssetRentalRow
+  try {
+    rental = await requireRental(auth.supabase, rentalId)
+  } catch (error) {
+    return buildRentalRentFailure(error instanceof Error ? error.message : 'Pronájem není dostupný.')
+  }
+
+  const rentalStartMonth = normalizeMonthStart(rental.start_date)
+  const rentalEndMonth = normalizeMonthStart(rental.end_date)
+  if (rentalStartMonth && effectiveFrom < rentalStartMonth) {
+    return buildRentalRentFailure('Nájemné nemůže platit před začátkem pronájmu.')
+  }
+  if (rentalEndMonth && effectiveFrom > rentalEndMonth) {
+    return buildRentalRentFailure('Nájemné nemůže začít platit po skončení pronájmu.')
+  }
+
+  const payload = {
+    rental_id: rentalId,
+    effective_from: effectiveFrom,
+    monthly_rent: monthlyRent,
+    note,
+  }
+
+  const query = rentHistoryId
+    ? auth.supabase
+        .from('asset_rental_rent_history')
+        .update(payload)
+        .eq('id', rentHistoryId)
+        .eq('rental_id', rentalId)
+    : auth.supabase.from('asset_rental_rent_history').insert({
+        ...payload,
+        created_by: auth.userId,
+      })
+
+  const { data, error } = await query.select('id').single<{ id: string }>()
+
+  if (error || !data) {
+    const message = error?.message?.toLowerCase().includes('duplicate')
+      ? 'Pro tento měsíc už existuje výše nájemného.'
+      : error?.message || 'Výši nájemného se nepodařilo uložit.'
+    return buildRentalRentFailure(message)
+  }
+
+  revalidatePath('/majetek')
+  revalidatePath(`/majetek/${rental.asset_id}`)
+
+  return buildRentalRentSuccess({
+    assetId: rental.asset_id,
+    rentalId,
+    rentHistoryId: data.id,
+  })
+}
+
+export async function deleteAssetRentalRentAction(
+  _prevState: DeleteAssetRentalRentActionState,
+  formData: FormData
+): Promise<DeleteAssetRentalRentActionState> {
+  const auth = await requireAssetsAdmin()
+  if (auth.error) return buildDeleteRentalRentFailure(auth.error)
+
+  const rentalId = normalizeText(formData.get('rental_id'))
+  if (!rentalId) return buildDeleteRentalRentFailure('Chybí ID pronájmu.')
+
+  const rentHistoryId = normalizeText(formData.get('rent_history_id'))
+  if (!rentHistoryId) return buildDeleteRentalRentFailure('Chybí ID historie nájemného.')
+
+  let rental: AssetRentalRow
+  try {
+    rental = await requireRental(auth.supabase, rentalId)
+  } catch (error) {
+    return buildDeleteRentalRentFailure(error instanceof Error ? error.message : 'Pronájem není dostupný.')
+  }
+
+  const { error } = await auth.supabase
+    .from('asset_rental_rent_history')
+    .delete()
+    .eq('id', rentHistoryId)
+    .eq('rental_id', rentalId)
+
+  if (error) {
+    return buildDeleteRentalRentFailure(error.message || 'Historii nájemného se nepodařilo smazat.')
+  }
+
+  revalidatePath('/majetek')
+  revalidatePath(`/majetek/${rental.asset_id}`)
+
+  return buildDeleteRentalRentSuccess({
+    assetId: rental.asset_id,
+    rentalId,
+    rentHistoryId,
+  })
+}
+
 export async function upsertAssetRentalServiceAdvanceAction(
   _prevState: UpsertAssetRentalServiceAdvanceActionState,
   formData: FormData
@@ -1109,12 +1279,20 @@ export async function upsertAssetRentalServiceAdvanceAction(
     return buildRentalAdvanceFailure(error instanceof Error ? error.message : 'Pronájem není dostupný.')
   }
 
+  const rentalStartMonth = normalizeMonthStart(rental.start_date)
+  const rentalEndMonth = normalizeMonthStart(rental.end_date)
+  if (rentalStartMonth && effectiveFrom < rentalStartMonth) {
+    return buildRentalAdvanceFailure('Záloha nemůže platit před začátkem pronájmu.')
+  }
+  if (rentalEndMonth && effectiveFrom > rentalEndMonth) {
+    return buildRentalAdvanceFailure('Záloha nemůže začít platit po skončení pronájmu.')
+  }
+
   const payload = {
     rental_id: rentalId,
     effective_from: effectiveFrom,
     monthly_advance: monthlyAdvance,
     note,
-    created_by: auth.userId,
   }
 
   const query = advanceId
@@ -1123,14 +1301,17 @@ export async function upsertAssetRentalServiceAdvanceAction(
         .update(payload)
         .eq('id', advanceId)
         .eq('rental_id', rentalId)
-    : auth.supabase.from('asset_rental_service_advance_history').insert(payload)
+    : auth.supabase.from('asset_rental_service_advance_history').insert({
+        ...payload,
+        created_by: auth.userId,
+      })
 
   const { data, error } = await query.select('id').single<{ id: string }>()
 
   if (error || !data) {
     const message = error?.message?.toLowerCase().includes('duplicate')
       ? 'Pro tento měsíc už existuje záznam zálohy.'
-      : 'Zálohu na služby se nepodařilo uložit.'
+      : error?.message || 'Zálohu na služby se nepodařilo uložit.'
     return buildRentalAdvanceFailure(message)
   }
 
@@ -1171,7 +1352,7 @@ export async function deleteAssetRentalServiceAdvanceAction(
     .eq('rental_id', rentalId)
 
   if (error) {
-    return buildDeleteRentalAdvanceFailure('Zálohu na služby se nepodařilo smazat.')
+    return buildDeleteRentalAdvanceFailure(error.message || 'Zálohu na služby se nepodařilo smazat.')
   }
 
   revalidatePath('/majetek')

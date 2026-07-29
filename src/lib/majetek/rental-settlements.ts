@@ -8,6 +8,26 @@ export type RentalServiceAdvanceHistoryRow = {
   updated_at?: string
 }
 
+export type RentalRentHistoryRow = {
+  id: string
+  rental_id: string
+  effective_from: string
+  monthly_rent: string | number
+  note: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export type RentalServiceSettlementAdvanceMonthRow = {
+  id: string
+  settlement_id: string
+  month: string
+  monthly_advance: string | number
+  source_advance_id: string | null
+  source_effective_from: string | null
+  created_at?: string
+}
+
 export type RentalServiceSettlementRow = {
   id: string
   asset_id: string
@@ -79,6 +99,40 @@ export type RentalServiceSettlementMonthBreakdown = {
 export type RentalServiceAdvanceCalculationResult = {
   totalAdvance: number
   monthBreakdown: RentalServiceSettlementMonthBreakdown[]
+}
+
+export function getRentForMonth(params: {
+  history: RentalRentHistoryRow[]
+  month: string
+}) {
+  const monthStart = normalizeMonthStart(params.month)
+  if (!monthStart) return null
+
+  const applicable = [...params.history]
+    .sort((left, right) => String(right.effective_from).localeCompare(String(left.effective_from)))
+    .find((entry) => String(entry.effective_from) <= monthStart)
+
+  if (!applicable) return null
+
+  const monthlyRent = Number(applicable.monthly_rent)
+  return Number.isFinite(monthlyRent) ? monthlyRent : null
+}
+
+export function buildAdvanceCalculationFromSnapshot(
+  rows: RentalServiceSettlementAdvanceMonthRow[]
+): RentalServiceAdvanceCalculationResult {
+  const monthBreakdown = [...rows]
+    .sort((left, right) => String(left.month).localeCompare(String(right.month)))
+    .map((entry) => ({
+      month: String(entry.month).slice(0, 7),
+      monthlyAdvance: Math.round(Number(entry.monthly_advance) || 0),
+      sourceAdvanceId: entry.source_advance_id,
+    }))
+
+  return {
+    totalAdvance: monthBreakdown.reduce((sum, entry) => sum + entry.monthlyAdvance, 0),
+    monthBreakdown,
+  }
 }
 
 export function buildSettlementLineItems(params: {

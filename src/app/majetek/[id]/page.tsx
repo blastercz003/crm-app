@@ -21,6 +21,7 @@ import {
   isAssetTabKey,
 } from '@/lib/majetek/detail'
 import type {
+  RentalRentHistoryRow,
   RentalServiceAdvanceHistoryRow,
   RentalServiceSettlementCustomItemRow,
   RentalServiceSettlementFileRow,
@@ -985,10 +986,17 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const rentalIds = rentals.map((rental) => rental.id)
 
   const [
+    rentalRentHistoryResponse,
     rentalServiceAdvanceHistoryResponse,
     rentalServiceSettlementsResponse,
   ] = rentalIds.length > 0
     ? await Promise.all([
+        supabase
+          .from('asset_rental_rent_history')
+          .select('id, rental_id, effective_from, monthly_rent, note, created_at, updated_at')
+          .in('rental_id', rentalIds)
+          .order('effective_from', { ascending: false })
+          .order('created_at', { ascending: false }),
         supabase
           .from('asset_rental_service_advance_history')
           .select('id, rental_id, effective_from, monthly_advance, note, created_at, updated_at')
@@ -998,6 +1006,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         loadRentalServiceSettlements(supabase, asset.id),
       ])
     : [
+        { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
       ]
@@ -1023,6 +1032,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         .order('created_at', { ascending: true })
     : { data: [], error: null }
 
+  if (rentalRentHistoryResponse.error) {
+    throw new Error('Nepodařilo se načíst historii nájemného.')
+  }
+
   if (rentalServiceAdvanceHistoryResponse.error) {
     throw new Error('Nepodařilo se načíst historii záloh na služby.')
   }
@@ -1039,6 +1052,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     throw new Error('Nepodařilo se načíst vlastní položky vyúčtování.')
   }
 
+  const rentalRentHistory = (rentalRentHistoryResponse.data ?? []) as RentalRentHistoryRow[]
   const rentalServiceAdvanceHistory = (rentalServiceAdvanceHistoryResponse.data ?? []) as RentalServiceAdvanceHistoryRow[]
   const rentalServiceSettlements = (rentalServiceSettlementsResponse.data ?? []) as RentalServiceSettlementRow[]
   const rentalServiceSettlementFiles = (rentalServiceSettlementFilesResponse.data ?? []) as RentalServiceSettlementFileRow[]
@@ -1086,6 +1100,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       insurances={insurances}
       electricity={electricity}
       rentals={rentals}
+      rentalRentHistory={rentalRentHistory}
       rentalServiceAdvanceHistory={rentalServiceAdvanceHistory}
       rentalServiceSettlements={rentalServiceSettlements}
       rentalServiceSettlementFiles={rentalServiceSettlementFilesWithUrls}

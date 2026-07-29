@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { canViewAssetsSection } from '@/lib/majetek/access'
+import {
+  getRentForMonth,
+  type RentalRentHistoryRow,
+} from '@/lib/majetek/rental-settlements'
 import { AssetsPageClient } from './assets-page-client'
 
 export const metadata: Metadata = {
@@ -67,6 +71,7 @@ type AssetElectricitySearchRow = {
 }
 
 type AssetRentalSearchRow = {
+  id: string
   asset_id: string
   tenant_name: string | null
   tenant_contact: string | null
@@ -140,7 +145,7 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
     redirect('/dashboard')
   }
 
-  const [categoriesResult, assetsResult, documentsResult, photosResult, notesResult, electricityResult, rentalsResult, vehiclesResult, insuranceResult] = await Promise.all([
+  const [categoriesResult, assetsResult, documentsResult, photosResult, notesResult, electricityResult, rentalsResult, rentHistoryResult, vehiclesResult, insuranceResult] = await Promise.all([
     supabase
       .from('asset_categories')
       .select('id, name, color, icon_key, sort_order, tabs_config')
@@ -167,7 +172,11 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
       .select('asset_id, billing_year, provider_name, ean, meter_number, note'),
     supabase
       .from('asset_rentals')
-      .select('asset_id, tenant_name, tenant_contact, monthly_rent, start_date, created_at, note'),
+      .select('id, asset_id, tenant_name, tenant_contact, monthly_rent, start_date, created_at, note'),
+    supabase
+      .from('asset_rental_rent_history')
+      .select('id, rental_id, effective_from, monthly_rent, note, created_at, updated_at')
+      .order('effective_from', { ascending: false }),
     supabase
       .from('asset_vehicle_details')
       .select('asset_id, vin, stk_expires_on'),
@@ -204,6 +213,10 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
     throw new Error('Nepodařilo se načíst pronájmy majetku.')
   }
 
+  if (rentHistoryResult.error) {
+    throw new Error('Nepodařilo se načíst historii nájemného.')
+  }
+
   if (vehiclesResult.error) {
     throw new Error('Nepodařilo se načíst vozidlové údaje majetku.')
   }
@@ -219,6 +232,7 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
   const notes = (notesResult.data ?? []) as AssetNoteSearchRow[]
   const electricity = (electricityResult.data ?? []) as AssetElectricitySearchRow[]
   const rentals = (rentalsResult.data ?? []) as AssetRentalSearchRow[]
+  const rentHistory = (rentHistoryResult.data ?? []) as RentalRentHistoryRow[]
   const vehicles = (vehiclesResult.data ?? []) as AssetVehicleSearchRow[]
   const insuranceRows = (insuranceResult.data ?? []) as AssetInsuranceSearchRow[]
   const defaultCategoryId =
@@ -226,7 +240,6 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
     categories[0]?.id ??
     ''
   const requestedCategoryId = resolvedSearchParams?.categoryId?.trim() ?? ''
-  const activeCategoryId = requestedCategoryId || defaultCategoryId
 
   const categoryById = new Map(categories.map((category) => [category.id, category]))
   const notesByAssetId = new Map<string, string[]>()
@@ -268,11 +281,13 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
 
   const rentalsByAssetId = new Map<
     string,
-    Array<{ tenant_name: string | null; tenant_contact: string | null; note: string | null; monthly_rent: string | number | null; start_date: string | null; created_at: string }>
+    AssetRentalSearchRow[]
   >()
   for (const rental of rentals) {
     const list = rentalsByAssetId.get(rental.asset_id) ?? []
     list.push({
+      id: rental.id,
+      asset_id: rental.asset_id,
       tenant_name: rental.tenant_name,
       tenant_contact: rental.tenant_contact,
       note: rental.note,
@@ -282,6 +297,15 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
     })
     rentalsByAssetId.set(rental.asset_id, list)
   }
+
+  const rentHistoryByRentalId = rentHistory.reduce<Record<string, RentalRentHistoryRow[]>>(
+    (accumulator, entry) => {
+      if (!accumulator[entry.rental_id]) accumulator[entry.rental_id] = []
+      accumulator[entry.rental_id].push(entry)
+      return accumulator
+    },
+    {},
+  )
 
   const vehicleByAssetId = new Map<string, AssetVehicleSearchRow>()
   for (const vehicle of vehicles) {
@@ -366,10 +390,17 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
 
       return new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
     })[0] ?? null
+    const historicalMonthlyRent = latestRental
+      ? getRentForMonth({
+          history: rentHistoryByRentalId[latestRental.id] ?? [],
+          month: new Date().toISOString().slice(0, 7),
+        })
+      : null
     const rentalMonthlyRent =
-      latestRental?.monthly_rent !== null && latestRental?.monthly_rent !== undefined
+      historicalMonthlyRent ??
+      (latestRental?.monthly_rent !== null && latestRental?.monthly_rent !== undefined
         ? Number(latestRental.monthly_rent)
-        : null
+        : null)
     return {
       ...asset,
       vin: vehicle?.vin ?? null,

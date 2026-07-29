@@ -22,11 +22,13 @@ import {
   documentTypeMatchesTab,
 } from '@/lib/majetek/detail'
 import type {
+  RentalRentHistoryRow,
   RentalServiceAdvanceHistoryRow,
   RentalServiceSettlementCustomItemRow,
   RentalServiceSettlementFileRow,
   RentalServiceSettlementRow,
 } from '@/lib/majetek/rental-settlements'
+import { getRentForMonth } from '@/lib/majetek/rental-settlements'
 import { ASSET_DOCUMENT_TYPE_SEED_TABS_BY_LABEL } from '@/lib/majetek/config'
 import type { AssetTabKey } from '@/lib/majetek/types'
 
@@ -104,6 +106,7 @@ type AssetRentalRow = {
 }
 
 type AssetRentalServiceAdvanceHistoryRow = RentalServiceAdvanceHistoryRow
+type AssetRentalRentHistoryRow = RentalRentHistoryRow
 type AssetRentalServiceSettlementRow = RentalServiceSettlementRow
 type AssetRentalServiceSettlementFileRow = RentalServiceSettlementFileRow & {
   signedUrl: string | null
@@ -163,6 +166,7 @@ type AssetDetailClientProps = {
   insurances: AssetInsuranceRow[]
   electricity: AssetElectricityRow[]
   rentals: AssetRentalRow[]
+  rentalRentHistory: AssetRentalRentHistoryRow[]
   rentalServiceAdvanceHistory: AssetRentalServiceAdvanceHistoryRow[]
   rentalServiceSettlements: AssetRentalServiceSettlementRow[]
   rentalServiceSettlementFiles: AssetRentalServiceSettlementFileRow[]
@@ -723,6 +727,7 @@ function renderServiceTab({
 function renderRentTab({
   assetId,
   rentals,
+  rentalRentHistory,
   rentalServiceAdvanceHistory,
   rentalServiceSettlements,
   rentalServiceSettlementFiles,
@@ -732,6 +737,7 @@ function renderRentTab({
 }: {
   assetId: string
   rentals: AssetRentalRow[]
+  rentalRentHistory: AssetRentalRentHistoryRow[]
   rentalServiceAdvanceHistory: AssetRentalServiceAdvanceHistoryRow[]
   rentalServiceSettlements: AssetRentalServiceSettlementRow[]
   rentalServiceSettlementFiles: AssetRentalServiceSettlementFileRow[]
@@ -739,6 +745,18 @@ function renderRentTab({
   documents: AssetDocumentViewRow[]
   documentTypeMap: Map<string, string>
 }) {
+  const rentHistoryByRentalId = rentalRentHistory.reduce<Record<string, AssetRentalRentHistoryRow[]>>(
+    (accumulator, entry) => {
+      if (!accumulator[entry.rental_id]) {
+        accumulator[entry.rental_id] = []
+      }
+
+      accumulator[entry.rental_id].push(entry)
+      return accumulator
+    },
+    {},
+  )
+
   const advanceHistoryByRentalId = rentalServiceAdvanceHistory.reduce<Record<string, AssetRentalServiceAdvanceHistoryRow[]>>(
     (accumulator, entry) => {
       if (!accumulator[entry.rental_id]) {
@@ -781,6 +799,7 @@ function renderRentTab({
         <AssetRentalSection
           assetId={assetId}
           rentals={rentals}
+          rentHistoryByRentalId={rentHistoryByRentalId}
           advanceHistoryByRentalId={advanceHistoryByRentalId}
         />
 
@@ -886,6 +905,7 @@ export function AssetDetailClient({
   insurances,
   electricity,
   rentals,
+  rentalRentHistory,
   rentalServiceAdvanceHistory,
   rentalServiceSettlements,
   rentalServiceSettlementFiles,
@@ -896,6 +916,23 @@ export function AssetDetailClient({
   documentTypes,
 }: AssetDetailClientProps) {
   const [activeTab, setActiveTab] = useState<AssetTabKey>(initialTab)
+  const rentHistoryByRentalId = rentalRentHistory.reduce<Record<string, AssetRentalRentHistoryRow[]>>(
+    (accumulator, entry) => {
+      if (!accumulator[entry.rental_id]) accumulator[entry.rental_id] = []
+      accumulator[entry.rental_id].push(entry)
+      return accumulator
+    },
+    {},
+  )
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const rentalsWithCurrentRent = rentals.map((rental) => ({
+    ...rental,
+    monthly_rent:
+      getRentForMonth({
+        history: rentHistoryByRentalId[rental.id] ?? [],
+        month: currentMonth,
+      }) ?? rental.monthly_rent,
+  }))
 
   useEffect(() => {
     setActiveTab(initialTab)
@@ -1090,7 +1127,7 @@ export function AssetDetailClient({
               asset,
               category,
               vehicle,
-              rentals,
+              rentals: rentalsWithCurrentRent,
               insurances,
               documentsCount: documents.length,
               photosCount: photos.length,
@@ -1142,7 +1179,8 @@ export function AssetDetailClient({
             {activeTab === 'rent'
               ? renderRentTab({
                   assetId: asset.id,
-                  rentals,
+                  rentals: rentalsWithCurrentRent,
+                  rentalRentHistory,
                   rentalServiceAdvanceHistory,
                   rentalServiceSettlements,
                   rentalServiceSettlementFiles,

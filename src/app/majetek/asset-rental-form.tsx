@@ -5,15 +5,22 @@ import { useRouter } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import {
   deleteAssetRentalAction,
+  deleteAssetRentalRentAction,
   deleteAssetRentalServiceAdvanceAction,
+  upsertAssetRentalRentAction,
   upsertAssetRentalAction,
   upsertAssetRentalServiceAdvanceAction,
+  type DeleteAssetRentalRentActionState,
   type DeleteAssetRentalActionState,
   type DeleteAssetRentalServiceAdvanceActionState,
+  type UpsertAssetRentalRentActionState,
   type UpdateAssetRentalActionState,
   type UpsertAssetRentalServiceAdvanceActionState,
 } from './actions'
-import type { RentalServiceAdvanceHistoryRow } from '@/lib/majetek/rental-settlements'
+import type {
+  RentalRentHistoryRow,
+  RentalServiceAdvanceHistoryRow,
+} from '@/lib/majetek/rental-settlements'
 import { MoneyInput } from '@/components/ui/money-input'
 
 export type AssetRentalRow = {
@@ -33,13 +40,13 @@ export type AssetRentalRow = {
 type AssetRentalSectionProps = {
   assetId: string
   rentals: AssetRentalRow[]
+  rentHistoryByRentalId: Record<string, RentalRentHistoryRow[]>
   advanceHistoryByRentalId: Record<string, RentalServiceAdvanceHistoryRow[]>
 }
 
 type AssetRentalFormProps = {
   assetId: string
   rental: AssetRentalRow | null
-  currentAdvance: RentalServiceAdvanceHistoryRow | null
   submitLabel: string
   onSuccess?: () => void
 }
@@ -64,6 +71,16 @@ const advanceDeleteInitialState: DeleteAssetRentalServiceAdvanceActionState = {
   error: null,
 }
 
+const rentCreateInitialState: UpsertAssetRentalRentActionState = {
+  success: false,
+  error: null,
+}
+
+const rentDeleteInitialState: DeleteAssetRentalRentActionState = {
+  success: false,
+  error: null,
+}
+
 const inputClassName =
   'clients-modal__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
 
@@ -71,7 +88,7 @@ const textareaClassName =
   'clients-modal__textarea min-h-[120px] w-full resize-y rounded-2xl border border-gray-200 bg-white/96 px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]'
 
 const emptyStateClassName =
-  'rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[8px]'
+  "assets-detail-page__rental-advance-empty rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-6 text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-[8px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-400 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]"
 
 function asDateInput(value: string | null) {
   if (!value) return ''
@@ -111,6 +128,30 @@ function formatMonthLabel(value: string | null) {
   if (!year || !month) return value.slice(0, 7)
 
   return `${month}/${year}`
+}
+
+function formatRatePeriod(history: Array<{ effective_from: string }>, index: number) {
+  const from = history[index]?.effective_from ?? null
+  const next = history[index + 1]?.effective_from ?? null
+  if (!from) return '—'
+  if (!next) return `od ${formatMonthLabel(from)}`
+
+  const nextDate = new Date(`${next.slice(0, 7)}-01T00:00:00Z`)
+  nextDate.setUTCMonth(nextDate.getUTCMonth() - 1)
+  return `${formatMonthLabel(from)}–${formatMonthLabel(nextDate.toISOString().slice(0, 10))}`
+}
+
+function getCurrentRateEntry<T extends { effective_from: string }>(history: T[]) {
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  return [...history]
+    .reverse()
+    .find((entry) => String(entry.effective_from).slice(0, 7) <= currentMonth) ?? null
+}
+
+function getLatestRateEntry<T extends { effective_from: string }>(history: T[]) {
+  return [...history].sort((left, right) =>
+    String(right.effective_from).localeCompare(String(left.effective_from))
+  )[0] ?? null
 }
 
 function getRentalStatus(rental: AssetRentalRow, now: Date) {
@@ -183,18 +224,25 @@ function RentalStat({
 function RentalAccordionItem({
   assetId,
   rental,
+  rentHistory,
   advanceHistory,
 }: {
   assetId: string
   rental: AssetRentalRow
+  rentHistory: RentalRentHistoryRow[]
   advanceHistory: RentalServiceAdvanceHistoryRow[]
 }) {
   const status = getRentalStatus(rental, new Date())
   const summary = [rental.tenant_contact].filter(Boolean).join(' • ')
-  const currentAdvance = advanceHistory[0] ?? null
-  const historicalAdvances = currentAdvance
-    ? advanceHistory.filter((advance) => advance.id !== currentAdvance.id)
-    : advanceHistory
+  const sortedRentHistory = [...rentHistory].sort((left, right) =>
+    String(left.effective_from).localeCompare(String(right.effective_from))
+  )
+  const sortedAdvanceHistory = [...advanceHistory].sort((left, right) =>
+    String(left.effective_from).localeCompare(String(right.effective_from))
+  )
+  const latestRent = getLatestRateEntry(sortedRentHistory)
+  const latestAdvance = getLatestRateEntry(sortedAdvanceHistory)
+  const currentAdvance = getCurrentRateEntry(sortedAdvanceHistory)
 
   return (
     <details className="assets-detail-page__rental-item group rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
@@ -206,8 +254,16 @@ function RentalAccordionItem({
 
         <div className="flex items-center gap-3 text-right">
           <div className="hidden sm:block">
+            <p className="text-xs text-gray-500">Zálohy</p>
+            <p className="text-sm font-medium text-gray-900">
+              {formatCurrency(latestAdvance?.monthly_advance ?? null)}
+            </p>
+          </div>
+          <div className="hidden sm:block">
             <p className="text-xs text-gray-500">Nájem</p>
-            <p className="text-sm font-medium text-gray-900">{formatCurrency(rental.monthly_rent)}</p>
+            <p className="text-sm font-medium text-gray-900">
+              {formatCurrency(latestRent?.monthly_rent ?? rental.monthly_rent)}
+            </p>
           </div>
           <div className="hidden lg:block">
             <p className="text-xs text-gray-500">Stav</p>
@@ -228,35 +284,53 @@ function RentalAccordionItem({
           key={`${rental.id}-${rental.updated_at}`}
           assetId={assetId}
           rental={rental}
-          currentAdvance={currentAdvance}
           submitLabel="ULOŽIT ZMĚNY"
         />
 
-        <section className="mt-5 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+        <RentalRentHistorySection
+          rentalId={rental.id}
+          history={sortedRentHistory}
+        />
+
+        <section className="assets-detail-page__rental-advance-card mt-5 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h4 className="text-sm font-semibold text-gray-900">Historie záloh na služby</h4>
+              <h4 className="text-sm font-semibold text-gray-900">Zálohy na služby</h4>
               <p className="text-xs text-gray-500">
-                Aktualizace aktuální zálohy je nahoře v kartě. Tady zůstává starší historie pro kontrolu a úpravy.
+                Novou výši vždy založ jako další platnost. Uzavřená období se zpětně nemění.
               </p>
             </div>
             <p className="text-xs font-medium text-gray-500">
-              {historicalAdvances.length} starších záznamů
+              {currentAdvance
+                ? `Aktuální: ${formatCurrency(currentAdvance.monthly_advance)} od ${formatMonthLabel(currentAdvance.effective_from)}`
+                : 'Bez aktuální zálohy'}
             </p>
           </div>
 
+          <div className="mt-4 rounded-2xl border border-white/70 p-4 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)]">
+            <h5 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Nová výše od měsíce
+            </h5>
+            <RentalAdvanceForm
+              rentalId={rental.id}
+              advance={null}
+              submitLabel="PŘIDAT NOVOU VÝŠI"
+            />
+          </div>
+
           <div className="mt-4 space-y-3">
-            {historicalAdvances.length > 0 ? (
-              historicalAdvances.map((advance) => (
+            {sortedAdvanceHistory.length > 0 ? (
+              sortedAdvanceHistory.map((advance, index) => (
                 <RentalAdvanceAccordionItem
                   key={advance.id}
                   rentalId={rental.id}
                   advance={advance}
+                  periodLabel={formatRatePeriod(sortedAdvanceHistory, index)}
                 />
               ))
             ) : (
               <div className={emptyStateClassName}>
-                {currentAdvance ? 'Aktuální záloha je upravitelná nahoře v kartě.' : 'Zatím není uložená žádná záloha na služby.'}
+                Zatím není uložená žádná záloha na služby.
               </div>
             )}
           </div>
@@ -270,31 +344,238 @@ function RentalAccordionItem({
   )
 }
 
+function RentalRentHistorySection({
+  rentalId,
+  history,
+}: {
+  rentalId: string
+  history: RentalRentHistoryRow[]
+}) {
+  const currentRent = getCurrentRateEntry(history)
+
+  return (
+    <section className="assets-detail-page__rental-advance-card mt-5 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900">Historie nájemného</h4>
+          <p className="text-xs text-gray-500">
+            Každá změna má vlastní měsíc účinnosti; předchozí částka zůstane v historii.
+          </p>
+        </div>
+        <p className="text-xs font-medium text-gray-500">
+          {currentRent
+            ? `Poslední sazba: ${formatCurrency(currentRent.monthly_rent)} od ${formatMonthLabel(currentRent.effective_from)}`
+            : 'Bez uloženého nájemného'}
+        </p>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/70 p-4 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)]">
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Nové nájemné od měsíce
+        </h5>
+        <RentalRentForm
+          rentalId={rentalId}
+          entry={null}
+          submitLabel="PŘIDAT NOVÉ NÁJEMNÉ"
+        />
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {history.length > 0 ? (
+          history.map((entry, index) => (
+            <details
+              key={entry.id}
+              className="assets-detail-page__rental-advance-item group rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(entry.monthly_rent)}</p>
+                  <p className="mt-1 text-xs text-gray-500">{formatRatePeriod(history, index)}</p>
+                </div>
+                <span className="assets-detail-page__rental-advance-chevron inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.72)] [html[data-theme='dark']_&]:text-slate-300">
+                  <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
+                    <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </summary>
+              <div className="border-t border-white/70 px-4 py-4 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)]">
+                <RentalRentForm
+                  rentalId={rentalId}
+                  entry={entry}
+                  submitLabel="ULOŽIT OPRAVU"
+                />
+                <div className="mt-3 flex justify-end">
+                  <RentalRentDeleteButton rentalId={rentalId} rentHistoryId={entry.id} />
+                </div>
+              </div>
+            </details>
+          ))
+        ) : (
+          <div className={emptyStateClassName}>Zatím není uložená žádná historie nájemného.</div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function RentalRentForm({
+  rentalId,
+  entry,
+  submitLabel,
+}: {
+  rentalId: string
+  entry: RentalRentHistoryRow | null
+  submitLabel: string
+}) {
+  const router = useRouter()
+  const formRef = useRef<HTMLFormElement | null>(null)
+  const [state, formAction] = useActionState(upsertAssetRentalRentAction, rentCreateInitialState)
+  const isEdit = Boolean(entry?.id)
+
+  useEffect(() => {
+    if (!state.success) return
+    router.refresh()
+    if (!isEdit) formRef.current?.reset()
+  }, [isEdit, router, state])
+
+  return (
+    <form ref={formRef} action={formAction} className="space-y-4">
+      <input type="hidden" name="rental_id" value={rentalId} />
+      {entry?.id ? <input type="hidden" name="rent_history_id" value={entry.id} /> : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <label htmlFor={`rent-history-from-${rentalId}-${entry?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
+            Platí od *
+          </label>
+          <input
+            id={`rent-history-from-${rentalId}-${entry?.id ?? 'new'}`}
+            name="effective_from"
+            type="month"
+            required
+            defaultValue={asMonthInput(entry?.effective_from ?? null)}
+            className={inputClassName}
+          />
+        </div>
+        <div className="space-y-2">
+          <label htmlFor={`rent-history-amount-${rentalId}-${entry?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
+            Měsíční nájemné *
+          </label>
+          <MoneyInput
+            key={`${entry?.id ?? 'new'}-${state.rentHistoryId ?? 'idle'}`}
+            id={`rent-history-amount-${rentalId}-${entry?.id ?? 'new'}`}
+            name="monthly_rent"
+            required
+            defaultValue={entry?.monthly_rent ?? null}
+            className={inputClassName}
+          />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <label htmlFor={`rent-history-note-${rentalId}-${entry?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
+            Poznámka
+          </label>
+          <input
+            id={`rent-history-note-${rentalId}-${entry?.id ?? 'new'}`}
+            name="note"
+            defaultValue={entry?.note ?? ''}
+            placeholder="Např. dodatek ke smlouvě"
+            className={inputClassName}
+          />
+        </div>
+      </div>
+
+      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+      {state.success ? <p className="text-sm text-emerald-600">Výše nájemného byla uložena.</p> : null}
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white"
+        >
+          {submitLabel}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function RentalRentDeleteButton({
+  rentalId,
+  rentHistoryId,
+}: {
+  rentalId: string
+  rentHistoryId: string
+}) {
+  const router = useRouter()
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [state, formAction] = useActionState(deleteAssetRentalRentAction, rentDeleteInitialState)
+
+  useEffect(() => {
+    if (state.success) router.refresh()
+  }, [router, state.success])
+
+  return (
+    <form action={formAction} className="flex items-center gap-2">
+      <input type="hidden" name="rental_id" value={rentalId} />
+      <input type="hidden" name="rent_history_id" value={rentHistoryId} />
+      {isConfirming ? (
+        <>
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
+          >
+            Smazat
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsConfirming(false)}
+            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600"
+          >
+            Zrušit
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsConfirming(true)}
+          className="inline-flex items-center justify-center rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-xs font-medium text-red-600"
+          aria-label="Smazat historii nájemného"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
+    </form>
+  )
+}
+
 function RentalAdvanceAccordionItem({
   rentalId,
   advance,
+  periodLabel,
 }: {
   rentalId: string
   advance: RentalServiceAdvanceHistoryRow
+  periodLabel: string
 }) {
   return (
-    <details className="group rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)]">
+    <details className="assets-detail-page__rental-advance-item group rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(241,245,249,0.82)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_6px_14px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.22)]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900">{formatMonthLabel(advance.effective_from)}</p>
           <p className="mt-1 truncate text-xs text-gray-500">
-            {formatCurrency(advance.monthly_advance)}
+            {formatCurrency(advance.monthly_advance)} • {periodLabel}
             {advance.note ? ` • ${advance.note}` : ''}
           </p>
         </div>
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180">
+        <span className="assets-detail-page__rental-advance-chevron inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/75 bg-white/70 text-gray-500 transition group-open:rotate-180 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.72)] [html[data-theme='dark']_&]:text-slate-300">
           <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
             <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       </summary>
 
-      <div className="border-t border-white/70 px-4 py-4">
+      <div className="assets-detail-page__rental-advance-panel border-t border-white/70 px-4 py-4 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)]">
         <RentalAdvanceForm
           key={`${advance.id}-${advance.updated_at ?? advance.created_at ?? advance.id}`}
           rentalId={rentalId}
@@ -388,7 +669,7 @@ function RentalAdvanceForm({
       formRef.current?.reset()
     }
     onSuccess?.()
-  }, [isEdit, onSuccess, router, state.success])
+  }, [isEdit, onSuccess, router, state])
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
@@ -416,6 +697,7 @@ function RentalAdvanceForm({
             Záloha na služby *
           </label>
           <MoneyInput
+            key={`${advance?.id ?? 'new'}-${state.advanceId ?? 'idle'}`}
             id={`advance-amount-${rentalId}-${advance?.id ?? 'new'}`}
             name="monthly_advance"
             required
@@ -520,7 +802,6 @@ function AssetRentalDeleteButton({
 function AssetRentalForm({
   assetId,
   rental,
-  currentAdvance,
   submitLabel,
   onSuccess,
 }: AssetRentalFormProps) {
@@ -544,7 +825,6 @@ function AssetRentalForm({
     <form ref={formRef} action={formAction} className="space-y-5">
       <input type="hidden" name="asset_id" value={assetId} />
       {rental?.id ? <input type="hidden" name="rental_id" value={rental.id} /> : null}
-      {currentAdvance?.id ? <input type="hidden" name="service_advance_id" value={currentAdvance.id} /> : null}
 
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-2">
@@ -603,18 +883,20 @@ function AssetRentalForm({
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor={`rent-${assetId}-${rental?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
-            Měsíční nájem
-          </label>
-          <MoneyInput
-            id={`rent-${assetId}-${rental?.id ?? 'new'}`}
-            name="monthly_rent"
-            defaultValue={rental?.monthly_rent ?? null}
-            placeholder="Volitelné"
-            className={inputClassName}
-          />
-        </div>
+        {!rental ? (
+          <div className="space-y-2">
+            <label htmlFor={`rent-${assetId}-new`} className="clients-modal__label text-sm font-medium text-gray-900">
+              Počáteční měsíční nájem
+            </label>
+            <MoneyInput
+              id={`rent-${assetId}-new`}
+              name="monthly_rent"
+              defaultValue={null}
+              placeholder="Volitelné"
+              className={inputClassName}
+            />
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <label htmlFor={`deposit-${assetId}-${rental?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
@@ -643,63 +925,6 @@ function AssetRentalForm({
         </div>
       </div>
 
-      <section className="rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900">Záloha na služby</h4>
-            <p className="text-xs text-gray-500">
-              Volitelně rovnou nastav aktuální zálohu. Pokud ji ještě neznáš, můžeš ji doplnit později.
-            </p>
-          </div>
-          <p className="text-xs font-medium text-gray-500">
-            {currentAdvance ? `Aktuální: ${formatMonthLabel(currentAdvance.effective_from)}` : 'Bez aktuální zálohy'}
-          </p>
-        </div>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label htmlFor={`service-advance-from-${assetId}-${rental?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
-              Platí od
-            </label>
-            <input
-              id={`service-advance-from-${assetId}-${rental?.id ?? 'new'}`}
-              name="service_advance_effective_from"
-              type="month"
-              placeholder="YYYY-MM"
-              defaultValue={asMonthInput(currentAdvance?.effective_from ?? null)}
-              className={inputClassName}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor={`service-advance-amount-${assetId}-${rental?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
-              Záloha na služby
-            </label>
-            <MoneyInput
-              id={`service-advance-amount-${assetId}-${rental?.id ?? 'new'}`}
-              name="service_advance_monthly_advance"
-              defaultValue={currentAdvance?.monthly_advance ?? null}
-              placeholder="Volitelné"
-              className={inputClassName}
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label htmlFor={`service-advance-note-${assetId}-${rental?.id ?? 'new'}`} className="clients-modal__label text-sm font-medium text-gray-900">
-              Poznámka k záloze
-            </label>
-            <input
-              id={`service-advance-note-${assetId}-${rental?.id ?? 'new'}`}
-              name="service_advance_note"
-              type="text"
-              defaultValue={currentAdvance?.note ?? ''}
-              placeholder="Volitelná poznámka"
-              className={inputClassName}
-            />
-          </div>
-        </div>
-      </section>
-
       {state.error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}
@@ -724,9 +949,24 @@ function AssetRentalForm({
   )
 }
 
-export function AssetRentalSection({ assetId, rentals, advanceHistoryByRentalId }: AssetRentalSectionProps) {
+export function AssetRentalSection({
+  assetId,
+  rentals,
+  rentHistoryByRentalId,
+  advanceHistoryByRentalId,
+}: AssetRentalSectionProps) {
   const [isCreating, setIsCreating] = useState(false)
   const latestRental = useMemo(() => getLatestRental(rentals), [rentals])
+  const latestRentalDisplayedRent = latestRental
+    ? getLatestRateEntry(rentHistoryByRentalId[latestRental.id] ?? [])
+    : null
+  const latestRentalDisplayedAdvance = latestRental
+    ? getLatestRateEntry(advanceHistoryByRentalId[latestRental.id] ?? [])
+    : null
+  const latestRentalRentWithServices = latestRental
+    ? Number(latestRentalDisplayedRent?.monthly_rent ?? latestRental.monthly_rent ?? 0)
+      + Number(latestRentalDisplayedAdvance?.monthly_advance ?? 0)
+    : null
   const now = new Date()
 
   return (
@@ -751,7 +991,10 @@ export function AssetRentalSection({ assetId, rentals, advanceHistoryByRentalId 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <RentalStat title="Aktuální stav" value={latestRental ? getRentalStatus(latestRental, now) : 'Volné'} />
           <RentalStat title="Nájemce" value={latestRental?.tenant_name || '—'} />
-          <RentalStat title="Nájem" value={latestRental ? formatCurrency(latestRental.monthly_rent) : '—'} />
+          <RentalStat
+            title="Nájem + služby"
+            value={latestRental ? formatCurrency(latestRentalRentWithServices) : '—'}
+          />
           <RentalStat
             title="Kauce"
             value={latestRental ? formatCurrency(latestRental.deposit_amount) : '—'}
@@ -766,6 +1009,7 @@ export function AssetRentalSection({ assetId, rentals, advanceHistoryByRentalId 
                 key={rental.id}
                 assetId={assetId}
                 rental={rental}
+                rentHistory={rentHistoryByRentalId[rental.id] ?? []}
                 advanceHistory={advanceHistoryByRentalId[rental.id] ?? []}
               />
             ))
@@ -788,7 +1032,6 @@ export function AssetRentalSection({ assetId, rentals, advanceHistoryByRentalId 
               key="new-rental"
               assetId={assetId}
               rental={null}
-              currentAdvance={null}
               submitLabel="ULOŽIT PRONÁJEM"
               onSuccess={() => setIsCreating(false)}
             />

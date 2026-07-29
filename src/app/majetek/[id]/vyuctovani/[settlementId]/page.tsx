@@ -6,9 +6,9 @@ import { createClient } from '@/lib/supabase/server'
 import { canViewAssetsSection } from '@/lib/majetek/access'
 import { isMissingColumnError } from '@/lib/majetek/detail'
 import {
-  calculateAdvancePaymentsForPeriod,
+  buildAdvanceCalculationFromSnapshot,
   buildSettlementLineItems,
-  type RentalServiceAdvanceHistoryRow,
+  type RentalServiceSettlementAdvanceMonthRow,
   type RentalServiceSettlementCustomItemRow,
   type RentalServiceSettlementFileRow,
   type RentalServiceSettlementRow,
@@ -289,15 +289,14 @@ export default async function SettlementDetailPage({
     notFound()
   }
 
-  const { data: historyRows, error: historyError } = await supabase
-    .from('asset_rental_service_advance_history')
-    .select('id, rental_id, effective_from, monthly_advance, note, created_at, updated_at')
-    .eq('rental_id', rental.id)
-    .order('effective_from', { ascending: true })
-    .order('created_at', { ascending: true })
+  const { data: advanceMonthRows, error: advanceMonthsError } = await supabase
+    .from('asset_rental_service_settlement_advance_months')
+    .select('id, settlement_id, month, monthly_advance, source_advance_id, source_effective_from, created_at')
+    .eq('settlement_id', settlement.id)
+    .order('month', { ascending: true })
 
-  if (historyError) {
-    throw new Error('Nepodařilo se načíst historii záloh.')
+  if (advanceMonthsError) {
+    throw new Error('Nepodařilo se načíst měsíční snapshot záloh.')
   }
 
   const { data: customItemRows, error: customItemError } = await supabase
@@ -321,7 +320,7 @@ export default async function SettlementDetailPage({
     throw new Error('Nepodařilo se načíst přílohy.')
   }
 
-  const history = (historyRows ?? []) as RentalServiceAdvanceHistoryRow[]
+  const advanceMonths = (advanceMonthRows ?? []) as RentalServiceSettlementAdvanceMonthRow[]
   const files = (fileRows ?? []) as RentalServiceSettlementFileRow[]
   const customItems = (customItemRows ?? []) as RentalServiceSettlementCustomItemRow[]
   const filesWithUrls = await Promise.all(
@@ -337,11 +336,7 @@ export default async function SettlementDetailPage({
   const fixedLineItems = lineItems.filter((item) => item.kind === 'fixed')
   const customLineItems = lineItems.filter((item) => item.kind === 'custom')
 
-  const advanceCalculation = calculateAdvancePaymentsForPeriod({
-    history,
-    periodFrom: settlement.period_from,
-    periodTo: settlement.period_to,
-  })
+  const advanceCalculation = buildAdvanceCalculationFromSnapshot(advanceMonths)
 
   return (
     <main className="assets-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
@@ -382,13 +377,15 @@ export default async function SettlementDetailPage({
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <SettlementDeleteButton
-                  assetId={asset.id}
-                  settlementId={settlement.id}
-                  successRedirectHref={`/majetek/${asset.id}?tab=rent`}
-                  variant="button"
-                  className="assets-detail-page__settlement-header-delete-button w-full sm:w-auto"
-                />
+                {settlement.status === 'draft' ? (
+                  <SettlementDeleteButton
+                    assetId={asset.id}
+                    settlementId={settlement.id}
+                    successRedirectHref={`/majetek/${asset.id}?tab=rent`}
+                    variant="button"
+                    className="assets-detail-page__settlement-header-delete-button w-full sm:w-auto"
+                  />
+                ) : null}
                 <a
                   href={`/majetek/${asset.id}/vyuctovani/${settlement.id}/export`}
                   download

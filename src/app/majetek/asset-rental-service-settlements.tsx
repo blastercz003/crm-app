@@ -1050,14 +1050,20 @@ function SettlementCard({
         </div>
 
         <div className="assets-detail-page__settlement-custom-items mt-5">
-          <SettlementForm
-            key={`${settlement.id}-${settlement.updated_at}`}
-            assetId={assetId}
-            rentals={rentals}
-            settlement={settlement}
-            customItems={customItems}
-            submitLabel="ULOŽIT ZMĚNY"
-          />
+          {settlement.status === 'closed' ? (
+            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-800 [html[data-theme='dark']_&]:border-[rgba(52,211,153,0.22)] [html[data-theme='dark']_&]:bg-[rgba(6,78,59,0.2)] [html[data-theme='dark']_&]:text-emerald-200">
+              Uzavřené vyúčtování je účetní snapshot a nelze ho zpětně přepočítat.
+            </div>
+          ) : (
+            <SettlementForm
+              key={`${settlement.id}-${settlement.updated_at}`}
+              assetId={assetId}
+              rentals={rentals}
+              settlement={settlement}
+              customItems={customItems}
+              submitLabel="ULOŽIT ZMĚNY"
+            />
+          )}
         </div>
 
         <div className="assets-detail-page__settlement-files mt-5 space-y-3">
@@ -1073,9 +1079,11 @@ function SettlementCard({
           <SettlementFilesList settlementId={settlement.id} files={files} />
         </div>
 
-        <div className="mt-5 flex justify-end">
-          <SettlementDeleteButton assetId={assetId} settlementId={settlement.id} />
-        </div>
+        {settlement.status === 'draft' ? (
+          <div className="mt-5 flex justify-end">
+            <SettlementDeleteButton assetId={assetId} settlementId={settlement.id} />
+          </div>
+        ) : null}
       </div>
     </details>
   )
