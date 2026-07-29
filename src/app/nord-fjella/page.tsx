@@ -1351,6 +1351,7 @@ export default async function NordFjellaPage({ searchParams }: NordFjellaPagePro
                               reservationItems={rowItems}
                               reservationFiles={reservationFilesByReservationId.get(row.id) ?? []}
                               stayGuests={stayGuestsByReservationId.get(row.id) ?? []}
+                              payments={payments.filter((payment) => payment.reservation_id === row.id)}
                               compact
                             />
                           ) : null}

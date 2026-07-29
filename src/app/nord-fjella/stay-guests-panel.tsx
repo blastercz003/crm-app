@@ -52,6 +52,10 @@ export function StayGuestsPanel({
   const [isDeleting, startDeleteTransition] = useTransition()
   const expectedCount = reservation.adult_count + reservation.child_count
   const isComplete = guests.length === expectedCount
+  const isLegallyProtected =
+    reservation.record_type === 'reservation' &&
+    (reservation.reservation_status === 'completed' ||
+      reservation.stay_end_date <= new Date().toISOString().slice(0, 10))
 
   useEffect(() => {
     setGuests(initialGuests)
@@ -150,14 +154,23 @@ export function StayGuestsPanel({
                 >
                   Upravit
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(guest)}
-                  disabled={isDeleting}
-                  className="inline-flex h-8 items-center justify-center rounded-xl border border-red-200 bg-red-50/80 px-2.5 text-[10px] font-medium uppercase text-red-700 disabled:opacity-50"
-                >
-                  Odebrat
-                </button>
+                {isLegallyProtected ? (
+                  <span
+                    title="Záznam je součástí zákonné evidence a uchovává se 6 let po skončení pobytu."
+                    className="inline-flex h-8 items-center justify-center rounded-xl border border-sky-200/80 bg-sky-50/70 px-2.5 text-[9px] font-semibold uppercase tracking-[0.04em] text-sky-800 [html[data-theme='dark']_&]:border-sky-300/15 [html[data-theme='dark']_&]:bg-sky-400/8 [html[data-theme='dark']_&]:text-sky-200"
+                  >
+                    Evidence 6 let
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(guest)}
+                    disabled={isDeleting}
+                    className="inline-flex h-8 items-center justify-center rounded-xl border border-red-200 bg-red-50/80 px-2.5 text-[10px] font-medium uppercase text-red-700 disabled:opacity-50"
+                  >
+                    Odebrat
+                  </button>
+                )}
               </div>
             ))
           )}
@@ -323,6 +336,39 @@ function StayGuestModal({
                       className={inputClassName}
                     />
                   </div>
+                ) : null}
+                {taxStatus === 'liable' ? (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Skutečně vybráno</label>
+                      <input
+                        name="city_tax_collected_amount"
+                        defaultValue={guest?.city_tax_collected_amount ?? guest?.city_tax_amount ?? 0}
+                        className={inputClassName}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Datum vybrání</label>
+                      <input
+                        name="city_tax_collected_at"
+                        type="date"
+                        defaultValue={guest?.city_tax_collected_at ?? ''}
+                        className={inputClassName}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Způsob úhrady</label>
+                      <select
+                        name="city_tax_payment_method"
+                        defaultValue={guest?.city_tax_payment_method ?? ''}
+                        className={selectClassName}
+                      >
+                        <option value="">Nevybráno</option>
+                        <option value="cash">Hotově</option>
+                        <option value="bank_transfer">Bankovní převod</option>
+                      </select>
+                    </div>
+                  </>
                 ) : null}
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input name="is_primary" type="checkbox" defaultChecked={guest?.is_primary ?? false} />

@@ -593,6 +593,64 @@ function CreateReservationModal({
                       </div>
                     </div>
 
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <div className="nord-fjella-modal-subtle-card rounded-2xl border border-zinc-200/80 bg-white/60 p-3">
+                        <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                          Daňový doklad k přijaté záloze
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2 sm:col-span-2">
+                            <label className="text-xs font-medium text-gray-700">Číslo dokladu</label>
+                            <input name="deposit_tax_document_number" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Základ 12 %</label>
+                            <input name="deposit_vat_12_base" defaultValue="0" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">DPH 12 %</label>
+                            <input name="deposit_vat_12_amount" defaultValue="0" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Základ 21 %</label>
+                            <input name="deposit_vat_21_base" defaultValue="0" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">DPH 21 %</label>
+                            <input name="deposit_vat_21_amount" defaultValue="0" className={inputClassName} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="nord-fjella-modal-subtle-card rounded-2xl border border-zinc-200/80 bg-white/60 p-3">
+                        <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                          Daňový doklad k doplatku
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2 sm:col-span-2">
+                            <label className="text-xs font-medium text-gray-700">Číslo dokladu</label>
+                            <input name="balance_tax_document_number" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Základ 12 %</label>
+                            <input name="balance_vat_12_base" defaultValue="0" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">DPH 12 %</label>
+                            <input name="balance_vat_12_amount" defaultValue="0" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Základ 21 %</label>
+                            <input name="balance_vat_21_base" defaultValue="0" className={inputClassName} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">DPH 21 %</label>
+                            <input name="balance_vat_21_amount" defaultValue="0" className={inputClassName} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid gap-4 md:grid-cols-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-900">Uhrazený doplatek</label>

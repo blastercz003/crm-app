@@ -169,6 +169,11 @@ export type NordFjellaPaymentRow = {
   amount: number
   transaction_date: string
   payment_method: NordFjellaPaymentMethod | null
+  tax_document_number: string | null
+  vat_12_base: number
+  vat_12_amount: number
+  vat_21_base: number
+  vat_21_amount: number
   note: string | null
   created_by: string | null
   updated_by: string | null
@@ -225,6 +230,9 @@ export type NordFjellaStayGuestRow = {
   city_tax_rate: number
   city_tax_nights: number
   city_tax_amount: number
+  city_tax_collected_amount: number
+  city_tax_collected_at: string | null
+  city_tax_payment_method: NordFjellaPaymentMethod | null
   note: string | null
   created_by: string | null
   updated_by: string | null

@@ -1,13 +1,16 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
-  buildNordFjellaSettlementSummary,
-  getNordFjellaNightCount,
-} from '@/lib/nord-fjella/settlement'
+  buildNordFjellaReportData,
+  validateNordFjellaReportRange,
+  type NordFjellaFinanceDateBasis,
+  type NordFjellaReportData,
+  type NordFjellaReportType,
+} from '@/lib/nord-fjella/reports'
 import type {
   NordFjellaPaymentRow,
   NordFjellaReservationItemRow,
@@ -15,10 +18,7 @@ import type {
   NordFjellaStayGuestRow,
 } from '@/lib/nord-fjella/types'
 
-type ReportType = 'overview' | 'finance' | 'guests' | 'owner_stays' | 'guest_book'
-type FinanceDateBasis = 'supply' | 'payment' | 'stay'
-
-const REPORT_TYPES: Array<{ value: ReportType; label: string }> = [
+const REPORT_TYPES: Array<{ value: NordFjellaReportType; label: string }> = [
   { value: 'overview', label: 'Souhrn' },
   { value: 'finance', label: 'Finance' },
   { value: 'guests', label: 'Historie hostů' },
@@ -39,26 +39,12 @@ function formatCurrency(value: number) {
   }).format(Number(value ?? 0))
 }
 
-function getDateNightCount(from: string, to: string) {
-  const start = new Date(`${from}T12:00:00Z`)
-  const end = new Date(`${to}T12:00:00Z`)
-  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000))
-}
-
-function getTaxStatusLabel(status: NordFjellaStayGuestRow['city_tax_status']) {
-  if (status === 'liable') return 'Poplatek'
-  if (status === 'exempt') return 'Osvobozen'
-  return 'Bez poplatku'
-}
-
 function getDefaultFromDate() {
-  const now = new Date()
-  return `${now.getFullYear()}-01-01`
+  return `${new Date().getFullYear()}-01-01`
 }
 
 function getDefaultToDate() {
-  const now = new Date()
-  return `${now.getFullYear()}-12-31`
+  return `${new Date().getFullYear()}-12-31`
 }
 
 function getCurrentPeriodRange(period: 'month' | 'quarter' | 'year') {
@@ -67,15 +53,14 @@ function getCurrentPeriodRange(period: 'month' | 'quarter' | 'year') {
   const month = now.getMonth()
   const firstMonth = period === 'quarter' ? Math.floor(month / 3) * 3 : period === 'year' ? 0 : month
   const lastMonth = period === 'quarter' ? firstMonth + 2 : period === 'year' ? 11 : month
-  const from = new Date(year, firstMonth, 1)
-  const to = new Date(year, lastMonth + 1, 0)
-  const format = (date: Date) => {
-    const y = date.getFullYear()
-    const m = String(date.getMonth() + 1).padStart(2, '0')
-    const d = String(date.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
+  const format = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+      date.getDate()
+    ).padStart(2, '0')}`
+  return {
+    from: format(new Date(year, firstMonth, 1)),
+    to: format(new Date(year, lastMonth + 1, 0)),
   }
-  return { from: format(from), to: format(to) }
 }
 
 export function ReportsButton({
@@ -90,24 +75,30 @@ export function ReportsButton({
   payments: NordFjellaPaymentRow[]
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  function closeReports() {
+    setIsOpen(false)
+    window.requestAnimationFrame(() => triggerRef.current?.focus())
+  }
 
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(true)}
         className="nord-fjella-chip inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-medium uppercase tracking-[0.05em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(17,27,46,0.96)_0%,rgba(12,20,34,0.94)_100%)] [html[data-theme='dark']_&]:text-slate-200"
       >
         Reporty
       </button>
-
       {isOpen ? (
         <ReportsModal
           reservations={reservations}
           reservationItems={reservationItems}
           stayGuests={stayGuests}
           payments={payments}
-          onClose={() => setIsOpen(false)}
+          onClose={closeReports}
         />
       ) : null}
     </>
@@ -127,175 +118,117 @@ function ReportsModal({
   payments: NordFjellaPaymentRow[]
   onClose: () => void
 }) {
-  const [reportType, setReportType] = useState<ReportType>('overview')
-  const [financeDateBasis, setFinanceDateBasis] = useState<FinanceDateBasis>('supply')
+  const [reportType, setReportType] = useState<NordFjellaReportType>('overview')
+  const [financeDateBasis, setFinanceDateBasis] =
+    useState<NordFjellaFinanceDateBasis>('supply')
   const [fromDate, setFromDate] = useState(getDefaultFromDate)
   const [toDate, setToDate] = useState(getDefaultToDate)
+  const [guestSearch, setGuestSearch] = useState('')
+  const [cityTaxFilter, setCityTaxFilter] = useState<
+    'all' | 'liable' | 'exempt' | 'not_applicable'
+  >('all')
+  const shellRef = useRef<HTMLDivElement>(null)
 
   useBodyScrollLock(true)
 
-  const paymentsInRange = useMemo(
-    () =>
-      payments.filter(
-        (payment) =>
-          payment.transaction_date >= fromDate && payment.transaction_date <= toDate
-      ),
-    [fromDate, payments, toDate]
-  )
-  const paymentReservationIds = useMemo(
-    () => new Set(paymentsInRange.map((payment) => payment.reservation_id)),
-    [paymentsInRange]
-  )
-  const filteredReservations = useMemo(() => {
-    if (reportType === 'finance' && financeDateBasis === 'payment') {
-      return reservations.filter((reservation) => paymentReservationIds.has(reservation.id))
-    }
-
-    if (reportType === 'finance' && financeDateBasis === 'supply') {
-      return reservations.filter((reservation) => {
-        const supplyDate = reservation.taxable_supply_date || reservation.stay_end_date
-        return supplyDate >= fromDate && supplyDate <= toDate
-      })
-    }
-
-    return reservations.filter(
-      (reservation) =>
-        reservation.stay_end_date > fromDate && reservation.stay_start_date <= toDate
-    )
-  }, [
-    financeDateBasis,
-    fromDate,
-    paymentReservationIds,
-    reportType,
-    reservations,
-    toDate,
-  ])
-  const reservationIds = useMemo(
-    () =>
-      new Set(
-        filteredReservations
-          .filter((reservation) => reservation.record_type === 'reservation')
-          .map((reservation) => reservation.id)
-      ),
-    [filteredReservations]
-  )
-  const filteredGuests = useMemo(
-    () => stayGuests.filter((guest) => reservationIds.has(guest.reservation_id)),
-    [reservationIds, stayGuests]
-  )
-  const ownerStays = filteredReservations.filter((row) => row.record_type === 'owner_block')
-  const rentals = filteredReservations.filter((row) => row.record_type === 'reservation')
-  const completedRentals = rentals.filter((row) => row.reservation_status === 'completed')
-  const totalGuestNights = filteredGuests.reduce(
-    (sum, guest) => sum + getDateNightCount(guest.stay_start_date, guest.stay_end_date),
-    0
-  )
-  const taxableGuestNights = filteredGuests.reduce(
-    (sum, guest) => sum + Math.max(Number(guest.city_tax_nights ?? 0), 0),
-    0
-  )
-  const totalTax = filteredGuests.reduce(
-    (sum, guest) => sum + Number(guest.city_tax_amount ?? 0),
-    0
-  )
-  const incompleteReservations = rentals.filter(
-    (reservation) =>
-      filteredGuests.filter((guest) => guest.reservation_id === reservation.id).length !==
-      reservation.adult_count + reservation.child_count
-  )
-  const itemsByReservationId = useMemo(() => {
-    const map = new Map<string, NordFjellaReservationItemRow[]>()
-    for (const item of reservationItems) {
-      const rows = map.get(item.reservation_id) ?? []
-      rows.push(item)
-      map.set(item.reservation_id, rows)
-    }
-    return map
-  }, [reservationItems])
-  const filteredPayments =
-    reportType === 'finance' && financeDateBasis === 'payment'
-      ? paymentsInRange
-      : payments.filter((payment) => reservationIds.has(payment.reservation_id))
-  const filteredPaymentIncome = filteredPayments
-    .filter(
-      (payment) =>
-        payment.direction === 'in' &&
-        (payment.transaction_type === 'deposit' || payment.transaction_type === 'balance')
-    )
-    .reduce((sum, payment) => sum + Number(payment.amount), 0)
-  const filteredPaymentRefunds = filteredPayments
-    .filter((payment) => payment.transaction_type === 'refund')
-    .reduce((sum, payment) => sum + Number(payment.amount), 0)
-  const financeSummary = rentals.reduce(
-    (summary, reservation) => {
-      const settlement = buildNordFjellaSettlementSummary(
-        reservation,
-        itemsByReservationId.get(reservation.id) ?? []
-      )
-      return {
-        net: summary.net + settlement.servicesNetTotal,
-        vat: summary.vat + settlement.servicesVatTotal,
-        gross: summary.gross + settlement.servicesGrossTotal,
-        vat12Base: summary.vat12Base + settlement.vat12Base,
-        vat12: summary.vat12 + settlement.vat12Amount,
-        vat21Base: summary.vat21Base + settlement.vat21Base,
-        vat21: summary.vat21 + settlement.vat21Amount,
-        outsideVat: summary.outsideVat + settlement.outsideVatTotal,
-        received: summary.received + settlement.paidTotal,
-        receivable: summary.receivable + Math.max(settlement.remainingToPay, 0),
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
       }
-    },
-    {
-      net: 0,
-      vat: 0,
-      gross: 0,
-      vat12Base: 0,
-      vat12: 0,
-      vat21Base: 0,
-      vat21: 0,
-      outsideVat: 0,
-      received: 0,
-      receivable: 0,
+      if (event.key !== 'Tab' || !shellRef.current) return
+      const focusable = Array.from(
+        shellRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href]:not([aria-disabled="true"]), input:not([disabled]), select:not([disabled])'
+        )
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  const rangeError = validateNordFjellaReportRange(fromDate, toDate)
+  const effectiveRange = useMemo(
+    () =>
+      rangeError
+        ? { from: getDefaultFromDate(), to: getDefaultToDate() }
+        : { from: fromDate, to: toDate },
+    [fromDate, rangeError, toDate]
   )
-  const financialIncompleteReservations = rentals.filter(
-    (reservation) =>
-      !reservation.taxable_supply_date ||
-      (reservation.reservation_status === 'completed' &&
-        reservation.settlement_status !== 'closed') ||
-      (Number(reservation.deposit_paid_amount ?? 0) > 0 && !reservation.deposit_paid_at) ||
-      (Number(reservation.balance_paid_amount ?? 0) > 0 && !reservation.balance_paid_at)
+  const reportData = useMemo(
+    () =>
+      buildNordFjellaReportData({
+        type: reportType,
+        basis: financeDateBasis,
+        range: effectiveRange,
+        reservations,
+        reservationItems,
+        stayGuests,
+        payments,
+        guestSearch: reportType === 'guests' || reportType === 'guest_book' ? guestSearch : '',
+        cityTaxFilter:
+          reportType === 'guests' || reportType === 'guest_book' ? cityTaxFilter : 'all',
+      }),
+    [
+      cityTaxFilter,
+      financeDateBasis,
+      effectiveRange,
+      guestSearch,
+      payments,
+      reportType,
+      reservationItems,
+      reservations,
+      stayGuests,
+    ]
   )
-  const reportedReceived =
-    reportType === 'finance' && financeDateBasis === 'payment'
-      ? filteredPaymentIncome - filteredPaymentRefunds
-      : financeSummary.received
 
   const query = new URLSearchParams({
     type: reportType,
     from: fromDate,
     to: toDate,
     basis: financeDateBasis,
+    q: guestSearch,
+    tax: cityTaxFilter,
   }).toString()
 
   const content = (
     <div
-      className="fixed inset-0 z-[120] overflow-y-auto overscroll-contain bg-zinc-950/42 p-4 backdrop-blur-[6px]"
+      className="fixed inset-0 z-[120] overflow-y-auto overscroll-contain bg-zinc-950/42 p-2 backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="nord-fjella-reports-title"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="flex min-h-full items-center justify-center py-2">
-        <div className="clients-modal__shell flex max-h-[calc(100dvh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.86)_42%,rgba(244,244,245,0.78)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)]">
-          <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 px-4 py-3 sm:px-5 sm:py-4">
-            <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
+      <div className="flex min-h-full items-center justify-center">
+        <div
+          ref={shellRef}
+          className="clients-modal__shell flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,249,251,0.92)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]"
+        >
+          <div className="clients-modal__header flex shrink-0 items-center justify-between gap-4 border-b border-gray-100/90 px-4 py-3 sm:px-5">
+            <h2
+              id="nord-fjella-reports-title"
+              className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900"
+            >
               Reporty
             </h2>
             <button
               type="button"
               onClick={onClose}
+              autoFocus
               className="clients-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm text-gray-700"
               aria-label="Zavřít"
             >
@@ -303,27 +236,36 @@ function ReportsModal({
             </button>
           </div>
 
-          <div className="nord-fjella-modal-body min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-            <div className="nord-fjella-modal-card grid gap-3 rounded-2xl border border-white/80 bg-white/68 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] lg:grid-cols-[minmax(0,1fr)_170px_170px_auto] lg:items-end">
+          <div className="nord-fjella-modal-body min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4">
+            <div
+              className="nord-fjella-modal-card overflow-x-auto rounded-2xl border border-white/80 bg-white/72 p-1"
+              role="tablist"
+              aria-label="Typ reportu"
+            >
+              <div className="flex min-w-max gap-1">
+                {REPORT_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={reportType === type.value}
+                    onClick={() => setReportType(type.value)}
+                    className={`min-w-[118px] rounded-xl px-3 py-2.5 text-[11px] font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#5f9fca] sm:min-w-0 sm:flex-1 ${
+                      reportType === type.value
+                        ? 'bg-[#e9f3fa] text-[#236f9f] shadow-sm [html[data-theme=\'dark\']_&]:bg-slate-700/80 [html[data-theme=\'dark\']_&]:text-sky-200'
+                        : 'text-zinc-600 hover:bg-white/60 [html[data-theme=\'dark\']_&]:text-slate-400 [html[data-theme=\'dark\']_&]:hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="nord-fjella-modal-card mt-3 grid gap-3 rounded-2xl border border-white/80 bg-white/72 p-3 lg:grid-cols-[auto_150px_150px_auto] lg:items-end">
               <div>
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-                  Typ reportu
-                </div>
-                <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-200 bg-zinc-100/80 p-1 sm:grid-cols-5 [html[data-theme='dark']_&]:border-slate-400/15 [html[data-theme='dark']_&]:bg-slate-950/35">
-                  {REPORT_TYPES.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => setReportType(type.value)}
-                      className={`rounded-lg px-2 py-2 text-[11px] font-medium transition ${
-                        reportType === type.value
-                          ? 'bg-white text-[#236f9f] shadow-sm [html[data-theme=\'dark\']_&]:bg-slate-700/80 [html[data-theme=\'dark\']_&]:text-sky-200'
-                          : 'text-zinc-600 hover:text-zinc-900 [html[data-theme=\'dark\']_&]:text-slate-400 [html[data-theme=\'dark\']_&]:hover:text-white'
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
+                <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                  Období
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {[
@@ -335,11 +277,13 @@ function ReportsModal({
                       key={period}
                       type="button"
                       onClick={() => {
-                        const range = getCurrentPeriodRange(period as 'month' | 'quarter' | 'year')
-                        setFromDate(range.from)
-                        setToDate(range.to)
+                        const next = getCurrentPeriodRange(
+                          period as 'month' | 'quarter' | 'year'
+                        )
+                        setFromDate(next.from)
+                        setToDate(next.to)
                       }}
-                      className="rounded-lg border border-zinc-200 bg-white/70 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-500 [html[data-theme='dark']_&]:border-slate-400/15 [html[data-theme='dark']_&]:bg-slate-800/55 [html[data-theme='dark']_&]:text-slate-400"
+                      className="rounded-lg border border-zinc-200 bg-white/75 px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-500 [html[data-theme='dark']_&]:border-slate-400/15 [html[data-theme='dark']_&]:bg-slate-800/55 [html[data-theme='dark']_&]:text-slate-300"
                     >
                       {label}
                     </button>
@@ -366,117 +310,61 @@ function ReportsModal({
               </label>
               <div className="flex gap-2">
                 <a
-                  href={`/nord-fjella/reports/pdf?${query}`}
+                  href={rangeError ? undefined : `/nord-fjella/reports/pdf?${query}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#2b679a_100%)] px-3 text-xs font-medium uppercase text-white"
+                  aria-disabled={Boolean(rangeError)}
+                  className={`inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#2b679a_100%)] px-4 text-xs font-medium uppercase text-white ${
+                    rangeError ? 'pointer-events-none opacity-45' : ''
+                  }`}
                 >
                   PDF
                 </a>
                 <a
-                  href={`/nord-fjella/reports/csv?${query}`}
-                  className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium uppercase text-zinc-700 [html[data-theme='dark']_&]:border-slate-400/15 [html[data-theme='dark']_&]:bg-slate-800/80 [html[data-theme='dark']_&]:text-slate-200"
+                  href={rangeError ? undefined : `/nord-fjella/reports/csv?${query}`}
+                  aria-disabled={Boolean(rangeError)}
+                  className={`inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 text-xs font-medium uppercase text-zinc-700 [html[data-theme='dark']_&]:border-slate-400/15 [html[data-theme='dark']_&]:bg-slate-800/80 [html[data-theme='dark']_&]:text-slate-200 ${
+                    rangeError ? 'pointer-events-none opacity-45' : ''
+                  }`}
                 >
                   CSV
                 </a>
               </div>
             </div>
 
+            {rangeError ? (
+              <div role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 [html[data-theme='dark']_&]:border-red-400/20 [html[data-theme='dark']_&]:bg-red-950/35 [html[data-theme='dark']_&]:text-red-200">
+                {rangeError}
+              </div>
+            ) : null}
+
             {reportType === 'finance' ? (
-              <div className="nord-fjella-modal-card mt-3 flex flex-col gap-2 rounded-2xl border border-white/80 bg-white/68 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-                    Rozhodné datum
-                  </div>
-                  <div className="mt-0.5 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-                    Určuje, podle kterého data se rezervace zařadí do období.
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-1 rounded-xl border border-zinc-200 bg-zinc-100/80 p-1 [html[data-theme='dark']_&]:border-slate-400/15 [html[data-theme='dark']_&]:bg-slate-950/35">
-                  {[
-                    ['Plnění', 'supply'],
-                    ['Platby', 'payment'],
-                    ['Pobyt', 'stay'],
-                  ].map(([label, value]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setFinanceDateBasis(value as FinanceDateBasis)}
-                      className={`rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] transition ${
-                        financeDateBasis === value
-                          ? 'bg-white text-[#236f9f] shadow-sm [html[data-theme=\'dark\']_&]:bg-slate-700/80 [html[data-theme=\'dark\']_&]:text-sky-200'
-                          : 'text-zinc-500 [html[data-theme=\'dark\']_&]:text-slate-400'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <FinanceBasis
+                value={financeDateBasis}
+                onChange={setFinanceDateBasis}
+              />
             ) : null}
 
-            {reportType === 'finance' && financialIncompleteReservations.length > 0 ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-800 [html[data-theme='dark']_&]:border-amber-400/20 [html[data-theme='dark']_&]:bg-amber-950/30 [html[data-theme='dark']_&]:text-amber-200">
-                {financialIncompleteReservations.length} rezervací nemá kompletní finanční údaje nebo uzavřené vyúčtování.
-              </div>
-            ) : reportType !== 'finance' && incompleteReservations.length > 0 ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-800">
-                {incompleteReservations.length} rezervací nemá doplněný počet ubytovaných osob. Export je označí jako neúplné.
-              </div>
+            {reportType === 'guests' || reportType === 'guest_book' ? (
+              <GuestFilters
+                search={guestSearch}
+                onSearch={setGuestSearch}
+                taxFilter={cityTaxFilter}
+                onTaxFilter={setCityTaxFilter}
+              />
             ) : null}
 
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-              {(reportType === 'finance'
-                ? [
-                    ['Služby bez DPH', formatCurrency(financeSummary.net)],
-                    ['DPH celkem', formatCurrency(financeSummary.vat)],
-                    ['Služby s DPH', formatCurrency(financeSummary.gross)],
-                    ['Přijato', formatCurrency(reportedReceived)],
-                    ['K inkasu', formatCurrency(financeSummary.receivable)],
-                  ]
-                : [
-                    ['Záznamy', filteredReservations.length],
-                    ['Pronájmy', rentals.length],
-                    ['Hosté', filteredGuests.length],
-                    ['Osobonoci', totalGuestNights],
-                    ['Místní poplatek', formatCurrency(totalTax)],
-                  ]
-              ).map(([label, value]) => (
-                <div key={label} className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-white/70 p-3">
-                  <div className="text-[10px] uppercase tracking-[0.1em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">{label}</div>
-                  <div className="mt-1 text-lg font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">{value}</div>
-                </div>
-              ))}
-            </div>
+            <MetricStrip type={reportType} basis={financeDateBasis} data={reportData} />
 
-            <div className="nord-fjella-modal-card mt-4 overflow-hidden rounded-2xl border border-white/80 bg-white/72">
+            <div className="mt-3">
               {reportType === 'overview' ? (
-                <OverviewReport
-                  rentals={rentals}
-                  completedRentals={completedRentals}
-                  ownerStays={ownerStays}
-                  guests={filteredGuests}
-                />
+                <OverviewReport data={reportData} />
               ) : reportType === 'finance' ? (
-                <FinanceReport
-                  reservations={rentals}
-                  itemsByReservationId={itemsByReservationId}
-                  payments={filteredPayments}
-                  summary={financeSummary}
-                  receivedTotal={reportedReceived}
-                  cityTax={totalTax}
-                  taxableGuestNights={taxableGuestNights}
-                  allGuestNights={totalGuestNights}
-                  incompleteCount={financialIncompleteReservations.length}
-                />
+                <FinanceReport data={reportData} basis={financeDateBasis} />
               ) : reportType === 'owner_stays' ? (
-                <OwnerStaysReport rows={ownerStays} />
+                <OwnerStaysReport data={reportData} />
               ) : (
-                <GuestsReport
-                  guests={filteredGuests}
-                  reservations={filteredReservations}
-                  legalBook={reportType === 'guest_book'}
-                />
+                <GuestsReport data={reportData} legalBook={reportType === 'guest_book'} />
               )}
             </div>
           </div>
@@ -488,401 +376,507 @@ function ReportsModal({
   return typeof document === 'undefined' ? null : createPortal(content, document.body)
 }
 
-function OverviewReport({
-  rentals,
-  completedRentals,
-  ownerStays,
-  guests,
+function FinanceBasis({
+  value,
+  onChange,
 }: {
-  rentals: NordFjellaReservationRow[]
-  completedRentals: NordFjellaReservationRow[]
-  ownerStays: NordFjellaReservationRow[]
-  guests: NordFjellaStayGuestRow[]
+  value: NordFjellaFinanceDateBasis
+  onChange: (value: NordFjellaFinanceDateBasis) => void
 }) {
-  const liableGuests = guests.filter((guest) => guest.city_tax_status === 'liable').length
-  const exemptGuests = guests.filter((guest) => guest.city_tax_status === 'exempt').length
-  const rentalNights = rentals.reduce((sum, row) => sum + getNordFjellaNightCount(row), 0)
-  const ownerNights = ownerStays.reduce((sum, row) => sum + getNordFjellaNightCount(row), 0)
-
   return (
-    <div className="grid gap-4 p-4 md:grid-cols-2">
+    <div className="nord-fjella-modal-card mt-3 flex flex-col gap-2 rounded-2xl border border-white/80 bg-white/72 p-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h3 className="text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">Pobyty</h3>
-        <dl className="mt-3 grid gap-2 text-sm [html[data-theme='dark']_&]:text-slate-300">
-          <div className="flex justify-between"><dt>Pronájmy</dt><dd className="font-semibold">{rentals.length}</dd></div>
-          <div className="flex justify-between"><dt>Dokončené pronájmy</dt><dd className="font-semibold">{completedRentals.length}</dd></div>
-          <div className="flex justify-between"><dt>Noci pronájmů</dt><dd className="font-semibold">{rentalNights}</dd></div>
-          <div className="flex justify-between"><dt>Vlastní pobyty</dt><dd className="font-semibold">{ownerStays.length}</dd></div>
-          <div className="flex justify-between"><dt>Noci vlastních pobytů</dt><dd className="font-semibold">{ownerNights}</dd></div>
-        </dl>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+          Pohled na finance
+        </div>
+        <div className="mt-0.5 text-xs text-zinc-500">
+          Plnění = DPH a tržby, Platby = cash-flow, Pobyt = provozní pohled.
+        </div>
       </div>
-      <div>
-        <h3 className="text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">Evidence hostů</h3>
-        <dl className="mt-3 grid gap-2 text-sm [html[data-theme='dark']_&]:text-slate-300">
-          <div className="flex justify-between"><dt>Ubytované osoby</dt><dd className="font-semibold">{guests.length}</dd></div>
-          <div className="flex justify-between"><dt>Poplatku podléhá</dt><dd className="font-semibold">{liableGuests}</dd></div>
-          <div className="flex justify-between"><dt>Osvobozené osoby</dt><dd className="font-semibold">{exemptGuests}</dd></div>
-          <div className="flex justify-between"><dt>Občanství</dt><dd className="font-semibold">Pouze ČR</dd></div>
-        </dl>
+      <div className="grid grid-cols-3 gap-1 rounded-xl border border-zinc-200 bg-zinc-100/80 p-1 [html[data-theme='dark']_&]:border-slate-400/15 [html[data-theme='dark']_&]:bg-slate-950/35">
+        {[
+          ['Plnění', 'supply'],
+          ['Platby', 'payment'],
+          ['Pobyt', 'stay'],
+        ].map(([label, itemValue]) => (
+          <button
+            key={itemValue}
+            type="button"
+            aria-pressed={value === itemValue}
+            onClick={() => onChange(itemValue as NordFjellaFinanceDateBasis)}
+            className={`rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] ${
+              value === itemValue
+                ? 'bg-white text-[#236f9f] shadow-sm [html[data-theme=\'dark\']_&]:bg-slate-700/80 [html[data-theme=\'dark\']_&]:text-sky-200'
+                : 'text-zinc-500 [html[data-theme=\'dark\']_&]:text-slate-400'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   )
 }
 
-type FinanceSummaryValue = {
-  net: number
-  vat: number
-  gross: number
-  vat12Base: number
-  vat12: number
-  vat21Base: number
-  vat21: number
-  outsideVat: number
-  received: number
-  receivable: number
+function GuestFilters({
+  search,
+  onSearch,
+  taxFilter,
+  onTaxFilter,
+}: {
+  search: string
+  onSearch: (value: string) => void
+  taxFilter: 'all' | 'liable' | 'exempt' | 'not_applicable'
+  onTaxFilter: (value: 'all' | 'liable' | 'exempt' | 'not_applicable') => void
+}) {
+  return (
+    <div className="nord-fjella-modal-card mt-3 grid gap-2 rounded-2xl border border-white/80 bg-white/72 p-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+      <label className="text-xs text-zinc-500">
+        Hledat hosta nebo rezervaci
+        <input
+          value={search}
+          onChange={(event) => onSearch(event.target.value)}
+          placeholder="Jméno nebo číslo rezervace"
+          className="clients-modal__input mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+        />
+      </label>
+      <label className="text-xs text-zinc-500">
+        Stav poplatku
+        <select
+          value={taxFilter}
+          onChange={(event) =>
+            onTaxFilter(
+              event.target.value as 'all' | 'liable' | 'exempt' | 'not_applicable'
+            )
+          }
+          className="clients-modal__select mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+        >
+          <option value="all">Všechny</option>
+          <option value="liable">Podléhá poplatku</option>
+          <option value="exempt">Osvobozen</option>
+          <option value="not_applicable">Nepodléhá</option>
+        </select>
+      </label>
+    </div>
+  )
+}
+
+function MetricStrip({
+  type,
+  basis,
+  data,
+}: {
+  type: NordFjellaReportType
+  basis: NordFjellaFinanceDateBasis
+  data: NordFjellaReportData
+}) {
+  const metrics = data.metrics
+  const values: Array<[string, string | number]> =
+    type === 'finance'
+      ? basis === 'payment'
+        ? [
+            ['Přijaté platby', formatCurrency(metrics.paymentIncome)],
+            ['Vratky', formatCurrency(metrics.paymentRefunds)],
+            ['Čisté cash-flow', formatCurrency(metrics.netCashflow)],
+            ['DPH z plateb', formatCurrency(metrics.advanceVat12Amount + metrics.advanceVat21Amount)],
+          ]
+        : [
+            ['Služby bez DPH', formatCurrency(metrics.servicesNet)],
+            ['DPH celkem', formatCurrency(metrics.servicesVat)],
+            ['Služby s DPH', formatCurrency(metrics.servicesGross)],
+            ['K inkasu', formatCurrency(metrics.receivable)],
+          ]
+      : type === 'guests'
+        ? [
+            ['Unikátní hosté', metrics.uniqueGuests],
+            ['Pobyty hostů', metrics.guestStays],
+            ['Osobonoci', metrics.guestNights],
+            ['Vracející se', metrics.returningGuests],
+          ]
+        : type === 'owner_stays'
+          ? [
+              ['Vlastní pobyty', data.ownerStays.length],
+              ['Noci', metrics.ownerNights],
+              [
+                'Průměrná délka',
+                data.ownerStays.length
+                  ? `${(metrics.ownerNights / data.ownerStays.length).toLocaleString('cs-CZ', {
+                      maximumFractionDigits: 1,
+                    })} noci`
+                  : '0 nocí',
+              ],
+              ['Technické blokace', data.technicalBlocks.length],
+            ]
+          : type === 'guest_book'
+            ? [
+                ['Evidované osoby', data.guests.length],
+                ['Zpoplatněné osobonoci', metrics.taxableGuestNights],
+                ['Osvobozené osoby', metrics.exemptGuests],
+                ['Skutečně vybráno', formatCurrency(metrics.cityTaxCollected)],
+              ]
+            : [
+                ['Aktivní a dokončené', metrics.reservedRentals + metrics.completedRentals],
+                ['Obsazené noci', metrics.occupiedNights],
+                ['Ubytované osoby', data.guests.length],
+                ['Vybraný poplatek', formatCurrency(metrics.cityTaxCollected)],
+              ]
+
+  return (
+    <div className="nord-fjella-modal-card mt-3 grid grid-cols-2 overflow-hidden rounded-2xl border border-white/80 bg-white/72 lg:grid-cols-4">
+      {values.map(([label, value], index) => (
+        <div
+          key={label}
+          className={`min-w-0 px-3 py-3 ${
+            index % 2 ? 'border-l border-zinc-200/70 [html[data-theme=\'dark\']_&]:border-slate-400/10' : ''
+          } ${index >= 2 ? 'border-t border-zinc-200/70 lg:border-t-0 [html[data-theme=\'dark\']_&]:border-slate-400/10' : ''} ${
+            index > 0 ? 'lg:border-l lg:border-zinc-200/70 [html[data-theme=\'dark\']_&]:lg:border-slate-400/10' : ''
+          }`}
+        >
+          <div className="truncate text-[9px] font-semibold uppercase tracking-[0.09em] text-zinc-400">
+            {label}
+          </div>
+          <div className="mt-1 truncate text-lg font-semibold text-zinc-900" title={String(value)}>
+            {value}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function OverviewReport({ data }: { data: NordFjellaReportData }) {
+  const { metrics } = data
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <ReportPanel title="Provoz">
+        <ReportRow label="Potvrzené a rozpracované" value={metrics.reservedRentals} />
+        <ReportRow label="Dokončené pronájmy" value={metrics.completedRentals} />
+        <ReportRow label="Storna" value={metrics.cancelledRentals} />
+        <ReportRow label="Vlastní pobyty / noci" value={`${data.ownerStays.length} / ${metrics.ownerNights}`} />
+        <ReportRow label="Technické blokace / noci" value={`${data.technicalBlocks.length} / ${metrics.technicalNights}`} />
+      </ReportPanel>
+      <ReportPanel title="Hosté a místní poplatek">
+        <ReportRow label="Unikátní hosté" value={metrics.uniqueGuests} />
+        <ReportRow label="Všechny osobonoci" value={metrics.guestNights} />
+        <ReportRow label="Zpoplatněné osobonoci" value={metrics.taxableGuestNights} />
+        <ReportRow label="Předepsaný poplatek" value={formatCurrency(metrics.cityTaxAssessed)} />
+        <ReportRow label="Skutečně vybráno" value={formatCurrency(metrics.cityTaxCollected)} strong />
+      </ReportPanel>
+    </div>
+  )
 }
 
 function FinanceReport({
-  reservations,
-  itemsByReservationId,
-  payments,
-  summary,
-  receivedTotal,
-  cityTax,
-  taxableGuestNights,
-  allGuestNights,
-  incompleteCount,
+  data,
+  basis,
 }: {
-  reservations: NordFjellaReservationRow[]
-  itemsByReservationId: Map<string, NordFjellaReservationItemRow[]>
-  payments: NordFjellaPaymentRow[]
-  summary: FinanceSummaryValue
-  receivedTotal: number
-  cityTax: number
-  taxableGuestNights: number
-  allGuestNights: number
-  incompleteCount: number
+  data: NordFjellaReportData
+  basis: NordFjellaFinanceDateBasis
 }) {
-  const paymentIncome = payments
-    .filter(
-      (payment) =>
-        payment.direction === 'in' &&
-        (payment.transaction_type === 'deposit' || payment.transaction_type === 'balance')
-    )
-    .reduce((sum, payment) => sum + Number(payment.amount), 0)
-  const paymentRefunds = payments
-    .filter((payment) => payment.transaction_type === 'refund')
-    .reduce((sum, payment) => sum + Number(payment.amount), 0)
-  const heldDeposits = reservations.reduce(
-    (sum, reservation) =>
-      sum +
-      Math.max(
-        Number(reservation.security_deposit_received ? reservation.security_deposit_amount : 0) -
-          Number(reservation.security_deposit_refund_amount ?? 0) -
-          Number(reservation.security_deposit_withheld_amount ?? 0),
-        0
-      ),
-    0
-  )
-  const refundedDeposits = reservations.reduce(
-    (sum, reservation) => sum + Number(reservation.security_deposit_refund_amount ?? 0),
-    0
-  )
-  const withheldDeposits = reservations.reduce(
-    (sum, reservation) => sum + Number(reservation.security_deposit_withheld_amount ?? 0),
-    0
-  )
+  const { metrics } = data
   const completeness =
-    reservations.length > 0
-      ? Math.round(((reservations.length - incompleteCount) / reservations.length) * 100)
-      : 100
+    data.rentals.length > 0
+      ? Math.round(
+          ((data.rentals.length - metrics.financialIncompleteCount) / data.rentals.length) *
+            100
+        )
+      : null
 
   return (
-    <div className="p-3 sm:p-4">
+    <div className="space-y-3">
       <div className="grid gap-3 lg:grid-cols-3">
-        <FinancePanel title="Tržby">
-          <FinancePrimary label="Služby bez DPH" value={formatCurrency(summary.net)} />
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <FinanceMini label="DPH celkem" value={formatCurrency(summary.vat)} />
-            <FinanceMini label="Služby s DPH" value={formatCurrency(summary.gross)} />
-          </div>
-          <FinanceCompact
-            label="Mimo DPH · místní poplatek"
-            value={formatCurrency(summary.outsideVat)}
-          />
-        </FinancePanel>
-
-        <FinancePanel title="Inkaso">
-          <FinancePrimary
-            label="Čistě přijato"
-            value={formatCurrency(receivedTotal)}
-            accent
-          />
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <FinanceMini
-              label="Přijaté platby"
-              value={formatCurrency(paymentIncome || receivedTotal + paymentRefunds)}
-            />
-            <FinanceMini label="Vratky" value={formatCurrency(paymentRefunds)} />
-          </div>
-          <FinanceCompact label="Zbývá uhradit" value={formatCurrency(summary.receivable)} />
-        </FinancePanel>
-
-        <FinancePanel title="DPH">
-          <FinancePrimary label="Daň celkem" value={formatCurrency(summary.vat)} accent />
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <FinanceMini
-              label="12 % · základ / DPH"
-              value={`${formatCurrency(summary.vat12Base)} / ${formatCurrency(summary.vat12)}`}
-            />
-            <FinanceMini
-              label="21 % · základ / DPH"
-              value={`${formatCurrency(summary.vat21Base)} / ${formatCurrency(summary.vat21)}`}
-            />
-          </div>
-        </FinancePanel>
+        <ReportPanel title={basis === 'payment' ? 'DPH z přijatých plateb' : 'Tržby a DPH'}>
+          {basis === 'payment' ? (
+            <>
+              <ReportRow label="Základ 12 %" value={formatCurrency(metrics.advanceVat12Base)} />
+              <ReportRow label="DPH 12 %" value={formatCurrency(metrics.advanceVat12Amount)} strong />
+              <ReportRow label="Základ 21 %" value={formatCurrency(metrics.advanceVat21Base)} />
+              <ReportRow label="DPH 21 %" value={formatCurrency(metrics.advanceVat21Amount)} strong />
+            </>
+          ) : (
+            <>
+              <ReportRow label="Základ 12 %" value={formatCurrency(metrics.vat12Base)} />
+              <ReportRow label="DPH 12 %" value={formatCurrency(metrics.vat12Amount)} />
+              <ReportRow label="Základ 21 %" value={formatCurrency(metrics.vat21Base)} />
+              <ReportRow label="DPH 21 %" value={formatCurrency(metrics.vat21Amount)} />
+              <ReportRow label="Celkem s DPH" value={formatCurrency(metrics.servicesGross)} strong />
+            </>
+          )}
+        </ReportPanel>
+        <ReportPanel title="Platby">
+          <ReportRow label="Přijaté zálohy a doplatky" value={formatCurrency(metrics.paymentIncome)} />
+          <ReportRow label="Vratky" value={formatCurrency(metrics.paymentRefunds)} />
+          <ReportRow label="Čistě přijato" value={formatCurrency(metrics.netCashflow)} strong />
+          <ReportRow label="Aktuálně k inkasu" value={formatCurrency(metrics.receivable)} />
+        </ReportPanel>
+        <ReportPanel title="Mimo tržby">
+          <ReportRow label="Místní poplatek předepsán" value={formatCurrency(metrics.cityTaxAssessed)} />
+          <ReportRow label="Místní poplatek vybrán" value={formatCurrency(metrics.cityTaxCollected)} />
+          <ReportRow label="Kauce aktuálně drženo" value={formatCurrency(metrics.heldDeposits)} />
+          <ReportRow label="Kauce vráceno / zadrženo" value={`${formatCurrency(metrics.refundedDeposits)} / ${formatCurrency(metrics.withheldDeposits)}`} />
+        </ReportPanel>
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <FinancePanel title="Místní poplatek">
-          <FinancePrimary label="Předepsáno" value={formatCurrency(cityTax)} />
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <FinanceMini label="Všechny osobonoci" value={String(allGuestNights)} />
-            <FinanceMini label="Zpoplatněné osobonoci" value={String(taxableGuestNights)} />
-          </div>
-        </FinancePanel>
-        <FinancePanel title="Kauce">
-          <FinancePrimary label="Aktuálně drženo" value={formatCurrency(heldDeposits)} />
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <FinanceMini label="Vráceno" value={formatCurrency(refundedDeposits)} />
-            <FinanceMini label="Zadrženo" value={formatCurrency(withheldDeposits)} />
-          </div>
-        </FinancePanel>
-        <FinancePanel title="Úplnost evidence">
-          <FinancePrimary label="Finančně kompletní" value={`${completeness} %`} accent />
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-200/80 [html[data-theme='dark']_&]:bg-slate-700/70">
-            <div
-              className="h-full rounded-full bg-[#2980b9] [html[data-theme='dark']_&]:bg-sky-300"
-              style={{ width: `${Math.max(0, Math.min(completeness, 100))}%` }}
-            />
-          </div>
-          <div className="mt-3 text-xs text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-            {reservations.length - incompleteCount} z {reservations.length} rezervací
-          </div>
-        </FinancePanel>
+      <div className="nord-fjella-modal-card flex flex-col gap-2 rounded-2xl border border-white/80 bg-white/72 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs text-zinc-600">
+          Úplnost finanční evidence:{' '}
+          <strong className="text-zinc-900">
+            {completeness === null ? '—' : `${completeness} %`}
+          </strong>
+          <span className="ml-2 text-zinc-400">
+            ({data.rentals.length - metrics.financialIncompleteCount} z {data.rentals.length})
+          </span>
+        </div>
+        {data.rentals.length === 0 ? (
+          <span className="text-xs font-medium text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+            Bez finančních záznamů
+          </span>
+        ) : metrics.financialIncompleteCount > 0 ? (
+          <span role="status" className="text-xs font-medium text-amber-700 [html[data-theme='dark']_&]:text-amber-200">
+            {metrics.financialIncompleteCount} záznamů vyžaduje doplnění
+          </span>
+        ) : (
+          <span className="text-xs font-medium text-emerald-700 [html[data-theme='dark']_&]:text-emerald-300">
+            Evidence je kompletní
+          </span>
+        )}
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-zinc-200/80 [html[data-theme='dark']_&]:border-slate-400/15">
-        <table className="min-w-[1050px] w-full text-left text-xs">
-          <thead className="bg-zinc-50 text-[10px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:bg-slate-950/35 [html[data-theme='dark']_&]:text-slate-400">
-            <tr>
-              <th className="px-3 py-3">Rezervace</th>
-              <th className="px-3 py-3">Zákazník</th>
-              <th className="px-3 py-3">DUZP</th>
-              <th className="px-3 py-3 text-right">Bez DPH</th>
-              <th className="px-3 py-3 text-right">DPH</th>
-              <th className="px-3 py-3 text-right">S DPH</th>
-              <th className="px-3 py-3 text-right">Poplatek</th>
-              <th className="px-3 py-3 text-right">Přijato</th>
-              <th className="px-3 py-3 text-right">K inkasu</th>
-              <th className="px-3 py-3">Vyúčtování</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reservations.map((reservation) => {
-              const settlement = buildNordFjellaSettlementSummary(
-                reservation,
-                itemsByReservationId.get(reservation.id) ?? []
-              )
-              return (
-                <tr
-                  key={reservation.id}
-                  className="border-t border-zinc-100 [html[data-theme='dark']_&]:border-slate-400/10 [html[data-theme='dark']_&]:text-slate-200"
-                >
-                  <td className="whitespace-nowrap px-3 py-3 font-semibold">
-                    {reservation.reservation_number}
-                    {reservation.external_document_number ? (
-                      <div className="mt-0.5 text-[9px] font-normal text-zinc-500">
-                        {reservation.external_document_number}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="max-w-[180px] truncate px-3 py-3">
-                    {reservation.guest_company_name ||
-                      reservation.guest_full_name ||
-                      reservation.guest_contact_name ||
-                      '—'}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    {formatDate(reservation.taxable_supply_date || reservation.stay_end_date)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(settlement.servicesNetTotal)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(settlement.servicesVatTotal)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right font-semibold">{formatCurrency(settlement.servicesGrossTotal)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(settlement.outsideVatTotal)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(settlement.paidTotal)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
-                    {formatCurrency(Math.max(settlement.remainingToPay, 0))}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    {reservation.settlement_status === 'closed'
-                      ? 'Uzavřeno'
-                      : reservation.settlement_status === 'in_progress'
-                        ? 'Rozpracováno'
-                        : 'Nepřipraveno'}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        {reservations.length === 0 ? (
-          <div className="p-6 text-center text-sm text-zinc-500">V období nejsou finanční záznamy.</div>
-        ) : null}
-      </div>
+      {basis === 'payment' ? (
+        <PaymentsTable data={data} />
+      ) : (
+        <FinanceReservationsTable data={data} />
+      )}
     </div>
   )
 }
 
-function FinancePanel({ title, children }: { title: string; children: ReactNode }) {
+function FinanceReservationsTable({ data }: { data: NordFjellaReportData }) {
   return (
-    <section className="nord-fjella-modal-card min-w-0 rounded-2xl border border-white/80 bg-white/70 p-3">
-      <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
-        {title}
-      </h3>
-      {children}
-    </section>
-  )
-}
-
-function FinancePrimary({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string
-  value: string
-  accent?: boolean
-}) {
-  return (
-    <div className="mt-2">
-      <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-        {label}
-      </div>
-      <div
-        className={`mt-1 truncate text-2xl font-semibold ${
-          accent
-            ? 'text-[#2877aa] [html[data-theme=\'dark\']_&]:text-sky-300'
-            : 'text-zinc-900 [html[data-theme=\'dark\']_&]:text-white'
-        }`}
-        title={value}
-      >
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function FinanceMini({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-xl border border-zinc-200/75 bg-slate-50/75 px-2.5 py-2 [html[data-theme='dark']_&]:border-slate-400/10 [html[data-theme='dark']_&]:bg-slate-950/30">
-      <div className="text-[8px] font-semibold uppercase tracking-[0.07em] text-zinc-400 [html[data-theme='dark']_&]:text-slate-500">
-        {label}
-      </div>
-      <div className="mt-1 truncate text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-slate-100" title={value}>
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function FinanceCompact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="mt-2 flex items-center justify-between gap-3 border-t border-zinc-200/70 pt-2 text-xs [html[data-theme='dark']_&]:border-slate-400/10">
-      <span className="text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">{label}</span>
-      <span className="font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-white">{value}</span>
-    </div>
-  )
-}
-
-function OwnerStaysReport({ rows }: { rows: NordFjellaReservationRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-xs">
-        <thead className="bg-zinc-50 text-[10px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:bg-slate-950/35 [html[data-theme='dark']_&]:text-slate-400">
-          <tr><th className="px-4 py-3">Číslo</th><th className="px-4 py-3">Od</th><th className="px-4 py-3">Do</th><th className="px-4 py-3">Nocí</th><th className="px-4 py-3">Poznámka</th></tr>
+    <TableShell scrollHint="Tabulku lze posouvat vodorovně.">
+      <table className="w-full min-w-[1020px] text-left text-xs">
+        <thead className="bg-zinc-100/75 text-[9px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:bg-slate-950/35">
+          <tr>
+            {['Rezervace', 'Zákazník', 'DUZP', 'Bez DPH', 'DPH', 'S DPH', 'Poplatek vybrán / předpis', 'Přijato', 'K inkasu', 'Stav'].map((label) => (
+              <th key={label} className={`px-3 py-3 ${['Bez DPH', 'DPH', 'S DPH', 'Poplatek vybrán / předpis', 'Přijato', 'K inkasu'].includes(label) ? 'text-right' : ''}`}>{label}</th>
+            ))}
+          </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-t border-zinc-100 [html[data-theme='dark']_&]:border-slate-400/10 [html[data-theme='dark']_&]:text-slate-200">
-              <td className="px-4 py-3 font-semibold">{row.reservation_number}</td>
-              <td className="px-4 py-3">{formatDate(row.stay_start_date)}</td>
-              <td className="px-4 py-3">{formatDate(row.stay_end_date)}</td>
-              <td className="px-4 py-3">{getNordFjellaNightCount(row)}</td>
-              <td className="max-w-[280px] truncate px-4 py-3">{row.internal_note || '—'}</td>
+          {data.financeRows.map((row) => (
+            <tr key={row.reservation.id} className="border-t border-zinc-200/65 [html[data-theme='dark']_&]:border-slate-400/10">
+              <td className="sticky left-0 whitespace-nowrap bg-white/95 px-3 py-3 font-semibold [html[data-theme='dark']_&]:bg-slate-900/95">
+                {row.reservation.reservation_number}
+                {row.reservation.external_document_number ? <div className="text-[9px] font-normal text-zinc-500">{row.reservation.external_document_number}</div> : null}
+              </td>
+              <td className="max-w-[170px] truncate px-3 py-3">{row.reservation.guest_company_name || row.reservation.guest_full_name || row.reservation.guest_contact_name || '—'}</td>
+              <td className="whitespace-nowrap px-3 py-3">{formatDate(row.reservation.taxable_supply_date || row.reservation.stay_end_date)}</td>
+              {[row.servicesNet, row.servicesVat, row.servicesGross].map((value, index) => (
+                <td key={index} className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(value)}</td>
+              ))}
+              <td className="whitespace-nowrap px-3 py-3 text-right">
+                {formatCurrency(row.cityTaxCollected)} / {formatCurrency(row.cityTaxAssessed)}
+              </td>
+              <td className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(row.paid)}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
+                {formatCurrency(Math.max(row.remaining, 0))}
+              </td>
+              <td className="whitespace-nowrap px-3 py-3">{row.reservation.settlement_status === 'closed' ? 'Uzavřeno' : row.reservation.settlement_status === 'in_progress' ? 'Rozpracováno' : 'Nepřipraveno'}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {rows.length === 0 ? <div className="p-6 text-center text-sm text-zinc-500">V období nejsou vlastní pobyty.</div> : null}
-    </div>
+      {data.financeRows.length === 0 ? <EmptyState text="V období nejsou finanční záznamy." /> : null}
+    </TableShell>
+  )
+}
+
+function PaymentsTable({ data }: { data: NordFjellaReportData }) {
+  const reservationMap = new Map(data.reservations.map((row) => [row.id, row]))
+  return (
+    <TableShell scrollHint="Platební knihu lze posouvat vodorovně.">
+      <table className="w-full min-w-[900px] text-left text-xs">
+        <thead className="bg-zinc-100/75 text-[9px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:bg-slate-950/35">
+          <tr>
+            {['Datum', 'Rezervace', 'Doklad', 'Pohyb', 'Způsob', 'Částka', 'Základ DPH', 'DPH'].map((label) => (
+              <th key={label} className={`px-3 py-3 ${['Částka', 'Základ DPH', 'DPH'].includes(label) ? 'text-right' : ''}`}>{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.payments.map((payment) => (
+            <tr key={payment.id} className="border-t border-zinc-200/65 [html[data-theme='dark']_&]:border-slate-400/10">
+              <td className="whitespace-nowrap px-3 py-3">{formatDate(payment.transaction_date)}</td>
+              <td className="px-3 py-3 font-semibold">{reservationMap.get(payment.reservation_id)?.reservation_number ?? '—'}</td>
+              <td className="px-3 py-3">{payment.tax_document_number || '—'}</td>
+              <td className="px-3 py-3">{paymentTypeLabel(payment.transaction_type)}</td>
+              <td className="px-3 py-3">{payment.payment_method === 'cash' ? 'Hotově' : payment.payment_method === 'bank_transfer' ? 'Převod' : '—'}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-right font-semibold">{formatCurrency(payment.direction === 'out' ? -Number(payment.amount) : Number(payment.amount))}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(Number(payment.vat_12_base ?? 0) + Number(payment.vat_21_base ?? 0))}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-right">{formatCurrency(Number(payment.vat_12_amount ?? 0) + Number(payment.vat_21_amount ?? 0))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {data.payments.length === 0 ? <EmptyState text="V období nejsou žádné platební pohyby." /> : null}
+    </TableShell>
+  )
+}
+
+function OwnerStaysReport({ data }: { data: NordFjellaReportData }) {
+  return (
+    <TableShell>
+      <div className="grid gap-2 p-3 md:hidden">
+        {data.ownerStays.map((row) => (
+          <article key={row.id} className="rounded-xl border border-zinc-200/75 bg-white/65 p-3 [html[data-theme='dark']_&]:border-slate-400/10 [html[data-theme='dark']_&]:bg-slate-950/25">
+            <div className="flex items-center justify-between gap-3">
+              <strong>{row.reservation_number}</strong>
+              <span className="text-xs text-zinc-500">{formatDate(row.stay_start_date)}–{formatDate(row.stay_end_date)}</span>
+            </div>
+            <div className="mt-2 text-xs text-zinc-600">{row.internal_note || 'Bez poznámky'}</div>
+          </article>
+        ))}
+      </div>
+      <table className="hidden w-full text-left text-xs md:table">
+        <thead className="bg-zinc-100/75 text-[9px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:bg-slate-950/35">
+          <tr><th className="px-4 py-3">Číslo</th><th className="px-4 py-3">Od</th><th className="px-4 py-3">Do</th><th className="px-4 py-3">Poznámka</th></tr>
+        </thead>
+        <tbody>
+          {data.ownerStays.map((row) => (
+            <tr key={row.id} className="border-t border-zinc-200/65 [html[data-theme='dark']_&]:border-slate-400/10">
+              <td className="px-4 py-3 font-semibold">{row.reservation_number}</td>
+              <td className="px-4 py-3">{formatDate(row.stay_start_date)}</td>
+              <td className="px-4 py-3">{formatDate(row.stay_end_date)}</td>
+              <td className="max-w-[360px] truncate px-4 py-3">{row.internal_note || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {data.ownerStays.length === 0 ? <EmptyState text="V období nejsou vlastní pobyty." /> : null}
+    </TableShell>
   )
 }
 
 function GuestsReport({
-  guests,
-  reservations,
+  data,
   legalBook,
 }: {
-  guests: NordFjellaStayGuestRow[]
-  reservations: NordFjellaReservationRow[]
+  data: NordFjellaReportData
   legalBook: boolean
 }) {
-  const reservationMap = new Map(reservations.map((reservation) => [reservation.id, reservation]))
-
+  const reservationMap = new Map(data.reservations.map((row) => [row.id, row]))
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-xs">
-        <thead className="bg-zinc-50 text-[10px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:bg-slate-950/35 [html[data-theme='dark']_&]:text-slate-400">
+    <TableShell scrollHint="Na mobilu jsou údaje uspořádané do karet.">
+      <div className="grid gap-2 p-3 md:hidden">
+        {data.guests.map((guest) => (
+          <article key={guest.id} className="rounded-xl border border-zinc-200/75 bg-white/65 p-3 [html[data-theme='dark']_&]:border-slate-400/10 [html[data-theme='dark']_&]:bg-slate-950/25">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <strong>{guest.first_name} {guest.last_name}</strong>
+                <div className="mt-0.5 text-[10px] text-zinc-500">{formatDate(guest.birth_date)} · ČR</div>
+              </div>
+              <span className="text-[10px] font-semibold text-[#236f9f] [html[data-theme='dark']_&]:text-sky-200">
+                {reservationMap.get(guest.reservation_id)?.reservation_number ?? '—'}
+              </span>
+            </div>
+            <dl className="mt-3 grid grid-cols-[90px_1fr] gap-x-2 gap-y-1.5 text-xs">
+              <dt className="text-zinc-500">Pobyt</dt><dd>{formatDate(guest.stay_start_date)}–{formatDate(guest.stay_end_date)}</dd>
+              <dt className="text-zinc-500">Bydliště</dt><dd>{guest.street}, {guest.postal_code} {guest.city}</dd>
+              {legalBook ? <><dt className="text-zinc-500">Doklad</dt><dd>{documentTypeLabel(guest.identity_document_type)} · {guest.identity_document_number}</dd></> : null}
+              <dt className="text-zinc-500">Poplatek</dt><dd>{taxLabel(guest)}</dd>
+            </dl>
+          </article>
+        ))}
+      </div>
+      <table className="hidden w-full min-w-[820px] text-left text-xs md:table">
+        <thead className="bg-zinc-100/75 text-[9px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:bg-slate-950/35">
           <tr>
-            <th className="px-4 py-3">Host</th>
-            <th className="px-4 py-3">Pobyt</th>
-            <th className="px-4 py-3">Bydliště</th>
+            <th className="px-4 py-3">Host</th><th className="px-4 py-3">Pobyt</th><th className="px-4 py-3">Bydliště</th>
             {legalBook ? <th className="px-4 py-3">Doklad</th> : null}
             <th className="px-4 py-3">Poplatek</th>
           </tr>
         </thead>
         <tbody>
-          {guests.map((guest) => {
-            const reservation = reservationMap.get(guest.reservation_id)
-            return (
-              <tr key={guest.id} className="border-t border-zinc-100 [html[data-theme='dark']_&]:border-slate-400/10 [html[data-theme='dark']_&]:text-slate-200">
-                <td className="whitespace-nowrap px-4 py-3">
-                  <div className="font-semibold">{guest.first_name} {guest.last_name}</div>
-                  <div className="mt-0.5 text-[10px] text-zinc-500">{formatDate(guest.birth_date)} · ČR</div>
-                </td>
-                <td className="whitespace-nowrap px-4 py-3">
-                  <div>{formatDate(guest.stay_start_date)} – {formatDate(guest.stay_end_date)}</div>
-                  <div className="mt-0.5 text-[10px] text-zinc-500">{reservation?.reservation_number ?? '—'}</div>
-                </td>
-                <td className="min-w-[190px] px-4 py-3">{guest.street}, {guest.postal_code} {guest.city}</td>
-                {legalBook ? (
-                  <td className="whitespace-nowrap px-4 py-3">
-                    {guest.identity_document_type === 'id_card' ? 'OP' : guest.identity_document_type === 'passport' ? 'Pas' : 'Jiný'} · {guest.identity_document_number}
-                  </td>
-                ) : null}
-                <td className="whitespace-nowrap px-4 py-3">
-                  <div className="font-medium">{getTaxStatusLabel(guest.city_tax_status)}</div>
-                  <div className="mt-0.5 text-[10px] text-zinc-500">
-                    {guest.city_tax_status === 'liable' ? formatCurrency(guest.city_tax_amount) : guest.city_tax_exemption_reason || '—'}
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
+          {data.guests.map((guest) => (
+            <tr key={guest.id} className="border-t border-zinc-200/65 [html[data-theme='dark']_&]:border-slate-400/10">
+              <td className="whitespace-nowrap px-4 py-3"><strong>{guest.first_name} {guest.last_name}</strong><div className="text-[10px] text-zinc-500">{formatDate(guest.birth_date)} · ČR</div></td>
+              <td className="whitespace-nowrap px-4 py-3">{formatDate(guest.stay_start_date)}–{formatDate(guest.stay_end_date)}<div className="text-[10px] text-zinc-500">{reservationMap.get(guest.reservation_id)?.reservation_number ?? '—'}</div></td>
+              <td className="min-w-[190px] px-4 py-3">{guest.street}, {guest.postal_code} {guest.city}</td>
+              {legalBook ? <td className="whitespace-nowrap px-4 py-3">{documentTypeLabel(guest.identity_document_type)} · {guest.identity_document_number}</td> : null}
+              <td className="whitespace-nowrap px-4 py-3">{taxLabel(guest)}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
-      {guests.length === 0 ? <div className="p-6 text-center text-sm text-zinc-500">V období nejsou evidováni žádní hosté.</div> : null}
+      {data.guests.length === 0 ? <EmptyState text="V období nejsou evidováni žádní hosté." /> : null}
+    </TableShell>
+  )
+}
+
+function ReportPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="nord-fjella-modal-card rounded-2xl border border-white/80 bg-white/72 p-4">
+      <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{title}</h3>
+      <dl className="mt-3 space-y-2">{children}</dl>
+    </section>
+  )
+}
+
+function ReportRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string
+  value: string | number
+  strong?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-t border-zinc-200/55 pt-2 first:border-t-0 first:pt-0 [html[data-theme='dark']_&]:border-slate-400/10">
+      <dt className="text-xs text-zinc-500">{label}</dt>
+      <dd className={`text-right text-xs ${strong ? 'font-semibold text-[#236f9f] [html[data-theme=\'dark\']_&]:text-sky-200' : 'font-medium text-zinc-900'}`}>{value}</dd>
     </div>
   )
+}
+
+function TableShell({
+  children,
+  scrollHint,
+}: {
+  children: ReactNode
+  scrollHint?: string
+}) {
+  return (
+    <section className="nord-fjella-modal-card overflow-hidden rounded-2xl border border-white/80 bg-white/72">
+      {scrollHint ? <div className="border-b border-zinc-200/60 px-3 py-2 text-[10px] text-zinc-400 md:hidden [html[data-theme='dark']_&]:border-slate-400/10">{scrollHint}</div> : null}
+      <div className="overflow-x-auto">{children}</div>
+    </section>
+  )
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <div className="border-t border-zinc-200/60 px-4 py-8 text-center text-sm text-zinc-500 [html[data-theme='dark']_&]:border-slate-400/10">{text}</div>
+}
+
+function paymentTypeLabel(type: NordFjellaPaymentRow['transaction_type']) {
+  if (type === 'deposit') return 'Záloha'
+  if (type === 'balance') return 'Doplatek'
+  if (type === 'refund') return 'Vratka'
+  if (type === 'security_deposit_received') return 'Přijetí kauce'
+  if (type === 'security_deposit_refund') return 'Vrácení kauce'
+  return 'Zadržení kauce'
+}
+
+function documentTypeLabel(type: NordFjellaStayGuestRow['identity_document_type']) {
+  if (type === 'id_card') return 'OP'
+  if (type === 'passport') return 'Pas'
+  return 'Jiný'
+}
+
+function taxLabel(guest: NordFjellaStayGuestRow) {
+  if (guest.city_tax_status === 'liable') {
+    return `${formatCurrency(guest.city_tax_collected_amount)} vybráno z ${formatCurrency(guest.city_tax_amount)}`
+  }
+  if (guest.city_tax_status === 'exempt') return `Osvobozen · ${guest.city_tax_exemption_reason || 'bez důvodu'}`
+  return 'Nepodléhá'
 }

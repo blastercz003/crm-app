@@ -294,6 +294,11 @@ create table if not exists public.nord_fjella_payments (
   transaction_date date not null,
   payment_method text
     check (payment_method in ('bank_transfer', 'cash')),
+  tax_document_number text,
+  vat_12_base numeric(12, 2) not null default 0 check (vat_12_base >= 0),
+  vat_12_amount numeric(12, 2) not null default 0 check (vat_12_amount >= 0),
+  vat_21_base numeric(12, 2) not null default 0 check (vat_21_base >= 0),
+  vat_21_amount numeric(12, 2) not null default 0 check (vat_21_amount >= 0),
   note text,
   created_by uuid references public.profiles(id) on delete set null,
   updated_by uuid references public.profiles(id) on delete set null,
@@ -328,6 +333,11 @@ create table if not exists public.nord_fjella_stay_guests (
   city_tax_rate numeric(12, 2) not null default 30 check (city_tax_rate >= 0),
   city_tax_nights integer not null default 0 check (city_tax_nights >= 0),
   city_tax_amount numeric(12, 2) not null default 0 check (city_tax_amount >= 0),
+  city_tax_collected_amount numeric(12, 2) not null default 0
+    check (city_tax_collected_amount >= 0),
+  city_tax_collected_at date,
+  city_tax_payment_method text
+    check (city_tax_payment_method in ('bank_transfer', 'cash')),
   note text,
   created_by uuid references public.profiles(id) on delete set null,
   updated_by uuid references public.profiles(id) on delete set null,
@@ -343,6 +353,142 @@ create table if not exists public.nord_fjella_stay_guests (
       or coalesce(nullif(trim(city_tax_exemption_reason), ''), '') <> ''
     )
 );
+
+alter table public.nord_fjella_payments
+  add column if not exists tax_document_number text,
+  add column if not exists vat_12_base numeric(12, 2) not null default 0,
+  add column if not exists vat_12_amount numeric(12, 2) not null default 0,
+  add column if not exists vat_21_base numeric(12, 2) not null default 0,
+  add column if not exists vat_21_amount numeric(12, 2) not null default 0;
+
+alter table public.nord_fjella_payments
+  drop constraint if exists nord_fjella_payments_vat_12_base_check,
+  add constraint nord_fjella_payments_vat_12_base_check check (vat_12_base >= 0),
+  drop constraint if exists nord_fjella_payments_vat_12_amount_check,
+  add constraint nord_fjella_payments_vat_12_amount_check check (vat_12_amount >= 0),
+  drop constraint if exists nord_fjella_payments_vat_21_base_check,
+  add constraint nord_fjella_payments_vat_21_base_check check (vat_21_base >= 0),
+  drop constraint if exists nord_fjella_payments_vat_21_amount_check,
+  add constraint nord_fjella_payments_vat_21_amount_check check (vat_21_amount >= 0);
+
+alter table public.nord_fjella_stay_guests
+  add column if not exists city_tax_collected_amount numeric(12, 2) not null default 0,
+  add column if not exists city_tax_collected_at date,
+  add column if not exists city_tax_payment_method text;
+
+alter table public.nord_fjella_stay_guests
+  drop constraint if exists nord_fjella_stay_guests_city_tax_collected_amount_check,
+  add constraint nord_fjella_stay_guests_city_tax_collected_amount_check
+    check (city_tax_collected_amount >= 0),
+  drop constraint if exists nord_fjella_stay_guests_city_tax_payment_method_check,
+  add constraint nord_fjella_stay_guests_city_tax_payment_method_check
+    check (
+      city_tax_payment_method is null
+      or city_tax_payment_method in ('bank_transfer', 'cash')
+    );
+
+create table if not exists public.nord_fjella_stay_guest_audit (
+  id uuid primary key default gen_random_uuid(),
+  stay_guest_id uuid,
+  reservation_id uuid,
+  operation text not null check (operation in ('insert', 'update', 'delete')),
+  old_data jsonb,
+  new_data jsonb,
+  changed_by uuid references public.profiles(id) on delete set null,
+  changed_at timestamptz not null default now()
+);
+
+create or replace function public.audit_nord_fjella_stay_guest()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.nord_fjella_stay_guest_audit (
+    stay_guest_id,
+    reservation_id,
+    operation,
+    old_data,
+    new_data,
+    changed_by
+  )
+  values (
+    coalesce(new.id, old.id),
+    coalesce(new.reservation_id, old.reservation_id),
+    lower(tg_op),
+    case when tg_op in ('UPDATE', 'DELETE') then to_jsonb(old) end,
+    case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end,
+    auth.uid()
+  );
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists nord_fjella_stay_guests_audit
+  on public.nord_fjella_stay_guests;
+
+create trigger nord_fjella_stay_guests_audit
+after insert or update or delete on public.nord_fjella_stay_guests
+for each row
+execute function public.audit_nord_fjella_stay_guest();
+
+create or replace function public.protect_nord_fjella_legal_records()
+returns trigger
+language plpgsql
+as $$
+declare
+  protected_until date;
+  protected_record boolean;
+begin
+  if tg_table_name = 'nord_fjella_stay_guests' then
+    select
+      (reservation.stay_end_date + interval '6 years')::date,
+      reservation.record_type = 'reservation'
+        and (
+          reservation.reservation_status = 'completed'
+          or reservation.stay_end_date <= current_date
+        )
+    into protected_until, protected_record
+    from public.nord_fjella_reservations reservation
+    where reservation.id = old.reservation_id;
+  else
+    protected_until := (old.stay_end_date + interval '6 years')::date;
+    protected_record := old.record_type = 'reservation'
+      and (
+        old.reservation_status = 'completed'
+        or old.stay_end_date <= current_date
+      );
+  end if;
+
+  if protected_record and current_date < protected_until then
+    raise exception
+      'Dokončený pobyt je součástí evidenční knihy a po dobu 6 let jej nelze smazat.';
+  end if;
+
+  return old;
+end;
+$$;
+
+drop trigger if exists nord_fjella_stay_guests_protect_legal_record
+  on public.nord_fjella_stay_guests;
+
+create trigger nord_fjella_stay_guests_protect_legal_record
+before delete on public.nord_fjella_stay_guests
+for each row
+execute function public.protect_nord_fjella_legal_records();
+
+drop trigger if exists nord_fjella_reservations_protect_legal_record
+  on public.nord_fjella_reservations;
+
+create trigger nord_fjella_reservations_protect_legal_record
+before delete on public.nord_fjella_reservations
+for each row
+execute function public.protect_nord_fjella_legal_records();
+
+create index if not exists nord_fjella_stay_guest_audit_reservation_idx
+  on public.nord_fjella_stay_guest_audit (reservation_id, changed_at desc);
 
 create or replace function public.sync_nord_fjella_guest_search_text()
 returns trigger
@@ -532,6 +678,7 @@ alter table public.nord_fjella_reservations enable row level security;
 alter table public.nord_fjella_reservation_items enable row level security;
 alter table public.nord_fjella_stay_guests enable row level security;
 alter table public.nord_fjella_payments enable row level security;
+alter table public.nord_fjella_stay_guest_audit enable row level security;
 
 drop policy if exists "Users can read Nord Fjella settings" on public.nord_fjella_settings;
 create policy "Users can read Nord Fjella settings"
@@ -617,3 +764,10 @@ create policy "Users can manage Nord Fjella payments"
   for all
   using (public.current_user_can_view_nord_fjella())
   with check (public.current_user_can_view_nord_fjella());
+
+drop policy if exists "Users can read Nord Fjella stay guest audit"
+  on public.nord_fjella_stay_guest_audit;
+create policy "Users can read Nord Fjella stay guest audit"
+  on public.nord_fjella_stay_guest_audit
+  for select
+  using (public.current_user_can_view_nord_fjella());

@@ -6,6 +6,7 @@ import { useFormStatus } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type {
   NordFjellaGuestRow,
+  NordFjellaPaymentRow,
   NordFjellaReservationFileRow,
   NordFjellaReservationItemRow,
   NordFjellaReservationRow,
@@ -28,6 +29,7 @@ type ReservationDetailButtonProps = {
   reservationItems: NordFjellaReservationItemRow[]
   reservationFiles: NordFjellaReservationFileRow[]
   stayGuests: NordFjellaStayGuestRow[]
+  payments: NordFjellaPaymentRow[]
   compact?: boolean
 }
 
@@ -75,6 +77,7 @@ export function ReservationDetailButton({
   reservationItems,
   reservationFiles,
   stayGuests,
+  payments,
   compact = false,
 }: ReservationDetailButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -98,6 +101,7 @@ export function ReservationDetailButton({
           reservationItems={reservationItems}
           reservationFiles={reservationFiles}
           stayGuests={stayGuests}
+          payments={payments}
           onClose={() => setIsOpen(false)}
         />
       ) : null}
@@ -111,6 +115,7 @@ function ReservationDetailModal({
   reservationItems,
   reservationFiles,
   stayGuests,
+  payments,
   onClose,
 }: {
   guests: NordFjellaGuestRow[]
@@ -118,8 +123,11 @@ function ReservationDetailModal({
   reservationItems: NordFjellaReservationItemRow[]
   reservationFiles: NordFjellaReservationFileRow[]
   stayGuests: NordFjellaStayGuestRow[]
+  payments: NordFjellaPaymentRow[]
   onClose: () => void
 }) {
+  const depositPayment = payments.find((payment) => payment.source_key === 'form_deposit')
+  const balancePayment = payments.find((payment) => payment.source_key === 'form_balance')
   const [state, formAction] = useActionState<UpdateNordFjellaReservationActionState, FormData>(
     updateNordFjellaReservationAction,
     updateNordFjellaReservationInitialState
@@ -167,6 +175,10 @@ function ReservationDetailModal({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isDeletePending, startDeleteTransition] = useTransition()
   const guestMenuRef = useRef<HTMLDivElement | null>(null)
+  const isLegallyProtected =
+    reservation.record_type === 'reservation' &&
+    (reservation.reservation_status === 'completed' ||
+      reservation.stay_end_date <= new Date().toISOString().slice(0, 10))
 
   useBodyScrollLock(true)
 
@@ -644,6 +656,34 @@ function ReservationDetailModal({
                       </div>
                     </div>
 
+                    <div className="nord-fjella-modal-subtle-card rounded-2xl border border-zinc-200/80 bg-white/60 p-3">
+                      <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                        Daňový doklad k přijaté záloze
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-5">
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">Číslo dokladu</label>
+                          <input name="deposit_tax_document_number" defaultValue={depositPayment?.tax_document_number ?? ''} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">Základ 12 %</label>
+                          <input name="deposit_vat_12_base" defaultValue={depositPayment?.vat_12_base ?? 0} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">DPH 12 %</label>
+                          <input name="deposit_vat_12_amount" defaultValue={depositPayment?.vat_12_amount ?? 0} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">Základ 21 %</label>
+                          <input name="deposit_vat_21_base" defaultValue={depositPayment?.vat_21_base ?? 0} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">DPH 21 %</label>
+                          <input name="deposit_vat_21_amount" defaultValue={depositPayment?.vat_21_amount ?? 0} className={inputClassName} />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid gap-4 md:grid-cols-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-900">
@@ -745,6 +785,34 @@ function ReservationDetailModal({
                           <option value="paid">Zaplaceno</option>
                           <option value="refund_or_overpayment">Vratka / přeplatek</option>
                         </select>
+                      </div>
+                    </div>
+
+                    <div className="nord-fjella-modal-subtle-card rounded-2xl border border-zinc-200/80 bg-white/60 p-3">
+                      <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                        Daňový doklad k doplatku
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-5">
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">Číslo dokladu</label>
+                          <input name="balance_tax_document_number" defaultValue={balancePayment?.tax_document_number ?? ''} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">Základ 12 %</label>
+                          <input name="balance_vat_12_base" defaultValue={balancePayment?.vat_12_base ?? 0} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">DPH 12 %</label>
+                          <input name="balance_vat_12_amount" defaultValue={balancePayment?.vat_12_amount ?? 0} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">Základ 21 %</label>
+                          <input name="balance_vat_21_base" defaultValue={balancePayment?.vat_21_base ?? 0} className={inputClassName} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-700">DPH 21 %</label>
+                          <input name="balance_vat_21_amount" defaultValue={balancePayment?.vat_21_amount ?? 0} className={inputClassName} />
+                        </div>
                       </div>
                     </div>
 
@@ -1067,16 +1135,25 @@ function ReservationDetailModal({
 
             <div className="clients-modal__footer shrink-0 border-t border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:px-5 sm:py-4">
               <div className="grid w-full grid-cols-[0.8fr_0.8fr_1.4fr] gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeleteError(null)
-                    setIsDeleteConfirmOpen(true)
-                  }}
-                  className="inline-flex items-center justify-center rounded-2xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] [html[data-theme='dark']_&]:border-red-400/20 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(62,19,27,0.82)_0%,rgba(50,14,24,0.88)_100%)] [html[data-theme='dark']_&]:text-red-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.24)]"
-                >
-                  SMAZAT
-                </button>
+                {isLegallyProtected ? (
+                  <span
+                    title="Dokončený pobyt je součástí zákonné evidence a uchovává se 6 let."
+                    className="inline-flex items-center justify-center rounded-2xl border border-sky-200/80 bg-sky-50/75 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-sky-800 [html[data-theme='dark']_&]:border-sky-300/15 [html[data-theme='dark']_&]:bg-sky-400/8 [html[data-theme='dark']_&]:text-sky-200"
+                  >
+                    Evidence 6 let
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteError(null)
+                      setIsDeleteConfirmOpen(true)
+                    }}
+                    className="inline-flex items-center justify-center rounded-2xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] [html[data-theme='dark']_&]:border-red-400/20 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(62,19,27,0.82)_0%,rgba(50,14,24,0.88)_100%)] [html[data-theme='dark']_&]:text-red-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(0,0,0,0.24)]"
+                  >
+                    SMAZAT
+                  </button>
+                )}
 
                 <ReservationDetailFooterActions onCancel={onClose} />
               </div>

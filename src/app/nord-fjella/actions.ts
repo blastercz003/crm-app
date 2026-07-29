@@ -296,7 +296,53 @@ type SyncedPaymentInput = {
   amount: number | null
   transactionDate: string | null
   paymentMethod: NordFjellaPaymentMethod | null
+  taxDocumentNumber?: string | null
+  vat12Base?: number | null
+  vat12Amount?: number | null
+  vat21Base?: number | null
+  vat21Amount?: number | null
   note?: string | null
+}
+
+function validateReceivedPaymentAccounting({
+  label,
+  amount,
+  date,
+  method,
+  taxDocumentNumber,
+  vat12Base,
+  vat12Amount,
+  vat21Base,
+  vat21Amount,
+}: {
+  label: string
+  amount: number | null
+  date: string | null
+  method: NordFjellaPaymentMethod | null
+  taxDocumentNumber: string | null
+  vat12Base: number | null
+  vat12Amount: number | null
+  vat21Base: number | null
+  vat21Amount: number | null
+}) {
+  const paidAmount = Number(amount ?? 0)
+  if (paidAmount <= 0) return
+
+  if (!date || !method) {
+    throw new Error(`U ${label} doplň datum a formu úhrady.`)
+  }
+  if (!taxDocumentNumber) {
+    throw new Error(`U ${label} doplň číslo daňového dokladu.`)
+  }
+
+  const vatBreakdownTotal =
+    Number(vat12Base ?? 0) +
+    Number(vat12Amount ?? 0) +
+    Number(vat21Base ?? 0) +
+    Number(vat21Amount ?? 0)
+  if (vatBreakdownTotal > paidAmount + 0.01) {
+    throw new Error(`Daňový rozpis ${label} je vyšší než přijatá částka.`)
+  }
 }
 
 async function replaceSyncedPayments(params: {
@@ -331,6 +377,11 @@ async function replaceSyncedPayments(params: {
       amount: Number(payment.amount),
       transaction_date: payment.transactionDate as string,
       payment_method: payment.paymentMethod,
+      tax_document_number: payment.taxDocumentNumber ?? null,
+      vat_12_base: Number(payment.vat12Base ?? 0),
+      vat_12_amount: Number(payment.vat12Amount ?? 0),
+      vat_21_base: Number(payment.vat21Base ?? 0),
+      vat_21_amount: Number(payment.vat21Amount ?? 0),
       note: payment.note ?? null,
       created_by: profileId,
       updated_by: profileId,
@@ -729,9 +780,19 @@ export async function createNordFjellaReservationAction(
     let depositPaidAmount: number | null = null
     let depositPaidAt: string | null = null
     let depositPaymentMethod: NordFjellaPaymentMethod | null = null
+    let depositTaxDocumentNumber: string | null = null
+    let depositVat12Base: number | null = null
+    let depositVat12Amount: number | null = null
+    let depositVat21Base: number | null = null
+    let depositVat21Amount: number | null = null
     let balancePaidAmount: number | null = null
     let balancePaidAt: string | null = null
     let balancePaymentMethod: NordFjellaPaymentMethod | null = null
+    let balanceTaxDocumentNumber: string | null = null
+    let balanceVat12Base: number | null = null
+    let balanceVat12Amount: number | null = null
+    let balanceVat21Base: number | null = null
+    let balanceVat21Amount: number | null = null
     let cancellationFeeAmount: number | null = null
     let cancellationFeeVatRate = 12
     let taxableSupplyDate: string | null = null
@@ -844,9 +905,41 @@ export async function createNordFjellaReservationAction(
       depositPaidAmount = parseOptionalNonNegativeNumber(getString(formData, 'deposit_paid_amount'), 'Uhrazená záloha')
       depositPaidAt = normalizeOptionalString(formData.get('deposit_paid_at'))
       depositPaymentMethod = normalizePaymentMethod(formData.get('deposit_payment_method'))
+      depositTaxDocumentNumber = normalizeOptionalString(formData.get('deposit_tax_document_number'))
+      depositVat12Base = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_12_base'), 'Základ DPH 12 % ze zálohy')
+      depositVat12Amount = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_12_amount'), 'DPH 12 % ze zálohy')
+      depositVat21Base = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_21_base'), 'Základ DPH 21 % ze zálohy')
+      depositVat21Amount = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_21_amount'), 'DPH 21 % ze zálohy')
       balancePaidAmount = parseOptionalNonNegativeNumber(getString(formData, 'balance_paid_amount'), 'Uhrazený doplatek')
       balancePaidAt = normalizeOptionalString(formData.get('balance_paid_at'))
       balancePaymentMethod = normalizePaymentMethod(formData.get('balance_payment_method'))
+      balanceTaxDocumentNumber = normalizeOptionalString(formData.get('balance_tax_document_number'))
+      balanceVat12Base = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_12_base'), 'Základ DPH 12 % z doplatku')
+      balanceVat12Amount = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_12_amount'), 'DPH 12 % z doplatku')
+      balanceVat21Base = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_21_base'), 'Základ DPH 21 % z doplatku')
+      balanceVat21Amount = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_21_amount'), 'DPH 21 % z doplatku')
+      validateReceivedPaymentAccounting({
+        label: 'uhrazené zálohy',
+        amount: depositPaidAmount,
+        date: depositPaidAt,
+        method: depositPaymentMethod,
+        taxDocumentNumber: depositTaxDocumentNumber,
+        vat12Base: depositVat12Base,
+        vat12Amount: depositVat12Amount,
+        vat21Base: depositVat21Base,
+        vat21Amount: depositVat21Amount,
+      })
+      validateReceivedPaymentAccounting({
+        label: 'uhrazeného doplatku',
+        amount: balancePaidAmount,
+        date: balancePaidAt,
+        method: balancePaymentMethod,
+        taxDocumentNumber: balanceTaxDocumentNumber,
+        vat12Base: balanceVat12Base,
+        vat12Amount: balanceVat12Amount,
+        vat21Base: balanceVat21Base,
+        vat21Amount: balanceVat21Amount,
+      })
       cancellationFeeAmount = parseOptionalNonNegativeNumber(
         getString(formData, 'cancellation_fee_amount'),
         'Storno poplatek'
@@ -971,6 +1064,11 @@ export async function createNordFjellaReservationAction(
             amount: depositPaidAmount,
             transactionDate: depositPaidAt,
             paymentMethod: depositPaymentMethod,
+            taxDocumentNumber: depositTaxDocumentNumber,
+            vat12Base: depositVat12Base,
+            vat12Amount: depositVat12Amount,
+            vat21Base: depositVat21Base,
+            vat21Amount: depositVat21Amount,
           },
           {
             sourceKey: 'form_balance',
@@ -979,6 +1077,11 @@ export async function createNordFjellaReservationAction(
             amount: balancePaidAmount,
             transactionDate: balancePaidAt,
             paymentMethod: balancePaymentMethod,
+            taxDocumentNumber: balanceTaxDocumentNumber,
+            vat12Base: balanceVat12Base,
+            vat12Amount: balanceVat12Amount,
+            vat21Base: balanceVat21Base,
+            vat21Amount: balanceVat21Amount,
           },
           {
             sourceKey: 'form_refund',
@@ -1114,6 +1217,14 @@ export async function saveNordFjellaStayGuestAction(
     const identityDocumentNumber = getString(formData, 'identity_document_number')
     const cityTaxStatus = getString(formData, 'city_tax_status')
     const cityTaxExemptionReason = normalizeOptionalString(formData.get('city_tax_exemption_reason'))
+    const cityTaxCollectedAmount = parseOptionalNonNegativeNumber(
+      getString(formData, 'city_tax_collected_amount'),
+      'Vybraný místní poplatek'
+    )
+    const cityTaxCollectedAt = normalizeOptionalString(formData.get('city_tax_collected_at'))
+    const cityTaxPaymentMethod = normalizePaymentMethod(
+      formData.get('city_tax_payment_method')
+    )
     const note = normalizeOptionalString(formData.get('note'))
     const isPrimary = formData.get('is_primary') === 'on'
     const cityTaxRate = parseNonNegativeNumber(
@@ -1139,6 +1250,13 @@ export async function saveNordFjellaStayGuestAction(
     }
     if (cityTaxStatus === 'exempt' && !cityTaxExemptionReason) {
       throw new Error('U osvobození uveď jeho důvod.')
+    }
+    if (
+      cityTaxStatus === 'liable' &&
+      Number(cityTaxCollectedAmount ?? 0) > 0 &&
+      (!cityTaxCollectedAt || !cityTaxPaymentMethod)
+    ) {
+      throw new Error('U vybraného místního poplatku doplň datum a formu úhrady.')
     }
 
     const cityTaxNights =
@@ -1167,6 +1285,12 @@ export async function saveNordFjellaStayGuestAction(
       city_tax_rate: cityTaxRate,
       city_tax_nights: cityTaxNights,
       city_tax_amount: cityTaxNights * cityTaxRate,
+      city_tax_collected_amount:
+        cityTaxStatus === 'liable' ? Number(cityTaxCollectedAmount ?? 0) : 0,
+      city_tax_collected_at:
+        cityTaxStatus === 'liable' ? cityTaxCollectedAt : null,
+      city_tax_payment_method:
+        cityTaxStatus === 'liable' ? cityTaxPaymentMethod : null,
       note,
       updated_by: profile.id,
     }
@@ -1249,6 +1373,29 @@ export async function deleteNordFjellaStayGuestAction(
 
     if (!normalizedStayGuestId || !normalizedReservationId) {
       throw new Error('Chybí ubytovaná osoba nebo rezervace.')
+    }
+
+    const { data: protectedReservation } = await supabase
+      .from('nord_fjella_reservations')
+      .select('record_type, reservation_status, stay_end_date')
+      .eq('id', normalizedReservationId)
+      .maybeSingle<Pick<
+        NordFjellaReservationRow,
+        'record_type' | 'reservation_status' | 'stay_end_date'
+      >>()
+
+    if (
+      protectedReservation?.record_type === 'reservation' &&
+      (protectedReservation.reservation_status === 'completed' ||
+        protectedReservation.stay_end_date <= new Date().toISOString().slice(0, 10))
+    ) {
+      const retentionEnd = new Date(`${protectedReservation.stay_end_date}T12:00:00Z`)
+      retentionEnd.setUTCFullYear(retentionEnd.getUTCFullYear() + 6)
+      if (retentionEnd > new Date()) {
+        throw new Error(
+          'Host je součástí evidenční knihy dokončeného pobytu a po dobu 6 let jej nelze smazat.'
+        )
+      }
     }
 
     const { error } = await supabase
@@ -1366,9 +1513,19 @@ export async function updateNordFjellaReservationAction(
     let depositPaidAmount: number | null = null
     let depositPaidAt: string | null = null
     let depositPaymentMethod: NordFjellaPaymentMethod | null = null
+    let depositTaxDocumentNumber: string | null = null
+    let depositVat12Base: number | null = null
+    let depositVat12Amount: number | null = null
+    let depositVat21Base: number | null = null
+    let depositVat21Amount: number | null = null
     let balancePaidAmount: number | null = null
     let balancePaidAt: string | null = null
     let balancePaymentMethod: NordFjellaPaymentMethod | null = null
+    let balanceTaxDocumentNumber: string | null = null
+    let balanceVat12Base: number | null = null
+    let balanceVat12Amount: number | null = null
+    let balanceVat21Base: number | null = null
+    let balanceVat21Amount: number | null = null
     let cancellationFeeAmount: number | null = null
     let cancellationFeeVatRate = 12
     let taxableSupplyDate: string | null = null
@@ -1481,9 +1638,41 @@ export async function updateNordFjellaReservationAction(
       depositPaidAmount = parseOptionalNonNegativeNumber(getString(formData, 'deposit_paid_amount'), 'Uhrazená záloha')
       depositPaidAt = normalizeOptionalString(formData.get('deposit_paid_at'))
       depositPaymentMethod = normalizePaymentMethod(formData.get('deposit_payment_method'))
+      depositTaxDocumentNumber = normalizeOptionalString(formData.get('deposit_tax_document_number'))
+      depositVat12Base = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_12_base'), 'Základ DPH 12 % ze zálohy')
+      depositVat12Amount = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_12_amount'), 'DPH 12 % ze zálohy')
+      depositVat21Base = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_21_base'), 'Základ DPH 21 % ze zálohy')
+      depositVat21Amount = parseOptionalNonNegativeNumber(getString(formData, 'deposit_vat_21_amount'), 'DPH 21 % ze zálohy')
       balancePaidAmount = parseOptionalNonNegativeNumber(getString(formData, 'balance_paid_amount'), 'Uhrazený doplatek')
       balancePaidAt = normalizeOptionalString(formData.get('balance_paid_at'))
       balancePaymentMethod = normalizePaymentMethod(formData.get('balance_payment_method'))
+      balanceTaxDocumentNumber = normalizeOptionalString(formData.get('balance_tax_document_number'))
+      balanceVat12Base = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_12_base'), 'Základ DPH 12 % z doplatku')
+      balanceVat12Amount = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_12_amount'), 'DPH 12 % z doplatku')
+      balanceVat21Base = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_21_base'), 'Základ DPH 21 % z doplatku')
+      balanceVat21Amount = parseOptionalNonNegativeNumber(getString(formData, 'balance_vat_21_amount'), 'DPH 21 % z doplatku')
+      validateReceivedPaymentAccounting({
+        label: 'uhrazené zálohy',
+        amount: depositPaidAmount,
+        date: depositPaidAt,
+        method: depositPaymentMethod,
+        taxDocumentNumber: depositTaxDocumentNumber,
+        vat12Base: depositVat12Base,
+        vat12Amount: depositVat12Amount,
+        vat21Base: depositVat21Base,
+        vat21Amount: depositVat21Amount,
+      })
+      validateReceivedPaymentAccounting({
+        label: 'uhrazeného doplatku',
+        amount: balancePaidAmount,
+        date: balancePaidAt,
+        method: balancePaymentMethod,
+        taxDocumentNumber: balanceTaxDocumentNumber,
+        vat12Base: balanceVat12Base,
+        vat12Amount: balanceVat12Amount,
+        vat21Base: balanceVat21Base,
+        vat21Amount: balanceVat21Amount,
+      })
       cancellationFeeAmount = parseOptionalNonNegativeNumber(
         getString(formData, 'cancellation_fee_amount'),
         'Storno poplatek'
@@ -1592,6 +1781,11 @@ export async function updateNordFjellaReservationAction(
             amount: depositPaidAmount,
             transactionDate: depositPaidAt,
             paymentMethod: depositPaymentMethod,
+            taxDocumentNumber: depositTaxDocumentNumber,
+            vat12Base: depositVat12Base,
+            vat12Amount: depositVat12Amount,
+            vat21Base: depositVat21Base,
+            vat21Amount: depositVat21Amount,
           },
           {
             sourceKey: 'form_balance',
@@ -1600,6 +1794,11 @@ export async function updateNordFjellaReservationAction(
             amount: balancePaidAmount,
             transactionDate: balancePaidAt,
             paymentMethod: balancePaymentMethod,
+            taxDocumentNumber: balanceTaxDocumentNumber,
+            vat12Base: balanceVat12Base,
+            vat12Amount: balanceVat12Amount,
+            vat21Base: balanceVat21Base,
+            vat21Amount: balanceVat21Amount,
           },
           {
             sourceKey: 'form_refund',
@@ -1693,15 +1892,35 @@ export async function deleteNordFjellaReservationAction(
 
     const { data: existingReservation, error: existingReservationError } = await supabase
       .from('nord_fjella_reservations')
-      .select('id')
+      .select('id, record_type, reservation_status, stay_end_date')
       .eq('id', normalizedReservationId)
-      .single<{ id: string }>()
+      .single<Pick<
+        NordFjellaReservationRow,
+        'id' | 'record_type' | 'reservation_status' | 'stay_end_date'
+      >>()
 
     if (existingReservationError || !existingReservation) {
       return {
         success: false,
         error: 'Rezervace nebyla nalezena.',
         deletedReservationId: null,
+      }
+    }
+
+    if (
+      existingReservation.record_type === 'reservation' &&
+      (existingReservation.reservation_status === 'completed' ||
+        existingReservation.stay_end_date <= new Date().toISOString().slice(0, 10))
+    ) {
+      const retentionEnd = new Date(`${existingReservation.stay_end_date}T12:00:00Z`)
+      retentionEnd.setUTCFullYear(retentionEnd.getUTCFullYear() + 6)
+      if (retentionEnd > new Date()) {
+        return {
+          success: false,
+          error:
+            'Dokončený pobyt je součástí evidenční knihy a po dobu 6 let jej nelze smazat. Použij stav Storno nebo ponech záznam archivovaný.',
+          deletedReservationId: null,
+        }
       }
     }
 

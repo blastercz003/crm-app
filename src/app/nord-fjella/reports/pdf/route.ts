@@ -12,9 +12,15 @@ import {
 } from '@react-pdf/renderer'
 import { canViewNordFjellaSection } from '@/lib/nord-fjella/access'
 import {
-  buildNordFjellaSettlementSummary,
-  getNordFjellaNightCount,
-} from '@/lib/nord-fjella/settlement'
+  buildNordFjellaReportData,
+  getClippedNordFjellaNightCount,
+  parseNordFjellaFinanceDateBasis,
+  parseNordFjellaReportType,
+  validateNordFjellaReportRange,
+  type NordFjellaFinanceDateBasis,
+  type NordFjellaReportData,
+  type NordFjellaReportType,
+} from '@/lib/nord-fjella/reports'
 import type {
   NordFjellaPaymentRow,
   NordFjellaReservationItemRow,
@@ -26,385 +32,414 @@ import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
-type ReportType = 'overview' | 'finance' | 'guests' | 'owner_stays' | 'guest_book'
-type FinanceDateBasis = 'supply' | 'payment' | 'stay'
-
-const arialRegularPath = path.join(process.cwd(), 'public', 'fonts', 'Arial.ttf')
-const arialBoldPath = path.join(process.cwd(), 'public', 'fonts', 'Arial-Bold.ttf')
-
 Font.register({
   family: 'NordFjellaArial',
   fonts: [
-    { src: arialRegularPath, fontWeight: 400 },
-    { src: arialBoldPath, fontWeight: 700 },
+    { src: path.join(process.cwd(), 'public', 'fonts', 'Arial.ttf'), fontWeight: 400 },
+    { src: path.join(process.cwd(), 'public', 'fonts', 'Arial-Bold.ttf'), fontWeight: 700 },
   ],
 })
 
 const styles = StyleSheet.create({
   page: {
-    padding: 28,
+    paddingTop: 26,
+    paddingHorizontal: 28,
+    paddingBottom: 32,
     fontFamily: 'NordFjellaArial',
-    fontSize: 8,
+    fontSize: 7.5,
     color: '#172033',
   },
   header: {
-    marginBottom: 16,
+    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#cbd5e1',
-    paddingBottom: 10,
+    paddingBottom: 9,
   },
-  title: { fontSize: 18, fontWeight: 700 },
-  subtitle: { marginTop: 4, color: '#64748b' },
-  stats: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  stat: { flexGrow: 1, borderWidth: 1, borderColor: '#dbe3ec', borderRadius: 6, padding: 8 },
-  statLabel: { fontSize: 7, color: '#64748b', textTransform: 'uppercase' },
-  statValue: { marginTop: 3, fontSize: 13, fontWeight: 700 },
-  table: { borderWidth: 1, borderColor: '#dbe3ec', borderRadius: 6, overflow: 'hidden' },
-  row: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#e7edf3', minHeight: 24 },
+  title: { fontSize: 17, fontWeight: 700 },
+  subtitle: { marginTop: 3, color: '#64748b' },
+  provider: { marginTop: 5, fontSize: 7, color: '#475569' },
+  stats: { flexDirection: 'row', gap: 6, marginBottom: 11 },
+  stat: {
+    flexGrow: 1,
+    borderWidth: 1,
+    borderColor: '#dbe3ec',
+    borderRadius: 6,
+    padding: 7,
+  },
+  statLabel: { fontSize: 6.5, color: '#64748b', textTransform: 'uppercase' },
+  statValue: { marginTop: 2, fontSize: 11, fontWeight: 700 },
+  sectionTitle: { marginTop: 2, marginBottom: 5, fontSize: 9, fontWeight: 700 },
+  table: {
+    marginBottom: 11,
+    borderWidth: 1,
+    borderColor: '#dbe3ec',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  row: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#e7edf3', minHeight: 22 },
   head: { backgroundColor: '#eef4f8', borderTopWidth: 0 },
-  cell: { paddingVertical: 6, paddingHorizontal: 5 },
-  colMain: { width: '24%' },
-  colStay: { width: '20%' },
-  colAddress: { width: '26%' },
-  colDocument: { width: '15%' },
-  colTax: { width: '15%' },
-  colOwnerNumber: { width: '22%' },
-  colOwnerDate: { width: '18%' },
-  colOwnerNights: { width: '12%' },
-  colOwnerNote: { width: '30%' },
-  financeNumber: { width: '12%' },
-  financeCustomer: { width: '17%' },
-  financeDate: { width: '10%' },
-  financeMoney: { width: '9%' },
-  financeStatus: { width: '7%' },
+  cell: { paddingVertical: 5, paddingHorizontal: 4 },
   bold: { fontWeight: 700 },
-  muted: { color: '#64748b', marginTop: 2, fontSize: 7 },
-  empty: { padding: 20, textAlign: 'center', color: '#64748b' },
+  muted: { marginTop: 2, color: '#64748b', fontSize: 6.5 },
+  empty: { padding: 16, textAlign: 'center', color: '#64748b' },
   footer: {
     position: 'absolute',
-    bottom: 14,
+    bottom: 13,
     left: 28,
     right: 28,
     flexDirection: 'row',
     justifyContent: 'space-between',
     color: '#94a3b8',
-    fontSize: 7,
+    fontSize: 6.5,
   },
 })
 
-function formatDate(value: string) {
+function formatDate(value: string | null | undefined) {
+  if (!value) return '—'
   const [year, month, day] = value.split('-')
   return year && month && day ? `${day}.${month}.${year}` : value
 }
 
 function formatCurrency(value: number) {
-  return `${new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 0 }).format(Number(value ?? 0))} Kč`
+  return `${new Intl.NumberFormat('cs-CZ', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(value ?? 0))} Kč`
 }
 
-function reportTypeLabel(type: ReportType) {
+function reportTypeLabel(type: NordFjellaReportType) {
   if (type === 'finance') return 'Finanční a účetní přehled'
   if (type === 'guests') return 'Historie ubytovaných hostů'
   if (type === 'owner_stays') return 'Přehled vlastních pobytů'
-  if (type === 'guest_book') return 'Evidenční kniha poplatku z pobytu'
+  if (type === 'guest_book') return 'Zákonná evidenční kniha ubytovaných osob'
   return 'Celkový provozní přehled'
 }
 
-function getTaxStatusLabel(guest: NordFjellaStayGuestRow) {
-  if (guest.city_tax_status === 'liable') return formatCurrency(guest.city_tax_amount)
-  if (guest.city_tax_status === 'exempt') return `Osvobozen: ${guest.city_tax_exemption_reason || 'neuvedeno'}`
-  return 'Nepodléhá'
+function basisLabel(basis: NordFjellaFinanceDateBasis) {
+  if (basis === 'payment') return 'datum platby'
+  if (basis === 'stay') return 'termín pobytu'
+  return 'DUZP'
 }
 
-function ReportDocument({
-  type,
-  from,
-  to,
-  reservations,
-  guests,
-  items,
-  payments,
-  basis,
-  settings,
-}: {
-  type: ReportType
-  from: string
-  to: string
-  reservations: NordFjellaReservationRow[]
-  guests: NordFjellaStayGuestRow[]
-  items: NordFjellaReservationItemRow[]
-  payments: NordFjellaPaymentRow[]
-  basis: FinanceDateBasis
-  settings: NordFjellaSettingsRow | null
-}) {
-  const rentals = reservations.filter((row) => row.record_type === 'reservation')
-  const ownerStays = reservations.filter((row) => row.record_type === 'owner_block')
-  const rentalIds = new Set(rentals.map((row) => row.id))
-  const rentalGuests = guests.filter((guest) => rentalIds.has(guest.reservation_id))
-  const totalTax = rentalGuests.reduce((sum, guest) => sum + Number(guest.city_tax_amount ?? 0), 0)
-  const guestNights = rentalGuests.reduce(
-    (sum, guest) =>
-      sum +
-      Math.max(
-        0,
-        Math.round(
-          (new Date(`${guest.stay_end_date}T12:00:00Z`).getTime() -
-            new Date(`${guest.stay_start_date}T12:00:00Z`).getTime()) /
-            86_400_000
-        )
-      ),
-    0
-  )
-  const reservationMap = new Map(reservations.map((reservation) => [reservation.id, reservation]))
-  const itemsByReservationId = new Map<string, NordFjellaReservationItemRow[]>()
-  for (const item of items) {
-    const rows = itemsByReservationId.get(item.reservation_id) ?? []
-    rows.push(item)
-    itemsByReservationId.set(item.reservation_id, rows)
-  }
-  const financeRows = rentals.map((reservation) => ({
-    reservation,
-    settlement: buildNordFjellaSettlementSummary(
-      reservation,
-      itemsByReservationId.get(reservation.id) ?? []
-    ),
-  }))
-  const financeTotals = financeRows.reduce(
-    (summary, row) => ({
-      net: summary.net + row.settlement.servicesNetTotal,
-      vat: summary.vat + row.settlement.servicesVatTotal,
-      gross: summary.gross + row.settlement.servicesGrossTotal,
-      vat12Base: summary.vat12Base + row.settlement.vat12Base,
-      vat12: summary.vat12 + row.settlement.vat12Amount,
-      vat21Base: summary.vat21Base + row.settlement.vat21Base,
-      vat21: summary.vat21 + row.settlement.vat21Amount,
-      outsideVat: summary.outsideVat + row.settlement.outsideVatTotal,
-      received: summary.received + row.settlement.paidTotal,
-      receivable: summary.receivable + Math.max(row.settlement.remainingToPay, 0),
-    }),
-    {
-      net: 0,
-      vat: 0,
-      gross: 0,
-      vat12Base: 0,
-      vat12: 0,
-      vat21Base: 0,
-      vat21: 0,
-      outsideVat: 0,
-      received: 0,
-      receivable: 0,
-    }
-  )
-  const paymentIncome = payments
-    .filter(
-      (payment) =>
-        payment.direction === 'in' &&
-        (payment.transaction_type === 'deposit' ||
-          payment.transaction_type === 'balance')
-    )
-    .reduce((sum, payment) => sum + Number(payment.amount), 0)
-  const paymentRefunds = payments
-    .filter((payment) => payment.transaction_type === 'refund')
-    .reduce((sum, payment) => sum + Number(payment.amount), 0)
-  const reportedReceived =
-    type === 'finance' && basis === 'payment'
-      ? paymentIncome - paymentRefunds
-      : financeTotals.received
-  const basisLabel =
-    basis === 'payment'
-      ? 'podle data platby'
-      : basis === 'stay'
-        ? 'podle termínu pobytu'
-        : 'podle DUZP'
+function documentTypeLabel(type: NordFjellaStayGuestRow['identity_document_type']) {
+  if (type === 'passport') return 'Cestovní pas'
+  if (type === 'other') return 'Jiný doklad'
+  return 'Občanský průkaz'
+}
 
-  const stats = h(
+function paymentTypeLabel(type: NordFjellaPaymentRow['transaction_type']) {
+  if (type === 'deposit') return 'Záloha'
+  if (type === 'balance') return 'Doplatek'
+  if (type === 'refund') return 'Vratka'
+  if (type === 'security_deposit_received') return 'Přijetí kauce'
+  if (type === 'security_deposit_refund') return 'Vrácení kauce'
+  return 'Zadržení kauce'
+}
+
+function taxLabel(guest: NordFjellaStayGuestRow) {
+  if (guest.city_tax_status === 'exempt') {
+    return `Osvobozen · ${guest.city_tax_exemption_reason || 'důvod neuveden'}`
+  }
+  if (guest.city_tax_status === 'not_applicable') return 'Nepodléhá'
+  return `${formatCurrency(guest.city_tax_collected_amount)} / ${formatCurrency(
+    guest.city_tax_amount
+  )}`
+}
+
+function statStrip(values: Array<[string, string | number]>) {
+  return h(
     View,
     { style: styles.stats },
-    (type === 'finance'
-      ? [
-          ['Bez DPH', formatCurrency(financeTotals.net)],
-          ['DPH', formatCurrency(financeTotals.vat)],
-          ['S DPH', formatCurrency(financeTotals.gross)],
-          ['Přijato', formatCurrency(reportedReceived)],
-          ['K inkasu', formatCurrency(financeTotals.receivable)],
-        ]
-      : [
-          ['Záznamy', reservations.length],
-          ['Pronájmy', rentals.length],
-          ['Hosté', rentalGuests.length],
-          ['Osobonoci', guestNights],
-          ['Místní poplatek', formatCurrency(totalTax)],
-        ]
-    ).map(([label, value]) =>
-      h(View, { key: String(label), style: styles.stat }, [
-        h(Text, { key: 'label', style: styles.statLabel }, String(label)),
+    values.map(([label, value]) =>
+      h(View, { key: label, style: styles.stat }, [
+        h(Text, { key: 'label', style: styles.statLabel }, label),
         h(Text, { key: 'value', style: styles.statValue }, String(value)),
       ])
     )
   )
+}
 
-  let body
+function overviewBody(data: NordFjellaReportData) {
+  const entries: Array<[string, string | number]> = [
+    ['Pronájmy celkem', data.rentals.length],
+    ['Dokončené', data.metrics.completedRentals],
+    ['Rezervované / poptávky', data.metrics.reservedRentals],
+    ['Zrušené', data.metrics.cancelledRentals],
+    ['Noci pronájmů', data.metrics.occupiedNights],
+    ['Vlastní pobyty', data.ownerStays.length],
+    ['Noci vlastních pobytů', data.metrics.ownerNights],
+    ['Technické blokace', data.technicalBlocks.length],
+    ['Noci technických blokací', data.metrics.technicalNights],
+    ['Unikátní hosté', data.metrics.uniqueGuests],
+    ['Osobonoci', data.metrics.guestNights],
+    ['Místní poplatek vybraný', formatCurrency(data.metrics.cityTaxCollected)],
+  ]
+  return h(View, { style: styles.table }, [
+    h(View, { key: 'head', style: [styles.row, styles.head] }, [
+      h(Text, { key: 'metric', style: [styles.cell, styles.bold, { width: '72%' }] }, 'Ukazatel'),
+      h(Text, { key: 'value', style: [styles.cell, styles.bold, { width: '28%' }] }, 'Hodnota'),
+    ]),
+    ...entries.map(([label, value]) =>
+      h(View, { key: label, style: styles.row }, [
+        h(Text, { key: 'label', style: [styles.cell, { width: '72%' }] }, label),
+        h(Text, { key: 'value', style: [styles.cell, styles.bold, { width: '28%' }] }, String(value)),
+      ])
+    ),
+  ])
+}
 
-  if (type === 'finance') {
-    body = h(View, null, [
-      h(View, { key: 'tax-summary', style: [styles.table, { marginBottom: 12 }] }, [
-        h(View, { key: 'head', style: [styles.row, styles.head] }, [
-          h(Text, { key: 'metric', style: [styles.cell, { width: '38%' }, styles.bold] }, 'Daňová rekapitulace'),
-          h(Text, { key: 'base', style: [styles.cell, { width: '21%' }, styles.bold] }, 'Základ'),
-          h(Text, { key: 'vat', style: [styles.cell, { width: '20%' }, styles.bold] }, 'DPH'),
-          h(Text, { key: 'gross', style: [styles.cell, { width: '21%' }, styles.bold] }, 'Celkem'),
-        ]),
-        ...[
-          ['Sazba 12 %', financeTotals.vat12Base, financeTotals.vat12, financeTotals.vat12Base + financeTotals.vat12],
-          ['Sazba 21 %', financeTotals.vat21Base, financeTotals.vat21, financeTotals.vat21Base + financeTotals.vat21],
-          ['Mimo DPH', financeTotals.outsideVat, 0, financeTotals.outsideVat],
-        ].map(([label, base, vat, gross]) =>
-          h(View, { key: String(label), style: styles.row }, [
-            h(Text, { key: 'label', style: [styles.cell, { width: '38%' }] }, String(label)),
-            h(Text, { key: 'base', style: [styles.cell, { width: '21%' }] }, formatCurrency(Number(base))),
-            h(Text, { key: 'vat', style: [styles.cell, { width: '20%' }] }, formatCurrency(Number(vat))),
-            h(Text, { key: 'gross', style: [styles.cell, { width: '21%' }, styles.bold] }, formatCurrency(Number(gross))),
-          ])
-        ),
-        h(View, { key: 'payments', style: styles.row }, [
-          h(Text, { key: 'label', style: [styles.cell, { width: '38%' }, styles.bold] }, `Platební kniha · ${basisLabel}`),
-          h(Text, { key: 'income', style: [styles.cell, { width: '21%' }] }, `Přijato ${formatCurrency(paymentIncome)}`),
-          h(Text, { key: 'refund', style: [styles.cell, { width: '20%' }] }, `Vratky ${formatCurrency(paymentRefunds)}`),
-          h(Text, { key: 'net', style: [styles.cell, { width: '21%' }, styles.bold] }, `Čistě ${formatCurrency(paymentIncome - paymentRefunds)}`),
-        ]),
-      ]),
-      h(View, { key: 'finance-table', style: styles.table }, [
-        h(View, { key: 'head', style: [styles.row, styles.head] }, [
-          h(Text, { key: 'number', style: [styles.cell, styles.financeNumber, styles.bold] }, 'Rezervace'),
-          h(Text, { key: 'customer', style: [styles.cell, styles.financeCustomer, styles.bold] }, 'Zákazník'),
-          h(Text, { key: 'date', style: [styles.cell, styles.financeDate, styles.bold] }, 'DUZP'),
-          h(Text, { key: 'net', style: [styles.cell, styles.financeMoney, styles.bold] }, 'Bez DPH'),
-          h(Text, { key: 'vat', style: [styles.cell, styles.financeMoney, styles.bold] }, 'DPH'),
-          h(Text, { key: 'gross', style: [styles.cell, styles.financeMoney, styles.bold] }, 'S DPH'),
-          h(Text, { key: 'tax', style: [styles.cell, styles.financeMoney, styles.bold] }, 'Poplatek'),
-          h(Text, { key: 'paid', style: [styles.cell, styles.financeMoney, styles.bold] }, 'Přijato'),
-          h(Text, { key: 'due', style: [styles.cell, styles.financeMoney, styles.bold] }, 'K inkasu'),
-          h(Text, { key: 'status', style: [styles.cell, styles.financeStatus, styles.bold] }, 'Stav'),
-        ]),
-        ...financeRows.map(({ reservation, settlement }) =>
-          h(View, { key: reservation.id, style: styles.row, wrap: false }, [
-            h(Text, { key: 'number', style: [styles.cell, styles.financeNumber] }, reservation.reservation_number),
-            h(Text, { key: 'customer', style: [styles.cell, styles.financeCustomer] }, reservation.guest_company_name || reservation.guest_full_name || reservation.guest_contact_name || '—'),
-            h(Text, { key: 'date', style: [styles.cell, styles.financeDate] }, formatDate(reservation.taxable_supply_date || reservation.stay_end_date)),
-            h(Text, { key: 'net', style: [styles.cell, styles.financeMoney] }, formatCurrency(settlement.servicesNetTotal)),
-            h(Text, { key: 'vat', style: [styles.cell, styles.financeMoney] }, formatCurrency(settlement.servicesVatTotal)),
-            h(Text, { key: 'gross', style: [styles.cell, styles.financeMoney] }, formatCurrency(settlement.servicesGrossTotal)),
-            h(Text, { key: 'tax', style: [styles.cell, styles.financeMoney] }, formatCurrency(settlement.outsideVatTotal)),
-            h(Text, { key: 'paid', style: [styles.cell, styles.financeMoney] }, formatCurrency(settlement.paidTotal)),
-            h(Text, { key: 'due', style: [styles.cell, styles.financeMoney, styles.bold] }, formatCurrency(Math.max(settlement.remainingToPay, 0))),
-            h(Text, { key: 'status', style: [styles.cell, styles.financeStatus] }, reservation.settlement_status === 'closed' ? 'Uzavřeno' : 'Otevřeno'),
-          ])
-        ),
-        ...(financeRows.length === 0
-          ? [h(Text, { key: 'empty', style: styles.empty }, 'V období nejsou finanční záznamy.')]
-          : []),
-      ]),
-    ])
-  } else if (type === 'owner_stays') {
-    body = h(View, { style: styles.table }, [
-      h(View, { key: 'head', style: [styles.row, styles.head] }, [
-        h(Text, { key: 'number', style: [styles.cell, styles.colOwnerNumber, styles.bold] }, 'Číslo'),
-        h(Text, { key: 'from', style: [styles.cell, styles.colOwnerDate, styles.bold] }, 'Od'),
-        h(Text, { key: 'to', style: [styles.cell, styles.colOwnerDate, styles.bold] }, 'Do'),
-        h(Text, { key: 'nights', style: [styles.cell, styles.colOwnerNights, styles.bold] }, 'Nocí'),
-        h(Text, { key: 'note', style: [styles.cell, styles.colOwnerNote, styles.bold] }, 'Poznámka'),
-      ]),
-      ...ownerStays.map((row) =>
-        h(View, { key: row.id, style: styles.row, wrap: false }, [
-          h(Text, { key: 'number', style: [styles.cell, styles.colOwnerNumber] }, row.reservation_number),
-          h(Text, { key: 'from', style: [styles.cell, styles.colOwnerDate] }, formatDate(row.stay_start_date)),
-          h(Text, { key: 'to', style: [styles.cell, styles.colOwnerDate] }, formatDate(row.stay_end_date)),
-          h(Text, { key: 'nights', style: [styles.cell, styles.colOwnerNights] }, String(getNordFjellaNightCount(row))),
-          h(Text, { key: 'note', style: [styles.cell, styles.colOwnerNote] }, row.internal_note || '—'),
-        ])
-      ),
-      ...(ownerStays.length === 0 ? [h(Text, { key: 'empty', style: styles.empty }, 'V období nejsou vlastní pobyty.')] : []),
-    ])
-  } else if (type === 'guests' || type === 'guest_book') {
-    body = h(View, { style: styles.table }, [
-      h(View, { key: 'head', style: [styles.row, styles.head] }, [
-        h(Text, { key: 'guest', style: [styles.cell, styles.colMain, styles.bold] }, 'Host'),
-        h(Text, { key: 'stay', style: [styles.cell, styles.colStay, styles.bold] }, 'Pobyt'),
-        h(Text, { key: 'address', style: [styles.cell, styles.colAddress, styles.bold] }, 'Bydliště'),
-        h(Text, { key: 'document', style: [styles.cell, styles.colDocument, styles.bold] }, type === 'guest_book' ? 'Doklad' : 'Rezervace'),
-        h(Text, { key: 'tax', style: [styles.cell, styles.colTax, styles.bold] }, 'Poplatek'),
-      ]),
-      ...rentalGuests.map((guest) => {
-        const reservation = reservationMap.get(guest.reservation_id)
-        return h(View, { key: guest.id, style: styles.row, wrap: false }, [
-          h(View, { key: 'guest', style: [styles.cell, styles.colMain] }, [
-            h(Text, { key: 'name', style: styles.bold }, `${guest.first_name} ${guest.last_name}`),
-            h(Text, { key: 'birth', style: styles.muted }, `${formatDate(guest.birth_date)} · ČR`),
-          ]),
-          h(View, { key: 'stay', style: [styles.cell, styles.colStay] }, [
-            h(Text, { key: 'dates' }, `${formatDate(guest.stay_start_date)} – ${formatDate(guest.stay_end_date)}`),
-            h(Text, { key: 'number', style: styles.muted }, reservation?.reservation_number || '—'),
-          ]),
-          h(Text, { key: 'address', style: [styles.cell, styles.colAddress] }, `${guest.street}, ${guest.postal_code} ${guest.city}`),
-          h(Text, { key: 'document', style: [styles.cell, styles.colDocument] }, type === 'guest_book' ? guest.identity_document_number : reservation?.reservation_number || '—'),
-          h(Text, { key: 'tax', style: [styles.cell, styles.colTax] }, getTaxStatusLabel(guest)),
-        ])
-      }),
-      ...(rentalGuests.length === 0 ? [h(Text, { key: 'empty', style: styles.empty }, 'V období nejsou evidováni žádní hosté.')] : []),
-    ])
-  } else {
-    body = h(View, { style: styles.table }, [
-      h(View, { key: 'head', style: [styles.row, styles.head] }, [
-        h(Text, { key: 'metric', style: [styles.cell, { width: '70%' }, styles.bold] }, 'Ukazatel'),
-        h(Text, { key: 'value', style: [styles.cell, { width: '30%' }, styles.bold] }, 'Hodnota'),
-      ]),
-      ...[
-        ['Dokončené pronájmy', rentals.filter((row) => row.reservation_status === 'completed').length],
-        ['Noci pronájmů', rentals.reduce((sum, row) => sum + getNordFjellaNightCount(row), 0)],
-        ['Vlastní pobyty', ownerStays.length],
-        ['Noci vlastních pobytů', ownerStays.reduce((sum, row) => sum + getNordFjellaNightCount(row), 0)],
-        ['Osoby podléhající poplatku', rentalGuests.filter((guest) => guest.city_tax_status === 'liable').length],
-        ['Osvobozené osoby', rentalGuests.filter((guest) => guest.city_tax_status === 'exempt').length],
-      ].map(([label, value]) =>
-        h(View, { key: String(label), style: styles.row }, [
-          h(Text, { key: 'label', style: [styles.cell, { width: '70%' }] }, String(label)),
-          h(Text, { key: 'value', style: [styles.cell, { width: '30%' }, styles.bold] }, String(value)),
-        ])
-      ),
-    ])
-  }
-
-  return h(Document, null,
-    h(Page, { size: 'A4', orientation: type === 'guest_book' || type === 'finance' ? 'landscape' : 'portrait', style: styles.page }, [
-      h(View, { key: 'header', style: styles.header }, [
-        h(Text, { key: 'title', style: styles.title }, reportTypeLabel(type)),
-        h(Text, { key: 'subtitle', style: styles.subtitle }, `${settings?.object_name || 'Nord Fjella'} · ${settings?.object_city || 'Harrachov'} · ${formatDate(from)}–${formatDate(to)}`),
-      ]),
-      stats,
-      body,
-      h(View, { key: 'footer', style: styles.footer, fixed: true }, [
-        h(Text, { key: 'generated' }, `Vygenerováno ${new Intl.DateTimeFormat('cs-CZ').format(new Date())}`),
-        h(Text, { key: 'page', render: ({ pageNumber, totalPages }) => `Strana ${pageNumber}/${totalPages}` }),
-      ]),
-    ])
+function financeBody(data: NordFjellaReportData, basis: NordFjellaFinanceDateBasis) {
+  const metricRows: Array<[string, number, number, number]> = [
+    [
+      'Sazba 12 %',
+      data.metrics.vat12Base,
+      data.metrics.vat12Amount,
+      data.metrics.vat12Base + data.metrics.vat12Amount,
+    ],
+    [
+      'Sazba 21 %',
+      data.metrics.vat21Base,
+      data.metrics.vat21Amount,
+      data.metrics.vat21Base + data.metrics.vat21Amount,
+    ],
+    ['Mimo DPH / místní poplatek', data.metrics.cityTaxAssessed, 0, data.metrics.cityTaxCollected],
+  ]
+  const reservationMap = new Map(
+    data.reservations.map((reservation) => [reservation.id, reservation])
   )
+
+  return h(View, null, [
+    h(Text, { key: 'tax-title', style: styles.sectionTitle }, `Daňová rekapitulace · podle ${basisLabel(basis)}`),
+    h(View, { key: 'tax-table', style: styles.table }, [
+      h(View, { key: 'head', style: [styles.row, styles.head] }, [
+        h(Text, { key: 'name', style: [styles.cell, styles.bold, { width: '34%' }] }, 'Položka'),
+        h(Text, { key: 'base', style: [styles.cell, styles.bold, { width: '22%' }] }, 'Základ / předpis'),
+        h(Text, { key: 'vat', style: [styles.cell, styles.bold, { width: '22%' }] }, 'DPH'),
+        h(Text, { key: 'gross', style: [styles.cell, styles.bold, { width: '22%' }] }, 'Celkem / vybráno'),
+      ]),
+      ...metricRows.map(([label, base, vat, gross]) =>
+        h(View, { key: label, style: styles.row }, [
+          h(Text, { key: 'label', style: [styles.cell, { width: '34%' }] }, label),
+          h(Text, { key: 'base', style: [styles.cell, { width: '22%' }] }, formatCurrency(base)),
+          h(Text, { key: 'vat', style: [styles.cell, { width: '22%' }] }, formatCurrency(vat)),
+          h(Text, { key: 'gross', style: [styles.cell, styles.bold, { width: '22%' }] }, formatCurrency(gross)),
+        ])
+      ),
+    ]),
+    h(Text, { key: 'payment-title', style: styles.sectionTitle }, 'Platební kniha'),
+    h(View, { key: 'payments', style: styles.table }, [
+      h(View, { key: 'head', style: [styles.row, styles.head] }, [
+        h(Text, { key: 'number', style: [styles.cell, styles.bold, { width: '13%' }] }, 'Rezervace'),
+        h(Text, { key: 'date', style: [styles.cell, styles.bold, { width: '10%' }] }, 'Datum'),
+        h(Text, { key: 'type', style: [styles.cell, styles.bold, { width: '13%' }] }, 'Pohyb'),
+        h(Text, { key: 'amount', style: [styles.cell, styles.bold, { width: '12%' }] }, 'Částka'),
+        h(Text, { key: 'document', style: [styles.cell, styles.bold, { width: '16%' }] }, 'Daňový doklad'),
+        h(Text, { key: 'vat12', style: [styles.cell, styles.bold, { width: '12%' }] }, 'Základ/DPH 12 %'),
+        h(Text, { key: 'vat21', style: [styles.cell, styles.bold, { width: '12%' }] }, 'Základ/DPH 21 %'),
+        h(Text, { key: 'method', style: [styles.cell, styles.bold, { width: '12%' }] }, 'Úhrada'),
+      ]),
+      ...data.payments.map((payment) =>
+        h(View, { key: payment.id, style: styles.row, wrap: false }, [
+          h(Text, { key: 'number', style: [styles.cell, { width: '13%' }] }, reservationMap.get(payment.reservation_id)?.reservation_number || '—'),
+          h(Text, { key: 'date', style: [styles.cell, { width: '10%' }] }, formatDate(payment.transaction_date)),
+          h(Text, { key: 'type', style: [styles.cell, { width: '13%' }] }, paymentTypeLabel(payment.transaction_type)),
+          h(Text, { key: 'amount', style: [styles.cell, styles.bold, { width: '12%' }] }, `${payment.direction === 'out' ? '−' : ''}${formatCurrency(payment.amount)}`),
+          h(Text, { key: 'document', style: [styles.cell, { width: '16%' }] }, payment.tax_document_number || '—'),
+          h(Text, { key: 'vat12', style: [styles.cell, { width: '12%' }] }, `${formatCurrency(payment.vat_12_base)} / ${formatCurrency(payment.vat_12_amount)}`),
+          h(Text, { key: 'vat21', style: [styles.cell, { width: '12%' }] }, `${formatCurrency(payment.vat_21_base)} / ${formatCurrency(payment.vat_21_amount)}`),
+          h(Text, { key: 'method', style: [styles.cell, { width: '12%' }] }, payment.payment_method || '—'),
+        ])
+      ),
+      ...(data.payments.length === 0
+        ? [h(Text, { key: 'empty', style: styles.empty }, 'V období nejsou platební pohyby.')]
+        : []),
+    ]),
+    h(Text, { key: 'fulfilment-title', style: styles.sectionTitle }, 'Plnění podle rezervací'),
+    h(View, { key: 'fulfilments', style: styles.table }, [
+      h(View, { key: 'head', style: [styles.row, styles.head] }, [
+        h(Text, { key: 'number', style: [styles.cell, styles.bold, { width: '12%' }] }, 'Rezervace'),
+        h(Text, { key: 'customer', style: [styles.cell, styles.bold, { width: '20%' }] }, 'Zákazník'),
+        h(Text, { key: 'date', style: [styles.cell, styles.bold, { width: '10%' }] }, 'DUZP'),
+        h(Text, { key: 'net', style: [styles.cell, styles.bold, { width: '11%' }] }, 'Bez DPH'),
+        h(Text, { key: 'vat', style: [styles.cell, styles.bold, { width: '10%' }] }, 'DPH'),
+        h(Text, { key: 'gross', style: [styles.cell, styles.bold, { width: '11%' }] }, 'S DPH'),
+        h(Text, { key: 'tax', style: [styles.cell, styles.bold, { width: '12%' }] }, 'Poplatek vybrán'),
+        h(Text, { key: 'due', style: [styles.cell, styles.bold, { width: '14%' }] }, 'K inkasu'),
+      ]),
+      ...data.financeRows.map((row) =>
+        h(View, { key: row.reservation.id, style: styles.row, wrap: false }, [
+          h(Text, { key: 'number', style: [styles.cell, { width: '12%' }] }, row.reservation.reservation_number),
+          h(Text, { key: 'customer', style: [styles.cell, { width: '20%' }] }, row.reservation.guest_company_name || row.reservation.guest_full_name || row.reservation.guest_contact_name || '—'),
+          h(Text, { key: 'date', style: [styles.cell, { width: '10%' }] }, formatDate(row.reservation.taxable_supply_date || row.reservation.stay_end_date)),
+          h(Text, { key: 'net', style: [styles.cell, { width: '11%' }] }, formatCurrency(row.servicesNet)),
+          h(Text, { key: 'vat', style: [styles.cell, { width: '10%' }] }, formatCurrency(row.servicesVat)),
+          h(Text, { key: 'gross', style: [styles.cell, { width: '11%' }] }, formatCurrency(row.servicesGross)),
+          h(Text, { key: 'tax', style: [styles.cell, { width: '12%' }] }, formatCurrency(row.cityTaxCollected)),
+          h(Text, { key: 'due', style: [styles.cell, styles.bold, { width: '14%' }] }, formatCurrency(Math.max(row.remaining, 0))),
+        ])
+      ),
+      ...(data.financeRows.length === 0
+        ? [h(Text, { key: 'empty', style: styles.empty }, 'V období nejsou finanční záznamy.')]
+        : []),
+    ]),
+  ])
 }
 
-function parseReportType(value: string | null): ReportType {
-  return value === 'finance' ||
-    value === 'guests' ||
-    value === 'owner_stays' ||
-    value === 'guest_book'
-    ? value
-    : 'overview'
+function ownerBody(data: NordFjellaReportData, from: string, to: string) {
+  return h(View, { style: styles.table }, [
+    h(View, { key: 'head', style: [styles.row, styles.head] }, [
+      h(Text, { key: 'number', style: [styles.cell, styles.bold, { width: '20%' }] }, 'Číslo'),
+      h(Text, { key: 'from', style: [styles.cell, styles.bold, { width: '16%' }] }, 'Od'),
+      h(Text, { key: 'to', style: [styles.cell, styles.bold, { width: '16%' }] }, 'Do'),
+      h(Text, { key: 'nights', style: [styles.cell, styles.bold, { width: '13%' }] }, 'Nocí v období'),
+      h(Text, { key: 'note', style: [styles.cell, styles.bold, { width: '35%' }] }, 'Poznámka'),
+    ]),
+    ...data.ownerStays.map((row) =>
+      h(View, { key: row.id, style: styles.row, wrap: false }, [
+        h(Text, { key: 'number', style: [styles.cell, { width: '20%' }] }, row.reservation_number),
+        h(Text, { key: 'from', style: [styles.cell, { width: '16%' }] }, formatDate(row.stay_start_date)),
+        h(Text, { key: 'to', style: [styles.cell, { width: '16%' }] }, formatDate(row.stay_end_date)),
+        h(Text, { key: 'nights', style: [styles.cell, styles.bold, { width: '13%' }] }, String(getClippedNordFjellaNightCount(row, { from, to }))),
+        h(Text, { key: 'note', style: [styles.cell, { width: '35%' }] }, row.internal_note || '—'),
+      ])
+    ),
+    ...(data.ownerStays.length === 0
+      ? [h(Text, { key: 'empty', style: styles.empty }, 'V období nejsou vlastní pobyty.')]
+      : []),
+  ])
 }
 
-function parseFinanceDateBasis(value: string | null): FinanceDateBasis {
-  return value === 'payment' || value === 'stay' ? value : 'supply'
+function guestBody(data: NordFjellaReportData, guestBook: boolean) {
+  const reservationMap = new Map(
+    data.reservations.map((reservation) => [reservation.id, reservation])
+  )
+  return h(View, { style: styles.table }, [
+    h(View, { key: 'head', style: [styles.row, styles.head] }, [
+      h(Text, { key: 'guest', style: [styles.cell, styles.bold, { width: '20%' }] }, 'Host'),
+      h(Text, { key: 'stay', style: [styles.cell, styles.bold, { width: '18%' }] }, 'Pobyt'),
+      h(Text, { key: 'address', style: [styles.cell, styles.bold, { width: guestBook ? '22%' : '32%' }] }, 'Bydliště'),
+      h(Text, { key: 'document', style: [styles.cell, styles.bold, { width: guestBook ? '22%' : '15%' }] }, guestBook ? 'Doklad' : 'Rezervace'),
+      h(Text, { key: 'tax', style: [styles.cell, styles.bold, { width: guestBook ? '18%' : '15%' }] }, guestBook ? 'Vybráno / předpis' : 'Poplatek'),
+    ]),
+    ...data.guests.map((guest) => {
+      const reservation = reservationMap.get(guest.reservation_id)
+      return h(View, { key: guest.id, style: styles.row, wrap: false }, [
+        h(View, { key: 'guest', style: [styles.cell, { width: '20%' }] }, [
+          h(Text, { key: 'name', style: styles.bold }, `${guest.first_name} ${guest.last_name}`),
+          h(Text, { key: 'birth', style: styles.muted }, `${formatDate(guest.birth_date)} · ČR`),
+        ]),
+        h(View, { key: 'stay', style: [styles.cell, { width: '18%' }] }, [
+          h(Text, { key: 'dates' }, `${formatDate(guest.stay_start_date)} – ${formatDate(guest.stay_end_date)}`),
+          h(Text, { key: 'number', style: styles.muted }, reservation?.reservation_number || '—'),
+        ]),
+        h(Text, { key: 'address', style: [styles.cell, { width: guestBook ? '22%' : '32%' }] }, `${guest.street}, ${guest.postal_code} ${guest.city}`),
+        h(Text, { key: 'document', style: [styles.cell, { width: guestBook ? '22%' : '15%' }] }, guestBook ? `${documentTypeLabel(guest.identity_document_type)} · ${guest.identity_document_number}` : reservation?.reservation_number || '—'),
+        h(View, { key: 'tax', style: [styles.cell, { width: guestBook ? '18%' : '15%' }] }, [
+          h(Text, { key: 'value' }, taxLabel(guest)),
+          ...(guestBook && guest.city_tax_collected_at
+            ? [h(Text, { key: 'date', style: styles.muted }, `${formatDate(guest.city_tax_collected_at)} · ${guest.city_tax_payment_method || 'forma neuvedena'}`)]
+            : []),
+        ]),
+      ])
+    }),
+    ...(data.guests.length === 0
+      ? [h(Text, { key: 'empty', style: styles.empty }, 'V období nejsou evidováni žádní hosté.')]
+      : []),
+  ])
+}
+
+function ReportDocument({
+  type,
+  basis,
+  from,
+  to,
+  data,
+  settings,
+}: {
+  type: NordFjellaReportType
+  basis: NordFjellaFinanceDateBasis
+  from: string
+  to: string
+  data: NordFjellaReportData
+  settings: NordFjellaSettingsRow | null
+}) {
+  const stats =
+    type === 'finance'
+      ? statStrip([
+          ['Bez DPH', formatCurrency(data.metrics.servicesNet)],
+          ['DPH', formatCurrency(data.metrics.servicesVat)],
+          ['S DPH', formatCurrency(data.metrics.servicesGross)],
+          ['Čistý cashflow', formatCurrency(data.metrics.netCashflow)],
+          ['K inkasu', formatCurrency(data.metrics.receivable)],
+        ])
+      : type === 'owner_stays'
+        ? statStrip([
+            ['Vlastní pobyty', data.ownerStays.length],
+            ['Noci', data.metrics.ownerNights],
+          ])
+        : statStrip([
+            ['Záznamy', data.reservations.length],
+            ['Hosté', data.metrics.uniqueGuests],
+            ['Osobonoci', data.metrics.guestNights],
+            ['Poplatek vybrán', formatCurrency(data.metrics.cityTaxCollected)],
+          ])
+
+  const body =
+    type === 'finance'
+      ? financeBody(data, basis)
+      : type === 'owner_stays'
+        ? ownerBody(data, from, to)
+        : type === 'guests' || type === 'guest_book'
+          ? guestBody(data, type === 'guest_book')
+          : overviewBody(data)
+
+  const provider = [
+    settings?.provider_company_name,
+    settings?.provider_company_id_number
+      ? `IČO ${settings.provider_company_id_number}`
+      : null,
+    settings?.provider_vat_number ? `DIČ ${settings.provider_vat_number}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  return h(
+    Document,
+    null,
+    h(
+      Page,
+      {
+        size: 'A4',
+        orientation: type === 'finance' || type === 'guest_book' ? 'landscape' : 'portrait',
+        style: styles.page,
+      },
+      [
+        h(View, { key: 'header', style: styles.header }, [
+          h(Text, { key: 'title', style: styles.title }, reportTypeLabel(type)),
+          h(Text, { key: 'subtitle', style: styles.subtitle }, `${settings?.object_name || 'Nord Fjella'} · ${settings?.object_city || 'Harrachov'} · ${formatDate(from)}–${formatDate(to)}`),
+          ...(provider
+            ? [h(Text, { key: 'provider', style: styles.provider }, provider)]
+            : []),
+        ]),
+        stats,
+        body,
+        h(View, { key: 'footer', style: styles.footer, fixed: true }, [
+          h(Text, { key: 'generated' }, `Vygenerováno ${new Intl.DateTimeFormat('cs-CZ').format(new Date())} · CZK`),
+          h(Text, {
+            key: 'page',
+            render: ({ pageNumber, totalPages }) => `Strana ${pageNumber}/${totalPages}`,
+          }),
+        ]),
+      ]
+    )
+  )
 }
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) return new NextResponse('Unauthorized', { status: 401 })
 
@@ -418,36 +453,43 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Forbidden', { status: 403 })
   }
 
-  const type = parseReportType(request.nextUrl.searchParams.get('type'))
-  const basis = parseFinanceDateBasis(request.nextUrl.searchParams.get('basis'))
-  const from = request.nextUrl.searchParams.get('from') || `${new Date().getFullYear()}-01-01`
-  const to = request.nextUrl.searchParams.get('to') || `${new Date().getFullYear()}-12-31`
+  const params = request.nextUrl.searchParams
+  const type = parseNordFjellaReportType(params.get('type'))
+  const basis = parseNordFjellaFinanceDateBasis(params.get('basis'))
+  const from = params.get('from') || `${new Date().getFullYear()}-01-01`
+  const to = params.get('to') || `${new Date().getFullYear()}-12-31`
+  const guestSearch = params.get('q') ?? ''
+  const requestedTaxFilter = params.get('tax')
+  const cityTaxFilter =
+    requestedTaxFilter === 'liable' ||
+    requestedTaxFilter === 'exempt' ||
+    requestedTaxFilter === 'not_applicable'
+      ? requestedTaxFilter
+      : 'all'
+  const rangeError = validateNordFjellaReportRange(from, to)
 
-  const [reservationsResult, guestsResult, settingsResult, itemsResult, paymentsResult] = await Promise.all([
-    supabase
-      .from('nord_fjella_reservations')
-      .select('*')
-      .order('stay_start_date', { ascending: true }),
-    supabase
-      .from('nord_fjella_stay_guests')
-      .select('*')
-      .order('stay_start_date', { ascending: true }),
-    supabase
-      .from('nord_fjella_settings')
-      .select('*')
-      .eq('singleton_key', 'primary')
-      .maybeSingle<NordFjellaSettingsRow>(),
-    supabase
-      .from('nord_fjella_reservation_items')
-      .select('*')
-      .order('reservation_id')
-      .order('sort_order'),
-    supabase
-      .from('nord_fjella_payments')
-      .select('*')
-      .order('transaction_date')
-      .order('created_at'),
-  ])
+  if (rangeError) return new NextResponse(rangeError, { status: 400 })
+
+  const [reservationsResult, guestsResult, settingsResult, itemsResult, paymentsResult] =
+    await Promise.all([
+      supabase.from('nord_fjella_reservations').select('*').order('stay_start_date'),
+      supabase.from('nord_fjella_stay_guests').select('*').order('stay_start_date'),
+      supabase
+        .from('nord_fjella_settings')
+        .select('*')
+        .eq('singleton_key', 'primary')
+        .maybeSingle<NordFjellaSettingsRow>(),
+      supabase
+        .from('nord_fjella_reservation_items')
+        .select('*')
+        .order('reservation_id')
+        .order('sort_order'),
+      supabase
+        .from('nord_fjella_payments')
+        .select('*')
+        .order('transaction_date')
+        .order('created_at'),
+    ])
 
   if (
     reservationsResult.error ||
@@ -459,50 +501,28 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Report se nepodařilo načíst.', { status: 500 })
   }
 
-  const allReservations = (reservationsResult.data ?? []) as NordFjellaReservationRow[]
-  const allGuests = (guestsResult.data ?? []) as NordFjellaStayGuestRow[]
-  const allPayments = (paymentsResult.data ?? []) as NordFjellaPaymentRow[]
-  const paymentsInRange = allPayments.filter(
-    (payment) => payment.transaction_date >= from && payment.transaction_date <= to
-  )
-  const paymentReservationIds = new Set(
-    paymentsInRange.map((payment) => payment.reservation_id)
-  )
-  const reservations =
-    type === 'finance' && basis === 'payment'
-      ? allReservations.filter((reservation) => paymentReservationIds.has(reservation.id))
-      : type === 'finance' && basis === 'supply'
-        ? allReservations.filter((reservation) => {
-            const supplyDate = reservation.taxable_supply_date || reservation.stay_end_date
-            return supplyDate >= from && supplyDate <= to
-          })
-        : allReservations.filter(
-            (reservation) =>
-              reservation.stay_end_date > from && reservation.stay_start_date <= to
-          )
-  const reservationIds = new Set(reservations.map((reservation) => reservation.id))
-  const guests = allGuests.filter(
-    (guest) =>
-      reservationIds.has(guest.reservation_id) &&
-      guest.stay_end_date > from &&
-      guest.stay_start_date <= to
-  )
-  const payments =
-    type === 'finance' && basis === 'payment'
-      ? paymentsInRange
-      : allPayments.filter((payment) => reservationIds.has(payment.reservation_id))
-
-  const buffer = await renderToBuffer(ReportDocument({
+  const data = buildNordFjellaReportData({
     type,
-    from,
-    to,
-    reservations,
-    guests,
-    items: (itemsResult.data ?? []) as NordFjellaReservationItemRow[],
-    payments,
     basis,
-    settings: settingsResult.data ?? null,
-  }))
+    range: { from, to },
+    reservations: (reservationsResult.data ?? []) as NordFjellaReservationRow[],
+    reservationItems: (itemsResult.data ?? []) as NordFjellaReservationItemRow[],
+    stayGuests: (guestsResult.data ?? []) as NordFjellaStayGuestRow[],
+    payments: (paymentsResult.data ?? []) as NordFjellaPaymentRow[],
+    guestSearch,
+    cityTaxFilter,
+  })
+
+  const buffer = await renderToBuffer(
+    ReportDocument({
+      type,
+      basis,
+      from,
+      to,
+      data,
+      settings: settingsResult.data ?? null,
+    })
+  )
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
