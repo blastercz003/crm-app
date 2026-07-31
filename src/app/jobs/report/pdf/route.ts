@@ -76,14 +76,14 @@ const columnWidths = {
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 96,
+    paddingTop: 76,
     paddingRight: 28,
     paddingBottom: 30,
     paddingLeft: 28,
     backgroundColor: '#ffffff',
     color: '#253044',
     fontFamily: 'JobsArial',
-    fontSize: 6.8,
+    fontSize: 8,
   },
   fixedHeader: {
     position: 'absolute',
@@ -151,23 +151,6 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontWeight: 700,
   },
-  tableHead: {
-    flexDirection: 'row',
-    minHeight: 20,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#cbd5e1',
-    borderBottomWidth: 1,
-    borderBottomColor: '#cbd5e1',
-    backgroundColor: '#eef4f8',
-  },
-  headCell: {
-    paddingHorizontal: 4,
-    color: '#53637a',
-    fontSize: 5.8,
-    fontWeight: 700,
-    letterSpacing: 0.55,
-  },
   dayBlock: {
     marginTop: 4,
   },
@@ -184,7 +167,7 @@ const styles = StyleSheet.create({
   },
   dayTitle: {
     color: '#236f9f',
-    fontSize: 6.5,
+    fontSize: 9,
     fontWeight: 700,
     letterSpacing: 0.6,
   },
@@ -195,16 +178,22 @@ const styles = StyleSheet.create({
   row: {
     minHeight: 21,
     flexDirection: 'row',
+    alignItems: 'stretch',
     borderBottomWidth: 1,
-    borderBottomColor: '#dce3ea',
+    borderBottomColor: '#a9b5c3',
   },
   lastRow: {
     borderBottomWidth: 0,
   },
   cell: {
+    alignSelf: 'stretch',
     paddingHorizontal: 4,
     paddingVertical: 3.2,
+    justifyContent: 'center',
     lineHeight: 1.16,
+  },
+  valueText: {
+    transform: 'translateY(4.5)',
   },
   strong: {
     color: '#172033',
@@ -218,7 +207,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   status: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -227,7 +216,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   statusText: {
-    fontSize: 5.1,
+    fontSize: 8,
     fontWeight: 700,
     letterSpacing: 0.25,
     lineHeight: 1,
@@ -454,22 +443,6 @@ function groupJobs(jobs: JobRow[]): DayGroup[] {
     }, [])
 }
 
-function headCell(key: string, value: string, width: string) {
-  return h(Text, { key, style: [styles.headCell, { width }] }, value)
-}
-
-function TableHead() {
-  return h(View, { style: styles.tableHead }, [
-    headCell('number', 'ZAKÁZKA', columnWidths.number),
-    headCell('company', 'FIRMA', columnWidths.company),
-    headCell('term', 'TERMÍN', columnWidths.term),
-    headCell('place', 'MÍSTO REALIZACE', columnWidths.place),
-    headCell('technician', 'TECHNIK', columnWidths.technician),
-    headCell('generator', 'AGREGÁT', columnWidths.generator),
-    headCell('status', 'STAV', columnWidths.status),
-  ])
-}
-
 function ReportHeader({ input, count, generatedAt }: { input: ReportInput; count: number; generatedAt: Date }) {
   return h(View, { style: styles.fixedHeader, fixed: true }, [
     h(View, { key: 'main', style: styles.headerMain }, [
@@ -513,7 +486,6 @@ function ReportHeader({ input, count, generatedAt }: { input: ReportInput; count
           ])
         : null,
     ]),
-    h(TableHead, { key: 'head' }),
   ])
 }
 
@@ -521,7 +493,11 @@ function JobRowView({ job, isLast }: { job: JobRow; isLast: boolean }) {
   const status = statusMeta(getEffectiveStatus(job))
   const cell = (key: string, value: string, width: string, strong = false) =>
     h(View, { key, style: [styles.cell, { width }] }, [
-      h(Text, { key: 'text', style: strong ? styles.strong : undefined }, value || '—'),
+      h(
+        Text,
+        { key: 'text', style: strong ? [styles.valueText, styles.strong] : styles.valueText },
+        value || '—'
+      ),
     ])
 
   return h(View, { style: isLast ? [styles.row, styles.lastRow] : styles.row, wrap: false }, [
@@ -529,7 +505,7 @@ function JobRowView({ job, isLast }: { job: JobRow; isLast: boolean }) {
     h(View, { key: 'company', style: [styles.cell, { width: columnWidths.company }] }, [
       h(
         Text,
-        { key: 'text', style: [styles.strong, styles.companySingleLine] },
+        { key: 'text', style: [styles.companySingleLine, styles.valueText] },
         job.company_name || '—'
       ),
     ]),
@@ -546,19 +522,14 @@ function JobRowView({ job, isLast }: { job: JobRow; isLast: boolean }) {
 }
 
 function DayBlock({ group }: { group: DayGroup }) {
-  const [firstJob, ...remainingJobs] = group.jobs
-
   return h(Fragment, null, [
-    // The separator and first row are one unbreakable unit, so they always move together.
-    h(View, { key: 'start', style: styles.dayBlock, wrap: false }, [
-      h(View, { key: 'header', style: styles.dayHeader }, [
-        h(Text, { key: 'label', style: styles.dayTitle }, group.label),
-        h(Text, { key: 'count', style: styles.dayCount }, formatCount(group.jobs.length)),
-      ]),
-      h(JobRowView, { key: firstJob.id, job: firstJob, isLast: group.jobs.length === 1 }),
+    // Direct page siblings keep column widths stable; presence ahead moves the first row with the separator.
+    h(View, { key: 'header', style: [styles.dayBlock, styles.dayHeader], minPresenceAhead: 64 }, [
+      h(Text, { key: 'label', style: styles.dayTitle }, group.label),
+      h(Text, { key: 'count', style: styles.dayCount }, formatCount(group.jobs.length)),
     ]),
-    ...remainingJobs.map((job, index) =>
-      h(JobRowView, { key: job.id, job, isLast: index === remainingJobs.length - 1 })
+    ...group.jobs.map((job, index) =>
+      h(JobRowView, { key: job.id, job, isLast: index === group.jobs.length - 1 })
     ),
   ])
 }
