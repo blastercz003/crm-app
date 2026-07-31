@@ -7,7 +7,10 @@ import type {
   VehicleLogbookReportEntry,
   VehicleLogbookReportFuelEntry,
 } from '@/lib/vehicle-logbook/reports'
-import { getVehicleLogbookReportAction } from './report-actions'
+import {
+  getVehicleLogbookHistoryStartAction,
+  getVehicleLogbookReportAction,
+} from './report-actions'
 
 export type VehicleLogbookReportVehicleOption = {
   id: string
@@ -571,6 +574,41 @@ function VehicleLogbookReportsModal({
     load({ from: next.from, to: next.to })
   }
 
+  function applyAllPeriod() {
+    const nextVehicleId = vehicleId
+    const version = ++requestVersion.current
+
+    setError(null)
+    startTransition(async () => {
+      const historyResult = await getVehicleLogbookHistoryStartAction(
+        nextVehicleId || null
+      )
+      if (version !== requestVersion.current) return
+      if (!historyResult.success) {
+        setReport(null)
+        setError(historyResult.error)
+        return
+      }
+
+      const nextFrom = historyResult.from ?? defaultTo
+      setFrom(nextFrom)
+      setTo(defaultTo)
+
+      const reportResult = await getVehicleLogbookReportAction({
+        vehicleId: nextVehicleId || null,
+        from: nextFrom,
+        to: defaultTo,
+      })
+      if (version !== requestVersion.current) return
+      if (!reportResult.success) {
+        setReport(null)
+        setError(reportResult.error)
+        return
+      }
+      setReport(reportResult.report)
+    })
+  }
+
   return (
     <div
       className="fixed inset-0 z-[140] overflow-y-auto bg-zinc-950/48 p-2 backdrop-blur-[6px] sm:p-4"
@@ -616,18 +654,36 @@ function VehicleLogbookReportsModal({
               <div className="grid gap-3 lg:grid-cols-[minmax(210px,1fr)_145px_145px_auto_auto] lg:items-end">
                 <label>
                   <span>VOZIDLO</span>
-                  <select
-                    value={vehicleId}
-                    onChange={(event) => setVehicleId(event.target.value)}
-                  >
-                    <option value="">Všechna vozidla</option>
-                    {vehicles.map((vehicle) => (
-                      <option key={vehicle.id} value={vehicle.id}>
-                        {vehicle.label} · {vehicle.registrationPlate}
-                        {vehicle.isActive ? '' : ' · archivní'}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={vehicleId}
+                      onChange={(event) => setVehicleId(event.target.value)}
+                      className="vehicle-logbook-page__report-vehicle-select appearance-none rounded-xl"
+                      style={{ paddingRight: '40px' }}
+                    >
+                      <option value="">Všechna vozidla</option>
+                      {vehicles.map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {vehicle.label} · {vehicle.registrationPlate}
+                          {vehicle.isActive ? '' : ' · archivní'}
+                        </option>
+                      ))}
+                    </select>
+                    <svg
+                      aria-hidden
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
+                    >
+                      <path
+                        d="m6 8 4 4 4-4"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
                 </label>
                 <label>
                   <span>OD</span>
@@ -661,6 +717,9 @@ function VehicleLogbookReportsModal({
                     </button>
                     <button type="button" onClick={() => applyPeriod('year')}>
                       R
+                    </button>
+                    <button type="button" onClick={applyAllPeriod}>
+                      V
                     </button>
                   </div>
                 </div>
@@ -744,8 +803,7 @@ function VehicleLogbookReportsModal({
                     ? undefined
                     : `/knihy-jizd/reporty/pdf?${exportQuery}`
                 }
-                target="_blank"
-                rel="noreferrer"
+                download
                 aria-disabled={exportDisabled}
                 className={`vehicle-logbook-page__report-export vehicle-logbook-page__report-export--primary ${
                   exportDisabled ? 'pointer-events-none opacity-45' : ''

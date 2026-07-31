@@ -37,6 +37,8 @@ type VehicleLogbookPageProps = {
     q?: string
     view?: string
     energy?: string
+    range?: string
+    page?: string
   }>
 }
 
@@ -106,10 +108,28 @@ type VehicleLogbookClosureSummary = {
   changed_after_closure: boolean
 }
 
+type VehicleLogbookEntryMetrics = Pick<
+  VehicleLogbookEntrySummary,
+  'business_km' | 'private_km'
+>
+
+type VehicleLogbookFuelMetrics = Pick<
+  VehicleLogbookFuelSummary,
+  'net_amount' | 'vat_amount' | 'gross_amount'
+>
+
 type UsageFilter = '' | 'business' | 'private' | 'mixed'
 type EntryTypeFilter = '' | 'trip' | 'daily_summary'
 type EnergyFilter = '' | 'petrol' | 'diesel' | 'electricity'
 type ContentView = 'trips' | 'fuel'
+
+const PAGE_SIZE = 100
+const METRICS_PAGE_SIZE = 1000
+
+type MetricsPageResult<T> = {
+  data: T[] | null
+  error: { message: string } | null
+}
 
 const secondaryActionClass =
   'vehicle-logbook-page__secondary-action inline-flex min-h-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(238,242,247,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]'
@@ -141,12 +161,64 @@ function getPeriodRanges(todayKey: string) {
   }
 }
 
-function normalizeSearch(value: string) {
+function normalizeDatabaseSearch(value: string) {
   return value
-    .normalize('NFKD')
-    .replaceAll(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('cs-CZ')
+    .replaceAll(/[,%_()]/g, ' ')
+    .replaceAll(/\s+/g, ' ')
     .trim()
+}
+
+function parsePageNumber(value: string | undefined) {
+  if (!value || !/^\d+$/.test(value)) return 1
+  const page = Number(value)
+  return Number.isSafeInteger(page) && page > 0 ? page : 1
+}
+
+function getPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const pages = new Set([
+    1,
+    totalPages,
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+  ])
+  const ordered = [...pages]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right)
+  const items: Array<number | 'ellipsis'> = []
+
+  ordered.forEach((page, index) => {
+    if (index > 0 && page - ordered[index - 1] > 1) {
+      items.push('ellipsis')
+    }
+    items.push(page)
+  })
+
+  return items
+}
+
+async function loadAllMetricPages<T>(
+  loader: (from: number, to: number) => PromiseLike<MetricsPageResult<T>>,
+  label: string
+) {
+  const rows: T[] = []
+
+  for (let offset = 0; ; offset += METRICS_PAGE_SIZE) {
+    const result = await loader(offset, offset + METRICS_PAGE_SIZE - 1)
+    if (result.error) {
+      throw new Error(`${label}: ${result.error.message}`)
+    }
+
+    const page = result.data ?? []
+    rows.push(...page)
+    if (page.length < METRICS_PAGE_SIZE) break
+  }
+
+  return rows
 }
 
 function formatNumber(value: number) {
@@ -627,6 +699,96 @@ function FuelEntriesList({
   )
 }
 
+function VehicleLogbookPagination({
+  currentPage,
+  totalPages,
+  totalCount,
+  currentParams,
+}: {
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  currentParams: URLSearchParams
+}) {
+  if (totalPages <= 1) return null
+
+  const firstRecord = (currentPage - 1) * PAGE_SIZE + 1
+  const lastRecord = Math.min(currentPage * PAGE_SIZE, totalCount)
+  const pageHref = (page: number) =>
+    buildHref(currentParams, {
+      page: page === 1 ? null : String(page),
+    })
+
+  return (
+    <nav
+      aria-label="Stránkování záznamů"
+      className="vehicle-logbook-page__pagination mt-5 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="vehicle-logbook-page__pagination-summary text-xs text-gray-500">
+        Zobrazeno {formatNumber(firstRecord)}–{formatNumber(lastRecord)} z{' '}
+        {formatNumber(totalCount)}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {currentPage > 1 ? (
+          <Link
+            href={pageHref(currentPage - 1)}
+            className="vehicle-logbook-page__pagination-link"
+          >
+            PŘEDCHOZÍ
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="vehicle-logbook-page__pagination-link"
+            data-disabled="true"
+          >
+            PŘEDCHOZÍ
+          </span>
+        )}
+
+        {getPaginationItems(currentPage, totalPages).map((item, index) =>
+          item === 'ellipsis' ? (
+            <span
+              key={`ellipsis-${index}`}
+              aria-hidden
+              className="vehicle-logbook-page__pagination-ellipsis px-1 text-xs text-gray-400"
+            >
+              …
+            </span>
+          ) : (
+            <Link
+              key={item}
+              href={pageHref(item)}
+              aria-current={item === currentPage ? 'page' : undefined}
+              data-selected={item === currentPage ? 'true' : 'false'}
+              className="vehicle-logbook-page__pagination-link vehicle-logbook-page__pagination-link--page"
+            >
+              {item}
+            </Link>
+          )
+        )}
+
+        {currentPage < totalPages ? (
+          <Link
+            href={pageHref(currentPage + 1)}
+            className="vehicle-logbook-page__pagination-link"
+          >
+            DALŠÍ
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="vehicle-logbook-page__pagination-link"
+            data-disabled="true"
+          >
+            DALŠÍ
+          </span>
+        )}
+      </div>
+    </nav>
+  )
+}
+
 export default async function VehicleLogbookPage({
   searchParams,
 }: VehicleLogbookPageProps) {
@@ -675,56 +837,196 @@ export default async function VehicleLogbookPage({
   const selectionWasExplicit = requestedVehicle.length > 0 && requestedVehicleExists
   const todayKey = getPragueDateKey()
   const ranges = getPeriodRanges(todayKey)
-  const fromDate = parseDateKey(params.from, ranges.month.from)
-  const requestedToDate = parseDateKey(params.to, ranges.month.to)
-  const toDate = requestedToDate < fromDate ? fromDate : requestedToDate
+  const allRange = params.range === 'all'
   const usage = isUsageFilter(params.usage) ? params.usage : ''
   const entryType = isEntryTypeFilter(params.type) ? params.type : ''
   const view: ContentView = isContentView(params.view) ? 'fuel' : 'trips'
   const energy = isEnergyFilter(params.energy) ? params.energy : ''
   const search = params.q?.trim().slice(0, 120) ?? ''
+  const databaseSearch = normalizeDatabaseSearch(search)
+  const requestedPage = parsePageNumber(params.page)
+
+  let earliestRecordDate: string | null = null
+
+  if (allRange && selectedVehicle) {
+    const [earliestEntryResponse, earliestFuelResponse] = await Promise.all([
+      supabase
+        .from('vehicle_logbook_entries')
+        .select('trip_date')
+        .eq('vehicle_id', selectedVehicle.id)
+        .is('deleted_at', null)
+        .order('trip_date', { ascending: true })
+        .limit(1)
+        .maybeSingle<{ trip_date: string }>(),
+      supabase
+        .from('vehicle_logbook_fuel_entries')
+        .select('fueled_on')
+        .eq('vehicle_id', selectedVehicle.id)
+        .is('deleted_at', null)
+        .order('fueled_on', { ascending: true })
+        .limit(1)
+        .maybeSingle<{ fueled_on: string }>(),
+    ])
+
+    const earliestError = earliestEntryResponse.error ?? earliestFuelResponse.error
+    if (earliestError) {
+      throw new Error(
+        `Nepodařilo se určit začátek historie vozidla: ${earliestError.message}`
+      )
+    }
+
+    earliestRecordDate =
+      [
+        earliestEntryResponse.data?.trip_date,
+        earliestFuelResponse.data?.fueled_on,
+      ]
+        .filter((date): date is string => Boolean(date))
+        .sort()[0] ?? null
+  }
+
+  const fromDate = allRange
+    ? earliestRecordDate ?? todayKey
+    : parseDateKey(params.from, ranges.month.from)
+  const requestedToDate = allRange
+    ? todayKey
+    : parseDateKey(params.to, ranges.month.to)
+  const toDate = requestedToDate < fromDate ? fromDate : requestedToDate
 
   let entries: VehicleLogbookEntrySummary[] = []
   let fuelEntries: VehicleLogbookFuelSummary[] = []
+  let entryMetrics: VehicleLogbookEntryMetrics[] = []
+  let fuelMetrics: VehicleLogbookFuelMetrics[] = []
   let closures: VehicleLogbookClosureSummary[] = []
+  let totalFilteredRecords = 0
   let latestEntry: Pick<
     VehicleLogbookEntrySummary,
     'trip_date' | 'day_sequence' | 'odometer_end_km'
   > | null = null
 
   if (selectedVehicle) {
-    let entryQuery = supabase
-      .from('vehicle_logbook_entries')
-      .select(
-        'id, trip_date, day_sequence, entry_type, usage_type, source_type, origin, destination, purpose, note, odometer_start_km, odometer_end_km, business_km, private_km, distance_km'
-      )
-      .eq('vehicle_id', selectedVehicle.id)
-      .is('deleted_at', null)
-      .gte('trip_date', fromDate)
-      .lte('trip_date', toDate)
-      .order('trip_date', { ascending: false })
-      .order('day_sequence', { ascending: false })
+    const entryMetricsPromise = loadAllMetricPages<VehicleLogbookEntryMetrics>(
+      (rangeFrom, rangeTo) => {
+        let query = supabase
+          .from('vehicle_logbook_entries')
+          .select('business_km, private_km')
+          .eq('vehicle_id', selectedVehicle.id)
+          .is('deleted_at', null)
+          .gte('trip_date', fromDate)
+          .lte('trip_date', toDate)
 
-    if (usage) entryQuery = entryQuery.eq('usage_type', usage)
-    if (entryType) entryQuery = entryQuery.eq('entry_type', entryType)
+        if (usage) query = query.eq('usage_type', usage)
+        if (entryType) query = query.eq('entry_type', entryType)
+        if (view === 'trips' && databaseSearch) {
+          const searchPattern = `%${databaseSearch}%`
+          query = query.or(
+            `origin.ilike.${searchPattern},destination.ilike.${searchPattern},purpose.ilike.${searchPattern},note.ilike.${searchPattern}`
+          )
+        }
 
-    let fuelQuery = supabase
-      .from('vehicle_logbook_fuel_entries')
-      .select(
-        'id, fueled_on, odometer_km, energy_type, quantity, unit, net_amount, vat_amount, gross_amount, supplier, document_number, is_full_tank, note, vehicle_logbook_fuel_attachments(id, file_name)'
-      )
-      .eq('vehicle_id', selectedVehicle.id)
-      .is('deleted_at', null)
-      .gte('fueled_on', fromDate)
-      .lte('fueled_on', toDate)
-      .order('fueled_on', { ascending: false })
+        return query
+          .order('trip_date', { ascending: false })
+          .order('day_sequence', { ascending: false })
+          .range(rangeFrom, rangeTo)
+          .returns<VehicleLogbookEntryMetrics[]>()
+      },
+      'Nepodařilo se načíst souhrn jízd'
+    )
 
-    if (energy) fuelQuery = fuelQuery.eq('energy_type', energy)
+    const fuelMetricsPromise = loadAllMetricPages<VehicleLogbookFuelMetrics>(
+      (rangeFrom, rangeTo) => {
+        let query = supabase
+          .from('vehicle_logbook_fuel_entries')
+          .select('net_amount, vat_amount, gross_amount')
+          .eq('vehicle_id', selectedVehicle.id)
+          .is('deleted_at', null)
+          .gte('fueled_on', fromDate)
+          .lte('fueled_on', toDate)
 
-    const [entriesResponse, fuelResponse, closuresResponse, latestEntryResponse] =
+        if (energy) query = query.eq('energy_type', energy)
+        if (view === 'fuel' && databaseSearch) {
+          const searchPattern = `%${databaseSearch}%`
+          query = query.or(
+            `supplier.ilike.${searchPattern},document_number.ilike.${searchPattern},note.ilike.${searchPattern}`
+          )
+        }
+
+        return query
+          .order('fueled_on', { ascending: false })
+          .order('created_at', { ascending: false })
+          .range(rangeFrom, rangeTo)
+          .returns<VehicleLogbookFuelMetrics[]>()
+      },
+      'Nepodařilo se načíst finanční souhrn'
+    )
+
+    const rangeStart = (requestedPage - 1) * PAGE_SIZE
+    const rangeEnd = rangeStart + PAGE_SIZE - 1
+    const pagePromise =
+      view === 'trips'
+        ? (() => {
+            let query = supabase
+              .from('vehicle_logbook_entries')
+              .select(
+                'id, trip_date, day_sequence, entry_type, usage_type, source_type, origin, destination, purpose, note, odometer_start_km, odometer_end_km, business_km, private_km, distance_km',
+                { count: 'exact' }
+              )
+              .eq('vehicle_id', selectedVehicle.id)
+              .is('deleted_at', null)
+              .gte('trip_date', fromDate)
+              .lte('trip_date', toDate)
+
+            if (usage) query = query.eq('usage_type', usage)
+            if (entryType) query = query.eq('entry_type', entryType)
+            if (databaseSearch) {
+              const searchPattern = `%${databaseSearch}%`
+              query = query.or(
+                `origin.ilike.${searchPattern},destination.ilike.${searchPattern},purpose.ilike.${searchPattern},note.ilike.${searchPattern}`
+              )
+            }
+
+            return query
+              .order('trip_date', { ascending: false })
+              .order('day_sequence', { ascending: false })
+              .range(rangeStart, rangeEnd)
+              .returns<VehicleLogbookEntrySummary[]>()
+          })()
+        : (() => {
+            let query = supabase
+              .from('vehicle_logbook_fuel_entries')
+              .select(
+                'id, fueled_on, odometer_km, energy_type, quantity, unit, net_amount, vat_amount, gross_amount, supplier, document_number, is_full_tank, note, vehicle_logbook_fuel_attachments(id, file_name)',
+                { count: 'exact' }
+              )
+              .eq('vehicle_id', selectedVehicle.id)
+              .is('deleted_at', null)
+              .gte('fueled_on', fromDate)
+              .lte('fueled_on', toDate)
+
+            if (energy) query = query.eq('energy_type', energy)
+            if (databaseSearch) {
+              const searchPattern = `%${databaseSearch}%`
+              query = query.or(
+                `supplier.ilike.${searchPattern},document_number.ilike.${searchPattern},note.ilike.${searchPattern}`
+              )
+            }
+
+            return query
+              .order('fueled_on', { ascending: false })
+              .order('created_at', { ascending: false })
+              .range(rangeStart, rangeEnd)
+              .returns<VehicleLogbookFuelSummary[]>()
+          })()
+
+    const [
+      loadedEntryMetrics,
+      loadedFuelMetrics,
+      closuresResponse,
+      latestEntryResponse,
+      pageResponse,
+    ] =
       await Promise.all([
-        entryQuery.returns<VehicleLogbookEntrySummary[]>(),
-        fuelQuery.returns<VehicleLogbookFuelSummary[]>(),
+        entryMetricsPromise,
+        fuelMetricsPromise,
         supabase
           .from('vehicle_logbook_monthly_closures')
           .select('id, period_year, period_month, changed_after_closure')
@@ -744,48 +1046,54 @@ export default async function VehicleLogbookPage({
               'trip_date' | 'day_sequence' | 'odometer_end_km'
             >
           >(),
+        pagePromise,
       ])
 
     const firstError =
-      entriesResponse.error ??
-      fuelResponse.error ??
       closuresResponse.error ??
-      latestEntryResponse.error
+      latestEntryResponse.error ??
+      pageResponse.error
 
     if (firstError) {
       throw new Error(`Nepodařilo se načíst provozní souhrn: ${firstError.message}`)
     }
 
-    entries = entriesResponse.data ?? []
-    fuelEntries = fuelResponse.data ?? []
+    entryMetrics = loadedEntryMetrics
+    fuelMetrics = loadedFuelMetrics
     closures = closuresResponse.data ?? []
     latestEntry = latestEntryResponse.data ?? null
-  }
-
-  if (search) {
-    const normalizedSearch = normalizeSearch(search)
     if (view === 'trips') {
-      entries = entries.filter((entry) =>
-        normalizeSearch(
-          `${entry.origin} ${entry.destination} ${entry.purpose} ${entry.note ?? ''}`
-        ).includes(normalizedSearch)
-      )
+      entries = (pageResponse.data ?? []) as VehicleLogbookEntrySummary[]
     } else {
-      fuelEntries = fuelEntries.filter((entry) =>
-        normalizeSearch(
-          `${entry.supplier ?? ''} ${entry.document_number ?? ''} ${entry.note ?? ''}`
-        ).includes(normalizedSearch)
-      )
+      fuelEntries = (pageResponse.data ?? []) as VehicleLogbookFuelSummary[]
     }
+    totalFilteredRecords = pageResponse.count ?? 0
   }
 
-  const businessKm = entries.reduce((sum, entry) => sum + Number(entry.business_km), 0)
-  const privateKm = entries.reduce((sum, entry) => sum + Number(entry.private_km), 0)
+  const totalPages = Math.max(1, Math.ceil(totalFilteredRecords / PAGE_SIZE))
+  const currentPage = Math.min(requestedPage, totalPages)
+  const businessKm = entryMetrics.reduce(
+    (sum, entry) => sum + Number(entry.business_km),
+    0
+  )
+  const privateKm = entryMetrics.reduce(
+    (sum, entry) => sum + Number(entry.private_km),
+    0
+  )
   const totalKm = businessKm + privateKm
   const businessShare = totalKm > 0 ? Math.round((businessKm / totalKm) * 100) : 0
-  const fuelNet = fuelEntries.reduce((sum, entry) => sum + Number(entry.net_amount), 0)
-  const fuelVat = fuelEntries.reduce((sum, entry) => sum + Number(entry.vat_amount), 0)
-  const fuelGross = fuelEntries.reduce((sum, entry) => sum + Number(entry.gross_amount), 0)
+  const fuelNet = fuelMetrics.reduce(
+    (sum, entry) => sum + Number(entry.net_amount),
+    0
+  )
+  const fuelVat = fuelMetrics.reduce(
+    (sum, entry) => sum + Number(entry.vat_amount),
+    0
+  )
+  const fuelGross = fuelMetrics.reduce(
+    (sum, entry) => sum + Number(entry.gross_amount),
+    0
+  )
   const currentOdometer =
     latestEntry?.odometer_end_km ?? selectedVehicle?.initial_odometer_km ?? null
   const fromParts = fromDate.split('-').map(Number)
@@ -817,13 +1125,26 @@ export default async function VehicleLogbookPage({
   const urlParams = new URLSearchParams()
 
   if (selectedVehicle) urlParams.set('vehicle', selectedVehicle.id)
-  urlParams.set('from', fromDate)
-  urlParams.set('to', toDate)
+  if (allRange) {
+    urlParams.set('range', 'all')
+  } else {
+    urlParams.set('from', fromDate)
+    urlParams.set('to', toDate)
+  }
   if (usage) urlParams.set('usage', usage)
   if (entryType) urlParams.set('type', entryType)
   if (energy) urlParams.set('energy', energy)
   if (search) urlParams.set('q', search)
   if (view === 'fuel') urlParams.set('view', 'fuel')
+  if (currentPage > 1) urlParams.set('page', String(currentPage))
+
+  if (requestedPage > totalPages) {
+    redirect(
+      buildHref(urlParams, {
+        page: totalPages === 1 ? null : String(totalPages),
+      })
+    )
+  }
 
   const vehicleOptions: VehicleSelectorOption[] = vehicles.map((vehicle) => ({
     id: vehicle.id,
@@ -1047,7 +1368,9 @@ export default async function VehicleLogbookPage({
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
                     <div>
                       <div className="vehicle-logbook-page__summary-label">ZÁZNAMY</div>
-                      <div className="vehicle-logbook-page__summary-value">{entries.length}</div>
+                      <div className="vehicle-logbook-page__summary-value">
+                        {entryMetrics.length}
+                      </div>
                     </div>
                     <div>
                       <div className="vehicle-logbook-page__summary-label">CELKEM KM</div>
@@ -1083,7 +1406,9 @@ export default async function VehicleLogbookPage({
                     </div>
                     <div>
                       <div className="vehicle-logbook-page__summary-label">TANKOVÁNÍ</div>
-                      <div className="vehicle-logbook-page__summary-subvalue">{fuelEntries.length}</div>
+                      <div className="vehicle-logbook-page__summary-subvalue">
+                        {fuelMetrics.length}
+                      </div>
                     </div>
                     <div>
                       <div className="vehicle-logbook-page__summary-label">PALIVO S DPH</div>
@@ -1120,23 +1445,39 @@ export default async function VehicleLogbookPage({
                         ['ROK', ranges.year],
                       ] as const
                     ).map(([label, range]) => {
-                      const selected = fromDate === range.from && toDate === range.to
+                      const selected =
+                        !allRange && fromDate === range.from && toDate === range.to
 
                       return (
                         <Link
                           key={label}
                           href={buildHref(urlParams, {
+                            range: null,
                             from: range.from,
                             to: range.to,
+                            page: null,
                           })}
                           data-selected={selected ? 'true' : 'false'}
                           style={selected ? undefined : { boxShadow: 'none' }}
-                          className="vehicle-logbook-page__period-tab inline-flex h-10 items-center justify-center rounded-xl border px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition"
+                          className="vehicle-logbook-page__period-tab inline-flex h-10 items-center justify-center rounded-xl border px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition duration-200 hover:-translate-y-[1px]"
                         >
                           {label}
                         </Link>
                       )
                     })}
+                    <Link
+                      href={buildHref(urlParams, {
+                        range: 'all',
+                        from: null,
+                        to: null,
+                        page: null,
+                      })}
+                      data-selected={allRange ? 'true' : 'false'}
+                      style={allRange ? undefined : { boxShadow: 'none' }}
+                      className="vehicle-logbook-page__period-tab inline-flex h-10 items-center justify-center rounded-xl border px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition duration-200 hover:-translate-y-[1px]"
+                    >
+                      VŠE
+                    </Link>
                   </div>
 
                   <form
@@ -1308,10 +1649,11 @@ export default async function VehicleLogbookPage({
                     view: null,
                     energy: null,
                     q: null,
+                    page: null,
                   })}
                   data-selected={view === 'trips' ? 'true' : 'false'}
                   style={view === 'trips' ? undefined : { boxShadow: 'none' }}
-                  className="vehicle-logbook-page__content-tab inline-flex h-10 items-center justify-center rounded-xl border px-4 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                  className="vehicle-logbook-page__content-tab inline-flex h-10 items-center justify-center rounded-xl border px-4 text-[11px] font-semibold uppercase tracking-[0.08em] transition duration-200 hover:-translate-y-[1px]"
                 >
                   JÍZDY
                 </Link>
@@ -1321,10 +1663,11 @@ export default async function VehicleLogbookPage({
                     usage: null,
                     type: null,
                     q: null,
+                    page: null,
                   })}
                   data-selected={view === 'fuel' ? 'true' : 'false'}
                   style={view === 'fuel' ? undefined : { boxShadow: 'none' }}
-                  className="vehicle-logbook-page__content-tab inline-flex h-10 items-center justify-center rounded-xl border px-4 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                  className="vehicle-logbook-page__content-tab inline-flex h-10 items-center justify-center rounded-xl border px-4 text-[11px] font-semibold uppercase tracking-[0.08em] transition duration-200 hover:-translate-y-[1px]"
                 >
                   TANKOVÁNÍ
                 </Link>
@@ -1332,8 +1675,8 @@ export default async function VehicleLogbookPage({
               <div className="flex flex-wrap items-center gap-3">
                 <div className="text-xs text-gray-500">
                   {view === 'trips'
-                    ? `${entries.length} záznamů · ${formatNumber(totalKm)} km`
-                    : `${fuelEntries.length} záznamů · ${formatCurrency(fuelGross)}`}
+                    ? `${formatNumber(totalFilteredRecords)} záznamů · ${formatNumber(totalKm)} km`
+                    : `${formatNumber(totalFilteredRecords)} záznamů · ${formatCurrency(fuelGross)}`}
                 </div>
                 {view === 'fuel' ? (
                   <FuelEntryButton
@@ -1351,6 +1694,12 @@ export default async function VehicleLogbookPage({
             ) : (
               <FuelEntriesList entries={fuelEntries} />
             )}
+            <VehicleLogbookPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalFilteredRecords}
+              currentParams={urlParams}
+            />
           </section>
         ) : null}
       </div>

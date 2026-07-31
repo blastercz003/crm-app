@@ -729,6 +729,7 @@ export async function confirmAutomaticTripsAction(
   }
 
   revalidatePath('/knihy-jizd')
+  revalidatePath('/majetek', 'layout')
   return {
     success: true,
     error: null,

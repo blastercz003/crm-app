@@ -582,6 +582,90 @@ begin
 end;
 $$;
 
+-- Propíše poslední známý tachometr z Knih jízd do detailu vozidla v Majetku.
+-- Pokud ještě neexistuje žádná jízda, použije počáteční stav tachometru.
+create or replace function public.refresh_vehicle_logbook_asset_mileage(
+  p_vehicle_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_asset_id uuid;
+  current_mileage integer;
+begin
+  select
+    vehicle.asset_id,
+    coalesce(
+      (
+        select entry.odometer_end_km
+        from public.vehicle_logbook_entries entry
+        where entry.vehicle_id = vehicle.id
+          and entry.deleted_at is null
+        order by
+          entry.trip_date desc,
+          entry.day_sequence desc,
+          entry.created_at desc
+        limit 1
+      ),
+      vehicle.initial_odometer_km
+    )
+  into target_asset_id, current_mileage
+  from public.vehicle_logbook_vehicles vehicle
+  where vehicle.id = p_vehicle_id;
+
+  if target_asset_id is null or current_mileage is null then
+    return;
+  end if;
+
+  update public.asset_vehicle_details detail
+  set
+    mileage_km = current_mileage,
+    updated_at = now()
+  where detail.asset_id = target_asset_id
+    and detail.mileage_km is distinct from current_mileage;
+end;
+$$;
+
+create or replace function public.sync_vehicle_logbook_mileage_to_asset_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_table_name = 'vehicle_logbook_vehicles' then
+    perform public.refresh_vehicle_logbook_asset_mileage(new.id);
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    perform public.refresh_vehicle_logbook_asset_mileage(old.vehicle_id);
+    return old;
+  end if;
+
+  if tg_op = 'INSERT' then
+    perform public.refresh_vehicle_logbook_asset_mileage(new.vehicle_id);
+    return new;
+  end if;
+
+  if old.vehicle_id is distinct from new.vehicle_id
+    or old.odometer_end_km is distinct from new.odometer_end_km
+    or old.trip_date is distinct from new.trip_date
+    or old.day_sequence is distinct from new.day_sequence
+    or old.deleted_at is distinct from new.deleted_at then
+    if old.vehicle_id is distinct from new.vehicle_id then
+      perform public.refresh_vehicle_logbook_asset_mileage(old.vehicle_id);
+    end if;
+    perform public.refresh_vehicle_logbook_asset_mileage(new.vehicle_id);
+  end if;
+
+  return new;
+end;
+$$;
+
 -- Každá změna jízdy nebo tankování po uzávěrce označí daný měsíc
 -- jako změněný. Při přesunu do jiného měsíce se označí oba měsíce.
 create or replace function public.mark_vehicle_logbook_closure_changed()
@@ -1139,6 +1223,20 @@ create trigger asset_vehicle_details_sync_vehicle_logbook
 after insert or update or delete on public.asset_vehicle_details
 for each row execute function public.sync_vehicle_logbook_vehicle_trigger();
 
+drop trigger if exists vehicle_logbook_initial_mileage_sync_asset
+  on public.vehicle_logbook_vehicles;
+create trigger vehicle_logbook_initial_mileage_sync_asset
+after update of initial_odometer_km on public.vehicle_logbook_vehicles
+for each row
+when (old.initial_odometer_km is distinct from new.initial_odometer_km)
+execute function public.sync_vehicle_logbook_mileage_to_asset_trigger();
+
+drop trigger if exists vehicle_logbook_entries_sync_asset_mileage
+  on public.vehicle_logbook_entries;
+create trigger vehicle_logbook_entries_sync_asset_mileage
+after insert or update or delete on public.vehicle_logbook_entries
+for each row execute function public.sync_vehicle_logbook_mileage_to_asset_trigger();
+
 -- Audit.
 drop trigger if exists vehicle_logbook_vehicles_audit
   on public.vehicle_logbook_vehicles;
@@ -1248,6 +1346,36 @@ set
     excluded.initial_odometer_recorded_on
   ),
   updated_at = now();
+
+-- Dorovná aktuální nájezd již existujících vozidel.
+with latest_vehicle_mileage as (
+  select
+    vehicle.asset_id,
+    coalesce(
+      (
+        select entry.odometer_end_km
+        from public.vehicle_logbook_entries entry
+        where entry.vehicle_id = vehicle.id
+          and entry.deleted_at is null
+        order by
+          entry.trip_date desc,
+          entry.day_sequence desc,
+          entry.created_at desc
+        limit 1
+      ),
+      vehicle.initial_odometer_km
+    ) as mileage_km
+  from public.vehicle_logbook_vehicles vehicle
+  where vehicle.asset_id is not null
+)
+update public.asset_vehicle_details detail
+set
+  mileage_km = source.mileage_km,
+  updated_at = now()
+from latest_vehicle_mileage source
+where detail.asset_id = source.asset_id
+  and source.mileage_km is not null
+  and detail.mileage_km is distinct from source.mileage_km;
 
 -- RLS: přímé fyzické mazání účetních záznamů není povolené.
 alter table public.vehicle_logbook_vehicles enable row level security;
@@ -1406,6 +1534,12 @@ revoke insert, update, delete
   from anon, authenticated;
 
 revoke all on function public.sync_vehicle_logbook_vehicle(uuid)
+  from public, anon, authenticated;
+
+revoke all on function public.refresh_vehicle_logbook_asset_mileage(uuid)
+  from public, anon, authenticated;
+
+revoke all on function public.sync_vehicle_logbook_mileage_to_asset_trigger()
   from public, anon, authenticated;
 
 revoke all on function public.recalculate_vehicle_logbook_monthly_closure(uuid, integer, integer)

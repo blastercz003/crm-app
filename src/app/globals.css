@@ -9143,6 +9143,48 @@ html[data-theme='dark'] .vehicle-logbook-page__skeleton-card .bg-slate-100 {
     0 8px 18px rgba(41, 128, 185, 0.2);
 }
 
+.vehicle-logbook-page__pagination-link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(207, 216, 227, 0.9);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.76);
+  padding: 0.5rem 0.75rem;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.vehicle-logbook-page__pagination-link:not([data-disabled='true']):hover {
+  transform: translateY(-1px);
+}
+
+.vehicle-logbook-page__pagination-link--page {
+  min-width: 36px;
+  padding-inline: 0.5rem;
+}
+
+.vehicle-logbook-page__pagination-link[data-selected='true'] {
+  border-color: #6fa9d1;
+  background: linear-gradient(155deg, #4d90c5 0%, #2f77af 100%);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 8px 18px rgba(41, 128, 185, 0.18);
+}
+
+.vehicle-logbook-page__pagination-link[data-disabled='true'] {
+  cursor: default;
+  opacity: 0.42;
+}
+
 .vehicle-logbook-page__vehicle-tabs {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -9892,7 +9934,8 @@ html[data-theme='dark'] .vehicle-logbook-page__modal-close {
 }
 
 html[data-theme='dark'] .vehicle-logbook-page__period-tab[data-selected='true'],
-html[data-theme='dark'] .vehicle-logbook-page__content-tab[data-selected='true'] {
+html[data-theme='dark'] .vehicle-logbook-page__content-tab[data-selected='true'],
+html[data-theme='dark'] .vehicle-logbook-page__pagination-link[data-selected='true'] {
   border-color: rgba(111, 169, 209, 0.72) !important;
   background: linear-gradient(
     155deg,
@@ -9900,6 +9943,25 @@ html[data-theme='dark'] .vehicle-logbook-page__content-tab[data-selected='true']
     rgba(28, 76, 116, 0.98) 100%
   ) !important;
   color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .vehicle-logbook-page__pagination {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-theme='dark'] .vehicle-logbook-page__pagination-link {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: linear-gradient(
+    155deg,
+    rgba(17, 27, 46, 0.96) 0%,
+    rgba(12, 20, 34, 0.94) 100%
+  );
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .vehicle-logbook-page__pagination-summary,
+html[data-theme='dark'] .vehicle-logbook-page__pagination-ellipsis {
+  color: #64748b !important;
 }
 
 html[data-theme='dark'] .vehicle-logbook-page__filter-submit {
@@ -16858,6 +16920,11 @@ html[data-theme='dark'] .faktury-statistics-section-tab--active {
   color: #718096;
   text-align: left;
   white-space: nowrap;
+}
+
+.vehicle-logbook-page__report-table th.text-right,
+.vehicle-logbook-page__report-table td.text-right {
+  text-align: right;
 }
 
 .vehicle-logbook-page__report-table td {

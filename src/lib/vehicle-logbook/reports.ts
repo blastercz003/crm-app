@@ -208,7 +208,7 @@ type PageResult<T> = {
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-const MAX_REPORT_DAYS = 3660
+const MAX_REPORT_DAYS = 36_525
 const PAGE_SIZE = 1000
 
 function getVehicleName(vehicle: VehicleRow) {
@@ -287,7 +287,7 @@ export function validateVehicleLogbookReportInput(
     (toDate.getTime() - fromDate.getTime()) / 86_400_000
   )
   if (days > MAX_REPORT_DAYS) {
-    return 'Jedním reportem lze zpracovat nejvýše 10 let.'
+    return 'Jedním reportem lze zpracovat nejvýše 100 let.'
   }
 
   return null

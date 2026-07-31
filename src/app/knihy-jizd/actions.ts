@@ -207,6 +207,7 @@ export async function updateVehicleOdometerAction(
   }
 
   revalidatePath('/knihy-jizd')
+  revalidatePath('/majetek', 'layout')
   return { success: true, error: null }
 }
 
@@ -403,6 +404,7 @@ export async function createVehicleLogbookEntryAction(
   }
 
   revalidatePath('/knihy-jizd')
+  revalidatePath('/majetek', 'layout')
   return { success: true, error: null }
 }
 

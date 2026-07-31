@@ -47,6 +47,7 @@ export function VehicleSelector({
     ) {
       const params = new URLSearchParams(searchParams.toString())
       params.set('vehicle', storedVehicleId)
+      params.delete('page')
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
       return
     }
@@ -67,6 +68,7 @@ export function VehicleSelector({
     window.localStorage.setItem(LAST_VEHICLE_STORAGE_KEY, vehicleId)
     const params = new URLSearchParams(searchParams.toString())
     params.set('vehicle', vehicleId)
+    params.delete('page')
     router.push(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
