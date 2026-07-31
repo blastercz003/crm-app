@@ -27,6 +27,18 @@ const FILTERS: Array<{ key: ReceivedInvoiceFilter; label: string }> = [
   { key: 'paid', label: 'Zaplaceno' },
 ]
 
+function getTodayDateInputValue() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+
+  return `${values.year}-${values.month}-${values.day}`
+}
+
 function formatFileSize(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
@@ -218,7 +230,7 @@ export function ReceivedInvoicesModal({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [singleDueDate, setSingleDueDate] = useState('')
+  const [singleDueDate, setSingleDueDate] = useState(getTodayDateInputValue)
   const [singleFile, setSingleFile] = useState<File | null>(null)
   const [multipleFiles, setMultipleFiles] = useState<File[]>([])
   const [dueDateDraft, setDueDateDraft] = useState('')
@@ -388,7 +400,7 @@ export function ReceivedInvoicesModal({
       }
 
       setSingleFile(null)
-      setSingleDueDate('')
+      setSingleDueDate(getTodayDateInputValue())
       setMode('view')
       refreshData()
     })
@@ -601,23 +613,13 @@ export function ReceivedInvoicesModal({
                         Vybráno: <span className="font-medium">{singleFile.name}</span>
                       </div>
                     ) : null}
-                    <div className="relative min-w-0">
-                      <input
-                        type="date"
-                        aria-label="Datum splatnosti"
-                        value={singleDueDate}
-                        onChange={(event) => setSingleDueDate(event.target.value)}
-                        className="received-invoices-modal__date-field received-invoices-modal__date-field--upload h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                      />
-                      {!singleDueDate ? (
-                        <span
-                          aria-hidden="true"
-                          className="received-invoices-modal__date-placeholder pointer-events-none absolute inset-y-px left-3 right-10 z-[1] hidden items-center text-sm text-zinc-500 max-lg:flex"
-                        >
-                          Datum splatnosti
-                        </span>
-                      ) : null}
-                    </div>
+                    <input
+                      type="date"
+                      aria-label="Datum splatnosti"
+                      value={singleDueDate}
+                      onChange={(event) => setSingleDueDate(event.target.value)}
+                      className="received-invoices-modal__date-field received-invoices-modal__date-field--upload h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                    />
                     <button
                       type="submit"
                       disabled={isPending}
