@@ -55,11 +55,11 @@ function getSortedFields(fields: string[]) {
   return [...ordered, ...custom]
 }
 
-function toFieldLabel(field: string) {
+export function getChangeFieldLabel(field: string) {
   return FIELD_LABELS[field] ?? field
 }
 
-function formatFieldValue(field: string, value: string | null) {
+export function formatChangeFieldValue(field: string, value: string | null) {
   if (!value) return '—'
 
   if (field === 'start_at' || field === 'end_at') {
@@ -76,6 +76,26 @@ function formatFieldValue(field: string, value: string | null) {
   }
 
   return value
+}
+
+export function areChangeValuesEqual(
+  field: string,
+  first: string | null | undefined,
+  second: string | null | undefined
+) {
+  const normalize = (value: string | null | undefined) => {
+    const text = String(value ?? '').trim()
+    if (!text) return null
+
+    if (field === 'start_at' || field === 'end_at') {
+      const timestamp = Date.parse(text)
+      return Number.isNaN(timestamp) ? text : timestamp
+    }
+
+    return text
+  }
+
+  return normalize(first) === normalize(second)
 }
 
 export function mergeChangedFields(previous: string[], next: string[]) {
@@ -98,7 +118,7 @@ export function buildChangedFieldsLabel(fields: string[]) {
   const normalized = getSortedFields(fields)
   if (normalized.length === 0) return ''
 
-  return normalized.map(toFieldLabel).join(', ')
+  return normalized.map(getChangeFieldLabel).join(', ')
 }
 
 export function buildChangedValuesLabel({
@@ -114,8 +134,8 @@ export function buildChangedValuesLabel({
 
   return fields
     .map((field) => {
-      const label = toFieldLabel(field)
-      const value = formatFieldValue(field, changedValues[field] ?? null)
+      const label = getChangeFieldLabel(field)
+      const value = formatChangeFieldValue(field, changedValues[field] ?? null)
       return `${label}: ${value}`
     })
     .join(' · ')
@@ -139,17 +159,19 @@ export async function upsertJobChangeQueueEntry({
   job,
   kind,
   nextFields,
+  previousValues = {},
   nextValues = {},
 }: {
   supabase: SupabaseClient
   job: QueueJobSnapshot
   kind: JobChangeKind
   nextFields: string[]
+  previousValues?: ChangedValues
   nextValues?: ChangedValues
 }) {
   const { data: existing, error: existingError } = await supabase
     .from('job_changes_queue')
-    .select('changed_fields, changed_values')
+    .select('kind, changed_fields, original_values, changed_values')
     .eq('job_id', job.id)
     .maybeSingle()
 
@@ -157,23 +179,69 @@ export async function upsertJobChangeQueueEntry({
     throw new Error(`Nepodařilo se načíst změnovou frontu: ${existingError.message}`)
   }
 
+  if (kind === 'updated_job' && existing?.kind === 'new_job') {
+    return
+  }
+
   const previousFields = Array.isArray(existing?.changed_fields)
     ? (existing.changed_fields as string[])
     : []
-  const previousValues =
+  const existingOriginalValues =
+    existing?.original_values && typeof existing.original_values === 'object'
+      ? (existing.original_values as ChangedValues)
+      : {}
+  const currentValues =
     existing?.changed_values && typeof existing.changed_values === 'object'
       ? (existing.changed_values as ChangedValues)
       : {}
 
-  const mergedFields = kind === 'updated_job'
+  const mergedFieldsBeforeNetCheck = kind === 'updated_job'
     ? mergeChangedFields(previousFields, nextFields)
     : []
+  const mergedOriginalValues = kind === 'updated_job'
+    ? nextFields.reduce<ChangedValues>((values, field) => {
+        if (!(field in values)) {
+          values[field] = previousValues[field] ?? null
+        }
+        return values
+      }, { ...existingOriginalValues })
+    : {}
   const mergedValues = kind === 'updated_job'
     ? mergeChangedValues({
-        previous: previousValues,
+        previous: currentValues,
         next: nextValues,
       })
     : {}
+  const mergedFields = mergedFieldsBeforeNetCheck.filter(
+    (field) =>
+      !areChangeValuesEqual(
+        field,
+        mergedOriginalValues[field],
+        mergedValues[field]
+      )
+  )
+
+  for (const field of Object.keys(mergedOriginalValues)) {
+    if (!mergedFields.includes(field)) delete mergedOriginalValues[field]
+  }
+  for (const field of Object.keys(mergedValues)) {
+    if (!mergedFields.includes(field)) delete mergedValues[field]
+  }
+
+  if (kind === 'updated_job' && mergedFields.length === 0) {
+    if (existing?.kind === 'updated_job') {
+      const { error: deleteError } = await supabase
+        .from('job_changes_queue')
+        .delete()
+        .eq('job_id', job.id)
+        .eq('kind', 'updated_job')
+
+      if (deleteError) {
+        throw new Error(`Nepodařilo se odstranit nulovou změnu: ${deleteError.message}`)
+      }
+    }
+    return
+  }
 
   const changedFieldsLabel = kind === 'updated_job'
     ? buildChangedValuesLabel({
@@ -187,6 +255,7 @@ export async function upsertJobChangeQueueEntry({
       job_id: job.id,
       kind,
       changed_fields: mergedFields,
+      original_values: mergedOriginalValues,
       changed_values: mergedValues,
       changed_fields_label: changedFieldsLabel,
       job_start_at: job.start_at,

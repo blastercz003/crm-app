@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ChangesButton } from './changes-button'
 import {
-  acknowledgeAllJobChangesAction,
   getJobsChangesModalDataAction,
+  saveJobChangesModalAction,
   type ChangesNewJobItem,
   type ChangesUpdatedJobItem,
 } from './changes-actions'
@@ -28,10 +28,11 @@ const INITIAL_DATA: ChangesModalData = {
   badgeCount: 0,
 }
 
-export function ChangesLauncher({
-  initialCount,
-  className,
-}: ChangesLauncherProps) {
+function changeKey(item: Pick<ChangesUpdatedJobItem, 'jobId' | 'updatedAt'>) {
+  return `${item.jobId}:${item.updatedAt}`
+}
+
+export function ChangesLauncher({ initialCount, className }: ChangesLauncherProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, startLoading] = useTransition()
   const [isSaving, startSaving] = useTransition()
@@ -39,71 +40,43 @@ export function ChangesLauncher({
     ...INITIAL_DATA,
     badgeCount: initialCount,
   })
+  const [markedChanges, setMarkedChanges] = useState<Record<string, ChangesUpdatedJobItem>>({})
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-  const [pinnedNewJobs, setPinnedNewJobs] = useState<Record<string, ChangesNewJobItem>>({})
+  const [confirmError, setConfirmError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function reloadData(pinnedSnapshot?: Record<string, ChangesNewJobItem>) {
-    let result: Awaited<ReturnType<typeof getJobsChangesModalDataAction>>
-
+  async function reloadData() {
     try {
-      result = await getJobsChangesModalDataAction()
+      const result = await getJobsChangesModalDataAction()
+      if (!result.success || !result.data) {
+        setError(result.error ?? 'Nepodařilo se načíst změny.')
+        return false
+      }
+
+      setData(result.data)
+      setError(null)
+      return true
     } catch (requestError) {
       console.error('Nepodařilo se načíst data změn.', requestError)
       setError('Nepodařilo se načíst data modalu změn.')
-      return
+      return false
     }
-
-    if (!result.success || !result.data) {
-      setError(result.error ?? 'Nepodařilo se načíst změny.')
-      return
-    }
-
-    const serverData = result.data
-
-    const mergedNewJobsMap = new Map<string, ChangesNewJobItem>()
-    serverData.newJobs.forEach((item) => {
-      mergedNewJobsMap.set(item.jobId, item)
-    })
-
-    const pinnedSource = pinnedSnapshot ?? pinnedNewJobs
-
-    Object.values(pinnedSource).forEach((item) => {
-      if (!mergedNewJobsMap.has(item.jobId)) {
-        mergedNewJobsMap.set(item.jobId, item)
-      }
-    })
-
-    const mergedNewJobs = Array.from(mergedNewJobsMap.values()).sort((a, b) => {
-      const aStart = a.startAt ? Date.parse(a.startAt) : Number.POSITIVE_INFINITY
-      const bStart = b.startAt ? Date.parse(b.startAt) : Number.POSITIVE_INFINITY
-
-      if (aStart !== bStart) return aStart - bStart
-
-      const aEnd = a.endAt ? Date.parse(a.endAt) : Number.POSITIVE_INFINITY
-      const bEnd = b.endAt ? Date.parse(b.endAt) : Number.POSITIVE_INFINITY
-
-      if (aEnd !== bEnd) return aEnd - bEnd
-
-      return a.jobNumber.localeCompare(b.jobNumber, 'cs', { sensitivity: 'base' })
-    })
-
-    setData({
-      ...serverData,
-      newJobs: mergedNewJobs,
-      badgeCount: mergedNewJobs.length + serverData.updatedJobs.length,
-    })
-    setError(null)
   }
 
   function openModal() {
-    setIsOpen(true)
+    if (isLoading) return
     startLoading(async () => {
       await reloadData()
+      setIsConfirmOpen(false)
+      setConfirmError(null)
+      setIsOpen(true)
     })
   }
 
   function closeModal() {
+    setMarkedChanges({})
+    setIsConfirmOpen(false)
+    setConfirmError(null)
     setIsOpen(false)
   }
 
@@ -112,18 +85,16 @@ export function ChangesLauncher({
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-
     return () => {
       document.body.style.overflow = previousOverflow
     }
   }, [isOpen])
 
-  async function handleEvidenceToggle(job: ChangesNewJobItem) {
+  function handleEvidenceToggle(job: ChangesNewJobItem) {
     startSaving(async () => {
       const nextStatus = job.evidenceStatus === 'nove' ? 'zapsano' : 'nove'
       const formData = new FormData()
       formData.set('evidence_status', nextStatus)
-
       const result = await updateJobEvidenceStatusAction(
         job.jobId,
         { success: false, error: null },
@@ -135,233 +106,258 @@ export function ChangesLauncher({
         return
       }
 
-      let nextPinnedState: Record<string, ChangesNewJobItem>
-      if (nextStatus === 'zapsano') {
-        nextPinnedState = {
-          ...pinnedNewJobs,
-          [job.jobId]: {
-            ...job,
-            evidenceStatus: 'zapsano',
-            updatedAt: new Date().toISOString(),
-          },
-        }
-      } else {
-        nextPinnedState = { ...pinnedNewJobs }
-        delete nextPinnedState[job.jobId]
-      }
-
-      setPinnedNewJobs(nextPinnedState)
-      await reloadData(nextPinnedState)
+      await reloadData()
     })
   }
 
-  async function handleAcknowledgeAll() {
-    startSaving(async () => {
-      let result: Awaited<ReturnType<typeof acknowledgeAllJobChangesAction>>
+  function toggleChangedJob(item: ChangesUpdatedJobItem) {
+    const key = changeKey(item)
+    setMarkedChanges((current) => {
+      const next = { ...current }
+      if (next[key]) delete next[key]
+      else next[key] = item
+      return next
+    })
+  }
 
-      try {
-        result = await acknowledgeAllJobChangesAction()
-      } catch (requestError) {
-        console.error('Nepodařilo se potvrdit zaevidování změn.', requestError)
-        setError('Nepodařilo se potvrdit zaevidování změn.')
-        return
-      }
+  function handleSave() {
+    startSaving(async () => {
+      setConfirmError(null)
+      const result = await saveJobChangesModalAction({
+        acknowledgedNewJobIds: data.newJobs
+          .filter((job) => job.evidenceStatus === 'zapsano')
+          .map((job) => job.jobId),
+        acknowledgedUpdatedJobs: Object.values(markedChanges).map((item) => ({
+          jobId: item.jobId,
+          updatedAt: item.updatedAt,
+        })),
+      })
 
       if (!result.success) {
-        setError(result.error ?? 'Nepodařilo se potvrdit zaevidování změn.')
+        const message = result.error ?? 'Stav modalu se nepodařilo uložit.'
+        setError(message)
+        setConfirmError(message)
         return
       }
 
-      setPinnedNewJobs({})
-
-      try {
-        await reloadData()
-      } catch (requestError) {
-        console.error('Nepodařilo se obnovit data modalu změn.', requestError)
-        setError('Potvrzení proběhlo, ale nepodařilo se obnovit data modalu změn.')
-        return
-      }
-
+      setMarkedChanges({})
+      setIsConfirmOpen(false)
+      await reloadData()
       setIsOpen(false)
     })
   }
 
-  const badgeCount = data.badgeCount
-  const hasItems = data.newJobs.length > 0 || data.updatedJobs.length > 0
   const pending = isLoading || isSaving
+  const hasItems = data.newJobs.length > 0 || data.updatedJobs.length > 0
+  const hasSaveableItems =
+    data.newJobs.some((job) => job.evidenceStatus === 'zapsano') ||
+    Object.keys(markedChanges).length > 0
 
   const modalContent = isOpen ? (
     <div
-      className="fixed inset-0 z-[160] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]"
+      className="fixed inset-0 z-[160] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          closeModal()
-        }
+        if (event.target === event.currentTarget) closeModal()
       }}
     >
       <div
-        className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-4"
+        className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
-          className="jobs-page__modal-shell relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
+          className="jobs-page__modal-shell jobs-page__changes-modal relative flex w-full max-w-[1200px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)] xl:h-[min(640px,calc(100dvh-4rem))]"
           style={{
             maxHeight:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
           }}
         >
-              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
-                <div className="min-w-0">
-                  <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                    Aktuální změny:
-                  </h2>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    {hasItems || pending ? (
-                      <div className="inline-flex items-center rounded-full border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]">
-                        POČET: {data.badgeCount}
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center rounded-full border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]">
-                        VŠE ZAPSÁNO
-                      </div>
-                    )}
-                  </div>
+          <header className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
+                Sledování změn zakázek
+              </h2>
+              <div className="mt-1.5">
+                <div
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-[0.08em] text-white ${
+                    hasItems || pending
+                      ? 'border border-orange-400/85 bg-[linear-gradient(155deg,#ff8b2b_0%,#ff6a00_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(249,115,22,0.24)]'
+                      : 'border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)]'
+                  }`}
+                >
+                  {hasItems || pending ? `POČET: ${data.badgeCount}` : 'VŠE ZAPSÁNO'}
                 </div>
+              </div>
+            </div>
 
             <button
               type="button"
               onClick={closeModal}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
-              aria-label="Zavřít"
+              className="jobs-page__changes-close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900"
+              aria-label="Zavřít bez uložení označených změn"
             >
               ✕
             </button>
-          </div>
+          </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
-            <div className="grid gap-4">
-                  <section className="jobs-page__changes-section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.04em] text-gray-900">
-                    NOVÉ ZAKÁZKY
-                  </h3>
-                </div>
-
-                {data.newJobs.length === 0 ? (
-                  <p className="text-sm text-gray-500">Žádné nové zakázky.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {data.newJobs.map((job) => (
-                      <div
-                        key={job.jobId}
-                        className="jobs-page__changes-row grid grid-cols-[minmax(0,1fr)_98px] min-[340px]:grid-cols-[minmax(0,1fr)_108px] sm:grid-cols-[minmax(0,1fr)_108px] items-center gap-1.5 rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
-                      >
-                        <div className="min-w-0">
-                          <div
-                            className="min-w-0 truncate whitespace-nowrap text-[10px] min-[340px]:text-[11px] font-medium text-gray-900 sm:hidden"
-                            title={`${job.jobNumber} · ${formatDateRange(job.startAt, job.endAt)}`}
-                          >
-                            <span className="font-bold">{job.jobNumber}</span> · <span className="font-bold">{formatDateRange(job.startAt, job.endAt)}</span>
-                          </div>
-                          <div
-                            className="mt-0.5 min-w-0 truncate whitespace-nowrap text-[10px] min-[340px]:text-[11px] font-medium text-gray-700 sm:hidden"
-                            title={job.companyName}
-                          >
-                            {job.companyName}
-                          </div>
-                          <div
-                            className="mt-0.5 min-w-0 truncate whitespace-nowrap text-[10px] min-[340px]:text-[11px] font-medium text-gray-700 sm:hidden"
-                            title={getCityFromAddress(job.siteAddress)}
-                          >
-                            {getCityFromAddress(job.siteAddress)}
-                          </div>
-                          <div
-                            className="mt-0.5 min-w-0 truncate whitespace-nowrap text-[10px] min-[340px]:text-[11px] font-medium text-gray-700 sm:hidden"
-                            title={`${job.technicianName} · ${job.generatorName}`}
-                          >
-                            {job.technicianName} · {job.generatorName}
-                          </div>
-
-                          <div
-                            className="hidden min-w-0 truncate whitespace-nowrap text-[13px] font-medium text-gray-900 sm:block"
-                            title={`${job.jobNumber} · ${formatDateRange(job.startAt, job.endAt)} · ${job.companyName} · ${getCityFromAddress(job.siteAddress)} · ${job.technicianName} · ${job.generatorName}`}
-                          >
-                            <span className="font-bold">{job.jobNumber}</span> · {formatDateRange(job.startAt, job.endAt)} · {job.companyName} · {getCityFromAddress(job.siteAddress)} · {job.technicianName} · {job.generatorName}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={pending}
-                          onClick={() => handleEvidenceToggle(job)}
-                          className={`inline-flex h-7 min-w-[84px] min-[340px]:h-8 min-[340px]:min-w-[98px] sm:min-w-[108px] items-center justify-center rounded-xl px-2 text-[10px] min-[340px]:text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 ${
-                            job.evidenceStatus === 'nove'
-                              ? 'border border-[#7fb2d6] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_6px_12px_rgba(41,128,185,0.16)]'
-                              : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)]'
-                          }`}
-                        >
-                          {job.evidenceStatus === 'nove' ? 'ZAPSAT' : 'ZAPSANO'}
-                        </button>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4 xl:overflow-hidden">
+            <div className="grid gap-4 xl:h-full xl:min-h-0 xl:grid-cols-2">
+              <ChangesSection title="NOVÉ ZAKÁZKY" emptyText="Žádné nové zakázky.">
+                {data.newJobs.map((job) => (
+                  <div
+                    key={job.jobId}
+                    className="jobs-page__changes-row grid grid-cols-[minmax(0,1fr)_96px] items-center gap-2 rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                  >
+                    <div className="min-w-0 text-[11px] leading-4 text-gray-700 sm:text-xs">
+                      <div className="truncate text-gray-900" title={`${job.jobNumber} · ${formatDateRange(job.startAt, job.endAt)} · ${job.companyName}`}>
+                        <strong>{job.jobNumber}</strong> · <strong>{formatDateRange(job.startAt, job.endAt)}</strong> · {job.companyName}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-                  <section className="jobs-page__changes-section rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.04em] text-gray-900">
-                    Provedené změny
-                  </h3>
-                </div>
-
-                {data.updatedJobs.length === 0 ? (
-                  <p className="text-sm text-gray-500">Žádné provedené změny.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {data.updatedJobs.map((item) => (
-                      <div
-                        key={item.jobId}
-                        className="jobs-page__changes-row rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 py-2 text-[10px] leading-5 min-[340px]:px-2.5 min-[340px]:text-[11px] sm:text-[13px] font-medium text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
-                        title={`${item.jobNumber} · Změny: ${item.changedFieldsLabel}`}
-                      >
-                        <span className="font-bold">{item.jobNumber}</span> · Změny: {item.changedFieldsLabel}
+                      <div className="truncate" title={`${getCityFromAddress(job.siteAddress)} · ${job.technicianName} · ${job.generatorName}`}>
+                        {getCityFromAddress(job.siteAddress)} · {job.technicianName} · {job.generatorName}
                       </div>
-                    ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => handleEvidenceToggle(job)}
+                      data-status={job.evidenceStatus}
+                      className={`jobs-page__job-evidence-button inline-flex h-8 min-w-[96px] max-w-full items-center justify-center rounded-xl px-2 text-[11px] font-bold uppercase transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 ${
+                        job.evidenceStatus === 'nove'
+                          ? 'border border-[#7fb2d6] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_6px_12px_rgba(41,128,185,0.16)]'
+                          : 'border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_12px_rgba(15,23,42,0.06)]'
+                      }`}
+                    >
+                      <span className="truncate">
+                        {job.evidenceStatus === 'nove' ? 'ZAPSAT' : 'ZAPSÁNO'}
+                      </span>
+                    </button>
                   </div>
-                )}
-              </section>
+                ))}
+              </ChangesSection>
 
-              {error ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
-                  {error}
-                </div>
-              ) : null}
-
+              <ChangesSection title="PROVEDENÉ ZMĚNY" emptyText="Žádné provedené změny.">
+                {data.updatedJobs.map((item) => {
+                  const marked = Boolean(markedChanges[changeKey(item)])
+                  return (
+                    <div
+                      key={changeKey(item)}
+                      className={`jobs-page__changes-row grid grid-cols-[minmax(0,1fr)_32px] items-center gap-2 rounded-xl border px-2.5 py-2 text-[11px] leading-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-colors sm:text-xs ${
+                        marked
+                          ? 'jobs-page__changes-row--marked border-emerald-300/90 bg-emerald-50/90 text-emerald-950'
+                          : 'border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] text-gray-900'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <strong>{item.jobNumber}</strong> · Změny:{' '}
+                        {item.legacyDescription ? item.legacyDescription : null}
+                        {item.changes.map((change, index) => (
+                          <span key={change.field}>
+                            {index > 0 ? ' · ' : ''}
+                            {change.label}:{' '}
+                            {change.hasPreviousValue ? (
+                              <>
+                                {change.previousValue} →{' '}
+                                <strong>{change.nextValue}</strong>
+                              </>
+                            ) : (
+                              <strong>{change.nextValue}</strong>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => toggleChangedJob(item)}
+                        aria-label={marked ? `Vrátit změny zakázky ${item.jobNumber}` : `Označit změny zakázky ${item.jobNumber} jako vyřízené`}
+                        className={`jobs-page__changes-dismiss inline-flex h-8 w-8 items-center justify-center rounded-xl border text-sm font-bold transition duration-200 hover:-translate-y-[1px] disabled:opacity-60 ${
+                          marked
+                            ? 'jobs-page__changes-dismiss--marked border-emerald-400 bg-emerald-600 text-white'
+                            : 'border-zinc-200 bg-white/80 text-zinc-500 hover:border-emerald-300 hover:text-emerald-700'
+                        }`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )
+                })}
+              </ChangesSection>
             </div>
+
+            {error ? (
+              <div className="jobs-page__changes-error mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                {error}
+              </div>
+            ) : null}
           </div>
 
-          <div className="jobs-page__changes-footer flex shrink-0 items-center justify-between gap-2 border-t border-[rgba(148,163,184,0.14)] px-4 py-3 sm:px-5">
+          <footer className="jobs-page__changes-footer flex shrink-0 flex-col items-stretch gap-3 border-t border-[rgba(148,163,184,0.14)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <p className="max-w-4xl text-left text-[9px] leading-[1.35] text-gray-500 sm:text-[10px]">
+              <span className="block">Kliknutím na X u konkrétní změny ji označíte zeleně jako vyřízenou. ULOŽIT odebere z přehledu pouze takto označené změny a zakázky se stavem ZAPSÁNO.</span>
+              <span className="block">Zavřením modalu křížkem vpravo nahoře se označení změn zruší, stav ZAPSÁNO u potvrzených zakázek zůstane zachován.</span>
+            </p>
             <button
               type="button"
-              onClick={closeModal}
-              className="jobs-page__changes-modal-cancel inline-flex h-10 min-w-[104px] items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
+              disabled={pending || !hasSaveableItems}
+              onClick={() => {
+                setConfirmError(null)
+                setIsConfirmOpen(true)
+              }}
+              className="jobs-page__changes-modal-confirm inline-flex h-10 w-full shrink-0 items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[132px]"
             >
-              ZRUŠIT
+              {pending ? 'UKLÁDÁM…' : 'ULOŽIT'}
             </button>
+          </footer>
 
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setIsConfirmOpen(true)}
-              className="jobs-page__changes-modal-confirm inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span className="sm:hidden">{pending ? 'UKLÁDÁM…' : 'ULOŽIT'}</span>
-              <span className="hidden sm:inline">{pending ? 'ZPRACOVÁVÁM…' : 'ZAPSÁNO - ULOŽIT'}</span>
-            </button>
-          </div>
+          {isConfirmOpen && typeof document !== 'undefined' ? createPortal(
+            <div className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
+              <div className="clients-modal__shell w-full max-w-md rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(239,248,255,0.94)_56%,rgba(224,242,254,0.9)_100%)] p-5 shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 [html[data-theme='dark']_&]:text-sky-300">
+                    Potvrzení uložení
+                  </p>
+                  <h3 className="text-xl font-semibold text-zinc-950 [html[data-theme='dark']_&]:text-slate-50">
+                    Máte označené položky skutečně zapsané?
+                  </h3>
+                  <p className="text-sm leading-6 text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
+                    Z přehledu budou odebrány zeleně označené změny a nové zakázky se stavem ZAPSÁNO. Ostatní položky v přehledu zůstanou.
+                  </p>
+                </div>
+
+                {confirmError ? (
+                  <div className="mt-4 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 [html[data-theme='dark']_&]:border-red-400/20 [html[data-theme='dark']_&]:bg-red-500/10 [html[data-theme='dark']_&]:text-red-200">
+                    {confirmError}
+                  </div>
+                ) : null}
+
+                <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isSaving) return
+                      setIsConfirmOpen(false)
+                      setConfirmError(null)
+                    }}
+                    disabled={isSaving}
+                    className="inline-flex items-center justify-center rounded-2xl border border-red-500/90 bg-[linear-gradient(155deg,rgba(239,68,68,0.96)_0%,rgba(220,38,38,0.96)_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(185,28,28,0.24)] transition duration-200 hover:-translate-y-[1px] hover:border-red-400 hover:bg-[linear-gradient(155deg,rgba(248,86,86,0.98)_0%,rgba(230,45,45,0.98)_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_13px_26px_rgba(185,28,28,0.3)] [html[data-theme='dark']_&]:border-red-400/24 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(62,19,27,0.84)_0%,rgba(50,14,24,0.9)_100%)] [html[data-theme='dark']_&]:text-red-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.24)] disabled:pointer-events-none disabled:opacity-60"
+                  >
+                    ZRUŠIT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="jobs-page__changes-modal-confirm inline-flex items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 hover:-translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
+                  >
+                    {isSaving ? 'UKLÁDÁM…' : 'POTVRDIT A ULOŽIT'}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          ) : null}
         </div>
       </div>
     </div>
@@ -369,89 +365,67 @@ export function ChangesLauncher({
 
   return (
     <>
-      <ChangesButton count={badgeCount} className={className} onClick={openModal} />
-
+      <ChangesButton
+        count={data.badgeCount}
+        className={className}
+        isLoading={isLoading}
+        onClick={openModal}
+      />
       {modalContent && typeof document !== 'undefined'
         ? createPortal(modalContent, document.body)
-        : null}
-      {isConfirmOpen && typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/42 p-4 backdrop-blur-[4px]"
-              role="dialog"
-              aria-modal="true"
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) {
-                  setIsConfirmOpen(false)
-                }
-              }}
-            >
-              <div className="w-full max-w-sm rounded-2xl border border-zinc-200/90 bg-[linear-gradient(168deg,rgba(255,255,255,0.92)_0%,rgba(249,250,251,0.86)_50%,rgba(244,244,245,0.8)_100%)] p-4 shadow-[0_24px_56px_rgba(24,24,27,0.28)] sm:p-5">
-                <div className="text-base font-semibold text-gray-900">Potvrzení</div>
-                <p className="mt-2 text-sm text-gray-700">
-                  Opravdu máš zapsané všechny nové zakázky?
-                </p>
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    disabled={isSaving}
-                    onClick={() => setIsConfirmOpen(false)}
-                    className="jobs-page__changes-modal-cancel inline-flex h-10 min-w-[104px] items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-3 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    ZRUŠIT
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSaving}
-                    onClick={() => {
-                      setIsConfirmOpen(false)
-                      void handleAcknowledgeAll()
-                    }}
-                    className="jobs-page__changes-modal-confirm inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSaving ? 'UKLÁDÁM…' : 'POTVRDIT'}
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
         : null}
     </>
   )
 }
 
+function ChangesSection({
+  title,
+  emptyText,
+  children,
+}: {
+  title: string
+  emptyText: string
+  children: ReactNode
+}) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children)
+
+  return (
+    <section className="jobs-page__changes-section flex min-h-0 flex-col rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_20px_rgba(15,23,42,0.08)]">
+      <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.04em] text-gray-900">
+        {title}
+      </h3>
+      {hasChildren ? (
+        <div className="jobs-page__changes-list min-h-0 space-y-1.5 xl:flex-1 xl:overflow-y-auto xl:pr-1">
+          {children}
+        </div>
+      ) : (
+        <div className="flex min-h-[120px] flex-1 items-center justify-center px-4 py-8 text-center">
+          <p className="text-sm text-gray-500">{emptyText}</p>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function formatDateRange(startAt: string | null, endAt: string | null) {
   if (!startAt) return '—'
-
   const start = new Date(startAt)
   if (Number.isNaN(start.getTime())) return '—'
-
   const startDay = getDayMonth(start)
-
   if (!endAt) return startDay
-
   const end = new Date(endAt)
   if (Number.isNaN(end.getTime())) return startDay
-
   const sameDay =
     start.getUTCFullYear() === end.getUTCFullYear() &&
     start.getUTCMonth() === end.getUTCMonth() &&
     start.getUTCDate() === end.getUTCDate()
-
-  if (sameDay) {
-    return startDay
-  }
-
-  return `${getDayOnly(start)} - ${getDayMonth(end)}`
+  return sameDay ? startDay : `${getDayOnly(start)} - ${getDayMonth(end)}`
 }
 
 function getCityFromAddress(address: string | null) {
   const value = String(address ?? '').trim()
   if (!value) return '—'
-
-  const firstPart = value.split(',')[0]?.trim()
-  return firstPart || value
+  return value.split(',')[0]?.trim() || value
 }
 
 function getDayMonth(value: Date) {
@@ -460,20 +434,17 @@ function getDayMonth(value: Date) {
     day: 'numeric',
     month: 'numeric',
   }).formatToParts(value)
-
   const day = parts.find((part) => part.type === 'day')?.value ?? ''
   const month = parts.find((part) => part.type === 'month')?.value ?? ''
-
   return day && month ? `${day}.${month}.` : '—'
 }
 
 function getDayOnly(value: Date) {
-  const parts = new Intl.DateTimeFormat('cs-CZ', {
+  const day = new Intl.DateTimeFormat('cs-CZ', {
     timeZone: 'Europe/Prague',
     day: 'numeric',
-  }).formatToParts(value)
-
-  const day = parts.find((part) => part.type === 'day')?.value ?? ''
-
+  })
+    .formatToParts(value)
+    .find((part) => part.type === 'day')?.value
   return day ? `${day}.` : '—'
 }

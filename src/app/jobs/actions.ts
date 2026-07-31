@@ -6,6 +6,7 @@ import { createNotification } from '@/lib/notifications/createNotification'
 import { reportActionError } from '@/lib/errors/reportActionError'
 import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 import {
+  areChangeValuesEqual,
   upsertJobChangeQueueEntry,
   type ChangedValues,
 } from '@/lib/jobs/changes-queue'
@@ -34,6 +35,7 @@ import {
 import {
   cancelDispatcherCalendarsForJob,
   syncDispatcherCalendarsForJob,
+  syncDispatcherCalendarsForJobId,
 } from '@/lib/jobs/dispatcher-calendar-sync'
 import type { DispatcherCalendarJobRow } from '@/lib/jobs/dispatcher-calendar-feed'
 import { canViewTechJobsSection } from '@/lib/auth/access'
@@ -813,10 +815,12 @@ async function enqueueUpdatedJobChangeIfWritten({
   supabase,
   jobId,
   fields,
+  previousValues,
 }: {
   supabase: Awaited<ReturnType<typeof createClient>>
   jobId: string
   fields: string[]
+  previousValues?: ChangedValues
 }) {
   const trackedFields = fields.filter((field): field is TrackedChangeField =>
     TRACKED_CHANGE_FIELDS.has(field as TrackedChangeField)
@@ -832,6 +836,21 @@ async function enqueueUpdatedJobChangeIfWritten({
     return
   }
 
+  const nextValues = buildChangedValuesSnapshot({
+    source,
+    fields: trackedFields,
+  })
+  const actuallyChangedFields = previousValues
+    ? trackedFields.filter(
+        (field) =>
+          !areChangeValuesEqual(field, previousValues[field], nextValues[field])
+      )
+    : trackedFields
+
+  if (actuallyChangedFields.length === 0) {
+    return
+  }
+
   await upsertJobChangeQueueEntry({
     supabase,
     job: {
@@ -840,11 +859,9 @@ async function enqueueUpdatedJobChangeIfWritten({
       start_at: source.start_at,
     },
     kind: 'updated_job',
-    nextFields: trackedFields,
-    nextValues: buildChangedValuesSnapshot({
-      source,
-      fields: trackedFields,
-    }),
+    nextFields: actuallyChangedFields,
+    previousValues,
+    nextValues,
   })
 }
 
@@ -1989,7 +2006,7 @@ export async function updateJobAction(
   const [currentJobResponse, previousTechnicianIds] = await Promise.all([
     supabase
       .from('jobs')
-      .select('job_number, start_at, end_at, site_address, technician_name, offer_id')
+      .select('job_number, company_name, start_at, end_at, site_address, technician_name, generator_name, offer_id')
       .eq('id', normalizedJobId)
       .single(),
     getAssignedTechnicianIdsForJob(supabase, normalizedJobId),
@@ -2001,6 +2018,15 @@ export async function updateJobAction(
       success: false,
       error: 'Nepodařilo se načíst aktuální stav zakázky.',
     }
+  }
+
+  const previousTrackedValues: ChangedValues = {
+    company_name: currentJob.company_name,
+    start_at: currentJob.start_at,
+    end_at: currentJob.end_at,
+    site_address: currentJob.site_address,
+    technician_name: currentJob.technician_name,
+    generator_name: currentJob.generator_name,
   }
 
   const currentOfferId = String(
@@ -2279,18 +2305,13 @@ export async function updateJobAction(
       jobId: normalizedJobId,
       fields: [
         'company_name',
-        'contact_person',
-        'sales_owner',
         'start_at',
         'end_at',
         'site_address',
-        'store_number',
         'technician_name',
         'generator_name',
-        'info_note',
-        'job_status',
-        'invoice_status',
       ],
+      previousValues: previousTrackedValues,
     })
   } catch (queueError) {
     console.error('Nepodařilo se zapsat změnu zakázky do fronty změn.', queueError)
@@ -2964,6 +2985,15 @@ export async function updateJobEvidenceStatusAction(
         calendarError
       )
     }
+
+    try {
+      await syncDispatcherCalendarsForJobId(normalizedJobId)
+    } catch (dispatcherCalendarError) {
+      console.error(
+        'Nepodařilo se synchronizovat dispečerské kalendáře po změně evidence.',
+        dispatcherCalendarError
+      )
+    }
   })
 
   revalidateAllRelatedPaths()
@@ -3022,6 +3052,13 @@ export async function updateJobInlineFieldAction(
     }
   }
 
+  const previousTrackedValues = TRACKED_CHANGE_FIELDS.has(field as TrackedChangeField)
+    ? buildChangedValuesSnapshot({
+        source: await getJobQueueSource(supabase, normalizedJobId),
+        fields: [field],
+      })
+    : undefined
+
   if (field === 'company_name') {
     if (!clientId) {
       return {
@@ -3065,6 +3102,7 @@ export async function updateJobInlineFieldAction(
         supabase,
         jobId: normalizedJobId,
         fields: ['company_name', 'contact_person'],
+        previousValues: previousTrackedValues,
       })
     } catch (queueError) {
       console.error('Nepodařilo se zapsat změnu firmy do fronty změn.', queueError)
@@ -3149,6 +3187,7 @@ export async function updateJobInlineFieldAction(
         supabase,
         jobId: normalizedJobId,
         fields: ['site_address'],
+        previousValues: previousTrackedValues,
       })
     } catch (queueError) {
       console.error(
@@ -3263,6 +3302,7 @@ export async function updateJobInlineFieldAction(
         supabase,
         jobId: normalizedJobId,
         fields: [field],
+        previousValues: previousTrackedValues,
       })
     } catch (queueError) {
       console.error('Nepodařilo se zapsat změnu termínu do fronty změn.', queueError)
@@ -3523,6 +3563,7 @@ export async function updateJobInlineFieldAction(
         supabase,
         jobId: normalizedJobId,
         fields: ['technician_name'],
+        previousValues: previousTrackedValues,
       })
     } catch (queueError) {
       console.error('Nepodařilo se zapsat změnu techniků do fronty změn.', queueError)
@@ -3571,6 +3612,7 @@ export async function updateJobInlineFieldAction(
       supabase,
       jobId: normalizedJobId,
       fields: [field],
+      previousValues: previousTrackedValues,
     })
   } catch (queueError) {
     console.error(

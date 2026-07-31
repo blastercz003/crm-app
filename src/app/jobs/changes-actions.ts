@@ -2,8 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { syncDispatcherCalendarsForJobId } from '@/lib/jobs/dispatcher-calendar-sync'
 import { reportActionError } from '@/lib/errors/reportActionError'
+import {
+  areChangeValuesEqual,
+  formatChangeFieldValue,
+  getChangeFieldLabel,
+} from '@/lib/jobs/changes-queue'
 
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
@@ -11,11 +15,7 @@ type ProfilePermissionRow = {
   skryt_marny_vyjezd: boolean | null
 }
 
-type JobChangeStateRow = {
-  cleared_at: string | null
-}
-
-type NewJobRow = {
+type JobRelation = {
   id: string
   job_number: string | null
   company_name: string | null
@@ -26,37 +26,20 @@ type NewJobRow = {
   technician_name: string | null
   evidence_status: string | null
   marny_vyjezd: boolean | null
-  updated_at: string
 }
 
-type UpdatedJobQueueRow = {
+type JobChangeQueueRow = {
   job_id: string
+  kind: 'new_job' | 'updated_job'
+  changed_fields: string[] | null
+  original_values: Record<string, string | null> | null
+  changed_values: Record<string, string | null> | null
   changed_fields_label: string | null
   updated_at: string
-  jobs:
-    | {
-        id: string
-        job_number: string | null
-        evidence_status: string | null
-        marny_vyjezd: boolean | null
-      }
-    | Array<{
-        id: string
-        job_number: string | null
-        evidence_status: string | null
-        marny_vyjezd: boolean | null
-      }>
-    | null
+  jobs: JobRelation | JobRelation[] | null
 }
 
-type UpdatedJobRelation = {
-  id: string
-  job_number: string | null
-  evidence_status: string | null
-  marny_vyjezd: boolean | null
-}
-
-function getUpdatedJobRelation(value: UpdatedJobQueueRow['jobs']): UpdatedJobRelation | null {
+function getJobRelation(value: JobChangeQueueRow['jobs']): JobRelation | null {
   if (!value) return null
 
   if (Array.isArray(value)) {
@@ -82,8 +65,23 @@ export type ChangesNewJobItem = {
 export type ChangesUpdatedJobItem = {
   jobId: string
   jobNumber: string
-  changedFieldsLabel: string
+  changes: Array<{
+    field: string
+    label: string
+    hasPreviousValue: boolean
+    previousValue: string
+    nextValue: string
+  }>
+  legacyDescription: string | null
   updatedAt: string
+}
+
+export type SaveJobChangesSelection = {
+  acknowledgedNewJobIds: string[]
+  acknowledgedUpdatedJobs: Array<{
+    jobId: string
+    updatedAt: string
+  }>
 }
 
 export type JobChangesModalData = {
@@ -195,19 +193,129 @@ async function requireJobsAccess() {
   }
 }
 
-async function getClearedAt(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data, error } = await supabase
-    .from('job_changes_state')
-    .select('cleared_at')
-    .eq('id', true)
-    .single()
+function toUpdatedChanges(row: JobChangeQueueRow) {
+  const fields = Array.isArray(row.changed_fields) ? row.changed_fields : []
+  const originalValues = row.original_values ?? {}
+  const changedValues = row.changed_values ?? {}
 
-  if (error || !data) {
-    throw new Error('Nepodařilo se načíst stav vyčištění změn.')
+  return fields
+    .filter(
+      (field) =>
+        !Object.prototype.hasOwnProperty.call(originalValues, field) ||
+        !areChangeValuesEqual(field, originalValues[field], changedValues[field])
+    )
+    .map((field) => {
+      const hasPreviousValue = Object.prototype.hasOwnProperty.call(
+        originalValues,
+        field
+      )
+
+      return {
+        field,
+        label: getChangeFieldLabel(field),
+        hasPreviousValue,
+        previousValue: formatChangeFieldValue(
+          field,
+          originalValues[field] ?? null
+        ),
+        nextValue: formatChangeFieldValue(field, changedValues[field] ?? null),
+      }
+    })
+}
+
+async function loadJobChangesData({
+  supabase,
+  hideMarnyVyjezdy,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  hideMarnyVyjezdy: boolean
+}): Promise<JobChangesModalData> {
+  const nextWorkWeekEnd = getNextWorkWeekEnd()
+  const to = `${nextWorkWeekEnd}T23:59:59`
+  const relationFields =
+    'id, job_number, company_name, site_address, start_at, end_at, generator_name, technician_name, evidence_status, marny_vyjezd'
+
+  const [newJobsResponse, updatedJobsResponse] = await Promise.all([
+    supabase
+      .from('job_changes_queue')
+      .select(`job_id, kind, changed_fields, original_values, changed_values, changed_fields_label, updated_at, jobs!inner(${relationFields})`)
+      .eq('kind', 'new_job')
+      .lte('jobs.start_at', to),
+    supabase
+      .from('job_changes_queue')
+      .select(`job_id, kind, changed_fields, original_values, changed_values, changed_fields_label, updated_at, jobs!inner(${relationFields})`)
+      .eq('kind', 'updated_job')
+      .eq('jobs.evidence_status', 'zapsano')
+      .order('updated_at', { ascending: false }),
+  ])
+
+  if (newJobsResponse.error) {
+    throw new Error('Nepodařilo se načíst nové zakázky pro změny.')
+  }
+  if (updatedJobsResponse.error) {
+    throw new Error('Nepodařilo se načíst provedené změny.')
   }
 
-  const state = data as JobChangeStateRow
-  return state.cleared_at ?? '1970-01-01T00:00:00.000Z'
+  const newJobs = ((newJobsResponse.data ?? []) as unknown as JobChangeQueueRow[])
+    .map((row) => ({ row, job: getJobRelation(row.jobs) }))
+    .filter(
+      (entry): entry is { row: JobChangeQueueRow; job: JobRelation } =>
+        entry.job !== null &&
+        (!hideMarnyVyjezdy || !Boolean(entry.job.marny_vyjezd))
+    )
+    .map(({ row, job }): ChangesNewJobItem => ({
+      jobId: job.id,
+      jobNumber: job.job_number?.trim() || '—',
+      companyName: job.company_name?.trim() || '—',
+      siteAddress: job.site_address?.trim() || '—',
+      startAt: job.start_at,
+      endAt: job.end_at,
+      generatorName: job.generator_name?.trim() || '—',
+      technicianName: job.technician_name?.trim() || '—',
+      evidenceStatus: job.evidence_status === 'zapsano' ? 'zapsano' : 'nove',
+      updatedAt: row.updated_at,
+    }))
+    .sort((first, second) => {
+      const firstStart = first.startAt ? Date.parse(first.startAt) : Number.POSITIVE_INFINITY
+      const secondStart = second.startAt ? Date.parse(second.startAt) : Number.POSITIVE_INFINITY
+      if (firstStart !== secondStart) return firstStart - secondStart
+      const firstEnd = first.endAt ? Date.parse(first.endAt) : Number.POSITIVE_INFINITY
+      const secondEnd = second.endAt ? Date.parse(second.endAt) : Number.POSITIVE_INFINITY
+      if (firstEnd !== secondEnd) return firstEnd - secondEnd
+      return first.jobNumber.localeCompare(second.jobNumber, 'cs', { sensitivity: 'base' })
+    })
+
+  const updatedJobs = ((updatedJobsResponse.data ?? []) as unknown as JobChangeQueueRow[])
+    .map((row) => ({
+      row,
+      job: getJobRelation(row.jobs),
+      changes: toUpdatedChanges(row),
+      legacyDescription: row.changed_fields_label?.trim() || null,
+    }))
+    .filter(
+      (entry): entry is {
+        row: JobChangeQueueRow
+        job: JobRelation
+        changes: ChangesUpdatedJobItem['changes']
+        legacyDescription: string | null
+      } =>
+        entry.job !== null &&
+        (entry.changes.length > 0 || entry.legacyDescription !== null) &&
+        (!hideMarnyVyjezdy || !Boolean(entry.job.marny_vyjezd))
+    )
+    .map(({ row, job, changes, legacyDescription }): ChangesUpdatedJobItem => ({
+      jobId: job.id,
+      jobNumber: job.job_number?.trim() || '—',
+      changes,
+      legacyDescription: changes.length === 0 ? legacyDescription : null,
+      updatedAt: row.updated_at,
+    }))
+
+  return {
+    newJobs,
+    updatedJobs,
+    badgeCount: newJobs.length + updatedJobs.length,
+  }
 }
 
 export async function getJobsChangesModalDataAction(): Promise<
@@ -224,87 +332,10 @@ export async function getJobsChangesModalDataAction(): Promise<
   }
 
   try {
-    const clearedAt = await getClearedAt(supabase)
-    const nextWorkWeekEnd = getNextWorkWeekEnd()
-    const to = `${nextWorkWeekEnd}T23:59:59`
-
-    const [newJobsResponse, updatedJobsResponse] = await Promise.all([
-      supabase
-        .from('jobs')
-        .select(
-          'id, job_number, company_name, site_address, start_at, end_at, generator_name, technician_name, evidence_status, marny_vyjezd, updated_at'
-        )
-        .eq('evidence_status', 'nove')
-        .lte('start_at', to)
-        .order('start_at', { ascending: true })
-        .order('end_at', { ascending: true })
-        .order('job_number', { ascending: true }),
-      supabase
-        .from('job_changes_queue')
-        .select(
-          'job_id, changed_fields_label, updated_at, jobs!inner(id, job_number, evidence_status, marny_vyjezd)'
-        )
-        .eq('kind', 'updated_job')
-        .gt('updated_at', clearedAt)
-        .eq('jobs.evidence_status', 'zapsano')
-        .order('updated_at', { ascending: false }),
-    ])
-
-    if (newJobsResponse.error) {
-      return {
-        success: false,
-        error: 'Nepodařilo se načíst nové zakázky pro změny.',
-      }
-    }
-
-    if (updatedJobsResponse.error) {
-      return {
-        success: false,
-        error: 'Nepodařilo se načíst provedené změny.',
-      }
-    }
-
-    const newJobs: ChangesNewJobItem[] = ((newJobsResponse.data ?? []) as NewJobRow[])
-      .filter((row) => !hideMarnyVyjezdy || !Boolean(row.marny_vyjezd))
-      .map((row) => ({
-        evidenceStatus:
-          row.evidence_status === 'zapsano' ? ('zapsano' as const) : ('nove' as const),
-        jobId: row.id,
-        jobNumber: row.job_number?.trim() || '—',
-        companyName: row.company_name?.trim() || '—',
-        siteAddress: row.site_address?.trim() || '—',
-        startAt: row.start_at ?? null,
-        endAt: row.end_at ?? null,
-        generatorName: row.generator_name?.trim() || '—',
-        technicianName: row.technician_name?.trim() || '—',
-        updatedAt: row.updated_at,
-      }))
-
-    const updatedJobs = ((updatedJobsResponse.data ?? []) as UpdatedJobQueueRow[])
-      .map((row) => ({
-        row,
-        jobRelation: getUpdatedJobRelation(row.jobs),
-      }))
-      .filter(
-        (entry) =>
-          entry.jobRelation !== null &&
-          (!hideMarnyVyjezdy || !Boolean(entry.jobRelation?.marny_vyjezd))
-      )
-      .map((row) => ({
-        jobId: row.row.job_id,
-        jobNumber: row.jobRelation?.job_number?.trim() || '—',
-        changedFieldsLabel: row.row.changed_fields_label?.trim() || 'Bez detailu',
-        updatedAt: row.row.updated_at,
-      }))
-
     return {
       success: true,
       error: null,
-      data: {
-        newJobs,
-        updatedJobs,
-        badgeCount: newJobs.length + updatedJobs.length,
-      },
+      data: await loadJobChangesData({ supabase, hideMarnyVyjezdy }),
     }
   } catch (error) {
     console.error(error)
@@ -336,44 +367,13 @@ export async function getJobsChangesBadgeCountAction(): Promise<
   }
 
   try {
-    const clearedAt = await getClearedAt(supabase)
-    const nextWorkWeekEnd = getNextWorkWeekEnd()
-    const to = `${nextWorkWeekEnd}T23:59:59`
-
-    const [newJobsResponse, updatedJobsResponse] = await Promise.all([
-      supabase
-        .from('jobs')
-        .select('id, marny_vyjezd')
-        .eq('evidence_status', 'nove')
-        .lte('start_at', to),
-      supabase
-        .from('job_changes_queue')
-        .select('job_id, jobs!inner(evidence_status, marny_vyjezd)')
-        .eq('kind', 'updated_job')
-        .gt('updated_at', clearedAt)
-        .eq('jobs.evidence_status', 'zapsano'),
-    ])
-
-    if (newJobsResponse.error || updatedJobsResponse.error) {
-      return {
-        success: false,
-        error: 'Nepodařilo se načíst počet změn zakázek.',
-      }
-    }
-
-    const newJobsCount = (newJobsResponse.data ?? []).filter(
-      (row) => !hideMarnyVyjezdy || !Boolean(row.marny_vyjezd)
-    ).length
-    const updatedJobsCount = (updatedJobsResponse.data ?? []).filter((row) => {
-      const relation = Array.isArray(row.jobs) ? row.jobs[0] : row.jobs
-      return !hideMarnyVyjezdy || !Boolean(relation?.marny_vyjezd)
-    }).length
+    const data = await loadJobChangesData({ supabase, hideMarnyVyjezdy })
 
     return {
       success: true,
       error: null,
       data: {
-        badgeCount: newJobsCount + updatedJobsCount,
+        badgeCount: data.badgeCount,
       },
     }
   } catch (error) {
@@ -392,11 +392,12 @@ export async function getJobsChangesBadgeCountAction(): Promise<
   }
 }
 
-export async function acknowledgeAllJobChangesAction(): Promise<
-  JobChangesActionResult<{ acknowledged: true }>
+export async function saveJobChangesModalAction(
+  selection: SaveJobChangesSelection
+): Promise<
+  JobChangesActionResult<{ removedNewJobs: number; removedUpdatedJobs: number }>
 > {
-  const { supabase, user, error: accessError, hideMarnyVyjezdy } =
-    await requireJobsAccess()
+  const { supabase, user, error: accessError } = await requireJobsAccess()
 
   if (!user) {
     return {
@@ -406,71 +407,56 @@ export async function acknowledgeAllJobChangesAction(): Promise<
   }
 
   try {
-    const nextWorkWeekEnd = getNextWorkWeekEnd()
-    const to = `${nextWorkWeekEnd}T23:59:59`
+    const requestedNewJobIds = Array.from(
+      new Set((selection.acknowledgedNewJobIds ?? []).map((id) => String(id).trim()).filter(Boolean))
+    )
+    let removedNewJobs = 0
 
-    const { data: newJobsRows, error: newJobsError } = await supabase
-      .from('jobs')
-      .select('id, marny_vyjezd')
-      .eq('evidence_status', 'nove')
-      .lte('start_at', to)
-
-    if (newJobsError) {
-      return {
-        success: false,
-        error: 'Nepodařilo se načíst nové zakázky pro zaevidování.',
-      }
-    }
-
-    const newJobIds = (newJobsRows ?? [])
-      .filter((row) => !hideMarnyVyjezdy || !Boolean((row as NewJobRow).marny_vyjezd))
-      .map((row) => String((row as { id: string }).id ?? '').trim())
-      .filter(Boolean)
-
-    if (newJobIds.length > 0) {
-      const { error: updateEvidenceError } = await supabase
+    if (requestedNewJobIds.length > 0) {
+      const { data: writtenJobs, error: writtenJobsError } = await supabase
         .from('jobs')
-        .update({
-          evidence_status: 'zapsano',
-        })
-        .in('id', newJobIds)
+        .select('id')
+        .in('id', requestedNewJobIds)
+        .eq('evidence_status', 'zapsano')
 
-      if (updateEvidenceError) {
-        return {
-          success: false,
-          error: 'Nepodařilo se hromadně přepnout nové zakázky na ZAPSANO.',
-        }
+      if (writtenJobsError) {
+        return { success: false, error: 'Nepodařilo se ověřit zapsané zakázky.' }
       }
 
-      const calendarResults = await Promise.allSettled(
-        newJobIds.map((jobId) => syncDispatcherCalendarsForJobId(jobId))
-      )
-      const calendarErrors = calendarResults.filter(
-        (result) => result.status === 'rejected'
-      )
-      if (calendarErrors.length > 0) {
-        console.error(
-          `Synchronizace dispečerských kalendářů selhala u ${calendarErrors.length} zakázek.`
-        )
+      const writtenJobIds = (writtenJobs ?? []).map((row) => String(row.id))
+      if (writtenJobIds.length > 0) {
+        const { data: removedRows, error: removeNewError } = await supabase
+          .from('job_changes_queue')
+          .delete()
+          .eq('kind', 'new_job')
+          .in('job_id', writtenJobIds)
+          .select('job_id')
+
+        if (removeNewError) {
+          return { success: false, error: 'Nepodařilo se odebrat zapsané zakázky z přehledu.' }
+        }
+        removedNewJobs = removedRows?.length ?? 0
       }
     }
 
-    const now = new Date().toISOString()
+    let removedUpdatedJobs = 0
+    for (const item of selection.acknowledgedUpdatedJobs ?? []) {
+      const jobId = String(item.jobId ?? '').trim()
+      const updatedAt = String(item.updatedAt ?? '').trim()
+      if (!jobId || !updatedAt) continue
 
-    const { error: clearError } = await supabase
-      .from('job_changes_state')
-      .update({
-        cleared_at: now,
-        cleared_by: user.id,
-        updated_at: now,
-      })
-      .eq('id', true)
+      const { data: removedRows, error: removeUpdatedError } = await supabase
+        .from('job_changes_queue')
+        .delete()
+        .eq('kind', 'updated_job')
+        .eq('job_id', jobId)
+        .eq('updated_at', updatedAt)
+        .select('job_id')
 
-    if (clearError) {
-      return {
-        success: false,
-        error: 'Nepodařilo se vyčistit seznam změn.',
+      if (removeUpdatedError) {
+        return { success: false, error: 'Nepodařilo se odebrat označené změny.' }
       }
+      removedUpdatedJobs += removedRows?.length ?? 0
     }
 
     revalidatePath('/jobs')
@@ -479,21 +465,22 @@ export async function acknowledgeAllJobChangesAction(): Promise<
       success: true,
       error: null,
       data: {
-        acknowledged: true,
+        removedNewJobs,
+        removedUpdatedJobs,
       },
     }
   } catch (error) {
     console.error(error)
     await reportActionError({
       error,
-      action: 'acknowledgeAllJobChangesAction',
+      action: 'saveJobChangesModalAction',
       section: 'jobs',
-      errorType: 'AcknowledgeAllJobChangesActionError',
+      errorType: 'SaveJobChangesModalActionError',
       userId: user.id,
     })
     return {
       success: false,
-      error: 'Nepodařilo se potvrdit zaevidování změn.',
+      error: 'Nepodařilo se uložit stav modalu změn.',
     }
   }
 }

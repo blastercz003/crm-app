@@ -11639,6 +11639,78 @@ html[data-theme='dark'] .jobs-page__changes-footer {
   border-top-color: rgba(148, 163, 184, 0.14) !important;
 }
 
+html[data-theme='dark'] .jobs-page__modal-shell .jobs-page__changes-row--marked,
+html[data-theme='dark'] .jobs-page__changes-row--marked {
+  border-color: rgba(52, 211, 153, 0.38) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(6, 78, 59, 0.52) 0%,
+    rgba(6, 60, 48, 0.48) 100%
+  ) !important;
+  color: #d1fae5 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(167, 243, 208, 0.08),
+    0 10px 22px rgba(2, 44, 34, 0.22) !important;
+}
+
+html[data-theme='dark'] .jobs-page__modal-shell .jobs-page__changes-dismiss--marked,
+html[data-theme='dark'] .jobs-page__changes-dismiss--marked {
+  border-color: rgba(110, 231, 183, 0.5) !important;
+  background: rgba(5, 150, 105, 0.9) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .jobs-page__modal-shell .jobs-page__changes-dismiss:not(.jobs-page__changes-dismiss--marked),
+html[data-theme='dark'] .jobs-page__changes-dismiss:not(.jobs-page__changes-dismiss--marked) {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(11, 18, 32, 0.94) 100%
+  ) !important;
+  color: #94a3b8 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(2, 6, 23, 0.2) !important;
+}
+
+html[data-theme='dark'] .jobs-page__modal-shell .jobs-page__changes-dismiss:not(.jobs-page__changes-dismiss--marked):hover,
+html[data-theme='dark'] .jobs-page__changes-dismiss:not(.jobs-page__changes-dismiss--marked):hover {
+  border-color: rgba(78, 160, 220, 0.24) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(22, 34, 54, 0.98) 0%,
+    rgba(14, 23, 38, 0.96) 100%
+  ) !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .jobs-page__modal-shell .jobs-page__changes-section > .jobs-page__changes-list {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  scrollbar-color: rgba(100, 116, 139, 0.55) transparent;
+}
+
+html[data-theme='dark'] .jobs-page__changes-close {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(11, 18, 32, 0.94) 100%
+  ) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(2, 6, 23, 0.22) !important;
+}
+
+html[data-theme='dark'] .jobs-page__changes-error {
+  border-color: rgba(248, 113, 113, 0.28) !important;
+  background: rgba(69, 10, 10, 0.5) !important;
+  color: #fecaca !important;
+}
+
 html[data-theme='dark'] .jobs-page__range-link {
   border-color: rgba(78, 160, 220, 0.28) !important;
   background: linear-gradient(
