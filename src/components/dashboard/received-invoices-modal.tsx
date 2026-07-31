@@ -601,12 +601,23 @@ export function ReceivedInvoicesModal({
                         Vybráno: <span className="font-medium">{singleFile.name}</span>
                       </div>
                     ) : null}
-                    <input
-                      type="date"
-                      value={singleDueDate}
-                      onChange={(event) => setSingleDueDate(event.target.value)}
-                      className="received-invoices-modal__date-field received-invoices-modal__date-field--upload h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                    />
+                    <div className="relative min-w-0">
+                      <input
+                        type="date"
+                        aria-label="Datum splatnosti"
+                        value={singleDueDate}
+                        onChange={(event) => setSingleDueDate(event.target.value)}
+                        className="received-invoices-modal__date-field received-invoices-modal__date-field--upload h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                      />
+                      {!singleDueDate ? (
+                        <span
+                          aria-hidden="true"
+                          className="received-invoices-modal__date-placeholder pointer-events-none absolute inset-y-px left-3 right-10 z-[1] hidden items-center text-sm text-zinc-500 max-lg:flex"
+                        >
+                          Datum splatnosti
+                        </span>
+                      ) : null}
+                    </div>
                     <button
                       type="submit"
                       disabled={isPending}
