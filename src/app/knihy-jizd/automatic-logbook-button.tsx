@@ -326,7 +326,7 @@ function AutomaticLogbookModal({
                           setPeriodFrom(event.target.value)
                           setGenerationError(null)
                         }}
-                        className="vehicle-logbook-page__input mt-2 h-11 w-full rounded-xl border border-gray-200 bg-white/95 px-3 text-sm text-gray-900 outline-none"
+                        className="filter-date-input vehicle-logbook-page__date-input vehicle-logbook-page__input mt-2 h-11 w-full rounded-xl border border-gray-200 bg-white/95 px-3 text-sm text-gray-900 outline-none"
                       />
                     </label>
                     <label className="min-w-0">
@@ -340,7 +340,7 @@ function AutomaticLogbookModal({
                           setPeriodTo(event.target.value)
                           setGenerationError(null)
                         }}
-                        className="vehicle-logbook-page__input mt-2 h-11 w-full rounded-xl border border-gray-200 bg-white/95 px-3 text-sm text-gray-900 outline-none"
+                        className="filter-date-input vehicle-logbook-page__date-input vehicle-logbook-page__input mt-2 h-11 w-full rounded-xl border border-gray-200 bg-white/95 px-3 text-sm text-gray-900 outline-none"
                       />
                     </label>
                     <label className="min-w-0 sm:col-span-2">
@@ -614,7 +614,7 @@ function AutomaticLogbookModal({
                         onInput={(event) =>
                           changePreviewDate(row.id, event.currentTarget.value)
                         }
-                        className="vehicle-logbook-page__input mt-1.5 h-10 w-full rounded-xl border border-gray-200 bg-white/95 px-2 text-xs text-gray-900 outline-none"
+                        className="filter-date-input vehicle-logbook-page__date-input vehicle-logbook-page__input mt-1.5 h-10 w-full rounded-xl border border-gray-200 bg-white/95 px-2 text-xs text-gray-900 outline-none"
                       />
                     </label>
                     <div className="min-w-0">

@@ -9165,6 +9165,30 @@ html[data-theme='dark'] .vehicle-logbook-page__skeleton-card .bg-slate-100 {
     box-shadow 160ms ease;
 }
 
+.vehicle-logbook-page__date-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  line-height: normal;
+}
+
+.vehicle-logbook-page__date-input::-webkit-date-and-time-value {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .vehicle-logbook-page__date-input {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
 .vehicle-logbook-page__input:focus {
   border-color: #9dc7e5 !important;
   box-shadow:
@@ -16720,6 +16744,10 @@ html[data-theme='dark'] .faktury-statistics-section-tab--active {
   color: #172033;
   font-size: 13px;
   outline: none;
+}
+
+.vehicle-logbook-page__report-controls label {
+  min-width: 0;
 }
 
 .vehicle-logbook-page__report-controls input:focus,

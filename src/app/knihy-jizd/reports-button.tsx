@@ -636,6 +636,7 @@ function VehicleLogbookReportsModal({
                     value={from}
                     max={to}
                     onChange={(event) => setFrom(event.target.value)}
+                    className="filter-date-input vehicle-logbook-page__date-input"
                   />
                 </label>
                 <label>
@@ -646,6 +647,7 @@ function VehicleLogbookReportsModal({
                     min={from}
                     max={defaultTo}
                     onChange={(event) => setTo(event.target.value)}
+                    className="filter-date-input vehicle-logbook-page__date-input"
                   />
                 </label>
                 <div>

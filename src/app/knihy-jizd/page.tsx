@@ -1156,7 +1156,7 @@ export default async function VehicleLogbookPage({
                         type="date"
                         name="from"
                         defaultValue={fromDate}
-                        className="vehicle-logbook-page__input h-10 w-full rounded-xl border border-white/75 bg-white/88 px-3 text-xs text-gray-900 outline-none"
+                        className="filter-date-input vehicle-logbook-page__date-input vehicle-logbook-page__input h-10 w-full rounded-xl border border-white/75 bg-white/88 px-3 text-xs text-gray-900 outline-none"
                       />
                     </label>
                     <label className="min-w-0">
@@ -1165,7 +1165,7 @@ export default async function VehicleLogbookPage({
                         type="date"
                         name="to"
                         defaultValue={toDate}
-                        className="vehicle-logbook-page__input h-10 w-full rounded-xl border border-white/75 bg-white/88 px-3 text-xs text-gray-900 outline-none"
+                        className="filter-date-input vehicle-logbook-page__date-input vehicle-logbook-page__input h-10 w-full rounded-xl border border-white/75 bg-white/88 px-3 text-xs text-gray-900 outline-none"
                       />
                     </label>
                     {view === 'trips' ? (

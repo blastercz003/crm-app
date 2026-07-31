@@ -166,7 +166,7 @@ function MonthlyClosureModal({
           <input type="hidden" name="vehicle_id" value={vehicleId} />
           <input type="hidden" name="period" value={period} />
 
-          <label className="block">
+          <label className="block min-w-0">
             <span className="vehicle-logbook-page__modal-label">UZAVÍRANÝ MĚSÍC</span>
             <input
               type="month"
@@ -177,7 +177,7 @@ function MonthlyClosureModal({
               onInput={(event) =>
                 void handlePeriodChange(event.currentTarget.value)
               }
-              className="vehicle-logbook-page__input mt-2 h-11 w-full rounded-xl border border-gray-200 bg-white/95 px-3 text-sm text-gray-900 outline-none disabled:opacity-60"
+              className="filter-date-input vehicle-logbook-page__date-input vehicle-logbook-page__input mt-2 h-11 w-full rounded-xl border border-gray-200 bg-white/95 px-3 text-sm text-gray-900 outline-none disabled:opacity-60"
             />
           </label>
 
