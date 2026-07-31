@@ -1465,11 +1465,21 @@ html[data-theme='dark'] .dashboard-quick-notes-clear-confirm__cancel:hover {
 }
 
 .received-invoices-modal__date-field--upload::-webkit-date-and-time-value {
+  display: flex;
+  align-items: center;
+  height: 100%;
   width: 100%;
   min-width: 0;
   margin: 0;
   padding: 0;
   text-align: left;
+}
+
+.received-invoices-modal__date-field--upload::-webkit-datetime-edit {
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+  padding: 0;
 }
 
 @supports (-webkit-touch-callout: none) {
