@@ -321,7 +321,7 @@ function TripEntriesList({ entries }: { entries: VehicleLogbookEntrySummary[] })
   return (
     <div className="pt-4">
       <div className="vehicle-logbook-page__trip-table hidden overflow-hidden rounded-2xl border border-white/75 md:block">
-        <div className="vehicle-logbook-page__trip-table-head grid grid-cols-[112px_minmax(250px,1.5fr)_minmax(190px,1fr)_120px_130px] gap-4 px-4 py-3">
+        <div className="vehicle-logbook-page__trip-table-head grid grid-cols-[104px_minmax(240px,1.5fr)_minmax(180px,1fr)_112px_122px] gap-3 px-4 py-2.5">
           <span>DATUM</span>
           <span>TRASA</span>
           <span>ÚČEL</span>
@@ -332,13 +332,13 @@ function TripEntriesList({ entries }: { entries: VehicleLogbookEntrySummary[] })
           {entries.map((entry) => (
             <article
               key={entry.id}
-              className="vehicle-logbook-page__trip-row grid grid-cols-[112px_minmax(250px,1.5fr)_minmax(190px,1fr)_120px_130px] items-center gap-4 border-t border-gray-100 px-4 py-3"
+              className="vehicle-logbook-page__trip-row grid grid-cols-[104px_minmax(240px,1.5fr)_minmax(180px,1fr)_112px_122px] items-center gap-3 border-t border-gray-100 px-4 py-2"
             >
               <div>
                 <div className="text-sm font-semibold text-gray-900">
                   {formatDate(entry.trip_date)}
                 </div>
-                <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-gray-400">
+                <div className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.07em] text-gray-400">
                   {getEntryTypeLabel(entry.entry_type)} · {entry.day_sequence}.
                 </div>
               </div>
@@ -348,7 +348,7 @@ function TripEntriesList({ entries }: { entries: VehicleLogbookEntrySummary[] })
                   <span className="shrink-0 text-[#4d90c5]">→</span>
                   <span className="truncate">{entry.destination}</span>
                 </div>
-                <div className="mt-1 truncate text-xs text-gray-500">
+                <div className="mt-0.5 truncate text-[11px] text-gray-500">
                   {formatNumber(entry.odometer_start_km)}–{formatNumber(entry.odometer_end_km)} km
                   {entry.source_type === 'automatic_reconstruction'
                     ? ' · automaticky doplněno'
@@ -360,7 +360,7 @@ function TripEntriesList({ entries }: { entries: VehicleLogbookEntrySummary[] })
                   {entry.purpose}
                 </div>
                 {entry.note ? (
-                  <div className="mt-1 truncate text-xs text-gray-400" title={entry.note}>
+                  <div className="mt-0.5 truncate text-[11px] text-gray-400" title={entry.note}>
                     {entry.note}
                   </div>
                 ) : null}
@@ -368,17 +368,17 @@ function TripEntriesList({ entries }: { entries: VehicleLogbookEntrySummary[] })
               <div>
                 <span
                   data-usage={entry.usage_type}
-                  className="vehicle-logbook-page__usage-badge"
+                  className="vehicle-logbook-page__usage-badge vehicle-logbook-page__usage-badge--entry"
                 >
                   {getUsageLabel(entry.usage_type)}
                 </span>
               </div>
               <div className="text-right">
-                <div className="text-base font-semibold text-gray-900">
+                <div className="text-sm font-semibold text-gray-900">
                   {formatNumber(entry.distance_km)} km
                 </div>
                 {entry.usage_type === 'mixed' ? (
-                  <div className="mt-1 text-[10px] text-gray-500">
+                  <div className="mt-0.5 text-[9px] text-gray-500">
                     S {formatNumber(entry.business_km)} · P {formatNumber(entry.private_km)}
                   </div>
                 ) : null}
@@ -388,45 +388,59 @@ function TripEntriesList({ entries }: { entries: VehicleLogbookEntrySummary[] })
         </div>
       </div>
 
-      <div className="grid gap-3 md:hidden">
+      <div className="grid gap-2 md:hidden">
         {entries.map((entry) => (
           <article
             key={entry.id}
-            className="vehicle-logbook-page__trip-mobile-card rounded-2xl border border-white/75 bg-white/58 p-4"
+            className="vehicle-logbook-page__trip-mobile-card vehicle-logbook-page__trip-mobile-card--entry rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_24px_rgba(15,23,42,0.1)]"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-gray-900">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-baseline gap-2">
+                <div className="shrink-0 text-sm font-semibold text-gray-900">
                   {formatDate(entry.trip_date)}
                 </div>
-                <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-gray-400">
+                <div className="truncate text-[9px] font-medium uppercase tracking-[0.06em] text-gray-400">
                   {getEntryTypeLabel(entry.entry_type)} · {entry.day_sequence}.
+                  {entry.source_type === 'automatic_reconstruction' ? ' · AUTO' : ''}
                 </div>
               </div>
               <span
                 data-usage={entry.usage_type}
-                className="vehicle-logbook-page__usage-badge"
+                className="vehicle-logbook-page__usage-badge vehicle-logbook-page__usage-badge--entry"
               >
                 {getUsageLabel(entry.usage_type)}
               </span>
             </div>
-            <div className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-900">
-              <span className="truncate">{entry.origin}</span>
-              <span className="shrink-0 text-[#4d90c5]">→</span>
-              <span className="truncate">{entry.destination}</span>
+            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-gray-900">
+                <span className="truncate">{entry.origin}</span>
+                <span className="shrink-0 text-[#4d90c5]">→</span>
+                <span className="truncate">{entry.destination}</span>
+              </div>
+              <div className="text-right">
+                <div className="whitespace-nowrap text-sm font-semibold text-gray-900">
+                  {formatNumber(entry.distance_km)} km
+                </div>
+                {entry.usage_type === 'mixed' ? (
+                  <div className="mt-0.5 whitespace-nowrap text-[9px] text-gray-500">
+                    S {formatNumber(entry.business_km)} · P {formatNumber(entry.private_km)}
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <div className="mt-2 text-sm text-gray-600">{entry.purpose}</div>
-            {entry.note ? (
-              <div className="mt-1 text-xs text-gray-400">{entry.note}</div>
-            ) : null}
-            <div className="mt-3 flex items-end justify-between gap-3 border-t border-gray-100 pt-3">
-              <div className="text-[11px] text-gray-500">
+            <div className="vehicle-logbook-page__trip-mobile-divider mt-2 flex min-w-0 items-center justify-between gap-3 border-t pt-2">
+              <div className="min-w-0 flex-1 truncate text-xs text-gray-600" title={entry.purpose}>
+                {entry.purpose}
+              </div>
+              <div className="shrink-0 whitespace-nowrap text-[10px] text-gray-500">
                 {formatNumber(entry.odometer_start_km)}–{formatNumber(entry.odometer_end_km)} km
               </div>
-              <div className="text-base font-semibold text-gray-900">
-                {formatNumber(entry.distance_km)} km
-              </div>
             </div>
+            {entry.note ? (
+              <div className="mt-1 truncate text-[10px] text-gray-400" title={entry.note}>
+                {entry.note}
+              </div>
+            ) : null}
           </article>
         ))}
       </div>
@@ -523,7 +537,7 @@ function FuelEntriesList({
 
   return (
     <div className="pt-4">
-      <div className="vehicle-logbook-page__fuel-metrics mb-3 grid grid-cols-2 gap-3 rounded-2xl border border-white/75 bg-white/45 p-3 sm:grid-cols-4">
+      <div className="vehicle-logbook-page__fuel-metrics mb-3 grid grid-cols-2 gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] sm:grid-cols-4">
         <div>
           <span>CELKOVÉ MNOŽSTVÍ</span>
           <strong>
@@ -641,7 +655,7 @@ function FuelEntriesList({
           return (
             <article
               key={entry.id}
-              className="vehicle-logbook-page__trip-mobile-card rounded-2xl border border-white/75 bg-white/58 p-4"
+              className="vehicle-logbook-page__trip-mobile-card vehicle-logbook-page__trip-mobile-card--entry rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_24px_rgba(15,23,42,0.1)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -667,7 +681,7 @@ function FuelEntriesList({
                   {formatCurrency(Number(entry.gross_amount))}
                 </div>
               </div>
-              <div className="mt-3 border-t border-gray-100 pt-3">
+              <div className="vehicle-logbook-page__trip-mobile-divider mt-3 border-t pt-3">
                 <div className="text-sm text-gray-700">
                   {entry.supplier ?? 'Dodavatel neuveden'}
                 </div>
