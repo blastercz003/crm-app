@@ -139,8 +139,23 @@ function IconAssets() {
   return (
     <div className="relative h-11 w-11 overflow-hidden">
       <Image
-        src="/majetek-icon.png"
+        src="/majetek-house-icon.png"
         alt="Majetek"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
+  )
+}
+
+function IconVehicleLogbook() {
+  return (
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/vehicle-logbook-icon.png"
+        alt="Knihy jízd"
         fill
         sizes="44px"
         className="object-contain"
@@ -301,6 +316,13 @@ export function DashboardSectionLinks({
         visible: isAdmin,
         icon: <IconAssets />,
       },
+      {
+        key: 'vehicle-logbook',
+        href: '/knihy-jizd',
+        label: 'Knihy jízd',
+        visible: isAdmin,
+        icon: <IconVehicleLogbook />,
+      },
       { key: 'finance', href: '/faktury', label: 'Finance', visible: isAdmin, icon: <IconFinance /> },
       { key: 'files', href: '/soubory', label: 'Soubory', visible: canViewFiles, icon: <IconFiles /> },
     ].filter((item) => item.visible),
@@ -322,7 +344,7 @@ export function DashboardSectionLinks({
 
   return (
     <section className="px-1 py-1 sm:px-2">
-      <div className="grid grid-cols-3 gap-3 lg:flex lg:justify-center lg:gap-7">
+      <div className="grid grid-cols-3 gap-3 lg:flex lg:flex-wrap lg:justify-center lg:gap-7">
         {items.map((item) => (
           <Link
             key={item.key}
