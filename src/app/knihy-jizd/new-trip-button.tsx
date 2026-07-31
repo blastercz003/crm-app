@@ -128,17 +128,33 @@ function NewTripModal({
 
             <label className="min-w-0">
               <span className="vehicle-logbook-page__modal-label">TYP ZÁZNAMU</span>
-              <select
-                name="entry_type"
-                value={entryType}
-                onChange={(event) =>
-                  handleEntryTypeChange(event.target.value as EntryType)
-                }
-                className="vehicle-logbook-page__input mt-2 h-11 w-full rounded-xl border border-gray-200 bg-white/95 px-3 text-sm text-gray-900 outline-none"
-              >
-                <option value="trip">Jednotlivá jízda</option>
-                <option value="daily_summary">Denní souhrn</option>
-              </select>
+              <div className="relative mt-2">
+                <select
+                  name="entry_type"
+                  value={entryType}
+                  onChange={(event) =>
+                    handleEntryTypeChange(event.target.value as EntryType)
+                  }
+                  className="vehicle-logbook-page__input h-11 w-full appearance-none rounded-xl border border-gray-200 bg-white/95 px-3 pr-10 text-sm text-gray-900 outline-none"
+                >
+                  <option value="trip">Jednotlivá jízda</option>
+                  <option value="daily_summary">Denní souhrn</option>
+                </select>
+                <svg
+                  aria-hidden
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
+                >
+                  <path
+                    d="m6 8 4 4 4-4"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
             </label>
 
             <label className="min-w-0">

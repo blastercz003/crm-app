@@ -198,6 +198,48 @@ function getViewLabel(view: ViewMode) {
   return view === 'active' ? 'Pouze aktivní' : 'Všechny'
 }
 
+function formatFilterDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return value
+  return `${day}. ${month}. ${year}`
+}
+
+function getDateFilterLabel(dateFrom: string, dateTo: string) {
+  if (dateFrom && dateTo && dateFrom === dateTo) {
+    return `Datum: ${formatFilterDate(dateFrom)}`
+  }
+
+  if (dateFrom && dateTo) {
+    return `Období: ${formatFilterDate(dateFrom)}–${formatFilterDate(dateTo)}`
+  }
+
+  if (dateFrom) return `Od: ${formatFilterDate(dateFrom)}`
+  if (dateTo) return `Do: ${formatFilterDate(dateTo)}`
+  return ''
+}
+
+function buildJobsReportPdfHref({
+  query,
+  jobStatus,
+  view,
+  dateFrom,
+  dateTo,
+}: {
+  query: string
+  jobStatus: JobStatus | ''
+  view: ViewMode
+  dateFrom: string
+  dateTo: string
+}) {
+  const params = new URLSearchParams()
+  if (query) params.set('q', query)
+  if (jobStatus) params.set('status', jobStatus)
+  params.set('view', view)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+  return `/jobs/report/pdf?${params.toString()}`
+}
+
 function getPragueTodayParts() {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Prague',
@@ -706,6 +748,13 @@ export default async function JobsPage({
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo
   )
+  const jobsReportPdfHref = buildJobsReportPdfHref({
+    query,
+    jobStatus,
+    view,
+    dateFrom,
+    dateTo,
+  })
 
   return (
     <>
@@ -956,7 +1005,10 @@ export default async function JobsPage({
                       RESET
                     </JobFilterResetLink>
 
-                    <PrintJobsButton className="jobs-page__print-button" />
+                    <PrintJobsButton
+                      href={jobsReportPdfHref}
+                      className="jobs-page__print-button"
+                    />
                     <DispatcherCalendarButton
                       className="basis-full w-full px-3"
                       initiallyActivated={isDispatcherCalendarActivated}
@@ -1137,14 +1189,14 @@ export default async function JobsPage({
 
                   <div className="jobs-page__filter-divider hidden flex-col gap-2 border-t border-gray-100 pt-3 xl:flex-row xl:items-center xl:justify-between lg:flex">
                   <div className="print-filters-summary flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                  <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <span className="meetings-page__info-chip hidden items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] print:inline-flex">
                     Řazení:{' '}
                     <span className="ml-1 font-medium">
                       {getSortLabel(sort)}
                     </span>
                   </span>
 
-                  <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <span className="meetings-page__info-chip hidden items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] print:inline-flex">
                     Zobrazení:{' '}
                     <span className="ml-1 font-medium">
                       {getViewLabel(view)}
@@ -1160,20 +1212,10 @@ export default async function JobsPage({
                     </span>
                   ) : null}
 
-                  {dateFrom ? (
+                  {dateFrom || dateTo ? (
                     <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                      Od:{' '}
-                      <span className="ml-1 font-medium">
-                        {dateFrom}
-                      </span>
-                    </span>
-                  ) : null}
-
-                  {dateTo ? (
-                    <span className="meetings-page__info-chip inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                      Do:{' '}
-                      <span className="ml-1 font-medium">
-                        {dateTo}
+                      <span className="font-medium">
+                        {getDateFilterLabel(dateFrom, dateTo)}
                       </span>
                     </span>
                   ) : null}
@@ -1187,7 +1229,10 @@ export default async function JobsPage({
                       initialCount={jobChangesCount}
                       className="jobs-page__changes-button"
                     />
-                    <PrintJobsButton className="jobs-page__print-button" />
+                    <PrintJobsButton
+                      href={jobsReportPdfHref}
+                      className="jobs-page__print-button"
+                    />
                     <DispatcherCalendarButton
                       initiallyActivated={isDispatcherCalendarActivated}
                       initialFeedPath={dispatcherCalendarFeedPath}
@@ -1284,7 +1329,7 @@ export default async function JobsPage({
               </div>
             </section>
           ) : (
-            <div className="jobs-page__table-shell print-table-section">
+            <div className="jobs-page__table-shell">
               <JobsInteractiveTable
                 jobs={jobsWithInfoState}
                 clientSuggestions={clientOptions}
