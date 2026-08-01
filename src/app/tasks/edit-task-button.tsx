@@ -8,6 +8,7 @@ import {
   type UpdateTaskActionState,
 } from './actions'
 import TaskForm from './TaskForm'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type UserOption = {
   id: string
@@ -175,11 +176,7 @@ function EditTaskModal({
             className="clients-modal__shell-halo tasks-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]"
           />
           <div className="clients-modal__header tasks-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
-            <div className="min-w-0">
-              <h2 className="clients-modal__title tasks-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Upravit úkol
-              </h2>
-            </div>
+            <ModalHeading section="ÚKOLY" title="Upravit úkol" className="min-w-0" />
 
             <button
               type="button"

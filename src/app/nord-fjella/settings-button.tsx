@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { NordFjellaSettingsRow } from '@/lib/nord-fjella/types'
 import {
@@ -73,11 +74,7 @@ function SettingsModal({
       >
         <div className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
           <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
-            <div className="min-w-0">
-              <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Nastavení Nord Fjella
-              </h2>
-            </div>
+            <ModalHeading section="NORD FJELLA" title="Nastavení Nord Fjella" />
 
             <button
               type="button"

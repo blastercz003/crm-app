@@ -3,6 +3,7 @@
 import { useActionState, useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   updateJobInfoAlertAction,
   updateJobInfoAction,
@@ -520,9 +521,7 @@ export function InfoNoteModal({
       <div className="jobs-page__modal-shell jobs-page__info-modal relative w-full max-w-xl overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
         <div className="jobs-page__info-modal__header flex items-center justify-between border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-5 py-4">
           <div>
-            <h2 className="jobs-page__info-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-              Info k zakázce
-            </h2>
+            <ModalHeading section="ZAKÁZKY" title="Info k zakázce" />
             <div className="mt-2 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-1.5 text-xs font-bold tracking-[0.12em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.28)]">
               {jobNumber}
             </div>

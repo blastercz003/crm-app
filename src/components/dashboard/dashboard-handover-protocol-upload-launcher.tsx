@@ -284,6 +284,7 @@ export function DashboardHandoverProtocolUploadLauncher({
 
       <SuccessConfirmationModal
         isOpen={Boolean(successMessage)}
+        section="Dashboard"
         message={successMessage ?? ''}
         onConfirm={handleSuccessAcknowledge}
       />

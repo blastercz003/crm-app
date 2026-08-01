@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { ChangesButton } from './changes-button'
 import {
   getJobsChangesModalDataAction,
@@ -178,9 +179,10 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
         >
           <header className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Sledování změn zakázek
-              </h2>
+              <ModalHeading
+                section="ZAKÁZKY"
+                title="Sledování změn zakázek"
+              />
               <div className="mt-1.5">
                 <div
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-[0.08em] text-white ${
@@ -332,14 +334,10 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
             <div className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]">
               <div className="clients-modal__shell flex max-h-[min(80dvh,720px)] w-full max-w-[720px] flex-col overflow-hidden rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(245,250,255,0.95)_52%,rgba(224,242,254,0.9)_100%)] shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
                 <header className="flex shrink-0 items-start justify-between gap-4 border-b border-sky-100/90 px-5 py-4 [html[data-theme='dark']_&]:border-sky-300/10 sm:px-6 sm:py-5">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700 [html[data-theme='dark']_&]:text-sky-300">
-                      Nápověda
-                    </p>
-                    <h3 className="mt-1 text-xl font-semibold text-zinc-950 [html[data-theme='dark']_&]:text-slate-50 sm:text-2xl">
-                      Jak funguje sledování změn zakázek
-                    </h3>
-                  </div>
+                  <ModalHeading
+                    section="ZAKÁZKY"
+                    title="Jak funguje sledování změn zakázek"
+                  />
                   <button
                     type="button"
                     onClick={() => setIsHelpOpen(false)}
@@ -406,12 +404,11 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
             <div className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
               <div className="clients-modal__shell w-full max-w-md rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(239,248,255,0.94)_56%,rgba(224,242,254,0.9)_100%)] p-5 shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 [html[data-theme='dark']_&]:text-sky-300">
-                    Potvrzení uložení
-                  </p>
-                  <h3 className="text-xl font-semibold text-zinc-950 [html[data-theme='dark']_&]:text-slate-50">
-                    Máte označené položky skutečně zapsané?
-                  </h3>
+                  <ModalHeading
+                    section="ZAKÁZKY"
+                    title="Máte označené položky skutečně zapsané?"
+                    variant="compact"
+                  />
                   <p className="text-sm leading-6 text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
                     Z přehledu budou odebrány zeleně označené změny a nové zakázky se stavem ZAPSÁNO. Ostatní položky v přehledu zůstanou.
                   </p>

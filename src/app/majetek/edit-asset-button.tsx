@@ -8,6 +8,7 @@ import { Pencil } from 'lucide-react'
 import { updateAssetAction, type UpdateAssetActionState } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { MoneyInput } from '@/components/ui/money-input'
 
 type AssetCategoryOption = {
@@ -149,9 +150,7 @@ function EditAssetModal({
 
           <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
-              <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Upravit majetek
-              </h2>
+              <ModalHeading section="MAJETEK" title="Upravit majetek" />
               <p className="mt-1 text-sm text-gray-500">
                 V detailu měníš základní údaje záznamu, dokumenty a další obsah zůstává na své straně.
               </p>

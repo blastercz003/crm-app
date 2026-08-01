@@ -8,6 +8,7 @@ import {
   ActionFeedbackToast,
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type ClientOwnerOption = {
   id: string
@@ -146,11 +147,9 @@ function ClientOwnerChangeModal({
     >
       <div className="flex h-full items-center justify-center">
         <div className="clients-modal__shell relative w-full max-w-lg overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
-          <div className="clients-modal__header flex items-center justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-5 py-4">
+          <div className="clients-modal__header flex items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-5 py-4">
             <div>
-              <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Změna majitele a sdílení klienta
-              </h2>
+              <ModalHeading section="KLIENTI" title="Změna majitele a sdílení klienta" />
               <p className="clients-modal__subtitle mt-1 text-sm text-gray-500">
                 Aktuálně: <span className="font-semibold text-gray-900">{currentOwnerName}</span>
               </p>

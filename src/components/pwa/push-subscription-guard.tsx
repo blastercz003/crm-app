@@ -97,6 +97,7 @@ export function PushSubscriptionGuard() {
   return (
     <SuccessConfirmationModal
       isOpen={isModalOpen}
+      section="Aplikace"
       title="Obnova notifikací"
       message="Push notifikace je potřeba obnovit pro toto zařízení."
       onConfirm={handleConfirm}

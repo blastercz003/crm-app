@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import type {
   VehicleLogbookReportData,
   VehicleLogbookReportEntry,
@@ -628,17 +629,11 @@ function VehicleLogbookReportsModal({
             className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-4 sm:px-6"
             style={{ borderColor: 'var(--surface-border)' }}
           >
-            <div>
-              <div className="vehicle-logbook-page__report-kicker">
-                KNIHY JÍZD
-              </div>
-              <h2
-                id="vehicle-logbook-reports-title"
-                className="mt-1 text-xl font-semibold tracking-tight text-gray-900"
-              >
-                Reporty
-              </h2>
-            </div>
+            <ModalHeading
+              section="KNIHY JÍZD"
+              title="Reporty"
+              id="vehicle-logbook-reports-title"
+            />
             <button
               type="button"
               onClick={onClose}

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 import {
   createConnectionPointFolderCommentAction,
@@ -217,7 +218,7 @@ function SimpleModal({
       <div className="flex h-full items-center justify-center">
         <div className={`w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] ${className}`}>
           <div className="soubory-page__modal-header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
-            <h3 className="soubory-page__modal-title text-lg font-semibold tracking-tight text-gray-900">{title}</h3>
+            <ModalHeading section="Přípojné body" title={title} />
             <button
               type="button"
               onClick={onClose}
@@ -446,7 +447,7 @@ function ConfirmModal({
       <div className="flex h-full items-center justify-center">
         <div className="soubory-page__confirm-modal w-full max-w-lg rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
           <div className="soubory-page__confirm-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
-            <h3 className="soubory-page__confirm-modal__title text-lg font-semibold tracking-tight text-gray-900">{title}</h3>
+            <ModalHeading section="Přípojné body" title={title} variant="compact" />
             <button
               type="button"
               onClick={onClose}
@@ -525,9 +526,7 @@ function PhotoDeleteModal({
       <div className="flex h-full items-center justify-center">
         <div className="soubory-page__confirm-modal w-full max-w-lg rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
           <div className="soubory-page__confirm-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
-            <h3 className="soubory-page__confirm-modal__title text-lg font-semibold tracking-tight text-gray-900">
-              Smazat fotku
-            </h3>
+            <ModalHeading section="Přípojné body" title="Smazat fotku" variant="compact" />
             <button
               type="button"
               onClick={onClose}
@@ -1257,6 +1256,7 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
 
       <SuccessConfirmationModal
         isOpen={Boolean(commentSuccessMessage)}
+        section="Přípojné body"
         message={commentSuccessMessage ?? ''}
         onConfirm={() => {
           setCommentSuccessMessage(null)
@@ -1276,6 +1276,7 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
 
       <SuccessConfirmationModal
         isOpen={Boolean(uploadSuccessMessage)}
+        section="Přípojné body"
         message={uploadSuccessMessage ?? ''}
         onConfirm={() => {
           setUploadSuccessMessage(null)
@@ -1338,7 +1339,7 @@ function CommentEditModal({
       <div className="flex h-full items-center justify-center">
         <div className="soubory-page__comment-edit-modal w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
           <div className="soubory-page__comment-edit-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
-            <h3 className="soubory-page__comment-edit-modal__title text-lg font-semibold tracking-tight text-gray-900">Upravit komentář</h3>
+            <ModalHeading section="Přípojné body" title="Upravit komentář" />
             <button
               type="button"
               onClick={onClose}

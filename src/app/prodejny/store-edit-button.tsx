@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { updateStoreAction, type UpdateStoreFormState } from './actions'
 
 type StoreEditButtonProps = {
@@ -111,7 +112,7 @@ function StoreEditModal({
         <div className="stores-page__modal flex max-h-[calc(100vh-2rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Upravit prodejnu</h2>
+              <ModalHeading section="PRODEJNY" title="Upravit prodejnu" />
               <p className="mt-2 text-sm text-gray-500">
                 {store.chain_name} / prodejna {store.store_number}
               </p>

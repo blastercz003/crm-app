@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   buildNordFjellaReportData,
@@ -219,12 +220,11 @@ function ReportsModal({
           className="clients-modal__shell flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(247,249,251,0.92)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]"
         >
           <div className="clients-modal__header flex shrink-0 items-center justify-between gap-4 border-b border-gray-100/90 px-4 py-3 sm:px-5">
-            <h2
+            <ModalHeading
+              section="NORD FJELLA"
+              title="Reporty"
               id="nord-fjella-reports-title"
-              className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900"
-            >
-              Reporty
-            </h2>
+            />
             <button
               type="button"
               onClick={onClose}

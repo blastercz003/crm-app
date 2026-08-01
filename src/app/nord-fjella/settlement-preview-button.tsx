@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { buildNordFjellaSpdQrPayload } from '@/lib/nord-fjella/payment-qr'
 import { getNordFjellaProviderSettingsIssues } from '@/lib/nord-fjella/settings-validation'
 import { buildNordFjellaSettlementSummary } from '@/lib/nord-fjella/settlement'
@@ -161,9 +162,7 @@ function SettlementPreviewModal({
         <div className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
           <div className="clients-modal__header flex shrink-0 flex-col gap-3 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5 sm:py-4">
             <div className="min-w-0">
-              <h2 className="clients-modal__title text-lg font-semibold tracking-tight sm:text-xl">
-                Vyúčtování pobytu
-              </h2>
+              <ModalHeading section="NORD FJELLA" title="Vyúčtování pobytu" />
               <p className="clients-modal__subtitle mt-1 text-sm">
                 {reservation.reservation_number} • {getGuestLabel(reservation)}
               </p>

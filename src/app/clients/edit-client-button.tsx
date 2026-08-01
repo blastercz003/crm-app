@@ -7,6 +7,7 @@ import {
   updateClientModalAction,
   type UpdateClientActionState,
 } from './actions'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 export type ClientForEditing = {
   id: string
@@ -125,11 +126,7 @@ export function EditClientModal({
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
         <div className="clients-modal__shell relative flex h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100dvh-2rem)] sm:max-h-[760px] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
           <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
-            <div className="min-w-0">
-              <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Upravit klienta
-              </h2>
-            </div>
+            <ModalHeading section="KLIENTI" title="Upravit klienta" className="min-w-0" />
 
             <button
               type="button"

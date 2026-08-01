@@ -7,7 +7,6 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
-  CircleGauge,
   ExternalLink,
   FileImage,
   FileText,
@@ -21,6 +20,7 @@ import {
   WalletCards,
   X,
 } from 'lucide-react'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   openJobAttachmentAction,
   openOfferOrderAttachmentAction,
@@ -186,17 +186,12 @@ export function Job360Modal({
       <div className="mx-auto flex h-full w-full max-w-[1440px] items-center justify-center">
         <div className="flex max-h-full w-full flex-col overflow-hidden rounded-[30px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.985)_0%,rgba(244,248,252,0.975)_48%,rgba(234,242,249,0.96)_100%)] shadow-[0_38px_90px_rgba(15,23,42,0.34)] [html[data-theme='dark']_&]:border-white/[0.1] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(13,22,37,0.995)_0%,rgba(8,16,29,0.995)_58%,rgba(5,12,23,0.995)_100%)] [html[data-theme='dark']_&]:shadow-[0_42px_100px_rgba(0,0,0,0.58)]">
           <header className="relative flex shrink-0 items-start justify-between gap-4 border-b border-slate-200/75 px-4 py-4 sm:px-6 [html[data-theme='dark']_&]:border-white/[0.08]">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <CircleGauge className="h-6 w-6 shrink-0 text-[#3c83ba]" />
-                <h2
-                  id="job-360-title"
-                  className={`truncate text-xl font-semibold sm:text-2xl ${VALUE_TEXT_CLASS}`}
-                >
-                  Souhrn zakázky · {data?.job.jobNumber ?? jobNumber}
-                </h2>
-              </div>
-            </div>
+            <ModalHeading
+              section="FAKTURY"
+              title={`Souhrn zakázky · ${data?.job.jobNumber ?? jobNumber}`}
+              id="job-360-title"
+              className="min-w-0"
+            />
 
             <button
               ref={closeButtonRef}

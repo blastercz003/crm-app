@@ -10,6 +10,7 @@ import {
   ActionFeedbackToast,
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { OfferOrderModal } from './offer-order-modal'
 
 const STATUS_BADGE_WIDTH_CLASS = 'w-[150px]'
@@ -310,9 +311,7 @@ function StatusModal({
           <div aria-hidden="true" className="offers-page__status-modal__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
           <div className="offers-page__status-modal__header relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <div className="flex flex-col items-start">
-              <h2 className="offers-page__status-modal__title text-lg font-semibold tracking-tight text-gray-900">
-                Změnit stav nabídky:
-              </h2>
+              <ModalHeading section="NABÍDKY" title="Změnit stav nabídky" />
               <div className="offers-page__status-modal__number mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
                 {offerNumber}
               </div>
@@ -406,9 +405,12 @@ function RealizaceConfirmModal({
           <div aria-hidden className="offers-page__status-confirm-modal__top-line pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden className="offers-page__status-confirm-modal__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
 
-          <h3 className="offers-page__status-confirm-modal__title relative text-lg font-semibold tracking-tight text-gray-900">
-            Opravdu chceš manuálně přepnout stav?
-          </h3>
+          <ModalHeading
+            section="NABÍDKY"
+            title="Opravdu chceš manuálně přepnout stav?"
+            variant="compact"
+            className="relative"
+          />
 
           <div className="offers-page__status-confirm-modal__actions relative mt-5 flex justify-end gap-2">
             <button
@@ -478,9 +480,7 @@ function RejectReasonModal({
           <div aria-hidden className="offers-page__reject-modal__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
 
           <div className="offers-page__reject-modal__header relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
-            <h2 className="offers-page__reject-modal__title text-lg font-semibold tracking-tight text-gray-900">
-              Proč to nevyšlo?
-            </h2>
+            <ModalHeading section="NABÍDKY" title="Proč to nevyšlo?" />
             <button
               type="button"
               onClick={onClose}

@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { setOfferClientOutcome } from '@/app/offers/actions'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type RejectOfferWithReasonButtonProps = {
   offerId: string
@@ -101,9 +102,7 @@ export function RejectOfferWithReasonButton({
                   <div aria-hidden className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
 
                   <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
-                    <h2 className="text-lg font-semibold tracking-tight text-gray-900">
-                      Proč to nevyšlo?
-                    </h2>
+                    <ModalHeading section="NABÍDKY" title="Proč to nevyšlo?" />
                     <button
                       type="button"
                       onClick={closeModal}

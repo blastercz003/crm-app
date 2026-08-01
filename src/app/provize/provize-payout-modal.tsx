@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   ActionFeedbackToast,
   useAnimatedActionToast,
@@ -314,14 +315,14 @@ function ProvizePayoutModal({
             <div className="provize-payout-modal__header border-b border-white/70 px-4 py-4 sm:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#236f9f]">
-                    Výplatní dávka provizí
-                  </div>
-                  <h2 className="mt-1 text-xl font-semibold text-gray-900">
-                    {draft
-                      ? `Draft pro ${draft.salesOwner}`
-                      : 'Vyber obchodníka pro výplatu provizí'}
-                  </h2>
+                  <ModalHeading
+                    section="PROVIZE"
+                    title={
+                      draft
+                        ? `Draft pro ${draft.salesOwner}`
+                        : 'Vyber obchodníka pro výplatu provizí'
+                    }
+                  />
                   <p className="mt-2 text-sm text-gray-600">
                     {draft
                       ? `Dávka je uložená jako draft. Náhled i potvrzení vychází ze zafixovaných hodnot v této dávce.`

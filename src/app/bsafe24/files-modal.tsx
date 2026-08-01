@@ -12,6 +12,7 @@ import {
   type BSafe24FileRow,
 } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type BSafe24FilesModalLauncherProps = {
   contractId: string
@@ -235,9 +236,7 @@ function BSafe24FilesModal({
         <div className="flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.34)] sm:max-h-[calc(100vh-3rem)]">
           <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-                Soubory B-SAFE 24
-              </h2>
+              <ModalHeading section="B-SAFE 24" title="Soubory B-SAFE 24" />
               <div className="mt-2 flex justify-start">
                 <span className="inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.26)]">
                   SMLOUVA {contractNumber}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useId, useMemo } from 'react'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   createJobAction,
   updateJobAction,
@@ -177,9 +178,7 @@ export function JobForm({
         <div className="jobs-page__modal-shell flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div className="flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4 sm:px-6">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900">
-                {title}
-              </h2>
+              <ModalHeading section="ZAKÁZKY" title={title} />
               {description ? (
                 <p className="mt-1 text-sm text-gray-500">{description}</p>
               ) : null}

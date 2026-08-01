@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   getVehicleLogbookClosurePreviewAction,
   recalculateVehicleLogbookClosureAction,
@@ -140,12 +141,11 @@ function MonthlyClosureModal({
       <div className="vehicle-logbook-page__modal vehicle-logbook-page__closure-modal my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(245,248,251,0.94)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)] sm:max-h-[calc(100dvh-2.5rem)]">
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2
+            <ModalHeading
+              section="KNIHY JÍZD"
+              title="Měsíční uzávěrka"
               id="vehicle-logbook-closure-title"
-              className="text-xl font-semibold tracking-tight text-gray-900"
-            >
-              Měsíční uzávěrka
-            </h2>
+            />
             <p className="mt-1 truncate text-sm text-gray-500">{vehicleLabel}</p>
           </div>
           <button

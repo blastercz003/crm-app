@@ -11,6 +11,7 @@ import {
   getOfferItemNetTotal,
 } from '@/lib/offers/calculations'
 import type { OfferItemRow } from '@/lib/offers/types'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type DraftOfferItem = {
   id: string
@@ -774,9 +775,7 @@ export function OfferItemsEditor({
               <div className="offers-detail-page__items-modal-header px-4 py-4 sm:px-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold uppercase text-gray-900">
-                      Položky nabídky
-                    </h2>
+                    <ModalHeading section="NABÍDKY" title="Položky nabídky" />
                     {showSectionTotalBadge ? (
                       <div className="mt-2 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-2.5 py-1 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
                         {formatCurrency(total, currency)} bez DPH

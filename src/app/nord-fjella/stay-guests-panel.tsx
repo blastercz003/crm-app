@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import type {
   NordFjellaCityTaxStatus,
   NordFjellaReservationRow,
@@ -233,9 +234,10 @@ function StayGuestModal({
         <div className="clients-modal__shell flex w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.9)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)]">
           <div className="clients-modal__header flex items-start justify-between gap-4 border-b border-gray-100/90 px-4 py-3 sm:px-5 sm:py-4">
             <div>
-              <h3 className="clients-modal__title text-lg font-semibold text-gray-900">
-                {guest ? 'Upravit ubytovanou osobu' : 'Přidat ubytovanou osobu'}
-              </h3>
+              <ModalHeading
+                section="NORD FJELLA"
+                title={guest ? 'Upravit ubytovanou osobu' : 'Přidat ubytovanou osobu'}
+              />
               <p className="clients-modal__subtitle mt-1 text-sm text-gray-500">
                 Evidence občana ČR pro pobyt {reservation.reservation_number}.
               </p>

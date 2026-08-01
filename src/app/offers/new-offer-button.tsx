@@ -8,6 +8,7 @@ import {
   type OfferFormActionState,
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type ClientOption = {
@@ -226,11 +227,7 @@ export function NewOfferModal({
           }}
         >
           <div className="clients-modal__header offers-page__new-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
-            <div className="min-w-0">
-              <h2 className="clients-modal__title offers-page__new-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Nová nabídka
-              </h2>
-            </div>
+            <ModalHeading section="NABÍDKY" title="Nová nabídka" className="min-w-0" />
 
             <button
               type="button"

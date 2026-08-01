@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import type { ProvizeSalesOwner } from '@/lib/provize/access'
 import type {
   ProvizeHistoryBatch,
@@ -161,14 +162,14 @@ function ProvizeHistoryModal({
           <div className="provize-history-modal__header border-b border-white/70 px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#236f9f]">
-                  Historie výplat provizí
-                </div>
-                <h2 className="mt-1 text-xl font-semibold text-gray-900">
-                  {selectedOwner
-                    ? `Potvrzené dávky${isAdmin ? ` pro ${selectedOwner}` : ''}`
-                    : 'Vyber obchodníka'}
-                </h2>
+                <ModalHeading
+                  section="PROVIZE"
+                  title={
+                    selectedOwner
+                      ? `Potvrzené dávky${isAdmin ? ` pro ${selectedOwner}` : ''}`
+                      : 'Vyber obchodníka'
+                  }
+                />
                 <p className="mt-2 text-sm text-gray-600">
                   {isAdmin
                     ? 'Nejdřív zvol obchodníka, potom konkrétní dávku a nakonec uvidíš detail celé výplaty včetně zakázek a bonusů nebo odpočtů.'

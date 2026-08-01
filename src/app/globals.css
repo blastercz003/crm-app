@@ -4099,11 +4099,27 @@ html[data-theme='dark'] .notifications-modal__item-sheen {
   display: none;
 }
 
-html[data-theme='dark'] .notifications-modal__item-dot {
+html[data-theme='dark'] .notifications-modal__item--unread .notifications-modal__item-dot {
   background: rgba(78, 160, 220, 0.92);
   box-shadow:
     0 0 0 3px rgba(78, 160, 220, 0.14),
     0 0 14px rgba(78, 160, 220, 0.22) !important;
+}
+
+html[data-theme='dark'] .notifications-modal__item--read .notifications-modal__item-dot {
+  background: #475569;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .notifications-modal__unread-accent {
+  background: #4ea0dc;
+  box-shadow: 0 0 12px rgba(78, 160, 220, 0.24);
+}
+
+html[data-theme='dark'] .notifications-modal__new-badge {
+  border-color: rgba(78, 160, 220, 0.28);
+  background: rgba(27, 62, 104, 0.78);
+  color: #d8efff;
 }
 
 html[data-theme='dark'] .notifications-modal__item-title {
@@ -4227,6 +4243,7 @@ html[data-theme='dark'] .notifications-modal__footer {
 
 html[data-theme='dark'] .notifications-modal__footer-primary {
   border-color: rgba(78, 160, 220, 0.22);
+  color: rgba(241, 245, 249, 0.94);
   background: linear-gradient(
     155deg,
     rgba(18, 31, 54, 0.98) 0%,
@@ -4236,6 +4253,7 @@ html[data-theme='dark'] .notifications-modal__footer-primary {
 
 html[data-theme='dark'] .notifications-modal__footer-primary:hover {
   border-color: rgba(92, 167, 219, 0.32);
+  color: #ffffff;
   background: linear-gradient(
     155deg,
     rgba(44, 96, 141, 0.98) 0%,
@@ -4245,6 +4263,7 @@ html[data-theme='dark'] .notifications-modal__footer-primary:hover {
 
 html[data-theme='dark'] .notifications-modal__footer-secondary {
   border-color: rgba(78, 160, 220, 0.22);
+  color: #ffffff;
   background: linear-gradient(
     155deg,
     rgba(27, 62, 104, 0.98) 0%,
@@ -14655,6 +14674,65 @@ html[data-theme='light'] .jobs-page__job-form-modal__header h2 {
 
 html[data-theme='dark'] .jobs-page__job-form-modal__header h2 {
   color: #f8fbff !important;
+}
+
+.app-modal-heading__section {
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.app-modal-heading__title {
+  margin-top: 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-modal-heading--compact .app-modal-heading__section {
+  font-size: 9px;
+}
+
+.app-modal-heading--compact .app-modal-heading__title {
+  font-size: 0.9375rem;
+}
+
+html[data-theme='light']
+  .app-modal-heading
+  .app-modal-heading__section {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark']
+  .app-modal-heading
+  .app-modal-heading__section {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='light']
+  .app-modal-heading
+  .app-modal-heading__title {
+  color: var(--accent-strong) !important;
+}
+
+html[data-theme='dark']
+  .app-modal-heading
+  .app-modal-heading__title {
+  color: #f8fbff !important;
+}
+
+@media (min-width: 640px) {
+  .app-modal-heading__title {
+    font-size: 1.125rem;
+  }
+
+  .app-modal-heading--compact .app-modal-heading__title {
+    font-size: 1rem;
+  }
 }
 
 html[data-theme='light'] .jobs-page__job-form-modal__close {

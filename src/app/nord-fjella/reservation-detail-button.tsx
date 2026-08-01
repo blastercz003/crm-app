@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState, useTransition } f
 import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import type {
   NordFjellaGuestRow,
   NordFjellaPaymentRow,
@@ -295,9 +296,7 @@ function ReservationDetailModal({
         <div className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
           <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
-              <h2 className="clients-modal__title text-lg font-semibold tracking-tight sm:text-xl">
-                Detail rezervace
-              </h2>
+              <ModalHeading section="NORD FJELLA" title="Detail rezervace" />
               <p className="clients-modal__subtitle mt-1 text-sm">
                 {reservation.reservation_number} • úprava detailů pronájmu nebo blokace.
               </p>
@@ -1164,12 +1163,11 @@ function ReservationDetailModal({
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/36 p-4 backdrop-blur-[4px]">
               <div className="clients-modal__shell w-full max-w-md rounded-[28px] border border-red-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.95)_0%,rgba(254,242,242,0.92)_56%,rgba(255,228,230,0.88)_100%)] p-5 shadow-[0_28px_64px_rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:border-red-400/18 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.98)_0%,rgba(20,20,32,0.96)_52%,rgba(38,18,24,0.94)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.42)]">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-600 [html[data-theme='dark']_&]:text-red-300">
-                    Potvrzení smazání
-                  </p>
-                  <h3 className="text-xl font-semibold text-zinc-950 [html[data-theme='dark']_&]:text-slate-50">
-                    Smazat rezervaci?
-                  </h3>
+                  <ModalHeading
+                    section="NORD FJELLA"
+                    title="Smazat rezervaci?"
+                    variant="compact"
+                  />
                   <p className="text-sm leading-6 text-zinc-700 [html[data-theme='dark']_&]:text-slate-300">
                     Trvale se smaže záznam {reservation.reservation_number}, jeho doplňkové položky i
                     nahrané doklady hosta. Záznam hosta v databázi zůstane zachovaný.

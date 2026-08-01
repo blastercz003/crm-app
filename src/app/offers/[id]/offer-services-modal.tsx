@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { toggleOfferPresetItem } from '@/app/offers/actions'
 import { OFFER_SERVICE_GROUP_LABEL } from '@/lib/offers/presets'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type OfferServicesModalProps = {
   offerId: string
@@ -107,9 +108,7 @@ export function OfferServicesModal({
             <div className="offers-detail-page__services-modal-shell flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(249,252,255,0.82)_50%,rgba(245,250,255,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_36px_84px_rgba(24,24,27,0.32)]">
               <div className="offers-detail-page__services-modal-header flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
                 <div>
-                  <h2 className="text-lg font-semibold uppercase text-gray-900">
-                    Upravit služby
-                  </h2>
+                  <ModalHeading section="NABÍDKY" title="Upravit služby" />
                   <p className="mt-1 text-sm text-gray-500">
                     Aktivní služby se propíšou do nabídky i PDF.
                   </p>

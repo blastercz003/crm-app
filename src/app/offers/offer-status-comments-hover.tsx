@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { OfferStatusButton } from '@/app/offers/offer-status-button'
 import { getOfferCommentsForDashboard, type OfferCommentDetail } from '@/components/dashboard/dashboard-my-offers-actions'
 import type { OfferStatus } from '@/lib/offers/types'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 const HOVER_OPEN_DELAY_MS = 2000
 
@@ -184,9 +185,7 @@ function CommentsDetailModalContent({
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="dashboard-offers-module__modal-eyebrow text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-            KOMENTÁŘE NABÍDKY
-          </div>
+          <ModalHeading section="NABÍDKY" title="Komentáře nabídky" />
           <div className="dashboard-offers-module__offer-pill mt-1 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_10px_20px_rgba(24,78,129,0.24)]">
             {offerNumber}
           </div>

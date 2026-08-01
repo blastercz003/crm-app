@@ -16,6 +16,7 @@ import {
   EditJobModalController,
 } from '../jobs/edit-job-button'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { JobAttachmentsModalContent } from '@/components/attachments/job-attachments-modal-content'
 import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
 import { normalizeTechnicianSearchText } from '@/lib/jobs/technicians'
@@ -1289,6 +1290,7 @@ function JobAttachmentsModal({
 
   return createPortal(
     <JobAttachmentsModalContent
+      section="FAKTURY"
       jobNumber={jobNumber}
       items={visibleItems}
       isLoading={isLoading}
@@ -1660,9 +1662,7 @@ function CostItemsModal({
           <div className="px-4 py-4 sm:px-6">
             <div className="faktury-page__costs-modal__header flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Náklady zakázky
-                </h2>
+                <ModalHeading section="FAKTURY" title="Náklady zakázky" />
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.26)]">
                     ZAKÁZKA {jobNumber}

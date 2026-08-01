@@ -8,6 +8,7 @@ import {
   type OfferFormActionState,
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type ClientOption = {
   id: string
@@ -231,9 +232,7 @@ function CopyOfferModal({
           <div aria-hidden className="clients-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]" />
           <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
-              <h2 className="clients-modal__title text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                KOPIE NABÍDKY
-              </h2>
+              <ModalHeading section="NABÍDKY" title="Kopie nabídky" />
               <p className="clients-modal__subtitle mt-1 text-sm text-gray-500">
                 Vytvoř novou nabídku podle {offerNumber}.
               </p>

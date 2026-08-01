@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   getHandoverProtocolDraftAction,
   saveHandoverProtocolDraftAction,
@@ -324,9 +325,7 @@ function HandoverProtocolModal({
         <div className="jobs-page__modal-shell jobs-page__handover-modal flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100dvh-1.5rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
           <div className="jobs-page__handover-header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 flex-col items-start">
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Předávací protokol
-              </h2>
+              <ModalHeading section="ZAKÁZKY" title="Předávací protokol" />
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <div className="jobs-page__handover-job-badge inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
                   ZAKÁZKA {job.job_number}
@@ -508,6 +507,7 @@ function HandoverProtocolModal({
       {createPortal(modalContent, document.body)}
       <SuccessConfirmationModal
         isOpen={Boolean(successMessage)}
+        section="Zakázky"
         title="PP odeslán technikovi"
         message={successMessage ?? ''}
         confirmLabel="OK"

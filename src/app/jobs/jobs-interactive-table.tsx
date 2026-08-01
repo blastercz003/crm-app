@@ -15,6 +15,7 @@ import { TechnicianNamesInput } from './technician-names-input'
 import { finalizeTechnicianInputValue } from '@/lib/jobs/technicians'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type JobStatus =
   | 'nova'
@@ -1050,6 +1051,7 @@ function MobileAssignmentButton({
 
       <SuccessConfirmationModal
         isOpen={Boolean(successMessage)}
+        section="Zakázky"
         title="ULOŽENO"
         message={successMessage ?? ''}
         onConfirm={() => setSuccessMessage(null)}
@@ -1763,9 +1765,7 @@ function JobStatusModal({
 
           <div className="jobs-page__status-modal__header relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <div className="flex flex-col items-start">
-              <h2 className="jobs-page__status-modal__title text-lg font-semibold tracking-tight text-gray-900">
-                {title}
-              </h2>
+              <ModalHeading section="ZAKÁZKY" title={title} />
               <div className="mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
                 {jobNumber}
               </div>
@@ -1979,9 +1979,7 @@ function EvidenceStatusModal({
 
           <div className="relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <div className="flex flex-col items-start">
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900">
-                {title}
-              </h2>
+              <ModalHeading section="ZAKÁZKY" title={title} />
               <div className="mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
                 {jobNumber}
               </div>
@@ -2085,9 +2083,7 @@ function ModalShell({
             }`}
           >
             <div className="flex flex-col items-start">
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900">
-                {title}
-              </h2>
+              <ModalHeading section="ZAKÁZKY" title={title} />
               {description ? (
                 descriptionAsBadge ? (
                   <div className="jobs-page__mobile-modal-badge mt-1.5 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">

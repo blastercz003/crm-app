@@ -10,6 +10,7 @@ import { CreateJobModal } from '@/app/jobs/new-job-button'
 import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   clearMyDashboardQuickNoteAction,
   upsertMyDashboardQuickNoteAction,
@@ -447,11 +448,7 @@ function ManualNotificationModal({
       <div className="absolute inset-0 overflow-y-auto p-4">
         <div className="manual-notifications-modal__shell mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
           <div className="manual-notifications-modal__header mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
-            <div>
-              <h2 className="manual-notifications-modal__title text-xl font-semibold tracking-tight text-gray-900">
-                Ruční notifikace
-              </h2>
-            </div>
+            <ModalHeading section="Dashboard" title="Ruční notifikace" />
 
             <button
               type="button"
@@ -2175,7 +2172,8 @@ export function DashboardMobileQuickActions({
                   <div aria-hidden className="dashboard-quick-notes-clear-confirm__top-line pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
                   <div aria-hidden className="dashboard-quick-notes-clear-confirm__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
 
-                  <p className="dashboard-quick-notes-clear-confirm__text relative text-sm font-medium leading-6 text-gray-900">
+                  <ModalHeading section="Dashboard" title="Smazat poznámku" variant="compact" className="relative" />
+                  <p className="dashboard-quick-notes-clear-confirm__text relative mt-3 text-sm font-medium leading-6 text-gray-900">
                     Opravdu chceš nevratně smazat veškerý text?
                   </p>
 
@@ -2217,9 +2215,7 @@ export function DashboardMobileQuickActions({
             <div className="online-log-modal__shell mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
               <div className="online-log-modal__header mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
                 <div>
-                  <h2 className="online-log-modal__title text-xl font-semibold tracking-tight text-gray-900">
-                    ONLINE LOG
-                  </h2>
+                  <ModalHeading section="Dashboard" title="Online log" />
                   <p className="online-log-modal__subtitle mt-1 text-sm text-gray-500">
                     Online teď: {onlineCount} • Aktivní v období: {presenceUsers.length}
                   </p>

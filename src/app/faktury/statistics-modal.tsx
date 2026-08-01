@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   getFinanceStatisticsAction,
@@ -209,17 +210,11 @@ function FakturyStatisticsModal({ onClose }: { onClose: () => void }) {
       <div className="mx-auto flex h-full w-full min-w-0 max-w-[1180px] items-center justify-center">
         <div className="faktury-statistics-modal flex max-h-[calc(100vh-1.5rem)] w-full min-w-0 flex-col overflow-hidden rounded-[30px] border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(244,248,252,0.96)_100%)] shadow-[0_36px_84px_rgba(24,24,27,0.28)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(12,20,34,0.99)_0%,rgba(8,15,27,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.48)]">
           <header className="flex items-start justify-between gap-4 border-b border-zinc-200/75 px-4 py-4 sm:px-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2877aa] [html[data-theme='dark']_&]:text-[#67b8ed]">
-                Statistika fakturace
-              </div>
-              <h2
-                id="faktury-statistics-title"
-                className="mt-1 text-xl font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-slate-100"
-              >
-                Výkony zakázek a techniků
-              </h2>
-            </div>
+            <ModalHeading
+              section="FAKTURY"
+              title="Výkony zakázek a techniků"
+              id="faktury-statistics-title"
+            />
 
             <button
               type="button"

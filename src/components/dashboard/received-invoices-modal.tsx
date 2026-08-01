@@ -16,6 +16,7 @@ import {
 } from '@/lib/dashboard/dashboard-background-client'
 import type { ReceivedInvoiceFilter, ReceivedInvoiceRow } from '@/lib/received-invoices/types'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import Image from 'next/image'
 
 type ModeKey = 'upload' | 'view'
@@ -535,11 +536,7 @@ export function ReceivedInvoicesModal({
           }}
         >
           <div className="received-invoices-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
-                Přijaté faktury
-              </h2>
-            </div>
+            <ModalHeading section="FAKTURY" title="Přijaté faktury" className="min-w-0" />
             <button
               type="button"
               onClick={onClose}

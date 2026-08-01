@@ -18,6 +18,7 @@ import {
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 function formatOfferOrderFileDate(value: string) {
   return new Intl.DateTimeFormat('cs-CZ', {
@@ -228,9 +229,7 @@ export function OfferOrderModal({
 
             <div className="offers-page__order-modal__header relative mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
               <div className="flex flex-col items-start">
-                <h2 className="offers-page__order-modal__title text-lg font-semibold tracking-tight text-gray-900">
-                  Objednávka k nabídce
-                </h2>
+                <ModalHeading section="NABÍDKY" title="Objednávka k nabídce" />
                 <div className="offers-page__order-modal__number mt-1.5 inline-flex items-center rounded-full border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(41,128,185,0.2)]">
                   {offerNumber}
                 </div>
@@ -378,6 +377,7 @@ export function OfferOrderModal({
 
       <SuccessConfirmationModal
         isOpen={isSuccessModalOpen}
+        section="Nabídky"
         title="Hotovo"
         message="Objednávka byla úspěšně nahrána."
         confirmLabel={canFinalizeStatus ? 'ULOŽIT STAV NABÍDKY' : 'ZAVŘÍT'}

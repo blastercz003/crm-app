@@ -20,6 +20,7 @@ import {
 } from './rental-settlements-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MoneyInput } from '@/components/ui/money-input'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import type {
   RentalServiceSettlementCustomItemRow,
   RentalServiceSettlementFileRow,
@@ -299,7 +300,7 @@ function SettlementDeleteModal({
           <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div className="flex items-start justify-between gap-4 border-b border-gray-100/90 px-5 py-4">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-gray-900">Smazat vyúčtování</h2>
+              <ModalHeading section="MAJETEK" title="Smazat vyúčtování" variant="compact" />
               <p className="mt-1 text-sm text-gray-500">
                 Opravdu chceš smazat toto vyúčtování? Tím se odstraní i přílohy a akci už nepůjde vrátit zpět.
               </p>

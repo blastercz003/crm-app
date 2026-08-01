@@ -9,6 +9,7 @@ import {
   type MeetingGoogleCalendarDisconnectActionState,
 } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type MeetingCalendarButtonProps = {
   className?: string
@@ -355,17 +356,12 @@ export function MeetingCalendarButton({
           />
 
           <div className="meetings-calendar-modal__header meetings-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Kalendář pro schůzky
-              </div>
-              <h2
-                id="meeting-calendar-modal-title"
-                className="meetings-modal__title mt-1 text-lg font-semibold tracking-tight text-gray-900 sm:text-xl"
-              >
-                B-ENERGY SCHUZKY
-              </h2>
-            </div>
+            <ModalHeading
+              section="SCHŮZKY"
+              title="B-ENERGY schůzky"
+              id="meeting-calendar-modal-title"
+              className="min-w-0"
+            />
 
             <button
               type="button"

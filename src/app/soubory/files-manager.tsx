@@ -9,6 +9,7 @@ import {
   uploadFilesToJobAction,
   type JobAttachmentCategory,
 } from './actions'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type FileItem = {
   id: string
@@ -747,7 +748,7 @@ function UploadModal({
       }}
     >
       <div className="soubory-page__upload-shell mx-auto mt-10 w-full max-w-xl rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.88)_42%,rgba(244,244,245,0.84)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)]">
-        <h3 className="soubory-page__upload-title text-lg font-semibold text-gray-900">Nahrát soubor</h3>
+        <ModalHeading section="SOUBORY" title="Nahrát soubor" />
 
         <div className="mt-3 space-y-3">
           <div>

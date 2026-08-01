@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   updateVehicleOdometerAction,
   type UpdateVehicleOdometerState,
@@ -102,12 +103,11 @@ function InitialOdometerModal({
       <div className="vehicle-logbook-page__modal w-full max-w-lg overflow-hidden rounded-3xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(245,248,251,0.94)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)]">
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
           <div>
-            <h2
+            <ModalHeading
+              section="KNIHY JÍZD"
+              title="Počáteční stav tachometru"
               id="vehicle-logbook-odometer-title"
-              className="text-xl font-semibold tracking-tight text-gray-900"
-            >
-              Počáteční stav tachometru
-            </h2>
+            />
             <p className="mt-1 text-sm text-gray-500">{vehicleLabel}</p>
           </div>
           <button

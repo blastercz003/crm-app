@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   confirmAutomaticTripsAction,
   generateAutomaticTripPreviewAction,
@@ -256,12 +257,11 @@ function AutomaticLogbookModal({
           style={{ borderColor: 'var(--surface-border)' }}
         >
           <div className="min-w-0">
-            <h2
+            <ModalHeading
+              section="KNIHY JÍZD"
+              title="Automatická kniha jízd"
               id="vehicle-logbook-automatic-title"
-              className="text-xl font-semibold tracking-tight text-gray-900"
-            >
-              Automatická kniha jízd
-            </h2>
+            />
             <p className="mt-1 text-sm text-gray-500">
               Zpětná rekonstrukce skutečně uskutečněných pracovních cest
             </p>

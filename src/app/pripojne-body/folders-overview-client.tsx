@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import { createConnectionPointFolderAction } from './actions'
 
 type FolderOverviewItem = {
@@ -72,14 +73,14 @@ function CreateFolderModal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="soubory-page__create-folder-modal w-full max-w-xl rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto sm:p-6">
-        <div className="soubory-page__create-folder-modal__header flex items-start justify-between gap-4 border-b border-white/70 pb-4">
-          <div>
-            <h3 className="soubory-page__create-folder-modal__title text-lg font-semibold text-gray-900">Nová složka</h3>
-            <p className="soubory-page__create-folder-modal__hint mt-1 text-sm text-gray-500">
+        <div className="soubory-page__create-folder-modal w-full max-w-xl rounded-3xl border border-white/75 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_34px_84px_rgba(24,24,27,0.30)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto sm:p-6">
+          <div className="soubory-page__create-folder-modal__header flex items-start justify-between gap-4 border-b border-white/70 pb-4">
+            <div>
+              <ModalHeading section="Přípojné body" title="Nová složka" />
+              <p className="soubory-page__create-folder-modal__hint mt-1 text-sm text-gray-500">
                 Zadej název nové složky, ve formátu: Firma Město, Ulice.
-            </p>
-          </div>
+              </p>
+            </div>
           <button
             type="button"
             onClick={onClose}

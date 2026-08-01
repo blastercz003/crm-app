@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   activateDispatcherCalendarAction,
   disconnectDispatcherGoogleCalendarAction,
@@ -121,17 +122,11 @@ export function DispatcherCalendarButton({
           />
 
           <header className="meetings-calendar-modal__header meetings-modal__header flex items-start justify-between gap-4 border-b border-gray-100/90 px-4 py-4 sm:px-5">
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Dispečerský kalendář
-              </div>
-              <h2
-                id="dispatcher-calendar-modal-title"
-                className="meetings-modal__title mt-1 text-lg font-semibold text-gray-900 sm:text-xl"
-              >
-                B-ENERGY VŠECHNY ZAKÁZKY
-              </h2>
-            </div>
+            <ModalHeading
+              section="ZAKÁZKY"
+              title="B-ENERGY VŠECHNY ZAKÁZKY"
+              id="dispatcher-calendar-modal-title"
+            />
             <button
               type="button"
               onClick={() => setIsOpen(false)}

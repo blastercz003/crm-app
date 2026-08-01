@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode, RefObject } from 'react'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 export type JobAttachmentCategoryOption = {
   value: 'predavaci_protokol' | 'foto' | 'jine'
@@ -32,6 +33,7 @@ export type SecondaryAttachmentItem = {
 }
 
 export type JobAttachmentsModalContentProps = {
+  section?: string
   title?: string
   jobBadgeLabel?: string
   showJobBadge?: boolean
@@ -98,6 +100,7 @@ function formatAttachmentCategory(
 }
 
 export function JobAttachmentsModalContent({
+  section = 'ZAKÁZKY',
   title = 'Přílohy zakázky',
   jobBadgeLabel,
   showJobBadge = true,
@@ -145,7 +148,7 @@ export function JobAttachmentsModalContent({
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+                <ModalHeading section={section} title={title} />
                 {showJobBadge ? (
                   <div className="mt-2 flex justify-start">
                     <span className="inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_14px_rgba(24,78,129,0.26)]">

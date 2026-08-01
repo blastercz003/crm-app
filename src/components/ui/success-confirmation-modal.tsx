@@ -1,9 +1,11 @@
 'use client'
 
 import { createPortal } from 'react-dom'
+import { ModalHeading } from '@/components/ui/modal-heading'
 
 type SuccessConfirmationModalProps = {
   isOpen: boolean
+  section?: string
   title?: string
   message: string
   confirmLabel?: string
@@ -14,6 +16,7 @@ type SuccessConfirmationModalProps = {
 
 export function SuccessConfirmationModal({
   isOpen,
+  section = 'Aplikace',
   title = 'Hotovo',
   message,
   confirmLabel = 'OK',
@@ -54,7 +57,7 @@ export function SuccessConfirmationModal({
               </svg>
             </div>
 
-            <h3 className="mt-4 text-lg font-semibold tracking-tight">{title}</h3>
+            <ModalHeading section={section} title={title} variant="compact" className="mt-4 text-center" />
             <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
               {message}
             </p>
