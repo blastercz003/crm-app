@@ -1,11 +1,12 @@
 'use client'
 
-import { startTransition, useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { subscribeToAppDataChanges } from '@/lib/realtime/app-sync'
 
 const DEFAULT_REFRESH_DEBOUNCE_MS = 900
 const GLOBAL_REFRESH_COOLDOWN_MS = 5_000
+const DEFERRED_REFRESH_RETRY_MS = 750
 
 let lastGlobalRefreshAt = 0
 
@@ -33,18 +34,27 @@ export function SafeRealtimeRefresh({
   debounceMs?: number
 }) {
   const router = useRouter()
-  const [hasPendingRefresh, setHasPendingRefresh] = useState(false)
   const pendingRefreshRef = useRef(false)
   const refreshTimerRef = useRef<number | null>(null)
+  const deferredRetryTimerRef = useRef<number | null>(null)
   const scopeKey = scopes.slice().sort().join(',')
-
-  function updatePendingRefresh(value: boolean) {
-    pendingRefreshRef.current = value
-    setHasPendingRefresh(value)
-  }
 
   useEffect(() => {
     const acceptedScopes = new Set(scopeKey.split(',').filter(Boolean))
+
+    function scheduleDeferredRefresh() {
+      if (
+        document.visibilityState !== 'visible' ||
+        deferredRetryTimerRef.current !== null
+      ) {
+        return
+      }
+
+      deferredRetryTimerRef.current = window.setTimeout(() => {
+        deferredRetryTimerRef.current = null
+        if (pendingRefreshRef.current) performRefresh()
+      }, DEFERRED_REFRESH_RETRY_MS)
+    }
 
     function getChangedForm(target: EventTarget | null) {
       if (!(target instanceof Element)) return null
@@ -62,6 +72,7 @@ export function SafeRealtimeRefresh({
     function markFormClean(event: Event) {
       const form = getChangedForm(event.target)
       if (form) delete form.dataset.realtimeRefreshDirty
+      if (pendingRefreshRef.current) scheduleDeferredRefresh()
     }
 
     function performRefresh() {
@@ -71,7 +82,8 @@ export function SafeRealtimeRefresh({
         document.visibilityState !== 'visible' ||
         hasUnsafeRefreshInteraction()
       ) {
-        updatePendingRefresh(true)
+        pendingRefreshRef.current = true
+        scheduleDeferredRefresh()
         return
       }
 
@@ -85,7 +97,7 @@ export function SafeRealtimeRefresh({
         return
       }
 
-      updatePendingRefresh(false)
+      pendingRefreshRef.current = false
       lastGlobalRefreshAt = Date.now()
       startTransition(() => router.refresh())
     }
@@ -99,13 +111,13 @@ export function SafeRealtimeRefresh({
     }
 
     function handleVisibilityChange() {
-      if (
-        document.visibilityState === 'visible' &&
-        pendingRefreshRef.current &&
-        !hasUnsafeRefreshInteraction()
-      ) {
+      if (document.visibilityState === 'visible' && pendingRefreshRef.current) {
         performRefresh()
       }
+    }
+
+    function handleInteractionFinished() {
+      if (pendingRefreshRef.current) scheduleDeferredRefresh()
     }
 
     const unsubscribe = subscribeToAppDataChanges((detail) => {
@@ -115,12 +127,17 @@ export function SafeRealtimeRefresh({
     document.addEventListener('change', markFormDirty, true)
     document.addEventListener('submit', markFormClean, true)
     document.addEventListener('reset', markFormClean, true)
+    document.addEventListener('focusout', handleInteractionFinished, true)
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       if (refreshTimerRef.current !== null) {
         window.clearTimeout(refreshTimerRef.current)
       }
+      if (deferredRetryTimerRef.current !== null) {
+        window.clearTimeout(deferredRetryTimerRef.current)
+      }
+      pendingRefreshRef.current = false
       document
         .querySelectorAll<HTMLFormElement>('[data-realtime-refresh-dirty="true"]')
         .forEach((form) => delete form.dataset.realtimeRefreshDirty)
@@ -129,41 +146,10 @@ export function SafeRealtimeRefresh({
       document.removeEventListener('change', markFormDirty, true)
       document.removeEventListener('submit', markFormClean, true)
       document.removeEventListener('reset', markFormClean, true)
+      document.removeEventListener('focusout', handleInteractionFinished, true)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [debounceMs, router, scopeKey])
 
-  function handleManualRefresh() {
-    if (hasUnsafeRefreshInteraction()) {
-      window.alert('Nejprve dokončete nebo uložte rozpracované změny a zavřete otevřená okna.')
-      return
-    }
-
-    if (refreshTimerRef.current !== null) {
-      window.clearTimeout(refreshTimerRef.current)
-      refreshTimerRef.current = null
-    }
-
-    updatePendingRefresh(false)
-    lastGlobalRefreshAt = Date.now()
-    startTransition(() => router.refresh())
-  }
-
-  if (!hasPendingRefresh) return null
-
-  return (
-    <div
-      className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[190] flex justify-center print:hidden"
-      role="status"
-      aria-live="polite"
-    >
-      <button
-        type="button"
-        onClick={handleManualRefresh}
-        className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-[#5d9dcb] bg-[#246b9e] px-5 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[0_16px_36px_rgba(15,23,42,0.32)] transition hover:-translate-y-[1px] hover:bg-[#1f5f8f]"
-      >
-        NOVÁ DATA – NAČÍST
-      </button>
-    </div>
-  )
+  return null
 }
