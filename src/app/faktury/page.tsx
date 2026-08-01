@@ -8,6 +8,7 @@ import { FakturyInteractiveTable } from './faktury-interactive-table'
 import { FakturyFilterSubmitButton } from './faktury-filter-submit-button'
 import { FakturyFilterResetLink } from './faktury-filter-reset-link'
 import { FakturyStatisticsModalLauncher } from './statistics-modal'
+import { OperationalProtocolsModalLauncher } from './operational-protocols-modal'
 import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
 import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
 
@@ -1458,6 +1459,7 @@ export default async function FakturyPage({
           />
         )}
       </div>
+      <OperationalProtocolsModalLauncher />
     </main>
   )
 }
