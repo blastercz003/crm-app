@@ -225,10 +225,8 @@ function toUpdatedChanges(row: JobChangeQueueRow) {
 
 async function loadJobChangesData({
   supabase,
-  hideMarnyVyjezdy,
 }: {
   supabase: Awaited<ReturnType<typeof createClient>>
-  hideMarnyVyjezdy: boolean
 }): Promise<JobChangesModalData> {
   const nextWorkWeekEnd = getNextWorkWeekEnd()
   const to = `${nextWorkWeekEnd}T23:59:59`
@@ -261,7 +259,7 @@ async function loadJobChangesData({
     .filter(
       (entry): entry is { row: JobChangeQueueRow; job: JobRelation } =>
         entry.job !== null &&
-        (!hideMarnyVyjezdy || !Boolean(entry.job.marny_vyjezd))
+        !Boolean(entry.job.marny_vyjezd)
     )
     .map(({ row, job }): ChangesNewJobItem => ({
       jobId: job.id,
@@ -301,7 +299,7 @@ async function loadJobChangesData({
       } =>
         entry.job !== null &&
         (entry.changes.length > 0 || entry.legacyDescription !== null) &&
-        (!hideMarnyVyjezdy || !Boolean(entry.job.marny_vyjezd))
+        !Boolean(entry.job.marny_vyjezd)
     )
     .map(({ row, job, changes, legacyDescription }): ChangesUpdatedJobItem => ({
       jobId: job.id,
@@ -321,7 +319,7 @@ async function loadJobChangesData({
 export async function getJobsChangesModalDataAction(): Promise<
   JobChangesActionResult<JobChangesModalData>
 > {
-  const { supabase, user, error: accessError, hideMarnyVyjezdy } =
+  const { supabase, user, error: accessError } =
     await requireJobsAccess()
 
   if (!user) {
@@ -335,7 +333,7 @@ export async function getJobsChangesModalDataAction(): Promise<
     return {
       success: true,
       error: null,
-      data: await loadJobChangesData({ supabase, hideMarnyVyjezdy }),
+      data: await loadJobChangesData({ supabase }),
     }
   } catch (error) {
     console.error(error)
@@ -356,7 +354,7 @@ export async function getJobsChangesModalDataAction(): Promise<
 export async function getJobsChangesBadgeCountAction(): Promise<
   JobChangesActionResult<{ badgeCount: number }>
 > {
-  const { supabase, user, error: accessError, hideMarnyVyjezdy } =
+  const { supabase, user, error: accessError } =
     await requireJobsAccess()
 
   if (!user) {
@@ -367,7 +365,7 @@ export async function getJobsChangesBadgeCountAction(): Promise<
   }
 
   try {
-    const data = await loadJobChangesData({ supabase, hideMarnyVyjezdy })
+    const data = await loadJobChangesData({ supabase })
 
     return {
       success: true,

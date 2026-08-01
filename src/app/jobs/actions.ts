@@ -734,6 +734,20 @@ async function getJobQueueSource(
   return data as JobQueueSourceRow
 }
 
+async function removeJobFromChangesQueue(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string
+) {
+  const { error } = await supabase
+    .from('job_changes_queue')
+    .delete()
+    .eq('job_id', jobId)
+
+  if (error) {
+    throw new Error('Nepodařilo se odebrat marný výjezd z fronty změn.')
+  }
+}
+
 function buildChangedValuesSnapshot({
   source,
   fields,
@@ -799,6 +813,11 @@ async function enqueueNewJobChange({
 }) {
   const source = await getJobQueueSource(supabase, jobId)
 
+  if (source.marny_vyjezd) {
+    await removeJobFromChangesQueue(supabase, jobId)
+    return
+  }
+
   await upsertJobChangeQueueEntry({
     supabase,
     job: {
@@ -831,6 +850,11 @@ async function enqueueUpdatedJobChangeIfWritten({
   }
 
   const source = await getJobQueueSource(supabase, jobId)
+
+  if (source.marny_vyjezd) {
+    await removeJobFromChangesQueue(supabase, jobId)
+    return
+  }
 
   if (source.evidence_status !== 'zapsano') {
     return
@@ -1597,7 +1621,9 @@ async function getJobPayload(
   const generatorName = normalizeText(formData.get('generator_name'))
   const infoNote = normalizeText(formData.get('info_note'))
   const marnyVyjezd = normalizeCheckbox(formData.get('marny_vyjezd'))
-  const jobStatus = normalizeJobStatus(formData.get('job_status'))
+  const jobStatus = marnyVyjezd
+    ? 'ukoncena'
+    : normalizeJobStatus(formData.get('job_status'))
   const invoiceStatus = normalizeInvoiceStatus(formData.get('invoice_status'))
   const technicianSelection = await resolveTechnicianSelection(supabase, formData)
 
@@ -1714,12 +1740,13 @@ export async function createJobAction(
   }
   createPayload.offer_id = offerSelection.offerId
   const ppRequired = normalizePpRequired(formData.get('pp_required'))
+  const isMarnyVyjezd = Boolean(createPayload.marny_vyjezd)
 
   const { data: createdJob, error: createJobError } = await supabase
     .from('jobs')
     .insert({
       ...createPayload,
-      evidence_status: 'nove',
+      evidence_status: isMarnyVyjezd ? 'zapsano' : 'nove',
     })
     .select('id, job_number, company_name, sales_owner, start_at, end_at, site_address')
     .single()
@@ -1732,7 +1759,6 @@ export async function createJobAction(
   }
 
   const createdJobId = String(createdJob.id)
-  const isMarnyVyjezd = Boolean(createPayload.marny_vyjezd)
 
   try {
     await syncJobTechnicians(
@@ -2055,7 +2081,12 @@ export async function updateJobAction(
 
   const { error } = await supabase
     .from('jobs')
-    .update(updatePayload)
+    .update({
+      ...updatePayload,
+      ...(updatePayload.marny_vyjezd
+        ? { evidence_status: 'zapsano' }
+        : {}),
+    })
     .eq('id', normalizedJobId)
 
   if (error) {

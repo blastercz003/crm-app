@@ -42,6 +42,7 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
   })
   const [markedChanges, setMarkedChanges] = useState<Record<string, ChangesUpdatedJobItem>>({})
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,6 +69,7 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
     startLoading(async () => {
       await reloadData()
       setIsConfirmOpen(false)
+      setIsHelpOpen(false)
       setConfirmError(null)
       setIsOpen(true)
     })
@@ -76,6 +78,7 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
   function closeModal() {
     setMarkedChanges({})
     setIsConfirmOpen(false)
+    setIsHelpOpen(false)
     setConfirmError(null)
     setIsOpen(false)
   }
@@ -294,10 +297,24 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
           </div>
 
           <footer className="jobs-page__changes-footer flex shrink-0 flex-col items-stretch gap-3 border-t border-[rgba(148,163,184,0.14)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <p className="max-w-4xl text-left text-[9px] leading-[1.35] text-gray-500 sm:text-[10px]">
-              <span className="block">Kliknutím na X u konkrétní změny ji označíte zeleně jako vyřízenou. ULOŽIT odebere z přehledu pouze takto označené změny a zakázky se stavem ZAPSÁNO.</span>
-              <span className="block">Zavřením modalu křížkem vpravo nahoře se označení změn zruší, stav ZAPSÁNO u potvrzených zakázek zůstane zachován.</span>
-            </p>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsHelpOpen(true)}
+                title="Jak funguje sledování změn zakázek"
+                aria-label="Otevřít nápovědu ke sledování změn zakázek"
+                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-sky-300/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(224,242,254,0.9)_100%)] px-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-sky-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_7px_16px_rgba(24,78,129,0.12)] transition duration-200 hover:-translate-y-[1px] hover:border-sky-400 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_20px_rgba(24,78,129,0.18)] [html[data-theme='dark']_&]:border-sky-300/18 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,28,46,0.94)_100%)] [html[data-theme='dark']_&]:text-sky-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_18px_rgba(0,0,0,0.22)]"
+              >
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current/35 text-[11px] font-bold leading-none">
+                  ?
+                </span>
+                <span className="hidden sm:inline">Nápověda</span>
+              </button>
+              <p className="max-w-4xl min-w-0 text-left text-[9px] leading-[1.35] text-gray-500 sm:text-[10px]">
+                <span className="block">Kliknutím na X u konkrétní změny ji označíte zeleně jako vyřízenou. ULOŽIT odebere z přehledu pouze takto označené změny a zakázky se stavem ZAPSÁNO.</span>
+                <span className="block">Zavřením modalu křížkem vpravo nahoře se označení změn zruší, stav ZAPSÁNO u potvrzených zakázek zůstane zachován.</span>
+              </p>
+            </div>
             <button
               type="button"
               disabled={pending || !hasSaveableItems}
@@ -310,6 +327,80 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
               {pending ? 'UKLÁDÁM…' : 'ULOŽIT'}
             </button>
           </footer>
+
+          {isHelpOpen && typeof document !== 'undefined' ? createPortal(
+            <div className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]">
+              <div className="clients-modal__shell flex max-h-[min(80dvh,720px)] w-full max-w-[720px] flex-col overflow-hidden rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(245,250,255,0.95)_52%,rgba(224,242,254,0.9)_100%)] shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
+                <header className="flex shrink-0 items-start justify-between gap-4 border-b border-sky-100/90 px-5 py-4 [html[data-theme='dark']_&]:border-sky-300/10 sm:px-6 sm:py-5">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700 [html[data-theme='dark']_&]:text-sky-300">
+                      Nápověda
+                    </p>
+                    <h3 className="mt-1 text-xl font-semibold text-zinc-950 [html[data-theme='dark']_&]:text-slate-50 sm:text-2xl">
+                      Jak funguje sledování změn zakázek
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsHelpOpen(false)}
+                    aria-label="Zavřít nápovědu"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/90 bg-white/85 text-sm font-semibold text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 [html[data-theme='dark']_&]:border-slate-400/18 [html[data-theme='dark']_&]:bg-slate-950/70 [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </header>
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-sm leading-6 text-zinc-700 [html[data-theme='dark']_&]:text-slate-300 sm:px-6 sm:py-5">
+                  <p>
+                    Tento modal slouží jako společný pracovní přehled nových zakázek a důležitých změn, které je potřeba zapsat nebo zkontrolovat.
+                  </p>
+
+                  <HelpSection title="Počet položek">
+                    Oranžové číslo nahoře ukazuje celkový počet nových zakázek a provedených změn, které jsou aktuálně v přehledu.
+                  </HelpSection>
+
+                  <HelpSection title="Nové zakázky">
+                    <p>V levém sloupci jsou zakázky, které ještě čekají na zapsání.</p>
+                    <p>Jakmile máte zakázku zapsanou, klikněte u ní na tlačítko <strong>ZAPSAT</strong>. Tlačítko se změní na <strong>ZAPSÁNO</strong> a tento stav se ihned uloží.</p>
+                    <p>Zakázka zatím v přehledu zůstane. Odstraní se z něj až po stisknutí tlačítka <strong>ULOŽIT</strong> a následném potvrzení.</p>
+                    <p>Pokud modal zavřete křížkem vpravo nahoře, stav <strong>ZAPSÁNO</strong> zůstane zachovaný.</p>
+                    <p>Zakázky označené jako <strong>Marný výjezd</strong> se v tomto přehledu nezobrazují.</p>
+                  </HelpSection>
+
+                  <HelpSection title="Provedené změny">
+                    <p>V pravém sloupci jsou změny u již zapsaných zakázek.</p>
+                    <p>U každé položky vidíte číslo zakázky, změněné pole, původní hodnotu a novou hodnotu. Nová hodnota je zvýrazněná tučně.</p>
+                    <div className="rounded-xl border border-sky-200/80 bg-sky-50/75 px-3 py-2 text-sky-950 [html[data-theme='dark']_&]:border-sky-300/12 [html[data-theme='dark']_&]:bg-sky-400/8 [html[data-theme='dark']_&]:text-sky-100">
+                      <strong>Začátek:</strong> 5. 8. 06:00 → <strong>5. 8. 07:00</strong>
+                    </div>
+                    <p>Jakmile máte změnu zapsanou nebo zkontrolovanou, klikněte na tlačítko <strong>X na konci jejího řádku</strong>. Celý řádek se označí zeleně jako vyřízený.</p>
+                    <p>Tím se změna ještě neodstraní. Opětovným kliknutím na stejné X můžete zelené označení zrušit.</p>
+                  </HelpSection>
+
+                  <HelpSection title="Uložení vyřízených položek">
+                    <p>Tlačítko <strong>ULOŽIT</strong> otevře ještě potvrzovací okno.</p>
+                    <p>Po potvrzení se z přehledu odeberou pouze zeleně označené provedené změny a nové zakázky se stavem <strong>ZAPSÁNO</strong>.</p>
+                    <p>Neoznačené změny a zakázky se stavem <strong>ZAPSAT</strong> v přehledu zůstanou.</p>
+                    <p>Tímto krokem se nemažou samotné zakázky ani jejich údaje. Položky se odstraní pouze z tohoto pracovního přehledu.</p>
+                  </HelpSection>
+
+                  <HelpSection title="Zavření bez uložení">
+                    <p>Křížek v pravém horním rohu zavře celý modal.</p>
+                    <p>Pokud modal takto zavřete, zelené označení provedených změn se zruší a změny zůstanou v přehledu. Stav <strong>ZAPSÁNO</strong> u nových zakázek zůstane uložený.</p>
+                    <div className="rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-amber-950 [html[data-theme='dark']_&]:border-amber-300/14 [html[data-theme='dark']_&]:bg-amber-400/8 [html[data-theme='dark']_&]:text-amber-100">
+                      <strong>Pozor:</strong> X u konkrétní změny ji označuje zeleně. X v pravém horním rohu zavírá celý modal.
+                    </div>
+                  </HelpSection>
+
+                  <HelpSection title="Společný přehled">
+                    <p>Přehled je společný pro všechny uživatele, kteří k němu mají přístup. Když jeden uživatel položky potvrdí a uloží, ostatní je po příštím načtení už neuvidí.</p>
+                    <p>Pokud si nejste jistí, zda je položka skutečně zapsaná, ponechte ji v přehledu a neoznačujte ji jako vyřízenou.</p>
+                  </HelpSection>
+                </div>
+              </div>
+            </div>,
+            document.body
+          ) : null}
 
           {isConfirmOpen && typeof document !== 'undefined' ? createPortal(
             <div className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
@@ -403,6 +494,23 @@ function ChangesSection({
           <p className="text-sm text-gray-500">{emptyText}</p>
         </div>
       )}
+    </section>
+  )
+}
+
+function HelpSection({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <section className="mt-5 border-t border-sky-100/90 pt-4 [html[data-theme='dark']_&]:border-sky-300/10">
+      <h4 className="mb-2 text-sm font-semibold uppercase tracking-[0.05em] text-zinc-950 [html[data-theme='dark']_&]:text-slate-50">
+        {title}
+      </h4>
+      <div className="space-y-2.5">{children}</div>
     </section>
   )
 }
