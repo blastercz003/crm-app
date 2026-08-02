@@ -344,7 +344,7 @@ export function DashboardSectionLinks({
 
   return (
     <section className="px-1 py-1 sm:px-2">
-      <div className="grid grid-cols-3 gap-3 lg:flex lg:flex-wrap lg:justify-center lg:gap-7">
+      <div className="grid grid-cols-3 gap-3 lg:mx-auto lg:flex lg:max-w-[1160px] lg:flex-wrap lg:justify-center lg:gap-7">
         {items.map((item) => (
           <Link
             key={item.key}

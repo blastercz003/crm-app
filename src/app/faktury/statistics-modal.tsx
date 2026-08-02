@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { SlidingFourTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   getFinanceStatisticsAction,
@@ -26,11 +27,16 @@ const VIEW_OPTIONS: Array<{ value: FinanceStatisticsView; label: string }> = [
   { value: 'year', label: 'ROK' },
 ]
 
-const SECTION_OPTIONS: Array<{ value: StatisticsSection; label: string }> = [
+const SECTION_OPTIONS = [
   { value: 'summary', label: 'SOUHRN' },
   { value: 'people', label: 'LIDÉ' },
   { value: 'customers', label: 'ZÁKAZNÍCI' },
   { value: 'technology', label: 'TECHNIKA' },
+] as const satisfies readonly [
+  { value: StatisticsSection; label: string },
+  { value: StatisticsSection; label: string },
+  { value: StatisticsSection; label: string },
+  { value: StatisticsSection; label: string },
 ]
 
 function getPragueToday() {
@@ -290,26 +296,13 @@ function FakturyStatisticsModal({ onClose }: { onClose: () => void }) {
               </div>
             </section>
 
-            <nav
-              className="mt-3 grid grid-cols-2 gap-1 rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 sm:grid-cols-4 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)]"
-              aria-label="Část statistiky"
-            >
-              {SECTION_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setSection(option.value)}
-                  aria-pressed={section === option.value}
-                  className={`faktury-statistics-section-tab h-9 rounded-2xl px-2 text-[10px] font-semibold tracking-[0.09em] transition sm:text-[11px] ${
-                    section === option.value
-                      ? 'faktury-statistics-section-tab--active bg-white text-[#286f9f] shadow-[0_6px_16px_rgba(15,23,42,0.1)]'
-                      : 'text-zinc-500 hover:text-zinc-900 [html[data-theme=\'dark\']_&]:text-slate-400 [html[data-theme=\'dark\']_&:hover]:text-white'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </nav>
+            <SlidingFourTabSwitch
+              value={section}
+              options={SECTION_OPTIONS}
+              onValueChange={setSection}
+              ariaLabel="Část statistiky"
+              className="mt-3 rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)]"
+            />
 
             {errorMessage ? (
               <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 [html[data-theme='dark']_&]:border-rose-400/20 [html[data-theme='dark']_&]:bg-rose-950/30 [html[data-theme='dark']_&]:text-rose-300">

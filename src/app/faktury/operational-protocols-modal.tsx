@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { OperationalProtocolDraftInput } from '@/lib/operational-protocols/types'
 import {
@@ -15,10 +16,10 @@ import { OperationalProtocolArchive } from './operational-protocol-archive'
 
 type OperationalProtocolsTab = 'new' | 'archive'
 
-const TABS: Array<{ value: OperationalProtocolsTab; label: string }> = [
+const TABS = [
   { value: 'new', label: 'NOVÝ PROTOKOL' },
   { value: 'archive', label: 'ULOŽENÉ PROTOKOLY' },
-]
+] as const
 
 const EMPTY_DRAFT_FINGERPRINT = JSON.stringify(createEmptyOperationalProtocolDraft())
 
@@ -264,30 +265,14 @@ function OperationalProtocolsModal({
             </button>
           </header>
 
-          <nav
-            className="mx-4 mt-4 grid shrink-0 grid-cols-2 gap-1 rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 sm:mx-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)]"
-            aria-label="Část provozních protokolů"
-          >
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.value
-
-              return (
-                <button
-                  key={tab.value}
-                  type="button"
-                  onClick={() => onTabChange(tab.value)}
-                  aria-pressed={isActive}
-                  className={`h-10 rounded-2xl px-2 text-[10px] font-semibold tracking-[0.08em] transition duration-200 sm:text-[11px] ${
-                    isActive
-                      ? "bg-white text-[#286f9f] shadow-[0_6px_16px_rgba(15,23,42,0.1)] [html[data-theme='dark']_&]:bg-[rgba(31,74,111,0.82)] [html[data-theme='dark']_&]:text-[#a9ddfb] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_8px_18px_rgba(0,0,0,0.22)]"
-                      : "text-zinc-500 hover:bg-white/55 hover:text-zinc-900 [html[data-theme='dark']_&]:text-slate-400 [html[data-theme='dark']_&:hover]:bg-[rgba(20,35,57,0.68)] [html[data-theme='dark']_&:hover]:text-white"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
+          <SlidingTwoTabSwitch
+            key={activeTab}
+            value={activeTab}
+            options={TABS}
+            onValueChange={onTabChange}
+            ariaLabel="Část provozních protokolů"
+            className="mx-4 mt-4 shrink-0 rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 sm:mx-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)]"
+          />
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             {activeTab === 'new' ? (

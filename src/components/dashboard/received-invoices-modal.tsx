@@ -17,10 +17,16 @@ import {
 import type { ReceivedInvoiceFilter, ReceivedInvoiceRow } from '@/lib/received-invoices/types'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import Image from 'next/image'
 
 type ModeKey = 'upload' | 'view'
 type MobileViewPanel = 'list' | 'preview'
+
+const MODE_TABS = [
+  { value: 'view', label: 'Faktury' },
+  { value: 'upload', label: 'Nahrát' },
+] as const
 
 const FILTERS: Array<{ key: ReceivedInvoiceFilter; label: string }> = [
   { key: 'all', label: 'Vše' },
@@ -242,6 +248,22 @@ export function ReceivedInvoicesModal({
   useBodyScrollLock(isOpen)
 
   useEffect(() => {
+    if (!isOpen) return
+
+    const root = document.documentElement
+    const previousOverflow = root.style.overflow
+    const previousOverscrollBehavior = root.style.overscrollBehavior
+
+    root.style.overflow = 'hidden'
+    root.style.overscrollBehavior = 'none'
+
+    return () => {
+      root.style.overflow = previousOverflow
+      root.style.overscrollBehavior = previousOverscrollBehavior
+    }
+  }, [isOpen])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
 
     const media = window.matchMedia('(max-width: 1023px)')
@@ -280,7 +302,7 @@ export function ReceivedInvoicesModal({
       const nextSelectedInvoice =
         nextRows.find((row) => row.id === computedNextSelected) ?? null
       setDueDateDraft(nextSelectedInvoice?.due_date ?? '')
-      setMobileViewPanel(computedNextSelected ? 'preview' : 'list')
+      setMobileViewPanel('list')
       if (!computedNextSelected) {
         setPreviewUrl(null)
       }
@@ -294,7 +316,7 @@ export function ReceivedInvoicesModal({
 
   useEffect(() => {
     if (!selectedInvoiceId || !isOpen || mode !== 'view') return
-    if (mobileViewPanel !== 'preview' && typeof window !== 'undefined' && window.innerWidth < 1024) {
+    if (mobileViewPanel !== 'preview' && isMobileViewport) {
       return
     }
 
@@ -315,7 +337,7 @@ export function ReceivedInvoicesModal({
     return () => {
       cancelled = true
     }
-  }, [selectedInvoiceId, isOpen, mode, mobileViewPanel])
+  }, [selectedInvoiceId, isOpen, mode, mobileViewPanel, isMobileViewport])
 
   function refreshData() {
     startTransition(async () => {
@@ -345,6 +367,10 @@ export function ReceivedInvoicesModal({
         setDueDateDraft('')
       }
     })
+  }
+
+  function handleClose() {
+    onClose()
   }
 
   function updateRowLocally(nextRow: ReceivedInvoiceRow) {
@@ -521,25 +547,24 @@ export function ReceivedInvoicesModal({
         role="dialog"
         aria-modal="true"
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget) onClose()
+          if (event.target === event.currentTarget) handleClose()
         }}
       >
+        <div className="flex min-h-full items-center justify-center">
         <div
-          className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-4"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-        >
-        <div
-          className="received-invoices-modal__shell relative flex w-full max-w-6xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
+          className="received-invoices-modal__shell relative flex w-full max-w-[1320px] flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] transition-[height] duration-200 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             height:
-              'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
+              mode === 'upload' && !isMobileViewport
+                ? 'min(620px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem))'
+                : 'min(920px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem))',
           }}
         >
           <div className="received-invoices-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
             <ModalHeading section="FAKTURY" title="Přijaté faktury" className="min-w-0" />
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="received-invoices-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px]"
               aria-label="Zavřít"
             >
@@ -547,49 +572,24 @@ export function ReceivedInvoicesModal({
             </button>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[360px_minmax(0,1fr)]">
-            <aside
-              className={`received-invoices-modal__sidebar min-h-0 border-b-0 px-4 pt-4 lg:border-b-0 lg:border-r lg:border-white/70 ${
-                mode === 'view' && mobileViewPanel === 'preview' ? 'pb-2' : 'pb-4'
-              }`}
-            >
-              <div className="mb-3 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('upload')
-                    setMobileViewPanel('list')
-                  }}
-                  data-active={mode === 'upload'}
-                  className={`received-invoices-modal__mode-btn inline-flex h-9 items-center justify-center rounded-xl border text-xs font-semibold uppercase transition ${
-                    mode === 'upload'
-                      ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)]'
-                      : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
-                  }`}
-                >
-                  Upload
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('view')
-                    setMobileViewPanel(selectedInvoice ? 'preview' : 'list')
-                  }}
-                  data-active={mode === 'view'}
-                  className={`received-invoices-modal__mode-btn inline-flex h-9 items-center justify-center rounded-xl border text-xs font-semibold uppercase transition ${
-                    mode === 'view'
-                      ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)]'
-                      : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
-                  }`}
-                >
-                  View
-                </button>
-              </div>
+          <div className="received-invoices-modal__tabs shrink-0 border-b border-white/70 px-4 py-3 sm:px-5">
+            <SlidingTwoTabSwitch
+              key={mode}
+              value={mode}
+              options={MODE_TABS}
+              onValueChange={(nextMode) => {
+                setMode(nextMode)
+                setMobileViewPanel('list')
+              }}
+              ariaLabel="Část přijatých faktur"
+            />
+          </div>
 
-              {mode === 'upload' ? (
-                <div className="space-y-4 lg:mx-auto lg:w-full lg:max-w-[760px]">
-                  <form onSubmit={handleSingleUploadSubmit} className="received-invoices-modal__upload-card space-y-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
-                    <div className="text-xs font-semibold uppercase text-zinc-500">Jeden soubor</div>
+          {mode === 'upload' ? (
+            <div className="received-invoices-modal__upload-layout min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
+              <div className="mx-auto grid w-full max-w-[980px] gap-4 lg:grid-cols-2 lg:gap-5">
+                  <form onSubmit={handleSingleUploadSubmit} className="received-invoices-modal__upload-card flex h-full flex-col gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                    <div className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-500">Jeden soubor</div>
                     <label
                       htmlFor="received-invoice-single-file"
                       className="received-invoices-modal__picker group relative flex min-h-[64px] cursor-pointer items-center justify-center rounded-xl border border-[#8dbfe0]/65 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(237,246,252,0.9)_100%)] px-3 py-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(41,128,185,0.12)] transition duration-200 hover:-translate-y-[1px] hover:border-[#6fa9d1] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_12px_22px_rgba(41,128,185,0.18)]"
@@ -621,14 +621,14 @@ export function ReceivedInvoicesModal({
                       type="submit"
                       disabled={isPending}
                       data-action="upload-single"
-                      className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
+                      className="mt-auto inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
                     >
                       Nahrát se splatností
                     </button>
                   </form>
 
-                  <form onSubmit={handleMultiUploadSubmit} className="received-invoices-modal__upload-card space-y-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
-                    <div className="text-xs font-semibold uppercase text-zinc-500">Více souborů</div>
+                  <form onSubmit={handleMultiUploadSubmit} className="received-invoices-modal__upload-card flex h-full flex-col gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
+                    <div className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-500">Více souborů</div>
                     <label
                       htmlFor="received-invoice-multi-file"
                       className="received-invoices-modal__picker group relative flex min-h-[64px] cursor-pointer items-center justify-center rounded-xl border border-[#8dbfe0]/65 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(237,246,252,0.9)_100%)] px-3 py-3 text-sm text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(41,128,185,0.12)] transition duration-200 hover:-translate-y-[1px] hover:border-[#6fa9d1] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_12px_22px_rgba(41,128,185,0.18)]"
@@ -656,46 +656,22 @@ export function ReceivedInvoicesModal({
                       type="submit"
                       disabled={isPending}
                       data-action="upload-multi"
-                      className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
+                      className="mt-auto inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
                     >
                       Nahrát více souborů
                     </button>
                   </form>
-                </div>
-              ) : (
+              </div>
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[340px_minmax(0,1fr)]">
+              <aside
+                className={`received-invoices-modal__sidebar min-h-0 flex-col border-b-0 px-4 pb-4 pt-4 lg:flex lg:border-b-0 lg:border-r lg:border-white/70 ${
+                  mobileViewPanel === 'preview' ? 'hidden' : 'flex'
+                }`}
+              >
                 <div className="flex h-full min-h-0 flex-col">
-                  <div className="mb-2 grid grid-cols-2 gap-2 lg:hidden">
-                    <button
-                      type="button"
-                      onClick={() => setMobileViewPanel('list')}
-                      data-active={mobileViewPanel === 'list'}
-                      className={`received-invoices-modal__mobile-tab inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
-                        mobileViewPanel === 'list'
-                          ? 'border-zinc-700/90 bg-[linear-gradient(155deg,rgba(63,63,70,0.98)_0%,rgba(39,39,42,0.96)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_20px_rgba(24,24,27,0.34)]'
-                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
-                      }`}
-                    >
-                      Seznam
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMobileViewPanel('preview')}
-                      data-active={mobileViewPanel === 'preview'}
-                      className={`received-invoices-modal__mobile-tab inline-flex h-8 items-center justify-center rounded-lg border text-xs font-medium uppercase ${
-                        mobileViewPanel === 'preview'
-                          ? 'border-zinc-700/90 bg-[linear-gradient(155deg,rgba(63,63,70,0.98)_0%,rgba(39,39,42,0.96)_100%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_20px_rgba(24,24,27,0.34)]'
-                          : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]'
-                      }`}
-                    >
-                      Náhled
-                    </button>
-                  </div>
-
-                  <div
-                    className={`received-invoices-modal__filters mb-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] ${
-                      mobileViewPanel === 'preview' ? 'hidden lg:block' : 'block'
-                    }`}
-                  >
+                  <div className="received-invoices-modal__filters mb-3">
                     <div className="grid grid-cols-3 gap-1">
                       {FILTERS.map((item) => {
                         const isActive = filter === item.key
@@ -713,7 +689,7 @@ export function ReceivedInvoicesModal({
                             onClick={() => setFilter(item.key)}
                             data-active={isActive}
                             data-filter={item.key}
-                            className={`received-invoices-modal__filter-btn inline-flex h-8 items-center justify-center rounded-xl border px-2 text-xs font-semibold uppercase transition ${
+                            className={`received-invoices-modal__filter-btn inline-flex h-8 items-center justify-center rounded-xl border px-1 text-[10px] font-semibold uppercase tracking-[-0.01em] transition sm:px-2 sm:text-[11px] ${
                               isActive
                                 ? activeClass
                                 : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(242,246,251,0.8)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]'
@@ -727,16 +703,22 @@ export function ReceivedInvoicesModal({
                   </div>
 
                   <div
-                    className={
-                      mobileViewPanel === 'preview'
-                        ? 'hidden lg:block lg:min-h-0 lg:flex-1 lg:overflow-y-auto'
-                        : 'min-h-0 flex-1 overflow-y-auto'
-                    }
+                    className="min-h-0 flex-1 overflow-y-auto"
                   >
                     <div
-                      className="grid gap-2 pb-24 lg:pb-4"
-                      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.5rem)' }}
+                      className="grid gap-2 pb-20 lg:pb-2"
+                      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 3.5rem)' }}
                     >
+                      {isPending && rows.length === 0 ? (
+                        <div className="grid gap-2" aria-label="Načítám faktury">
+                          {[0, 1, 2, 3].map((item) => (
+                            <div
+                              key={item}
+                              className="received-invoices-modal__skeleton h-[62px] animate-pulse rounded-xl border border-white/60 bg-white/45"
+                            />
+                          ))}
+                        </div>
+                      ) : null}
                       {rows.map((row) => (
                         <div
                           key={row.id}
@@ -756,12 +738,15 @@ export function ReceivedInvoicesModal({
                           role="button"
                           tabIndex={0}
                           data-selected={selectedId === row.id}
-                          className={`received-invoices-modal__row w-full rounded-xl border px-3 py-2 text-left transition ${
+                          className={`received-invoices-modal__row relative w-full overflow-hidden rounded-xl border px-3 py-2 text-left transition ${
                             selectedId === row.id
                               ? 'border-[#6fa9d1] bg-[linear-gradient(155deg,rgba(234,243,251,0.98)_0%,rgba(220,236,248,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),inset_0_-1px_0_rgba(41,128,185,0.08)]'
                               : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(148,163,184,0.12)] hover:-translate-y-[1px]'
                           }`}
                         >
+                          {selectedId === row.id ? (
+                            <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#2980B9]" aria-hidden="true" />
+                          ) : null}
                           <div className="flex items-start justify-between gap-2">
                             <div
                               className={`min-w-0 truncate text-sm font-medium text-zinc-900 ${
@@ -810,50 +795,63 @@ export function ReceivedInvoicesModal({
                     </div>
                   </div>
                 </div>
-              )}
-            </aside>
+              </aside>
 
-            <section
-              className={`received-invoices-modal__preview-col min-h-0 px-4 pb-4 ${
-                mode === 'upload' || mobileViewPanel === 'list' ? 'hidden lg:block' : ''
-              } ${mobileViewPanel === 'preview' ? 'pt-2 lg:pt-4' : 'pt-4'}`}
-            >
+              <section
+                className={`received-invoices-modal__preview-col min-h-0 px-4 pb-4 pt-4 ${
+                  mobileViewPanel === 'list' ? 'hidden lg:block' : 'block'
+                }`}
+              >
               {selectedInvoice ? (
                 <div className="flex h-full min-h-0 flex-col gap-3">
-                  <div className="flex flex-nowrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMobileViewPanel('list')}
+                    className="received-invoices-modal__back inline-flex h-9 w-fit items-center justify-center rounded-xl border border-white/75 bg-white/75 px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-zinc-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px] lg:hidden"
+                  >
+                    ← Zpět na seznam
+                  </button>
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <div
                       className="received-invoices-modal__selected-name min-w-0 flex-1 truncate text-sm font-semibold text-zinc-900"
                       title={selectedInvoice.file_name}
                     >
                       {selectedInvoice.file_name}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleDownload}
-                      disabled={isPending}
-                      data-action="download"
-                      className="received-invoices-modal__header-download inline-flex h-9 w-[126px] shrink-0 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_24px_rgba(41,128,185,0.3)] disabled:opacity-60"
-                    >
-                      STÁHNOUT
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={isPending}
-                      data-action="delete"
-                      className="received-invoices-modal__header-delete inline-flex h-9 w-[108px] shrink-0 items-center justify-center rounded-xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(153,27,27,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
-                    >
-                      SMAZAT
-                    </button>
+                    <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+                      <button
+                        type="button"
+                        onClick={handleDownload}
+                        disabled={isPending}
+                        data-action="download"
+                        className="received-invoices-modal__header-download inline-flex h-9 min-w-[118px] items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_24px_rgba(41,128,185,0.3)] disabled:opacity-60"
+                      >
+                        STÁHNOUT
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isPending}
+                        data-action="delete"
+                        className="received-invoices-modal__header-delete inline-flex h-9 min-w-[104px] items-center justify-center rounded-xl border border-red-300/90 bg-[linear-gradient(155deg,rgba(254,242,242,0.96)_0%,rgba(254,226,226,0.9)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(153,27,27,0.14)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                      >
+                        SMAZAT
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="received-invoices-modal__action-row grid grid-cols-2 gap-2 rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] lg:flex lg:flex-wrap lg:items-center">
+                  <div className="received-invoices-modal__action-row grid gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] md:grid-cols-[minmax(230px,auto)_minmax(280px,1fr)] md:items-end">
+                    <div className="min-w-0">
+                      <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">Stav</div>
+                      <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => handleToggleStatus('unpaid')}
                         disabled={isPending}
                         data-status="unpaid"
-                        className={`inline-flex h-8 w-full items-center justify-center rounded-lg border px-3 text-xs font-medium lg:w-auto ${
+                        data-active={selectedInvoice.status === 'unpaid'}
+                        className={`inline-flex h-9 w-full items-center justify-center rounded-xl border px-3 text-[11px] font-semibold ${
                           selectedInvoice.status === 'unpaid'
                             ? 'border-red-300/90 bg-[linear-gradient(155deg,rgba(254,226,226,0.95)_0%,rgba(254,202,202,0.9)_100%)] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
                             : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px]'
@@ -866,31 +864,39 @@ export function ReceivedInvoicesModal({
                         onClick={() => handleToggleStatus('paid')}
                         disabled={isPending}
                         data-status="paid"
-                        className={`inline-flex h-8 w-full items-center justify-center rounded-lg border px-3 text-xs font-medium lg:w-auto ${
+                        data-active={selectedInvoice.status === 'paid'}
+                        className={`inline-flex h-9 w-full items-center justify-center rounded-xl border px-3 text-[11px] font-semibold ${
                           selectedInvoice.status === 'paid'
                             ? 'border-emerald-300/90 bg-[linear-gradient(155deg,rgba(220,252,231,0.95)_0%,rgba(187,247,208,0.9)_100%)] text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]'
                             : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] hover:-translate-y-[1px]'
                         }`}
                       >
-                        {selectedInvoice.status === 'paid' ? 'ZAPLACENÁ' : 'ZAPLATIT'}
+                        ZAPLACENÁ
                       </button>
+                      </div>
+                    </div>
 
-                    <input
-                      type="date"
-                      value={dueDateDraft}
-                      onChange={(event) => setDueDateDraft(event.target.value)}
-                      data-field="due-date"
-                      className="received-invoices-modal__date-field received-invoices-modal__date-field--due h-8 w-full rounded-lg border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-xs text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] lg:ml-auto lg:w-auto"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSaveDueDate}
-                      disabled={isPending}
-                      data-action="save"
-                      className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-xs font-semibold uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60 lg:w-auto"
-                    >
-                      UPRAV SPLATNOST
-                    </button>
+                    <div className="min-w-0">
+                      <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">Splatnost</div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                        <input
+                          type="date"
+                          value={dueDateDraft}
+                          onChange={(event) => setDueDateDraft(event.target.value)}
+                          data-field="due-date"
+                          className="received-invoices-modal__date-field received-invoices-modal__date-field--due h-9 min-w-0 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-2 text-xs text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveDueDate}
+                          disabled={isPending}
+                          data-action="save"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[10px] font-semibold uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-60"
+                        >
+                          ULOŽIT
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <InvoicePreviewPane
@@ -905,8 +911,9 @@ export function ReceivedInvoicesModal({
                   Žádné soubory pro aktuální filtr.
                 </div>
               )}
-            </section>
-          </div>
+              </section>
+            </div>
+          )}
 
           {error ? (
             <div className="received-invoices-modal__error border-t border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">

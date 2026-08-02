@@ -2,11 +2,12 @@
 
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
-import { Search, Building2, CarFront, Cpu, House } from 'lucide-react'
+import { Search } from 'lucide-react'
 import Link from 'next/link'
 import { NewAssetButton } from './new-asset-button'
 import { AssetTableRowLink } from './asset-table-row-link'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
+import { SlidingSingleRowTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 
 type AssetCategoryRow = {
   id: string
@@ -109,21 +110,6 @@ function getMobileAssetCardFields(
   ]
 }
 
-function AssetCategoryIcon({ iconKey }: { iconKey: string }) {
-  switch (iconKey) {
-    case 'car':
-      return <CarFront className="h-6 w-6" strokeWidth={1.85} />
-    case 'house':
-      return <House className="h-6 w-6" strokeWidth={1.85} />
-    case 'building':
-      return <Building2 className="h-6 w-6" strokeWidth={1.85} />
-    case 'cpu':
-      return <Cpu className="h-6 w-6" strokeWidth={1.85} />
-    default:
-      return <CarFront className="h-6 w-6" strokeWidth={1.85} />
-  }
-}
-
 export function AssetsPageClient({
   categories,
   assets,
@@ -197,6 +183,10 @@ export function AssetsPageClient({
           })
         )
     : []
+  const categoryTabOptions = categories.map((category) => ({
+    value: category.id,
+    label: category.name,
+  }))
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -265,6 +255,13 @@ export function AssetsPageClient({
                   ZPĚT NA DASHBOARD
                 </Link>
 
+                <Link
+                  href="/majetek/nastaveni"
+                  className="assets-page__settings-button inline-flex items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900"
+                >
+                  NASTAVENÍ
+                </Link>
+
                 {categories.length > 0 ? (
                   <NewAssetButton
                     categories={categories}
@@ -278,57 +275,6 @@ export function AssetsPageClient({
           </div>
         </section>
 
-        <section className="assets-page__filters rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-            <div className="w-full lg:col-start-3 lg:row-start-1 lg:w-auto lg:justify-self-end">
-              <Link
-                href="/majetek/nastaveni"
-                className="assets-page__settings-button inline-flex w-full items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 lg:w-auto"
-              >
-                NASTAVENÍ
-              </Link>
-            </div>
-
-            <div className="assets-page__filter-row -mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:justify-center lg:overflow-visible lg:px-0 lg:pb-0">
-              {categories.map((category) => {
-                const isActive = activeCategoryId === category.id
-
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => updateCategory(category.id)}
-                    className={[
-                      'assets-page__pill assets-page__pill--filter inline-flex shrink-0 items-center justify-start gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium leading-none transition duration-200',
-                      isActive
-                        ? 'border text-white shadow-none md:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_14px_28px_rgba(24,78,129,0.22)]'
-                        : 'border border-white/75 bg-white text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_2px_6px_rgba(15,23,42,0.04)] hover:-translate-y-[1px] hover:text-zinc-900 md:bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] md:text-zinc-600 md:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]',
-                    ].join(' ')}
-                    style={
-                      isActive
-                        ? {
-                            background: `linear-gradient(155deg, ${category.color} 0%, ${category.color} 100%)`,
-                            borderColor: category.color,
-                          }
-                        : {
-                            borderColor: `${category.color}33`,
-                          }
-                    }
-                  >
-                    <span
-                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center self-center rounded-full bg-white/18"
-                      aria-hidden="true"
-                    >
-                      <AssetCategoryIcon iconKey={category.icon_key} />
-                    </span>
-                    {category.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-
         <section className="assets-page__categories space-y-5">
           {categories.length === 0 ? (
             <section className="assets-page__empty rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
@@ -338,32 +284,16 @@ export function AssetsPageClient({
             </section>
           ) : activeCategory ? (
             <section
-              key={activeCategory.id}
               className="assets-page__category overflow-hidden rounded-[28px] border border-white/72 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,0.93)_48%,rgba(241,245,249,0.89)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]"
-              style={{
-                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.92), 0 20px 44px rgba(15,23,42,0.12), 0 0 0 1px ${activeCategory.color}22`,
-              }}
             >
-              <div className="assets-page__category-header flex items-start justify-between gap-3 border-b border-white/70 px-5 py-4 sm:px-6">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_18px_rgba(15,23,42,0.14)]"
-                    style={{ background: activeCategory.color }}
-                  >
-                    <AssetCategoryIcon iconKey={activeCategory.icon_key} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold tracking-tight text-gray-900">
-                      {activeCategory.name}
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="shrink-0 pt-1">
-                  <span className="assets-page__category-count inline-flex items-center rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)]">
-                    {visibleAssets.length} záznamů
-                  </span>
-                </div>
+              <div className="border-b border-white/70 p-3 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)]">
+                <SlidingSingleRowTabSwitch
+                  value={activeCategoryId}
+                  options={categoryTabOptions}
+                  onValueChange={updateCategory}
+                  ariaLabel="Kategorie majetku"
+                  className="w-full rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)]"
+                />
               </div>
 
               <div className="assets-page__mobile-list space-y-3 px-4 py-4 sm:px-6 md:hidden">
@@ -379,12 +309,9 @@ export function AssetsPageClient({
                       className="assets-page__mobile-card block overflow-hidden rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(242,247,252,0.9)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_12px_24px_rgba(15,23,42,0.1)] transition duration-200 hover:-translate-y-[1px]"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                        <div className="min-w-0 self-center">
                           <p className="assets-page__mobile-card-title text-sm font-semibold leading-5 text-gray-900">
                             {asset.name}
-                          </p>
-                          <p className="assets-page__mobile-card-category mt-1 text-xs text-zinc-500">
-                            {activeCategory.name}
                           </p>
                         </div>
 
