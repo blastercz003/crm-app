@@ -5,6 +5,9 @@ import type {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const PRAGUE_TIME_ZONE = 'Europe/Prague'
+const LOCAL_DATE_TIME_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
 
 function normalizeText(value: unknown) {
   return String(value ?? '').trim()
@@ -15,10 +18,99 @@ function optionalText(value: unknown) {
   return normalized || null
 }
 
+function parsePragueLocalDateTime(value: string) {
+  const match = LOCAL_DATE_TIME_PATTERN.exec(value)
+  if (!match) return null
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const hour = Number(match[4])
+  const minute = Number(match[5])
+  const desiredAsUtc = Date.UTC(year, month - 1, day, hour, minute)
+  const desiredDate = new Date(desiredAsUtc)
+
+  if (
+    desiredDate.getUTCFullYear() !== year ||
+    desiredDate.getUTCMonth() !== month - 1 ||
+    desiredDate.getUTCDate() !== day ||
+    desiredDate.getUTCHours() !== hour ||
+    desiredDate.getUTCMinutes() !== minute
+  ) {
+    return null
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PRAGUE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+
+  const getParts = (date: Date) => {
+    const parts = formatter.formatToParts(date)
+    const get = (type: Intl.DateTimeFormatPartTypes) =>
+      Number(parts.find((part) => part.type === type)?.value ?? '0')
+
+    return {
+      year: get('year'),
+      month: get('month'),
+      day: get('day'),
+      hour: get('hour'),
+      minute: get('minute'),
+    }
+  }
+
+  let utcGuess = desiredAsUtc
+
+  for (let index = 0; index < 3; index += 1) {
+    const parts = getParts(new Date(utcGuess))
+    const actualAsUtc = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute
+    )
+    const difference = desiredAsUtc - actualAsUtc
+
+    if (difference === 0) {
+      return new Date(utcGuess).toISOString()
+    }
+
+    utcGuess += difference
+  }
+
+  const resolvedParts = getParts(new Date(utcGuess))
+  if (
+    resolvedParts.year !== year ||
+    resolvedParts.month !== month ||
+    resolvedParts.day !== day ||
+    resolvedParts.hour !== hour ||
+    resolvedParts.minute !== minute
+  ) {
+    return null
+  }
+
+  return new Date(utcGuess).toISOString()
+}
+
 function parseDateTime(value: unknown, label: string) {
   const normalized = normalizeText(value)
   if (!normalized) {
     return { value: null, error: `${label} je povinný údaj.` }
+  }
+
+  const isPragueLocalDateTime = LOCAL_DATE_TIME_PATTERN.test(normalized)
+  const pragueDateTime = parsePragueLocalDateTime(normalized)
+  if (pragueDateTime) {
+    return { value: pragueDateTime, error: null }
+  }
+  if (isPragueLocalDateTime) {
+    return { value: null, error: `${label} nemá platný formát.` }
   }
 
   const date = new Date(normalized)

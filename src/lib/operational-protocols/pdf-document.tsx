@@ -51,9 +51,9 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 20,
-    paddingBottom: 14,
-    paddingHorizontal: 16,
+    paddingTop: 28,
+    paddingBottom: 28,
+    paddingHorizontal: 28,
     fontSize: 10,
     color: '#111827',
     fontFamily: 'OperationalProtocolArial',
@@ -67,11 +67,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    minHeight: 22,
     paddingBottom: 4,
   },
   logo: { width: 105, height: 18, objectFit: 'contain' },
-  title: { fontSize: 16, fontWeight: 700 },
+  title: { fontSize: 16, lineHeight: 1.2, fontWeight: 700 },
   topGrid: { flexDirection: 'row', gap: 6, marginTop: 10 },
   tripleGrid: { flexDirection: 'row', gap: 6, marginTop: 10 },
   col: { flex: 1 },
