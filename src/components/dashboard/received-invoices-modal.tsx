@@ -807,9 +807,11 @@ export function ReceivedInvoicesModal({
                   <button
                     type="button"
                     onClick={() => setMobileViewPanel('list')}
-                    className="received-invoices-modal__back inline-flex h-9 w-fit items-center justify-center rounded-xl border border-white/75 bg-white/75 px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-zinc-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px] lg:hidden"
+                    style={{ height: 36, minHeight: 36, flexShrink: 0 }}
+                    className="received-invoices-modal__back inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-zinc-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.88)_100%)] px-4 text-xs font-bold uppercase tracking-[0.06em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_22px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:border-[#9dc7e5] hover:text-[#236f9f] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_26px_rgba(41,128,185,0.14)] sm:w-fit sm:min-w-[190px] lg:hidden"
                   >
-                    ← Zpět na seznam
+                    <span aria-hidden="true" className="text-base leading-none">←</span>
+                    Zpět na přehled
                   </button>
 
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
