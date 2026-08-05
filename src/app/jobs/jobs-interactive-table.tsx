@@ -67,6 +67,7 @@ type JobRow = {
   technician_name: string | null
   generator_name: string | null
   info_note: string | null
+  marny_vyjezd?: boolean | null
   pp_required?: boolean
   info_alert_enabled?: boolean | null
   has_info_attachments?: boolean
@@ -288,7 +289,7 @@ function DesktopRow({
 }) {
   return (
     <tr className="jobs-page__table-row group [background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] transition duration-200 hover:-translate-y-[1px]">
-      <td className="rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
+      <td className="relative rounded-l-2xl border border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:rounded-none print:border print:px-1.5 print:py-1.5">
         <EditJobButton
           job={job}
           isAdmin={isAdmin}
@@ -299,6 +300,7 @@ function DesktopRow({
             {job.job_number}
           </span>
         </EditJobButton>
+        {job.marny_vyjezd ? <WastedTripMarker variant="desktop" /> : null}
       </td>
 
       {showEvidenceColumn ? (
@@ -474,7 +476,7 @@ function MobileCard({
     (showReadOnlyInfo || showHandoverProtocolPdfColumn)
   return (
     <div className="jobs-page__mobile-card overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)]">
-      <div className="flex items-start justify-between gap-2">
+      <div className="relative flex items-start justify-between gap-2">
         <div className="min-w-0 w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <EditJobButton
@@ -505,6 +507,8 @@ function MobileCard({
             {job.company_name}
           </p>
         </div>
+
+        {job.marny_vyjezd ? <WastedTripMarker variant="mobile" /> : null}
 
         <JobStatusButton
           job={job}
@@ -698,6 +702,35 @@ function MobileCard({
         </div>
       ) : null}
     </div>
+  )
+}
+
+function WastedTripMarker({ variant }: { variant: 'desktop' | 'mobile' }) {
+  const themeClass =
+    "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
+
+  if (variant === 'desktop') {
+    return (
+      <span
+        role="img"
+        aria-label="Marný výjezd"
+        title="Marný výjezd"
+        className={`absolute top-1/2 right-1.5 inline-flex h-[17px] w-[17px] -translate-y-1/2 items-center justify-center rounded-full border text-[8px] font-bold leading-none ${themeClass}`}
+      >
+        M
+      </span>
+    )
+  }
+
+  return (
+    <span
+      role="img"
+      aria-label="Marný výjezd"
+      title="Marný výjezd"
+      className={`absolute top-0 left-1/2 z-[1] inline-flex h-[17px] -translate-x-1/2 scale-x-[0.66] items-center justify-center whitespace-nowrap rounded-full border px-1 text-[7px] font-bold leading-none tracking-[0.035em] min-[340px]:scale-x-[0.8] min-[360px]:h-[18px] min-[360px]:scale-x-100 min-[360px]:px-1.5 min-[360px]:text-[8px] ${themeClass}`}
+    >
+      MARNÝ VÝJEZD
+    </span>
   )
 }
 

@@ -331,13 +331,17 @@ function DesktopRow({
         <button
           type="button"
           onClick={() => onOpenJob360(row)}
-          className="absolute right-0 top-1 z-20 inline-flex h-6 w-6 translate-x-[7px] items-center justify-center rounded-full border border-[#9ab8d0]/65 bg-white/85 text-[#47738f] opacity-90 shadow-[0_3px_9px_rgba(15,23,42,0.14)] backdrop-blur transition duration-200 hover:scale-110 hover:border-[#4f92cb] hover:bg-[#eaf4fb] hover:text-[#2f78b1] focus:scale-110 focus:outline-none focus:ring-2 focus:ring-[#4f92cb]/45 group-hover:border-[#65a0cc] group-hover:bg-[#e6f1f9] group-hover:text-[#2f78b1] [html[data-theme='dark']_&]:border-[#6594b8]/45 [html[data-theme='dark']_&]:bg-[#15283a]/90 [html[data-theme='dark']_&]:text-[#91b8d4] [html[data-theme='dark']_&]:shadow-[0_4px_10px_rgba(0,0,0,0.35)] [html[data-theme='dark']_&]:hover:border-[#73add7] [html[data-theme='dark']_&]:hover:bg-[#1b3851] [html[data-theme='dark']_&]:hover:text-[#b5daf4]"
+          className="absolute right-0 top-[3px] z-20 inline-flex h-6 w-6 translate-x-[7px] items-center justify-center rounded-full border border-[#9ab8d0]/65 bg-white/85 text-[#47738f] opacity-90 shadow-[0_3px_9px_rgba(15,23,42,0.14)] backdrop-blur transition duration-200 hover:scale-110 hover:border-[#4f92cb] hover:bg-[#eaf4fb] hover:text-[#2f78b1] focus:scale-110 focus:outline-none focus:ring-2 focus:ring-[#4f92cb]/45 group-hover:border-[#65a0cc] group-hover:bg-[#e6f1f9] group-hover:text-[#2f78b1] [html[data-theme='dark']_&]:border-[#6594b8]/45 [html[data-theme='dark']_&]:bg-[#15283a]/90 [html[data-theme='dark']_&]:text-[#91b8d4] [html[data-theme='dark']_&]:shadow-[0_4px_10px_rgba(0,0,0,0.35)] [html[data-theme='dark']_&]:hover:border-[#73add7] [html[data-theme='dark']_&]:hover:bg-[#1b3851] [html[data-theme='dark']_&]:hover:text-[#b5daf4]"
           title="Zakázka 360 – kompletní náhled"
           aria-label={`Otevřít Zakázku 360 pro zakázku ${row.job_number}`}
           aria-haspopup="dialog"
         >
           <CircleGauge className="h-3.5 w-3.5" strokeWidth={1.9} />
         </button>
+
+        {row.marny_vyjezd ? (
+          <FakturyWastedTripMarker variant="desktop" />
+        ) : null}
       </td>
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-1.5 py-2 pr-3 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf]">
@@ -495,48 +499,53 @@ function MobileCard({
           : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <EditJobButton
-              job={editableJob}
-              onOpen={() => onEditJob(row)}
-              className="jobs-page__job-number-button min-w-0 text-sm font-semibold leading-tight text-gray-900 hover:underline"
-            >
-              <span className="block truncate">{row.job_number}</span>
-            </EditJobButton>
-            <div className="shrink-0">
-              <JobAttachmentsCell
-                jobId={row.job_id}
-                jobNumber={row.job_number}
-                hasAttachments={row.has_attachments}
-                initialPpRequired={row.pp_required ?? true}
-                compact
-              />
-            </div>
-          </div>
-          <p
-            className="mt-0.5 truncate text-sm text-gray-700"
-            title={row.company_name}
+      <div className="relative flex items-start justify-between gap-2">
+        {row.marny_vyjezd ? (
+          <FakturyWastedTripMarker variant="mobile" />
+        ) : null}
+
+        <div className="flex min-w-0 items-center gap-2">
+          <EditJobButton
+            job={editableJob}
+            onOpen={() => onEditJob(row)}
+            className="jobs-page__job-number-button min-w-0 text-sm font-semibold leading-tight text-gray-900 hover:underline"
           >
-            {row.company_name}
-          </p>
+            <span className="block truncate">{row.job_number}</span>
+          </EditJobButton>
+          <div className="shrink-0">
+            <JobAttachmentsCell
+              jobId={row.job_id}
+              jobNumber={row.job_number}
+              hasAttachments={row.has_attachments}
+              initialPpRequired={row.pp_required ?? true}
+              compact
+            />
+          </div>
         </div>
 
         <SalesOwnerText salesOwner={row.sales_owner} compact />
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] leading-5 text-gray-600">
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900">Osoba:</span>{' '}
-          <span className="break-words">{row.contact_person || '—'}</span>
+      <p
+        className="mt-0.5 truncate text-[12px] leading-4 text-gray-700"
+        title={row.company_name}
+      >
+        {row.company_name}
+      </p>
+
+      <div className="mt-2 grid min-w-0 grid-cols-2 gap-x-3 text-[12px] leading-4 text-gray-600">
+        <div className="min-w-0 truncate" title={row.site_address ?? '—'}>
+          <span className="font-medium text-gray-900">Adresa:</span>{' '}
+          <span>{row.site_address || '—'}</span>
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 whitespace-nowrap">
           <span className="font-medium text-gray-900">Prodejna:</span>{' '}
-          <span className="break-words">{row.store_number || '—'}</span>
+          <span>{row.store_number || '—'}</span>
         </div>
+      </div>
 
+      <div className="mt-1.5 grid grid-cols-2 gap-x-3 text-[12px] leading-4 text-gray-600">
         <div className="min-w-0">
           <span className="font-medium text-gray-900">Začátek:</span>{' '}
           <span className="break-words">{formatDateTime(row.start_at)}</span>
@@ -545,16 +554,6 @@ function MobileCard({
         <div className="min-w-0">
           <span className="font-medium text-gray-900">Konec:</span>{' '}
           <span className="break-words">{formatDateTime(row.end_at)}</span>
-        </div>
-
-        <div className="col-span-2 min-w-0">
-          <span className="font-medium text-gray-900">Adresa:</span>{' '}
-          <span className="break-words">{row.site_address || '—'}</span>
-        </div>
-
-        <div className="col-span-2 min-w-0">
-          <span className="font-medium text-gray-900">OBJ:</span>{' '}
-          <span className="break-words">{row.client_order_number || '—'}</span>
         </div>
       </div>
 
@@ -621,7 +620,7 @@ function MobileCard({
         </div>
       ) : null}
 
-      <div className="mt-2 flex justify-end">
+      <div className="mt-1.5 flex justify-end">
         <button
           type="button"
           onClick={() => setIsFinanceOpen((current) => !current)}
@@ -633,6 +632,39 @@ function MobileCard({
         </button>
       </div>
     </div>
+  )
+}
+
+function FakturyWastedTripMarker({
+  variant,
+}: {
+  variant: 'desktop' | 'mobile'
+}) {
+  const themeClass =
+    "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
+
+  if (variant === 'desktop') {
+    return (
+      <span
+        role="img"
+        aria-label="Marný výjezd"
+        title="Marný výjezd"
+        className={`absolute bottom-[3px] right-0 z-20 inline-flex h-[17px] w-[17px] translate-x-[3.5px] items-center justify-center rounded-full border text-[8px] font-bold leading-none ${themeClass}`}
+      >
+        M
+      </span>
+    )
+  }
+
+  return (
+    <span
+      role="img"
+      aria-label="Marný výjezd"
+      title="Marný výjezd"
+      className={`absolute top-0 left-1/2 z-[1] inline-flex h-[17px] -translate-x-1/2 scale-x-[0.66] items-center justify-center whitespace-nowrap rounded-full border px-1 text-[7px] font-bold leading-none tracking-[0.035em] min-[340px]:scale-x-[0.8] min-[360px]:h-[18px] min-[360px]:scale-x-100 min-[360px]:px-1.5 min-[360px]:text-[8px] ${themeClass}`}
+    >
+      MARNÝ VÝJEZD
+    </span>
   )
 }
 
