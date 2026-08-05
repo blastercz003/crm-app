@@ -313,7 +313,7 @@ function DesktopRow({
     <tr
       className={`jobs-page__table-row group transition duration-200 hover:-translate-y-[1px] ${
         isFinanceCompleted
-          ? '[background:linear-gradient(160deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
+          ? 'faktury-page__table-row--completed [background:linear-gradient(160deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
           : '[background:linear-gradient(160deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
       }`}
     >
@@ -495,7 +495,7 @@ function MobileCard({
     <div
       className={`jobs-page__mobile-card faktury-page__mobile-card overflow-hidden rounded-2xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(15,23,42,0.1)] ${
         isFinanceCompleted
-          ? 'border-[#95c4e6]/95 bg-[linear-gradient(155deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
+          ? 'faktury-page__mobile-card--completed border-[#95c4e6]/95 bg-[linear-gradient(155deg,rgba(227,240,250,0.98)_0%,rgba(211,229,244,0.94)_52%,rgba(195,219,238,0.9)_100%)]'
           : 'border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.95)_0%,rgba(242,247,252,0.88)_100%)]'
       }`}
     >
