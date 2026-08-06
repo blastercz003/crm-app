@@ -179,7 +179,6 @@ export function NotificationsModal({
 }: NotificationsModalProps) {
   const router = useRouter()
   const dialogRef = useRef<HTMLDivElement | null>(null)
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const [optimisticNotifications, setOptimisticNotifications] = useState(notifications)
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false)
   const [openingNotificationIds, setOpeningNotificationIds] = useState<string[]>([])
@@ -195,7 +194,7 @@ export function NotificationsModal({
     const previousOverflow = document.body.style.overflow
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
     document.body.style.overflow = 'hidden'
-    closeButtonRef.current?.focus()
+    dialogRef.current?.focus({ preventScroll: true })
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -395,7 +394,8 @@ export function NotificationsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="notifications-modal-title"
-        className="notifications-modal__dialog relative flex max-h-[86vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)]"
+        tabIndex={-1}
+        className="notifications-modal__dialog relative flex max-h-[86vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] outline-none lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)]"
       >
         <div
           aria-hidden="true"
@@ -411,7 +411,6 @@ export function NotificationsModal({
         />
         <button
           type="button"
-          ref={closeButtonRef}
           onClick={onClosed}
           aria-label="Zavřít"
           className="notifications-modal__close-button absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-lg text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_28px_rgba(39,39,42,0.18)]"
