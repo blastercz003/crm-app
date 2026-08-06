@@ -652,8 +652,8 @@ function FakturySpecialJobMarker({
   const shortLabel = isStandby ? 'P' : 'M'
   const fullLabel = isStandby ? 'POHOTOVOST' : 'MARNÝ VÝJEZD'
   const themeClass = isStandby
-    ? "border-[#8dbfe0] bg-[#eaf5fc] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(35,111,159,0.12)] [html[data-theme='dark']_&]:border-[rgba(103,185,243,0.34)] [html[data-theme='dark']_&]:bg-[rgba(30,99,145,0.28)] [html[data-theme='dark']_&]:text-[#a9dcff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
-    : "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
+    ? "border-[#b9a6e8] bg-[#f3effc] text-[#6546a5] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(101,70,165,0.12)] [html[data-theme='dark']_&]:border-[rgba(167,139,250,0.34)] [html[data-theme='dark']_&]:bg-[rgba(109,40,217,0.22)] [html[data-theme='dark']_&]:text-[#d8c7ff] [html[data-theme='dark']_&]:shadow-[0_3px_8px_rgba(0,0,0,0.24)]"
+    : "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[0_3px_8px_rgba(0,0,0,0.24)]"
 
   if (variant === 'desktop') {
     return (

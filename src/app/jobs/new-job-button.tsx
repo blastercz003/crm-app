@@ -8,7 +8,7 @@ import {
   ActionFeedbackToast,
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
-import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
+import { JobFormToggleCard } from '@/components/jobs/job-pp-required-toggle'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
@@ -682,14 +682,6 @@ function JobFormShell({
                     <h3 className="jobs-page__job-form-modal__section-title text-sm font-semibold text-gray-900">
                       Realizace
                     </h3>
-
-                    <div className="hidden shrink-0 sm:block">
-                      <JobPpRequiredToggle
-                        value={ppRequired}
-                        onChange={setPpRequired}
-                        compact
-                      />
-                    </div>
                   </div>
 
                   <div className="grid gap-3">
@@ -745,46 +737,32 @@ function JobFormShell({
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <div className="sm:hidden">
-                        <JobPpRequiredToggle
-                          value={ppRequired}
-                          onChange={setPpRequired}
-                          compact
-                        />
-                      </div>
-
-                      <label className="jobs-page__job-form-modal__checkbox-card flex h-8 min-w-0 items-center gap-2 rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(247,249,252,0.9)_100%)] px-2.5 text-[11px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
-                        <input
-                          type="checkbox"
-                          name="marny_vyjezd"
-                          value="1"
-                          checked={marnyVyjezd}
-                          onChange={(event) => {
-                            const checked = event.target.checked
-                            setMarnyVyjezd(checked)
-                            if (checked) setPohotovost(false)
-                          }}
-                          className="jobs-page__job-form-modal__checkbox-input h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
-                        />
-                        <span className="whitespace-nowrap">MARNÝ VÝJEZD</span>
-                      </label>
-
-                      <label className="jobs-page__job-form-modal__checkbox-card flex h-8 min-w-0 items-center gap-2 rounded-xl border border-[#d6dee8] bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(247,249,252,0.9)_100%)] px-2.5 text-[11px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
-                        <input
-                          type="checkbox"
-                          name="pohotovost"
-                          value="1"
-                          checked={pohotovost}
-                          onChange={(event) => {
-                            const checked = event.target.checked
-                            setPohotovost(checked)
-                            if (checked) setMarnyVyjezd(false)
-                          }}
-                          className="jobs-page__job-form-modal__checkbox-input h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
-                        />
-                        <span className="whitespace-nowrap">POHOTOVOST</span>
-                      </label>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <JobFormToggleCard
+                        label="POVINNÝ PP"
+                        checked={ppRequired}
+                        onChange={setPpRequired}
+                      />
+                      <JobFormToggleCard
+                        label="MARNÝ VÝJEZD"
+                        name="marny_vyjezd"
+                        checked={marnyVyjezd}
+                        tone="danger"
+                        onChange={(checked) => {
+                          setMarnyVyjezd(checked)
+                          if (checked) setPohotovost(false)
+                        }}
+                      />
+                      <JobFormToggleCard
+                        label="POHOTOVOST"
+                        name="pohotovost"
+                        checked={pohotovost}
+                        tone="standby"
+                        onChange={(checked) => {
+                          setPohotovost(checked)
+                          if (checked) setMarnyVyjezd(false)
+                        }}
+                      />
                     </div>
                   </div>
                 </section>

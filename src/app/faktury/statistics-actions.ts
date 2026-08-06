@@ -98,6 +98,7 @@ export type FinanceStatisticsPayload = {
     cost: number
     profit: number
     financialJobCount: number
+    completeFinanceJobCount: number
     standbyCount: number
   }
   technicians: FinanceStatisticsTechnician[]
@@ -147,6 +148,7 @@ type TechnicianProfileRow = {
 type StatisticsFinanceRow = {
   id: string
   job_id: string
+  invoice_number: string | null
   sale_amount: number | string | null
   cost_amount: number | string | null
   job:
@@ -492,6 +494,7 @@ export async function getFinanceStatisticsAction(
             `
               id,
               job_id,
+              invoice_number,
               sale_amount,
               cost_amount,
               job:jobs!inner (
@@ -711,6 +714,7 @@ export async function getFinanceStatisticsAction(
     let cost = 0
     let profit = 0
     let financialJobCount = 0
+    let completeFinanceJobCount = 0
     const trend = createTrendPoints(view, period)
 
     for (const { job, finance } of uniqueJobEntries) {
@@ -729,9 +733,14 @@ export async function getFinanceStatisticsAction(
 
       const saleAmount = normalizeMoney(finance.sale_amount)
       const costAmount = normalizeMoney(finance.cost_amount)
-      const hasCompleteFinance = saleAmount !== null && costAmount !== null
+      const hasFinancialAmounts = saleAmount !== null && costAmount !== null
+      const hasInvoiceNumber = String(finance.invoice_number ?? '').trim().length > 0
 
-      if (hasCompleteFinance) {
+      if (hasFinancialAmounts && hasInvoiceNumber) {
+        completeFinanceJobCount += 1
+      }
+
+      if (hasFinancialAmounts) {
         sale += saleAmount
         cost += costAmount
         profit += saleAmount - costAmount
@@ -763,7 +772,7 @@ export async function getFinanceStatisticsAction(
 
       customer.jobCount += 1
 
-      if (hasCompleteFinance) {
+      if (hasFinancialAmounts) {
         customer.sale += saleAmount
         customer.cost += costAmount
         customer.profit += saleAmount - costAmount
@@ -789,7 +798,7 @@ export async function getFinanceStatisticsAction(
 
         generator.jobIds.add(jobKey)
 
-        if (hasCompleteFinance) {
+        if (hasFinancialAmounts) {
           generator.sale += saleAmount
           generator.cost += costAmount
           generator.profit += saleAmount - costAmount
@@ -944,6 +953,7 @@ export async function getFinanceStatisticsAction(
           cost: roundMetric(cost),
           profit: roundMetric(profit),
           financialJobCount,
+          completeFinanceJobCount,
           standbyCount: roundMetric(standbyCount),
         },
         technicians,

@@ -339,9 +339,13 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
     payload.summary.jobCount > 0
       ? (payload.summary.wastedTripCount / payload.summary.jobCount) * 100
       : 0
+  const standbyRate =
+    payload.summary.jobCount > 0
+      ? (payload.summary.standbyCount / payload.summary.jobCount) * 100
+      : 0
   const financeCompleteness =
     payload.summary.jobCount > 0
-      ? (payload.summary.financialJobCount / payload.summary.jobCount) * 100
+      ? (payload.summary.completeFinanceJobCount / payload.summary.jobCount) * 100
       : 0
   const profitMargin =
     payload.summary.sale !== 0
@@ -352,6 +356,20 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
     : 0
   const averageProfit = payload.summary.financialJobCount
     ? payload.summary.profit / payload.summary.financialJobCount
+    : 0
+  const missingFinanceJobCount = Math.max(
+    payload.summary.jobCount - payload.summary.completeFinanceJobCount,
+    0
+  )
+  const activeTechnicians = payload.technicians.filter(
+    (technician) => technician.jobCount > 0
+  )
+  const technicianJobAssignments = activeTechnicians.reduce(
+    (sum, technician) => sum + technician.jobCount,
+    0
+  )
+  const averageJobsPerTechnician = activeTechnicians.length
+    ? technicianJobAssignments / activeTechnicians.length
     : 0
 
   return (
@@ -367,21 +385,39 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
                 {formatMetric(payload.summary.jobCount)}
               </div>
             </div>
-            <PercentageRing
-              value={wastedTripRate}
-              label="marných"
-              tone="danger"
-            />
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              <PercentageRing
+                value={wastedTripRate}
+                label="marných"
+                tone="danger"
+              />
+              <PercentageRing
+                value={standbyRate}
+                label="pohotovostí"
+                tone="standby"
+              />
+            </div>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <SummaryMiniMetric
               label="Marné výjezdy"
               value={formatMetric(payload.summary.wastedTripCount)}
-              tone={payload.summary.wastedTripCount > 0 ? 'danger' : 'default'}
+              tone="danger"
             />
             <SummaryMiniMetric
               label="Pohotovosti"
               value={formatMetric(payload.summary.standbyCount)}
+              tone="standby"
+            />
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <SummaryMiniMetric
+              label="Kompletní finance"
+              value={formatMetric(payload.summary.completeFinanceJobCount)}
+            />
+            <SummaryMiniMetric
+              label="Chybějící finance"
+              value={formatMetric(missingFinanceJobCount)}
             />
           </div>
         </SummaryPanel>
@@ -408,6 +444,16 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
                 value={`${formatMetric(payload.summary.averageHoursPerJob)} h`}
               />
             </div>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <SummaryMiniMetric
+              label="Aktivní technici"
+              value={formatMetric(activeTechnicians.length)}
+            />
+            <SummaryMiniMetric
+              label="Ø zakázek na technika"
+              value={formatMetric(averageJobsPerTechnician)}
+            />
           </div>
         </SummaryPanel>
 
@@ -464,7 +510,7 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
           </div>
           <ProgressLine
             value={financeCompleteness}
-            label={`Finance: ${payload.summary.financialJobCount} z ${payload.summary.jobCount} zakázek`}
+            label={`Finance: ${payload.summary.completeFinanceJobCount} z ${payload.summary.jobCount} zakázek`}
           />
         </SummaryPanel>
       </section>
@@ -520,19 +566,28 @@ function SummaryMiniMetric({
 }: {
   label: string
   value: string
-  tone?: 'default' | 'danger'
+  tone?: 'default' | 'danger' | 'standby'
 }) {
+  const boxToneClass =
+    tone === 'danger'
+      ? "border-[#ef9a9f] bg-[#fff1f2] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_5px_12px_rgba(169,35,45,0.08)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.3)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.2)] [html[data-theme='dark']_&]:shadow-[0_5px_12px_rgba(0,0,0,0.18)]"
+      : tone === 'standby'
+        ? "border-[#b9a6e8] bg-[#f3effc] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_5px_12px_rgba(101,70,165,0.08)] [html[data-theme='dark']_&]:border-[rgba(167,139,250,0.34)] [html[data-theme='dark']_&]:bg-[rgba(109,40,217,0.2)] [html[data-theme='dark']_&]:shadow-[0_5px_12px_rgba(0,0,0,0.18)]"
+        : "border-zinc-200/75 bg-slate-50/75 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.11)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.4)]"
+  const textToneClass =
+    tone === 'danger'
+      ? "text-[#a9232d] [html[data-theme='dark']_&]:text-[#fca5a5]"
+      : tone === 'standby'
+        ? "text-[#6546a5] [html[data-theme='dark']_&]:text-[#d8c7ff]"
+        : "text-zinc-900 [html[data-theme='dark']_&]:text-slate-100"
+
   return (
-    <div className="min-w-0 rounded-2xl border border-zinc-200/75 bg-slate-50/75 px-3 py-2.5 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.11)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.4)]">
-      <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">
+    <div className={`min-w-0 rounded-2xl border px-3 py-2.5 ${boxToneClass}`}>
+      <div className={`text-[9px] font-semibold uppercase tracking-[0.08em] ${textToneClass}`}>
         {label}
       </div>
       <div
-        className={`mt-1 truncate text-base font-semibold ${
-          tone === 'danger'
-            ? 'text-rose-600 [html[data-theme=\'dark\']_&]:text-rose-300'
-            : 'text-zinc-900 [html[data-theme=\'dark\']_&]:text-slate-100'
-        }`}
+        className={`mt-1 truncate text-base font-semibold ${textToneClass}`}
         title={value}
       >
         {value}
@@ -548,7 +603,7 @@ function PercentageRing({
 }: {
   value: number
   label: string
-  tone?: 'primary' | 'danger'
+  tone?: 'primary' | 'danger' | 'standby'
 }) {
   const safeValue = Math.min(Math.max(value, 0), 100)
 
@@ -561,7 +616,13 @@ function PercentageRing({
           r="16"
           fill="none"
           strokeWidth="4"
-          className="stroke-zinc-200/80 [html[data-theme='dark']_&]:stroke-slate-700/70"
+          className={
+            tone === 'danger'
+              ? "stroke-[#fde1e3] [html[data-theme='dark']_&]:stroke-[rgba(127,29,29,0.38)]"
+              : tone === 'standby'
+                ? "stroke-[#ebe5fa] [html[data-theme='dark']_&]:stroke-[rgba(109,40,217,0.3)]"
+                : "stroke-zinc-200/80 [html[data-theme='dark']_&]:stroke-slate-700/70"
+          }
         />
         <circle
           cx="21"
@@ -574,16 +635,34 @@ function PercentageRing({
           strokeLinecap="round"
           className={
             tone === 'danger'
-              ? 'stroke-rose-400 [html[data-theme=\'dark\']_&]:stroke-rose-400'
-              : 'stroke-[#2980B9] [html[data-theme=\'dark\']_&]:stroke-[#67b8ed]'
+              ? "stroke-[#ef9a9f] [html[data-theme='dark']_&]:stroke-[#fca5a5]"
+              : tone === 'standby'
+                ? "stroke-[#b9a6e8] [html[data-theme='dark']_&]:stroke-[#d8c7ff]"
+                : 'stroke-[#2980B9] [html[data-theme=\'dark\']_&]:stroke-[#67b8ed]'
           }
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-slate-100">
+        <span
+          className={`text-sm font-semibold ${
+            tone === 'danger'
+              ? "text-[#a9232d] [html[data-theme='dark']_&]:text-[#fca5a5]"
+              : tone === 'standby'
+                ? "text-[#6546a5] [html[data-theme='dark']_&]:text-[#d8c7ff]"
+                : "text-zinc-900 [html[data-theme='dark']_&]:text-slate-100"
+          }`}
+        >
           {formatMetric(value)} %
         </span>
-        <span className="text-[8px] uppercase tracking-[0.05em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">
+        <span
+          className={`text-[8px] uppercase tracking-[0.05em] ${
+            tone === 'danger'
+              ? "text-[#a9232d] [html[data-theme='dark']_&]:text-[#fca5a5]"
+              : tone === 'standby'
+                ? "text-[#6546a5] [html[data-theme='dark']_&]:text-[#d8c7ff]"
+                : "text-zinc-500 [html[data-theme='dark']_&]:text-slate-500"
+          }`}
+        >
           {label}
         </span>
       </div>

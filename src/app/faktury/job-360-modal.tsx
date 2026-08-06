@@ -300,8 +300,8 @@ function OverviewSection({ data }: { data: Job360Data }) {
               <StatusBadge
                 label={statusLabel(EVIDENCE_STATUS_LABELS, job.evidenceStatus)}
               />
-              {job.wastedTrip ? <StatusBadge label="Marný výjezd" tone="amber" /> : null}
-              {job.standby ? <StatusBadge label="Pohotovost" tone="blue" /> : null}
+              {job.wastedTrip ? <StatusBadge label="Marný výjezd" tone="danger" /> : null}
+              {job.standby ? <StatusBadge label="Pohotovost" tone="violet" /> : null}
             </div>
           </div>
 
@@ -950,16 +950,20 @@ function StatusBadge({
   tone = 'default',
 }: {
   label: string
-  tone?: 'default' | 'blue' | 'green' | 'amber'
+  tone?: 'default' | 'blue' | 'green' | 'amber' | 'danger' | 'violet'
 }) {
   const toneClass =
     tone === 'blue'
       ? 'border-[#78abd0]/45 bg-[#e7f2fa]/75 text-[#2f78b1] [html[data-theme="dark"]_&]:border-[#4f92cb]/28 [html[data-theme="dark"]_&]:bg-[#4f92cb]/10 [html[data-theme="dark"]_&]:text-[#8ac1e8]'
       : tone === 'green'
         ? 'border-emerald-300/60 bg-emerald-50/80 text-emerald-700 [html[data-theme="dark"]_&]:border-emerald-500/20 [html[data-theme="dark"]_&]:bg-emerald-500/10 [html[data-theme="dark"]_&]:text-emerald-400'
-        : tone === 'amber'
-          ? 'border-amber-300/60 bg-amber-50/80 text-amber-700 [html[data-theme="dark"]_&]:border-amber-500/20 [html[data-theme="dark"]_&]:bg-amber-500/10 [html[data-theme="dark"]_&]:text-amber-300'
-          : 'border-slate-200/80 bg-slate-50/80 text-slate-600 [html[data-theme="dark"]_&]:border-white/[0.08] [html[data-theme="dark"]_&]:bg-white/[0.04] [html[data-theme="dark"]_&]:text-slate-300'
+        : tone === 'danger'
+          ? 'border-[#ef9a9f] bg-[#fff1f2] text-[#a9232d] [html[data-theme="dark"]_&]:border-[rgba(248,113,113,0.3)] [html[data-theme="dark"]_&]:bg-[rgba(127,29,29,0.2)] [html[data-theme="dark"]_&]:text-[#fca5a5]'
+          : tone === 'violet'
+            ? 'border-[#b9a6e8] bg-[#f3effc] text-[#6546a5] [html[data-theme="dark"]_&]:border-[rgba(167,139,250,0.34)] [html[data-theme="dark"]_&]:bg-[rgba(109,40,217,0.2)] [html[data-theme="dark"]_&]:text-[#d8c7ff]'
+            : tone === 'amber'
+              ? 'border-amber-300/60 bg-amber-50/80 text-amber-700 [html[data-theme="dark"]_&]:border-amber-500/20 [html[data-theme="dark"]_&]:bg-amber-500/10 [html[data-theme="dark"]_&]:text-amber-300'
+              : 'border-slate-200/80 bg-slate-50/80 text-slate-600 [html[data-theme="dark"]_&]:border-white/[0.08] [html[data-theme="dark"]_&]:bg-white/[0.04] [html[data-theme="dark"]_&]:text-slate-300'
 
   return (
     <span

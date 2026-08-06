@@ -14910,7 +14910,7 @@ html[data-theme='dark'] .jobs-page__job-form-modal__label {
   color: #cbd5e1 !important;
 }
 
-.jobs-page__job-form-modal section label:not(.jobs-page__job-form-modal__checkbox-card) {
+.jobs-page__job-form-modal section label:not(.jobs-page__job-form-modal__checkbox-card):not(.jobs-page__job-form-toggle-card) {
   font-size: 12px;
   line-height: 1rem;
 }
