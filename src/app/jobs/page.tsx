@@ -57,6 +57,7 @@ export type JobRow = {
   generator_name: string | null
   info_note: string | null
   marny_vyjezd?: boolean | null
+  pohotovost?: boolean | null
   pp_required?: boolean
   info_alert_enabled?: boolean | null
   has_info_attachments?: boolean
@@ -461,7 +462,7 @@ export default async function JobsPage({
     .order('name', { ascending: true })
 
   let request = supabase.from('jobs').select(
-    'id, job_number, client_id, offer_id, client_contact_id, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, client_order_number, technician_name, generator_name, info_note, marny_vyjezd, info_alert_enabled, job_status, invoice_status, evidence_status, created_at, updated_at'
+    'id, job_number, client_id, offer_id, client_contact_id, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, client_order_number, technician_name, generator_name, info_note, marny_vyjezd, pohotovost, info_alert_enabled, job_status, invoice_status, evidence_status, created_at, updated_at'
   )
 
   if (query) {

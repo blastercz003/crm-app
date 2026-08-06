@@ -37,6 +37,7 @@ export type DispatcherCalendarJobRow = {
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
   evidence_status: 'nove' | 'zapsano'
   marny_vyjezd: boolean | null
+  pohotovost: boolean | null
 }
 
 type DispatcherCalendarEvent = {
@@ -163,8 +164,9 @@ function buildSummary(job: DispatcherCalendarJobRow) {
       : jobNumber
         ? `Zakázka ${jobNumber}`
         : companyName || 'Zakázka'
+  const summary = job.pohotovost ? `${baseSummary} · POHOTOVOST` : baseSummary
 
-  return job.job_status === 'storno' ? `STORNO · ${baseSummary}` : baseSummary
+  return job.job_status === 'storno' ? `STORNO · ${summary}` : summary
 }
 
 function buildDescription(job: DispatcherCalendarJobRow) {
@@ -273,7 +275,8 @@ const JOB_SELECT = `
   job_status,
   invoice_status,
   evidence_status,
-  marny_vyjezd
+  marny_vyjezd,
+  pohotovost
 `
 
 export async function ensureDispatcherJobCalendarFeed(userId: string) {

@@ -340,7 +340,9 @@ function DesktopRow({
         </button>
 
         {row.marny_vyjezd ? (
-          <FakturyWastedTripMarker variant="desktop" />
+          <FakturySpecialJobMarker type="wasted-trip" variant="desktop" />
+        ) : row.pohotovost ? (
+          <FakturySpecialJobMarker type="standby" variant="desktop" />
         ) : null}
       </td>
 
@@ -467,6 +469,7 @@ function buildEditableJob(row: FakturaRow) {
     generator_name: row.generator_name,
     info_note: row.job_info_note,
     marny_vyjezd: row.marny_vyjezd,
+    pohotovost: row.pohotovost,
     pp_required: row.pp_required,
     job_status: row.job_status,
     invoice_status: row.invoice_status,
@@ -501,7 +504,9 @@ function MobileCard({
     >
       <div className="relative flex items-start justify-between gap-2">
         {row.marny_vyjezd ? (
-          <FakturyWastedTripMarker variant="mobile" />
+          <FakturySpecialJobMarker type="wasted-trip" variant="mobile" />
+        ) : row.pohotovost ? (
+          <FakturySpecialJobMarker type="standby" variant="mobile" />
         ) : null}
 
         <div className="flex min-w-0 items-center gap-2">
@@ -635,23 +640,30 @@ function MobileCard({
   )
 }
 
-function FakturyWastedTripMarker({
+function FakturySpecialJobMarker({
+  type,
   variant,
 }: {
+  type: 'wasted-trip' | 'standby'
   variant: 'desktop' | 'mobile'
 }) {
-  const themeClass =
-    "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
+  const isStandby = type === 'standby'
+  const label = isStandby ? 'Pohotovost' : 'Marný výjezd'
+  const shortLabel = isStandby ? 'P' : 'M'
+  const fullLabel = isStandby ? 'POHOTOVOST' : 'MARNÝ VÝJEZD'
+  const themeClass = isStandby
+    ? "border-[#8dbfe0] bg-[#eaf5fc] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(35,111,159,0.12)] [html[data-theme='dark']_&]:border-[rgba(103,185,243,0.34)] [html[data-theme='dark']_&]:bg-[rgba(30,99,145,0.28)] [html[data-theme='dark']_&]:text-[#a9dcff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
+    : "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
 
   if (variant === 'desktop') {
     return (
       <span
         role="img"
-        aria-label="Marný výjezd"
-        title="Marný výjezd"
+        aria-label={label}
+        title={label}
         className={`absolute bottom-[3px] right-0 z-20 inline-flex h-[17px] w-[17px] translate-x-[3.5px] items-center justify-center rounded-full border text-[8px] font-bold leading-none ${themeClass}`}
       >
-        M
+        {shortLabel}
       </span>
     )
   }
@@ -659,11 +671,11 @@ function FakturyWastedTripMarker({
   return (
     <span
       role="img"
-      aria-label="Marný výjezd"
-      title="Marný výjezd"
+      aria-label={label}
+      title={label}
       className={`absolute top-0 left-1/2 z-[1] inline-flex h-[17px] -translate-x-1/2 scale-x-[0.66] items-center justify-center whitespace-nowrap rounded-full border px-1 text-[7px] font-bold leading-none tracking-[0.035em] min-[340px]:scale-x-[0.8] min-[360px]:h-[18px] min-[360px]:scale-x-100 min-[360px]:px-1.5 min-[360px]:text-[8px] ${themeClass}`}
     >
-      MARNÝ VÝJEZD
+      {fullLabel}
     </span>
   )
 }

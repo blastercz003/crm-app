@@ -38,6 +38,7 @@ type JobRow = {
   info_note: string | null
   info_alert_enabled: boolean | null
   marny_vyjezd: boolean | null
+  pohotovost: boolean | null
   job_status: string | null
   invoice_status: string | null
   evidence_status: string | null
@@ -149,6 +150,7 @@ export type Job360Data = {
     infoNote: string | null
     infoAlertEnabled: boolean
     wastedTrip: boolean
+    standby: boolean
     jobStatus: string | null
     invoiceStatus: string | null
     evidenceStatus: string | null
@@ -323,7 +325,7 @@ export async function getJob360Action(
     const { data: jobData, error: jobError } = await supabase
       .from('jobs')
       .select(
-        'id, job_number, offer_id, company_name, sales_owner, start_at, end_at, site_address, store_number, technician_name, generator_name, info_note, info_alert_enabled, marny_vyjezd, job_status, invoice_status, evidence_status, created_at, updated_at'
+        'id, job_number, offer_id, company_name, sales_owner, start_at, end_at, site_address, store_number, technician_name, generator_name, info_note, info_alert_enabled, marny_vyjezd, pohotovost, job_status, invoice_status, evidence_status, created_at, updated_at'
       )
       .eq('id', finance.job_id)
       .single()
@@ -620,6 +622,7 @@ export async function getJob360Action(
           infoNote: optionalText(job.info_note),
           infoAlertEnabled: Boolean(job.info_alert_enabled),
           wastedTrip: Boolean(job.marny_vyjezd),
+          standby: Boolean(job.pohotovost),
           jobStatus: optionalText(
             getEffectiveJobStatus(job.job_status, job.end_at)
           ),

@@ -82,16 +82,17 @@ function formatPragueDateTime(value: string | null) {
 function buildSummary(job: JobCalendarJobRow) {
   const jobNumber = job.job_number.trim()
   const companyName = job.company_name.trim()
+  let summary: string
 
   if (jobNumber && companyName) {
-    return `${jobNumber} · ${companyName}`
+    summary = `${jobNumber} · ${companyName}`
+  } else if (jobNumber) {
+    summary = `Zakázka ${jobNumber}`
+  } else {
+    summary = companyName || 'Zakázka'
   }
 
-  if (jobNumber) {
-    return `Zakázka ${jobNumber}`
-  }
-
-  return companyName || 'Zakázka'
+  return job.pohotovost ? `${summary} · POHOTOVOST` : summary
 }
 
 function getJobStatusLabel(status: JobCalendarJobRow['job_status']) {
@@ -837,7 +838,8 @@ export async function backfillJobGoogleCalendarItemsForUser(userId: string) {
         info_note,
         job_status,
         invoice_status,
-        evidence_status
+        evidence_status,
+        pohotovost
       `
     )
     .in('id', assignedJobIds)

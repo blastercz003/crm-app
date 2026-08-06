@@ -158,6 +158,7 @@ type StatisticsFinanceRow = {
         start_at: string
         site_address: string | null
         marny_vyjezd: boolean | null
+        pohotovost: boolean | null
         job_status: string
         generator_name: string | null
       }
@@ -169,6 +170,7 @@ type StatisticsFinanceRow = {
         start_at: string
         site_address: string | null
         marny_vyjezd: boolean | null
+        pohotovost: boolean | null
         job_status: string
         generator_name: string | null
       }[]
@@ -191,7 +193,6 @@ type CalendarDate = {
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const STATISTICS_PRESET_KEYS = ['doprava', 'prace-technika'] as const
-const ALL_STATISTICS_PRESET_KEYS = [...STATISTICS_PRESET_KEYS, 'pohotovost'] as const
 const SALES_OWNERS: FinanceStatisticsSalesOwner['name'][] = [
   'JIŘÍ',
   'MICHAL',
@@ -501,6 +502,7 @@ export async function getFinanceStatisticsAction(
                 start_at,
                 site_address,
                 marny_vyjezd,
+                pohotovost,
                 job_status,
                 generator_name
               )
@@ -546,7 +548,7 @@ export async function getFinanceStatisticsAction(
               .from('job_finance_cost_items')
               .select('job_finance_id, technician_id, preset_key, quantity')
               .in('job_finance_id', financeIdBatch)
-              .in('preset_key', [...ALL_STATISTICS_PRESET_KEYS]),
+              .in('preset_key', [...STATISTICS_PRESET_KEYS]),
         })
 
       if (error) {
@@ -578,15 +580,9 @@ export async function getFinanceStatisticsAction(
 
     let totalKilometers = 0
     let totalHours = 0
-    let standbyCount = 0
 
     for (const item of costItems) {
       const quantity = normalizeQuantity(item.quantity)
-
-      if (item.preset_key === 'pohotovost') {
-        standbyCount += quantity
-        continue
-      }
 
       const technicianId = String(item.technician_id ?? '')
       const technician = techniciansById.get(technicianId)
@@ -675,6 +671,9 @@ export async function getFinanceStatisticsAction(
     })
     const wastedTripCount = uniqueJobEntries.filter(({ job }) =>
       Boolean(job.marny_vyjezd)
+    ).length
+    const standbyCount = uniqueJobEntries.filter(({ job }) =>
+      Boolean(job.pohotovost)
     ).length
     const salesOwnerStats = new Map<
       FinanceStatisticsSalesOwner['name'],

@@ -60,7 +60,8 @@ const JOB_SELECT = `
   job_status,
   invoice_status,
   evidence_status,
-  marny_vyjezd
+  marny_vyjezd,
+  pohotovost
 `
 
 function getServiceClient() {
@@ -112,12 +113,13 @@ function getEvidenceStatusLabel(status: DispatcherCalendarJobRow['evidence_statu
 function buildSummary(job: DispatcherCalendarJobRow) {
   const jobNumber = job.job_number.trim()
   const companyName = job.company_name.trim()
-  const summary =
+  const baseSummary =
     jobNumber && companyName
       ? `${jobNumber} · ${companyName}`
       : jobNumber
         ? `Zakázka ${jobNumber}`
         : companyName || 'Zakázka'
+  const summary = job.pohotovost ? `${baseSummary} · POHOTOVOST` : baseSummary
 
   return job.job_status === 'storno' ? `STORNO · ${summary}` : summary
 }

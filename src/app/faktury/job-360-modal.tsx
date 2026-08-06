@@ -301,6 +301,7 @@ function OverviewSection({ data }: { data: Job360Data }) {
                 label={statusLabel(EVIDENCE_STATUS_LABELS, job.evidenceStatus)}
               />
               {job.wastedTrip ? <StatusBadge label="Marný výjezd" tone="amber" /> : null}
+              {job.standby ? <StatusBadge label="Pohotovost" tone="blue" /> : null}
             </div>
           </div>
 

@@ -68,6 +68,7 @@ type JobRow = {
   generator_name: string | null
   info_note: string | null
   marny_vyjezd?: boolean | null
+  pohotovost?: boolean | null
   pp_required?: boolean
   info_alert_enabled?: boolean | null
   has_info_attachments?: boolean
@@ -300,7 +301,11 @@ function DesktopRow({
             {job.job_number}
           </span>
         </EditJobButton>
-        {job.marny_vyjezd ? <WastedTripMarker variant="desktop" /> : null}
+        {job.marny_vyjezd ? (
+          <SpecialJobMarker type="wasted-trip" variant="desktop" />
+        ) : job.pohotovost ? (
+          <SpecialJobMarker type="standby" variant="desktop" />
+        ) : null}
       </td>
 
       {showEvidenceColumn ? (
@@ -508,7 +513,11 @@ function MobileCard({
           </p>
         </div>
 
-        {job.marny_vyjezd ? <WastedTripMarker variant="mobile" /> : null}
+        {job.marny_vyjezd ? (
+          <SpecialJobMarker type="wasted-trip" variant="mobile" />
+        ) : job.pohotovost ? (
+          <SpecialJobMarker type="standby" variant="mobile" />
+        ) : null}
 
         <JobStatusButton
           job={job}
@@ -705,31 +714,42 @@ function MobileCard({
   )
 }
 
-function WastedTripMarker({ variant }: { variant: 'desktop' | 'mobile' }) {
-  const themeClass =
-    "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
+function SpecialJobMarker({
+  type,
+  variant,
+}: {
+  type: 'wasted-trip' | 'standby'
+  variant: 'desktop' | 'mobile'
+}) {
+  const isStandby = type === 'standby'
+  const label = isStandby ? 'Pohotovost' : 'Marný výjezd'
+  const shortLabel = isStandby ? 'P' : 'M'
+  const fullLabel = isStandby ? 'POHOTOVOST' : 'MARNÝ VÝJEZD'
+  const themeClass = isStandby
+    ? "border-[#8dbfe0] bg-[#eaf5fc] text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(35,111,159,0.12)] [html[data-theme='dark']_&]:border-[rgba(103,185,243,0.34)] [html[data-theme='dark']_&]:bg-[rgba(30,99,145,0.28)] [html[data-theme='dark']_&]:text-[#a9dcff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
+    : "border-[#ef9a9f] bg-[#fff1f2] text-[#b4232d] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_3px_8px_rgba(180,35,45,0.12)] [html[data-theme='dark']_&]:border-[rgba(248,113,113,0.28)] [html[data-theme='dark']_&]:bg-[rgba(127,29,29,0.22)] [html[data-theme='dark']_&]:text-[#fca5a5] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_3px_8px_rgba(0,0,0,0.24)]"
 
   if (variant === 'desktop') {
     return (
       <span
         role="img"
-        aria-label="Marný výjezd"
-        title="Marný výjezd"
+        aria-label={label}
+        title={label}
         className={`absolute top-1/2 right-1.5 inline-flex h-[17px] w-[17px] -translate-y-1/2 items-center justify-center rounded-full border text-[8px] font-bold leading-none ${themeClass}`}
       >
-        M
+        {shortLabel}
       </span>
     )
   }
 
   return (
-    <span
-      role="img"
-      aria-label="Marný výjezd"
-      title="Marný výjezd"
+      <span
+        role="img"
+      aria-label={label}
+      title={label}
       className={`absolute top-0 left-1/2 z-[1] inline-flex h-[17px] -translate-x-1/2 scale-x-[0.66] items-center justify-center whitespace-nowrap rounded-full border px-1 text-[7px] font-bold leading-none tracking-[0.035em] min-[340px]:scale-x-[0.8] min-[360px]:h-[18px] min-[360px]:scale-x-100 min-[360px]:px-1.5 min-[360px]:text-[8px] ${themeClass}`}
     >
-      MARNÝ VÝJEZD
+      {fullLabel}
     </span>
   )
 }

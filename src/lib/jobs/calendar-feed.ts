@@ -36,6 +36,7 @@ export type JobCalendarJobRow = {
   job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
   evidence_status: 'nove' | 'zapsano'
+  pohotovost: boolean | null
 }
 
 type JobCalendarEvent = {
@@ -166,28 +167,25 @@ function buildSummary(
 ) {
   const jobNumber = job.job_number.trim()
   const companyName = job.company_name.trim()
+  let summary: string
 
   if (options.minimal) {
     if (jobNumber && companyName) {
-      return `${jobNumber} - ${companyName}`
+      summary = `${jobNumber} · ${companyName}`
+    } else if (jobNumber) {
+      summary = jobNumber
+    } else {
+      summary = companyName || 'Zakázka'
     }
-
-    if (jobNumber) {
-      return jobNumber
-    }
-
-    return companyName || 'Zakázka'
+  } else if (jobNumber && companyName) {
+    summary = `${jobNumber} · ${companyName}`
+  } else if (jobNumber) {
+    summary = `Zakázka ${jobNumber}`
+  } else {
+    summary = companyName || 'Zakázka'
   }
 
-  if (jobNumber && companyName) {
-    return `${jobNumber} · ${companyName}`
-  }
-
-  if (jobNumber) {
-    return `Zakázka ${jobNumber}`
-  }
-
-  return companyName || 'Zakázka'
+  return job.pohotovost ? `${summary} · POHOTOVOST` : summary
 }
 
 function buildDescription(
@@ -580,7 +578,8 @@ export async function getJobCalendarFeedByToken(
           info_note,
           job_status,
           invoice_status,
-          evidence_status
+          evidence_status,
+          pohotovost
         `)
         .in('id', visibleJobIds)
         .order('start_at', { ascending: true })
@@ -672,7 +671,8 @@ export async function backfillJobCalendarItemsForUser(userId: string) {
         info_note,
         job_status,
         invoice_status,
-        evidence_status
+        evidence_status,
+        pohotovost
       `)
       .in('id', assignedJobIds)
       .order('start_at', { ascending: true }),

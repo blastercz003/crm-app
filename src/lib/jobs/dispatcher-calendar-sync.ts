@@ -28,7 +28,8 @@ const JOB_SELECT = `
   job_status,
   invoice_status,
   evidence_status,
-  marny_vyjezd
+  marny_vyjezd,
+  pohotovost
 `
 
 function getServiceClient() {

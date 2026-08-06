@@ -36,6 +36,7 @@ export type FakturaRow = {
   technician_name: string | null
   generator_name: string | null
   marny_vyjezd: boolean | null
+  pohotovost: boolean | null
   pp_required?: boolean
   job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
@@ -86,6 +87,7 @@ type JobFinanceJoinRow = {
           generator_name: string | null
           info_note: string | null
           marny_vyjezd: boolean | null
+          pohotovost: boolean | null
           job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
           invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
         }
@@ -106,6 +108,7 @@ type JobFinanceJoinRow = {
         generator_name: string | null
         info_note: string | null
         marny_vyjezd: boolean | null
+        pohotovost: boolean | null
         job_status: 'nova' | 'k_reseni' | 'realizace' | 'ukoncena' | 'storno'
         invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
       }[]
@@ -559,6 +562,7 @@ export default async function FakturyPage({
         generator_name,
         info_note,
         marny_vyjezd,
+        pohotovost,
         job_status,
         invoice_status
       )
@@ -718,6 +722,7 @@ export default async function FakturyPage({
         generator_name: job.generator_name,
         job_info_note: job.info_note,
         marny_vyjezd: job.marny_vyjezd,
+        pohotovost: job.pohotovost,
         job_status: job.job_status,
         invoice_status: job.invoice_status,
         client_order_number: item.client_order_number,

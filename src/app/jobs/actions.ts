@@ -1190,7 +1190,8 @@ async function getJobCalendarSnapshot(
         job_status,
         invoice_status,
         evidence_status,
-        marny_vyjezd
+        marny_vyjezd,
+        pohotovost
       `
     )
     .eq('id', jobId)
@@ -1621,6 +1622,15 @@ async function getJobPayload(
   const generatorName = normalizeText(formData.get('generator_name'))
   const infoNote = normalizeText(formData.get('info_note'))
   const marnyVyjezd = normalizeCheckbox(formData.get('marny_vyjezd'))
+  const pohotovost = normalizeCheckbox(formData.get('pohotovost'))
+
+  if (marnyVyjezd && pohotovost) {
+    return {
+      error: 'Zakázka nemůže být současně označena jako marný výjezd a pohotovost.',
+      payload: null,
+    }
+  }
+
   const jobStatus = marnyVyjezd
     ? 'ukoncena'
     : normalizeJobStatus(formData.get('job_status'))
@@ -1673,6 +1683,7 @@ async function getJobPayload(
       generator_name: generatorName,
       info_note: infoNote,
       marny_vyjezd: marnyVyjezd,
+      pohotovost,
       job_status: jobStatus,
       invoice_status: invoiceStatus,
     },

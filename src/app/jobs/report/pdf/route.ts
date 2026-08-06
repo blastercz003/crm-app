@@ -29,6 +29,7 @@ type JobRow = {
   technician_name: string | null
   generator_name: string | null
   marny_vyjezd: boolean | null
+  pohotovost: boolean | null
   job_status: JobStatus
 }
 
@@ -202,6 +203,28 @@ const styles = StyleSheet.create({
   companySingleLine: {
     maxLines: 1,
     textOverflow: 'ellipsis',
+  },
+  jobNumberCell: {
+    position: 'relative',
+  },
+  standbyMarker: {
+    position: 'absolute',
+    top: 7.5,
+    left: 34,
+    width: 10,
+    height: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.7,
+    borderColor: '#8dbfe0',
+    borderRadius: 5,
+    backgroundColor: '#eaf5fc',
+  },
+  standbyMarkerText: {
+    color: '#236f9f',
+    fontSize: 5.8,
+    fontWeight: 700,
+    lineHeight: 1,
   },
   muted: {
     color: '#64748b',
@@ -501,7 +524,17 @@ function JobRowView({ job, isLast }: { job: JobRow; isLast: boolean }) {
     ])
 
   return h(View, { style: isLast ? [styles.row, styles.lastRow] : styles.row, wrap: false }, [
-    cell('number', job.job_number, columnWidths.number, true),
+    h(View, {
+      key: 'number',
+      style: [styles.cell, styles.jobNumberCell, { width: columnWidths.number }],
+    }, [
+      h(Text, { key: 'value', style: [styles.valueText, styles.strong] }, job.job_number || '—'),
+      job.pohotovost
+        ? h(View, { key: 'standby', style: styles.standbyMarker }, [
+            h(Text, { key: 'label', style: styles.standbyMarkerText }, 'P'),
+          ])
+        : null,
+    ]),
     h(View, { key: 'company', style: [styles.cell, { width: columnWidths.company }] }, [
       h(
         Text,
@@ -589,7 +622,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('jobs')
-    .select('id, job_number, company_name, start_at, end_at, site_address, technician_name, generator_name, marny_vyjezd, job_status')
+    .select('id, job_number, company_name, start_at, end_at, site_address, technician_name, generator_name, marny_vyjezd, pohotovost, job_status')
 
   if (input.query) query = query.or(buildSearchFilter(input.query))
   if (input.status) query = query.eq('job_status', input.status)
