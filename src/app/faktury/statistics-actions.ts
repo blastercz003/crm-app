@@ -344,7 +344,17 @@ function normalizeQuantity(value: number | string | null) {
 }
 
 function normalizeMoney(value: number | string | null) {
-  const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace(',', '.'))
+  if (value === null) return null
+
+  const normalizedValue = typeof value === 'string' ? value.trim() : value
+
+  if (normalizedValue === '') return null
+
+  const parsed =
+    typeof normalizedValue === 'number'
+      ? normalizedValue
+      : Number(normalizedValue.replace(',', '.'))
+
   return Number.isFinite(parsed) ? parsed : null
 }
 

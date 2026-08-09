@@ -203,7 +203,7 @@ function FakturyStatisticsModal({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[140] bg-zinc-950/42 p-3 backdrop-blur-[5px] sm:p-4"
+      className="fixed inset-x-0 top-0 z-[140] h-[100dvh] overflow-hidden bg-zinc-950/42 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="faktury-statistics-title"
@@ -213,8 +213,8 @@ function FakturyStatisticsModal({ onClose }: { onClose: () => void }) {
         }
       }}
     >
-      <div className="mx-auto flex h-full w-full min-w-0 max-w-[1180px] items-center justify-center">
-        <div className="faktury-statistics-modal flex max-h-[calc(100vh-1.5rem)] w-full min-w-0 flex-col overflow-hidden rounded-[30px] border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(244,248,252,0.96)_100%)] shadow-[0_36px_84px_rgba(24,24,27,0.28)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(12,20,34,0.99)_0%,rgba(8,15,27,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.48)]">
+      <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-[1180px] items-center justify-center">
+        <div className="faktury-statistics-modal flex max-h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[30px] border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(244,248,252,0.96)_100%)] shadow-[0_36px_84px_rgba(24,24,27,0.28)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(12,20,34,0.99)_0%,rgba(8,15,27,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.48)]">
           <header className="flex items-start justify-between gap-4 border-b border-zinc-200/75 px-4 py-4 sm:px-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
             <ModalHeading
               section="FAKTURY"
