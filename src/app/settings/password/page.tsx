@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PushNotificationsPanel } from './push-notifications-panel'
 import { StoresAccessPanel } from './stores-access-panel'
 import { ThemeAutoToggleWidget } from './theme-auto-toggle'
+import { QuickPanelSettings } from './quick-panel-settings'
 import { buildPageTitle } from '@/lib/pageTitles'
 import {
   readDashboardQuickCreateEnabled,
@@ -360,11 +361,10 @@ export default function ChangePasswordPage() {
           </section>
         </section>
 
-        {isAdmin ? (
-          <section className="grid gap-4 xl:grid-cols-3">
-            <StoresAccessPanel isAdmin={isAdmin} />
-          </section>
-        ) : null}
+        <section className="grid gap-4 xl:grid-cols-3">
+          <QuickPanelSettings />
+          {isAdmin ? <StoresAccessPanel isAdmin={isAdmin} /> : null}
+        </section>
       </div>
     </main>
   )

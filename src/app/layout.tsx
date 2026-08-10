@@ -10,6 +10,7 @@ import {
   PwaStartupScreenShell,
 } from '../components/pwa/pwa-startup-screen'
 import { ThemePreferenceSync } from '@/components/theme/theme-preference-sync'
+import { QuickPanel } from '@/components/quick-panel/quick-panel'
 import { AppRealtimeCoordinator } from '@/components/realtime/app-realtime-coordinator'
 import { NotificationRealtimeSync } from '@/components/realtime/notification-realtime-sync'
 import { APP_TITLE } from '@/lib/pageTitles'
@@ -88,6 +89,7 @@ export default async function RootLayout({
         <ThemePreferenceSync />
         <div id="app-shell" className="flex min-h-full flex-1 flex-col">
           {children}
+          <QuickPanel />
           <Suspense fallback={null}>
             <NavigationOverlay />
           </Suspense>

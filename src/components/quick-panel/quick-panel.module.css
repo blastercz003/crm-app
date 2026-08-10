@@ -1,0 +1,330 @@
+.root {
+  position: fixed;
+  top: 50%;
+  right: 18px;
+  z-index: 90;
+  display: none;
+  transform: translateY(-50%);
+}
+
+.trigger,
+.panel,
+.sectionButton,
+.closeButton {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.trigger {
+  display: inline-flex;
+  height: 52px;
+  width: 52px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(95, 157, 202, 0.8);
+  border-radius: 999px;
+  color: #f8fbff;
+  background: linear-gradient(155deg, rgba(64, 134, 187, 0.92), rgba(37, 103, 157, 0.94));
+  box-shadow: inset 0 1px 0 rgba(198, 230, 249, 0.3), 0 10px 24px rgba(9, 48, 82, 0.28);
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  transition: transform 200ms ease-out, border-color 200ms ease-out, background 200ms ease-out, box-shadow 200ms ease-out, opacity 160ms ease-out;
+}
+
+.trigger:hover {
+  transform: translateY(-3px);
+  border-color: rgba(149, 205, 238, 0.96);
+  background: linear-gradient(155deg, rgba(84, 157, 210, 0.98), rgba(45, 119, 177, 0.98));
+  box-shadow: inset 0 1px 0 rgba(224, 244, 255, 0.44), 0 16px 30px rgba(9, 48, 82, 0.38);
+}
+
+.trigger:focus-visible,
+.sectionButton:focus-visible,
+.closeButton:focus-visible {
+  outline: 2px solid #b9d8ef;
+  outline-offset: 3px;
+}
+
+.triggerIcon {
+  height: 21px;
+  width: 21px;
+}
+
+.panel {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: flex;
+  width: 102px;
+  max-height: min(78vh, 620px);
+  flex-direction: column;
+  gap: 9px;
+  overflow-y: auto;
+  padding: 12px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 26px;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 247, 252, 0.84) 55%, rgba(226, 239, 248, 0.82) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 20px 44px rgba(15, 23, 42, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(28px, -50%) scale(0.94);
+  transform-origin: right center;
+  backdrop-filter: blur(18px);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 170ms ease-out;
+}
+
+.rootOpen .panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(0, -50%) scale(1);
+}
+
+.rootOpen .trigger {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(12px) scale(0.88);
+}
+
+.sectionButton {
+  display: flex;
+  min-height: 72px;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(95, 157, 202, 0.3);
+  border-radius: 18px;
+  color: #174968;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 7px 15px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateX(12px) scale(0.96);
+  transition: transform 180ms ease-out, border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out, opacity 180ms ease-out;
+}
+
+.rootOpen .sectionButton {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.sectionButton:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(66, 137, 188, 0.66);
+  background: linear-gradient(155deg, rgba(236, 247, 253, 0.98), rgba(216, 237, 249, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 12px 21px rgba(34, 101, 151, 0.18);
+}
+
+.sectionIcon {
+  position: relative;
+  display: inline-flex;
+  height: 31px;
+  width: 31px;
+  align-items: center;
+  justify-content: center;
+}
+
+.sectionImage {
+  filter: brightness(0) saturate(100%) invert(38%) sepia(35%) saturate(1265%) hue-rotate(161deg) brightness(90%) contrast(89%);
+  transition: filter 180ms ease-out;
+}
+
+.sectionButton:hover .sectionImage {
+  filter: brightness(0) saturate(100%) invert(31%) sepia(37%) saturate(1154%) hue-rotate(161deg) brightness(92%) contrast(90%);
+}
+
+.sectionLabel {
+  max-width: 76px;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.separator {
+  height: 1px;
+  flex: none;
+  margin: 1px 4px;
+  background: rgba(58, 116, 156, 0.2);
+}
+
+.closeButton {
+  display: inline-flex;
+  height: 38px;
+  width: 100%;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(75, 123, 157, 0.25);
+  border-radius: 15px;
+  color: #496579;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  cursor: pointer;
+  transition: transform 180ms ease-out, color 180ms ease-out, background 180ms ease-out;
+}
+
+.closeButton:hover {
+  transform: translateY(-1px);
+  color: #173d58;
+  background: rgba(226, 240, 249, 0.92);
+}
+
+.dashboardButton {
+  border-color: rgba(43, 111, 159, 0.86);
+  color: #f8fbff;
+  background: linear-gradient(160deg, rgba(60, 132, 186, 0.96) 0%, rgba(41, 117, 174, 0.98) 50%, rgba(26, 92, 146, 0.98) 100%);
+  box-shadow: inset 0 1px 0 rgba(170, 217, 247, 0.36), 0 7px 15px rgba(9, 48, 82, 0.22);
+}
+
+.dashboardButton:hover {
+  color: #fff;
+  background: linear-gradient(160deg, rgba(82, 154, 208, 0.98) 0%, rgba(48, 126, 185, 0.98) 50%, rgba(29, 101, 157, 0.99) 100%);
+  box-shadow: inset 0 1px 0 rgba(224, 244, 255, 0.44), 0 10px 18px rgba(9, 48, 82, 0.3);
+}
+
+:global(html[data-theme='dark']) .trigger {
+  border-color: rgba(96, 165, 250, 0.38);
+  background: linear-gradient(155deg, rgba(38, 76, 116, 0.94), rgba(25, 57, 92, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 12px 25px rgba(0, 0, 0, 0.32);
+}
+
+:global(html[data-theme='dark']) .trigger:hover {
+  border-color: rgba(125, 188, 231, 0.56);
+  background: linear-gradient(155deg, rgba(50, 95, 140, 0.98), rgba(31, 69, 107, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 17px 30px rgba(0, 0, 0, 0.42);
+}
+
+:global(html[data-theme='dark']) .panel {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: linear-gradient(155deg, rgba(17, 27, 46, 0.96) 0%, rgba(12, 20, 34, 0.94) 55%, rgba(8, 13, 23, 0.94) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 22px 48px rgba(0, 0, 0, 0.4);
+}
+
+:global(html[data-theme='dark']) .sectionButton {
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #dbeafe;
+  background: rgba(15, 23, 42, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+:global(html[data-theme='dark']) .sectionButton:hover {
+  border-color: rgba(78, 160, 220, 0.42);
+  background: linear-gradient(155deg, rgba(45, 84, 122, 0.98), rgba(28, 59, 93, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 12px 22px rgba(0, 0, 0, 0.26);
+}
+
+:global(html[data-theme='dark']) .sectionImage,
+:global(html[data-theme='dark']) .sectionButton:hover .sectionImage {
+  filter: none;
+}
+
+:global(html[data-theme='dark']) .separator {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+:global(html[data-theme='dark']) .closeButton {
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:global(html[data-theme='dark']) .closeButton:hover {
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.92);
+}
+
+:global(html[data-theme='dark']) .dashboardButton {
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #dbeafe;
+  background: linear-gradient(160deg, rgba(44, 82, 120, 0.94) 0%, rgba(32, 66, 102, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 16px rgba(0, 0, 0, 0.22);
+}
+
+:global(html[data-theme='dark']) .dashboardButton:hover {
+  color: #f8fbff;
+  background: linear-gradient(160deg, rgba(54, 96, 137, 0.98) 0%, rgba(39, 77, 116, 0.98) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 18px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 1024px) {
+  .root {
+    display: block;
+  }
+}
+
+@media (max-width: 1023px) {
+  .root {
+    top: auto;
+    right: 16px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    display: block;
+    transform: none;
+  }
+
+  .trigger {
+    height: 60px;
+    width: 60px;
+    box-shadow: inset 0 1px 0 rgba(198, 230, 249, 0.3), 0 14px 34px rgba(9, 48, 82, 0.32);
+  }
+
+  .trigger:active {
+    transform: scale(0.95);
+  }
+
+  .triggerIcon {
+    height: 24px;
+    width: 24px;
+  }
+
+  .panel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: 88px;
+    max-height: calc(100dvh - env(safe-area-inset-bottom, 0px) - 32px);
+    gap: 7px;
+    padding: 10px 8px 8px;
+    border-radius: 22px;
+    transform: translateY(22px) scale(0.94);
+    transform-origin: right bottom;
+  }
+
+  .rootOpen .panel {
+    transform: translateY(0) scale(1);
+  }
+
+  .rootOpen .trigger {
+    transform: translateY(9px) scale(0.88);
+  }
+
+  .sectionButton {
+    min-height: 64px;
+    gap: 4px;
+    border-radius: 16px;
+  }
+
+  .rootOpen .sectionButton {
+    transform: translateY(0) scale(1);
+  }
+
+  .sectionIcon {
+    height: 28px;
+    width: 28px;
+  }
+
+  .sectionLabel {
+    max-width: 68px;
+    font-size: 9px;
+  }
+
+  .closeButton {
+    height: 36px;
+    border-radius: 14px;
+  }
+}
