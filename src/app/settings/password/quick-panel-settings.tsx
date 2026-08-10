@@ -160,7 +160,7 @@ export function QuickPanelSettings() {
                   aria-label={`Rychlý panel ${isEnabled ? 'vypnout' : 'zapnout'}`}
                   onClick={() => void save(!isEnabled, selectedSections)}
                   disabled={isSaving}
-                  className={`password-page__toggle relative inline-flex h-7 w-12 rounded-full border transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`password-page__toggle relative inline-flex h-7 w-12 items-center rounded-full border transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
                     isEnabled
                       ? 'border-[#5f9dca] bg-[linear-gradient(160deg,#5fa4d3_0%,#3f84bb_100%)]'
                       : 'border-zinc-300 bg-zinc-200/90'
