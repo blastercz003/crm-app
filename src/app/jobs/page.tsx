@@ -473,6 +473,7 @@ export default async function JobsPage({
     request = request.eq('job_status', jobStatus)
   }
 
+
   if (view === 'active') {
     request = request.in('job_status', ['nova', 'k_reseni', 'realizace'])
   }
