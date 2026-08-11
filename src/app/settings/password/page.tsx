@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PushNotificationsPanel } from './push-notifications-panel'
-import { StoresAccessPanel } from './stores-access-panel'
 import { ThemeAutoToggleWidget } from './theme-auto-toggle'
 import { QuickPanelSettings } from './quick-panel-settings'
+import { ProfileAvatarSettings } from './profile-avatar-settings'
 import { buildPageTitle } from '@/lib/pageTitles'
 import {
   readDashboardQuickCreateEnabled,
@@ -37,7 +37,6 @@ export default function ChangePasswordPage() {
   const [profileRole, setProfileRole] = useState<string | null>(null)
   const [isProfileLoaded, setIsProfileLoaded] = useState(false)
   const isTechnik = isProfileLoaded && profileRole === 'TECHNIK'
-  const isAdmin = isProfileLoaded && profileRole === 'admin'
 
   useEffect(() => {
     document.title = buildPageTitle('Nastavení')
@@ -146,6 +145,74 @@ export default function ChangePasswordPage() {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-3">
+          <ProfileAvatarSettings>
+            <div className="password-page__eyebrow mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+              Změna hesla
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="password"
+                  className="password-page__label mb-2 block text-sm font-medium text-zinc-700"
+                >
+                  Nové heslo
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="password-page__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                  placeholder="Zadej nové heslo"
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="password-page__label mb-2 block text-sm font-medium text-zinc-700"
+                >
+                  Potvrzení nového hesla
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="password-page__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                  placeholder="Zadej heslo znovu"
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+
+              {error ? (
+                <div className="password-page__message password-page__message--error rounded-2xl border border-red-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.92)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(239,68,68,0.1)]">
+                  {error}
+                </div>
+              ) : null}
+
+              {success ? (
+                <div className="password-page__message password-page__message--success rounded-2xl border border-emerald-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(236,253,245,0.92)_100%)] px-4 py-2.5 text-sm font-medium text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(16,185,129,0.1)]">
+                  {success}
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2.5 pt-1">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="password-page__submit password-page__submit--password inline-flex items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 py-2.5 text-sm font-semibold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)]"
+                >
+                  {loading ? 'UKLÁDÁM...' : 'ULOŽIT HESLO'}
+                </button>
+              </div>
+            </form>
+          </ProfileAvatarSettings>
+
           <section className="password-page__panel h-full rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
             <div className="password-page__eyebrow text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
               WIDGETY
@@ -164,10 +231,6 @@ export default function ChangePasswordPage() {
                 </>
               ) : (
                 <>
-                  <p className="password-page__text text-sm text-zinc-500">
-                    Zde můžeš zapnout nebo vypnout widgety na Dashboardu.
-                  </p>
-
                   <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -283,87 +346,12 @@ export default function ChangePasswordPage() {
                 </>
               )}
             </div>
-          </section>
 
-          <div className="h-full">
             <PushNotificationsPanel />
-          </div>
-
-          <section className="password-page__panel h-full rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] md:p-5">
-            <div className="password-page__eyebrow mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-              Změna hesla
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="password"
-                  className="password-page__label mb-2 block text-sm font-medium text-zinc-700"
-                >
-                  Nové heslo
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="password-page__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  placeholder="Zadej nové heslo"
-                  autoComplete="new-password"
-                  required
-                />
-                <p className="password-page__hint mt-2 text-xs text-zinc-500">
-                  Doporučeno alespoň 6 znaků.
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="password-page__label mb-2 block text-sm font-medium text-zinc-700"
-                >
-                  Potvrzení nového hesla
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="password-page__input w-full rounded-2xl border border-gray-200 bg-white/96 px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.08)] outline-none transition duration-200 ease-out placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  placeholder="Zadej heslo znovu"
-                  autoComplete="new-password"
-                  required
-                />
-              </div>
-
-              {error ? (
-                <div className="password-page__message password-page__message--error rounded-2xl border border-red-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.92)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(239,68,68,0.1)]">
-                  {error}
-                </div>
-              ) : null}
-
-              {success ? (
-                <div className="password-page__message password-page__message--success rounded-2xl border border-emerald-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(236,253,245,0.92)_100%)] px-4 py-2.5 text-sm font-medium text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(16,185,129,0.1)]">
-                  {success}
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2.5 pt-1">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="password-page__submit password-page__submit--password inline-flex items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 py-2.5 text-sm font-semibold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)]"
-                >
-                  {loading ? 'UKLÁDÁM...' : 'ULOŽIT HESLO'}
-                </button>
-              </div>
-            </form>
           </section>
-        </section>
 
-        <section className="grid gap-4 xl:grid-cols-3">
           <QuickPanelSettings />
-          {isAdmin ? <StoresAccessPanel isAdmin={isAdmin} /> : null}
+
         </section>
       </div>
     </main>

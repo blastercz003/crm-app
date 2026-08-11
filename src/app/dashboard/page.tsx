@@ -51,6 +51,7 @@ import {
   type ThemePreferences,
 } from '@/lib/theme/theme-preference'
 import { getServiceRoleClient } from '@/lib/supabase/service'
+import { getProfileInitials, PROFILE_AVATARS_BUCKET } from '@/lib/profile/avatar'
 import {
   getHandoverProtocolUploadJobOptions,
   type HandoverProtocolUploadJobOption as DashboardHandoverProtocolUploadJobOption,
@@ -176,6 +177,7 @@ type ProfileRef = {
 type DashboardProfile = {
   name: string | null
   role: string | null
+  avatar_path: string | null
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
   can_view_offers: boolean | null
@@ -821,41 +823,43 @@ function DashboardSectionHeader({
 
 function DashboardUserPanel({
   profileName,
-  profileRole,
+  avatarUrl,
   userEmail,
   className = '',
 }: {
   profileName: string | null
-  profileRole: string | null
+  avatarUrl: string | null
   userEmail: string
   className?: string
 }) {
+  const displayName = profileName?.trim() || userEmail || 'Uživatel'
+  const initials = getProfileInitials(displayName)
+
   return (
     <div
       className={[
-        'dashboard-user-panel flex w-full flex-col gap-2 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)] sm:flex-row sm:items-center sm:justify-between',
+        'dashboard-user-panel flex w-full items-center justify-between gap-3 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.86)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.10)]',
         className,
       ].join(' ')}
     >
-      <div className="dashboard-user-panel__details min-w-0 flex-1 text-[10px] leading-4 text-zinc-500">
-        <div className="truncate">
-          Uživatel:{' '}
-          <span className="dashboard-user-panel__value font-medium text-zinc-900">
-            {profileName ?? userEmail}
-          </span>
-        </div>
-        <div className="truncate">
-          Role:{' '}
-          <span className="dashboard-user-panel__value font-medium uppercase text-zinc-900">
-            {profileRole ?? 'neuvedeno'}
-          </span>
-        </div>
+      <div className="dashboard-user-panel__details flex min-w-0 flex-1 items-center gap-3 pl-4 sm:gap-2 sm:pl-0">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#9dc7e5] bg-[linear-gradient(145deg,#eff8ff_0%,#cfe6f7_100%)] text-base font-semibold tracking-[0.04em] text-[#276b9a] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_5px_10px_rgba(38,112,159,0.14)] sm:h-8 sm:w-8 sm:text-[11px]">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt={`Profilová fotografie: ${displayName}`} className="h-full w-full object-cover" />
+          ) : (
+            initials
+          )}
+        </span>
+        <span className="dashboard-user-panel__value truncate text-sm font-semibold text-zinc-900">
+          {displayName}
+        </span>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex w-[128px] shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
         <Link
           href="/settings/password"
-          className="dashboard-control inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
+          className="dashboard-control inline-flex h-8 w-full items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[10px] font-medium uppercase tracking-[0.04em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] sm:w-auto"
         >
           NASTAVENÍ
         </Link>
@@ -1200,10 +1204,20 @@ export default async function DashboardPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, can_view_stores, can_view_bsafe24, can_view_nord_fjella, can_view_provize, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
+      'name, role, avatar_path, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, can_view_stores, can_view_bsafe24, can_view_nord_fjella, can_view_provize, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
+
+  let profileAvatarUrl: string | null = null
+
+  if (profile?.avatar_path) {
+    const { data: signedAvatar } = await supabase.storage
+      .from(PROFILE_AVATARS_BUCKET)
+      .createSignedUrl(profile.avatar_path, 60 * 60)
+
+    profileAvatarUrl = signedAvatar?.signedUrl ?? null
+  }
 
   const { data: themePreference } = await supabase
     .from('profiles')
@@ -1711,7 +1725,7 @@ export default async function DashboardPage({
 
                 <DashboardUserPanel
                   profileName={profile?.name ?? null}
-                  profileRole={profile?.role ?? null}
+                  avatarUrl={profileAvatarUrl}
                   userEmail={user.email ?? ''}
                   className="dashboard-user-panel lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
                 />
@@ -1898,7 +1912,7 @@ export default async function DashboardPage({
 
                 <DashboardUserPanel
                   profileName={profile?.name ?? null}
-                  profileRole={profile?.role ?? null}
+                  avatarUrl={profileAvatarUrl}
                   userEmail={user.email ?? ''}
                   className="order-6 lg:hidden xl:order-none"
                 />
@@ -1921,7 +1935,7 @@ export default async function DashboardPage({
         {isTechnik ? (
           <DashboardUserPanel
             profileName={profile?.name ?? null}
-            profileRole={profile?.role ?? null}
+            avatarUrl={profileAvatarUrl}
             userEmail={user.email ?? ''}
             className="mt-auto lg:hidden"
           />
@@ -1966,7 +1980,7 @@ export default async function DashboardPage({
                 </Link>
               ) : null}
             </div>
-            <div className="self-end text-right md:self-auto md:text-left">v3.3.2</div>
+            <div className="self-end text-right md:self-auto md:text-left">v3.4.1</div>
           </div>
         </footer>
       </div>

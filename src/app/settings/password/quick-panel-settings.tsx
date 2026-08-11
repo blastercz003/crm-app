@@ -133,20 +133,14 @@ export function QuickPanelSettings() {
           {error || 'Nastavení není dostupné.'}
         </p>
       ) : (
-        <div className="mt-3 flex-1 space-y-4 overflow-y-auto pr-1">
-          <p className="password-page__text text-sm text-zinc-500">
-            Na desktopu si můžeš připnout až čtyři sekce, mezi kterými se chceš rychle přepínat.
-          </p>
-
+        <>
+          <div className="mt-3">
           <div className="password-page__widget-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
                   Zobrazit rychlý panel
                 </div>
-                <p className="password-page__widget-subtitle mt-1 text-xs text-zinc-500">
-                  Plovoucí navigace na pravém okraji pracovních stránek.
-                </p>
               </div>
 
               <div className="flex shrink-0 items-center gap-3">
@@ -176,6 +170,10 @@ export function QuickPanelSettings() {
             </div>
           </div>
 
+          </div>
+
+          <div className="mt-4 flex-1 space-y-4 overflow-y-auto border-t border-[#d5e2ec] pt-4 pr-1 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)]">
+
           <div>
             <div className="flex items-center justify-between gap-3">
               <div className="password-page__widget-title text-sm font-semibold text-zinc-900">
@@ -186,7 +184,7 @@ export function QuickPanelSettings() {
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
               {availableSections.map((section) => {
                 const isSelected = selectedSections.includes(section.id)
                 const isLimitReached = !isSelected && selectedSections.length >= 4
@@ -198,16 +196,22 @@ export function QuickPanelSettings() {
                     aria-pressed={isSelected}
                     disabled={isSaving || isLimitReached}
                     onClick={() => toggleSection(section.id)}
-                    className={`password-page__quick-panel-option flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border px-2 py-3 text-center transition duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${
+                    className={`password-page__quick-panel-option flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2 text-center transition duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${
                       isSelected
                         ? 'border-[#5f9dca] bg-[linear-gradient(160deg,rgba(95,164,211,0.18)_0%,rgba(63,132,187,0.14)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_18px_rgba(41,128,185,0.12)]'
                         : 'border-white/75 bg-white/72 hover:-translate-y-[1px] hover:border-[#9dc7e5] hover:bg-white'
                     }`}
                   >
-                    <span className="relative flex h-8 w-8 items-center justify-center">
-                      <Image src={section.iconSrc} alt="" fill sizes="32px" className="object-contain" />
+                    <span className="relative flex h-7 w-7 items-center justify-center">
+                      <Image
+                        src={section.iconSrc}
+                        alt=""
+                        fill
+                        sizes="28px"
+                        className="password-page__quick-panel-option-icon object-contain"
+                      />
                     </span>
-                    <span className="password-page__quick-panel-option-label text-xs font-semibold leading-tight text-zinc-700">
+                    <span className="password-page__quick-panel-option-label text-[10px] font-semibold leading-tight text-zinc-700">
                       {section.label}
                     </span>
                   </button>
@@ -221,7 +225,8 @@ export function QuickPanelSettings() {
               {error}
             </p>
           ) : null}
-        </div>
+          </div>
+        </>
       )}
     </section>
   )
