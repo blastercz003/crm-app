@@ -205,11 +205,11 @@ export function Job360Modal({
             </button>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-4">
             {isPending && !data ? <LoadingState /> : null}
             {error ? <ErrorState message={error} /> : null}
             {data ? (
-              <div className="grid gap-5">
+              <div className="grid gap-4">
                 <OverviewSection data={data} />
                 <OfferSection
                   data={data}
@@ -281,8 +281,8 @@ function OverviewSection({ data }: { data: Job360Data }) {
       title="Přehled realizace"
       subtitle="Uložený stav a základní údaje realizace"
     >
-      <div className={`${PANEL_CLASS} p-4 sm:p-5`}>
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className={`${PANEL_CLASS} p-4`}>
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${SUBTLE_TEXT_CLASS}`}>
                 Zakázka
@@ -305,7 +305,7 @@ function OverviewSection({ data }: { data: Job360Data }) {
             </div>
           </div>
 
-          <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
             <InfoField
               icon={<UserRound />}
               label="Obchodník"
@@ -344,19 +344,23 @@ function OverviewSection({ data }: { data: Job360Data }) {
           </div>
 
           {job.infoNote ? (
-            <div className="mt-5 rounded-2xl border border-[#91b8d6]/45 bg-[#edf5fb]/70 p-4 [html[data-theme='dark']_&]:border-[#4f92cb]/25 [html[data-theme='dark']_&]:bg-[#4f92cb]/[0.07]">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-[#347cad]" />
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#347cad]">
-                  Info k zakázce
-                </p>
-                {job.infoAlertEnabled ? (
-                  <StatusBadge label="Aktivní upozornění" tone="blue" />
-                ) : null}
+            <div className="mt-4 rounded-2xl border border-[#91b8d6]/45 bg-[#edf5fb]/70 p-2.5 [html[data-theme='dark']_&]:border-[#4f92cb]/25 [html[data-theme='dark']_&]:bg-[#4f92cb]/[0.07]">
+              <div className="sm:flex sm:items-start sm:gap-4">
+                <div className="flex shrink-0 items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-[#347cad]" />
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#347cad]">
+                    Info k zakázce
+                  </p>
+                  {job.infoAlertEnabled ? (
+                    <StatusBadge label="Aktivní upozornění" tone="blue" />
+                  ) : null}
+                </div>
+                <div className="mt-1.5 max-h-24 min-w-0 overflow-y-auto pr-1 sm:mt-0 sm:max-h-[72px] sm:flex-1">
+                  <p className={`whitespace-pre-wrap text-sm leading-5 ${VALUE_TEXT_CLASS}`}>
+                    {job.infoNote}
+                  </p>
+                </div>
               </div>
-              <p className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${VALUE_TEXT_CLASS}`}>
-                {job.infoNote}
-              </p>
             </div>
           ) : null}
       </div>
@@ -385,7 +389,7 @@ function OfferSection({
         <EmptyPanel text="K zakázce není přímo navázaná nabídka." />
       ) : (
         <div className="grid gap-4">
-          <div className={`${PANEL_CLASS} p-4 sm:p-5`}>
+          <div className={`${PANEL_CLASS} p-4`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -416,7 +420,7 @@ function OfferSection({
               </a>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
               <TextField
                 label="Projekt"
                 value={offer.details.project_name}
@@ -456,7 +460,7 @@ function OfferSection({
           <div className="grid gap-4 xl:grid-cols-2">
             <DataTablePanel title={`Komentáře nabídky (${offer.notes.length})`}>
               {offer.notes.length > 0 ? (
-                <div className="max-h-[320px] divide-y divide-slate-200/60 overflow-y-auto [html[data-theme='dark']_&]:divide-white/[0.06]">
+                <div className="max-h-[240px] divide-y divide-slate-200/60 overflow-y-auto [html[data-theme='dark']_&]:divide-white/[0.06]">
                   {offer.notes.map((note) => (
                     <div key={note.id} className="px-4 py-3">
                       <div className="flex flex-wrap justify-between gap-2">
@@ -581,10 +585,10 @@ function FinanceSection({ data }: { data: Job360Data }) {
             )}
           </DataTablePanel>
 
-          <div className={`${PANEL_CLASS} p-4 sm:p-5`}>
+          <div className={`${PANEL_CLASS} p-4`}>
             <BlockHeading title="Provize" note="Stav přímo navázaného provizního záznamu" />
             {commission ? (
-              <div className="mt-4 grid gap-3">
+              <div className="mt-3 grid gap-2.5">
                 <TextField label="Obchodník" value={commission.salesOwner} />
                 <TextField
                   label="Základ provize"
@@ -639,8 +643,8 @@ function ProtocolSection({ data }: { data: Job360Data }) {
       title="Předávací protokol"
       subtitle="Požadavek na PP, uložený návrh a jeho zařízení a příslušenství"
     >
-      <div className="grid gap-4">
-        <div className={`${PANEL_CLASS} p-4 sm:p-5`}>
+      <div className={details ? 'grid gap-3 xl:grid-cols-[0.9fr_1fr_1fr]' : 'grid gap-3'}>
+        <div className={`${PANEL_CLASS} ${details ? 'p-4' : 'flex items-center justify-between gap-4 p-3'}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -672,26 +676,24 @@ function ProtocolSection({ data }: { data: Job360Data }) {
           </div>
 
           {details ? (
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid gap-x-4 gap-y-3 sm:grid-cols-2">
               <TextField label="Název předání" value={details.handover_title} />
               <TextField label="Místo předání" value={details.handover_place} />
               <TextField label="Kontaktní osoba" value={details.contact_person} />
               <TextField label="Telefon" value={details.contact_phone} />
             </div>
-          ) : (
-            <EmptyBlock text="Návrh předávacího protokolu zatím není uložený." />
-          )}
+          ) : <p className={`text-right text-sm ${SUBTLE_TEXT_CLASS}`}>Návrh předávacího protokolu zatím není uložený.</p>}
         </div>
 
         {details ? (
-          <div className="grid gap-4 xl:grid-cols-2">
+          <>
             <DataTablePanel title={`Zařízení (${protocol.devices.length})`}>
               {protocol.devices.length > 0 ? (
-                <div className="divide-y divide-slate-200/60 [html[data-theme='dark']_&]:divide-white/[0.06]">
+                <div className="max-h-[260px] divide-y divide-slate-200/60 overflow-y-auto [html[data-theme='dark']_&]:divide-white/[0.06]">
                   {protocol.devices.map((device) => (
                     <div
                       key={device.id}
-                      className="grid gap-2 px-4 py-3 sm:grid-cols-[1fr_auto_auto]"
+                      className="grid gap-1.5 px-4 py-2.5 sm:grid-cols-[1fr_auto_auto]"
                     >
                       <span className={`text-sm font-medium ${VALUE_TEXT_CLASS}`}>
                         {displayValue(device.device_name)}
@@ -712,11 +714,11 @@ function ProtocolSection({ data }: { data: Job360Data }) {
 
             <DataTablePanel title={`Příslušenství (${protocol.accessories.length})`}>
               {protocol.accessories.length > 0 ? (
-                <div className="divide-y divide-slate-200/60 [html[data-theme='dark']_&]:divide-white/[0.06]">
+                <div className="max-h-[260px] divide-y divide-slate-200/60 overflow-y-auto [html[data-theme='dark']_&]:divide-white/[0.06]">
                   {protocol.accessories.map((item) => (
                     <div
                       key={item.id}
-                      className="grid gap-2 px-4 py-3 sm:grid-cols-[1fr_auto_auto]"
+                      className="grid gap-1.5 px-4 py-2.5 sm:grid-cols-[1fr_auto_auto]"
                     >
                       <span className={`text-sm font-medium ${VALUE_TEXT_CLASS}`}>
                         {displayValue(item.item_name)}
@@ -734,7 +736,7 @@ function ProtocolSection({ data }: { data: Job360Data }) {
                 <EmptyBlock text="V návrhu není uvedené příslušenství." />
               )}
             </DataTablePanel>
-          </div>
+          </>
         ) : null}
       </div>
     </Section>
@@ -765,7 +767,7 @@ function DocumentsSection({
       subtitle="Soubory přímo uložené u zakázky a fotografie z informační poznámky"
     >
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {attachmentGroups.length > 0 ? (
             attachmentGroups.map((group) => (
               <DataTablePanel
@@ -854,7 +856,7 @@ function Section({
 }) {
   return (
     <section>
-      <div className="mb-3 flex items-start gap-3 px-1">
+      <div className="mb-2 flex items-start gap-3 px-1">
         <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-[#83add0]/45 bg-[#e9f3fa]/75 text-[#347cad] shadow-sm [html[data-theme='dark']_&]:border-[#4f92cb]/25 [html[data-theme='dark']_&]:bg-[#4f92cb]/10 [html[data-theme='dark']_&]:text-[#83b9e0]">
           {icon}
         </span>
@@ -934,11 +936,11 @@ function MetricCard({
           : VALUE_TEXT_CLASS
 
   return (
-    <div className={`${PANEL_CLASS} min-w-0 p-4`}>
+    <div className={`${PANEL_CLASS} min-w-0 p-3`}>
       <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${SUBTLE_TEXT_CLASS}`}>
         {label}
       </p>
-      <p className={`mt-2 truncate text-base font-semibold ${toneClass}`} title={value ?? '—'}>
+      <p className={`mt-1.5 truncate text-base font-semibold ${toneClass}`} title={value ?? '—'}>
         {displayValue(value)}
       </p>
     </div>
@@ -992,7 +994,7 @@ function DataTablePanel({
 }) {
   return (
     <div className={`${PANEL_CLASS} min-w-0 overflow-hidden`}>
-      <div className="border-b border-slate-200/70 px-4 py-3 [html[data-theme='dark']_&]:border-white/[0.07]">
+      <div className="border-b border-slate-200/70 px-4 py-2.5 [html[data-theme='dark']_&]:border-white/[0.07]">
         <h4 className={`text-sm font-semibold ${VALUE_TEXT_CLASS}`}>{title}</h4>
       </div>
       {children}
@@ -1014,7 +1016,7 @@ function FileList({
       {files.map((file) => (
         <div
           key={file.id}
-          className="flex min-w-0 items-center justify-between gap-3 px-4 py-3"
+          className="flex min-w-0 items-center justify-between gap-3 px-4 py-2.5"
         >
           <div className="flex min-w-0 items-center gap-3">
             <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 [html[data-theme='dark']_&]:bg-white/[0.05] [html[data-theme='dark']_&]:text-slate-400">
@@ -1049,12 +1051,12 @@ function FileList({
 }
 
 function EmptyBlock({ text }: { text: string }) {
-  return <p className={`px-4 py-6 text-center text-sm ${SUBTLE_TEXT_CLASS}`}>{text}</p>
+  return <p className={`px-4 py-3.5 text-center text-sm ${SUBTLE_TEXT_CLASS}`}>{text}</p>
 }
 
 function EmptyPanel({ text }: { text: string }) {
   return (
-    <div className={`${PANEL_CLASS} p-7 text-center`}>
+    <div className={`${PANEL_CLASS} p-4 text-center`}>
       <p className={`text-sm ${SUBTLE_TEXT_CLASS}`}>{text}</p>
     </div>
   )
