@@ -4,7 +4,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { DashboardHandoverProtocolUploadLauncher } from '@/components/dashboard/dashboard-handover-protocol-upload-launcher'
-import type { HandoverProtocolUploadJobOption } from '@/app/dashboard/handover-protocol-upload-actions'
 
 type SectionLink = {
   key: string
@@ -235,7 +234,6 @@ export function DashboardSectionLinks({
   canViewProvize,
   canViewFiles,
   canViewHandoverProtocolUpload = false,
-  handoverProtocolUploadJobs = [],
   showClients = true,
   isAdmin,
   offersOrderedCount,
@@ -250,7 +248,6 @@ export function DashboardSectionLinks({
   canViewProvize: boolean
   canViewFiles: boolean
   canViewHandoverProtocolUpload?: boolean
-  handoverProtocolUploadJobs?: HandoverProtocolUploadJobOption[]
   showClients?: boolean
   isAdmin: boolean
   offersOrderedCount: number
@@ -368,7 +365,7 @@ export function DashboardSectionLinks({
         ))}
 
         {canViewHandoverProtocolUpload ? (
-          <DashboardHandoverProtocolUploadLauncher jobs={handoverProtocolUploadJobs} />
+          <DashboardHandoverProtocolUploadLauncher />
         ) : null}
       </div>
     </section>

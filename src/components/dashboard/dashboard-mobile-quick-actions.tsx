@@ -26,6 +26,7 @@ import {
   getUserActivityForAdmin,
   trackUserPresence,
 } from '@/lib/dashboard/dashboard-background-client'
+import { getDashboardQuickActionOptionsAction } from '@/app/dashboard/dashboard-lazy-data-actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   readDashboardQuickCreateEnabled,
@@ -92,10 +93,6 @@ type QuickActionKey =
   | 'received_invoices'
 
 type DashboardMobileQuickActionsProps = {
-  users: UserOption[]
-  clients: ClientOption[]
-  contacts: ClientContactOption[]
-  offers: OfferOption[]
   canViewJobs: boolean
   canViewOffers: boolean
   canCreateJobs: boolean
@@ -617,10 +614,6 @@ function ManualNotificationModal({
 }
 
 export function DashboardMobileQuickActions({
-  users,
-  clients,
-  contacts,
-  offers,
   canViewJobs,
   canViewOffers,
   canCreateJobs,
@@ -646,6 +639,12 @@ export function DashboardMobileQuickActions({
 
   const router = useRouter()
   const [activeAction, setActiveAction] = useState<QuickActionKey | null>(null)
+  const [users, setUsers] = useState<UserOption[]>([])
+  const [clients, setClients] = useState<ClientOption[]>([])
+  const [contacts, setContacts] = useState<ClientContactOption[]>([])
+  const [offers, setOffers] = useState<OfferOption[]>([])
+  const [areQuickActionOptionsLoaded, setAreQuickActionOptionsLoaded] = useState(false)
+  const [areQuickActionOptionsLoading, setAreQuickActionOptionsLoading] = useState(false)
   const [isSheetMounted, setIsSheetMounted] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isTodayJobsMounted, setIsTodayJobsMounted] = useState(false)
@@ -1190,9 +1189,8 @@ export function DashboardMobileQuickActions({
     }
   }, [isSheetMounted])
 
-  function handleActionSelect(action: QuickActionKey) {
+  async function handleActionSelect(action: QuickActionKey) {
     closeTodayJobsImmediately()
-    setActiveAction(action)
     closeSheet()
     void trackUserPresence({
       route: '/dashboard',
@@ -1200,6 +1198,14 @@ export function DashboardMobileQuickActions({
       action: `Spustil rychlou akci: ${action}`,
       addActivityLog: true,
     })
+
+    const requiresOptions = ['client', 'task', 'meeting', 'job', 'offer'].includes(action)
+
+    if (requiresOptions && !(await ensureQuickActionOptions())) {
+      return
+    }
+
+    setActiveAction(action)
   }
 
   function handleActionSuccess(toastValue: ActionFeedbackToastValue) {
@@ -1229,6 +1235,31 @@ export function DashboardMobileQuickActions({
   function handleModalError(message: string) {
     triggerHaptic(24)
     showToast(buildErrorToast(message))
+  }
+
+  async function ensureQuickActionOptions() {
+    if (areQuickActionOptionsLoaded) return true
+
+    setAreQuickActionOptionsLoading(true)
+
+    try {
+      const options = await getDashboardQuickActionOptionsAction()
+      setUsers(options.users)
+      setClients(options.clients)
+      setContacts(options.contacts)
+      setOffers(options.offers)
+      setAreQuickActionOptionsLoaded(true)
+      return true
+    } catch (error) {
+      handleModalError(
+        error instanceof Error
+          ? error.message
+          : 'Data rychlé akce se nepodařilo načíst.'
+      )
+      return false
+    } finally {
+      setAreQuickActionOptionsLoading(false)
+    }
   }
 
   function handleManualNotificationSent(sentCount: number) {
@@ -1491,10 +1522,13 @@ export function DashboardMobileQuickActions({
               setActiveAction(null)
               return
             }
-            closeTodayJobsImmediately()
-            triggerHaptic(10)
-            triggerIconSpin('manual_notifications')
-            setActiveAction('manual_notifications')
+            void (async () => {
+              closeTodayJobsImmediately()
+              triggerHaptic(10)
+              triggerIconSpin('manual_notifications')
+              if (!(await ensureQuickActionOptions())) return
+              setActiveAction('manual_notifications')
+            })()
           }}
           className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
             shouldHideFloatingControls
@@ -1928,7 +1962,8 @@ export function DashboardMobileQuickActions({
                 >
                   <button
                     type="button"
-                    onClick={() => handleActionSelect(action.key)}
+                    onClick={() => void handleActionSelect(action.key)}
+                    disabled={areQuickActionOptionsLoading}
                     className={`dashboard-floating-actions-sheet__button flex w-full items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[180ms] ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
                       isDesktopViewport ? 'min-h-[56px] py-3.5 text-[15px]' : 'min-h-[52px] py-3 text-[15px]'
                     }`}

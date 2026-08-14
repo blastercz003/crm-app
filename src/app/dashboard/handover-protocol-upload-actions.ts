@@ -498,6 +498,21 @@ export type HandoverProtocolUploadJobOption = {
   showInHandoverProtocolUpload: boolean
 }
 
+export async function getMyHandoverProtocolUploadJobOptionsAction(): Promise<
+  HandoverProtocolUploadJobOption[]
+> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Uživatel není přihlášen.')
+  }
+
+  return getHandoverProtocolUploadJobOptions(user.id)
+}
+
 export async function getHandoverProtocolUploadJobOptions(
   userId: string
 ): Promise<HandoverProtocolUploadJobOption[]> {

@@ -5,7 +5,6 @@ import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { Plug } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getAssignableUsers } from '@/lib/users/getAssignableUsers'
 import { endTaskRecurrence, updateTaskStatus } from '@/app/tasks/actions'
 import { TaskCompleteButton } from '@/app/tasks/task-complete-button'
 import { RepeatTaskBadge } from '@/app/tasks/repeat-task-badge'
@@ -26,14 +25,10 @@ import { DashboardMyTasksModule } from '@/components/dashboard/dashboard-my-task
 import { DashboardMyMeetingsModule } from '@/components/dashboard/dashboard-my-meetings-module'
 import { DashboardSectionLinks } from '@/components/dashboard/dashboard-section-links'
 import { DashboardHandoverProtocolUploadLauncher } from '@/components/dashboard/dashboard-handover-protocol-upload-launcher'
-import {
-  getCurrentUserNotificationStats,
-  getCurrentUserNotifications,
-} from '@/lib/notifications/getNotifications'
-import { ensureMeetingResultNotifications } from '@/lib/notifications/meetingNotifications'
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
 import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 import { DashboardStartupReadyBridge } from '@/components/pwa/pwa-startup-screen'
+import { DashboardMeetingNotificationSync } from './dashboard-meeting-notification-sync'
 import { getReceivedInvoiceBadgeCount } from '@/lib/received-invoices/service'
 import { DashboardThemeToggle } from '@/components/dashboard/dashboard-theme-toggle'
 import {
@@ -52,10 +47,6 @@ import {
 } from '@/lib/theme/theme-preference'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getProfileInitials, PROFILE_AVATARS_BUCKET } from '@/lib/profile/avatar'
-import {
-  getHandoverProtocolUploadJobOptions,
-  type HandoverProtocolUploadJobOption as DashboardHandoverProtocolUploadJobOption,
-} from './handover-protocol-upload-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,14 +61,12 @@ function TechnicianSectionLinks({
   canViewStores,
   canViewHandoverProtocolUpload,
   includeJobsLink,
-  handoverProtocolUploadJobs,
 }: {
   canViewTechJobs: boolean
   canViewConnectionPoints: boolean
   canViewStores: boolean
   canViewHandoverProtocolUpload: boolean
   includeJobsLink?: boolean
-  handoverProtocolUploadJobs: DashboardHandoverProtocolUploadJobOption[]
 }) {
   const items = [
     canViewTechJobs
@@ -162,7 +151,7 @@ function TechnicianSectionLinks({
         ))}
 
         {canViewHandoverProtocolUpload ? (
-          <DashboardHandoverProtocolUploadLauncher jobs={handoverProtocolUploadJobs} />
+          <DashboardHandoverProtocolUploadLauncher />
         ) : null}
       </div>
     </section>
@@ -199,30 +188,6 @@ type DashboardThemePreference = {
   theme_mode: 'light' | 'dark' | 'auto' | null
   theme_auto_override_mode: 'light' | 'dark' | null
   theme_auto_override_until: string | null
-}
-
-type DashboardClientOption = {
-  id: string
-  name: string
-}
-
-type DashboardClientContactOption = {
-  id: string
-  client_id: string
-  name: string
-  phone: string | null
-  email: string | null
-  is_primary: boolean
-}
-
-type DashboardOfferOption = {
-  id: string
-  client_id: string
-  offer_number: string
-  title: string
-  realization_starts_at: string | null
-  realization_ends_at: string | null
-  realization_address: string | null
 }
 
 type DashboardTask = {
@@ -1320,40 +1285,24 @@ export default async function DashboardPage({
     dashboardMeetingsCountQuery = dashboardMeetingsCountQuery.eq('assigned_user_id', user.id)
   }
 
-  let monthMeetingsQuery = supabase
-    .from('meetings')
-    .select(`
-      id,
-      company_name,
-      contact_person,
-      contact_phone,
-      contact_email,
-      title,
-      meeting_datetime,
-      follow_up_task,
-      status
-    `)
-    .in('status', ['planned', 'completed'])
-    .gte('meeting_datetime', monthStart)
-    .lt('meeting_datetime', monthEnd)
-    .order('meeting_datetime', { ascending: true })
+  const monthJobsQuery = (() => {
+    if (!showDashboardMiniCalendar) {
+      return Promise.resolve({ data: [] as DashboardJobCalendarRow[], error: null })
+    }
 
-  if (!isAdmin) {
-    monthMeetingsQuery = monthMeetingsQuery.eq('assigned_user_id', user.id)
-  }
+    const serviceSupabase = getServiceRoleClient()
+    if (!serviceSupabase) {
+      throw new Error('Chybí Supabase service role client pro dashboardový mini kalendář.')
+    }
 
-  const serviceSupabase = getServiceRoleClient()
-  if (!serviceSupabase) {
-    throw new Error('Chybí Supabase service role client pro dashboardový mini kalendář.')
-  }
-
-  const monthJobsQuery = serviceSupabase
-    .from('jobs')
-    .select('id, job_number, start_at, end_at, site_address, marny_vyjezd')
-    .not('start_at', 'is', null)
-    .gte('start_at', monthStart)
-    .lt('start_at', monthEnd)
-    .order('start_at', { ascending: true })
+    return serviceSupabase
+      .from('jobs')
+      .select('id, job_number, start_at, end_at, site_address, marny_vyjezd')
+      .not('start_at', 'is', null)
+      .gte('start_at', monthStart)
+      .lt('start_at', monthEnd)
+      .order('start_at', { ascending: true })
+  })()
 
   const tasksSelect = `
     id,
@@ -1402,9 +1351,11 @@ export default async function DashboardPage({
     meetingsResponse,
     dashboardMeetingsCountResponse,
     dashboardWeeklyMeetingsCountResponse,
-    monthMeetingsResponse,
     monthJobsResponse,
     dashboardOffersResponse,
+    unreadNotificationsResponse,
+    receivedInvoicesDueCount,
+    orderedOffersCountResponse,
   ] = await Promise.all([
     dashboardTasksQuery(),
 
@@ -1413,8 +1364,6 @@ export default async function DashboardPage({
     dashboardMeetingsCountQuery,
 
     dashboardWeeklyMeetingsCountQuery,
-
-    monthMeetingsQuery,
 
     monthJobsQuery,
 
@@ -1429,6 +1378,22 @@ export default async function DashboardPage({
           .select('id, offer_number, title, status, updated_at, client_id, created_by')
           .eq('created_by', user.id)
           .order('updated_at', { ascending: false }),
+
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipient_user_id', user.id)
+      .is('read_at', null)
+      .is('archived_at', null),
+
+    isAdmin ? getReceivedInvoiceBadgeCount() : Promise.resolve(0),
+
+    isAdmin
+      ? supabase
+          .from('offers')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'ordered')
+      : Promise.resolve({ count: 0, error: null }),
   ])
 
   if (tasksResponse.error) {
@@ -1448,12 +1413,6 @@ export default async function DashboardPage({
   if (dashboardWeeklyMeetingsCountResponse.error) {
     throw new Error(
       `Nepodařilo se načíst týdenní počet schůzek na dashboardu: ${dashboardWeeklyMeetingsCountResponse.error.message}`
-    )
-  }
-
-  if (monthMeetingsResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst měsíční kalendář schůzek: ${monthMeetingsResponse.error.message}`
     )
   }
 
@@ -1518,57 +1477,8 @@ export default async function DashboardPage({
       meeting.meeting_datetime! >= start &&
       meeting.meeting_datetime! < end
   )
-  const monthMeetings = (monthMeetingsResponse.data ?? []) as DashboardMeeting[]
   const monthJobs = (monthJobsResponse.data ?? []) as DashboardJobCalendarRow[]
   const dashboardOffers = (dashboardOffersResponse.data ?? []) as DashboardOfferRow[]
-
-  await ensureMeetingResultNotifications({ supabase, userId: user.id })
-
-  const [notificationStats, modalNotifications, assignableUsers, clientsResponse, contactsResponse, offerSuggestionsResponse, receivedInvoicesDueCount, orderedOffersCountResponse] =
-    await Promise.all([
-    getCurrentUserNotificationStats(),
-    getCurrentUserNotifications({ status: 'active', limit: 30 }),
-    getAssignableUsers(),
-    supabase.from('clients').select('id, name').order('name', { ascending: true }),
-    supabase
-      .from('client_contacts')
-      .select('id, client_id, name, phone, email, is_primary')
-      .order('is_primary', { ascending: false })
-      .order('name', { ascending: true }),
-    supabase
-      .from('offers')
-      .select(
-        'id, client_id, offer_number, title, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
-      )
-      .eq('offer_type', 'classic')
-      .neq('status', 'realizace')
-      .order('offer_number', { ascending: false }),
-    isAdmin ? getReceivedInvoiceBadgeCount() : Promise.resolve(0),
-    isAdmin
-      ? supabase
-          .from('offers')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'ordered')
-      : Promise.resolve({ count: 0, error: null }),
-    ])
-
-  if (clientsResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst klienty pro rychlé akce: ${clientsResponse.error.message}`
-    )
-  }
-
-  if (contactsResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst kontaktní osoby pro rychlé akce: ${contactsResponse.error.message}`
-    )
-  }
-
-  if (offerSuggestionsResponse.error) {
-    throw new Error(
-      `Nepodařilo se načíst nabídky pro rychlé akce: ${offerSuggestionsResponse.error.message}`
-    )
-  }
 
   if (orderedOffersCountResponse.error) {
     throw new Error(
@@ -1576,41 +1486,35 @@ export default async function DashboardPage({
     )
   }
 
-  const orderedOffersCount = Number(orderedOffersCountResponse.count ?? 0)
-
-  let handoverProtocolUploadJobs: DashboardHandoverProtocolUploadJobOption[] = []
-
-  if (canViewHandoverProtocolUpload) {
-    const uploadJobOptions = await getHandoverProtocolUploadJobOptions(user.id)
-    handoverProtocolUploadJobs = uploadJobOptions.map((job) => ({
-      id: job.id,
-      jobNumber: job.jobNumber,
-      companyName: job.companyName,
-      siteAddress: job.siteAddress,
-      startAt: job.startAt,
-      showInHandoverProtocolUpload: job.showInHandoverProtocolUpload,
-    }))
+  if (unreadNotificationsResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst počet nepřečtených notifikací: ${unreadNotificationsResponse.error.message}`
+    )
   }
 
-  const quickActionClients = (clientsResponse.data ?? []) as DashboardClientOption[]
-  const quickActionContacts =
-    (contactsResponse.data ?? []) as DashboardClientContactOption[]
-  const quickActionOffers = ((offerSuggestionsResponse.data ?? []) as DashboardOfferOption[]).filter(
-    (item) =>
-      Boolean(String(item.id ?? '').trim()) &&
-      Boolean(String(item.client_id ?? '').trim()) &&
-      Boolean(String(item.offer_number ?? '').trim()) &&
-      Boolean(String(item.title ?? '').trim())
-  ).map((item) => ({
-    id: String(item.id ?? '').trim(),
-    client_id: String(item.client_id ?? '').trim(),
-    offer_number: String(item.offer_number ?? '').trim(),
-    title: String(item.title ?? '').trim(),
-    realization_starts_at: item.realization_starts_at ?? null,
-    realization_ends_at: item.realization_ends_at ?? null,
-    realization_address: item.realization_address ?? null,
-  }))
-  const clientNameById = new Map(quickActionClients.map((client) => [client.id, client.name]))
+  const orderedOffersCount = Number(orderedOffersCountResponse.count ?? 0)
+  const unreadNotificationCount = Number(unreadNotificationsResponse.count ?? 0)
+
+  const dashboardOfferClientIds = Array.from(
+    new Set(dashboardOffers.map((offer) => offer.client_id).filter(Boolean))
+  )
+  const { data: dashboardOfferClients, error: dashboardOfferClientsError } =
+    dashboardOfferClientIds.length > 0
+      ? await supabase
+          .from('clients')
+          .select('id, name')
+          .in('id', dashboardOfferClientIds)
+      : { data: [], error: null }
+
+  if (dashboardOfferClientsError) {
+    throw new Error(
+      `Nepodařilo se načíst klienty pro nabídky na Dashboardu: ${dashboardOfferClientsError.message}`
+    )
+  }
+
+  const clientNameById = new Map(
+    (dashboardOfferClients ?? []).map((client) => [client.id, client.name])
+  )
 
   const offerIds = dashboardOffers.map((offer) => offer.id)
   let latestCommentByOfferId = new Map<
@@ -1687,11 +1591,12 @@ export default async function DashboardPage({
             className="dashboard-shell__glow--bottom-left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full blur-3xl"
           />
           <main className="relative z-10 flex flex-1 flex-col">
-            <AppBadgeSync count={notificationStats.unread} />
+            <AppBadgeSync count={unreadNotificationCount} />
             <SafeRealtimeRefresh
               scopes={['jobs', 'meetings', 'notifications', 'offers', 'tasks']}
             />
             <DashboardStartupReadyBridge />
+            <DashboardMeetingNotificationSync />
             <div className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="dashboard-card dashboard-card--strong rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1717,8 +1622,7 @@ export default async function DashboardPage({
                 </div>
 
                 <DashboardUpdatesLauncher
-                  notifications={modalNotifications}
-                  unreadCount={notificationStats.unread}
+                  unreadCount={unreadNotificationCount}
                   receivedInvoicesDueCount={receivedInvoicesDueCount}
                   variant="desktop"
                 />
@@ -1735,8 +1639,7 @@ export default async function DashboardPage({
 
           <div className="mt-3 lg:hidden">
             <DashboardUpdatesLauncher
-              notifications={modalNotifications}
-              unreadCount={notificationStats.unread}
+              unreadCount={unreadNotificationCount}
               receivedInvoicesDueCount={receivedInvoicesDueCount}
               variant="mobile"
             />
@@ -1757,7 +1660,6 @@ export default async function DashboardPage({
               canViewStores={canViewStores}
               canViewHandoverProtocolUpload={canViewHandoverProtocolUpload}
               includeJobsLink={showJobsInTechnicianSection}
-              handoverProtocolUploadJobs={handoverProtocolUploadJobs}
             />
           ) : null}
         </DashboardGlobalSearchHideWhenActive>
@@ -1780,7 +1682,6 @@ export default async function DashboardPage({
                 canViewProvize={canViewProvize}
                 canViewFiles={canViewFiles}
                 canViewHandoverProtocolUpload={useUnifiedDavidSection ? canViewHandoverProtocolUpload : false}
-                handoverProtocolUploadJobs={useUnifiedDavidSection ? handoverProtocolUploadJobs : []}
                 showClients={showClientsInMainMenu}
                 isAdmin={isAdmin}
                 offersOrderedCount={orderedOffersCount}
@@ -1919,10 +1820,6 @@ export default async function DashboardPage({
               </div>
             </DashboardGlobalSearchBody>
             <DashboardMobileQuickActions
-              users={assignableUsers}
-              clients={quickActionClients}
-              contacts={quickActionContacts}
-              offers={quickActionOffers}
               canViewJobs={Boolean(profile?.can_view_jobs)}
               canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
               canCreateJobs={isAdmin}

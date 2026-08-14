@@ -3,16 +3,15 @@
 import { useEffect, useState } from 'react'
 import { NotificationsModal } from '@/components/notifications/notifications-modal'
 import type { NotificationRow } from '@/lib/notifications/types'
+import { getDashboardNotificationsAction } from '@/app/dashboard/dashboard-lazy-data-actions'
 
 type DashboardUpdatesLauncherProps = {
-  notifications: NotificationRow[]
   unreadCount: number
   receivedInvoicesDueCount?: number
   variant?: 'desktop' | 'mobile'
 }
 
 export function DashboardUpdatesLauncher({
-  notifications,
   unreadCount,
   receivedInvoicesDueCount = 0,
   variant = 'desktop',
@@ -20,10 +19,25 @@ export function DashboardUpdatesLauncher({
   void receivedInvoicesDueCount
   const [isOpen, setIsOpen] = useState(false)
   const [optimisticUnreadCount, setOptimisticUnreadCount] = useState(unreadCount)
+  const [notifications, setNotifications] = useState<NotificationRow[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     setOptimisticUnreadCount(unreadCount)
   }, [unreadCount])
+
+  async function openNotifications() {
+    setIsOpen(true)
+    setIsLoading(true)
+
+    try {
+      setNotifications(await getDashboardNotificationsAction())
+    } catch {
+      setNotifications([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const buttonClassName =
     variant === 'mobile'
@@ -34,7 +48,7 @@ export function DashboardUpdatesLauncher({
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={() => void openNotifications()}
         className={buttonClassName}
       >
         <span className="relative z-10">NOTIFIKACE</span>
@@ -49,6 +63,7 @@ export function DashboardUpdatesLauncher({
         isOpen={isOpen}
         notifications={notifications}
         unreadCount={optimisticUnreadCount}
+        isLoading={isLoading}
         onUnreadCountChange={setOptimisticUnreadCount}
         onClosed={() => setIsOpen(false)}
       />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
@@ -8,6 +8,7 @@ import { JobAttachmentsModalContent } from '@/components/attachments/job-attachm
 import {
   downloadHandoverProtocolUploadAttachmentAction,
   getHandoverProtocolUploadAttachmentsAction,
+  getMyHandoverProtocolUploadJobOptionsAction,
   openHandoverProtocolUploadAttachmentAction,
   uploadHandoverProtocolAttachmentsAction,
   type HandoverProtocolUploadJobOption,
@@ -15,10 +16,6 @@ import {
 import type { JobAttachment } from '@/lib/job-attachments'
 
 const FILE_CATEGORY_OPTIONS = [{ value: 'predavaci_protokol' as const, label: 'Předávací protokol' }]
-
-type DashboardHandoverProtocolUploadLauncherProps = {
-  jobs: HandoverProtocolUploadJobOption[]
-}
 
 function formatJobLabel(job: HandoverProtocolUploadJobOption | null) {
   if (!job) return 'Vyber zakázku'
@@ -29,10 +26,10 @@ function formatJobLabel(job: HandoverProtocolUploadJobOption | null) {
     : `${job.jobNumber} · ${job.companyName}`
 }
 
-export function DashboardHandoverProtocolUploadLauncher({
-  jobs,
-}: DashboardHandoverProtocolUploadLauncherProps) {
+export function DashboardHandoverProtocolUploadLauncher() {
   const [isOpen, setIsOpen] = useState(false)
+  const [availableJobs, setAvailableJobs] = useState<HandoverProtocolUploadJobOption[]>([])
+  const [isJobsLoading, setIsJobsLoading] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string>('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [selectedAttachments, setSelectedAttachments] = useState<JobAttachment[]>([])
@@ -63,11 +60,39 @@ export function DashboardHandoverProtocolUploadLauncher({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isOpen, isPending, successMessage])
 
-  const availableJobs = useMemo(() => jobs, [jobs])
-
   const activeSelectedJobId = availableJobs.some((job) => job.id === selectedJobId)
     ? selectedJobId
     : ''
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    let isCancelled = false
+    setIsJobsLoading(true)
+    setErrorMessage(null)
+    setSelectedJobId('')
+    setSelectedAttachments([])
+
+    void getMyHandoverProtocolUploadJobOptionsAction()
+      .then((jobs) => {
+        if (!isCancelled) setAvailableJobs(jobs)
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          setAvailableJobs([])
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Zakázky se nepodařilo načíst.'
+          )
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setIsJobsLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen || !activeSelectedJobId) {
@@ -251,12 +276,14 @@ export function DashboardHandoverProtocolUploadLauncher({
                     <select
                       value={activeSelectedJobId}
                       onChange={(event) => handleJobChange(event.target.value)}
-                      disabled={isPending || availableJobs.length === 0}
+                      disabled={isPending || isJobsLoading || availableJobs.length === 0}
                       data-placeholder={!activeSelectedJobId}
                       className="jobs-page__info-modal__handover-job-select jobs-page__info-modal__category-select h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] outline-none transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                       <option value="" disabled>
-                        {availableJobs.length === 0
+                        {isJobsLoading
+                          ? 'Načítám zakázky…'
+                          : availableJobs.length === 0
                           ? 'Žádné zakázky dostupné pro nahrání PP'
                           : 'Vyber zakázku'}
                       </option>

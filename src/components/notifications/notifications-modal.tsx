@@ -16,6 +16,7 @@ type NotificationsModalProps = {
   isOpen: boolean
   notifications: NotificationRow[]
   unreadCount: number
+  isLoading?: boolean
   onUnreadCountChange: (count: number) => void
   onClosed: () => void
 }
@@ -174,6 +175,7 @@ export function NotificationsModal({
   isOpen,
   notifications,
   unreadCount,
+  isLoading = false,
   onUnreadCountChange,
   onClosed,
 }: NotificationsModalProps) {
@@ -428,7 +430,11 @@ export function NotificationsModal({
         </div>
 
         <div className="notifications-modal__body min-h-0 flex-1 overflow-y-auto px-6 py-5 md:px-8">
-          {visibleNotifications.length > 0 ? (
+          {isLoading ? (
+            <div className="notifications-modal__empty rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(247,250,253,0.90)_52%,rgba(242,247,252,0.86)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(15,23,42,0.09)] backdrop-blur-[12px]">
+              Načítám notifikace…
+            </div>
+          ) : visibleNotifications.length > 0 ? (
             <div className="grid gap-3">
               {visibleNotifications.map((notification) => (
                 <NotificationItem
