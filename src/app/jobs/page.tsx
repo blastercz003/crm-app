@@ -141,7 +141,10 @@ type JobsSearchParams = {
   date_to?: string | string[]
   dispatcher_calendar_status?: string | string[]
   dispatcher_calendar_error?: string | string[]
+  page?: string | string[]
 }
+
+const JOBS_PER_PAGE = 100
 
 function getSingleParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -239,6 +242,36 @@ function buildJobsReportPdfHref({
   if (dateFrom) params.set('date_from', dateFrom)
   if (dateTo) params.set('date_to', dateTo)
   return `/jobs/report/pdf?${params.toString()}`
+}
+
+function buildJobsPageHref({
+  query,
+  jobStatus,
+  view,
+  sort,
+  dateFrom,
+  dateTo,
+  page,
+}: {
+  query: string
+  jobStatus: JobStatus | ''
+  view: ViewMode
+  sort: SortMode
+  dateFrom: string
+  dateTo: string
+  page: number
+}) {
+  const params = new URLSearchParams()
+  if (query) params.set('q', query)
+  if (jobStatus) params.set('status', jobStatus)
+  if (view !== 'all') params.set('view', view)
+  if (sort !== 'job_number_desc') params.set('sort', sort)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+  if (page > 1) params.set('page', String(page))
+
+  const search = params.toString()
+  return search ? `/jobs?${search}` : '/jobs'
 }
 
 function getPragueTodayParts() {
@@ -363,6 +396,7 @@ export default async function JobsPage({
   const dispatcherCalendarError = getSingleParam(
     params?.dispatcher_calendar_error
   )
+  const requestedPage = Number.parseInt(getSingleParam(params?.page), 10)
 
   const query = queryParam.trim()
   const jobStatus = isJobStatus(statusParam) ? statusParam : ''
@@ -370,6 +404,7 @@ export default async function JobsPage({
   const sort = isSortMode(sortParam) ? sortParam : 'job_number_desc'
   const dateFrom = dateFromParam.trim()
   const dateTo = dateToParam.trim()
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1
 
   const todayRange = getTodayRange()
   const tomorrowRange = getTomorrowRange()
@@ -456,13 +491,9 @@ export default async function JobsPage({
       .eq('user_id', user.id)
       .maybeSingle()
 
-  const clientsRequest = supabase
-    .from('clients')
-    .select('id, name')
-    .order('name', { ascending: true })
-
   let request = supabase.from('jobs').select(
-    'id, job_number, client_id, offer_id, client_contact_id, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, client_order_number, technician_name, generator_name, info_note, marny_vyjezd, pohotovost, info_alert_enabled, job_status, invoice_status, evidence_status, created_at, updated_at'
+    'id, job_number, client_id, offer_id, client_contact_id, company_name, contact_person, sales_owner, start_at, end_at, site_address, store_number, client_order_number, technician_name, generator_name, info_note, marny_vyjezd, pohotovost, info_alert_enabled, job_status, invoice_status, evidence_status, created_at, updated_at',
+    { count: 'exact' }
   )
 
   if (query) {
@@ -498,96 +529,31 @@ export default async function JobsPage({
     request = request.order('job_number', { ascending: false })
   }
 
-  const jobsPromise = Promise.resolve(request)
-  const offerSuggestionsPromise = Promise.resolve(
-    supabase
-      .from('offers')
-      .select(
-        'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
-      )
-      .eq('offer_type', 'classic')
-      .neq('status', 'realizace')
-      .order('offer_number', { ascending: false })
-  )
-  const technicianProfilesPromise = Promise.resolve(
-    supabase
-      .from('profiles')
-      .select('id, name, can_be_assigned_as_technician')
-      .eq('can_be_assigned_as_technician', true)
-      .order('name', { ascending: true })
-  )
+  const totalJobsResponse = await request.range(0, 0)
 
-  const { data: clientSuggestionsData, error: clientsError } =
-    await clientsRequest
-
-  if (clientsError) {
-    throw new Error('Nepodařilo se načíst firmy pro našeptávání.')
+  if (totalJobsResponse.error) {
+    throw new Error('Nepodařilo se načíst zakázky.')
   }
 
-  const clientOptions = Array.from(
-    new Map(
-      ((clientSuggestionsData ?? []) as ClientSuggestionRow[])
-        .map((item) => ({
-          id: String(item.id ?? '').trim(),
-          name: item.name?.trim() ?? '',
-        }))
-        .filter(
-          (item): item is ClientOption =>
-            Boolean(item.id) && Boolean(item.name)
-        )
-        .map((item) => [item.id, item])
-    ).values()
-  )
-
-  let contactsRequest = supabase
-    .from('client_contacts')
-    .select('id, client_id, name, is_primary')
-    .order('is_primary', { ascending: false })
-    .order('name', { ascending: true })
-
-  if (!isAdmin) {
-    const visibleClientIds = clientOptions.map((client) => client.id)
-
-    if (visibleClientIds.length > 0) {
-      contactsRequest = contactsRequest.in('client_id', visibleClientIds)
-    } else {
-      contactsRequest = contactsRequest.eq(
-        'client_id',
-        '00000000-0000-0000-0000-000000000000'
-      )
-    }
-  }
+  const totalJobs = totalJobsResponse.count ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const rangeStart = (currentPage - 1) * JOBS_PER_PAGE
+  const rangeEnd = rangeStart + JOBS_PER_PAGE - 1
+  const jobsPromise = request.range(rangeStart, rangeEnd)
 
   const [
     { data: jobs, error },
-    { data: clientContactsData, error: contactsError },
-    { data: offerSuggestionsData, error: offerSuggestionsError },
-    { data: technicianProfilesData, error: technicianProfilesError },
     dispatcherFeedResponse,
     dispatcherGoogleResponse,
   ] = await Promise.all([
     jobsPromise,
-    contactsRequest,
-    offerSuggestionsPromise,
-    technicianProfilesPromise,
     dispatcherFeedPromise,
     dispatcherGooglePromise,
   ])
 
   if (error) {
     throw new Error('Nepodařilo se načíst zakázky.')
-  }
-
-  if (contactsError) {
-    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
-  }
-
-  if (offerSuggestionsError) {
-    throw new Error('Nepodařilo se načíst nabídky pro založení zakázky.')
-  }
-
-  if (technicianProfilesError) {
-    throw new Error('Nepodařilo se načíst techniky pro našeptávání.')
   }
 
   if (dispatcherFeedResponse.error) {
@@ -623,28 +589,10 @@ export default async function JobsPage({
     ? typedJobs.filter((job) => !Boolean(job.marny_vyjezd))
     : typedJobs
   const jobIds = visibleJobs.map((job) => job.id)
-  const linkedOfferIds = Array.from(
-    new Set(
-      visibleJobs
-        .map((job) => String(job.offer_id ?? '').trim())
-        .filter((offerId) => Boolean(offerId))
-    )
-  )
-  const loadedOffersById = new Map(
-    ((offerSuggestionsData ?? []) as LinkedOfferRow[]).map((offer) => [offer.id, offer] as const)
-  )
-  const loadedLinkedOfferRows = linkedOfferIds.flatMap((offerId) => {
-    const offer = loadedOffersById.get(offerId)
-    return offer ? [offer] : []
-  })
-  const missingLinkedOfferIds = linkedOfferIds.filter(
-    (offerId) => !loadedOffersById.has(offerId)
-  )
 
   const [
     jobPpNotRequiredIds,
     infoAttachmentsResponse,
-    missingLinkedOffersResponse,
     jobChangesData,
   ] = await Promise.all([
     getJobPpNotRequiredSet(supabase, jobIds),
@@ -656,16 +604,6 @@ export default async function JobsPage({
           .select('job_id')
           .in('job_id', jobIdBatch),
     }),
-    querySupabaseInBatches<LinkedOfferRow>({
-      values: missingLinkedOfferIds,
-      queryBatch: (offerIdBatch) =>
-        supabase
-          .from('offers')
-          .select(
-            'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address'
-          )
-          .in('id', offerIdBatch),
-    }),
     getJobsChangesBadgeCountAction(),
   ])
 
@@ -676,14 +614,6 @@ export default async function JobsPage({
     throw new Error('Nepodařilo se načíst fotky k info zakázek.')
   }
 
-  if (missingLinkedOffersResponse.error) {
-    throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
-  }
-
-  const linkedOfferRows = [
-    ...loadedLinkedOfferRows,
-    ...(missingLinkedOffersResponse.data ?? []),
-  ]
   const jobIdsWithInfoAttachments = new Set(
     (infoAttachmentRows ?? []).map((row) => String(row.job_id ?? '').trim())
   )
@@ -706,46 +636,6 @@ export default async function JobsPage({
   const jobChangesCount = jobChangesData.success
     ? (jobChangesData.data?.badgeCount ?? 0)
     : 0
-
-  const clientContacts = ((clientContactsData ?? []) as ClientContactOption[])
-    .map((item) => ({
-      id: String(item.id ?? '').trim(),
-      client_id: String(item.client_id ?? '').trim(),
-      name: item.name?.trim() ?? '',
-      is_primary: Boolean(item.is_primary),
-    }))
-    .filter((item) => Boolean(item.id) && Boolean(item.client_id) && Boolean(item.name))
-  const offerSuggestions = ((offerSuggestionsData ?? []) as JobOfferOption[])
-    .map((item) => ({
-      id: String(item.id ?? '').trim(),
-      client_id: String(item.client_id ?? '').trim(),
-      offer_number: String(item.offer_number ?? '').trim(),
-      title: String(item.title ?? '').trim(),
-      order_reference: String(item.order_reference ?? '').trim() || null,
-      realization_starts_at: item.realization_starts_at ?? null,
-      realization_ends_at: item.realization_ends_at ?? null,
-      realization_address: item.realization_address ?? null,
-    }))
-    .filter((item) => item.id && item.client_id && item.offer_number && item.title)
-  const jobOfferSuggestions = ((linkedOfferRows ?? []) as JobOfferOption[])
-    .map((item) => ({
-      id: String(item.id ?? '').trim(),
-      client_id: String(item.client_id ?? '').trim(),
-      offer_number: String(item.offer_number ?? '').trim(),
-      title: String(item.title ?? '').trim(),
-      order_reference: String(item.order_reference ?? '').trim() || null,
-      realization_starts_at: item.realization_starts_at ?? null,
-      realization_ends_at: item.realization_ends_at ?? null,
-      realization_address: item.realization_address ?? null,
-    }))
-    .filter((item) => item.id && item.client_id && item.offer_number && item.title)
-  const technicianSuggestions = ((technicianProfilesData ?? []) as {
-    id: string
-    name: string | null
-    can_be_assigned_as_technician: boolean | null
-  }[])
-    .map((item) => item.name?.trim() ?? '')
-    .filter((item) => Boolean(item))
 
   const hasActiveFilters = Boolean(
     query || jobStatus || view !== 'all' || dateFrom || dateTo
@@ -869,14 +759,7 @@ export default async function JobsPage({
                   ZPĚT NA DASHBOARD
                 </Link>
 
-                <NewJobButton
-                  clientSuggestions={clientOptions}
-                  clientContacts={clientContacts}
-                  offerSuggestions={offerSuggestions}
-                  technicianSuggestions={technicianSuggestions}
-                  isAdmin={isAdmin}
-                  className="clients-page__new-button"
-                />
+                <NewJobButton isAdmin={isAdmin} className="clients-page__new-button" />
               </div>
             </div>
           </section>
@@ -1334,14 +1217,59 @@ export default async function JobsPage({
             <div className="jobs-page__table-shell">
               <JobsInteractiveTable
                 jobs={jobsWithInfoState}
-                clientSuggestions={clientOptions}
-                clientContacts={clientContacts}
-                offerSuggestions={offerSuggestions}
-                jobOfferSuggestions={jobOfferSuggestions}
-                technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
                 allowEditing={true}
               />
+              {totalPages > 1 ? (
+                <nav
+                  aria-label="Stránkování zakázek"
+                  className="print-hidden mt-4 flex justify-center"
+                >
+                  <div className="flex items-center gap-1 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.88)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
+                    <Link
+                      href={buildJobsPageHref({
+                        query,
+                        jobStatus,
+                        view,
+                        sort,
+                        dateFrom,
+                        dateTo,
+                        page: Math.max(1, currentPage - 1),
+                      })}
+                      aria-disabled={currentPage === 1}
+                      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${
+                        currentPage === 1
+                          ? 'pointer-events-none text-gray-300'
+                          : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                      }`}
+                    >
+                      ‹
+                    </Link>
+                    <span className="px-2 text-xs font-semibold tabular-nums text-gray-600">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <Link
+                      href={buildJobsPageHref({
+                        query,
+                        jobStatus,
+                        view,
+                        sort,
+                        dateFrom,
+                        dateTo,
+                        page: Math.min(totalPages, currentPage + 1),
+                      })}
+                      aria-disabled={currentPage === totalPages}
+                      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${
+                        currentPage === totalPages
+                          ? 'pointer-events-none text-gray-300'
+                          : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                      }`}
+                    >
+                      ›
+                    </Link>
+                  </div>
+                </nav>
+              ) : null}
             </div>
           )}
         </div>

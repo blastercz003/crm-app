@@ -206,7 +206,7 @@ export function JobAttachmentsModalContent({
                 </div>
 
                 {showCategorySelect ? (
-                  <div>
+                  <div className="relative">
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                       Kategorie
                     </label>
@@ -214,7 +214,7 @@ export function JobAttachmentsModalContent({
                       value={categoryValue}
                       onChange={(event) => onCategoryChange(event.target.value as JobAttachmentCategory)}
                       disabled={isPending}
-                      className="jobs-page__info-modal__category-select h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
+                      className="jobs-page__info-modal__category-select h-10 w-full appearance-none rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 pr-10 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                     >
                       {categoryOptions.map((item) => (
                         <option key={item.value} value={item.value}>
@@ -222,6 +222,12 @@ export function JobAttachmentsModalContent({
                         </option>
                       ))}
                     </select>
+                    <span
+                      className="jobs-page__info-modal__category-chevron pointer-events-none absolute bottom-0 right-3 flex h-10 items-center text-sm text-gray-500"
+                      aria-hidden="true"
+                    >
+                      ▾
+                    </span>
                   </div>
                 ) : null}
               </div>
@@ -232,11 +238,12 @@ export function JobAttachmentsModalContent({
                   type="button"
                   onClick={onUpload}
                   disabled={isPending || selectedFiles.length === 0}
-                  className="jobs-page__info-modal__upload-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[176px] md:w-auto"
+                  className={`jobs-page__info-modal__upload-button inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[176px] md:w-auto ${
+                    isPending ? 'jobs-page__info-modal__upload-button--uploading' : ''
+                  }`}
+                  aria-live="polite"
                 >
-                  <span>
-                    {uploadButtonLabel}
-                  </span>
+                  <span>{isPending ? 'Nahrávání' : uploadButtonLabel}</span>
                 </button>
               </div>
             </div>

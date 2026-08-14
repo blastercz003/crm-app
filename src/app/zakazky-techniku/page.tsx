@@ -1030,11 +1030,6 @@ export default async function ZakazkyTechnikuPage({
           <div className="jobs-page__table-shell print-table-section">
             <JobsInteractiveTable
               jobs={jobsWithInfoState}
-              clientSuggestions={[]}
-              clientContacts={[]}
-              offerSuggestions={[]}
-              jobOfferSuggestions={[]}
-              technicianSuggestions={[]}
               isAdmin={false}
               allowEditing={false}
               showReadOnlyInfo

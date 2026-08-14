@@ -22,6 +22,7 @@ import Image from 'next/image'
 
 type ModeKey = 'upload' | 'view'
 type MobileViewPanel = 'list' | 'preview'
+type UploadKind = 'single' | 'multi'
 
 const MODE_TABS = [
   { value: 'view', label: 'Faktury' },
@@ -240,6 +241,7 @@ export function ReceivedInvoicesModal({
   const [singleDueDate, setSingleDueDate] = useState(getTodayDateInputValue)
   const [singleFile, setSingleFile] = useState<File | null>(null)
   const [multipleFiles, setMultipleFiles] = useState<File[]>([])
+  const [activeUpload, setActiveUpload] = useState<UploadKind | null>(null)
   const [dueDateDraft, setDueDateDraft] = useState('')
   const [mobileViewPanel, setMobileViewPanel] = useState<MobileViewPanel>('list')
   const [isMobileViewport, setIsMobileViewport] = useState(false)
@@ -418,18 +420,24 @@ export function ReceivedInvoicesModal({
     formData.set('file', singleFile)
     formData.set('due_date', singleDueDate)
 
-    startTransition(async () => {
-      setError(null)
-      const result = await uploadSingleReceivedInvoiceAction(formData)
-      if (!result.success) {
-        setError(result.error ?? 'Nahrání souboru selhalo.')
-        return
-      }
+    setActiveUpload('single')
 
-      setSingleFile(null)
-      setSingleDueDate(getTodayDateInputValue())
-      setMode('view')
-      refreshData()
+    startTransition(async () => {
+      try {
+        setError(null)
+        const result = await uploadSingleReceivedInvoiceAction(formData)
+        if (!result.success) {
+          setError(result.error ?? 'Nahrání souboru selhalo.')
+          return
+        }
+
+        setSingleFile(null)
+        setSingleDueDate(getTodayDateInputValue())
+        setMode('view')
+        refreshData()
+      } finally {
+        setActiveUpload(null)
+      }
     })
   }
 
@@ -446,17 +454,23 @@ export function ReceivedInvoicesModal({
       formData.append('files', file)
     }
 
-    startTransition(async () => {
-      setError(null)
-      const result = await uploadMultipleReceivedInvoicesAction(formData)
-      if (!result.success) {
-        setError(result.error ?? 'Nahrání souborů selhalo.')
-        return
-      }
+    setActiveUpload('multi')
 
-      setMultipleFiles([])
-      setMode('view')
-      refreshData()
+    startTransition(async () => {
+      try {
+        setError(null)
+        const result = await uploadMultipleReceivedInvoicesAction(formData)
+        if (!result.success) {
+          setError(result.error ?? 'Nahrání souborů selhalo.')
+          return
+        }
+
+        setMultipleFiles([])
+        setMode('view')
+        refreshData()
+      } finally {
+        setActiveUpload(null)
+      }
     })
   }
 
@@ -621,9 +635,14 @@ export function ReceivedInvoicesModal({
                       type="submit"
                       disabled={isPending}
                       data-action="upload-single"
-                      className="mt-auto inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
+                      className={`received-invoices-modal__upload-button mt-auto inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60 ${
+                        activeUpload === 'single'
+                          ? 'received-invoices-modal__upload-button--uploading'
+                          : ''
+                      }`}
+                      aria-live="polite"
                     >
-                      Nahrát se splatností
+                      {activeUpload === 'single' ? 'Nahrávání' : 'Nahrát se splatností'}
                     </button>
                   </form>
 
@@ -656,9 +675,14 @@ export function ReceivedInvoicesModal({
                       type="submit"
                       disabled={isPending}
                       data-action="upload-multi"
-                      className="mt-auto inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
+                      className={`received-invoices-modal__upload-button mt-auto inline-flex h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60 ${
+                        activeUpload === 'multi'
+                          ? 'received-invoices-modal__upload-button--uploading'
+                          : ''
+                      }`}
+                      aria-live="polite"
                     >
-                      Nahrát více souborů
+                      {activeUpload === 'multi' ? 'Nahrávání' : 'Nahrát více souborů'}
                     </button>
                   </form>
               </div>

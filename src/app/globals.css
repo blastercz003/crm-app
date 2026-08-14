@@ -1976,6 +1976,39 @@ html[data-theme='dark'] .received-invoices-modal__upload-card button[type='submi
   ) !important;
 }
 
+.received-invoices-modal__upload-button--uploading {
+  position: relative;
+  overflow: hidden;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+.received-invoices-modal__upload-button--uploading::after {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  height: 2px;
+  content: '';
+  background: linear-gradient(90deg, transparent 0%, #73b8e7 24%, #d9f0ff 50%, #73b8e7 76%, transparent 100%);
+  box-shadow: 0 0 8px rgba(115, 184, 231, 0.82);
+  animation: attachment-upload-progress-sweep 1.25s ease-in-out infinite;
+}
+
+html[data-theme='dark'] .received-invoices-modal__upload-card .received-invoices-modal__upload-button--uploading {
+  border-color: rgba(115, 184, 231, 0.58) !important;
+  background: #18181b !important;
+  color: #f8fbff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .received-invoices-modal__upload-button--uploading::after {
+    width: 100%;
+    animation: none;
+    transform: none;
+  }
+}
+
 html[data-theme='dark'] .received-invoices-modal__row[data-selected='true'] {
   border-color: rgba(92, 167, 219, 0.28);
   background: linear-gradient(
@@ -8770,6 +8803,33 @@ html[data-theme='dark'] .soubory-page__upload-modal__submit:hover {
   background: linear-gradient(155deg, rgba(66, 140, 191, 0.98) 0%, rgba(47, 119, 175, 0.96) 45%, rgba(35, 100, 153, 0.96) 100%) !important;
 }
 
+.soubory-page__upload-modal__submit--uploading {
+  position: relative;
+  overflow: hidden;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+.soubory-page__upload-modal__submit--uploading::after {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  height: 2px;
+  content: '';
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.52) 24%, #ffffff 50%, rgba(255, 255, 255, 0.52) 76%, transparent 100%);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.74);
+  animation: attachment-upload-progress-sweep 1.25s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soubory-page__upload-modal__submit--uploading::after {
+    width: 100%;
+    animation: none;
+    transform: none;
+  }
+}
+
 html[data-theme='dark'] .soubory-page__hero .text-gray-900,
 html[data-theme='dark'] .soubory-page__hero .text-zinc-900,
 html[data-theme='dark'] .soubory-page__sidebar .text-gray-900,
@@ -13409,6 +13469,10 @@ html[data-theme='dark'] .jobs-page__info-modal__category-select option {
   background: rgba(8, 13, 23, 0.98) !important;
 }
 
+html[data-theme='dark'] .jobs-page__info-modal__category-chevron {
+  color: #94a3b8 !important;
+}
+
 html[data-theme='dark'] .jobs-page__info-modal__handover-job-select[data-placeholder='true'] {
   color: #94a3b8 !important;
 }
@@ -13618,6 +13682,49 @@ html[data-theme='dark'] .jobs-page__info-modal__attachments-shell .jobs-page__in
     rgba(8, 13, 23, 0.94) 100%
   ) !important;
   color: #e2e8f0 !important;
+}
+
+@keyframes attachment-upload-progress-sweep {
+  from {
+    transform: translateX(-150%);
+  }
+
+  to {
+    transform: translateX(325%);
+  }
+}
+
+.jobs-page__info-modal__upload-button--uploading {
+  position: relative;
+  overflow: hidden;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+.jobs-page__info-modal__upload-button--uploading::after {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  height: 2px;
+  content: '';
+  background: linear-gradient(90deg, transparent 0%, #73b8e7 24%, #d9f0ff 50%, #73b8e7 76%, transparent 100%);
+  box-shadow: 0 0 8px rgba(115, 184, 231, 0.82);
+  animation: attachment-upload-progress-sweep 1.25s ease-in-out infinite;
+}
+
+html[data-theme='dark'] .jobs-page__info-modal__upload-button--uploading {
+  border-color: rgba(115, 184, 231, 0.58) !important;
+  background: #18181b !important;
+  color: #f8fbff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jobs-page__info-modal__upload-button--uploading::after {
+    width: 100%;
+    animation: none;
+    transform: none;
+  }
 }
 
 html[data-theme='dark'] .offers-page__status-modal__frame,

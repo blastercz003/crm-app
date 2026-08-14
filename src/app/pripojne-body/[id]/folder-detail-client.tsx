@@ -338,9 +338,12 @@ function UploadPhotosModal({
           type="button"
           disabled={isPending || files.length === 0}
           onClick={submit}
-          className="soubory-page__upload-modal__submit inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40"
+          className={`soubory-page__upload-modal__submit inline-flex h-11 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_24px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] disabled:opacity-40 ${
+            isPending ? 'soubory-page__upload-modal__submit--uploading' : ''
+          }`}
+          aria-live="polite"
         >
-          {isPending ? 'Nahrávám…' : 'Nahrát fotky'}
+          {isPending ? 'Nahrávání' : 'Nahrát fotky'}
         </button>
       </div>
     </SimpleModal>

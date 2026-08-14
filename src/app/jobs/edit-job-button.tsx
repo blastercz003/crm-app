@@ -13,7 +13,9 @@ import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
 import {
   deleteJobAction,
+  getJobFormSuggestionsAction,
   updateJobAction,
+  type JobFormSuggestions,
   type UpdateJobActionState,
 } from './actions'
 import { JobFormToggleCard } from '@/components/jobs/job-pp-required-toggle'
@@ -218,11 +220,33 @@ function EditJobModal({
   onClose: () => void
 }) {
   const router = useRouter()
+  const [formSuggestions, setFormSuggestions] =
+    useState<JobFormSuggestions | null>(null)
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null)
   const [state, formAction] = useActionState(
     updateJobAction.bind(null, job.id),
     initialUpdateState
   )
   const [isDeleting, startDeleteTransition] = useTransition()
+
+  useEffect(() => {
+    let isCurrent = true
+
+    void getJobFormSuggestionsAction(job.offer_id).then((result) => {
+      if (!isCurrent) return
+
+      if (!result.success) {
+        setSuggestionsError(result.error)
+        return
+      }
+
+      setFormSuggestions(result.data)
+    })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [job.offer_id])
 
   useEffect(() => {
     if (state.success) {
@@ -251,14 +275,22 @@ function EditJobModal({
     })
   }
 
+  if (suggestionsError) {
+    return <JobFormLoadError message={suggestionsError} onClose={onClose} />
+  }
+
+  if (!formSuggestions) {
+    return <JobFormLoadingModal onClose={onClose} />
+  }
+
   return (
     <JobFormShell
       mode="edit"
-      clientSuggestions={clientSuggestions}
-      clientContacts={clientContacts}
-      offerSuggestions={offerSuggestions}
-      jobOfferSuggestions={jobOfferSuggestions}
-      technicianSuggestions={technicianSuggestions}
+      clientSuggestions={formSuggestions.clientSuggestions}
+      clientContacts={formSuggestions.clientContacts}
+      offerSuggestions={formSuggestions.offerSuggestions}
+      jobOfferSuggestions={formSuggestions.offerSuggestions}
+      technicianSuggestions={formSuggestions.technicianSuggestions}
       onClose={onClose}
       error={state.error}
       formAction={formAction}
@@ -266,6 +298,64 @@ function EditJobModal({
       onDelete={handleDeleteClick}
       isDeleting={isDeleting}
     />
+  )
+}
+
+function JobFormLoadingModal({ onClose }: { onClose: () => void }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm [html[data-theme='dark']_&]:bg-[#020617]/72">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="Načítání formuláře zakázky"
+        className="w-full max-w-sm rounded-3xl border border-white/90 bg-[linear-gradient(155deg,#ffffff_0%,#f1f6fb_100%)] p-6 text-center shadow-[0_24px_56px_rgba(15,23,42,0.28)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.2)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(19,31,51,0.99)_0%,rgba(8,17,32,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_24px_56px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.05)]"
+      >
+        <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#2f78b1] [html[data-theme='dark']_&]:text-[#8fceff]">
+          Zakázky
+        </p>
+        <p className="mt-3 text-base font-semibold text-gray-900 [html[data-theme='dark']_&]:text-slate-100">
+          Načítám formulář…
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.2)] [html[data-theme='dark']_&]:bg-[rgba(30,41,59,0.88)] [html[data-theme='dark']_&]:text-slate-200"
+        >
+          Zrušit
+        </button>
+      </section>
+    </div>,
+    document.body
+  )
+}
+
+function JobFormLoadError({
+  message,
+  onClose,
+}: {
+  message: string
+  onClose: () => void
+}) {
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="Nepodařilo se načíst formulář zakázky"
+        className="w-full max-w-sm rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(241,246,251,0.94)_100%)] p-6 text-center shadow-[0_24px_56px_rgba(15,23,42,0.28)]"
+      >
+        <p className="text-base font-semibold text-gray-900">Formulář se nepodařilo načíst.</p>
+        <p className="mt-2 text-sm text-gray-600">{message}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700"
+        >
+          Zavřít
+        </button>
+      </section>
+    </div>,
+    document.body
   )
 }
 
@@ -566,7 +656,7 @@ function JobFormShell({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-zinc-950/38 p-3 [-webkit-overflow-scrolling:touch] backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -575,8 +665,17 @@ function JobFormShell({
         }
       }}
     >
-      <div className="flex min-h-full items-center justify-center overflow-hidden">
-        <div className="jobs-page__modal-shell jobs-page__job-form-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
+      <div
+        className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+      >
+        <div
+          className="jobs-page__modal-shell jobs-page__job-form-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
+          style={{
+            maxHeight:
+              'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
+          }}
+        >
           <div className="jobs-page__modal-header jobs-page__job-form-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <ModalHeading section="ZAKÁZKY" title={title} />
 
@@ -607,7 +706,7 @@ function JobFormShell({
               value={companySelectionIsValid ? companyName.trim() : ''}
             />
 
-            <div className="jobs-page__job-form-modal__body min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+            <div className="jobs-page__job-form-modal__body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch] sm:px-5 sm:py-4">
               <div className="grid gap-3 xl:grid-cols-[1.08fr_0.87fr_1.05fr]">
                 <section className="jobs-page__job-form-modal__section overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.90)_0%,rgba(241,245,250,0.82)_100%)] p-3 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] sm:overflow-visible">
                   <div className="mb-3">
@@ -668,7 +767,7 @@ function JobFormShell({
                             id={`${mode}-client_contact_id`}
                             value={selectedContactId}
                             onChange={(event) => handleContactChange(event.target.value)}
-                            className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                            className="jobs-page__job-form-modal__field h-10 w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                           >
                             <option value="">Bez konkrétní osoby</option>
                             {selectedClientContacts.map((contact) => (
@@ -745,7 +844,7 @@ function JobFormShell({
                         id={`${mode}-sales_owner`}
                         name="sales_owner"
                         defaultValue={job.sales_owner ?? 'JIŘÍ'}
-                        className="jobs-page__job-form-modal__field h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                        className="jobs-page__job-form-modal__field h-10 w-full appearance-none rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       >
                         <option value="JIŘÍ">JIŘÍ</option>
                         <option value="MICHAL">MICHAL</option>
@@ -935,24 +1034,34 @@ function JobFormShell({
               ) : null}
             </div>
 
-            <div className="jobs-page__job-form-modal__footer flex shrink-0 flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:px-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="jobs-page__job-form-modal__footer flex shrink-0 items-center justify-between gap-2 border-t border-gray-100 px-3 py-3 sm:px-5">
               <div className="flex shrink-0">
                 <button
                   type="button"
                   onClick={onDelete}
                   disabled={isDeleting}
-                  className="jobs-page__job-form-modal__delete inline-flex h-10 min-w-[170px] shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-red-400/70 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-4 text-[13px] font-semibold uppercase tracking-[0.02em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_10px_20px_rgba(220,38,38,0.26)] transition duration-200 hover:-translate-y-[1px] hover:border-red-500/80 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.30),0_14px_26px_rgba(220,38,38,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__job-form-modal__delete inline-flex min-h-10 min-w-0 shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-red-400/70 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-3 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_10px_20px_rgba(220,38,38,0.26)] transition duration-200 hover:-translate-y-[1px] hover:border-red-500/80 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.30),0_14px_26px_rgba(220,38,38,0.32)] disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[170px] sm:px-4"
                 >
-                  {isDeleting ? 'MAŽU ZAKÁZKU…' : 'SMAZAT ZAKÁZKU'}
+                  {isDeleting ? (
+                    <>
+                      <span className="sm:hidden">MAŽU…</span>
+                      <span className="hidden sm:inline">MAŽU ZAKÁZKU…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="sm:hidden">SMAZAT</span>
+                      <span className="hidden sm:inline">SMAZAT ZAKÁZKU</span>
+                    </>
+                  )}
                 </button>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isDeleting}
-                  className="jobs-page__job-form-modal__cancel inline-flex h-10 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-4 text-[13px] font-semibold uppercase tracking-[0.02em] text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="jobs-page__job-form-modal__cancel inline-flex min-h-10 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-3 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60 sm:px-4"
                 >
                   ZRUŠIT
                 </button>
@@ -960,6 +1069,7 @@ function JobFormShell({
                 <SubmitButton
                   label={submitLabel}
                   disabled={isDeleting || !companySelectionIsValid}
+                  className="shrink-0 !px-3 sm:!px-4"
                 />
               </div>
             </div>
@@ -992,7 +1102,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={isDisabled}
-      className={`jobs-page__job-form-modal__submit inline-flex h-10 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 text-[13px] font-semibold uppercase tracking-[0.02em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`jobs-page__job-form-modal__submit inline-flex min-h-10 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {pending ? 'UKLÁDÁM…' : label}
     </button>

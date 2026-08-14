@@ -57,40 +57,12 @@ type OptimisticFinanceChangeHandler = (
 
 type FakturyInteractiveTableProps = {
   rows: FakturaRow[]
-  clientSuggestions: ClientOption[]
-  clientContacts: ClientContactOption[]
-  offerSuggestions: JobOfferOption[]
-  jobOfferSuggestions: JobOfferOption[]
-  technicianSuggestions: string[]
   technicianOptions: TechnicianOption[]
 }
 
 type TechnicianOption = {
   id: string
   name: string
-}
-
-type ClientOption = {
-  id: string
-  name: string
-}
-
-type ClientContactOption = {
-  id: string
-  client_id: string
-  name: string
-  is_primary: boolean
-}
-
-type JobOfferOption = {
-  id: string
-  client_id: string
-  offer_number: string
-  title: string
-  order_reference?: string | null
-  realization_starts_at: string | null
-  realization_ends_at: string | null
-  realization_address: string | null
 }
 
 type CostPreset = {
@@ -162,11 +134,6 @@ const ATTACHMENT_CATEGORY_OPTIONS: Array<{
 
 export function FakturyInteractiveTable({
   rows,
-  clientSuggestions,
-  clientContacts,
-  offerSuggestions,
-  jobOfferSuggestions,
-  technicianSuggestions,
   technicianOptions,
 }: FakturyInteractiveTableProps) {
   const [editingRow, setEditingRow] = useState<FakturaRow | null>(null)
@@ -270,11 +237,6 @@ export function FakturyInteractiveTable({
       {editingRow ? (
         <EditJobModalController
           job={buildEditableJob(editingRow)}
-          clientSuggestions={clientSuggestions}
-          clientContacts={clientContacts}
-          offerSuggestions={offerSuggestions}
-          jobOfferSuggestions={jobOfferSuggestions}
-          technicianSuggestions={technicianSuggestions}
           onClose={() => setEditingRow(null)}
         />
       ) : null}

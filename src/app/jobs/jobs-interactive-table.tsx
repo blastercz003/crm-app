@@ -27,28 +27,17 @@ type JobStatus =
 type EvidenceStatus = 'nove' | 'zapsano'
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
-type ClientOption = {
-  id: string
-  name: string
-}
+type ClientOption = { id: string; name: string }
 
-type ClientContactOption = {
-  id: string
-  client_id: string
-  name: string
-  is_primary: boolean
-}
-
-type OfferOption = {
-  id: string
-  client_id: string
-  offer_number: string
-  title: string
-  order_reference?: string | null
-  realization_starts_at: string | null
-  realization_ends_at: string | null
-  realization_address: string | null
-}
+type InlineEditableField =
+  | 'company_name'
+  | 'contact_person'
+  | 'start_at'
+  | 'end_at'
+  | 'site_address'
+  | 'store_number'
+  | 'technician_name'
+  | 'generator_name'
 
 type JobRow = {
   id: string
@@ -79,23 +68,8 @@ type JobRow = {
   invoice_status: 'bez_faktury' | 'k_fakturaci' | 'vyfakturovano'
 }
 
-type InlineEditableField =
-  | 'company_name'
-  | 'contact_person'
-  | 'start_at'
-  | 'end_at'
-  | 'site_address'
-  | 'store_number'
-  | 'technician_name'
-  | 'generator_name'
-
 type JobsInteractiveTableProps = {
   jobs: JobRow[]
-  clientSuggestions: ClientOption[]
-  clientContacts: ClientContactOption[]
-  offerSuggestions: OfferOption[]
-  jobOfferSuggestions: OfferOption[]
-  technicianSuggestions?: string[]
   isAdmin: boolean
   allowEditing?: boolean
   showReadOnlyInfo?: boolean
@@ -107,6 +81,14 @@ type JobsInteractiveTableProps = {
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const STATUS_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
 const EVIDENCE_BUTTON_WIDTH_CLASS = 'min-w-[108px]'
+function normalizeSearchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('cs')
+}
+
 function getEffectiveJobStatus(job: JobRow): JobStatus {
   if (job.job_status !== 'realizace' && job.job_status !== 'ukoncena') {
     return job.job_status
@@ -121,21 +103,8 @@ function getEffectiveJobStatus(job: JobRow): JobStatus {
   return endAt.getTime() < Date.now() ? 'ukoncena' : 'realizace'
 }
 
-function normalizeSearchText(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLocaleLowerCase('cs')
-}
-
 export function JobsInteractiveTable({
   jobs,
-  clientSuggestions,
-  clientContacts,
-  offerSuggestions,
-  jobOfferSuggestions,
-  technicianSuggestions = [],
   isAdmin,
   allowEditing = true,
   showReadOnlyInfo = false,
@@ -217,8 +186,6 @@ export function JobsInteractiveTable({
               <DesktopRow
                 key={job.id}
                 job={job}
-                clientSuggestions={clientSuggestions}
-                technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
                 allowEditing={allowEditing}
                 showReadOnlyInfo={showReadOnlyInfo}
@@ -238,7 +205,6 @@ export function JobsInteractiveTable({
               <MobileCard
                 key={job.id}
                 job={job}
-                technicianSuggestions={technicianSuggestions}
                 isAdmin={isAdmin}
                 allowEditing={allowEditing}
                 showReadOnlyInfo={showReadOnlyInfo}
@@ -253,11 +219,6 @@ export function JobsInteractiveTable({
       {editingJob ? (
         <EditJobModalController
           job={editingJob}
-          clientSuggestions={clientSuggestions}
-          clientContacts={clientContacts}
-          offerSuggestions={offerSuggestions}
-          jobOfferSuggestions={jobOfferSuggestions}
-          technicianSuggestions={technicianSuggestions}
           onClose={() => setEditingJob(null)}
         />
       ) : null}
@@ -267,8 +228,6 @@ export function JobsInteractiveTable({
 
 function DesktopRow({
   job,
-  clientSuggestions,
-  technicianSuggestions,
   isAdmin,
   allowEditing,
   showReadOnlyInfo,
@@ -278,8 +237,6 @@ function DesktopRow({
   onEditJob,
 }: {
   job: JobRow
-  clientSuggestions: ClientOption[]
-  technicianSuggestions: string[]
   isAdmin: boolean
   allowEditing: boolean
   showReadOnlyInfo: boolean
@@ -318,74 +275,33 @@ function DesktopRow({
         </td>
       ) : null}
 
-      <EditableCell
-        job={job}
-        field="company_name"
+      <StaticCell
         value={job.company_name}
-        canEdit={allowEditing && isAdmin}
-        clientSuggestions={clientSuggestions}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
-      <EditableCell
-        job={job}
-        field="contact_person"
+      <StaticCell
         value={job.contact_person}
         printHidden
-        canEdit={allowEditing && isAdmin}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
-      <EditableCell
-        job={job}
-        field="start_at"
+      <StaticCell
         value={job.start_at}
         type="datetime"
-        canEdit={allowEditing && isAdmin}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
-      <EditableCell
-        job={job}
-        field="end_at"
+      <StaticCell
         value={job.end_at}
         type="datetime"
-        canEdit={allowEditing && isAdmin}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
-      <EditableCell
-        job={job}
-        field="site_address"
+      <StaticCell
         value={job.site_address}
-        canEdit={allowEditing && isAdmin}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
-      <EditableCell
-        job={job}
-        field="store_number"
+      <StaticCell
         value={job.store_number}
         printHidden
-        canEdit={allowEditing && isAdmin}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
-      <EditableCell
-        job={job}
-        field="technician_name"
+      <StaticCell
         value={job.technician_name}
-        canEdit={allowEditing}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
-      <EditableCell
-        job={job}
-        field="generator_name"
+      <StaticCell
         value={job.generator_name}
-        canEdit={allowEditing}
-        technicianSuggestions={technicianSuggestions}
-        onJobUpdate={onJobUpdate}
       />
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
@@ -450,7 +366,6 @@ function DesktopRow({
 
 function MobileCard({
   job,
-  technicianSuggestions,
   isAdmin,
   allowEditing,
   showReadOnlyInfo,
@@ -460,7 +375,6 @@ function MobileCard({
   onEditJob,
 }: {
   job: JobRow
-  technicianSuggestions: string[]
   isAdmin: boolean
   allowEditing: boolean
   showReadOnlyInfo: boolean
@@ -671,13 +585,13 @@ function MobileCard({
             canEdit={allowEditing}
             onJobUpdate={onJobUpdate}
           />
-          <MobileAssignmentButton
-            job={job}
-            canEdit
-            compact
-            technicianSuggestions={technicianSuggestions}
-            onJobUpdate={onJobUpdate}
-          />
+          <button
+            type="button"
+            onClick={() => onEditJob(job)}
+            className={`inline-flex h-8 min-w-0 w-full items-center justify-center px-2 text-[11px] font-bold uppercase ${GLASS_SECONDARY_BUTTON_CLASS}`}
+          >
+            UPRAVIT
+          </button>
         </div>
       ) : isActionsOpen && showCollapsedReadOnlyActions ? (
         <div
@@ -1110,6 +1024,33 @@ function MobileAssignmentButton({
         onConfirm={() => setSuccessMessage(null)}
       />
     </>
+  )
+}
+
+function StaticCell({
+  value,
+  type = 'text',
+  printHidden = false,
+}: {
+  value: string | null
+  type?: 'text' | 'datetime'
+  printHidden?: boolean
+}) {
+  const displayValue = type === 'datetime' ? formatDateTime(value) : value || '—'
+
+  return (
+    <td
+      className={`border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:border print:px-1.5 print:py-1.5 ${
+        printHidden ? 'print:hidden' : ''
+      }`}
+    >
+      <div
+        className="jobs-page__table-cell-value block w-full rounded-lg px-1 py-1 text-left text-[12px] text-gray-700 print:px-0 print:py-0 print:text-[11px]"
+        title={displayValue}
+      >
+        <span className="block truncate">{displayValue}</span>
+      </div>
+    </td>
   )
 }
 

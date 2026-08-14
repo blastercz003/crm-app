@@ -110,6 +110,31 @@ export type DeleteJobActionState = {
   error: string | null
 }
 
+export type JobFormSuggestions = {
+  clientSuggestions: Array<{ id: string; name: string }>
+  clientContacts: Array<{
+    id: string
+    client_id: string
+    name: string
+    is_primary: boolean
+  }>
+  offerSuggestions: Array<{
+    id: string
+    client_id: string
+    offer_number: string
+    title: string
+    order_reference: string | null
+    realization_starts_at: string | null
+    realization_ends_at: string | null
+    realization_address: string | null
+  }>
+  technicianSuggestions: string[]
+}
+
+export type GetJobFormSuggestionsActionResult =
+  | { success: true; data: JobFormSuggestions }
+  | { success: false; error: string }
+
 type ProfilePermissionRow = {
   can_view_jobs: boolean | null
   role: string | null
@@ -522,6 +547,102 @@ async function requireJobsAccess() {
     user,
     error: null,
     isAdmin,
+  }
+}
+
+export async function getJobFormSuggestionsAction(
+  currentOfferId?: string | null
+): Promise<GetJobFormSuggestionsActionResult> {
+  const { supabase, user, error } = await requireJobsAccess()
+
+  if (!user) {
+    return { success: false, error: error ?? 'Nemáš oprávnění pro práci se zakázkami.' }
+  }
+
+  const normalizedCurrentOfferId = String(currentOfferId ?? '').trim()
+  const [clientsResponse, contactsResponse, offersResponse, techniciansResponse, currentOfferResponse] =
+    await Promise.all([
+      supabase.from('clients').select('id, name').order('name', { ascending: true }),
+      supabase
+        .from('client_contacts')
+        .select('id, client_id, name, is_primary')
+        .order('is_primary', { ascending: false })
+        .order('name', { ascending: true }),
+      supabase
+        .from('offers')
+        .select(
+          'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address'
+        )
+        .eq('offer_type', 'classic')
+        .neq('status', 'realizace')
+        .order('offer_number', { ascending: false }),
+      supabase
+        .from('profiles')
+        .select('name')
+        .eq('can_be_assigned_as_technician', true)
+        .order('name', { ascending: true }),
+      normalizedCurrentOfferId
+        ? supabase
+            .from('offers')
+            .select(
+              'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address'
+            )
+            .eq('id', normalizedCurrentOfferId)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ])
+
+  const responseError =
+    clientsResponse.error ??
+    contactsResponse.error ??
+    offersResponse.error ??
+    techniciansResponse.error ??
+    currentOfferResponse.error
+
+  if (responseError) {
+    return { success: false, error: 'Nepodařilo se načíst údaje pro formulář zakázky.' }
+  }
+
+  return {
+    success: true,
+    data: {
+      clientSuggestions: (clientsResponse.data ?? [])
+        .map((item) => ({
+          id: String(item.id ?? '').trim(),
+          name: String(item.name ?? '').trim(),
+        }))
+        .filter((item) => item.id && item.name),
+      clientContacts: (contactsResponse.data ?? [])
+        .map((item) => ({
+          id: String(item.id ?? '').trim(),
+          client_id: String(item.client_id ?? '').trim(),
+          name: String(item.name ?? '').trim(),
+          is_primary: Boolean(item.is_primary),
+        }))
+        .filter((item) => item.id && item.client_id && item.name),
+      offerSuggestions: [
+        ...(offersResponse.data ?? []),
+        ...(currentOfferResponse.data ? [currentOfferResponse.data] : []),
+      ]
+        .map((item) => ({
+          id: String(item.id ?? '').trim(),
+          client_id: String(item.client_id ?? '').trim(),
+          offer_number: String(item.offer_number ?? '').trim(),
+          title: String(item.title ?? '').trim(),
+          order_reference: String(item.order_reference ?? '').trim() || null,
+          realization_starts_at: item.realization_starts_at ?? null,
+          realization_ends_at: item.realization_ends_at ?? null,
+          realization_address: item.realization_address ?? null,
+        }))
+        .filter((item) => item.id && item.client_id && item.offer_number && item.title)
+        .filter(
+          (item, index, items) =>
+            items.findIndex((candidate) => candidate.id === item.id) === index
+        ),
+      technicianSuggestions: (techniciansResponse.data ?? [])
+        .map((item) => String(item.name ?? '').trim())
+        .filter(Boolean),
+    },
   }
 }
 

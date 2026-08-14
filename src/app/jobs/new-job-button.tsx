@@ -2,7 +2,12 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { createJobAction, type CreateJobActionState } from './actions'
+import {
+  createJobAction,
+  getJobFormSuggestionsAction,
+  type CreateJobActionState,
+  type JobFormSuggestions,
+} from './actions'
 import { buildJobCreatedToast } from '@/components/ui/action-feedback-messages'
 import {
   ActionFeedbackToast,
@@ -60,10 +65,6 @@ type JobFormValues = {
 }
 
 type NewJobButtonProps = {
-  clientSuggestions: ClientOption[]
-  clientContacts?: ClientContactOption[]
-  offerSuggestions?: OfferOption[]
-  technicianSuggestions?: string[]
   className?: string
   isAdmin?: boolean
 }
@@ -74,10 +75,6 @@ const initialCreateState: CreateJobActionState = {
 }
 
 export function NewJobButton({
-  clientSuggestions,
-  clientContacts = [],
-  offerSuggestions = [],
-  technicianSuggestions = [],
   className,
   isAdmin = true,
 }: NewJobButtonProps) {
@@ -117,10 +114,6 @@ export function NewJobButton({
       {isOpen ? (
         <CreateJobModal
           key={formKey}
-          clientSuggestions={clientSuggestions}
-          clientContacts={clientContacts}
-          offerSuggestions={offerSuggestions}
-          technicianSuggestions={technicianSuggestions}
           onClose={closeModal}
           onSuccess={(state) => showToast(buildJobCreatedToast(state))}
         />
@@ -132,21 +125,43 @@ export function NewJobButton({
 }
 
 export function CreateJobModal({
-  clientSuggestions,
-  clientContacts,
-  offerSuggestions,
-  technicianSuggestions,
+  clientSuggestions: _clientSuggestions,
+  clientContacts: _clientContacts,
+  offerSuggestions: _offerSuggestions,
+  technicianSuggestions: _technicianSuggestions,
   onClose,
   onSuccess,
 }: {
-  clientSuggestions: ClientOption[]
-  clientContacts: ClientContactOption[]
-  offerSuggestions: OfferOption[]
-  technicianSuggestions: string[]
+  clientSuggestions?: ClientOption[]
+  clientContacts?: ClientContactOption[]
+  offerSuggestions?: OfferOption[]
+  technicianSuggestions?: string[]
   onClose: () => void
   onSuccess?: (state: CreateJobActionState) => void
 }) {
   const [state, formAction] = useActionState(createJobAction, initialCreateState)
+  const [formSuggestions, setFormSuggestions] =
+    useState<JobFormSuggestions | null>(null)
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    void getJobFormSuggestionsAction().then((result) => {
+      if (!isCurrent) return
+
+      if (!result.success) {
+        setSuggestionsError(result.error)
+        return
+      }
+
+      setFormSuggestions(result.data)
+    })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   useEffect(() => {
     if (state.success) {
@@ -155,17 +170,65 @@ export function CreateJobModal({
     }
   }, [onClose, onSuccess, state])
 
+  if (suggestionsError) {
+    return <JobFormLoadError message={suggestionsError} onClose={onClose} />
+  }
+
+  if (!formSuggestions) {
+    return <JobFormLoadingModal onClose={onClose} />
+  }
+
   return (
     <JobFormShell
       mode="create"
-      clientSuggestions={clientSuggestions}
-      clientContacts={clientContacts}
-      offerSuggestions={offerSuggestions}
-      technicianSuggestions={technicianSuggestions}
+      clientSuggestions={formSuggestions.clientSuggestions}
+      clientContacts={formSuggestions.clientContacts}
+      offerSuggestions={formSuggestions.offerSuggestions}
+      technicianSuggestions={formSuggestions.technicianSuggestions}
       onClose={onClose}
       error={state.error}
       formAction={formAction}
     />
+  )
+}
+
+function JobFormLoadingModal({ onClose }: { onClose: () => void }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm [html[data-theme='dark']_&]:bg-[#020617]/72">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="Načítání formuláře zakázky"
+        className="w-full max-w-sm rounded-3xl border border-white/90 bg-[linear-gradient(155deg,#ffffff_0%,#f1f6fb_100%)] p-6 text-center shadow-[0_24px_56px_rgba(15,23,42,0.28)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.2)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(19,31,51,0.99)_0%,rgba(8,17,32,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_24px_56px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.05)]"
+      >
+        <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#2f78b1] [html[data-theme='dark']_&]:text-[#8fceff]">Zakázky</p>
+        <p className="mt-3 text-base font-semibold text-gray-900 [html[data-theme='dark']_&]:text-slate-100">Načítám formulář…</p>
+        <button type="button" onClick={onClose} className="mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.2)] [html[data-theme='dark']_&]:bg-[rgba(30,41,59,0.88)] [html[data-theme='dark']_&]:text-slate-200">
+          Zrušit
+        </button>
+      </section>
+    </div>,
+    document.body
+  )
+}
+
+function JobFormLoadError({ message, onClose }: { message: string; onClose: () => void }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="Nepodařilo se načíst formulář zakázky"
+        className="w-full max-w-sm rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(241,246,251,0.94)_100%)] p-6 text-center shadow-[0_24px_56px_rgba(15,23,42,0.28)]"
+      >
+        <p className="text-base font-semibold text-gray-900">Formulář se nepodařilo načíst.</p>
+        <p className="mt-2 text-sm text-gray-600">{message}</p>
+        <button type="button" onClick={onClose} className="mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium uppercase text-gray-700">
+          Zavřít
+        </button>
+      </section>
+    </div>,
+    document.body
   )
 }
 

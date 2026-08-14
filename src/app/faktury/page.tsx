@@ -60,7 +60,10 @@ type FakturySearchParams = {
   date_to?: string
   invoiced?: string
   overview_year?: string
+  page?: string
 }
+
+const FINANCES_PER_PAGE = 100
 
 type JobFinanceJoinRow = {
   id: string
@@ -470,6 +473,39 @@ function buildOverviewYearHref({
   return `/faktury?${params.toString()}`
 }
 
+function buildFinancePageHref({
+  query,
+  salesOwner,
+  sort,
+  dateFrom,
+  dateTo,
+  invoiced,
+  overviewYear,
+  page,
+}: {
+  query: string
+  salesOwner: string
+  sort: SortMode
+  dateFrom: string
+  dateTo: string
+  invoiced: string
+  overviewYear?: number
+  page: number
+}) {
+  const params = new URLSearchParams()
+  if (query) params.set('q', query)
+  if (salesOwner) params.set('sales', salesOwner)
+  if (sort !== 'job_number_desc') params.set('sort', sort)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+  if (invoiced) params.set('invoiced', invoiced)
+  if (overviewYear) params.set('overview_year', String(overviewYear))
+  if (page > 1) params.set('page', String(page))
+
+  const search = params.toString()
+  return search ? `/faktury?${search}` : '/faktury'
+}
+
 export default async function FakturyPage({
   searchParams,
 }: {
@@ -484,6 +520,8 @@ export default async function FakturyPage({
   const dateTo = params?.date_to?.trim() ?? ''
   const invoiced = isInvoicedFilter(params?.invoiced)
   const overviewYearParam = parseOverviewYear(params?.overview_year)
+  const requestedPage = Number.parseInt(params?.page ?? '', 10)
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1
 
   const supabase = await createClient()
 
@@ -566,7 +604,7 @@ export default async function FakturyPage({
         job_status,
         invoice_status
       )
-    `)
+    `, { count: 'exact' })
 
   if (salesOwner) {
     request = request.eq('job.sales_owner', salesOwner)
@@ -600,32 +638,28 @@ export default async function FakturyPage({
     }
   }
 
-  const [
-    financeResponse,
-    clientSuggestionsResponse,
-    clientContactsResponse,
-    offerSuggestionsResponse,
-    technicianProfilesResponse,
-    overviewResponse,
-  ] = await Promise.all([
-    request,
-    supabase
-      .from('clients')
-      .select('id, name')
-      .order('name', { ascending: true }),
-    supabase
-      .from('client_contacts')
-      .select('id, client_id, name, is_primary')
-      .order('is_primary', { ascending: false })
-      .order('name', { ascending: true }),
-    supabase
-      .from('offers')
-      .select(
-        'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
-      )
-      .eq('offer_type', 'classic')
-      .neq('status', 'realizace')
-      .order('offer_number', { ascending: false }),
+  if (sort === 'sale_desc') {
+    request = request.order('sale_amount', { ascending: false })
+  } else if (sort === 'job_number_desc') {
+    request = request.order('job_number_sort_value', { ascending: false })
+  } else {
+    request = request.order('job_start_at_sort', { ascending: false })
+  }
+
+  const totalResponse = await request.range(0, 0)
+
+  if (totalResponse.error) {
+    throw new Error('Nepodařilo se načíst fakturaci.')
+  }
+
+  const totalRows = totalResponse.count ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalRows / FINANCES_PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const rangeStart = (currentPage - 1) * FINANCES_PER_PAGE
+  const rangeEnd = rangeStart + FINANCES_PER_PAGE - 1
+
+  const [financeResponse, technicianProfilesResponse, overviewResponse] = await Promise.all([
+    request.range(rangeStart, rangeEnd),
     supabase
       .from('profiles')
       .select('id, name, can_be_assigned_as_technician')
@@ -640,50 +674,9 @@ export default async function FakturyPage({
     throw new Error('Nepodařilo se načíst fakturaci.')
   }
 
-  if (clientSuggestionsResponse.error) {
-    throw new Error('Nepodařilo se načíst klienty.')
-  }
-
-  if (clientContactsResponse.error) {
-    throw new Error('Nepodařilo se načíst kontaktní osoby klientů.')
-  }
-
-  if (offerSuggestionsResponse.error) {
-    throw new Error('Nepodařilo se načíst nabídky pro zakázky.')
-  }
-
   if (technicianProfilesResponse.error) {
     throw new Error('Nepodařilo se načíst techniky pro našeptávání.')
   }
-
-  const clientSuggestions = ((clientSuggestionsResponse.data ?? []) as ClientSuggestionRow[])
-    .map((client) => ({
-      id: String(client.id ?? '').trim(),
-      name: String(client.name ?? '').trim(),
-    }))
-    .filter((client) => client.id && client.name)
-
-  const clientContacts = ((clientContactsResponse.data ?? []) as ClientContactOption[])
-    .map((item) => ({
-      id: String(item.id ?? '').trim(),
-      client_id: String(item.client_id ?? '').trim(),
-      name: String(item.name ?? '').trim(),
-      is_primary: Boolean(item.is_primary),
-    }))
-    .filter((item) => item.id && item.client_id && item.name)
-
-  const offerSuggestions = ((offerSuggestionsResponse.data ?? []) as JobOfferOption[])
-    .map((item) => ({
-      id: String(item.id ?? '').trim(),
-      client_id: String(item.client_id ?? '').trim(),
-      offer_number: String(item.offer_number ?? '').trim(),
-      title: String(item.title ?? '').trim(),
-      order_reference: String(item.order_reference ?? '').trim() || null,
-      realization_starts_at: item.realization_starts_at ?? null,
-      realization_ends_at: item.realization_ends_at ?? null,
-      realization_address: item.realization_address ?? null,
-    }))
-    .filter((item) => item.id && item.client_id && item.offer_number && item.title)
 
   const technicianOptions = ((technicianProfilesResponse.data ?? []) as {
     id: string
@@ -695,8 +688,6 @@ export default async function FakturyPage({
       name: String(item.name ?? '').trim(),
     }))
     .filter((item) => item.id && item.name)
-
-  const technicianSuggestions = technicianOptions.map((item) => item.name)
 
   let rows: FakturaRow[] = ((data ?? []) as JobFinanceJoinRow[])
     .map((item) => {
@@ -736,39 +727,9 @@ export default async function FakturyPage({
     })
     .filter((item): item is FakturaRow => Boolean(item))
 
-  const linkedOfferIds = Array.from(
-    new Set(
-      rows
-        .map((row) => String(row.offer_id ?? '').trim())
-        .filter((offerId) => Boolean(offerId))
-    )
-  )
-
-  const loadedOffersById = new Map(
-    offerSuggestions.map((offer) => [offer.id, offer] as const)
-  )
-  const loadedLinkedOfferRows = linkedOfferIds.flatMap((offerId) => {
-    const offer = loadedOffersById.get(offerId)
-    return offer ? [offer] : []
-  })
-  const missingLinkedOfferIds = linkedOfferIds.filter(
-    (offerId) => !loadedOffersById.has(offerId)
-  )
   const uniqueJobIds = Array.from(new Set(rows.map((row) => row.job_id)))
 
-  const [
-    missingLinkedOffersResponse,
-    jobPpNotRequiredIds,
-    attachmentsResponse,
-  ] = await Promise.all([
-    querySupabaseInBatches<LinkedJobOfferRow>({
-      values: missingLinkedOfferIds,
-      queryBatch: (offerIdBatch) =>
-        supabase
-          .from('offers')
-          .select('id, client_id, offer_number, title, order_reference')
-          .in('id', offerIdBatch),
-    }),
+  const [jobPpNotRequiredIds, attachmentsResponse] = await Promise.all([
     getJobPpNotRequiredSet(supabase, uniqueJobIds),
     querySupabaseInBatches<JobAttachmentJobIdRow>({
       values: uniqueJobIds,
@@ -780,18 +741,10 @@ export default async function FakturyPage({
     }),
   ])
 
-  if (missingLinkedOffersResponse.error) {
-    throw new Error('Nepodařilo se načíst navázané nabídky k zakázkám.')
-  }
-
   if (attachmentsResponse.error) {
     throw new Error('Nepodařilo se načíst stav příloh.')
   }
 
-  const linkedOfferRows = [
-    ...loadedLinkedOfferRows,
-    ...(missingLinkedOffersResponse.data ?? []),
-  ]
   const jobIdsWithAttachments = new Set(
     (attachmentsResponse.data ?? []).map((row) => String(row.job_id))
   )
@@ -801,32 +754,6 @@ export default async function FakturyPage({
     pp_required: !jobPpNotRequiredIds.has(row.job_id),
     has_attachments: jobIdsWithAttachments.has(row.job_id),
   }))
-
-  if (sort === 'start_nearest') {
-    rows = [...rows].sort((a, b) => {
-      const dateDiff =
-        new Date(b.start_at).getTime() - new Date(a.start_at).getTime()
-
-      if (dateDiff !== 0) {
-        return dateDiff
-      }
-
-      return compareByJobNumberDesc(a, b)
-    })
-  } else if (sort === 'sale_desc') {
-    rows = [...rows].sort((a, b) => {
-      const aSale = typeof a.sale_amount === 'number' ? a.sale_amount : -1
-      const bSale = typeof b.sale_amount === 'number' ? b.sale_amount : -1
-
-      if (bSale !== aSale) {
-        return bSale - aSale
-      }
-
-      return compareByJobNumberDesc(a, b)
-    })
-  } else {
-    rows = [...rows].sort(compareByJobNumberDesc)
-  }
 
   let monthlyOverviewRows: FinanceMonthlyOverviewRow[]
 
@@ -1442,26 +1369,35 @@ export default async function FakturyPage({
             </div>
           </section>
         ) : (
+          <>
           <FakturyInteractiveTable
             rows={rows}
-            clientSuggestions={clientSuggestions}
-            clientContacts={clientContacts}
-            offerSuggestions={offerSuggestions}
-            jobOfferSuggestions={((linkedOfferRows ?? []) as JobOfferOption[]).map(
-              (item) => ({
-                id: String(item.id ?? '').trim(),
-                client_id: String(item.client_id ?? '').trim(),
-                offer_number: String(item.offer_number ?? '').trim(),
-                title: String(item.title ?? '').trim(),
-                order_reference: String(item.order_reference ?? '').trim() || null,
-                realization_starts_at: item.realization_starts_at ?? null,
-                realization_ends_at: item.realization_ends_at ?? null,
-                realization_address: item.realization_address ?? null,
-              })
-            )}
-            technicianSuggestions={technicianSuggestions}
             technicianOptions={technicianOptions}
           />
+          {totalPages > 1 ? (
+            <nav aria-label="Stránkování fakturace" className="mt-4 flex justify-center">
+              <div className="flex items-center gap-1 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.88)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
+                <Link
+                  href={buildFinancePageHref({ query, salesOwner, sort, dateFrom, dateTo, invoiced, overviewYear: selectedOverviewYear, page: Math.max(1, currentPage - 1) })}
+                  aria-disabled={currentPage === 1}
+                  className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === 1 ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
+                >
+                  ‹
+                </Link>
+                <span className="px-2 text-xs font-semibold tabular-nums text-gray-600">
+                  {currentPage} / {totalPages}
+                </span>
+                <Link
+                  href={buildFinancePageHref({ query, salesOwner, sort, dateFrom, dateTo, invoiced, overviewYear: selectedOverviewYear, page: Math.min(totalPages, currentPage + 1) })}
+                  aria-disabled={currentPage === totalPages}
+                  className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === totalPages ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
+                >
+                  ›
+                </Link>
+              </div>
+            </nav>
+          ) : null}
+          </>
         )}
       </div>
       <OperationalProtocolsModalLauncher />
