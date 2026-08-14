@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import {
   duplicateOfferModalAction,
+  getOfferFormOptionsAction,
   type OfferFormActionState,
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
@@ -25,8 +26,6 @@ type ClientContactOption = {
 type CopyOfferButtonProps = {
   offerId: string
   offerNumber: string
-  clients: ClientOption[]
-  contacts: ClientContactOption[]
   className?: string
 }
 
@@ -46,14 +45,25 @@ function normalizeSearchText(value: string) {
 export function CopyOfferButton({
   offerId,
   offerNumber,
-  clients,
-  contacts,
   className,
 }: CopyOfferButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [clients, setClients] = useState<ClientOption[]>([])
+  const [contacts, setContacts] = useState<ClientContactOption[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [formKey, setFormKey] = useState(0)
 
-  function openModal() {
+  async function openModal() {
+    setIsLoading(true)
+    try {
+      const options = await getOfferFormOptionsAction()
+      setClients(options.clients)
+      setContacts(options.contacts)
+    } catch {
+      return
+    } finally {
+      setIsLoading(false)
+    }
     setFormKey((current) => current + 1)
     setIsOpen(true)
   }
@@ -62,7 +72,8 @@ export function CopyOfferButton({
     <>
       <button
         type="button"
-        onClick={openModal}
+        onClick={() => void openModal()}
+        disabled={isLoading}
         className={
           className ??
           'inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]'

@@ -31,6 +31,7 @@ type OffersPageProps = {
     status?: string
     author?: string
     sort?: string
+    page?: string
   }>
 }
 
@@ -41,13 +42,6 @@ type OfferItemForTotal = {
   unit_price_without_vat: number
   discount_percent: number
   vat_rate: number
-}
-
-type ClientContactOption = {
-  id: string
-  client_id: string
-  name: string
-  is_primary: boolean
 }
 
 type OfferStatsRow = {
@@ -68,6 +62,7 @@ const STATUS_OPTIONS: Array<{ value: '' | OfferStatus; label: string }> = [
 ]
 
 type OfferSort = 'updated_desc' | 'offer_number_desc' | 'valid_until_asc' | 'price_desc'
+const OFFERS_PER_PAGE = 50
 
 const SORT_OPTIONS: Array<{ value: OfferSort; label: string }> = [
   { value: 'updated_desc', label: 'Dle poslední úpravy' },
@@ -150,6 +145,34 @@ function getSortLabel(sort: OfferSort) {
   return SORT_OPTIONS.find((option) => option.value === sort)?.label ?? 'Dle čísla nabídky'
 }
 
+function normalizePage(value: string | undefined) {
+  const page = Number.parseInt(value ?? '1', 10)
+  return Number.isFinite(page) && page > 0 ? page : 1
+}
+
+function buildOffersPageHref({
+  q,
+  status,
+  author,
+  sort,
+  page,
+}: {
+  q: string
+  status: string
+  author: string
+  sort: OfferSort
+  page: number
+}) {
+  const params = new URLSearchParams()
+  if (q) params.set('q', q)
+  if (status) params.set('status', status)
+  if (author) params.set('author', author)
+  if (sort !== 'offer_number_desc') params.set('sort', sort)
+  if (page > 1) params.set('page', String(page))
+  const search = params.toString()
+  return search ? `/offers?${search}` : '/offers'
+}
+
 function InfoChip({ label }: { label: string }) {
   return (
     <span className="offers-page__info-chip inline-flex items-center whitespace-nowrap rounded-full border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.84)_100%)] px-3 py-1 text-[11px] text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.1)] sm:py-1.5 sm:text-xs">
@@ -164,6 +187,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const params = searchParams ? await searchParams : undefined
   const q = params?.q?.trim() ?? ''
   const requestedAuthorId = params?.author?.trim() ?? ''
+  const requestedPage = normalizePage(params?.page)
   const sort = isOfferSort(params?.sort) ? params.sort : 'offer_number_desc'
 
   const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
@@ -191,7 +215,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     sort !== 'offer_number_desc' ||
     (isAdmin && requestedAuthorId.length > 0 && requestedAuthorId !== profile.id)
 
-  let offersQuery = supabase.from('offers').select('*')
+  let offersQuery = supabase.from('offers').select('*', { count: 'exact' })
   let statsOffersQuery = supabase.from('offers').select('status')
 
   if (!isAdmin) {
@@ -244,20 +268,27 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     clientsQuery = clientsQuery.eq('created_by', profile.id)
   }
 
+  const totalOffersResponse = await offersQuery.range(0, 0)
+  if (totalOffersResponse.error) {
+    throw new Error(`Nepodařilo se načíst počet nabídek: ${totalOffersResponse.error.message}`)
+  }
+
+  const totalOffers = totalOffersResponse.count ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalOffers / OFFERS_PER_PAGE))
+  const currentPage = Math.min(requestedPage, totalPages)
+  const rangeStart = (currentPage - 1) * OFFERS_PER_PAGE
+  const rangeEnd = rangeStart + OFFERS_PER_PAGE - 1
+  const offersForPageQuery =
+    sort === 'price_desc' ? offersQuery : offersQuery.range(rangeStart, rangeEnd)
+
   const [
     offersResponse,
     clientsResponse,
-    contactsResponse,
     profilesResponse,
     statsOffersResponse,
   ] = await Promise.all([
-    offersQuery,
+    offersForPageQuery,
     clientsQuery,
-    supabase
-      .from('client_contacts')
-      .select('id, client_id, name, is_primary')
-      .order('is_primary', { ascending: false })
-      .order('name', { ascending: true }),
     supabase
       .from('profiles')
       .select('id, name, role, can_view_offers, offer_prepared_by_name, offer_prepared_by_phone, offer_prepared_by_email'),
@@ -272,10 +303,6 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     throw new Error(`Nepodařilo se načíst klienty: ${clientsResponse.error.message}`)
   }
 
-  if (contactsResponse.error) {
-    throw new Error(`Nepodařilo se načíst kontaktní osoby klientů: ${contactsResponse.error.message}`)
-  }
-
   if (profilesResponse.error) {
     throw new Error(`Nepodařilo se načíst uživatele: ${profilesResponse.error.message}`)
   }
@@ -287,7 +314,6 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
   const offers = (offersResponse.data ?? []) as OfferRow[]
   const statsOffers = (statsOffersResponse.data ?? []) as OfferStatsRow[]
   const clients = (clientsResponse.data ?? []) as OfferClient[]
-  const contacts = (contactsResponse.data ?? []) as ClientContactOption[]
   const profiles = (profilesResponse.data ?? []) as OfferProfile[]
   const clientById = new Map(clients.map((client) => [client.id, client]))
   const profileById = new Map(profiles.map((item) => [item.id, item]))
@@ -325,11 +351,6 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
     ])
   )
 
-  const visibleClientOptions = clients.map((client) => ({
-    id: client.id,
-    name: client.name,
-  }))
-
   const statusCounts = {
     draft: statsOffers.filter((offer) => offer.status === 'draft').length,
     submitted: statsOffers.filter((offer) => offer.status === 'submitted').length,
@@ -345,6 +366,10 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
           return bTotal - aTotal
         })
       : offers
+  const displayedOffers =
+    sort === 'price_desc'
+      ? sortedOffers.slice(rangeStart, rangeEnd + 1)
+      : sortedOffers
 
   return (
     <main className="offers-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
@@ -394,11 +419,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 ZPĚT NA DASHBOARD
               </Link>
 
-              <NewOfferButton
-                clients={visibleClientOptions}
-                contacts={contacts}
-                className="clients-page__new-button"
-              />
+              <NewOfferButton className="clients-page__new-button" />
             </div>
           </div>
         </section>
@@ -659,7 +680,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
           </div>
         </section>
 
-        {sortedOffers.length === 0 ? (
+        {displayedOffers.length === 0 ? (
           <section className="offers-page__empty-state rounded-[26px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
             <h2 className="text-lg font-semibold text-gray-900">
               Zatím tu nejsou žádné nabídky.
@@ -671,7 +692,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
         ) : (
           <>
             <section className="offers-page__mobile-card grid gap-3 lg:hidden">
-              {sortedOffers.map((offer) => {
+              {displayedOffers.map((offer) => {
                 const client = clientById.get(offer.client_id)
                 const total = offerTotalsById.get(offer.id) ?? 0
                 return (
@@ -722,8 +743,6 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                       <CopyOfferButton
                         offerId={offer.id}
                         offerNumber={offer.offer_number}
-                        clients={visibleClientOptions}
-                        contacts={contacts}
                         className="offers-page__table-action offers-page__table-action--secondary inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
                       />
                       <Link
@@ -760,7 +779,7 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                   </div>
 
                   <div className="offers-page__table-body grid max-h-[calc(90vh-42px)] gap-2 overflow-y-auto pt-2">
-                  {sortedOffers.map((offer) => {
+                  {displayedOffers.map((offer) => {
                     const client = clientById.get(offer.client_id)
                     const author = profileById.get(offer.created_by)
                     const total = offerTotalsById.get(offer.id) ?? 0
@@ -827,8 +846,6 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                             <CopyOfferButton
                               offerId={offer.id}
                               offerNumber={offer.offer_number}
-                              clients={visibleClientOptions}
-                              contacts={contacts}
                               className="offers-page__table-action offers-page__table-action--secondary inline-flex h-8 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_16px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_20px_rgba(15,23,42,0.12)]"
                             />
                             <Link
@@ -846,6 +863,29 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                 </div>
               </div>
             </section>
+            {totalPages > 1 ? (
+              <nav aria-label="Stránkování nabídek" className="mt-4 flex justify-center">
+                <div className="flex items-center gap-1 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.88)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
+                  <Link
+                    href={buildOffersPageHref({ q, status, author: authorSelectValue, sort, page: Math.max(1, currentPage - 1) })}
+                    aria-disabled={currentPage === 1}
+                    className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === 1 ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
+                  >
+                    ‹
+                  </Link>
+                  <span className="px-2 text-xs font-semibold tabular-nums text-gray-600">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Link
+                    href={buildOffersPageHref({ q, status, author: authorSelectValue, sort, page: Math.min(totalPages, currentPage + 1) })}
+                    aria-disabled={currentPage === totalPages}
+                    className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === totalPages ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
+                  >
+                    ›
+                  </Link>
+                </div>
+              </nav>
+            ) : null}
           </>
         )}
       </div>

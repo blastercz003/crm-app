@@ -16,6 +16,7 @@ import {
 } from '@/lib/jobs/technicians'
 import { setJobPpRequired } from '@/lib/jobs/pp-requirements'
 import { createClient } from '@/lib/supabase/server'
+import { getServiceRoleClient } from '@/lib/supabase/service'
 import {
   getPersistedJobInfoAlert,
   parseJobInfoAlertValue,
@@ -165,6 +166,15 @@ type CreatedJobNotificationRow = {
   start_at: string | null
   end_at: string | null
   site_address: string | null
+}
+
+type JobPostCreateTaskRow = {
+  id: string
+  job_id: string
+  actor_user_id: string
+  technician_ids: string[] | null
+  status: 'pending' | 'processing' | 'retry' | 'completed'
+  attempts: number
 }
 
 type JobAssignmentNotificationRow = {
@@ -949,6 +959,281 @@ async function enqueueNewJobChange({
     kind: 'new_job',
     nextFields: [],
   })
+}
+
+async function enqueueJobPostCreateTask({
+  jobId,
+  actorUserId,
+  technicianIds,
+}: {
+  jobId: string
+  actorUserId: string
+  technicianIds: string[]
+}) {
+  const supabase = getServiceRoleClient()
+
+  if (!supabase) {
+    throw new Error('Chybí service role client pro frontu navazujících akcí zakázky.')
+  }
+
+  const { error } = await supabase.from('job_post_create_tasks').upsert(
+    {
+      job_id: jobId,
+      task_type: 'new_job',
+      actor_user_id: actorUserId,
+      technician_ids: technicianIds,
+      status: 'pending',
+      attempts: 0,
+      available_at: new Date().toISOString(),
+      locked_at: null,
+      locked_by: null,
+      completed_at: null,
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'job_id,task_type' }
+  )
+
+  if (error) {
+    throw new Error(`Nepodařilo se zařadit navazující akce zakázky do fronty: ${error.message}`)
+  }
+}
+
+async function runJobPostCreateEffects({
+  supabase,
+  jobId,
+  actorUserId,
+  technicianIds,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  jobId: string
+  actorUserId: string
+  technicianIds: string[]
+}) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('id, job_number, company_name, sales_owner, start_at, end_at, site_address, marny_vyjezd')
+    .eq('id', jobId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`Nepodařilo se načíst novou zakázku pro navazující akce: ${error.message}`)
+  }
+
+  if (!data) return
+
+  const job = data as CreatedJobNotificationRow & { marny_vyjezd: boolean | null }
+
+  try {
+    await enqueueNewJobChange({ supabase, jobId })
+  } catch (queueError) {
+    console.error('Nepodařilo se uložit novou zakázku do fronty změn.', queueError)
+    await reportActionError({
+      error: queueError,
+      action: 'createJobAction',
+      section: 'jobs',
+      errorType: 'CreateJobQueueError',
+      userId: actorUserId,
+      context: { jobId },
+    })
+  }
+
+  if (!job.marny_vyjezd) {
+    try {
+      await notifyUsersAboutCreatedJob({
+        supabase,
+        actorUserId,
+        job,
+      })
+    } catch (notificationError) {
+      console.error('Nepodařilo se vytvořit notifikace k nové zakázce.', notificationError)
+      await reportActionError({
+        error: notificationError,
+        action: 'createJobAction',
+        section: 'jobs',
+        errorType: 'CreateJobNotificationError',
+        userId: actorUserId,
+        context: { jobId },
+      })
+    }
+
+    try {
+      await notifyTechniciansAboutJobAssignment({
+        supabase,
+        actorUserId,
+        jobId,
+        job,
+        technicianIds,
+      })
+    } catch (notificationError) {
+      console.error('Nepodařilo se vytvořit notifikaci o přiřazení technikům.', notificationError)
+      await reportActionError({
+        error: notificationError,
+        action: 'createJobAction',
+        section: 'jobs',
+        errorType: 'CreateJobTechnicianNotificationError',
+        userId: actorUserId,
+        context: { jobId },
+      })
+    }
+  }
+
+  try {
+    await syncJobCalendarForTechniciansSafely({
+      supabase,
+      jobId,
+      technicianIds,
+      action: 'createJobAction',
+      errorType: 'CreateJobCalendarSyncError',
+      userIdForErrorLog: actorUserId,
+    })
+  } catch (calendarError) {
+    console.error('Nepodařilo se synchronizovat kalendář po vytvoření zakázky.', calendarError)
+  }
+
+  try {
+    await logUserActivity({
+      action: `Vytvořil zakázku ${job.job_number ?? jobId}`,
+      section: 'Zakázky',
+      route: '/jobs',
+      userId: actorUserId,
+    }, supabase)
+  } catch (activityError) {
+    console.error('Nepodařilo se zapsat aktivitu po vytvoření zakázky.', activityError)
+  }
+}
+
+async function processJobPostCreateTask(task: JobPostCreateTaskRow) {
+  const serviceSupabase = getServiceRoleClient()
+
+  if (!serviceSupabase) {
+    throw new Error('Chybí service role client pro zpracování fronty zakázky.')
+  }
+
+  const supabase = serviceSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+  const now = new Date().toISOString()
+
+  const { data: lockedTask, error: lockError } = await serviceSupabase
+    .from('job_post_create_tasks')
+    .update({
+      status: 'processing',
+      attempts: task.attempts + 1,
+      locked_at: now,
+      locked_by: 'app',
+      updated_at: now,
+    })
+    .eq('id', task.id)
+    .in('status', ['pending', 'retry'])
+    .select('id')
+    .maybeSingle()
+
+  if (lockError || !lockedTask) {
+    throw new Error(
+      lockError
+        ? `Nepodařilo se převzít úlohu navazujících akcí zakázky: ${lockError.message}`
+        : 'Úlohu navazujících akcí zakázky již zpracovává jiný pracovní proces.'
+    )
+  }
+
+  try {
+    await runJobPostCreateEffects({
+      supabase,
+      jobId: task.job_id,
+      actorUserId: task.actor_user_id,
+      technicianIds: task.technician_ids ?? [],
+    })
+
+    const { error: completeError } = await serviceSupabase
+      .from('job_post_create_tasks')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        locked_at: null,
+        locked_by: null,
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', task.id)
+
+    if (completeError) {
+      throw new Error(`Nepodařilo se dokončit úlohu navazujících akcí zakázky: ${completeError.message}`)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba při zpracování navazujících akcí zakázky.'
+    const retryAt = new Date(Date.now() + 60_000).toISOString()
+
+    await serviceSupabase
+      .from('job_post_create_tasks')
+      .update({
+        status: 'retry',
+        available_at: retryAt,
+        locked_at: null,
+        locked_by: null,
+        last_error: message,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', task.id)
+
+    throw error
+  }
+}
+
+export async function runPendingJobPostCreateTasks(limit = 10) {
+  const serviceSupabase = getServiceRoleClient()
+
+  if (!serviceSupabase) {
+    throw new Error('Chybí service role client pro frontu navazujících akcí zakázek.')
+  }
+
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 25)
+  const staleLockThreshold = new Date(Date.now() - 10 * 60_000).toISOString()
+  const { error: releaseStaleTasksError } = await serviceSupabase
+    .from('job_post_create_tasks')
+    .update({
+      status: 'retry',
+      available_at: new Date().toISOString(),
+      locked_at: null,
+      locked_by: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('status', 'processing')
+    .lt('locked_at', staleLockThreshold)
+
+  if (releaseStaleTasksError) {
+    throw new Error(`Nepodařilo se obnovit nedokončené navazující akce zakázek: ${releaseStaleTasksError.message}`)
+  }
+
+  const { data, error } = await serviceSupabase
+    .from('job_post_create_tasks')
+    .select('id, job_id, actor_user_id, technician_ids, status, attempts')
+    .in('status', ['pending', 'retry'])
+    .lte('available_at', new Date().toISOString())
+    .order('created_at', { ascending: true })
+    .limit(safeLimit)
+
+  if (error) {
+    throw new Error(`Nepodařilo se načíst frontu navazujících akcí zakázek: ${error.message}`)
+  }
+
+  const tasks = (data ?? []) as JobPostCreateTaskRow[]
+
+  for (const task of tasks) {
+    try {
+      await processJobPostCreateTask(task)
+    } catch (error) {
+      console.error('Nepodařilo se zpracovat navazující akce nové zakázky.', error)
+      await reportActionError({
+        error,
+        action: 'runPendingJobPostCreateTasks',
+        section: 'jobs',
+        errorType: 'JobPostCreateTaskError',
+        userId: task.actor_user_id,
+        context: { jobId: task.job_id, taskId: task.id },
+      })
+    }
+  }
+
+  return { processed: tasks.length }
 }
 
 async function enqueueUpdatedJobChangeIfWritten({
@@ -1969,88 +2254,6 @@ export async function createJobAction(
     }
   }
 
-  try {
-    await enqueueNewJobChange({
-      supabase,
-      jobId: createdJobId,
-    })
-  } catch (queueError) {
-    console.error(
-      'Nepodařilo se uložit novou zakázku do fronty změn.',
-      queueError
-    )
-    await reportActionError({
-      error: queueError,
-      action: 'createJobAction',
-      section: 'jobs',
-      errorType: 'CreateJobQueueError',
-      userId: user.id,
-      context: { jobId: createdJobId },
-    })
-  }
-
-  if (!isMarnyVyjezd) {
-    try {
-      await notifyUsersAboutCreatedJob({
-        supabase,
-        actorUserId: user.id,
-        job: createdJob as CreatedJobNotificationRow,
-      })
-    } catch (notificationError) {
-      console.error(
-        'Nepodařilo se vytvořit notifikace k nové zakázce.',
-        notificationError
-      )
-      await reportActionError({
-        error: notificationError,
-        action: 'createJobAction',
-        section: 'jobs',
-        errorType: 'CreateJobNotificationError',
-        userId: user.id,
-        context: { jobId: createdJobId },
-      })
-    }
-
-    try {
-      await notifyTechniciansAboutJobAssignment({
-        supabase,
-        actorUserId: user.id,
-        jobId: createdJobId,
-        job: createdJob as JobAssignmentNotificationRow,
-        technicianIds: technicianIds ?? [],
-      })
-    } catch (notificationError) {
-      console.error(
-        'Nepodařilo se vytvořit notifikaci o přiřazení technikům.',
-        notificationError
-      )
-      await reportActionError({
-        error: notificationError,
-        action: 'createJobAction',
-        section: 'jobs',
-        errorType: 'CreateJobTechnicianNotificationError',
-        userId: user.id,
-        context: { jobId: createdJobId },
-      })
-    }
-  }
-
-  try {
-    await syncJobCalendarForTechniciansSafely({
-      supabase,
-      jobId: createdJobId,
-      technicianIds: technicianIds ?? [],
-      action: 'createJobAction',
-      errorType: 'CreateJobCalendarSyncError',
-      userIdForErrorLog: user.id,
-    })
-  } catch (calendarError) {
-    console.error(
-      'Nepodařilo se synchronizovat kalendář po vytvoření zakázky.',
-      calendarError
-    )
-  }
-
   let offerSyncWarning: string | null = null
 
   if (payload.offer_id) {
@@ -2090,12 +2293,41 @@ export async function createJobAction(
     }
   }
 
-  await logUserActivity({
-    action: `Vytvořil zakázku ${createdJob.job_number ?? createdJobId}`,
-    section: 'Zakázky',
-    route: '/jobs',
-    userId: user.id,
-  })
+  try {
+    await enqueueJobPostCreateTask({
+      jobId: createdJobId,
+      actorUserId: user.id,
+      technicianIds: technicianIds ?? [],
+    })
+
+    after(async () => {
+      await runPendingJobPostCreateTasks(1)
+    })
+  } catch (taskQueueError) {
+    // The job itself is already safely stored. Preserve the original behavior
+    // if the durable background queue is temporarily unavailable.
+    console.error(
+      'Nepodařilo se zařadit navazující akce nové zakázky do fronty.',
+      taskQueueError
+    )
+    await reportActionError({
+      error: taskQueueError,
+      action: 'createJobAction',
+      section: 'jobs',
+      errorType: 'CreateJobPostCreateQueueError',
+      userId: user.id,
+      context: { jobId: createdJobId },
+    })
+
+    after(async () => {
+      await runJobPostCreateEffects({
+        supabase,
+        jobId: createdJobId,
+        actorUserId: user.id,
+        technicianIds: technicianIds ?? [],
+      })
+    })
+  }
 
   revalidateAllRelatedPaths()
   revalidatePath('/dashboard')

@@ -29,6 +29,32 @@ export type OfferFormActionState = {
   offerId?: string
 }
 
+export type OfferFormOptions = {
+  clients: Array<{ id: string; name: string }>
+  contacts: Array<{ id: string; client_id: string; name: string; is_primary: boolean }>
+}
+
+export async function getOfferFormOptionsAction(): Promise<OfferFormOptions> {
+  const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
+  let clientsQuery = supabase.from('clients').select('id, name').order('name', { ascending: true })
+  if (!isAdmin) clientsQuery = clientsQuery.eq('created_by', profile.id)
+
+  const [clientsResponse, contactsResponse] = await Promise.all([
+    clientsQuery,
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+  ])
+
+  if (clientsResponse.error || contactsResponse.error) {
+    throw new Error('Nepodařilo se načíst klienty pro formulář nabídky.')
+  }
+
+  return { clients: clientsResponse.data ?? [], contacts: contactsResponse.data ?? [] }
+}
+
 export type OfferItemInput = {
   description: string
   specification?: string | null

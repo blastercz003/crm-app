@@ -164,7 +164,6 @@ export function CreateClientModal({
           </div>
 
           <form action={formAction} className="flex min-h-0 flex-1 flex-col">
-            <PendingFormLock message="Ukládám klienta, čekej prosím..." />
             <PendingFieldset className="flex min-h-0 flex-1 flex-col">
             <div className="clients-modal__body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch] sm:px-5 sm:py-4">
               <div className="space-y-4">
@@ -315,18 +314,6 @@ export function CreateClientModal({
   }
 
   return createPortal(modalContent, document.body)
-}
-
-function PendingFormLock({ message }: { message: string }) {
-  const { pending } = useFormStatus()
-
-  if (!pending) return null
-
-  return (
-    <div className="clients-modal__lock mx-4 mt-3 rounded-2xl border border-[#2980B9]/25 bg-[#2980B9]/10 px-4 py-3 text-sm font-medium text-[#1d5f88] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(24,95,145,0.14)] sm:mx-5 sm:mt-4">
-      {message}
-    </div>
-  )
 }
 
 function PendingFieldset({

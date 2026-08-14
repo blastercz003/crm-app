@@ -3,6 +3,7 @@ import {
   getNotificationAutomationMetadata,
   runNotificationAutomations,
 } from '@/lib/notifications/automationNotifications'
+import { runPendingJobPostCreateTasks } from '@/app/jobs/actions'
 import { reportRouteError } from '@/lib/errors/reportRouteError'
 
 function isAuthorized(request: Request) {
@@ -26,11 +27,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await runNotificationAutomations(new Date())
+    const [result, jobPostCreateTasks] = await Promise.all([
+      runNotificationAutomations(new Date()),
+      runPendingJobPostCreateTasks(),
+    ])
 
     return NextResponse.json({
       ok: true,
       ...result,
+      jobPostCreateTasks,
       metadata: getNotificationAutomationMetadata(new Date()),
     })
   } catch (error) {

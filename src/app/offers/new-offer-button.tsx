@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   createOfferModalAction,
+  getOfferFormOptionsAction,
   type OfferFormActionState,
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
@@ -24,8 +25,6 @@ type ClientContactOption = {
 }
 
 type NewOfferButtonProps = {
-  clients: ClientOption[]
-  contacts?: ClientContactOption[]
   className?: string
 }
 
@@ -43,11 +42,12 @@ function normalizeSearchText(value: string) {
 }
 
 export function NewOfferButton({
-  clients,
-  contacts = [],
   className,
 }: NewOfferButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [clients, setClients] = useState<ClientOption[]>([])
+  const [contacts, setContacts] = useState<ClientContactOption[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const resolvedClassName = [
     'inline-flex items-center justify-center rounded-2xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_26px_rgba(9,48,82,0.32)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#1f5f8e] hover:bg-[linear-gradient(160deg,rgba(56,125,177,0.95)_0%,rgba(37,109,163,0.96)_45%,rgba(22,86,138,0.98)_100%)]',
@@ -56,7 +56,17 @@ export function NewOfferButton({
     .filter(Boolean)
     .join(' ')
 
-  function openModal() {
+  async function openModal() {
+    setIsLoading(true)
+    try {
+      const options = await getOfferFormOptionsAction()
+      setClients(options.clients)
+      setContacts(options.contacts)
+    } catch {
+      return
+    } finally {
+      setIsLoading(false)
+    }
     setFormKey((current) => current + 1)
     setIsOpen(true)
   }
@@ -65,7 +75,8 @@ export function NewOfferButton({
     <>
       <button
         type="button"
-        onClick={openModal}
+        onClick={() => void openModal()}
+        disabled={isLoading}
         className={resolvedClassName}
       >
         NOVÁ NABÍDKA
