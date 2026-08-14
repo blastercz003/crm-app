@@ -759,7 +759,9 @@ export default async function JobsPage({
                   ZPĚT NA DASHBOARD
                 </Link>
 
-                <NewJobButton isAdmin={isAdmin} className="clients-page__new-button" />
+                {isAdmin ? (
+                  <NewJobButton isAdmin className="clients-page__new-button" />
+                ) : null}
               </div>
             </div>
           </section>

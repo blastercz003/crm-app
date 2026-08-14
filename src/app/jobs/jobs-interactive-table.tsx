@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  getJobFormSuggestionsAction,
   updateJobEvidenceStatusAction,
   updateJobInlineFieldAction,
   updateJobStatusAction,
@@ -585,13 +586,12 @@ function MobileCard({
             canEdit={allowEditing}
             onJobUpdate={onJobUpdate}
           />
-          <button
-            type="button"
-            onClick={() => onEditJob(job)}
-            className={`inline-flex h-8 min-w-0 w-full items-center justify-center px-2 text-[11px] font-bold uppercase ${GLASS_SECONDARY_BUTTON_CLASS}`}
-          >
-            UPRAVIT
-          </button>
+          <MobileAssignmentButton
+            job={job}
+            canEdit
+            compact
+            onJobUpdate={onJobUpdate}
+          />
         </div>
       ) : isActionsOpen && showCollapsedReadOnlyActions ? (
         <div
@@ -754,17 +754,16 @@ function DisabledInfoButton({
 function MobileAssignmentButton({
   job,
   canEdit,
-  technicianSuggestions,
   onJobUpdate,
   compact = false,
 }: {
   job: JobRow
   canEdit: boolean
-  technicianSuggestions: string[]
   onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
   compact?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [technicianSuggestions, setTechnicianSuggestions] = useState<string[]>([])
   const [technicianValue, setTechnicianValue] = useState(job.technician_name ?? '')
   const [generatorValue, setGeneratorValue] = useState(job.generator_name ?? '')
   const [isTechnicianDirty, setIsTechnicianDirty] = useState(false)
@@ -775,6 +774,21 @@ function MobileAssignmentButton({
   const [isFeedbackPending, setIsFeedbackPending] = useState(false)
   const isSavingRef = useRef(false)
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    let isCurrent = true
+
+    void getJobFormSuggestionsAction(job.offer_id).then((result) => {
+      if (!isCurrent || !result.success) return
+      setTechnicianSuggestions(result.data.technicianSuggestions)
+    })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [isOpen, job.offer_id])
 
   useEffect(() => {
     return () => {
