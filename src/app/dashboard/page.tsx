@@ -25,6 +25,7 @@ import { DashboardMyTasksModule } from '@/components/dashboard/dashboard-my-task
 import { DashboardMyMeetingsModule } from '@/components/dashboard/dashboard-my-meetings-module'
 import { DashboardSectionLinks } from '@/components/dashboard/dashboard-section-links'
 import { DashboardHandoverProtocolUploadLauncher } from '@/components/dashboard/dashboard-handover-protocol-upload-launcher'
+import { TechnicianAvailabilityButton } from '@/app/jobs/technician-availability-button'
 import { AppBadgeSync } from '@/components/pwa/app-badge-sync'
 import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 import { DashboardStartupReadyBridge } from '@/components/pwa/pwa-startup-screen'
@@ -60,12 +61,14 @@ function TechnicianSectionLinks({
   canViewConnectionPoints,
   canViewStores,
   canViewHandoverProtocolUpload,
+  canViewTechnicianAvailability,
   includeJobsLink,
 }: {
   canViewTechJobs: boolean
   canViewConnectionPoints: boolean
   canViewStores: boolean
   canViewHandoverProtocolUpload: boolean
+  canViewTechnicianAvailability: boolean
   includeJobsLink?: boolean
 }) {
   const items = [
@@ -130,7 +133,7 @@ function TechnicianSectionLinks({
     icon: ReactNode
   }>
 
-  if (items.length === 0 && !canViewHandoverProtocolUpload) return null
+  if (items.length === 0 && !canViewHandoverProtocolUpload && !canViewTechnicianAvailability) return null
 
   return (
     <section className="px-1 py-1 sm:px-2">
@@ -152,6 +155,10 @@ function TechnicianSectionLinks({
 
         {canViewHandoverProtocolUpload ? (
           <DashboardHandoverProtocolUploadLauncher />
+        ) : null}
+
+        {canViewTechnicianAvailability ? (
+          <TechnicianAvailabilityButton variant="dashboard-icon" />
         ) : null}
       </div>
     </section>
@@ -1659,6 +1666,7 @@ export default async function DashboardPage({
               canViewConnectionPoints={canViewConnectionPoints}
               canViewStores={canViewStores}
               canViewHandoverProtocolUpload={canViewHandoverProtocolUpload}
+              canViewTechnicianAvailability={isTechnik}
               includeJobsLink={showJobsInTechnicianSection}
             />
           ) : null}

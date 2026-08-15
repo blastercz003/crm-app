@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NewJobButton } from './new-job-button'
+import { TechnicianAvailabilityButton } from './technician-availability-button'
 import { JobsInteractiveTable } from './jobs-interactive-table'
 import { PrintJobsButton } from './print-jobs-button'
 import { DispatcherCalendarButton } from './dispatcher-calendar-button'
@@ -752,16 +753,21 @@ export default async function JobsPage({
                   </button>
                 </form>
 
-                <Link
-                  href="/dashboard"
-                  className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
-                >
-                  ZPĚT NA DASHBOARD
-                </Link>
+                <div className="flex flex-col gap-3 sm:contents">
+                  <Link
+                    href="/dashboard"
+                    className="clients-page__back-button inline-flex items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800"
+                  >
+                    ZPĚT NA DASHBOARD
+                  </Link>
 
-                {isAdmin ? (
-                  <NewJobButton isAdmin className="clients-page__new-button" />
-                ) : null}
+                  <div className={`grid gap-3 ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'} sm:contents`}>
+                    <TechnicianAvailabilityButton className="w-full sm:w-auto" />
+                    {isAdmin ? (
+                      <NewJobButton isAdmin className="clients-page__new-button w-full sm:w-auto" />
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </div>
           </section>
