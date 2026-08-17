@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
-  downloadOfferOrderFileAction,
   finalizeOfferOrderedStatusAction,
   getOfferOrderData,
   openOfferOrderFileAction,
@@ -19,6 +18,13 @@ import {
 } from '@/components/ui/action-feedback-toast'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
+
+type OfferOrderFilePreviewTarget = {
+  id: string
+  fileName: string
+  mimeType: string
+}
 
 function formatOfferOrderFileDate(value: string) {
   return new Intl.DateTimeFormat('cs-CZ', {
@@ -26,6 +32,191 @@ function formatOfferOrderFileDate(value: string) {
     timeStyle: 'short',
     timeZone: 'Europe/Prague',
   }).format(new Date(value))
+}
+
+function isOfferOrderImage(mimeType: string) {
+  return mimeType.toLowerCase().startsWith('image/')
+}
+
+function OfferOrderPdfPreview({ previewUrl }: { previewUrl: string }) {
+  const [pages, setPages] = useState<Array<{ src: string; width: number; height: number }>>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function renderPdf() {
+      setIsLoading(true)
+      setError(null)
+      setPages([])
+
+      try {
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+          import.meta.url
+        ).toString()
+
+        const pdfDocument = await pdfjs.getDocument(previewUrl).promise
+        if (cancelled) {
+          await pdfDocument.destroy()
+          return
+        }
+
+        const renderedPages: Array<{ src: string; width: number; height: number }> = []
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+          const page = await pdfDocument.getPage(pageNumber)
+          if (cancelled) return
+
+          const viewport = page.getViewport({ scale: 1.35 })
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          if (!context) throw new Error('Canvas není dostupný.')
+
+          canvas.width = Math.floor(viewport.width)
+          canvas.height = Math.floor(viewport.height)
+          await page.render({ canvas, canvasContext: context, viewport }).promise
+          if (cancelled) return
+
+          renderedPages.push({
+            src: canvas.toDataURL('image/png'),
+            width: canvas.width,
+            height: canvas.height,
+          })
+        }
+
+        await pdfDocument.destroy()
+        if (!cancelled) {
+          setPages(renderedPages)
+          setIsLoading(false)
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Náhled PDF se nepodařilo vykreslit.')
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void renderPdf()
+    return () => {
+      cancelled = true
+    }
+  }, [previewUrl])
+
+  if (isLoading) {
+    return <div className="flex h-full items-center justify-center text-sm text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">Načítám náhled…</div>
+  }
+
+  if (error) {
+    return <div className="flex h-full items-center justify-center px-5 text-center text-sm text-red-700 [html[data-theme='dark']_&]:text-red-200">{error}</div>
+  }
+
+  return (
+    <div className="h-full overflow-y-auto p-2 sm:p-3">
+      <div className="space-y-3">
+        {pages.map((page, index) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`${index + 1}-${page.src.length}`}
+            src={page.src}
+            alt={`PDF strana ${index + 1}`}
+            className="w-full rounded-lg border border-zinc-200 bg-white shadow-sm [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)]"
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OfferOrderFilePreviewModal({
+  file,
+  previewUrl,
+  previewError,
+  isLoading,
+  onClose,
+}: {
+  file: OfferOrderFilePreviewTarget
+  previewUrl: string | null
+  previewError: string | null
+  isLoading: boolean
+  onClose: () => void
+}) {
+  useBodyScrollLock(true)
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <>
+      <div aria-hidden="true" className="fixed inset-0 z-[140] bg-zinc-950/55 backdrop-blur-[5px]" />
+      <div
+        className="fixed inset-0 z-[141] overflow-hidden p-2 sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="offer-order-file-preview-title"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) onClose()
+        }}
+      >
+        <div className="flex h-full items-center justify-center">
+          <div className="flex h-full max-h-[920px] w-full max-w-[1040px] flex-col overflow-hidden rounded-[26px] border border-zinc-200/90 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(243,247,251,0.94)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_36px_90px_rgba(15,23,42,0.34)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(13,20,34,0.99)_0%,rgba(8,14,25,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_36px_90px_rgba(2,6,23,0.62)]">
+            <header className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200/80 px-4 py-3 sm:px-5 sm:py-4 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
+              <ModalHeading
+                section="NABÍDKY"
+                title={file.fileName}
+                id="offer-order-file-preview-title"
+                variant="compact"
+              />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Zavřít náhled"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/85 text-lg text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[rgba(15,23,42,0.92)] [html[data-theme='dark']_&]:text-slate-200"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 bg-zinc-200/70 p-2 sm:p-3 [html[data-theme='dark']_&]:bg-[#050a13]">
+              {previewError ? (
+                <div className="flex h-full items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-5 text-center text-sm text-red-700 [html[data-theme='dark']_&]:border-red-900/40 [html[data-theme='dark']_&]:bg-red-950/25 [html[data-theme='dark']_&]:text-red-200">
+                  {previewError}
+                </div>
+              ) : isLoading || !previewUrl ? (
+                <div className="flex h-full items-center justify-center text-sm text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">Načítám náhled…</div>
+              ) : file.mimeType.toLowerCase() === 'application/pdf' ? (
+                <OfferOrderPdfPreview previewUrl={previewUrl} />
+              ) : isOfferOrderImage(file.mimeType) ? (
+                <div className="flex h-full items-center justify-center overflow-auto rounded-2xl bg-zinc-300/60 p-3 [html[data-theme='dark']_&]:bg-[#080e19]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt={file.fileName}
+                    className="max-h-full max-w-full rounded-lg bg-white object-contain shadow-[0_18px_50px_rgba(15,23,42,0.28)]"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center px-5 text-center text-sm text-zinc-500 [html[data-theme='dark']_&]:text-slate-400">
+                  Náhled není pro tento typ souboru dostupný.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  )
 }
 
 export function OfferOrderModal({
@@ -58,6 +249,10 @@ export function OfferOrderModal({
   const [isUploadPending, startUploadTransition] = useTransition()
   const [isFinalizePending, startFinalizeTransition] = useTransition()
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
+  const [previewTarget, setPreviewTarget] = useState<OfferOrderFilePreviewTarget | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const { toast, isVisible, showToast } = useAnimatedActionToast()
 
   const hasFiles = (orderData?.files.length ?? 0) > 0
@@ -182,28 +377,30 @@ export function OfferOrderModal({
     })
   }
 
-  function handleOpenFile(fileId: string) {
-    startUploadTransition(async () => {
-      const result = await openOfferOrderFileAction(fileId)
+  function handleOpenFile(file: OfferOrderFilePreviewTarget) {
+    setPreviewTarget(file)
+    setPreviewUrl(null)
+    setPreviewError(null)
+    setIsPreviewLoading(true)
+
+    void (async () => {
+      const result = await openOfferOrderFileAction(file.id)
       if (!result.success) {
-        emitError(result.error)
+        setPreviewError(result.error)
+        setIsPreviewLoading(false)
         return
       }
 
-      window.open(result.signedUrl, '_blank', 'noopener,noreferrer')
-    })
+      setPreviewUrl(result.signedUrl)
+      setIsPreviewLoading(false)
+    })()
   }
 
-  function handleDownloadFile(fileId: string) {
-    startUploadTransition(async () => {
-      const result = await downloadOfferOrderFileAction(fileId)
-      if (!result.success) {
-        emitError(result.error)
-        return
-      }
-
-      window.open(result.signedUrl, '_blank', 'noopener,noreferrer')
-    })
+  function closeFilePreview() {
+    setPreviewTarget(null)
+    setPreviewUrl(null)
+    setPreviewError(null)
+    setIsPreviewLoading(false)
   }
 
   if (!isOpen || typeof document === 'undefined') return null
@@ -332,20 +529,19 @@ export function OfferOrderModal({
                           <div className="offers-page__order-modal__file-actions flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => handleOpenFile(file.id)}
+                              onClick={() => handleOpenFile(file)}
                               disabled={isUploadPending || isFinalizePending}
                               className="offers-page__order-modal__file-action inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               ZOBRAZIT
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadFile(file.id)}
-                              disabled={isUploadPending || isFinalizePending}
-                              className="offers-page__order-modal__file-action inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                            <a
+                              href={`/offers/order-files/${file.id}/download`}
+                              download
+                              className="offers-page__order-modal__file-action inline-flex h-9 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-3 text-[11px] font-bold uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px]"
                             >
                               STÁHNOUT
-                            </button>
+                            </a>
                           </div>
                         </div>
                       ))}
@@ -394,6 +590,15 @@ export function OfferOrderModal({
           setIsSuccessModalOpen(false)
         }}
       />
+      {previewTarget ? (
+        <OfferOrderFilePreviewModal
+          file={previewTarget}
+          previewUrl={previewUrl}
+          previewError={previewError}
+          isLoading={isPreviewLoading}
+          onClose={closeFilePreview}
+        />
+      ) : null}
     </>,
     document.body
   )
@@ -413,6 +618,10 @@ export function OfferOrderDetailPanel({
   const [orderData, setOrderData] = useState<OfferOrderData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [previewTarget, setPreviewTarget] = useState<OfferOrderFilePreviewTarget | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const { toast, isVisible, showToast } = useAnimatedActionToast()
   const readOnly = currentStatus === 'realizace'
 
@@ -449,28 +658,30 @@ export function OfferOrderDetailPanel({
     }
   }, [offerId, showToast])
 
-  function handleOpenFile(fileId: string) {
+  function handleOpenFile(file: OfferOrderFilePreviewTarget) {
+    setPreviewTarget(file)
+    setPreviewUrl(null)
+    setPreviewError(null)
+    setIsPreviewLoading(true)
+
     void (async () => {
-      const result = await openOfferOrderFileAction(fileId)
+      const result = await openOfferOrderFileAction(file.id)
       if (!result.success) {
-        showToast({ title: 'CHYBA', message: result.error, tone: 'error' })
+        setPreviewError(result.error)
+        setIsPreviewLoading(false)
         return
       }
 
-      window.open(result.signedUrl, '_blank', 'noopener,noreferrer')
+      setPreviewUrl(result.signedUrl)
+      setIsPreviewLoading(false)
     })()
   }
 
-  function handleDownloadFile(fileId: string) {
-    void (async () => {
-      const result = await downloadOfferOrderFileAction(fileId)
-      if (!result.success) {
-        showToast({ title: 'CHYBA', message: result.error, tone: 'error' })
-        return
-      }
-
-      window.open(result.signedUrl, '_blank', 'noopener,noreferrer')
-    })()
+  function closeFilePreview() {
+    setPreviewTarget(null)
+    setPreviewUrl(null)
+    setPreviewError(null)
+    setIsPreviewLoading(false)
   }
 
   return (
@@ -527,18 +738,18 @@ export function OfferOrderDetailPanel({
                 <div className="offers-detail-page__order-files-actions flex flex-wrap justify-end gap-2 sm:ml-auto sm:justify-end">
                   <button
                     type="button"
-                    onClick={() => handleOpenFile(file.id)}
+                    onClick={() => handleOpenFile(file)}
                     className="offers-detail-page__order-files-action inline-flex h-9 min-w-[124px] items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px]"
                   >
                     ZOBRAZIT
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadFile(file.id)}
+                  <a
+                    href={`/offers/order-files/${file.id}/download`}
+                    download
                     className="offers-detail-page__order-files-action inline-flex h-9 min-w-[124px] items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px]"
                   >
                     STÁHNOUT
-                  </button>
+                  </a>
                 </div>
               </div>
             ))
@@ -567,6 +778,15 @@ export function OfferOrderDetailPanel({
           })
         }
       />
+      {previewTarget ? (
+        <OfferOrderFilePreviewModal
+          file={previewTarget}
+          previewUrl={previewUrl}
+          previewError={previewError}
+          isLoading={isPreviewLoading}
+          onClose={closeFilePreview}
+        />
+      ) : null}
     </>
   )
 }
