@@ -225,7 +225,7 @@ function isOfferApprovedCurrentVersion(offer: OfferRow) {
 
 function offerPresetButtonClassName(isActive: boolean, isDisabled = false) {
   return [
-    'offers-detail-page__depot-toggle inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] uppercase tracking-[0.02em] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
+    'offers-detail-page__depot-toggle inline-flex h-8 w-full items-center justify-center rounded-xl border px-1.5 text-center text-[10px] uppercase tracking-[0.02em] shadow-[0_6px_14px_rgba(15,23,42,0.08)] transition duration-200 sm:w-[150px] sm:px-2 sm:text-[11px] sm:tracking-[0.04em]',
     isActive
       ? 'offers-detail-page__depot-toggle--active border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] font-semibold text-white hover:-translate-y-[1px]'
       : isDisabled

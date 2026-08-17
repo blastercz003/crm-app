@@ -157,19 +157,18 @@ function OfferOrderFilePreviewModal({
   if (typeof document === 'undefined') return null
 
   return createPortal(
-    <>
-      <div aria-hidden="true" className="fixed inset-0 z-[140] bg-zinc-950/55 backdrop-blur-[5px]" />
-      <div
-        className="fixed inset-0 z-[141] overflow-hidden p-2 sm:p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="offer-order-file-preview-title"
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget) onClose()
-        }}
-      >
-        <div className="flex h-full items-center justify-center">
-          <div className="flex h-full max-h-[920px] w-full max-w-[1040px] flex-col overflow-hidden rounded-[26px] border border-zinc-200/90 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(243,247,251,0.94)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_36px_90px_rgba(15,23,42,0.34)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(13,20,34,0.99)_0%,rgba(8,14,25,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_36px_90px_rgba(2,6,23,0.62)]">
+    <div
+      className="fixed inset-0 z-[1000] overflow-hidden p-2 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="offer-order-file-preview-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-zinc-950/55 backdrop-blur-[5px]" />
+      <div className="relative z-10 flex h-full items-center justify-center">
+        <div className="flex h-full max-h-[920px] w-full max-w-[1040px] flex-col overflow-hidden rounded-[26px] border border-zinc-200/90 bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(243,247,251,0.94)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_36px_90px_rgba(15,23,42,0.34)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(13,20,34,0.99)_0%,rgba(8,14,25,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_36px_90px_rgba(2,6,23,0.62)]">
             <header className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200/80 px-4 py-3 sm:px-5 sm:py-4 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
               <ModalHeading
                 section="NABÍDKY"
@@ -211,10 +210,9 @@ function OfferOrderFilePreviewModal({
                 </div>
               )}
             </div>
-          </div>
         </div>
       </div>
-    </>,
+    </div>,
     document.body
   )
 }

@@ -12805,9 +12805,7 @@ html[data-theme='dark'] .offers-detail-page .offers-detail-page__service-toggle 
     rgba(12, 20, 34, 0.92) 100%
   ) !important;
   color: #e2e8f0 !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 10px 22px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2) !important;
 }
 
 html[data-theme='dark'] .offers-detail-page .offers-detail-page__service-toggle--active {
@@ -12818,9 +12816,7 @@ html[data-theme='dark'] .offers-detail-page .offers-detail-page__service-toggle-
     rgba(47, 119, 175, 0.98) 100%
   ) !important;
   color: #f8fbff !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 12px 24px rgba(41, 128, 185, 0.24) !important;
+  box-shadow: 0 12px 24px rgba(41, 128, 185, 0.24) !important;
 }
 
 html[data-theme='dark'] .offers-detail-page .offers-detail-page__service-toggle--inactive {
@@ -12885,9 +12881,7 @@ html[data-theme='dark'] .offers-detail-page .offers-detail-page__depot-toggle {
     rgba(12, 20, 34, 0.92) 100%
   ) !important;
   color: #e2e8f0 !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 10px 22px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2) !important;
 }
 
 html[data-theme='dark'] .offers-detail-page .offers-detail-page__depot-toggle--active {
@@ -12898,9 +12892,7 @@ html[data-theme='dark'] .offers-detail-page .offers-detail-page__depot-toggle--a
     rgba(47, 119, 175, 0.98) 100%
   ) !important;
   color: #f8fbff !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 12px 24px rgba(41, 128, 185, 0.24) !important;
+  box-shadow: 0 12px 24px rgba(41, 128, 185, 0.24) !important;
 }
 
 html[data-theme='dark'] .offers-detail-page .offers-detail-page__depot-toggle--inactive {
