@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 import { ModalHeading } from '@/components/ui/modal-heading'
@@ -129,6 +129,10 @@ function HandoverProtocolModal({
   const [draft, setDraft] = useState<DraftState>(() => buildInitialDraft(job.site_address))
   const [loadError, setLoadError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [saveFeedback, setSaveFeedback] = useState<'idle' | 'saving' | 'saved'>(
+    'idle'
+  )
+  const saveFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isLoading, startLoading] = useTransition()
   const [isSaving, startSaving] = useTransition()
 
@@ -175,6 +179,14 @@ function HandoverProtocolModal({
       })
     })
   }, [job.id, job.site_address])
+
+  useEffect(() => {
+    return () => {
+      if (saveFeedbackTimerRef.current) {
+        clearTimeout(saveFeedbackTimerRef.current)
+      }
+    }
+  }, [])
 
   const canPreview = useMemo(
     () =>
@@ -275,15 +287,34 @@ function HandoverProtocolModal({
     })
   }
 
-  function persistDraft(nextAction: 'save' | 'preview' | 'generate') {
+  function saveDraftInBackground() {
     setLoadError(null)
-    const shouldUseCurrentTab =
-      nextAction !== 'save' &&
-      window.matchMedia('(max-width: 1023px)').matches
-    const previewWindow =
-      nextAction === 'save' || shouldUseCurrentTab
-        ? null
-        : window.open('', '_blank')
+    setSaveFeedback('saving')
+    const draftToSave = sanitizeDraft(draft)
+
+    startSaving(async () => {
+      const result = await saveHandoverProtocolDraftAction(job.id, draftToSave)
+
+      if (!result.success) {
+        setLoadError(result.error ?? 'Předávací protokol se nepodařilo uložit.')
+        setSaveFeedback('idle')
+        return
+      }
+
+      setSaveFeedback('saved')
+      if (saveFeedbackTimerRef.current) {
+        clearTimeout(saveFeedbackTimerRef.current)
+      }
+      saveFeedbackTimerRef.current = setTimeout(() => {
+        setSaveFeedback('idle')
+      }, 1800)
+    })
+  }
+
+  function generateProtocol() {
+    setLoadError(null)
+    const shouldUseCurrentTab = window.matchMedia('(max-width: 1023px)').matches
+    const previewWindow = shouldUseCurrentTab ? null : window.open('', '_blank')
 
     startSaving(async () => {
       const result = await saveHandoverProtocolDraftAction(job.id, sanitizeDraft(draft))
@@ -294,12 +325,7 @@ function HandoverProtocolModal({
         return
       }
 
-      if (nextAction === 'save') return
-
-      const url =
-        nextAction === 'generate'
-          ? `/jobs/${job.id}/pp?standalone=1&print=1`
-          : `/jobs/${job.id}/pp`
+      const url = `/jobs/${job.id}/pp?standalone=1&print=1`
 
       if (previewWindow) {
         previewWindow.location.href = url
@@ -326,30 +352,8 @@ function HandoverProtocolModal({
           <div className="jobs-page__handover-header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 flex-col items-start">
               <ModalHeading section="ZAKÁZKY" title="Předávací protokol" />
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <div className="jobs-page__handover-job-badge inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
-                  ZAKÁZKA {job.job_number}
-                </div>
-                {draft.is_sent ? (
-                  <button
-                    type="button"
-                    disabled={isLoading || isSaving}
-                    onClick={() => toggleSentState(!draft.is_sent)}
-                    className="jobs-page__job-status-button inline-flex items-center justify-center rounded-full border border-emerald-500/85 bg-[linear-gradient(155deg,#17a56f_0%,#0f9b68_100%)] px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_16px_rgba(16,185,129,0.22)] transition duration-200 hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
-                    data-status="realizace"
-                  >
-                    POSLÁNO TECHNIKOVI
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={isLoading || isSaving}
-                    onClick={() => toggleSentState(!draft.is_sent)}
-                    className="jobs-page__handover-sent-badge inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-60 jobs-page__handover-sent-badge--send"
-                  >
-                    ODESLAT TECHNIKOVI
-                  </button>
-                )}
+              <div className="jobs-page__handover-job-badge mt-1.5 inline-flex items-center rounded-full border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-3 py-1 text-xs font-bold tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_18px_rgba(24,78,129,0.26)]">
+                ZAKÁZKA {job.job_number}
               </div>
             </div>
 
@@ -456,37 +460,58 @@ function HandoverProtocolModal({
           </div>
 
           <div className="jobs-page__handover-footer border-t border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:px-5 sm:py-3">
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-              <button
-                type="button"
-                onClick={onClose}
-                className="jobs-page__handover-cancel rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-5 py-3 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]"
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div
+                className={`jobs-page__handover-tech-access-control flex min-h-[46px] w-full items-center justify-between gap-3 rounded-2xl border px-4 sm:w-auto sm:min-w-[232px] ${
+                  draft.is_sent
+                    ? "border-emerald-300/90 bg-[linear-gradient(155deg,rgba(236,253,245,0.96)_0%,rgba(209,250,229,0.78)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(16,185,129,0.12)] [html[data-theme='dark']_&]:border-emerald-400/28 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(16,70,49,0.72)_0%,rgba(9,42,31,0.8)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_8px_18px_rgba(16,185,129,0.1)]"
+                    : "border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,23,42,0.96)_0%,rgba(12,20,34,0.92)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                }`}
               >
-                ZRUŠIT
-              </button>
+                <div className="app-modal-heading flex min-w-0 items-center">
+                  <span className="app-modal-heading__section whitespace-nowrap">
+                    Přístup technika
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={draft.is_sent}
+                  aria-label={`Přístup technika ${draft.is_sent ? 'vypnout' : 'zapnout'}`}
+                  disabled={isLoading || isSaving}
+                  onClick={() => toggleSentState(!draft.is_sent)}
+                  className={`jobs-page__handover-tech-access-toggle relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8fc3e4] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 [html[data-theme='dark']_&]:focus-visible:ring-offset-[#0b1220] ${
+                    draft.is_sent
+                      ? "border-emerald-500/85 bg-[linear-gradient(160deg,#20ae76_0%,#0f9662_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_6px_14px_rgba(16,185,129,0.2)] [html[data-theme='dark']_&]:border-emerald-400/35 [html[data-theme='dark']_&]:bg-[linear-gradient(160deg,rgba(30,121,84,0.98)_0%,rgba(15,90,61,0.98)_100%)]"
+                      : "border-zinc-900 bg-[linear-gradient(160deg,rgba(35,35,38,0.98)_0%,rgba(15,15,18,0.98)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_6px_14px_rgba(24,24,27,0.18)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.24)] [html[data-theme='dark']_&]:bg-[linear-gradient(160deg,rgba(23,29,40,0.98)_0%,rgba(10,14,22,0.98)_100%)]"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.24)] transition duration-200 ${
+                      draft.is_sent ? 'translate-x-[24px]' : 'translate-x-[2px]'
+                    }`}
+                  />
+                </button>
+              </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 <button
                   type="button"
                   disabled={isLoading || isSaving}
-                  onClick={() => persistDraft('save')}
-                  className="jobs-page__handover-save rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={saveDraftInBackground}
+                  className="jobs-page__handover-save inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  ULOŽIT DO ZAKÁZKY
+                  {saveFeedback === 'saving'
+                    ? 'UKLÁDÁM…'
+                    : saveFeedback === 'saved'
+                      ? 'ULOŽENO'
+                      : 'ULOŽIT DO ZAKÁZKY'}
                 </button>
                 <button
                   type="button"
                   disabled={isLoading || isSaving || !canPreview}
-                  onClick={() => persistDraft('preview')}
-                  className="jobs-page__handover-preview rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-5 py-3 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  NÁHLED
-                </button>
-                <button
-                  type="button"
-                  disabled={isLoading || isSaving || !canPreview}
-                  onClick={() => persistDraft('generate')}
-                  className="jobs-page__handover-generate inline-flex items-center justify-center gap-2 rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={generateProtocol}
+                  className="jobs-page__handover-generate inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-5 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   GENEROVAT PP
                 </button>
