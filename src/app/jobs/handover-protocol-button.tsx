@@ -347,7 +347,7 @@ function HandoverProtocolModal({
         }
       }}
     >
-      <div className="flex min-h-full items-start justify-center py-2 sm:items-center sm:py-3">
+      <div className="flex min-h-[calc(100dvh-1rem)] items-start justify-center sm:min-h-[calc(100dvh-1.5rem)] sm:items-center">
         <div className="jobs-page__modal-shell jobs-page__handover-modal flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100dvh-1.5rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
           <div className="jobs-page__handover-header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 flex-col items-start">
