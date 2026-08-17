@@ -27,17 +27,6 @@ function addDays(dateKey: string, days: number) {
   return date.toISOString().slice(0, 10)
 }
 
-function formatDate(dateKey: string) {
-  return new Intl.DateTimeFormat('cs-CZ', {
-    timeZone: 'Europe/Prague',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'numeric',
-  })
-    .format(new Date(`${dateKey}T12:00:00Z`))
-    .replace('.', '. ')
-}
-
 function formatDayAndMonth(dateKey: string) {
   return new Intl.DateTimeFormat('cs-CZ', {
     timeZone: 'Europe/Prague',
@@ -100,11 +89,6 @@ function pragueDateTimeToIso(dateKey: string, time: string) {
   let timestamp = localAsUtc - getOffset(localAsUtc)
   timestamp = localAsUtc - getOffset(timestamp)
   return new Date(timestamp).toISOString()
-}
-
-function getFridayForWeekendDate(dateKey: string) {
-  const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay()
-  return addDays(dateKey, day === 6 ? -1 : day === 0 ? -2 : 0)
 }
 
 function CloseIcon() {
@@ -175,7 +159,7 @@ export function TechnicianAvailabilityButton({
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className={`technician-availability-trigger relative inline-flex items-center justify-center overflow-hidden rounded-2xl border border-[#8dbfe0]/90 bg-[linear-gradient(155deg,rgba(229,244,252,0.95)_0%,rgba(204,231,247,0.88)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-[#236f9f] shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_2px_5px_rgba(255,255,255,0.30),0_8px_18px_rgba(15,23,42,0.10)] transition duration-200 before:pointer-events-none before:absolute before:left-3 before:right-3 before:top-0 before:h-px before:rounded-full before:bg-white/95 before:content-[''] hover:-translate-y-[1px] hover:border-[#5f9fc9] hover:bg-[linear-gradient(155deg,rgba(236,247,253,0.98)_0%,rgba(211,235,249,0.92)_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_2px_5px_rgba(255,255,255,0.34),0_12px_24px_rgba(15,86,129,0.16)] ${className}`}
+          className={`technician-availability-trigger relative inline-flex items-center justify-center overflow-hidden rounded-2xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_26px_rgba(9,48,82,0.32)] transition duration-200 ease-out before:pointer-events-none before:absolute before:left-3 before:right-3 before:top-0 before:h-px before:rounded-full before:bg-[#aad9f7]/45 before:content-[''] hover:-translate-y-[1px] hover:border-[#1f5f8e] hover:bg-[linear-gradient(160deg,rgba(56,125,177,0.95)_0%,rgba(37,109,163,0.96)_45%,rgba(22,86,138,0.98)_100%)] ${className}`}
         >
           TECHNICI
         </button>
@@ -242,19 +226,6 @@ function TechnicianAvailabilityModal({ onClose }: { onClose: () => void }) {
     () => new Map((data?.technicians ?? []).map((technician) => [technician.id, technician.name])),
     [data]
   )
-
-  const history = useMemo(() => {
-    if (!data) return [] as Array<{ date: string; technicianIds: string[] }>
-    const grouped = new Map<string, string[]>()
-    for (const entry of data.weekendOnCall) {
-      if (!entry.isHistorical) continue
-      const values = grouped.get(entry.weekend_date) ?? []
-      values.push(entry.technician_id)
-      grouped.set(entry.weekend_date, values)
-    }
-    return Array.from(grouped, ([date, technicianIds]) => ({ date, technicianIds }))
-      .sort((left, right) => right.date.localeCompare(left.date))
-  }, [data])
 
   async function saveDay(date: string, technicianIds: string[]) {
     const result = await saveWeekendOnCallAction({ weekendDate: date, technicianIds })
@@ -352,7 +323,7 @@ function TechnicianAvailabilityModal({ onClose }: { onClose: () => void }) {
             <div className="technician-availability-loading rounded-2xl border border-white/80 bg-white/70 px-5 py-10 text-center text-sm text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">Načítám pohotovosti techniků…</div>
           ) : (
             <div className={`grid gap-5 transition-opacity duration-150 lg:h-full lg:min-h-0 lg:grid-cols-2 ${isRefreshing ? 'pointer-events-none opacity-60' : ''}`}>
-              <section className="technician-availability-panel rounded-[24px] border border-white/85 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(15,23,42,0.07)] sm:p-5 lg:grid lg:min-h-0 lg:grid-rows-[2fr_1fr]">
+              <section className="technician-availability-panel rounded-[24px] border border-white/85 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(15,23,42,0.07)] sm:p-5 lg:flex lg:min-h-0 lg:flex-col">
                 <div className="min-h-0 lg:flex lg:flex-col">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -389,13 +360,6 @@ function TechnicianAvailabilityModal({ onClose }: { onClose: () => void }) {
                   })}
                 </div>
 
-                </div>
-
-                <div className="mt-5 border-t border-[#d5e4ef] pt-4 lg:mt-0 lg:flex lg:min-h-0 lg:flex-col">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Historie pohotovostí</p>
-                  <div className="mt-2 max-h-52 space-y-2 overflow-y-auto pr-1 lg:max-h-none lg:min-h-0 lg:flex-1">
-                    {history.length === 0 ? <p className="technician-availability-empty rounded-xl border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-400">Zatím žádná historie.</p> : history.map((entry) => <div key={entry.date} className="technician-availability-history-record rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 text-sm text-slate-400"><div className="flex items-start justify-between gap-3"><span>{formatDate(entry.date)}</span><div className="flex items-start gap-1.5"><span className="text-right">{entry.technicianIds.map((id) => technicianNameById.get(id) ?? '—').join(', ')}</span>{data.isAdmin ? <><button type="button" onClick={() => setEditingDate(entry.date)} className="technician-availability-icon-button inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/75 text-slate-400 transition hover:text-[#3d7eab]" aria-label={`Upravit historii pohotovosti: ${formatDate(entry.date)}`}><PencilIcon /></button><button type="button" onClick={() => setPendingDelete({ kind: 'on-call', weekendDate: entry.date, technicianName: entry.technicianIds.map((id) => technicianNameById.get(id) ?? 'Technik').join(', '), timeRange: formatDate(entry.date) })} className="technician-availability-icon-button inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/75 text-slate-400 transition hover:text-red-500" aria-label={`Smazat historii pohotovosti: ${formatDate(entry.date)}`}>×</button></> : null}</div></div>{editingDate === entry.date ? <DayEditor technicians={data.technicians} selectedIds={entry.technicianIds} onCancel={() => setEditingDate(null)} onSave={(ids) => saveDay(entry.date, ids)} /> : null}</div>)}
-                  </div>
                 </div>
               </section>
 
