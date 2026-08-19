@@ -11,7 +11,7 @@ import {
 } from '@/lib/offers/presets'
 import { OFFER_PDF_TEMPLATE } from '@/lib/offers/pdf-template'
 import type { OfferItemRow, OfferServiceItemRow } from '@/lib/offers/types'
-import { OfferPdfAutoPrint, OfferPdfToolbar } from './print-view'
+import { OfferPdfAutoPrint, OfferPdfMobilePreviewControls, OfferPdfToolbar } from './print-view'
 import type { OfferPdfLayoutProps } from './offer-pdf-layout'
 
 const BSAFE24_BACKGROUND_URL = '/offers/templates/background-nabidka-new.png'
@@ -145,6 +145,8 @@ export function BSafe24OfferPdf({
   authorProfile,
   isStandalone,
   shouldAutoPrint,
+  mobilePreview = false,
+  mobileBackHref,
 }: OfferPdfLayoutProps) {
   const preparedBy = getPreparedByName({ offer, authorProfile })
   const preparedByContact = getPreparedByContact({ offer, authorProfile })
@@ -657,6 +659,12 @@ export function BSafe24OfferPdf({
             text-transform: uppercase;
           }
 
+          @media screen and (max-width: 767px) {
+            .offer-pdf-mobile-preview .bsafe-offer-pdf-document {
+              zoom: var(--offer-mobile-pdf-scale, 0.45);
+            }
+          }
+
           @media print {
             body {
               background: #fff !important;
@@ -686,7 +694,9 @@ export function BSafe24OfferPdf({
         </div>
       ) : null}
 
-      <main className={isStandalone ? 'bg-white text-gray-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-gray-950 print:bg-white print:px-0 print:py-0'}>
+      {mobilePreview ? <OfferPdfMobilePreviewControls backHref={mobileBackHref ?? `/offers/${offer.id}`} /> : null}
+
+      <main className={mobilePreview ? 'offer-pdf-mobile-preview bg-zinc-100 px-3 pb-5 pt-20 text-gray-950 print:bg-white print:p-0' : isStandalone ? 'bg-white text-gray-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-gray-950 print:bg-white print:px-0 print:py-0'}>
         <article className="bsafe-offer-pdf-document mx-auto shadow-[0_18px_60px_rgba(15,23,42,0.12)] print:shadow-none">
           <div className="bsafe-offer-pdf-content">
             <section className="bsafe-pdf-top">

@@ -11,7 +11,7 @@ import {
 } from '@/lib/offers/presets'
 import { OFFER_PDF_TEMPLATE } from '@/lib/offers/pdf-template'
 import type { OfferItemRow, OfferServiceItemRow } from '@/lib/offers/types'
-import { OfferPdfAutoPrint, OfferPdfToolbar } from './print-view'
+import { OfferPdfAutoPrint, OfferPdfMobilePreviewControls, OfferPdfToolbar } from './print-view'
 import type { OfferPdfLayoutProps } from './offer-pdf-layout'
 
 const CLASSIC_BACKGROUND_URL = '/offers/templates/background-nabidka-new.png'
@@ -271,6 +271,8 @@ export function ClassicOfferPdf({
   authorProfile,
   isStandalone,
   shouldAutoPrint,
+  mobilePreview = false,
+  mobileBackHref,
 }: OfferPdfLayoutProps) {
   const totals = getOfferTotals(items)
   const preparedBy = getPreparedByName({ offer, authorProfile })
@@ -317,6 +319,12 @@ export function ClassicOfferPdf({
           .classic-offer-pdf-document:last-child {
             break-after: auto;
             page-break-after: auto;
+          }
+
+          @media screen and (max-width: 767px) {
+            .offer-pdf-mobile-preview .classic-offer-pdf-document {
+              zoom: var(--offer-mobile-pdf-scale, 0.45);
+            }
           }
 
           .classic-offer-pdf-content {
@@ -814,7 +822,9 @@ export function ClassicOfferPdf({
         </div>
       ) : null}
 
-      <main className={isStandalone ? 'bg-white text-gray-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-gray-950 print:bg-white print:px-0 print:py-0'}>
+      {mobilePreview ? <OfferPdfMobilePreviewControls backHref={mobileBackHref ?? `/offers/${offer.id}`} /> : null}
+
+      <main className={mobilePreview ? 'offer-pdf-mobile-preview bg-zinc-100 px-3 pb-5 pt-20 text-gray-950 print:bg-white print:p-0' : isStandalone ? 'bg-white text-gray-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-gray-950 print:bg-white print:px-0 print:py-0'}>
         {tablePages.map((page) => (
           <article
             key={page.key}

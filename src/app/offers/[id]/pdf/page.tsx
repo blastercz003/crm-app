@@ -14,7 +14,7 @@ import { ClassicOfferPdf } from './classic-offer-pdf'
 
 type OfferPdfPageProps = {
   params: Promise<{ id: string }>
-  searchParams?: Promise<{ standalone?: string; print?: string }>
+  searchParams?: Promise<{ standalone?: string; print?: string; mobilePreview?: string; returnTo?: string }>
 }
 
 function sanitizePdfTitlePart(value: string | null | undefined) {
@@ -61,6 +61,8 @@ export default async function OfferPdfPage({ params, searchParams }: OfferPdfPag
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const isStandalone = resolvedSearchParams?.standalone === '1'
   const shouldAutoPrint = resolvedSearchParams?.print === '1'
+  const mobilePreview = resolvedSearchParams?.mobilePreview === '1'
+  const mobileBackHref = resolvedSearchParams?.returnTo === 'offers' ? '/offers' : `/offers/${id}`
   const { supabase, profile, isAdmin } = await getOfferRuntimeContext()
 
   let offerQuery = supabase.from('offers').select('*').eq('id', id)
@@ -116,6 +118,8 @@ export default async function OfferPdfPage({ params, searchParams }: OfferPdfPag
     authorProfile: authorResponse.data ?? null,
     isStandalone,
     shouldAutoPrint,
+    mobilePreview,
+    mobileBackHref,
   }
 
   if (offer.offer_type === 'bsafe24') {

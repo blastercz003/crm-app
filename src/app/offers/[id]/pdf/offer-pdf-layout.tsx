@@ -15,12 +15,7 @@ import type {
   OfferRow,
   OfferServiceItemRow,
 } from '@/lib/offers/types'
-import { OfferPdfAutoPrint, OfferPdfToolbar } from './print-view'
-
-type OfferPdfPageProps = {
-  params: Promise<{ id: string }>
-  searchParams?: Promise<{ standalone?: string; print?: string }>
-}
+import { OfferPdfAutoPrint, OfferPdfMobilePreviewControls, OfferPdfToolbar } from './print-view'
 
 function formatDate(value: string | null) {
   if (!value) return 'Bez data'
@@ -59,6 +54,8 @@ export type OfferPdfLayoutProps = {
   authorProfile: OfferProfile | null
   isStandalone: boolean
   shouldAutoPrint: boolean
+  mobilePreview?: boolean
+  mobileBackHref?: string
 }
 
 export function OfferPdfLayout({
@@ -69,6 +66,8 @@ export function OfferPdfLayout({
   authorProfile,
   isStandalone,
   shouldAutoPrint,
+  mobilePreview = false,
+  mobileBackHref,
 }: OfferPdfLayoutProps) {
   const author = authorProfile ?? null
   const totals = getOfferTotals(items)
@@ -86,6 +85,7 @@ export function OfferPdfLayout({
     <>
       <script dangerouslySetInnerHTML={{ __html: hideStartupOverlayScript }} />
       {shouldAutoPrint ? <OfferPdfAutoPrint /> : null}
+      {mobilePreview ? <OfferPdfMobilePreviewControls backHref={mobileBackHref ?? `/offers/${offer.id}`} /> : null}
       <style>
         {`
           @page {
@@ -135,7 +135,7 @@ export function OfferPdfLayout({
           />
         </div>
       ) : null}
-      <main className={isStandalone ? 'bg-white text-zinc-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-zinc-950 print:bg-white print:px-0 print:py-0'}>
+      <main className={mobilePreview ? 'offer-pdf-mobile-preview bg-zinc-100 px-3 pb-5 pt-20 text-zinc-950 print:bg-white print:p-0' : isStandalone ? 'bg-white text-zinc-950' : 'min-h-screen bg-zinc-100 px-4 py-6 text-zinc-950 print:bg-white print:px-0 print:py-0'}>
         <article className="offer-pdf-document mx-auto shadow-[0_18px_60px_rgba(15,23,42,0.12)] print:shadow-none">
           <div className="offer-pdf-content">
           <header className="flex items-start justify-between gap-6 border-b border-zinc-950 pb-5">

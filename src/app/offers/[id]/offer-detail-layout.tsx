@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import {
   approveOffer,
   addOfferProgressNote,
@@ -52,6 +51,7 @@ import { SaveOfferButton } from './save-offer-button'
 import { RejectOfferWithReasonButton } from '@/app/offers/reject-offer-with-reason-button'
 import { OfferInfoCards } from './offer-info-cards'
 import { OfferServicesToggleGrid } from './offer-services-toggle-grid'
+import { OfferPdfLink } from '../offer-pdf-link'
 import {
   OfferOrderDetailPanel,
   OfferOrderTransitionButton,
@@ -768,15 +768,13 @@ export function OfferDetailLayout({
             />
 
             <div className="offers-detail-page__footer-actions mt-auto grid gap-3">
-              <Link
-                href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
-                target="_blank"
-                rel="noreferrer"
-                data-offer-unsaved-guard="true"
+              <OfferPdfLink
+                offerId={offer.id}
+                guardUnsavedChanges
                 className="offers-detail-page__footer-pdf-button inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
               >
                 GENEROVAT PDF
-              </Link>
+              </OfferPdfLink>
               <SaveOfferButton formId="offer-details-form" />
             </div>
 

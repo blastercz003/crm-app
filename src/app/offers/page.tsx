@@ -12,6 +12,7 @@ import { OfferStatusButton } from './offer-status-button'
 import { OfferStatusCommentsHover } from './offer-status-comments-hover'
 import { OfferFilterSubmitButton } from './offer-filter-submit-button'
 import { OfferFilterResetLink } from './offer-filter-reset-link'
+import { OfferPdfLink } from './offer-pdf-link'
 import {
   OFFER_TYPE_LABELS,
   getOfferTypeBadgeClass,
@@ -732,14 +733,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                     </div>
 
                     <div className="mt-4 flex flex-wrap justify-end gap-2">
-                      <Link
-                        href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
-                        target="_blank"
-                        rel="noreferrer"
+                      <OfferPdfLink
+                        offerId={offer.id}
+                        returnTo="offers"
                         className="offers-page__table-action offers-page__table-action--primary inline-flex h-9 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-4 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_20px_rgba(41,128,185,0.24)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_26px_rgba(41,128,185,0.32)]"
                       >
                         PDF
-                      </Link>
+                      </OfferPdfLink>
                       <CopyOfferButton
                         offerId={offer.id}
                         offerNumber={offer.offer_number}
@@ -835,14 +835,13 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
                         </div>
                         <div className="min-w-0 px-2 py-2">
                           <div className="flex justify-end gap-2">
-                            <Link
-                              href={`/offers/${offer.id}/pdf?standalone=1&print=1`}
-                              target="_blank"
-                              rel="noreferrer"
+                            <OfferPdfLink
+                              offerId={offer.id}
+                              returnTo="offers"
                               className="offers-page__table-action offers-page__table-action--primary inline-flex h-8 items-center justify-center rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] px-3 text-[11px] font-bold uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)]"
                             >
                               PDF
-                            </Link>
+                            </OfferPdfLink>
                             <CopyOfferButton
                               offerId={offer.id}
                               offerNumber={offer.offer_number}
