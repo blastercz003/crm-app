@@ -314,6 +314,7 @@ function HandoverProtocolModal({
   function generateProtocol() {
     setLoadError(null)
     const shouldUseCurrentTab = window.matchMedia('(max-width: 1023px)').matches
+    const shouldUseMobilePreview = window.matchMedia('(max-width: 767px)').matches
     const previewWindow = shouldUseCurrentTab ? null : window.open('', '_blank')
 
     startSaving(async () => {
@@ -325,7 +326,9 @@ function HandoverProtocolModal({
         return
       }
 
-      const url = `/jobs/${job.id}/pp?standalone=1&print=1`
+      const url = shouldUseMobilePreview
+        ? `/jobs/${job.id}/pp?standalone=1&mobilePreview=1&returnTo=jobs`
+        : `/jobs/${job.id}/pp?standalone=1&print=1`
 
       if (previewWindow) {
         previewWindow.location.href = url

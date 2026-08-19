@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export function HandoverProtocolAutoPrint() {
   useEffect(() => {
@@ -15,6 +16,58 @@ export function HandoverProtocolAutoPrint() {
   }, [])
 
   return null
+}
+
+export function HandoverProtocolMobilePreviewControls({ backHref }: { backHref: string }) {
+  const router = useRouter()
+  const [isReturning, setIsReturning] = useState(false)
+
+  useEffect(() => {
+    const setScale = () => {
+      const scale = Math.min(1, Math.max(0.28, (window.innerWidth - 24) / 794))
+      document.documentElement.style.setProperty('--handover-protocol-mobile-scale', String(scale))
+    }
+
+    setScale()
+    window.addEventListener('resize', setScale)
+    window.addEventListener('orientationchange', setScale)
+
+    return () => {
+      window.removeEventListener('resize', setScale)
+      window.removeEventListener('orientationchange', setScale)
+      document.documentElement.style.removeProperty('--handover-protocol-mobile-scale')
+    }
+  }, [])
+
+  return (
+    <div className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex items-center justify-between gap-2 rounded-2xl border border-white/20 bg-zinc-950/86 p-2 shadow-2xl backdrop-blur-xl print:hidden sm:hidden">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={isReturning}
+          onClick={() => {
+            if (isReturning) return
+            setIsReturning(true)
+            router.push(backHref)
+          }}
+          className="h-10 w-[96px] rounded-xl border border-white/20 bg-white/10 px-3 text-xs font-semibold text-white transition active:bg-white/15 disabled:cursor-wait disabled:opacity-80"
+        >
+          {isReturning ? 'NAČÍTÁM…' : 'ZPĚT'}
+        </button>
+        <span
+          aria-label={isReturning ? 'Načítám zakázky' : undefined}
+          className={`h-3 w-3 rounded-full border-2 border-[#8ec4e5] border-t-transparent transition-opacity ${isReturning ? 'animate-spin opacity-100' : 'opacity-0'}`}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => window.print()}
+        className="h-10 rounded-xl bg-[#398bc2] px-4 text-xs font-semibold text-white transition active:bg-[#2f7eb4]"
+      >
+        TISK / SDÍLET
+      </button>
+    </div>
+  )
 }
 
 export function HandoverProtocolPrintToolbar({

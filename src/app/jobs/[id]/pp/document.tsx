@@ -165,6 +165,14 @@ export function ProtocolPrintStyles() {
           background: #fff !important;
         }
       }
+
+      @media screen and (max-width: 767px) {
+        .handover-protocol-mobile-preview [data-pp-document] {
+          width: 794px !important;
+          max-width: none !important;
+          zoom: var(--handover-protocol-mobile-scale, 0.45);
+        }
+      }
     `}</style>
   )
 }
@@ -489,9 +497,11 @@ function ProtocolHeader() {
 export function HandoverProtocolDocument({
   data,
   standalone = false,
+  mobilePreview = false,
 }: {
   data: HandoverProtocolPreviewData
   standalone?: boolean
+  mobilePreview?: boolean
 }) {
   const { job, client, protocol } = data
   const pages = paginateProtocolItems(protocol.devices, protocol.accessories)
@@ -508,7 +518,9 @@ export function HandoverProtocolDocument({
       .join(' / ') || '—'
   const jobDateRange = formatJobDateRange(job.start_at, job.end_at)
 
-  const mainClassName = standalone
+  const mainClassName = mobilePreview
+    ? 'handover-protocol-mobile-preview min-h-screen overflow-x-hidden bg-zinc-100 px-3 pb-5 pt-20 text-zinc-900 print:bg-white print:p-0'
+    : standalone
     ? 'min-h-screen bg-white px-0 py-0 text-zinc-900 print:bg-white print:px-0 print:py-0'
     : 'min-h-screen bg-zinc-100 px-4 py-6 text-zinc-900 print:bg-white print:px-0 print:py-0'
 

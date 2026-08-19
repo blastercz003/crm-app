@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getJobFormSuggestionsAction,
@@ -77,6 +77,7 @@ type JobsInteractiveTableProps = {
   showEvidenceColumn?: boolean
   showHandoverProtocolPdfColumn?: boolean
   collapseReadOnlyMobileActions?: boolean
+  protocolPreviewReturnTo?: 'jobs' | 'technician-jobs'
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
@@ -112,6 +113,7 @@ export function JobsInteractiveTable({
   showEvidenceColumn = true,
   showHandoverProtocolPdfColumn = false,
   collapseReadOnlyMobileActions = false,
+  protocolPreviewReturnTo = 'jobs',
 }: JobsInteractiveTableProps) {
   const [visibleJobs, setVisibleJobs] = useState(jobs)
   const [editingJob, setEditingJob] = useState<JobRow | null>(null)
@@ -192,6 +194,7 @@ export function JobsInteractiveTable({
                 showReadOnlyInfo={showReadOnlyInfo}
                 showEvidenceColumn={showEvidenceColumn}
                 showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
+                protocolPreviewReturnTo={protocolPreviewReturnTo}
                 onJobUpdate={updateVisibleJob}
                 onEditJob={setEditingJob}
               />
@@ -211,6 +214,7 @@ export function JobsInteractiveTable({
                 showReadOnlyInfo={showReadOnlyInfo}
                 showHandoverProtocolPdfColumn={showHandoverProtocolPdfColumn}
                 collapseReadOnlyMobileActions={collapseReadOnlyMobileActions}
+                protocolPreviewReturnTo={protocolPreviewReturnTo}
                 onJobUpdate={updateVisibleJob}
                 onEditJob={setEditingJob}
               />
@@ -234,6 +238,7 @@ function DesktopRow({
   showReadOnlyInfo,
   showEvidenceColumn,
   showHandoverProtocolPdfColumn,
+  protocolPreviewReturnTo,
   onJobUpdate,
   onEditJob,
 }: {
@@ -243,6 +248,7 @@ function DesktopRow({
   showReadOnlyInfo: boolean
   showEvidenceColumn: boolean
   showHandoverProtocolPdfColumn: boolean
+  protocolPreviewReturnTo: 'jobs' | 'technician-jobs'
   onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
   onEditJob: (job: JobRow) => void
 }) {
@@ -347,7 +353,7 @@ function DesktopRow({
       {showHandoverProtocolPdfColumn ? (
         <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
           {job.handover_protocol_is_sent ? (
-            <ProtocolPdfButton jobId={job.id} />
+            <ProtocolPdfButton jobId={job.id} returnTo={protocolPreviewReturnTo} />
           ) : (
             <DisabledProtocolPdfButton />
           )}
@@ -372,6 +378,7 @@ function MobileCard({
   showReadOnlyInfo,
   showHandoverProtocolPdfColumn,
   collapseReadOnlyMobileActions,
+  protocolPreviewReturnTo,
   onJobUpdate,
   onEditJob,
 }: {
@@ -381,6 +388,7 @@ function MobileCard({
   showReadOnlyInfo: boolean
   showHandoverProtocolPdfColumn: boolean
   collapseReadOnlyMobileActions: boolean
+  protocolPreviewReturnTo: 'jobs' | 'technician-jobs'
   onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
   onEditJob: (job: JobRow) => void
 }) {
@@ -505,7 +513,7 @@ function MobileCard({
           ) : showReadOnlyInfo || showHandoverProtocolPdfColumn ? (
             <div className="flex items-center gap-2">
               {showProtocolPdfButton ? (
-                <ProtocolPdfButton jobId={job.id} compact variant="mobile" />
+                <ProtocolPdfButton jobId={job.id} returnTo={protocolPreviewReturnTo} compact variant="mobile" />
               ) : showHandoverProtocolPdfColumn ? (
                 <DisabledProtocolPdfButton compact variant="mobile" />
               ) : null}
@@ -602,7 +610,7 @@ function MobileCard({
           }`}
         >
           {showProtocolPdfButton ? (
-            <ProtocolPdfButton jobId={job.id} compact variant="mobile" />
+            <ProtocolPdfButton jobId={job.id} returnTo={protocolPreviewReturnTo} compact variant="mobile" />
           ) : showHandoverProtocolPdfColumn ? (
             <DisabledProtocolPdfButton compact variant="mobile" />
           ) : null}
@@ -670,18 +678,31 @@ function SpecialJobMarker({
 
 function ProtocolPdfButton({
   jobId,
+  returnTo,
   compact = false,
   variant = 'table',
 }: {
   jobId: string
+  returnTo: 'jobs' | 'technician-jobs'
   compact?: boolean
   variant?: 'table' | 'mobile'
 }) {
+  const printHref = `/jobs/${jobId}/pp?standalone=1&print=1`
+  const mobilePreviewHref = `/jobs/${jobId}/pp?standalone=1&mobilePreview=1&returnTo=${returnTo}`
+
+  function openMobilePreview(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.defaultPrevented || !window.matchMedia('(max-width: 767px)').matches) return
+
+    event.preventDefault()
+    window.location.assign(mobilePreviewHref)
+  }
+
   return (
     <Link
-      href={`/jobs/${jobId}/pp?standalone=1&print=1`}
+      href={printHref}
       target="_blank"
       rel="noreferrer"
+      onClick={openMobilePreview}
       title="Předávací protokol"
       aria-label="Předávací protokol"
       className={`inline-flex items-center justify-center rounded-xl border border-[#6fa9d1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_16px_rgba(41,128,185,0.22)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)] ${

@@ -3,11 +3,11 @@ import { notFound } from 'next/navigation'
 import { getHandoverProtocolPreviewData } from '@/app/jobs/handover-protocol-actions'
 import { joinTitleParts } from '@/lib/pageTitles'
 import { HandoverProtocolDocument } from './document'
-import { HandoverProtocolAutoPrint, HandoverProtocolPrintToolbar } from './print-view'
+import { HandoverProtocolAutoPrint, HandoverProtocolMobilePreviewControls, HandoverProtocolPrintToolbar } from './print-view'
 
 type HandoverProtocolPreviewPageProps = {
   params: Promise<{ id: string }>
-  searchParams?: Promise<{ standalone?: string; print?: string }>
+  searchParams?: Promise<{ standalone?: string; print?: string; mobilePreview?: string; returnTo?: string }>
 }
 
 export async function generateMetadata({
@@ -37,6 +37,8 @@ export default async function HandoverProtocolPreviewPage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const isStandalone = resolvedSearchParams?.standalone === '1'
   const shouldAutoPrint = resolvedSearchParams?.print === '1'
+  const mobilePreview = resolvedSearchParams?.mobilePreview === '1'
+  const mobileBackHref = resolvedSearchParams?.returnTo === 'technician-jobs' ? '/zakazky-techniku' : '/jobs'
 
   const result = await getHandoverProtocolPreviewData(id)
 
@@ -47,6 +49,7 @@ export default async function HandoverProtocolPreviewPage({
   return (
     <>
       {shouldAutoPrint ? <HandoverProtocolAutoPrint /> : null}
+      {mobilePreview ? <HandoverProtocolMobilePreviewControls backHref={mobileBackHref} /> : null}
       {!isStandalone ? (
         <div className="mx-auto max-w-[860px] pt-6">
           <HandoverProtocolPrintToolbar
@@ -55,7 +58,7 @@ export default async function HandoverProtocolPreviewPage({
           />
         </div>
       ) : null}
-      <HandoverProtocolDocument data={result.data} standalone={isStandalone} />
+      <HandoverProtocolDocument data={result.data} standalone={isStandalone} mobilePreview={mobilePreview} />
     </>
   )
 }

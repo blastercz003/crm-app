@@ -1036,6 +1036,7 @@ export default async function ZakazkyTechnikuPage({
               showEvidenceColumn={false}
               showHandoverProtocolPdfColumn
               collapseReadOnlyMobileActions
+              protocolPreviewReturnTo="technician-jobs"
             />
           </div>
         )}
