@@ -1,10 +1,11 @@
 'use client'
 
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Building2, CarFront, Cpu, House } from 'lucide-react'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
+import { SlidingResponsiveTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import { AssetAttachmentUploadPanel } from './asset-attachment-upload-panel'
 import { AssetElectricitySection, type AssetElectricityRow } from './asset-electricity-form'
 import { AssetDocumentDeleteButton } from './asset-document-delete-button'
@@ -1095,30 +1096,14 @@ export function AssetDetailClient({
           </div>
         </section>
 
-        <section className="assets-detail-page__tabs-shell rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
-          <div className="assets-detail-page__tabs grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2">
-            {availableTabs.map((tab) => {
-              const isActive = tab === activeTab
-
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  data-active={isActive ? 'true' : 'false'}
-                  style={
-                    {
-                      '--asset-tab-accent': category.color,
-                      borderColor: isActive ? category.color : `${category.color}33`,
-                    } as CSSProperties
-                  }
-                  className="assets-detail-page__tab inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl border px-4 py-2.5 text-xs font-medium transition duration-200 sm:w-auto sm:text-sm"
-                >
-                  <span>{ASSET_TAB_LABELS[tab]}</span>
-                </button>
-              )
-            })}
-          </div>
+        <section className="assets-detail-page__tabs-shell rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-4">
+          <SlidingResponsiveTabSwitch
+            value={activeTab}
+            options={availableTabs.map((tab) => ({ value: tab, label: ASSET_TAB_LABELS[tab] }))}
+            onValueChange={setActiveTab}
+            ariaLabel="Část detailu majetku"
+            className="assets-detail-page__tabs w-full rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)]"
+          />
         </section>
 
         {activeTab === 'overview' ? (

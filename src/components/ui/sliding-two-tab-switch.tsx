@@ -343,3 +343,97 @@ export function SlidingSingleRowTabSwitch<T extends string>({
     </nav>
   )
 }
+
+export function SlidingResponsiveTabSwitch<T extends string>({
+  value,
+  options,
+  onValueChange,
+  ariaLabel,
+  className = '',
+}: {
+  value: T
+  options: readonly SlidingTabOption<T>[]
+  onValueChange: (value: T) => void
+  ariaLabel: string
+  className?: string
+}) {
+  const { visualValue, selectTab } = useSlidingTabValue(value, onValueChange)
+  const optionCount = Math.max(1, options.length)
+  const activeIndex = Math.max(0, options.findIndex((option) => option.value === visualValue))
+  const mobileRows = Math.ceil(optionCount / 2)
+  const mobileColumn = activeIndex % 2
+  const mobileRow = Math.floor(activeIndex / 2)
+  const mobileLeft = mobileColumn === 0 ? '0' : 'calc(50% + 0.125rem)'
+  const mobileRight = mobileColumn === 0 ? 'calc(50% + 0.125rem)' : '0'
+  const mobileTop = `${mobileRow * 2.5}rem`
+  const mobileBottom = `calc(100% - ${mobileRow * 2.5 + 2.25}rem)`
+  const desktopLeft =
+    activeIndex === 0
+      ? '0'
+      : `calc(${(activeIndex * 100) / optionCount}% + ${(activeIndex * 0.25) / optionCount}rem)`
+  const desktopRightSteps = optionCount - activeIndex - 1
+  const desktopRight =
+    desktopRightSteps === 0
+      ? '0'
+      : `calc(${(desktopRightSteps * 100) / optionCount}% + ${(desktopRightSteps * 0.25) / optionCount}rem)`
+  const switchStyle = {
+    '--sliding-responsive-tab-count': optionCount,
+    '--sliding-responsive-mobile-rows': mobileRows,
+    '--sliding-responsive-mobile-left': mobileLeft,
+    '--sliding-responsive-mobile-top': mobileTop,
+    '--sliding-responsive-mobile-clip': `inset(${mobileTop} ${mobileRight} ${mobileBottom} ${mobileLeft} round 1rem)`,
+    '--sliding-responsive-desktop-left': desktopLeft,
+    '--sliding-responsive-desktop-clip': `inset(0 ${desktopRight} 0 ${desktopLeft} round 1rem)`,
+  } as CSSProperties
+
+  return (
+    <nav className={className} aria-label={ariaLabel} style={switchStyle}>
+      <div className="sliding-responsive-tab-switch__body relative">
+        <div aria-hidden="true" className="sliding-responsive-tab-switch__grid pointer-events-none absolute inset-0 grid gap-1">
+          {options.map((option) => (
+            <span
+              key={option.value}
+              className="flex h-9 min-w-0 items-center justify-center truncate px-2 text-center text-[10px] font-semibold uppercase tracking-[0.07em] text-zinc-500 sm:text-[11px] sm:tracking-[0.09em] [html[data-theme='dark']_&]:text-slate-400"
+            >
+              {option.label}
+            </span>
+          ))}
+        </div>
+
+        <div
+          aria-hidden="true"
+          className="sliding-responsive-tab-switch__indicator pointer-events-none absolute z-10 h-9 rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] motion-reduce:transition-none [html[data-theme='dark']_&]:border-[rgba(92,167,219,0.32)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(45,97,142,0.98)_0%,rgba(28,76,118,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_20px_rgba(9,48,82,0.22)]"
+        />
+
+        <div
+          aria-hidden="true"
+          className="sliding-responsive-tab-switch__active-labels pointer-events-none absolute inset-0 z-[11] grid gap-1 motion-reduce:transition-none"
+        >
+          {options.map((option) => (
+            <span
+              key={option.value}
+              className="flex h-9 min-w-0 items-center justify-center truncate px-2 text-center text-[10px] font-semibold uppercase tracking-[0.07em] text-white sm:text-[11px] sm:tracking-[0.09em]"
+            >
+              {option.label}
+            </span>
+          ))}
+        </div>
+
+        <div className="sliding-responsive-tab-switch__grid absolute inset-0 z-20 grid gap-1">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => selectTab(option.value)}
+              onMouseDown={(event) => event.preventDefault()}
+              aria-pressed={visualValue === option.value}
+              className="h-9 min-w-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fc2e5] focus-visible:ring-offset-2"
+            >
+              <span className="sr-only">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </nav>
+  )
+}

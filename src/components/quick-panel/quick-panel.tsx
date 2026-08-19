@@ -27,7 +27,8 @@ function isExcludedRoute(pathname: string) {
     pathname === '/login' ||
     pathname === '/settings/password' ||
     pathname === '/snake' ||
-    pathname.startsWith('/snake/')
+    pathname.startsWith('/snake/') ||
+    /^\/jobs\/[^/]+\/pp$/.test(pathname)
   )
 }
 

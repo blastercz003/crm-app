@@ -863,22 +863,22 @@ export default async function OffersPage({ searchParams }: OffersPageProps) {
               </div>
             </section>
             {totalPages > 1 ? (
-              <nav aria-label="Stránkování nabídek" className="mt-4 flex justify-center">
-                <div className="flex items-center gap-1 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.88)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
+              <nav aria-label="Stránkování nabídek" className="app-pagination mt-4 flex justify-center">
+                <div className="app-pagination__panel flex items-center gap-1 rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.94)_0%,rgba(241,246,251,0.88)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_22px_rgba(15,23,42,0.1)]">
                   <Link
                     href={buildOffersPageHref({ q, status, author: authorSelectValue, sort, page: Math.max(1, currentPage - 1) })}
                     aria-disabled={currentPage === 1}
-                    className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === 1 ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
+                    className={`app-pagination__link inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === 1 ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
                   >
                     ‹
                   </Link>
-                  <span className="px-2 text-xs font-semibold tabular-nums text-gray-600">
+                  <span className="app-pagination__summary px-2 text-xs font-semibold tabular-nums text-gray-600">
                     {currentPage} / {totalPages}
                   </span>
                   <Link
                     href={buildOffersPageHref({ q, status, author: authorSelectValue, sort, page: Math.min(totalPages, currentPage + 1) })}
                     aria-disabled={currentPage === totalPages}
-                    className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === totalPages ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
+                    className={`app-pagination__link inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-sm font-semibold transition ${currentPage === totalPages ? 'pointer-events-none text-gray-300' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
                   >
                     ›
                   </Link>

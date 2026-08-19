@@ -172,6 +172,20 @@ export function ProtocolPrintStyles() {
           max-width: none !important;
           zoom: var(--handover-protocol-mobile-scale, 0.45);
         }
+
+        .handover-protocol-mobile-preview .pp-mobile-grid-3 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          align-items: stretch;
+        }
+
+        .handover-protocol-mobile-preview .pp-mobile-grid-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: stretch;
+        }
+
+        .handover-protocol-mobile-preview .pp-mobile-spacer {
+          display: block !important;
+        }
       }
     `}</style>
   )
@@ -424,7 +438,7 @@ function SignatureBlock({
 
 function SignatureSection() {
   return (
-    <section className="mt-6 break-inside-avoid-page break-inside-avoid grid gap-4 md:grid-cols-2 print:mt-4 print:grid-cols-2 print:items-stretch print:gap-3">
+    <section className="pp-mobile-grid-2 mt-6 break-inside-avoid-page break-inside-avoid grid gap-4 md:grid-cols-2 print:mt-4 print:grid-cols-2 print:items-stretch print:gap-3">
       <SignatureBlock
         title="Realizace"
         rows={['Datum a čas', 'Technik B-ENERGY', 'Podpis technika']}
@@ -569,7 +583,7 @@ export function HandoverProtocolDocument({
                           />
                         </section>
 
-                        <section className="mt-4 grid gap-3 md:grid-cols-3 print:grid-cols-3 print:items-stretch">
+                        <section className="pp-mobile-grid-3 mt-4 grid gap-3 md:grid-cols-3 print:grid-cols-3 print:items-stretch">
                           <CompanyBlock
                             title="Předávající"
                             lines={[BLASTER_COMPANY.name, ...BLASTER_COMPANY.lines]}
@@ -594,9 +608,9 @@ export function HandoverProtocolDocument({
                           <SubtenantSection />
                         </section>
 
-                        <section className="mt-4 grid gap-2 md:grid-cols-3 print:grid-cols-3 print:items-stretch">
-                          <div className="hidden md:block print:block" />
-                          <div className="hidden md:block print:block" />
+                        <section className="pp-mobile-grid-3 mt-4 grid gap-2 md:grid-cols-3 print:grid-cols-3 print:items-stretch">
+                          <div className="pp-mobile-spacer hidden md:block print:block" />
+                          <div className="pp-mobile-spacer hidden md:block print:block" />
                           <ValuePair
                             label="Místo realizace"
                             value={protocol.handover_place}

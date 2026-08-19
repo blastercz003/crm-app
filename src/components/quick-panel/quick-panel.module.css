@@ -7,6 +7,12 @@
   transform: translateY(-50%);
 }
 
+@media print {
+  .root {
+    display: none !important;
+  }
+}
+
 .trigger,
 .panel,
 .sectionButton,
