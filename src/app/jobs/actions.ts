@@ -246,8 +246,6 @@ const SALES_OWNER_NOTIFICATION_RECIPIENTS: Partial<Record<string, string>> = {
 }
 
 const INLINE_EDITABLE_FIELDS = [
-  'company_name',
-  'contact_person',
   'start_at',
   'end_at',
   'site_address',
@@ -262,6 +260,9 @@ const NON_ADMIN_ALLOWED_INLINE_FIELDS = [
 ] as const
 
 type InlineEditableField = (typeof INLINE_EDITABLE_FIELDS)[number]
+// The legacy branches below remain for existing audit and synchronization logic.
+// Runtime validation still allows only INLINE_EDITABLE_FIELDS above.
+type InlineEditableActionField = InlineEditableField | 'company_name' | 'contact_person'
 type TrackedChangeField =
   | 'company_name'
   | 'start_at'
@@ -279,8 +280,8 @@ const TRACKED_CHANGE_FIELDS = new Set<TrackedChangeField>([
   'generator_name',
 ])
 
-function getJobFieldActivityLabel(field: InlineEditableField) {
-  const map: Record<InlineEditableField, string> = {
+function getJobFieldActivityLabel(field: InlineEditableActionField) {
+  const map: Record<InlineEditableActionField, string> = {
     company_name: 'Firma',
     contact_person: 'Kontaktní osoba',
     start_at: 'Začátek',
@@ -416,12 +417,12 @@ function normalizeEvidenceStatus(value: FormDataEntryValue | null) {
     : 'nove'
 }
 
-function isInlineEditableField(value: string): value is InlineEditableField {
+function isInlineEditableField(value: string): value is InlineEditableActionField {
   return INLINE_EDITABLE_FIELDS.includes(value as InlineEditableField)
 }
 
 function canNonAdminEditInlineField(
-  field: InlineEditableField
+  field: InlineEditableActionField
 ): field is (typeof NON_ADMIN_ALLOWED_INLINE_FIELDS)[number] {
   return NON_ADMIN_ALLOWED_INLINE_FIELDS.includes(
     field as (typeof NON_ADMIN_ALLOWED_INLINE_FIELDS)[number]
@@ -653,6 +654,34 @@ export async function getJobFormSuggestionsAction(
         .map((item) => String(item.name ?? '').trim())
         .filter(Boolean),
     },
+  }
+}
+
+export async function getJobTechnicianSuggestionsAction(): Promise<
+  | { success: true; data: string[] }
+  | { success: false; error: string }
+> {
+  const { supabase, user, error } = await requireJobsAccess()
+
+  if (!user) {
+    return { success: false, error: error ?? 'Nemáš oprávnění pro práci se zakázkami.' }
+  }
+
+  const { data, error: techniciansError } = await supabase
+    .from('profiles')
+    .select('name')
+    .eq('can_be_assigned_as_technician', true)
+    .order('name', { ascending: true })
+
+  if (techniciansError) {
+    return { success: false, error: 'Nepodařilo se načíst seznam techniků.' }
+  }
+
+  return {
+    success: true,
+    data: (data ?? [])
+      .map((item) => String(item.name ?? '').trim())
+      .filter(Boolean),
   }
 }
 

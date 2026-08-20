@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, useTransition, type MouseEvent } 
 import { createPortal } from 'react-dom'
 import {
   getJobFormSuggestionsAction,
+  getJobTechnicianSuggestionsAction,
   updateJobEvidenceStatusAction,
   updateJobInlineFieldAction,
   updateJobStatusAction,
@@ -289,26 +290,50 @@ function DesktopRow({
         value={job.contact_person}
         printHidden
       />
-      <StaticCell
+      <EditableCell
+        job={job}
+        field="start_at"
         value={job.start_at}
         type="datetime"
+        canEdit={allowEditing && isAdmin}
+        onJobUpdate={onJobUpdate}
       />
-      <StaticCell
+      <EditableCell
+        job={job}
+        field="end_at"
         value={job.end_at}
         type="datetime"
+        canEdit={allowEditing && isAdmin}
+        onJobUpdate={onJobUpdate}
       />
-      <StaticCell
+      <EditableCell
+        job={job}
+        field="site_address"
         value={job.site_address}
+        canEdit={allowEditing && isAdmin}
+        onJobUpdate={onJobUpdate}
       />
-      <StaticCell
+      <EditableCell
+        job={job}
+        field="store_number"
         value={job.store_number}
         printHidden
+        canEdit={allowEditing && isAdmin}
+        onJobUpdate={onJobUpdate}
       />
-      <StaticCell
+      <EditableCell
+        job={job}
+        field="technician_name"
         value={job.technician_name}
+        canEdit={allowEditing}
+        onJobUpdate={onJobUpdate}
       />
-      <StaticCell
+      <EditableCell
+        job={job}
+        field="generator_name"
         value={job.generator_name}
+        canEdit={allowEditing}
+        onJobUpdate={onJobUpdate}
       />
 
       <td className="border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:hidden">
@@ -1097,7 +1122,6 @@ function EditableCell({
   printHidden = false,
   canEdit,
   clientSuggestions = [],
-  technicianSuggestions = [],
   onJobUpdate,
 }: {
   job: JobRow
@@ -1107,7 +1131,6 @@ function EditableCell({
   printHidden?: boolean
   canEdit: boolean
   clientSuggestions?: ClientOption[]
-  technicianSuggestions?: string[]
   onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   if (field === 'company_name') {
@@ -1130,7 +1153,6 @@ function EditableCell({
         value={value}
         printHidden={printHidden}
         canEdit={canEdit}
-        technicianSuggestions={technicianSuggestions}
         onJobUpdate={onJobUpdate}
       />
     )
@@ -1534,19 +1556,20 @@ function EditableTechnicianCell({
   value,
   printHidden = false,
   canEdit,
-  technicianSuggestions,
   onJobUpdate,
 }: {
   job: JobRow
   value: string | null
   printHidden?: boolean
   canEdit: boolean
-  technicianSuggestions: string[]
   onJobUpdate: (jobId: string, nextValues: Partial<JobRow>) => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [technicianValue, setTechnicianValue] = useState(value ?? '')
+  const [technicianSuggestions, setTechnicianSuggestions] = useState<string[]>([])
+  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false)
+  const suggestionsLoadedRef = useRef(false)
 
   const cellClassName = `border border-l-0 border-r-0 border-[#cfd8e3] bg-transparent px-2 py-2 align-middle shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition duration-200 group-hover:border-[#78abcf] print:border print:px-1.5 print:py-1.5 ${
     printHidden ? 'print:hidden' : ''
@@ -1604,6 +1627,23 @@ function EditableTechnicianCell({
   function startEditing() {
     setTechnicianValue(value ?? '')
     setIsEditing(true)
+
+    if (suggestionsLoadedRef.current) return
+
+    setIsSuggestionsLoading(true)
+
+    void getJobTechnicianSuggestionsAction().then((result) => {
+      setIsSuggestionsLoading(false)
+
+      if (!result.success) {
+        alert(result.error ?? 'Nepodařilo se načíst seznam techniků.')
+        setIsEditing(false)
+        return
+      }
+
+      suggestionsLoadedRef.current = true
+      setTechnicianSuggestions(result.data)
+    })
   }
 
   const displayValue = value || '—'
@@ -1646,7 +1686,7 @@ function EditableTechnicianCell({
               cancelEditing()
             }
           }}
-          disabled={isPending}
+          disabled={isPending || isSuggestionsLoading}
           className="jobs-page__table-inline-edit-input h-8 w-full rounded-lg px-2 text-[12px] outline-none transition"
         />
       </td>
