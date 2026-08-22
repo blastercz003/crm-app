@@ -186,6 +186,7 @@ type DashboardProfile = {
   can_view_bsafe24: boolean | null
   can_view_nord_fjella: boolean | null
   can_view_provize: boolean | null
+  can_view_activities: boolean | null
   david_dashboard_ikony: boolean | null
   dashboard_schovat_ukoly_a_schuzky: boolean | null
   dashboard_calendar: boolean | null
@@ -1176,7 +1177,7 @@ export default async function DashboardPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'name, role, avatar_path, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, can_view_stores, can_view_bsafe24, can_view_nord_fjella, can_view_provize, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
+      'name, role, avatar_path, can_view_jobs, can_view_jobs_portal, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_job_attachments, can_view_handover_protocol_upload, can_view_all_technician_handover_uploads, can_view_stores, can_view_bsafe24, can_view_nord_fjella, can_view_provize, can_view_activities, david_dashboard_ikony, dashboard_schovat_ukoly_a_schuzky, dashboard_calendar'
     )
     .eq('id', user.id)
     .single<DashboardProfile>()
@@ -1233,6 +1234,7 @@ export default async function DashboardPage({
   const canViewBSafe24 = isAdmin || Boolean(profile?.can_view_bsafe24)
   const canViewNordFjella = isAdmin || Boolean(profile?.can_view_nord_fjella)
   const canViewProvize = canViewProvizeSection(profile?.role ?? null, profile)
+  const canViewActivities = isAdmin || Boolean(profile?.can_view_activities)
   const canViewHandoverProtocolUpload =
     isTechnik ||
     canViewHandoverProtocolUploadSection(profile?.role ?? null, profile)
@@ -1606,8 +1608,28 @@ export default async function DashboardPage({
             <DashboardMeetingNotificationSync />
             <div className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="dashboard-card dashboard-card--strong rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center justify-center lg:justify-start">
+          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-4">
+            <div className="order-2 hidden h-12 min-w-0 items-stretch gap-3 lg:flex">
+              <DashboardUpdatesLauncher
+                unreadCount={unreadNotificationCount}
+                receivedInvoicesDueCount={receivedInvoicesDueCount}
+                variant="desktop"
+              />
+
+              {canViewActivities ? (
+                <Link href="/activities" className="dashboard-activities-link inline-flex h-12 w-[140px] shrink-0 items-center justify-center rounded-2xl border border-[#2473aa] bg-[linear-gradient(155deg,#4d96cb_0%,#2f7fb8_55%,#236a9e_100%)] px-4 text-sm font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_8px_18px_rgba(35,106,158,0.42)] transition duration-200 ease-out hover:-translate-y-0.5 hover:border-[#3185bf] hover:bg-[linear-gradient(155deg,#5aa4d8_0%,#398bc5_55%,#2877ad_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(35,106,158,0.52)] active:bg-[linear-gradient(155deg,#428bc0_0%,#2a76ac_55%,#1f6394_100%)] active:shadow-[inset_0_3px_8px_rgba(19,73,111,0.48),inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(35,106,158,0.46)]">
+                  AKTIVITA
+                </Link>
+              ) : null}
+
+              <div className="w-[180px] shrink-0">
+                <DashboardGlobalSearchInput
+                  className="dashboard-search-input h-full w-full min-w-0 truncate rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm font-normal text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
+                />
+              </div>
+            </div>
+
+            <div className="order-1 flex items-center justify-center lg:order-2">
               <Link href="/dashboard" className="inline-flex items-center">
                 <Image
                   src="/logo2.png"
@@ -1615,41 +1637,34 @@ export default async function DashboardPage({
                   width={150}
                   height={42}
                   priority
-                  className="h-6 w-auto transition hover:opacity-80"
+                  className="h-6 w-auto transition hover:opacity-80 lg:h-[18px]"
                 />
               </Link>
             </div>
 
-            <div className="hidden w-full lg:block lg:w-auto lg:flex-none">
-              <div className="flex w-full items-stretch justify-end gap-3 lg:w-auto">
-                <div className="hidden lg:block">
-                  <DashboardGlobalSearchInput
-                    className="dashboard-search-input h-full w-[260px] rounded-2xl border border-gray-200 bg-white/96 px-4 text-sm font-normal text-zinc-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_18px_rgba(39,39,42,0.08)] transition placeholder:text-zinc-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
-                  />
-                </div>
-
-                <DashboardUpdatesLauncher
-                  unreadCount={unreadNotificationCount}
-                  receivedInvoicesDueCount={receivedInvoicesDueCount}
-                  variant="desktop"
-                />
-
-                <DashboardUserPanel
-                  profileName={profile?.name ?? null}
-                  avatarUrl={profileAvatarUrl}
-                  userEmail={user.email ?? ''}
-                  className="dashboard-user-panel lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
-                />
-              </div>
+            <div className="order-3 hidden min-w-0 justify-end lg:flex">
+              <DashboardUserPanel
+                profileName={profile?.name ?? null}
+                avatarUrl={profileAvatarUrl}
+                userEmail={user.email ?? ''}
+                className="dashboard-user-panel lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
+              />
             </div>
           </div>
 
           <div className="mt-3 lg:hidden">
-            <DashboardUpdatesLauncher
-              unreadCount={unreadNotificationCount}
-              receivedInvoicesDueCount={receivedInvoicesDueCount}
-              variant="mobile"
-            />
+            <div className={canViewActivities ? 'grid grid-cols-2 gap-2' : ''}>
+              <DashboardUpdatesLauncher
+                unreadCount={unreadNotificationCount}
+                receivedInvoicesDueCount={receivedInvoicesDueCount}
+                variant="mobile"
+              />
+              {canViewActivities ? (
+                <Link href="/activities" className="dashboard-activities-link inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-[#2473aa] bg-[linear-gradient(155deg,#4d96cb_0%,#2f7fb8_55%,#236a9e_100%)] px-3 text-sm font-semibold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_9px_20px_rgba(35,106,158,0.42)] transition duration-200 ease-out hover:-translate-y-0.5 hover:border-[#3185bf] hover:bg-[linear-gradient(155deg,#5aa4d8_0%,#398bc5_55%,#2877ad_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(35,106,158,0.52)] active:scale-[0.98] active:bg-[linear-gradient(155deg,#428bc0_0%,#2a76ac_55%,#1f6394_100%)] active:shadow-[inset_0_3px_8px_rgba(19,73,111,0.48),inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(35,106,158,0.46)]">
+                  AKTIVITA
+                </Link>
+              ) : null}
+            </div>
 
             <div className="mt-3">
               <DashboardGlobalSearchInput
@@ -1828,6 +1843,7 @@ export default async function DashboardPage({
               </div>
             </DashboardGlobalSearchBody>
             <DashboardMobileQuickActions
+              canViewActivities={canViewActivities}
               canViewJobs={Boolean(profile?.can_view_jobs)}
               canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
               canCreateJobs={isAdmin}

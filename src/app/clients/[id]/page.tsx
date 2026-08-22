@@ -17,6 +17,7 @@ import { ClientActivityTabs } from '../client-activity-tabs'
 import { deleteClientContact, setPrimaryClientContact } from '../actions'
 import { EditClientButton } from '../edit-client-button'
 import { ClientOwnerChangeButton } from '../client-owner-change-button'
+import { NewActivityButton } from '@/app/activities/new-activity-button'
 
 type ClientRow = {
   id: string
@@ -67,6 +68,7 @@ export async function generateMetadata({
 type ProfileRow = {
   role: string | null
   can_view_jobs: boolean | null
+  can_view_activities: boolean | null
 }
 
 type ClientContactRow = {
@@ -118,6 +120,23 @@ type ClientOfferRow = {
   status: 'draft' | 'submitted' | 'changes_requested' | 'approved' | 'ordered' | 'rejected'
   valid_until: string | null
   updated_at: string
+}
+
+type ClientTimelineActivityRow = {
+  id: string
+  user_id: string
+  origin: 'manual' | 'automatic'
+  activity_type: string
+  title: string
+  description: string | null
+  status: 'logged' | 'planned' | 'completed' | 'cancelled'
+  occurred_at: string
+  scheduled_for: string | null
+  source_path: string | null
+  user:
+    | { id: string; name: string | null }
+    | { id: string; name: string | null }[]
+    | null
 }
 
 type ClientJobRow = {
@@ -191,6 +210,85 @@ function getOfferStatusClass(status: ClientOfferRow['status']) {
   if (status === 'submitted') return 'bg-[#2980B9]/10 text-[#236f9f]'
   if (status === 'changes_requested') return 'bg-amber-100 text-amber-700'
   return 'bg-zinc-100 text-zinc-600'
+}
+
+function getClientActivityTypeLabel(type: string) {
+  if (type === 'phone_call') return 'Telefonát'
+  if (type === 'email') return 'E-mail'
+  if (type === 'in_person_meeting') return 'Osobní kontakt'
+  if (type === 'work_log') return 'Pracovní zápis'
+  if (type.startsWith('meeting_')) return 'Schůzka'
+  if (type.startsWith('task_')) return 'Úkol'
+  if (type === 'offer_comment_added') return 'Komentář k nabídce'
+  if (type.startsWith('offer_')) return 'Nabídka'
+  return 'Aktivita'
+}
+
+function resolveActivityUserName(activity: ClientTimelineActivityRow) {
+  if (!activity.user) return 'Neznámý uživatel'
+  if (Array.isArray(activity.user)) return activity.user[0]?.name ?? 'Neznámý uživatel'
+  return activity.user.name ?? 'Neznámý uživatel'
+}
+
+function renderActivitiesContent({
+  activities,
+  total,
+  client,
+  isAdmin,
+}: {
+  activities: ClientTimelineActivityRow[]
+  total: number
+  client: ClientRow
+  isAdmin: boolean
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Poslední obchodní činnost</p>
+          <p className="mt-1 text-xs text-gray-500">Ruční zápisy i automatické události spojené s klientem.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 lg:pr-12">
+          <Link href={`/activities?client=${client.id}`} className="client-detail-activities__all-button inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 bg-white/85 px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:-translate-y-px">VŠECHNY AKTIVITY</Link>
+          <NewActivityButton
+            clients={[{ id: client.id, name: client.name }]}
+            initialClientId={client.id}
+            label="PŘIDAT AKTIVITU"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#2473aa] bg-[linear-gradient(155deg,#4d96cb_0%,#2f7fb8_55%,#236a9e_100%)] px-3 text-xs font-semibold text-white shadow-[0_8px_18px_rgba(35,106,158,0.22)] transition hover:-translate-y-px"
+          />
+        </div>
+      </div>
+
+      {activities.length === 0 ? (
+        <div className="client-detail-page__empty-state rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">Klient zatím nemá žádnou evidovanou aktivitu.</div>
+      ) : (
+        <div className="space-y-3">
+          {activities.map((activity) => (
+            <article key={activity.id} className="client-detail-page__activity-card rounded-2xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.94)_0%,rgba(249,250,251,0.90)_45%,rgba(244,244,245,0.86)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(39,39,42,0.10)]">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="client-detail-activities__badge" data-tone="type">{getClientActivityTypeLabel(activity.activity_type)}</span>
+                    <span className="client-detail-activities__badge" data-tone="origin">{activity.origin === 'manual' ? 'Ručně' : 'Automaticky'}</span>
+                    {isAdmin ? <span className="client-detail-activities__badge" data-tone="user">{resolveActivityUserName(activity)}</span> : null}
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-gray-900">{activity.title}</h3>
+                  {activity.description ? <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-gray-500">{activity.description}</p> : null}
+                </div>
+                <div className="shrink-0 text-left sm:text-right">
+                  <p className="text-xs font-medium text-gray-500">{formatDateTime(activity.occurred_at)}</p>
+                  {activity.status === 'planned' && activity.scheduled_for ? <p className="mt-1 text-xs font-semibold text-amber-700">Termín: {formatDateTime(activity.scheduled_for)}</p> : null}
+                  {activity.source_path ? <Link href={activity.source_path} className="mt-2 inline-flex text-xs font-semibold text-[#2980B9] hover:underline">Otevřít zdroj</Link> : null}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {total > activities.length ? <p className="text-center text-xs text-gray-500">Zobrazeno posledních {activities.length} z {total} aktivit.</p> : null}
+    </div>
+  )
 }
 
 function getJobStatusLabel(status: ClientJobRow['job_status']) {
@@ -486,7 +584,7 @@ export default async function ClientDetailPage({
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, can_view_jobs')
+    .select('role, can_view_jobs, can_view_activities')
     .eq('id', user.id)
     .single()
 
@@ -497,6 +595,7 @@ export default async function ClientDetailPage({
   const typedProfile = profile as ProfileRow | null
   const isAdmin = typedProfile?.role === 'admin'
   const canViewJobs = isAdmin || Boolean(typedProfile?.can_view_jobs)
+  const canViewActivities = isAdmin || Boolean(typedProfile?.can_view_activities)
 
   const jobsRequest = canViewJobs
     ? supabase
@@ -517,12 +616,37 @@ export default async function ClientDetailPage({
         .order('start_at', { ascending: false })
     : Promise.resolve({ data: [], error: null })
 
+  const activitiesRequest = canViewActivities
+    ? supabase
+        .from('activities')
+        .select(`
+          id,
+          user_id,
+          origin,
+          activity_type,
+          title,
+          description,
+          status,
+          occurred_at,
+          scheduled_for,
+          source_path,
+          user:user_id (
+            id,
+            name
+          )
+        `, { count: 'exact' })
+        .eq('client_id', id)
+        .order('occurred_at', { ascending: false })
+        .limit(20)
+    : Promise.resolve({ data: [], error: null, count: 0 })
+
   const [
     clientResponse,
     contactsResponse,
     meetingsResponse,
     tasksResponse,
     offersResponse,
+    activitiesResponse,
     jobsResponse,
     ownerProfilesResponse,
     sharedAccessResponse,
@@ -563,6 +687,7 @@ export default async function ClientDetailPage({
       .select('id, offer_number, title, status, valid_until, updated_at')
       .eq('client_id', id)
       .order('updated_at', { ascending: false }),
+    activitiesRequest,
     jobsRequest,
     isAdmin
       ? supabase.from('profiles').select('id, name').order('name', { ascending: true })
@@ -580,6 +705,7 @@ export default async function ClientDetailPage({
   const { data: meetings, error: meetingsError } = meetingsResponse
   const { data: tasks, error: tasksError } = tasksResponse
   const { data: offers, error: offersError } = offersResponse
+  const { data: activities, error: activitiesError, count: activitiesCount } = activitiesResponse
   const { data: jobs, error: jobsError } = jobsResponse
   const { data: ownerProfiles, error: ownerProfilesError } = ownerProfilesResponse
   const { data: sharedAccessRows, error: sharedAccessError } = sharedAccessResponse
@@ -604,6 +730,10 @@ export default async function ClientDetailPage({
     throw new Error('Nepodařilo se načíst nabídky klienta.')
   }
 
+  if (canViewActivities && activitiesError) {
+    throw new Error('Nepodařilo se načíst aktivity klienta.')
+  }
+
   if (jobsError) {
     throw new Error('Nepodařilo se načíst zakázky klienta.')
   }
@@ -621,6 +751,7 @@ export default async function ClientDetailPage({
   const typedMeetings = (meetings ?? []) as ClientMeetingRow[]
   const typedTasks = (tasks ?? []) as ClientTaskRow[]
   const typedOffers = (offers ?? []) as ClientOfferRow[]
+  const typedActivities = (activities ?? []) as ClientTimelineActivityRow[]
   const typedJobs = (jobs ?? []) as ClientJobRow[]
   const canManageClient = isAdmin || typedClient.created_by === user.id
   const ownerOptions = ((ownerProfiles ?? []) as ClientOwnerOption[])
@@ -873,10 +1004,17 @@ export default async function ClientDetailPage({
           </section>
 
           <ClientActivityTabs
+            activitiesCount={canViewActivities ? activitiesCount ?? 0 : undefined}
             meetingsCount={typedMeetings.length}
             tasksCount={typedTasks.length}
             offersCount={typedOffers.length}
             jobsCount={canViewJobs ? typedJobs.length : 0}
+            activitiesContent={canViewActivities ? renderActivitiesContent({
+              activities: typedActivities,
+              total: activitiesCount ?? 0,
+              client: typedClient,
+              isAdmin,
+            }) : undefined}
             meetingsContent={renderMeetingsContent(typedMeetings)}
             tasksContent={renderTasksContent(typedTasks)}
             offersContent={renderOffersContent(typedOffers)}

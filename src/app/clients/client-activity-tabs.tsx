@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo, useState } from 'react'
 
-type ActivityTabId = 'meetings' | 'tasks' | 'offers' | 'jobs'
+type ActivityTabId = 'activities' | 'meetings' | 'tasks' | 'offers' | 'jobs'
 
 type ActivityTab = {
   id: ActivityTabId
@@ -15,6 +15,8 @@ type ActivityTab = {
 }
 
 type ClientActivityTabsProps = {
+  activitiesCount?: number
+  activitiesContent?: ReactNode
   meetingsCount: number
   tasksCount: number
   offersCount: number
@@ -26,6 +28,8 @@ type ClientActivityTabsProps = {
 }
 
 export function ClientActivityTabs({
+  activitiesCount,
+  activitiesContent,
   meetingsCount,
   tasksCount,
   offersCount,
@@ -39,6 +43,15 @@ export function ClientActivityTabs({
 
   const tabs = useMemo<ActivityTab[]>(
     () => [
+      ...(activitiesContent === undefined ? [] : [{
+        id: 'activities' as const,
+        label: 'Aktivity',
+        count: activitiesCount ?? 0,
+        tone: 'border border-sky-100 bg-sky-50 text-sky-700',
+        countClass: 'client-detail-tabs__count--activities',
+        activeTone: 'border-sky-200 bg-sky-50 text-sky-800',
+        content: activitiesContent,
+      }]),
       {
         id: 'meetings',
         label: 'Schůzky',
@@ -77,6 +90,8 @@ export function ClientActivityTabs({
       },
     ],
     [
+      activitiesCount,
+      activitiesContent,
       meetingsCount,
       tasksCount,
       offersCount,

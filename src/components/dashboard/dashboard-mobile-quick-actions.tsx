@@ -9,6 +9,8 @@ import { CreateMeetingModal } from '@/app/meetings/new-meeting-button'
 import { CreateJobModal } from '@/app/jobs/new-job-button'
 import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
+import { ActivityFormModal } from '@/app/activities/new-activity-button'
+import { createManualActivityAction } from '@/app/activities/actions'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
 import { ModalHeading } from '@/components/ui/modal-heading'
 import {
@@ -82,6 +84,7 @@ type OfferOption = {
 }
 
 type QuickActionKey =
+  | 'activity'
   | 'meeting'
   | 'task'
   | 'offer'
@@ -93,6 +96,7 @@ type QuickActionKey =
   | 'received_invoices'
 
 type DashboardMobileQuickActionsProps = {
+  canViewActivities: boolean
   canViewJobs: boolean
   canViewOffers: boolean
   canCreateJobs: boolean
@@ -614,6 +618,7 @@ function ManualNotificationModal({
 }
 
 export function DashboardMobileQuickActions({
+  canViewActivities,
   canViewJobs,
   canViewOffers,
   canCreateJobs,
@@ -1199,7 +1204,7 @@ export function DashboardMobileQuickActions({
       addActivityLog: true,
     })
 
-    const requiresOptions = ['client', 'task', 'meeting', 'job', 'offer'].includes(action)
+    const requiresOptions = ['activity', 'client', 'task', 'meeting', 'job', 'offer'].includes(action)
 
     if (requiresOptions && !(await ensureQuickActionOptions())) {
       return
@@ -1278,6 +1283,11 @@ export function DashboardMobileQuickActions({
   }
 
   const actions = [
+    {
+      key: 'activity' as const,
+      label: 'AKTIVITA',
+      visible: canViewActivities,
+    },
     {
       key: 'client' as const,
       label: 'KLIENT',
@@ -1962,6 +1972,7 @@ export function DashboardMobileQuickActions({
                 >
                   <button
                     type="button"
+                    aria-label={action.label}
                     onClick={() => void handleActionSelect(action.key)}
                     disabled={areQuickActionOptionsLoading}
                     className={`dashboard-floating-actions-sheet__button flex w-full items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[180ms] ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
@@ -2112,6 +2123,22 @@ export function DashboardMobileQuickActions({
           }}
           onSuccess={handleClientSuccess}
           suppressSuccessToast
+        />
+      ) : null}
+
+      {activeAction === 'activity' ? (
+        <ActivityFormModal
+          clients={clients}
+          action={createManualActivityAction}
+          onClose={() => setActiveAction(null)}
+          onSaved={() => {
+            setActiveAction(null)
+            handleActionSuccess({
+              title: 'AKTIVITA ULOŽENA',
+              message: 'Záznam byl přidán do historie aktivit.',
+              tone: 'success',
+            })
+          }}
         />
       ) : null}
 
