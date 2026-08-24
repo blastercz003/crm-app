@@ -44,6 +44,18 @@ function toLocalDateTimeInput(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function formatActivityDateTimeDisplay(date: Date) {
+  return new Intl.DateTimeFormat('cs-CZ', {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Prague',
+  }).format(date)
+}
+
 function normalizeClientSearch(value: string) {
   return value
     .normalize('NFD')
@@ -249,7 +261,7 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
 
             <div>
               <label htmlFor="activity-title" className="activities-modal__label">{mode === 'planned' ? 'Co chcete udělat?' : 'Co jste udělal/a?'}</label>
-              <input id="activity-title" name="title" required maxLength={240} autoFocus defaultValue={activity?.title ?? initialValues?.title ?? ''} className="activities-modal__input mt-2" placeholder={mode === 'planned' ? 'Např. Zavolat klientovi ohledně nabídky' : 'Např. Volala jsem třem potenciálním klientům'} />
+              <input id="activity-title" name="title" required maxLength={240} defaultValue={activity?.title ?? initialValues?.title ?? ''} className="activities-modal__input mt-2" placeholder={mode === 'planned' ? 'Např. Zavolat klientovi ohledně nabídky' : 'Např. Volala jsem třem potenciálním klientům'} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -304,12 +316,12 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
               {mode === 'planned' ? (
                 <div key="planned-date" className="activities-modal__date-field min-w-0">
                   <label htmlFor="activity-scheduled-for" className="activities-modal__label">Termín</label>
-                  <input id="activity-scheduled-for" name="scheduled_for" type="datetime-local" required defaultValue={toLocalDateTimeInput(plannedDefault)} className="activities-modal__input activities-modal__datetime-input mt-2" />
+                  <input id="activity-scheduled-for" name="scheduled_for" type="datetime-local" required defaultValue={toLocalDateTimeInput(plannedDefault)} className="activities-modal__input activities-modal__datetime-input mt-2 appearance-none" />
                 </div>
               ) : (
                 <div key="logged-date" className="activities-modal__date-field min-w-0">
                   <label htmlFor="activity-occurred-visible" className="activities-modal__label">Datum a čas zápisu</label>
-                  <input id="activity-occurred-visible" type="datetime-local" disabled value={toLocalDateTimeInput(now)} className="activities-modal__input activities-modal__datetime-input mt-2 opacity-75" />
+                  <input id="activity-occurred-visible" type="text" readOnly value={formatActivityDateTimeDisplay(now)} className="activities-modal__input mt-2 cursor-default opacity-75" />
                 </div>
               )}
             </div>

@@ -19205,13 +19205,22 @@ html[data-theme='dark'] .activities-workspace__kpi[data-tone='emerald'] {
 .activities-modal__datetime-input {
   display: block;
   box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  padding-block: 0;
+  line-height: normal;
+}
+
+.activities-modal__datetime-input::-webkit-date-and-time-value {
+  min-height: 1.25rem;
+  text-align: left;
+}
+
+.activities-modal__datetime-input::-webkit-datetime-edit {
+  padding: 0;
 }
 
 @media (max-width: 639px) {
-  .activities-modal__date-field {
-    overflow: hidden;
-  }
-
   .activities-modal__datetime-input {
     inline-size: 100%;
     min-inline-size: 0;
@@ -20109,6 +20118,12 @@ html[data-theme='dark'] .activities-workspace__empty-state {
 
 .activities-mobile-workspace-carousel::-webkit-scrollbar {
   display: none;
+}
+
+@media (max-width: 639px) {
+  html[data-theme='dark'] .activities-mobile-workspace-carousel .activities-page__panel {
+    box-shadow: 0 18px 42px rgba(2, 6, 23, 0.3) !important;
+  }
 }
 
 .activities-workspace__system-scroll:focus-visible,

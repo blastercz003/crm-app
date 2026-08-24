@@ -666,8 +666,10 @@ function StickyNotesDeck({
         </p>
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="min-w-12 text-center text-[10px] font-bold tabular-nums text-[var(--text-secondary)]">{Math.min(safeActiveIndex + 1, items.length)} / {total}</span>
-          <button type="button" onClick={() => selectIndex(safeActiveIndex - 1, true)} disabled={safeActiveIndex === 0} aria-label="Předchozí Lísteček" className="activities-sticky-deck__arrow"><ChevronLeft aria-hidden size={14} /></button>
-          <button type="button" onClick={() => selectIndex(safeActiveIndex + 1, true)} disabled={safeActiveIndex >= items.length - 1 && items.length >= total} aria-label="Další Lísteček" className="activities-sticky-deck__arrow">{loadingMore ? <LoaderCircle aria-hidden size={13} className="animate-spin" /> : <ChevronRight aria-hidden size={14} />}</button>
+          <span className="hidden items-center gap-1.5 md:flex">
+            <button type="button" onClick={() => selectIndex(safeActiveIndex - 1, true)} disabled={safeActiveIndex === 0} aria-label="Předchozí Lísteček" className="activities-sticky-deck__arrow"><ChevronLeft aria-hidden size={14} /></button>
+            <button type="button" onClick={() => selectIndex(safeActiveIndex + 1, true)} disabled={safeActiveIndex >= items.length - 1 && items.length >= total} aria-label="Další Lísteček" className="activities-sticky-deck__arrow">{loadingMore ? <LoaderCircle aria-hidden size={13} className="animate-spin" /> : <ChevronRight aria-hidden size={14} />}</button>
+          </span>
         </div>
       </div>
       <div

@@ -175,7 +175,7 @@ export function ActivityReportButton({ users }: { users: ActivityUserOption[] })
   const [mounted] = useState(() => typeof window !== 'undefined')
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] shadow-[0_8px_18px_var(--shadow-soft)] transition hover:-translate-y-px">PŘEHLED / EXPORT</button>
+      <button type="button" onClick={() => setOpen(true)} className="hidden items-center justify-center whitespace-nowrap rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] shadow-[0_8px_18px_var(--shadow-soft)] transition hover:-translate-y-px sm:inline-flex">PŘEHLED / EXPORT</button>
       {mounted && open ? createPortal(<ActivityReportModal users={users} onClose={() => setOpen(false)} />, document.body) : null}
     </>
   )

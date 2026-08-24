@@ -103,14 +103,14 @@ export function MobileWorkspaceCarousel({
   return (
     <section className="min-w-0" aria-label="Pracovní panely">
       <nav
-        className="mb-3 rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] sm:hidden [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)]"
+        className="mb-3 rounded-[20px] border border-zinc-200/80 bg-zinc-100/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] sm:hidden [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.68)] [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(2,6,23,0.18)]"
         aria-label="Přepnout pracovní panel"
         role="tablist"
       >
         <div className="relative grid h-9 grid-cols-4">
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 w-1/4 rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(41,128,185,0.2)] transition-transform duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none [html[data-theme='dark']_&]:border-[rgba(92,167,219,0.32)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(45,97,142,0.98)_0%,rgba(28,76,118,0.96)_100%)]"
+            className="pointer-events-none absolute inset-y-0 left-0 w-1/4 rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(41,128,185,0.2)] transition-transform duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none [html[data-theme='dark']_&]:border-[rgba(92,167,219,0.32)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(45,97,142,0.98)_0%,rgba(28,76,118,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
             style={{ transform: `translateX(${activeIndex * 100}%)` }}
           />
           {tabs.map((tab, index) => {
@@ -137,7 +137,7 @@ export function MobileWorkspaceCarousel({
       <div
         ref={trackRef}
         onScroll={syncActivePanel}
-        className="activities-mobile-workspace-carousel flex min-w-0 snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] sm:grid sm:snap-none sm:grid-cols-1 sm:gap-4 sm:overflow-visible sm:rounded-none sm:shadow-none [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_42px_rgba(2,6,23,0.3)] sm:[html[data-theme='dark']_&]:shadow-none lg:grid-cols-2 xl:grid-cols-12 xl:gap-5"
+        className="activities-mobile-workspace-carousel flex min-w-0 snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] sm:grid sm:snap-none sm:grid-cols-1 sm:gap-4 sm:overflow-visible sm:rounded-none sm:shadow-none [html[data-theme='dark']_&]:shadow-[0_18px_42px_rgba(2,6,23,0.3)] sm:[html[data-theme='dark']_&]:shadow-none lg:grid-cols-2 xl:grid-cols-12 xl:gap-5"
       >
         {panels.map((panel, index) => (
           <div
