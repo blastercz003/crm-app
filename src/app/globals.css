@@ -19195,6 +19195,31 @@ html[data-theme='dark'] .activities-workspace__kpi[data-tone='emerald'] {
   box-shadow: 0 0 0 3px rgba(77, 150, 203, 0.14);
 }
 
+.activities-modal__date-field,
+.activities-modal__datetime-input {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.activities-modal__datetime-input {
+  display: block;
+  box-sizing: border-box;
+}
+
+@media (max-width: 639px) {
+  .activities-modal__date-field {
+    overflow: hidden;
+  }
+
+  .activities-modal__datetime-input {
+    inline-size: 100%;
+    min-inline-size: 0;
+    height: 2.8rem;
+    min-height: 2.8rem;
+  }
+}
+
 .activities-report-modal__filter-control {
   box-sizing: border-box;
   height: 2.8rem;

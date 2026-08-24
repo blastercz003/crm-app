@@ -301,7 +301,17 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
                   ) : null}
                 </div>
               </div>
-              {mode === 'planned' ? <div key="planned-date"><label htmlFor="activity-scheduled-for" className="activities-modal__label">Termín</label><input id="activity-scheduled-for" name="scheduled_for" type="datetime-local" required defaultValue={toLocalDateTimeInput(plannedDefault)} className="activities-modal__input mt-2" /></div> : <div key="logged-date"><label htmlFor="activity-occurred-visible" className="activities-modal__label">Datum a čas zápisu</label><input id="activity-occurred-visible" type="datetime-local" disabled value={toLocalDateTimeInput(now)} className="activities-modal__input mt-2 opacity-75" /></div>}
+              {mode === 'planned' ? (
+                <div key="planned-date" className="activities-modal__date-field min-w-0">
+                  <label htmlFor="activity-scheduled-for" className="activities-modal__label">Termín</label>
+                  <input id="activity-scheduled-for" name="scheduled_for" type="datetime-local" required defaultValue={toLocalDateTimeInput(plannedDefault)} className="activities-modal__input activities-modal__datetime-input mt-2" />
+                </div>
+              ) : (
+                <div key="logged-date" className="activities-modal__date-field min-w-0">
+                  <label htmlFor="activity-occurred-visible" className="activities-modal__label">Datum a čas zápisu</label>
+                  <input id="activity-occurred-visible" type="datetime-local" disabled value={toLocalDateTimeInput(now)} className="activities-modal__input activities-modal__datetime-input mt-2 opacity-75" />
+                </div>
+              )}
             </div>
 
             {mode === 'planned' ? (
