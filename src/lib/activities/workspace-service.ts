@@ -25,8 +25,8 @@ import type {
 } from '@/lib/activities/workspace-types'
 
 const WORKSPACE_LIMITS = {
-  manualPlanned: 8,
-  manualLogged: 8,
+  manualPlanned: 10,
+  manualLogged: 10,
   systemHistory: 50,
   stickyNotes: 30,
   offers: 50,

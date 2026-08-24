@@ -18772,12 +18772,12 @@ html[data-theme='dark'] .activities-meeting-modal .text-zinc-400 {
   box-shadow: 0 0 0 2px rgba(185, 216, 239, 0.68);
 }
 
-.activities-sticky__color[data-color='yellow'] > span { background: #f5d85c; }
-.activities-sticky__color[data-color='blue'] > span { background: #66b8e5; }
-.activities-sticky__color[data-color='green'] > span { background: #6fc88b; }
-.activities-sticky__color[data-color='pink'] > span { background: #e88fb3; }
-.activities-sticky__color[data-color='purple'] > span { background: #aa86d4; }
-.activities-sticky__color[data-color='gray'] > span { background: #aeb7c4; }
+.activities-sticky__color[data-color='yellow'] .activities-sticky__color-swatch { background: #f5d85c; }
+.activities-sticky__color[data-color='blue'] .activities-sticky__color-swatch { background: #66b8e5; }
+.activities-sticky__color[data-color='green'] .activities-sticky__color-swatch { background: #6fc88b; }
+.activities-sticky__color[data-color='pink'] .activities-sticky__color-swatch { background: #e88fb3; }
+.activities-sticky__color[data-color='purple'] .activities-sticky__color-swatch { background: #aa86d4; }
+.activities-sticky__color[data-color='gray'] .activities-sticky__color-swatch { background: #aeb7c4; }
 
 .activities-sticky__stat {
   display: inline-flex;
@@ -18887,6 +18887,13 @@ html[data-theme='dark'] .activities-sticky__stat > strong {
   border-color: #be123c;
   background: #be123c;
   color: white;
+}
+
+.activities-sticky__text-action--confirm,
+.activities-sticky__text-action--confirm:hover {
+  border-color: #b7791f;
+  background: #d99a28;
+  color: #ffffff;
 }
 
 .activities-sticky__tab {
@@ -19044,6 +19051,13 @@ html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__text-a
 html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__text-action--armed:hover {
   border-color: #be123c;
   background: #be123c;
+  color: #ffffff;
+}
+
+html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__text-action--confirm,
+html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__text-action--confirm:hover {
+  border-color: #d09a43;
+  background: #9a6417;
   color: #ffffff;
 }
 
@@ -20145,6 +20159,16 @@ html[data-theme='dark'] .activities-workspace__empty-state {
 }
 
 .activities-mobile-workspace-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.activities-manual-carousel {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+}
+
+.activities-manual-carousel::-webkit-scrollbar {
   display: none;
 }
 

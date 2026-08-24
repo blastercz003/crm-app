@@ -43,6 +43,7 @@ import { SystemHistoryLiveBadge } from './system-history-live-badge'
 import { WorkspaceSummaryNavigation } from './workspace-summary-navigation'
 import { MobileWorkspaceCarousel, type MobileWorkspacePanel } from './mobile-workspace-carousel'
 import { ManualActivityList } from './manual-activity-list'
+import { ManualActivityCarousel } from './manual-activity-carousel'
 import { ActivitiesHelpLauncher } from './activities-help-launcher'
 
 export const metadata: Metadata = { title: 'Obchodní aktivita' }
@@ -249,9 +250,9 @@ export default async function ActivitiesPage({
         <WorkspaceSummaryNavigation cards={[...summaryCards]} />
 
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-5">
-          <article id="pracovni-agenda" data-workspace-card="manual" className="activities-page__panel activities-workspace__scroll-target relative min-h-[330px] overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] xl:col-span-8">
+          <article id="pracovni-agenda" data-workspace-card="manual" className="activities-page__panel activities-workspace__scroll-target relative min-h-[330px] overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:h-[740px] xl:col-span-8">
             <CardHeader eyebrow="VLASTNÍ PRÁCE" title="Pracovní agenda" count={workspace.manualActivities.plannedTotal + workspace.manualActivities.loggedTotal} icon={MessageSquareText} action={<NewActivityButton clients={formOptions.clients} label="NOVÁ" className={WORKSPACE_NEW_BUTTON_CLASS} replaceClassName />} />
-            <div className="mt-4 grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-2">
+            <ManualActivityCarousel initialSection={focusedActivity?.status === 'planned' || !focusedActivity ? 'planned' : 'logged'}>
               <section className="min-w-0">
                 <div className="mb-2 flex items-center justify-between"><h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]"><Clock3 aria-hidden size={14} className="text-amber-500" /> Naplánované</h3><span className={WORKSPACE_COUNT_BADGE_CLASS}>{workspace.manualActivities.plannedTotal}</span></div>
                 {plannedActivities.length > 0 ? <ManualActivityList key={`${workspace.selectedUser.id}-planned`} kind="planned" userId={workspace.selectedUser.id} initialItems={plannedActivities} initialLoadedCount={workspace.manualActivities.planned.length} initialTotal={workspace.manualActivities.plannedTotal} clients={formOptions.clients} canManage={canManageManualActivities} focusedActivityId={focusedActivityId} /> : <EmptyState>Žádná naplánovaná aktivita.</EmptyState>}
@@ -260,13 +261,13 @@ export default async function ActivitiesPage({
                 <div className="mb-2 flex items-center justify-between"><h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]"><CheckCircle2 aria-hidden size={14} className="text-emerald-500" /> Poslední zápisy</h3><span className={WORKSPACE_COUNT_BADGE_CLASS}>{workspace.manualActivities.loggedTotal}</span></div>
                 {loggedActivities.length > 0 ? <ManualActivityList key={`${workspace.selectedUser.id}-logged`} kind="logged" userId={workspace.selectedUser.id} initialItems={loggedActivities} initialLoadedCount={workspace.manualActivities.logged.length} initialTotal={workspace.manualActivities.loggedTotal} clients={formOptions.clients} canManage={canManageManualActivities} focusedActivityId={focusedActivityId} /> : <EmptyState>Zatím bez ručních zápisů.</EmptyState>}
               </section>
-            </div>
+            </ManualActivityCarousel>
           </article>
 
-          <article data-workspace-card="system" className="activities-page__panel relative hidden min-h-[330px] overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:block xl:col-span-4">
+          <article data-workspace-card="system" className="activities-page__panel relative hidden min-h-[330px] flex-col overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:flex lg:h-[740px] xl:col-span-4">
             <CardHeader eyebrow="AUTOMATICKÉ ZÁZNAMY" title="Poslední události" icon={ClipboardList} action={<SystemHistoryLiveBadge />} />
-            <div className="activities-workspace__system-scroll mt-4 max-h-[400px] space-y-2 overflow-y-auto overscroll-contain" role="region" aria-label="Poslední automatické události" tabIndex={0}>{workspace.systemHistory.items.map((item) => <ActivityRow key={item.id} item={item} automatic showUserName={workspace.viewer.isAdmin} />)}{workspace.systemHistory.items.length === 0 ? <EmptyState>Systém zatím nezaznamenal žádnou událost.</EmptyState> : null}</div>
-            <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="activities-workspace__system-scroll mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain" role="region" aria-label="Poslední automatické události" tabIndex={0}>{workspace.systemHistory.items.map((item) => <ActivityRow key={item.id} item={item} automatic showUserName={workspace.viewer.isAdmin} />)}{workspace.systemHistory.items.length === 0 ? <EmptyState>Systém zatím nezaznamenal žádnou událost.</EmptyState> : null}</div>
+            <div className="mt-3 flex shrink-0 items-center justify-between gap-3">
               <p className="flex min-w-0 items-center gap-2 text-[10px] text-[var(--text-secondary)]"><CircleDot aria-hidden size={11} className="shrink-0" /> <span className="truncate">Dnes automaticky zaznamenáno: {workspace.systemHistory.today}</span></p>
               <SystemHistoryModalButton initialItems={workspace.systemHistory.items} total={workspace.systemHistory.total} userId={workspace.selectedUser.id} userName={workspace.viewer.isAdmin ? 'Celý tým' : workspace.selectedUser.name} />
             </div>

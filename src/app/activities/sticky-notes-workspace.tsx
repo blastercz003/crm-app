@@ -68,6 +68,8 @@ type StickyFormAction = (
   formData: FormData,
 ) => Promise<StickyNoteActionState>
 type NoteAction = 'pin' | 'archive' | 'trash' | 'restore-archive' | 'restore-trash' | 'delete'
+type ConfirmableNoteAction = Extract<NoteAction, 'archive' | 'trash' | 'delete'>
+type ArmedNoteAction = { noteId: string; action: ConfirmableNoteAction } | null
 type ConversionType = 'task' | 'activity'
 type ConversionSelection = { note: StickyNoteListItem; type: ConversionType }
 
@@ -317,11 +319,10 @@ function StickyNoteFormModal({
                     data-color={option}
                     data-selected={color === option}
                   >
-                    <span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-black/10 sm:h-4 sm:w-4">
-                      {color === option ? <Check aria-hidden className="text-white drop-shadow-sm sm:hidden" size={13} strokeWidth={3} /> : null}
+                    <span className="activities-sticky__color-swatch relative flex h-6 w-6 items-center justify-center rounded-full border border-black/10 sm:h-4 sm:w-4">
+                      {color === option ? <Check aria-hidden className="h-[13px] w-[13px] text-white drop-shadow-sm sm:h-[10px] sm:w-[10px]" strokeWidth={3} /> : null}
                     </span>
-                    <span className="hidden sm:inline">{COLOR_LABELS[option]}</span>
-                    {color === option ? <Check aria-hidden className="hidden sm:block" size={13} /> : null}
+                    <span className="hidden bg-transparent sm:inline" style={{ background: 'transparent' }}>{COLOR_LABELS[option]}</span>
                   </button>
                 ))}
               </div>
@@ -353,7 +354,7 @@ function StickyNotePreviewPopover({
   onEdit,
   onAction,
   onConvert,
-  deleteArmed,
+  armedAction,
 }: {
   note: StickyNoteListItem
   anchor: { top: number; right: number; bottom: number; left: number }
@@ -362,7 +363,7 @@ function StickyNotePreviewPopover({
   onEdit: (note: StickyNoteListItem) => void
   onAction: (action: NoteAction, note: StickyNoteListItem) => void
   onConvert: (note: StickyNoteListItem, type: ConversionType) => void
-  deleteArmed: boolean
+  armedAction: ConfirmableNoteAction | null
 }) {
   const popupRef = useRef<HTMLElement>(null)
   const closeTimerRef = useRef<number | null>(null)
@@ -417,6 +418,12 @@ function StickyNotePreviewPopover({
     action()
   }
 
+  function confirmAction(action: ConfirmableNoteAction) {
+    const isConfirmed = armedAction === action
+    onAction(action, note)
+    if (isConfirmed) onClose()
+  }
+
   return createPortal(
     <section
       ref={popupRef}
@@ -459,11 +466,10 @@ function StickyNotePreviewPopover({
           <span className="flex-1" />
           <button type="button" onClick={() => runAndClose(() => onAction('pin', note))} title={note.is_pinned ? 'Odepnout Lísteček' : 'Připnout Lísteček'} aria-label={note.is_pinned ? 'Odepnout Lísteček' : 'Připnout Lísteček'} className="activities-sticky__icon-action rounded-xl">{note.is_pinned ? <PinOff aria-hidden size={15} /> : <Pin aria-hidden size={15} />}</button>
           <button type="button" onClick={() => runAndClose(() => onEdit(note))} title="Upravit Lísteček" aria-label="Upravit Lísteček" className="activities-sticky__icon-action rounded-xl"><Pencil aria-hidden size={15} /></button>
-          <button type="button" onClick={() => runAndClose(() => onAction('archive', note))} title="Archivovat Lísteček" aria-label="Archivovat Lísteček" className="activities-sticky__icon-action rounded-xl"><Archive aria-hidden size={15} /></button>
-          <button type="button" onClick={() => runAndClose(() => onAction('trash', note))} title="Přesunout Lísteček do koše" aria-label="Přesunout Lísteček do koše" className="activities-sticky__icon-action activities-sticky__icon-action--danger rounded-xl"><Trash2 aria-hidden size={15} /></button>
+          {armedAction === 'archive' ? <button type="button" data-sticky-confirm={`${note.id}-archive`} onClick={() => confirmAction('archive')} className="activities-sticky__text-action activities-sticky__text-action--confirm h-9 rounded-xl px-3">ARCHIVOVAT</button> : armedAction === 'trash' ? <button type="button" data-sticky-confirm={`${note.id}-trash`} onClick={() => confirmAction('trash')} className="activities-sticky__text-action activities-sticky__text-action--danger activities-sticky__text-action--armed h-9 rounded-xl px-3">DO KOŠE</button> : <><button type="button" onClick={() => confirmAction('archive')} title="Archivovat Lísteček" aria-label="Archivovat Lísteček" className="activities-sticky__icon-action rounded-xl"><Archive aria-hidden size={15} /></button><button type="button" onClick={() => confirmAction('trash')} title="Přesunout Lísteček do koše" aria-label="Přesunout Lísteček do koše" className="activities-sticky__icon-action activities-sticky__icon-action--danger rounded-xl"><Trash2 aria-hidden size={15} /></button></>}
         </> : null}
-        {note.archived_at && !note.deleted_at ? <><button type="button" onClick={() => runAndClose(() => onAction('restore-archive', note))} className="activities-sticky__text-action h-9 rounded-xl px-3"><RotateCcw aria-hidden size={14} /> OBNOVIT</button><button type="button" onClick={() => runAndClose(() => onAction('trash', note))} className="activities-sticky__text-action activities-sticky__text-action--danger h-9 rounded-xl px-3"><Trash2 aria-hidden size={14} /> KOŠ</button></> : null}
-        {note.deleted_at ? <><button type="button" onClick={() => runAndClose(() => onAction('restore-trash', note))} className="activities-sticky__text-action h-9 rounded-xl px-3"><RotateCcw aria-hidden size={14} /> OBNOVIT</button><button type="button" onClick={() => onAction('delete', note)} className={`activities-sticky__text-action activities-sticky__text-action--danger h-9 rounded-xl px-3 ${deleteArmed ? 'activities-sticky__text-action--armed' : ''}`}>{deleteArmed ? 'SMAZAT' : <><Trash2 aria-hidden size={14} /> NAVŽDY</>}</button></> : null}
+        {note.archived_at && !note.deleted_at ? armedAction === 'trash' ? <button type="button" data-sticky-confirm={`${note.id}-trash`} onClick={() => confirmAction('trash')} className="activities-sticky__text-action activities-sticky__text-action--danger activities-sticky__text-action--armed h-9 rounded-xl px-3">DO KOŠE</button> : <><button type="button" onClick={() => runAndClose(() => onAction('restore-archive', note))} className="activities-sticky__text-action h-9 rounded-xl px-3"><RotateCcw aria-hidden size={14} /> OBNOVIT</button><button type="button" onClick={() => confirmAction('trash')} className="activities-sticky__text-action activities-sticky__text-action--danger h-9 rounded-xl px-3"><Trash2 aria-hidden size={14} /> KOŠ</button></> : null}
+        {note.deleted_at ? <><button type="button" onClick={() => runAndClose(() => onAction('restore-trash', note))} className="activities-sticky__text-action h-9 rounded-xl px-3"><RotateCcw aria-hidden size={14} /> OBNOVIT</button><button type="button" data-sticky-confirm={armedAction === 'delete' ? `${note.id}-delete` : undefined} onClick={() => confirmAction('delete')} className={`activities-sticky__text-action activities-sticky__text-action--danger h-9 rounded-xl px-3 ${armedAction === 'delete' ? 'activities-sticky__text-action--armed' : ''}`}>{armedAction === 'delete' ? 'SMAZAT' : <><Trash2 aria-hidden size={14} /> NAVŽDY</>}</button></> : null}
       </footer>
     </section>,
     document.body,
@@ -478,7 +484,7 @@ function NoteCard({
   onAction,
   onConvert,
   focused = false,
-  deleteArmed = false,
+  armedAction = null,
 }: {
   note: StickyNoteListItem
   compact?: boolean
@@ -487,7 +493,7 @@ function NoteCard({
   onAction: (action: NoteAction, note: StickyNoteListItem) => void
   onConvert: (note: StickyNoteListItem, type: ConversionType) => void
   focused?: boolean
-  deleteArmed?: boolean
+  armedAction?: ConfirmableNoteAction | null
 }) {
   const articleRef = useRef<HTMLElement>(null)
   const [previewAnchor, setPreviewAnchor] = useState<{ top: number; right: number; bottom: number; left: number } | null>(null)
@@ -532,12 +538,12 @@ function NoteCard({
       <p className="mt-3 truncate text-[10px] font-medium uppercase tracking-wide text-zinc-700/60">{note.client_name ?? 'Soukromý lísteček'}</p>
       {note.conversions.length > 0 ? <div className="mt-2 flex flex-wrap gap-1.5">{note.conversions.map((conversion) => <Link key={conversion.id} href={conversion.target_path} title={conversion.target_title} className="activities-sticky__conversion-link inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 bg-white/35 px-2 py-1 text-[9px] font-semibold uppercase text-zinc-700/75 transition hover:bg-white/60"><span className="truncate">{conversion.target_type === 'task' ? 'Úkol' : 'Aktivita'}</span><ExternalLink aria-hidden size={10} /></Link>)}</div> : null}
       <div className="mt-auto flex items-center justify-end gap-1 border-t border-black/8 pt-2">
-        {!note.archived_at && !note.deleted_at ? <><button type="button" onClick={() => onConvert(note, 'task')} title="Převést na úkol" aria-label="Převést Lísteček na úkol" className="activities-sticky__icon-action"><ListTodo aria-hidden size={13} /></button><button type="button" onClick={() => onConvert(note, 'activity')} title="Převést na aktivitu" aria-label="Převést Lísteček na aktivitu" className="activities-sticky__icon-action"><MessageSquareText aria-hidden size={13} /></button><span className="mr-auto" /><button type="button" onClick={() => onAction('pin', note)} aria-label={note.is_pinned ? 'Odepnout Lísteček' : 'Připnout Lísteček'} className="activities-sticky__icon-action">{note.is_pinned ? <PinOff aria-hidden size={13} /> : <Pin aria-hidden size={13} />}</button><button type="button" onClick={() => onEdit(note)} aria-label="Upravit Lísteček" className="activities-sticky__icon-action"><Pencil aria-hidden size={13} /></button><button type="button" onClick={() => onAction('archive', note)} aria-label="Archivovat Lísteček" className="activities-sticky__icon-action"><Archive aria-hidden size={13} /></button><button type="button" onClick={() => onAction('trash', note)} aria-label="Přesunout Lísteček do koše" className="activities-sticky__icon-action activities-sticky__icon-action--danger"><Trash2 aria-hidden size={13} /></button></> : null}
-        {note.archived_at && !note.deleted_at ? <><button type="button" onClick={() => onAction('restore-archive', note)} className="activities-sticky__text-action"><RotateCcw aria-hidden size={13} /> OBNOVIT</button><button type="button" onClick={() => onAction('trash', note)} className="activities-sticky__icon-action activities-sticky__icon-action--danger" aria-label="Přesunout do koše"><Trash2 aria-hidden size={13} /></button></> : null}
-        {note.deleted_at ? <><button type="button" onClick={() => onAction('restore-trash', note)} className="activities-sticky__text-action"><RotateCcw aria-hidden size={13} /> OBNOVIT</button><button type="button" onClick={() => onAction('delete', note)} className={`activities-sticky__text-action activities-sticky__text-action--danger ${deleteArmed ? 'activities-sticky__text-action--armed' : ''}`}>{deleteArmed ? 'SMAZAT' : <><Trash2 aria-hidden size={13} /> NAVŽDY</>}</button></> : null}
+        {!note.archived_at && !note.deleted_at ? armedAction === 'archive' ? <><span className="mr-auto" /><button type="button" data-sticky-confirm={`${note.id}-archive`} onClick={() => onAction('archive', note)} className="activities-sticky__text-action activities-sticky__text-action--confirm">ARCHIVOVAT</button></> : armedAction === 'trash' ? <><span className="mr-auto" /><button type="button" data-sticky-confirm={`${note.id}-trash`} onClick={() => onAction('trash', note)} className="activities-sticky__text-action activities-sticky__text-action--danger activities-sticky__text-action--armed">DO KOŠE</button></> : <><button type="button" onClick={() => onConvert(note, 'task')} title="Převést na úkol" aria-label="Převést Lísteček na úkol" className="activities-sticky__icon-action"><ListTodo aria-hidden size={13} /></button><button type="button" onClick={() => onConvert(note, 'activity')} title="Převést na aktivitu" aria-label="Převést Lísteček na aktivitu" className="activities-sticky__icon-action"><MessageSquareText aria-hidden size={13} /></button><span className="mr-auto" /><button type="button" onClick={() => onAction('pin', note)} aria-label={note.is_pinned ? 'Odepnout Lísteček' : 'Připnout Lísteček'} className="activities-sticky__icon-action">{note.is_pinned ? <PinOff aria-hidden size={13} /> : <Pin aria-hidden size={13} />}</button><button type="button" onClick={() => onEdit(note)} aria-label="Upravit Lísteček" className="activities-sticky__icon-action"><Pencil aria-hidden size={13} /></button><button type="button" onClick={() => onAction('archive', note)} aria-label="Archivovat Lísteček" className="activities-sticky__icon-action"><Archive aria-hidden size={13} /></button><button type="button" onClick={() => onAction('trash', note)} aria-label="Přesunout Lísteček do koše" className="activities-sticky__icon-action activities-sticky__icon-action--danger"><Trash2 aria-hidden size={13} /></button></> : null}
+        {note.archived_at && !note.deleted_at ? armedAction === 'trash' ? <><span className="mr-auto" /><button type="button" data-sticky-confirm={`${note.id}-trash`} onClick={() => onAction('trash', note)} className="activities-sticky__text-action activities-sticky__text-action--danger activities-sticky__text-action--armed">DO KOŠE</button></> : <><button type="button" onClick={() => onAction('restore-archive', note)} className="activities-sticky__text-action"><RotateCcw aria-hidden size={13} /> OBNOVIT</button><button type="button" onClick={() => onAction('trash', note)} className="activities-sticky__icon-action activities-sticky__icon-action--danger" aria-label="Přesunout do koše"><Trash2 aria-hidden size={13} /></button></> : null}
+        {note.deleted_at ? <><button type="button" onClick={() => onAction('restore-trash', note)} className="activities-sticky__text-action"><RotateCcw aria-hidden size={13} /> OBNOVIT</button><button type="button" data-sticky-confirm={armedAction === 'delete' ? `${note.id}-delete` : undefined} onClick={() => onAction('delete', note)} className={`activities-sticky__text-action activities-sticky__text-action--danger ${armedAction === 'delete' ? 'activities-sticky__text-action--armed' : ''}`}>{armedAction === 'delete' ? 'SMAZAT' : <><Trash2 aria-hidden size={13} /> NAVŽDY</>}</button></> : null}
       </div>
     </article>
-    {previewAnchor ? <StickyNotePreviewPopover note={note} anchor={previewAnchor} triggerRef={articleRef} onClose={() => setPreviewAnchor(null)} onEdit={onEdit} onAction={onAction} onConvert={onConvert} deleteArmed={deleteArmed} /> : null}
+    {previewAnchor ? <StickyNotePreviewPopover note={note} anchor={previewAnchor} triggerRef={articleRef} onClose={() => setPreviewAnchor(null)} onEdit={onEdit} onAction={onAction} onConvert={onConvert} armedAction={armedAction} /> : null}
     </>
   )
 }
@@ -553,6 +559,7 @@ function StickyNotesDeck({
   onAction,
   onConvert,
   focusNoteId,
+  armedNoteAction,
 }: {
   items: StickyNoteListItem[]
   total: number
@@ -562,6 +569,7 @@ function StickyNotesDeck({
   onAction: Parameters<typeof NoteCard>[0]['onAction']
   onConvert: Parameters<typeof NoteCard>[0]['onConvert']
   focusNoteId: string
+  armedNoteAction: ArmedNoteAction
 }) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<number | null>(null)
@@ -708,7 +716,7 @@ function StickyNotesDeck({
               onMouseEnter={() => selectIndex(index)}
               onFocusCapture={() => selectIndex(index)}
             >
-              <NoteCard note={note} mobileDeck={mobileDeck} focused={focusNoteId === note.id} onEdit={onEdit} onAction={onAction} onConvert={onConvert} />
+              <NoteCard note={note} mobileDeck={mobileDeck} focused={focusNoteId === note.id} onEdit={onEdit} onAction={onAction} onConvert={onConvert} armedAction={armedNoteAction?.noteId === note.id ? armedNoteAction.action : null} />
             </div>
           ))}
           {loadingMore ? <div className="activities-sticky-deck__loader" aria-label="Načítám další Lístečky"><LoaderCircle aria-hidden size={18} className="animate-spin" /></div> : null}
@@ -731,7 +739,7 @@ function NotesManagerModal({
   onEdit,
   onAction,
   onConvert,
-  deleteArmedId,
+  armedNoteAction,
 }: {
   view: StickyNoteView
   items: StickyNoteListItem[]
@@ -745,7 +753,7 @@ function NotesManagerModal({
   onEdit: (note: StickyNoteListItem) => void
   onAction: Parameters<typeof NoteCard>[0]['onAction']
   onConvert: Parameters<typeof NoteCard>[0]['onConvert']
-  deleteArmedId: string | null
+  armedNoteAction: ArmedNoteAction
 }) {
   useBodyScrollLock(true)
   useEffect(() => {
@@ -780,7 +788,7 @@ function NotesManagerModal({
         <div onScroll={handleItemsScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
           {pending ? <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500"><LoaderCircle aria-hidden size={17} className="animate-spin" /> Načítám Lístečky…</div> : items.length ? (
             <div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{items.map((note) => <NoteCard key={note.id} note={note} compact onEdit={onEdit} onAction={onAction} onConvert={onConvert} deleteArmed={deleteArmedId === note.id} />)}</div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{items.map((note) => <NoteCard key={note.id} note={note} compact onEdit={onEdit} onAction={onAction} onConvert={onConvert} armedAction={armedNoteAction?.noteId === note.id ? armedNoteAction.action : null} />)}</div>
               {items.length < total ? (
                 <div className="flex justify-center pt-5">
                   <button type="button" onClick={onLoadMore} disabled={loadingMore} className="activities-sticky__secondary inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-[10px] font-semibold uppercase text-zinc-600 transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60">
@@ -829,7 +837,7 @@ export function StickyNotesWorkspace({
   const [deckItems, setDeckItems] = useState(initialItems)
   const [loadingMoreDeck, setLoadingMoreDeck] = useState(false)
   const loadingMoreDeckRef = useRef(false)
-  const [deleteArmedId, setDeleteArmedId] = useState<string | null>(null)
+  const [armedNoteAction, setArmedNoteAction] = useState<ArmedNoteAction>(null)
   const [pending, startTransition] = useTransition()
   const handledFocusNoteId = useRef('')
   const { toast, isVisible, showToast } = useAnimatedActionToast()
@@ -856,10 +864,24 @@ export function StickyNotesWorkspace({
   }, [focusNoteId, initialItems])
 
   useEffect(() => {
-    if (!deleteArmedId) return
-    const timer = window.setTimeout(() => setDeleteArmedId(null), 3500)
-    return () => window.clearTimeout(timer)
-  }, [deleteArmedId])
+    if (!armedNoteAction) return
+    const confirmationSelector = `[data-sticky-confirm="${armedNoteAction.noteId}-${armedNoteAction.action}"]`
+    const timer = window.setTimeout(() => setArmedNoteAction(null), 3500)
+    function cancelOnPointerDown(event: PointerEvent) {
+      if ((event.target as HTMLElement).closest(confirmationSelector)) return
+      setArmedNoteAction(null)
+    }
+    function cancelOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setArmedNoteAction(null)
+    }
+    document.addEventListener('pointerdown', cancelOnPointerDown, true)
+    window.addEventListener('keydown', cancelOnEscape)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('pointerdown', cancelOnPointerDown, true)
+      window.removeEventListener('keydown', cancelOnEscape)
+    }
+  }, [armedNoteAction])
 
   function loadView(view: StickyNoteView) {
     const requestGeneration = managerRequestGenerationRef.current + 1
@@ -945,11 +967,12 @@ export function StickyNotesWorkspace({
   }
 
   function runAction(action: NoteAction, note: StickyNoteListItem) {
-    if (action === 'delete' && deleteArmedId !== note.id) {
-      setDeleteArmedId(note.id)
+    const requiresConfirmation = action === 'archive' || action === 'trash' || action === 'delete'
+    if (requiresConfirmation && (armedNoteAction?.noteId !== note.id || armedNoteAction.action !== action)) {
+      setArmedNoteAction({ noteId: note.id, action })
       return
     }
-    setDeleteArmedId(null)
+    setArmedNoteAction(null)
     startTransition(async () => {
       const response = action === 'pin'
         ? await setStickyNotePinnedAction(note.id, !note.is_pinned)
@@ -1003,7 +1026,7 @@ export function StickyNotesWorkspace({
   return (
     <section data-workspace-card="sticky" className="activities-page__panel relative min-h-[240px] overflow-visible rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:overflow-hidden">
       <header className="flex min-h-11 flex-row items-start justify-between gap-1 sm:gap-3"><div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><span className="activities-workspace__card-icon relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--accent)] sm:h-10 sm:w-10 sm:rounded-2xl"><StickyNote aria-hidden size={18} /><span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-white/75 bg-[var(--accent-soft)] px-1.5 text-[9px] font-extrabold leading-none text-[var(--accent)] shadow-[0_3px_8px_rgba(15,23,42,0.12)] [html[data-theme=dark]_&]:border-slate-700/80 [html[data-theme=dark]_&]:shadow-[0_3px_9px_rgba(0,0,0,0.32)]">{initialTotal}</span></span><div className="min-w-0 flex-1"><p className="truncate whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)] sm:text-[10px] sm:tracking-[0.14em]"><span className="sm:hidden">PRACOVNÍ PLOCHA</span><span className="hidden sm:inline">SOUKROMÁ PRACOVNÍ PLOCHA</span></p><div className="mt-0.5 flex items-center gap-2"><h2 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">Lístečky</h2></div></div></div><div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2"><button type="button" onClick={openManager} className="activities-workspace__small-action inline-flex h-8 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 text-[10px] font-bold uppercase text-[var(--text-secondary)] transition duration-200 hover:-translate-y-px hover:text-[var(--text-primary)] sm:px-3"><span className="sm:hidden">VŠECHNY</span><span className="hidden sm:inline">VŠECHNY LÍSTEČKY</span></button><button type="button" onClick={() => setFormNote(null)} className="activities-workspace__new-action">NOVÝ</button></div></header>
-      <StickyNotesDeck items={deckItems} total={initialTotal} loadingMore={loadingMoreDeck} onLoadMore={loadMoreDeck} focusNoteId={focusNoteId} onEdit={(item) => setFormNote(item)} onAction={runAction} onConvert={(item, type) => setConversion({ note: item, type })} />
+      <StickyNotesDeck items={deckItems} total={initialTotal} loadingMore={loadingMoreDeck} onLoadMore={loadMoreDeck} focusNoteId={focusNoteId} onEdit={(item) => setFormNote(item)} onAction={runAction} onConvert={(item, type) => setConversion({ note: item, type })} armedNoteAction={armedNoteAction} />
       <div className="mt-4 hidden gap-2 border-t border-[var(--surface-border)] pt-3 sm:flex sm:flex-wrap sm:justify-center" aria-label="Přehled Lístečků">
         <span className="activities-sticky__stat inline-flex min-h-7 min-w-0 items-center justify-center gap-1.5 rounded-[10px] border border-slate-300/35 bg-white/50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.04em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_4px_9px_rgba(15,23,42,0.05)] [html[data-theme='dark']_&]:border-slate-300/15 [html[data-theme='dark']_&]:bg-slate-500/10 [html[data-theme='dark']_&]:text-slate-300" data-tone="pinned"><Pin aria-hidden size={11} /><span className="whitespace-nowrap">Připnuté</span><strong className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-white/70 text-[9px] font-extrabold shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] [html[data-theme='dark']_&]:bg-white/7">{counts.pinned}</strong></span>
         <span className="activities-sticky__stat inline-flex min-h-7 min-w-0 items-center justify-center gap-1.5 rounded-[10px] border border-slate-300/35 bg-white/50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.04em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_4px_9px_rgba(15,23,42,0.05)] [html[data-theme='dark']_&]:border-slate-300/15 [html[data-theme='dark']_&]:bg-slate-500/10 [html[data-theme='dark']_&]:text-slate-300" data-tone="reminder"><Bell aria-hidden size={11} /><span className="whitespace-nowrap">S notifikací</span><strong className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-white/70 text-[9px] font-extrabold shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] [html[data-theme='dark']_&]:bg-white/7">{counts.reminders}</strong></span>
@@ -1012,7 +1035,7 @@ export function StickyNotesWorkspace({
       </div>
 
       {mounted && formNote !== undefined ? createPortal(<StickyNoteFormModal clients={clients} note={formNote} onClose={() => setFormNote(undefined)} onSaved={handleSaved} />, document.body) : null}
-      {mounted && managerOpen ? createPortal(<NotesManagerModal view={managerView} items={managerItems} total={managerTotal} counts={counts} pending={pending} loadingMore={loadingMoreManager} onView={loadView} onLoadMore={loadMoreManager} onClose={() => setManagerOpen(false)} onEdit={(note) => setFormNote(note)} onAction={runAction} onConvert={(note, type) => setConversion({ note, type })} deleteArmedId={deleteArmedId} />, document.body) : null}
+      {mounted && managerOpen ? createPortal(<NotesManagerModal view={managerView} items={managerItems} total={managerTotal} counts={counts} pending={pending} loadingMore={loadingMoreManager} onView={loadView} onLoadMore={loadMoreManager} onClose={() => setManagerOpen(false)} onEdit={(note) => setFormNote(note)} onAction={runAction} onConvert={(note, type) => setConversion({ note, type })} armedNoteAction={armedNoteAction} />, document.body) : null}
       {mounted && conversion?.type === 'task' ? createPortal(<CreateTaskModal users={taskUsers} clients={clients} contacts={taskContacts} initialValues={{ title: getConversionTitle(conversion.note), note: conversion.note.content, client_id: conversion.note.client_id, company_name: conversion.note.client_name }} onClose={() => setConversion(null)} onToast={(nextToast) => showToast({ title: 'CHYBA', message: nextToast.message, tone: 'error' })} suppressSuccessToast onSuccess={(state) => { const selection = conversion; setConversion(null); void finishConversion(selection, { id: state.taskId, title: state.taskTitle ?? getConversionTitle(selection.note) }) }} />, document.body) : null}
       {mounted && conversion?.type === 'activity' ? createPortal(<ActivityFormModal clients={clients} initialClientId={conversion.note.client_id ?? ''} initialValues={{ title: getConversionTitle(conversion.note), description: conversion.note.content, activityType: 'work_log' }} action={createManualActivityAction} onClose={() => setConversion(null)} onSaved={(state) => { const selection = conversion; setConversion(null); void finishConversion(selection, { id: state.activityId, title: getConversionTitle(selection.note) }) }} />, document.body) : null}
       {toast ? <ActionFeedbackToast toast={toast} isVisible={isVisible} /> : null}

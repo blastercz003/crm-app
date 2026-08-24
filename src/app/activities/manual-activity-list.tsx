@@ -75,11 +75,11 @@ export function ManualActivityList({
 
   return (
     <div
-      className="activities-workspace__manual-list min-w-0 max-h-[292px] space-y-2 overflow-y-auto overscroll-contain pr-1 sm:max-h-[412px]"
+      className="activities-workspace__manual-list h-[600px] min-w-0 space-y-2 overflow-y-auto overscroll-contain pr-1"
       onScroll={handleScroll}
       role="region"
       aria-label={kind === 'planned' ? 'Naplánované aktivity' : 'Poslední zápisy aktivit'}
-      tabIndex={total > (kind === 'planned' ? 5 : 5) ? 0 : undefined}
+      tabIndex={total > 9 ? 0 : undefined}
     >
       {items.map((item) => (
         <ManualActivityCard
