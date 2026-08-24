@@ -431,7 +431,7 @@ function StickyNotePreviewPopover({
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-700/55">Detail Lístečku</p>
           <h2 className="mt-1 break-words text-xl font-semibold leading-tight text-zinc-900">{note.title || 'Bez nadpisu'}</h2>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-700/60">
+          <div className="activities-sticky__status-indicators mt-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-700/60">
             {note.is_pinned ? <span className="inline-flex items-center gap-1"><Pin aria-hidden size={12} /> Připnuto</span> : null}
             {note.reminder_enabled ? <span className="inline-flex items-center gap-1"><Bell aria-hidden size={12} /> Připomínka</span> : null}
             {note.archived_at ? <span>Archivováno</span> : null}
@@ -527,7 +527,7 @@ function NoteCard({
   return (
     <>
     <article ref={articleRef} role="button" tabIndex={0} aria-label={`Otevřít detail Lístečku ${note.title || 'Bez nadpisu'}`} onClick={handleCardClick} onKeyDown={handleCardKeyDown} className={`activities-workspace__sticky activities-workspace__sticky--interactive group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_8px_18px_rgba(15,23,42,0.08)] ${compact ? 'min-h-36' : 'min-h-32'} ${focused ? 'activities-workspace__notification-focus' : ''}`} data-color={note.color} data-sticky-note-id={note.id}>
-      <div className="flex items-start justify-between gap-2"><h3 className="line-clamp-1 text-sm font-semibold text-zinc-900">{note.title || 'Bez nadpisu'}</h3><div className="flex shrink-0 items-center gap-1.5 text-zinc-700/65">{note.reminder_enabled ? <Bell aria-label="Připomínka zapnuta" size={13} /> : null}{note.is_pinned ? <Pin aria-label="Připnuto" size={13} /> : null}</div></div>
+      <div className="flex items-start justify-between gap-2"><h3 className="line-clamp-1 text-sm font-semibold text-zinc-900">{note.title || 'Bez nadpisu'}</h3><div className="activities-sticky__status-indicators flex shrink-0 items-center gap-1.5 text-zinc-700/65">{note.reminder_enabled ? <Bell aria-label="Připomínka zapnuta" size={13} /> : null}{note.is_pinned ? <Pin aria-label="Připnuto" size={13} /> : null}</div></div>
       <p className={`${compact ? 'line-clamp-4 min-h-20' : 'line-clamp-3 min-h-15'} mt-2 whitespace-pre-line text-xs leading-5 text-zinc-800/80`}>{note.content || 'Bez dalšího obsahu.'}</p>
       <p className="mt-3 truncate text-[10px] font-medium uppercase tracking-wide text-zinc-700/60">{note.client_name ?? 'Soukromý lísteček'}</p>
       {note.conversions.length > 0 ? <div className="mt-2 flex flex-wrap gap-1.5">{note.conversions.map((conversion) => <Link key={conversion.id} href={conversion.target_path} title={conversion.target_title} className="activities-sticky__conversion-link inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 bg-white/35 px-2 py-1 text-[9px] font-semibold uppercase text-zinc-700/75 transition hover:bg-white/60"><span className="truncate">{conversion.target_type === 'task' ? 'Úkol' : 'Aktivita'}</span><ExternalLink aria-hidden size={10} /></Link>)}</div> : null}

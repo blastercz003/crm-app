@@ -19014,6 +19014,10 @@ html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__conver
   color: rgba(241, 245, 249, 0.78);
 }
 
+html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__status-indicators {
+  color: rgba(241, 245, 249, 0.78) !important;
+}
+
 html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__icon-action:hover,
 html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__text-action:hover,
 html[data-theme='dark'] .activities-workspace__sticky .activities-sticky__conversion-link:hover {
