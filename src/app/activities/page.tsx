@@ -228,7 +228,10 @@ export default async function ActivitiesPage({
         <section className="activities-page__hero rounded-3xl border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px]">
           <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:items-center">
             <div className="min-w-0">
-              <h1 className="text-3xl font-semibold leading-none tracking-tight text-[var(--text-primary)]">Obchodní aktivita</h1>
+              <h1 className="text-3xl font-semibold leading-none tracking-tight text-[var(--text-primary)]">
+                <span className="sm:hidden">Obchodní aktivita</span>
+                <span className="hidden sm:inline">Moje obchodní aktivita</span>
+              </h1>
             </div>
             <div className={workspace.viewer.isAdmin ? 'hidden justify-start sm:flex lg:justify-center xl:justify-self-center' : 'flex justify-start lg:justify-center xl:justify-self-center'}>
               {workspace.viewer.isAdmin

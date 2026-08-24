@@ -18054,13 +18054,26 @@ html[data-theme='dark'] .activities-workspace__scroll-target[data-scroll-highlig
     0 22px 48px rgba(0, 7, 18, 0.48) !important;
 }
 
+.activities-workspace__row {
+  position: relative;
+  z-index: 0;
+}
+
 .activities-workspace__row:hover {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--surface-border));
-  box-shadow: 0 8px 18px var(--shadow-soft);
+  z-index: 2;
+  transform: none !important;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--surface-border));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .activities-workspace__manual-card {
   cursor: pointer;
+}
+
+.activities-workspace__manual-list {
+  padding-top: 4px;
 }
 
 .activities-workspace__manual-meta {
@@ -18949,8 +18962,10 @@ html[data-theme='dark'] .activities-sticky-form select option {
 }
 
 html[data-theme='dark'] .activities-workspace__row:hover {
-  border-color: rgba(91, 167, 220, 0.35) !important;
-  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.24);
+  border-color: rgba(91, 167, 220, 0.46) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(186, 230, 253, 0.08),
+    inset 0 0 0 1px rgba(125, 211, 252, 0.13);
 }
 
 html[data-theme='dark'] .activities-workspace__sticky {
@@ -19209,8 +19224,28 @@ html[data-theme='dark'] .activities-workspace__kpi[data-tone='emerald'] {
 .activities-modal__datetime-input {
   display: block;
   box-sizing: border-box;
+  height: 2.8rem;
+  min-height: 2.8rem;
   -webkit-appearance: none;
   appearance: none;
+  padding-block: 0;
+  line-height: normal;
+}
+
+.activities-modal__datetime-input::-webkit-date-and-time-value {
+  display: flex;
+  height: 100%;
+  min-height: 100%;
+  align-items: center;
+  margin: 0;
+  text-align: left;
+}
+
+.activities-modal__datetime-input::-webkit-datetime-edit {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  padding: 0;
 }
 
 @media (max-width: 639px) {
