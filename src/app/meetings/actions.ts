@@ -755,6 +755,7 @@ async function createMeetingRecord(formData: FormData) {
 
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
+  revalidatePath('/activities')
   revalidatePath('/notifications')
   revalidatePath('/tasks')
   revalidatePath('/clients')
@@ -935,6 +936,7 @@ async function updateMeetingRecord(formData: FormData) {
 
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
+  revalidatePath('/activities')
   revalidatePath(`/meetings/${id}`)
   revalidatePath(`/meetings/${id}/edit`)
   revalidatePath('/tasks')
@@ -1079,6 +1081,7 @@ export async function deleteMeeting(formData: FormData) {
 
   revalidatePath('/dashboard')
   revalidatePath('/meetings')
+  revalidatePath('/activities')
   revalidatePath('/tasks')
   revalidatePath('/clients')
 

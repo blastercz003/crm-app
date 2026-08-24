@@ -26,6 +26,7 @@ type ClientContactOption = {
 
 type NewOfferButtonProps = {
   className?: string
+  label?: string
 }
 
 const initialState: OfferFormActionState = {
@@ -43,6 +44,7 @@ function normalizeSearchText(value: string) {
 
 export function NewOfferButton({
   className,
+  label = 'NOVÁ NABÍDKA',
 }: NewOfferButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [clients, setClients] = useState<ClientOption[]>([])
@@ -79,7 +81,7 @@ export function NewOfferButton({
         disabled={isLoading}
         className={resolvedClassName}
       >
-        NOVÁ NABÍDKA
+        {label}
       </button>
 
       {isOpen ? (
@@ -217,7 +219,7 @@ export function NewOfferModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+      className="fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -226,24 +228,21 @@ export function NewOfferModal({
         }
       }}
     >
-      <div
-        className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-4"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-      >
+      <div className="flex h-full min-h-0 items-center justify-center">
         <div
-          className="clients-modal__shell offers-page__new-modal__shell relative flex w-full max-w-3xl flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
+          className="standard-form-modal__shell clients-modal__shell offers-page__new-modal__shell relative flex w-full flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             maxHeight:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
           }}
         >
-          <div className="clients-modal__header offers-page__new-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="standard-form-modal__header clients-modal__header offers-page__new-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-white/70 px-4 py-3 sm:px-5 sm:py-4">
             <ModalHeading section="NABÍDKY" title="Nová nabídka" className="min-w-0" />
 
             <button
               type="button"
               onClick={onClose}
-              className="clients-modal__close offers-page__new-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)]"
+              className="standard-form-modal__close clients-modal__close offers-page__new-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,250,0.84)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)]"
               aria-label="Zavřít"
             >
               ✕
@@ -446,6 +445,7 @@ export function NewOfferModal({
             <div className="shrink-0">
               <MobileModalActions
                 onCancel={onClose}
+                showCancel={false}
                 submitLabel="VYTVOŘIT NABÍDKU"
                 pendingSubmitLabel="VYTVÁŘÍM NABÍDKU..."
                 submitDisabled={!companySelectionIsValid}

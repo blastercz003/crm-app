@@ -123,7 +123,7 @@ export function CreateClientModal({
 
   const modalContent = (
       <div
-        className="clients-modal fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-zinc-950/38 p-3 [-webkit-overflow-scrolling:touch] backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+        className="clients-modal fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -132,11 +132,9 @@ export function CreateClientModal({
         }
       }}
     >
-      <div
-        className="flex min-h-[calc(100dvh-1.5rem)] items-start justify-center py-0 sm:min-h-full sm:items-center sm:py-4"
-      >
+      <div className="flex h-full min-h-0 items-center justify-center">
         <div
-          className="clients-modal__shell relative flex h-[calc(100dvh-1.5rem)] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100dvh-2rem)] sm:max-h-[760px] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
+          className="standard-form-modal__shell clients-modal__shell relative flex h-[calc(100dvh-1.5rem)] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100dvh-2rem)] sm:max-h-[760px] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
         >
           <div
             aria-hidden="true"
@@ -150,13 +148,13 @@ export function CreateClientModal({
             aria-hidden="true"
             className="clients-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]"
           />
-          <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+          <div className="standard-form-modal__header clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <ModalHeading section="KLIENTI" title="Nový klient" className="min-w-0" />
 
             <button
               type="button"
               onClick={onClose}
-              className="clients-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
+              className="standard-form-modal__close clients-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
               aria-label="Zavřít"
             >
               ✕
@@ -223,8 +221,8 @@ export function CreateClientModal({
 
                 <section className={clientFormPanelClass}>
                   <h3 className={clientFormPanelTitleClass}>Hlavní kontakt</h3>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
                   <label
                     htmlFor="contact_person"
                     className="clients-modal__label text-sm font-medium text-gray-900"
@@ -351,6 +349,7 @@ function ClientFormActions({
     <>
       <MobileModalActions
         onCancel={onClose}
+        showCancel={false}
         submitLabel={submitLabel}
         pendingSubmitLabel={pendingSubmitLabel}
         visualStyle="client-modal"

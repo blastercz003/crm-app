@@ -40,7 +40,7 @@ export function QuickPanelSettings() {
 
       const { data, error: loadError } = await supabase
         .from('profiles')
-        .select('role, name, can_view_jobs, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_stores, can_view_bsafe24, can_view_nord_fjella, can_view_provize, can_view_job_attachments, majetek, quick_panel_enabled, quick_panel_sections')
+        .select('role, name, can_view_jobs, can_view_activities, can_view_offers, can_view_tech_jobs, can_view_connection_points, can_view_stores, can_view_bsafe24, can_view_nord_fjella, can_view_provize, can_view_job_attachments, majetek, quick_panel_enabled, quick_panel_sections')
         .eq('id', user.id)
         .single<QuickPanelProfileRow>()
 

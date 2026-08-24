@@ -27,6 +27,7 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   meetings: 'Schůzky',
   offers: 'Nabídky',
   jobs: 'Zakázky',
+  activities: 'Aktivity',
   system: 'Systém',
 }
 

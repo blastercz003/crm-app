@@ -18,6 +18,7 @@ import { deleteClientContact, setPrimaryClientContact } from '../actions'
 import { EditClientButton } from '../edit-client-button'
 import { ClientOwnerChangeButton } from '../client-owner-change-button'
 import { NewActivityButton } from '@/app/activities/new-activity-button'
+import { SafeRealtimeRefresh } from '@/components/realtime/safe-realtime-refresh'
 
 type ClientRow = {
   id: string
@@ -636,6 +637,7 @@ export default async function ClientDetailPage({
           )
         `, { count: 'exact' })
         .eq('client_id', id)
+        .is('deleted_at', null)
         .order('occurred_at', { ascending: false })
         .limit(20)
     : Promise.resolve({ data: [], error: null, count: 0 })
@@ -780,6 +782,7 @@ export default async function ClientDetailPage({
 
   return (
     <main className="client-detail-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
+      <SafeRealtimeRefresh scopes={['activities', 'tasks', 'meetings', 'offers']} />
       <div
         aria-hidden
         className="client-detail-page__glow client-detail-page__glow--primary pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl"

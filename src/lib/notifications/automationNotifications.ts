@@ -9,6 +9,9 @@ const PRAGUE_TIME_ZONE = 'Europe/Prague'
 const SEND_WINDOW_START_HOUR = 8
 const SEND_WINDOW_END_HOUR = 20
 const RECEIVED_INVOICE_REMINDER_HOUR = 13
+const ACTIVITY_REMINDER_LEAD_MS = 15 * 60 * 1000
+const PERSONAL_REMINDER_LATE_WINDOW_MS = 60 * 60 * 1000
+const PERSONAL_REMINDER_BATCH_SIZE = 1000
 const JOB_MISSING_PP_REPEAT_INTERVAL_MS = 24 * 60 * 60 * 1000
 const JOB_MISSING_PP_TECHNICIAN_REPEAT_TYPE = 'job_missing_pp_technician_repeat'
 const JOB_MISSING_PP_MIN_END_AT_ISO = convertPragueLocalPartsToUtcIsoString(
@@ -119,7 +122,30 @@ type AutomationRunResult = {
     jobsMissingPpTechnicians: number
     receivedInvoicesDue: number
     assetInsuranceExpiring6w: number
+    activityReminders: number
+    activityRemindersSkipped: number
+    stickyNoteReminders: number
+    stickyNoteRemindersSkipped: number
   }
+}
+
+type PersonalReminderResult = {
+  sent: number
+  skipped: number
+}
+
+type ActivityReminderRow = {
+  id: string
+  user_id: string
+  title: string
+  scheduled_for: string
+}
+
+type StickyNoteReminderRow = {
+  id: string
+  user_id: string
+  title: string | null
+  reminder_at: string
 }
 
 type MeetingRow = {
@@ -226,6 +252,186 @@ function formatDateKeyForCzech(dateKey: string) {
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12, 0, 0)))
+}
+
+function formatReminderDateTime(value: string) {
+  return new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: PRAGUE_TIME_ZONE,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+function formatStickyNoteReminderMessage(title: string | null, reminderAt: string) {
+  const normalizedTitle = String(title ?? '').replace(/\s+/g, ' ').trim()
+  const titleCharacters = Array.from(normalizedTitle)
+  const shortenedTitle = titleCharacters.length > 80
+    ? `${titleCharacters.slice(0, 77).join('').trimEnd()}...`
+    : normalizedTitle
+  const formattedReminderAt = formatReminderDateTime(reminderAt)
+
+  return shortenedTitle
+    ? `Lísteček „${shortenedTitle}“ má termín ${formattedReminderAt}.`
+    : `Soukromý Lísteček má termín ${formattedReminderAt}.`
+}
+
+async function sendActivityReminderNotifications(
+  supabase: ServiceClient,
+  now: Date
+): Promise<PersonalReminderResult> {
+  const nowIso = now.toISOString()
+  const dueThroughIso = new Date(now.getTime() + ACTIVITY_REMINDER_LEAD_MS).toISOString()
+  const staleBeforeIso = new Date(
+    now.getTime() - PERSONAL_REMINDER_LATE_WINDOW_MS
+  ).toISOString()
+
+  const { data, error } = await supabase
+    .from('activities')
+    .select('id, user_id, title, scheduled_for')
+    .eq('origin', 'manual')
+    .eq('status', 'planned')
+    .eq('reminder_enabled', true)
+    .is('reminder_sent_at', null)
+    .is('reminder_skipped_at', null)
+    .is('deleted_at', null)
+    .not('scheduled_for', 'is', null)
+    .lte('scheduled_for', dueThroughIso)
+    .order('scheduled_for', { ascending: true })
+    .limit(PERSONAL_REMINDER_BATCH_SIZE)
+
+  if (error) {
+    throw new Error(`Automatické notifikace (připomínky aktivit) selhaly: ${error.message}`)
+  }
+
+  const rows = (data ?? []) as ActivityReminderRow[]
+  const staleRows = rows.filter((row) => row.scheduled_for < staleBeforeIso)
+  const dueRows = rows.filter((row) => row.scheduled_for >= staleBeforeIso)
+
+  if (staleRows.length > 0) {
+    const { error: skipError } = await supabase
+      .from('activities')
+      .update({ reminder_skipped_at: nowIso })
+      .in('id', staleRows.map((row) => row.id))
+      .is('reminder_sent_at', null)
+      .is('reminder_skipped_at', null)
+
+    if (skipError) {
+      throw new Error(`Označení zmeškaných připomínek aktivit selhalo: ${skipError.message}`)
+    }
+  }
+
+  let sent = 0
+  for (const activity of dueRows) {
+    const notification = await createNotification({
+      supabase,
+      recipientUserId: activity.user_id,
+      actorUserId: null,
+      category: 'activities',
+      type: 'activity_reminder',
+      title: 'PŘIPOMÍNKA AKTIVITY',
+      message: `Aktivita „${activity.title}“ má termín ${formatReminderDateTime(activity.scheduled_for)}.`,
+      entityType: 'activity',
+      entityId: activity.id,
+      href: `/activities?focus=${activity.id}`,
+      priority: 'normal',
+      dedupeKey: `activity_reminder:${activity.id}:${activity.scheduled_for}`,
+      skipSelfNotification: false,
+    })
+
+    const { error: updateError } = await supabase
+      .from('activities')
+      .update({ reminder_sent_at: nowIso })
+      .eq('id', activity.id)
+      .eq('scheduled_for', activity.scheduled_for)
+      .is('reminder_sent_at', null)
+      .is('reminder_skipped_at', null)
+
+    if (updateError) {
+      throw new Error(`Uložení odeslané připomínky aktivity selhalo: ${updateError.message}`)
+    }
+    if (notification) sent += 1
+  }
+
+  return { sent, skipped: staleRows.length }
+}
+
+async function sendStickyNoteReminderNotifications(
+  supabase: ServiceClient,
+  now: Date
+): Promise<PersonalReminderResult> {
+  const nowIso = now.toISOString()
+  const dueThroughIso = new Date(now.getTime() + ACTIVITY_REMINDER_LEAD_MS).toISOString()
+  const staleBeforeIso = new Date(
+    now.getTime() - PERSONAL_REMINDER_LATE_WINDOW_MS
+  ).toISOString()
+
+  const { data, error } = await supabase
+    .from('sticky_notes')
+    .select('id, user_id, title, reminder_at')
+    .eq('reminder_enabled', true)
+    .is('reminder_sent_at', null)
+    .is('reminder_skipped_at', null)
+    .is('archived_at', null)
+    .is('deleted_at', null)
+    .not('reminder_at', 'is', null)
+    .lte('reminder_at', dueThroughIso)
+    .order('reminder_at', { ascending: true })
+    .limit(PERSONAL_REMINDER_BATCH_SIZE)
+
+  if (error) {
+    throw new Error(`Automatické notifikace (připomínky Lístečků) selhaly: ${error.message}`)
+  }
+
+  const rows = (data ?? []) as StickyNoteReminderRow[]
+  const staleRows = rows.filter((row) => row.reminder_at < staleBeforeIso)
+  const dueRows = rows.filter((row) => row.reminder_at >= staleBeforeIso)
+
+  if (staleRows.length > 0) {
+    const { error: skipError } = await supabase
+      .from('sticky_notes')
+      .update({ reminder_skipped_at: nowIso })
+      .in('id', staleRows.map((row) => row.id))
+      .is('reminder_sent_at', null)
+      .is('reminder_skipped_at', null)
+
+    if (skipError) {
+      throw new Error(`Označení zmeškaných připomínek Lístečků selhalo: ${skipError.message}`)
+    }
+  }
+
+  let sent = 0
+  for (const note of dueRows) {
+    const notification = await createNotification({
+      supabase,
+      recipientUserId: note.user_id,
+      actorUserId: null,
+      category: 'activities',
+      type: 'sticky_note_reminder',
+      title: 'PŘIPOMÍNKA LÍSTEČKU',
+      message: formatStickyNoteReminderMessage(note.title, note.reminder_at),
+      entityType: 'sticky_note',
+      entityId: note.id,
+      href: `/activities?sticky=${note.id}`,
+      priority: 'normal',
+      dedupeKey: `sticky_note_reminder:${note.id}:${note.reminder_at}`,
+      skipSelfNotification: false,
+    })
+
+    const { error: updateError } = await supabase
+      .from('sticky_notes')
+      .update({ reminder_sent_at: nowIso })
+      .eq('id', note.id)
+      .eq('reminder_at', note.reminder_at)
+      .is('reminder_sent_at', null)
+      .is('reminder_skipped_at', null)
+
+    if (updateError) {
+      throw new Error(`Uložení odeslané připomínky Lístečku selhalo: ${updateError.message}`)
+    }
+    if (notification) sent += 1
+  }
+
+  return { sent, skipped: staleRows.length }
 }
 
 async function getAssetNotificationRecipients(supabase: ServiceClient) {
@@ -757,9 +963,20 @@ async function sendAssetInsuranceExpiryNotifications(
 }
 
 export async function runNotificationAutomations(now = new Date()): Promise<AutomationRunResult> {
+  const supabase = getServiceRoleClient()
+
+  if (!supabase) {
+    throw new Error('Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro automatické notifikace.')
+  }
+
+  const [activityReminders, stickyNoteReminders] = await Promise.all([
+    sendActivityReminderNotifications(supabase, now),
+    sendStickyNoteReminderNotifications(supabase, now),
+  ])
+
   if (!isWithinSendWindow(now)) {
     return {
-      sent: 0,
+      sent: activityReminders.sent + stickyNoteReminders.sent,
       skippedOutsideWindow: true,
       details: {
         meetingsOverdue24h: 0,
@@ -768,14 +985,12 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
         jobsMissingPpTechnicians: 0,
         receivedInvoicesDue: 0,
         assetInsuranceExpiring6w: 0,
+        activityReminders: activityReminders.sent,
+        activityRemindersSkipped: activityReminders.skipped,
+        stickyNoteReminders: stickyNoteReminders.sent,
+        stickyNoteRemindersSkipped: stickyNoteReminders.skipped,
       },
     }
-  }
-
-  const supabase = getServiceRoleClient()
-
-  if (!supabase) {
-    throw new Error('Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro automatické notifikace.')
   }
 
   const [meetingsOverdue24h, tasksOverdue, jobsMissingPp, jobsMissingPpTechnicians, receivedInvoicesDue, assetInsuranceExpiring6w] =
@@ -795,7 +1010,9 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       jobsMissingPp +
       jobsMissingPpTechnicians +
       receivedInvoicesDue +
-      assetInsuranceExpiring6w,
+      assetInsuranceExpiring6w +
+      activityReminders.sent +
+      stickyNoteReminders.sent,
     skippedOutsideWindow: false,
     details: {
       meetingsOverdue24h,
@@ -804,6 +1021,10 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       jobsMissingPpTechnicians,
       receivedInvoicesDue,
       assetInsuranceExpiring6w,
+      activityReminders: activityReminders.sent,
+      activityRemindersSkipped: activityReminders.skipped,
+      stickyNoteReminders: stickyNoteReminders.sent,
+      stickyNoteRemindersSkipped: stickyNoteReminders.skipped,
     },
   }
 }
@@ -812,6 +1033,10 @@ export function getNotificationAutomationMetadata(now = new Date()) {
   return {
     sendWindow: `${SEND_WINDOW_START_HOUR}:00-${SEND_WINDOW_END_HOUR}:00 (${PRAGUE_TIME_ZONE})`,
     inWindowNow: isWithinSendWindow(now),
+    personalRemindersWindow: '24/7',
+    activityReminderLeadMinutes: ACTIVITY_REMINDER_LEAD_MS / 60_000,
+    stickyNoteReminderLeadMinutes: ACTIVITY_REMINDER_LEAD_MS / 60_000,
+    lateReminderWindowMinutes: PERSONAL_REMINDER_LATE_WINDOW_MS / 60_000,
     pragueDayStartIso: getPragueDayStartIso(now),
   }
 }

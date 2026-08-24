@@ -12,6 +12,7 @@ type MobileModalActionsProps = {
   submitDisabled?: boolean
   visualStyle?: 'default' | 'blaster' | 'client-modal' | 'meeting-modal'
   disableAmbientGlow?: boolean
+  showCancel?: boolean
   className?: string
 }
 
@@ -24,6 +25,7 @@ export function MobileModalActions({
   submitDisabled = false,
   visualStyle = 'default',
   disableAmbientGlow = false,
+  showCancel = true,
   className,
 }: MobileModalActionsProps) {
   const { pending } = useFormStatus()
@@ -33,6 +35,7 @@ export function MobileModalActions({
   const isClientModal = visualStyle === 'client-modal'
   const isMeetingModal = visualStyle === 'meeting-modal'
   const isSharedModal = isClientModal || isMeetingModal
+  const hasCancelAction = showCancel && Boolean(onCancel || cancelHref)
 
   const wrapperClassName = isSharedModal
     ? `clients-modal__footer flex w-full shrink-0 flex-col gap-3 border-t border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.68)_100%)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4 ${
@@ -43,7 +46,7 @@ export function MobileModalActions({
       }`
 
   const cancelButtonClassName = isSharedModal
-    ? 'clients-modal__cancel inline-flex items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] disabled:cursor-not-allowed disabled:opacity-60'
+    ? 'standard-form-modal__cancel-action inline-flex items-center justify-center'
     : onCancel
       ? isBlaster
         ? 'inline-flex h-11 w-[152px] shrink-0 items-center justify-center rounded-xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 text-sm font-medium uppercase text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)] disabled:cursor-not-allowed disabled:opacity-60'
@@ -51,13 +54,13 @@ export function MobileModalActions({
       : null
 
   const cancelLinkClassName = isSharedModal
-    ? 'clients-modal__cancel inline-flex items-center justify-center rounded-2xl border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] px-4 py-2.5 text-sm font-medium text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]'
+    ? 'standard-form-modal__cancel-action inline-flex items-center justify-center'
     : isBlaster
       ? 'border border-red-200/90 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(254,242,242,0.82)_100%)] text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(185,28,28,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(185,28,28,0.2)]'
       : 'border border-red-300 bg-white text-red-600 transition hover:bg-red-50'
 
   const submitButtonClassName = isSharedModal
-    ? 'clients-modal__submit inline-flex cursor-pointer items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed'
+    ? 'standard-form-modal__primary-action inline-flex cursor-pointer items-center justify-center gap-2'
     : isBlaster
       ? `${disableAmbientGlow ? '' : 'primary-ambient-glow--blue '}border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)]`
       : `${disableAmbientGlow ? '' : 'primary-ambient-glow--blue '}bg-[#2980B9] transition hover:bg-[#236f9f]`
@@ -66,8 +69,8 @@ export function MobileModalActions({
     <div
       className={wrapperClassName}
     >
-      <div className="flex w-full flex-wrap items-center justify-between gap-3">
-        {onCancel ? (
+      <div className={`flex w-full flex-wrap items-center gap-3 ${hasCancelAction ? 'justify-between' : 'justify-end'}`}>
+        {showCancel && onCancel ? (
           <button
             type="button"
             onClick={onCancel}
@@ -76,7 +79,7 @@ export function MobileModalActions({
           >
             {cancelLabel}
           </button>
-        ) : cancelHref ? (
+        ) : showCancel && cancelHref ? (
           <Link
             href={cancelHref}
             aria-disabled={pending}

@@ -49,6 +49,9 @@ type EditMeetingButtonProps = {
   contacts?: ClientContactOption[]
   className?: string
   label?: string
+  onSaved?: () => void
+  onOpen?: () => void
+  onClosed?: () => void
 }
 
 const initialUpdateState: UpdateMeetingActionState = {
@@ -62,17 +65,22 @@ export function EditMeetingButton({
   contacts = [],
   className,
   label = 'UPRAVIT',
+  onSaved,
+  onOpen,
+  onClosed,
 }: EditMeetingButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
 
   function openModal() {
+    onOpen?.()
     setFormKey((current) => current + 1)
     setIsOpen(true)
   }
 
   function closeModal() {
     setIsOpen(false)
+    onClosed?.()
   }
 
   const resolvedClassName =
@@ -96,6 +104,7 @@ export function EditMeetingButton({
           clients={clients}
           contacts={contacts}
           onClose={closeModal}
+          onSaved={onSaved}
         />
       ) : null}
     </>
@@ -107,11 +116,13 @@ function EditMeetingModal({
   clients,
   contacts,
   onClose,
+  onSaved,
 }: {
   meeting: MeetingFormValues
   clients: ClientOption[]
   contacts: ClientContactOption[]
   onClose: () => void
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(
     updateMeetingModalAction,
@@ -120,9 +131,10 @@ function EditMeetingModal({
 
   useEffect(() => {
     if (state.success) {
+      onSaved?.()
       onClose()
     }
-  }, [onClose, state.success])
+  }, [onClose, onSaved, state.success])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -145,7 +157,7 @@ function EditMeetingModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="meetings-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] will-change-transform transform-gpu lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
+        <div className="standard-form-modal__shell meetings-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[900px] flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] will-change-transform transform-gpu lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
           <div
             aria-hidden="true"
             className="meetings-modal__shell-frame pointer-events-none absolute inset-0 rounded-3xl border border-white/65"
@@ -158,13 +170,13 @@ function EditMeetingModal({
             aria-hidden="true"
             className="meetings-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]"
           />
-          <div className="meetings-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
+          <div className="standard-form-modal__header meetings-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <ModalHeading section="SCHŮZKY" title="Upravit schůzku" className="min-w-0" />
 
             <button
               type="button"
               onClick={onClose}
-              className="meetings-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
+              className="standard-form-modal__close meetings-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
               aria-label="Zavřít"
             >
               ✕

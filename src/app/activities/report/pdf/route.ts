@@ -71,6 +71,20 @@ function typeLabel(item: ActivityListItem) {
   return 'Ostatní'
 }
 
+function originFilterLabel(originFilter: ActivityAdminReport['originFilter']) {
+  if (originFilter === 'manual') return 'Pouze ruční'
+  if (originFilter === 'automatic') return 'Pouze automatické'
+  return 'Všechny aktivity'
+}
+
+function stateLabel(item: ActivityListItem) {
+  if (item.deleted_at) return 'SMAZÁNO'
+  if (item.status === 'completed' || item.completed_at) return 'Dokončeno'
+  if (item.status === 'planned') return 'Naplánováno'
+  if (item.status === 'cancelled') return 'Zrušeno'
+  return 'Zapsáno'
+}
+
 function cell(
   width: string,
   value: string,
@@ -92,7 +106,7 @@ function ReportDocument({ report, generatedAt }: { report: ActivityAdminReport; 
       h(View, { fixed: true, style: styles.header },
         h(View, { style: styles.headerSide }, h(Text, { style: styles.eyebrow }, 'OBCHODNÍ ČINNOST'), h(Text, { style: styles.title }, 'Přehled aktivit')),
         h(Image, { src: logoDataUri, style: styles.logo }),
-        h(Text, { style: styles.headerMeta }, `${report.selectedUserName ?? 'Celý tým'}\nObdobí ${report.dateFrom} až ${report.dateTo}\nVygenerováno ${formatDate(generatedAt.toISOString())}`),
+        h(Text, { style: styles.headerMeta }, `${report.selectedUserName ?? 'Celý tým'}\nObdobí ${report.dateFrom} až ${report.dateTo}\n${originFilterLabel(report.originFilter)} · ${report.includeDeleted ? 'včetně měkce smazaných' : 'bez smazaných aktivit'}\nVygenerováno ${formatDate(generatedAt.toISOString())}`),
       ),
       h(View, { style: styles.metrics }, ...metrics.map(([label, value, note]) => h(View, { key: label, style: styles.metric }, h(Text, { style: styles.metricLabel }, label), h(Text, { style: styles.metricValue }, String(value)), h(Text, { style: styles.metricNote }, note)))),
       h(View, { style: styles.sourceBar },
@@ -100,6 +114,9 @@ function ReportDocument({ report, generatedAt }: { report: ActivityAdminReport; 
         h(Text, { style: styles.sourcePill }, `Úkoly ${report.taskCount}`),
         h(Text, { style: styles.sourcePill }, `Nabídky ${report.offerCount}`),
         h(Text, { style: styles.sourcePill }, `Ruční bez zdroje ${report.withoutSourceCount}`),
+        h(Text, { style: styles.sourcePill }, `Dokončeno ${report.completedCount}`),
+        h(Text, { style: styles.sourcePill }, `Výsledky ${report.withResultCount}`),
+        report.includeDeleted ? h(Text, { style: [styles.sourcePill, { backgroundColor: '#fdecec', color: '#a63a46' }] }, `Smazáno ${report.deletedCount}`) : null,
       ),
       report.userSummaries.length > 1 ? h(View, { wrap: false, style: { marginBottom: 10 } },
         h(Text, { style: styles.sectionTitle }, 'Souhrn uživatelů'),
@@ -110,8 +127,8 @@ function ReportDocument({ report, generatedAt }: { report: ActivityAdminReport; 
       ) : null,
       h(Text, { style: styles.sectionTitle }, 'Seznam aktivit'),
       report.items.length ? h(View, { style: styles.table },
-        h(View, { fixed: true, style: styles.tableHeader }, cell('13%', 'Datum'), cell('10%', 'Uživatel'), cell('11%', 'Typ'), cell('16%', 'Klient'), cell('42%', 'Popis'), cell('8%', 'Původ')),
-        ...report.items.map((item, index) => h(View, { key: item.id, wrap: false, style: [styles.row, index % 2 ? styles.rowAlt : {}] }, cell('13%', formatDate(item.occurred_at)), cell('10%', item.user_name ?? '—'), cell('11%', typeLabel(item)), cell('16%', item.client_name ?? 'Bez klienta'), cell('42%', item.title), cell('8%', item.origin === 'manual' ? 'Ručně' : 'Auto'))),
+        h(View, { fixed: true, style: styles.tableHeader }, cell('12%', 'Datum'), cell('9%', 'Uživatel'), cell('11%', 'Typ / původ'), cell('14%', 'Klient'), cell('25%', 'Aktivita'), cell('10%', 'Stav'), cell('19%', 'Výsledek')),
+        ...report.items.map((item, index) => h(View, { key: item.id, wrap: false, style: [styles.row, index % 2 ? styles.rowAlt : {}, item.deleted_at ? { backgroundColor: '#fff1f2', color: '#8f3540' } : {}] }, cell('12%', formatDate(item.occurred_at)), cell('9%', item.user_name ?? '—'), cell('11%', `${typeLabel(item)} · ${item.origin === 'manual' ? 'Ručně' : 'Auto'}`), cell('14%', item.client_name ?? 'Bez klienta'), cell('25%', item.title), cell('10%', stateLabel(item), { fontWeight: 700 }), cell('19%', item.completion_result?.trim() || '—'))),
       ) : h(Text, { style: styles.empty }, 'Ve zvoleném období nejsou žádné aktivity.'),
       h(View, { fixed: true, style: styles.footer }, h(Text, null, 'B-ENERGY APP · interní přehled aktivit'), h(Text, { render: ({ pageNumber, totalPages }) => `Strana ${pageNumber} z ${totalPages}` })),
     ),
@@ -122,15 +139,18 @@ export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('user')
   const dateFrom = request.nextUrl.searchParams.get('from') ?? ''
   const dateTo = request.nextUrl.searchParams.get('to') ?? ''
+  const includeDeleted = request.nextUrl.searchParams.get('deleted') === '1'
+  const originParam = request.nextUrl.searchParams.get('origin')
+  const originFilter = originParam === 'manual' || originParam === 'automatic' ? originParam : 'all'
 
   try {
-    const report = await getActivityAdminReport({ userId, dateFrom, dateTo })
+    const report = await getActivityAdminReport({ userId, dateFrom, dateTo, includeDeleted, originFilter })
     const buffer = await renderToBuffer(ReportDocument({ report, generatedAt: new Date() }))
     const disposition = request.nextUrl.searchParams.get('preview') === '1' ? 'inline' : 'attachment'
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `${disposition}; filename="aktivity-${dateFrom}-${dateTo}.pdf"`,
+        'Content-Disposition': `${disposition}; filename="aktivity-${originFilter === 'all' ? 'vsechny' : originFilter === 'manual' ? 'rucni' : 'automaticke'}-${dateFrom}-${dateTo}.pdf"`,
         'Cache-Control': 'private, no-store',
       },
     })

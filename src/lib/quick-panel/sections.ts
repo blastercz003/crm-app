@@ -11,6 +11,7 @@ import { canViewProvizeSection } from '@/lib/provize/access'
 
 export const QUICK_PANEL_SECTION_IDS = [
   'clients',
+  'activities',
   'jobs',
   'offers',
   'tech_jobs',
@@ -36,6 +37,7 @@ export type QuickPanelProfileAccess = {
   role: AppRole
   name?: string | null
   can_view_jobs?: boolean | null
+  can_view_activities?: boolean | null
   can_view_offers?: boolean | null
   can_view_tech_jobs?: boolean | null
   can_view_connection_points?: boolean | null
@@ -67,6 +69,13 @@ export const QUICK_PANEL_SECTIONS: readonly QuickPanelSection[] = [
     href: '/clients',
     iconSrc: '/clients-icon-v2.png',
     canAccess: () => true,
+  },
+  {
+    id: 'activities',
+    label: 'Aktivita',
+    href: '/activities',
+    iconSrc: '/activities-icon.svg',
+    canAccess: (profile) => isAdminRole(profile.role) || Boolean(profile.can_view_activities),
   },
   {
     id: 'jobs',

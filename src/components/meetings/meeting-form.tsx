@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, useState } from 'react'
+import { ChevronDown, Plus } from 'lucide-react'
+import { useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { getPriorityLabel } from '@/app/tasks/taskUi'
+import { ClientAutocomplete } from '@/components/ui/client-autocomplete'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 
 type ClientOption = {
@@ -51,6 +53,7 @@ type MeetingFormProps = {
   contacts?: ClientContactOption[]
   error?: string | null
   modalMode?: boolean
+  showModalCancel?: boolean
 }
 
 const glassFieldBaseClass =
@@ -92,14 +95,6 @@ function formatDateTimeLocalInput(value?: string | null) {
   return `${year}-${month}-${day}T${hour}:${minute}`
 }
 
-function normalizeSearchText(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
 export function MeetingForm({
   action,
   submitLabel,
@@ -111,9 +106,8 @@ export function MeetingForm({
   contacts = [],
   error,
   modalMode = false,
+  showModalCancel = true,
 }: MeetingFormProps) {
-  const companyInputRef = useRef<HTMLInputElement>(null)
-
   const initialCompanyName = initialValues?.company_name ?? ''
   const initialClientId = initialValues?.client_id ?? ''
   const initialContactId = initialValues?.client_contact_id ?? ''
@@ -124,106 +118,25 @@ export function MeetingForm({
   const [contactPerson, setContactPerson] = useState(initialValues?.contact_person ?? '')
   const [contactPhone, setContactPhone] = useState(initialValues?.contact_phone ?? '')
   const [contactEmail, setContactEmail] = useState(initialValues?.contact_email ?? '')
-  const [companyTouched, setCompanyTouched] = useState(false)
-  const [companyHasFocus, setCompanyHasFocus] = useState(false)
+  const [followUpExpanded, setFollowUpExpanded] = useState(Boolean(
+    initialValues?.follow_up_task
+    || initialValues?.follow_up_task_note
+    || initialValues?.follow_up_task_due_date,
+  ))
 
-  const selectedClient =
-    clients.find((client) => client.id === selectedClientId) ?? null
   const selectedClientContacts = contacts.filter(
     (contact) => contact.client_id === selectedClientId
   )
 
-  const companySelectionIsValid =
-    Boolean(selectedClientId) &&
-    Boolean(selectedClient) &&
-    companyName.trim() === (selectedClient?.name ?? '')
-
-  const showCompanyError = companyTouched && !companySelectionIsValid
-
-  function setAutocompleteSelection(start: number, end: number) {
-    requestAnimationFrame(() => {
-      companyInputRef.current?.focus()
-      companyInputRef.current?.setSelectionRange(start, end)
-    })
-  }
-
-  function handleCompanyChange(nextRawValue: string) {
-    setCompanyTouched(true)
-
-    const trimmedValue = nextRawValue.trim()
-    const normalizedValue = normalizeSearchText(trimmedValue)
-
-    if (!trimmedValue) {
-      setCompanyName('')
-      setSelectedClientId('')
+  function handleCompanyChange(nextCompanyName: string, nextClientId: string) {
+    if (nextClientId !== selectedClientId) {
       setSelectedContactId('')
-      return
+      setContactPerson('')
+      setContactPhone('')
+      setContactEmail('')
     }
-
-    const exactMatch =
-      clients.find(
-        (client) => normalizeSearchText(client.name) === normalizedValue
-      ) ?? null
-
-    if (exactMatch) {
-      setCompanyName(exactMatch.name)
-      setSelectedClientId(exactMatch.id)
-      setSelectedContactId('')
-      return
-    }
-
-    const prefixMatches = clients.filter((client) =>
-      normalizeSearchText(client.name).startsWith(normalizedValue)
-    )
-
-    if (prefixMatches.length === 1) {
-      const matchedClient = prefixMatches[0]
-      const completedName = matchedClient.name
-
-      setCompanyName(completedName)
-      setSelectedClientId(matchedClient.id)
-      setSelectedContactId('')
-
-      setAutocompleteSelection(nextRawValue.length, completedName.length)
-      return
-    }
-
-    setCompanyName(nextRawValue)
-    setSelectedClientId('')
-    setSelectedContactId('')
-  }
-
-  function handleCompanyFocus() {
-    setCompanyHasFocus(true)
-  }
-
-  function handleCompanyBlur() {
-    setCompanyHasFocus(false)
-    setCompanyTouched(true)
-
-    const trimmedValue = companyName.trim()
-    const normalizedValue = normalizeSearchText(trimmedValue)
-
-    if (!trimmedValue) {
-      setCompanyName('')
-      setSelectedClientId('')
-      setSelectedContactId('')
-      return
-    }
-
-    const exactMatch =
-      clients.find(
-        (client) => normalizeSearchText(client.name) === normalizedValue
-      ) ?? null
-
-    if (exactMatch) {
-      setCompanyName(exactMatch.name)
-      setSelectedClientId(exactMatch.id)
-      return
-    }
-
-    setSelectedClientId('')
-    setSelectedContactId('')
+    setCompanyName(nextCompanyName)
+    setSelectedClientId(nextClientId)
   }
 
   function handleContactChange(nextContactId: string) {
@@ -243,27 +156,6 @@ export function MeetingForm({
     setContactPhone(nextContact.phone ?? '')
     setContactEmail(nextContact.email ?? '')
   }
-
-  const companyStatusText = (() => {
-    const trimmedValue = companyName.trim()
-
-    if (!trimmedValue) {
-      return modalMode ? '' : 'Začni psát název firmy.'
-    }
-
-    if (companySelectionIsValid) {
-      return 'Klient nalezen v databázi.'
-    }
-
-    return 'Firma není napojená na klienta z databáze.'
-  })()
-
-  const companyStatusClassName =
-    companySelectionIsValid
-      ? 'text-emerald-700'
-      : companyName.trim()
-        ? 'text-amber-700'
-        : 'text-gray-500'
 
   const pendingSubmitLabel =
     submitLabel.trim().length > 0 && submitLabel === submitLabel.toUpperCase()
@@ -296,47 +188,19 @@ export function MeetingForm({
             htmlFor="company_name"
             className="meetings-form__label text-sm font-medium text-gray-900"
           >
-            Firma
+            Klient <span className="font-normal text-zinc-400">(volitelné)</span>
           </label>
-          <input
-            ref={companyInputRef}
+          <ClientAutocomplete
             id="company_name"
-            name="company_name"
-            type="text"
-            autoComplete="off"
+            clients={clients}
             value={companyName}
-            placeholder="Začni psát název firmy"
-            onChange={(event) => handleCompanyChange(event.target.value)}
-            onFocus={handleCompanyFocus}
-            onBlur={handleCompanyBlur}
-            className={`mb-1 ${glassFieldBaseClass} ${
-              showCompanyError
-                ? 'border-amber-300 focus:border-amber-300 focus:ring-0'
-                : companySelectionIsValid && !companyHasFocus
-                  ? 'border-emerald-300 focus:border-emerald-300 focus:ring-0'
-                  : ''
-            }`}
+            selectedClientId={selectedClientId}
+            onChange={handleCompanyChange}
+            inputClassName={glassFieldBaseClass}
           />
-
-          <div className={`meetings-form__info mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] ${modalMode ? 'px-3 py-2.5' : 'px-4 py-3'}`}>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-              Napojení na klienta
-            </div>
-            <div className="mt-1 text-sm text-gray-900">
-              {companySelectionIsValid
-                ? selectedClient?.name
-                : 'Žádný klient není vybraný'}
-            </div>
-          </div>
-
-          {companyStatusText ? (
-            <p className={`text-sm ${companyStatusClassName}`}>
-              {companyStatusText}
-            </p>
-          ) : null}
         </div>
 
-            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-2' : ''}`}>
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-6' : ''}`}>
           <label
             htmlFor="contact_person"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -375,7 +239,7 @@ export function MeetingForm({
           )}
         </div>
 
-            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-2' : ''}`}>
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-3' : ''}`}>
           <label
             htmlFor="contact_phone"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -394,7 +258,7 @@ export function MeetingForm({
           />
         </div>
 
-            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-2' : ''}`}>
+            <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-3' : ''}`}>
           <label
             htmlFor="contact_email"
             className="meetings-form__label text-sm font-medium text-gray-900"
@@ -523,9 +387,20 @@ export function MeetingForm({
 
             <section className={modalMode ? modalPanelClass : 'contents'}>
               {modalMode ? (
-                <h3 className={modalPanelTitleClass}>Navazující úkol</h3>
+                <button
+                  type="button"
+                  aria-expanded={followUpExpanded}
+                  onClick={() => setFollowUpExpanded((current) => !current)}
+                  className="meetings-form__follow-up-toggle mb-0 flex w-full items-center justify-between gap-3 rounded-xl px-1 py-1 text-left"
+                >
+                  <span className={modalPanelTitleClass.replace('mb-3', 'mb-0')}>Navazující úkol</span>
+                  <span className="meetings-form__follow-up-action inline-flex min-h-8 items-center gap-1.5 rounded-[10px] border px-2.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]">
+                    {!followUpExpanded ? <><Plus aria-hidden size={13} /> Přidat</> : 'Skrýt'}
+                    <ChevronDown aria-hidden size={15} className={`transition-transform ${followUpExpanded ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
               ) : null}
-              <div className={modalMode ? 'grid gap-3 sm:grid-cols-6' : 'contents'}>
+              <div className={modalMode ? `${followUpExpanded ? 'mt-3 grid' : 'hidden'} gap-3 sm:grid-cols-6` : 'contents'}>
             <div className={`meetings-form__field space-y-2 ${modalMode ? 'sm:col-span-6' : 'sm:col-span-2'}`}>
           <label
             htmlFor="follow_up_task"
@@ -609,9 +484,10 @@ export function MeetingForm({
         <MeetingFormActions
           submitLabel={submitLabel}
           pendingSubmitLabel={pendingSubmitLabel}
-          onCancel={onCancel}
-          cancelHref={cancelHref}
-          cancelLabel={cancelLabel}
+            onCancel={onCancel}
+            cancelHref={cancelHref}
+            cancelLabel={cancelLabel}
+            showCancel={showModalCancel}
         />
       </PendingFieldset>
     </form>
@@ -672,12 +548,14 @@ function MeetingFormActions({
   onCancel,
   cancelHref,
   cancelLabel,
+  showCancel,
 }: {
   submitLabel: string
   pendingSubmitLabel: string
   onCancel?: () => void
   cancelHref?: string
   cancelLabel: string
+  showCancel: boolean
 }) {
   const { pending } = useFormStatus()
 
@@ -687,6 +565,7 @@ function MeetingFormActions({
         <div className="meetings-form__actions-shell -mx-4 -mb-3 mt-4 sm:-mx-5 sm:-mb-4">
           <MobileModalActions
             onCancel={onCancel}
+            showCancel={showCancel}
             submitLabel={submitLabel}
             pendingSubmitLabel={pendingSubmitLabel}
             visualStyle="meeting-modal"

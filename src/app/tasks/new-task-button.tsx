@@ -11,7 +11,7 @@ import {
   ActionFeedbackToast,
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
-import TaskForm from './TaskForm'
+import TaskForm, { type TaskFormValues } from './TaskForm'
 import { ModalHeading } from '@/components/ui/modal-heading'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
@@ -115,6 +115,7 @@ export function CreateTaskModal({
   onToast,
   onSuccess,
   suppressSuccessToast = false,
+  initialValues,
 }: {
   users: UserOption[]
   clients: ClientOption[]
@@ -123,6 +124,7 @@ export function CreateTaskModal({
   onToast: (toast: TaskToast) => void
   onSuccess?: (state: CreateTaskActionState) => void
   suppressSuccessToast?: boolean
+  initialValues?: TaskFormValues
 }) {
   const [state, formAction] = useActionState(
     createTaskModalAction,
@@ -155,7 +157,7 @@ export function CreateTaskModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+      className="fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -164,12 +166,9 @@ export function CreateTaskModal({
         }
       }}
     >
-      <div
-        className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-4"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-      >
+      <div className="flex h-full min-h-0 items-center justify-center">
         <div
-          className="clients-modal__shell tasks-modal__shell relative flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
+          className="standard-form-modal__shell clients-modal__shell tasks-modal__shell relative flex w-full max-w-[820px] flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             maxHeight:
               'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
@@ -187,13 +186,13 @@ export function CreateTaskModal({
             aria-hidden
             className="clients-modal__shell-halo tasks-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]"
           />
-          <div className="clients-modal__header tasks-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="standard-form-modal__header clients-modal__header tasks-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
             <ModalHeading section="ÚKOLY" title="Nový úkol" className="min-w-0" />
 
             <button
               type="button"
               onClick={onClose}
-              className="clients-modal__close tasks-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
+              className="standard-form-modal__close clients-modal__close tasks-modal__close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/95 bg-[linear-gradient(165deg,rgba(255,255,255,0.96)_0%,rgba(245,245,246,0.88)_100%)] text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_10px_22px_rgba(39,39,42,0.14)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,1),0_14px_24px_rgba(39,39,42,0.16)]"
               aria-label="Zavřít"
             >
               ✕
@@ -210,7 +209,9 @@ export function CreateTaskModal({
               onCancel={onClose}
               cancelLabel="ZRUŠIT"
               error={state.error}
+              initialValues={initialValues}
               modalMode
+              showModalCancel={false}
             />
           </div>
         </div>

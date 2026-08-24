@@ -129,3 +129,23 @@ export function getPragueDateKey(value: Date = new Date()) {
     day: '2-digit',
   }).format(value)
 }
+
+function utcDateKey(value: Date) {
+  return value.toISOString().slice(0, 10)
+}
+
+export function getPragueWeekDateKeys(value: Date = new Date()) {
+  const todayKey = getPragueDateKey(value)
+  const [year, month, day] = todayKey.split('-').map(Number)
+  const today = new Date(Date.UTC(year, month - 1, day))
+  const daysSinceMonday = (today.getUTCDay() + 6) % 7
+  const monday = new Date(today)
+  monday.setUTCDate(today.getUTCDate() - daysSinceMonday)
+  const sunday = new Date(monday)
+  sunday.setUTCDate(monday.getUTCDate() + 6)
+
+  return {
+    start: utcDateKey(monday),
+    end: utcDateKey(sunday),
+  }
+}

@@ -14,6 +14,7 @@ export type ManualActivityType = (typeof MANUAL_ACTIVITY_TYPES)[number]
 export type ActivityOrigin = (typeof ACTIVITY_ORIGINS)[number]
 export type ActivityStatus = (typeof ACTIVITY_STATUSES)[number]
 export type ActivitySourceType = (typeof ACTIVITY_SOURCE_TYPES)[number]
+export type ActivityRecurrenceUnit = 'day' | 'week' | 'month'
 
 export type ActivityProfile = {
   id: string
@@ -35,6 +36,18 @@ export type ActivityRow = {
   occurred_at: string
   scheduled_for: string | null
   completed_at: string | null
+  completion_result: string | null
+  reminder_enabled: boolean
+  reminder_sent_at: string | null
+  reminder_skipped_at: string | null
+  recurrence_unit: ActivityRecurrenceUnit | null
+  recurrence_interval: number | null
+  recurrence_series_id: string | null
+  recurrence_parent_id: string | null
+  recurrence_anchor_at: string | null
+  recurrence_sequence: number
+  deleted_at: string | null
+  deleted_by: string | null
   source_type: ActivitySourceType | null
   source_id: string | null
   source_event_key: string | null
@@ -98,10 +111,14 @@ export type ActivityOverview = {
   lastActivity: ActivityListItem | null
 }
 
+export type ActivityReportOrigin = 'all' | ActivityOrigin
+
 export type ActivityReportInput = {
   userId?: string | null
   dateFrom: string
   dateTo: string
+  includeDeleted?: boolean
+  originFilter?: ActivityReportOrigin
 }
 
 export type ActivityReportUserSummary = {
@@ -117,11 +134,16 @@ export type ActivityReportUserSummary = {
 export type ActivityAdminReport = {
   dateFrom: string
   dateTo: string
+  includeDeleted: boolean
+  originFilter: ActivityReportOrigin
   selectedUserId: string | null
   selectedUserName: string | null
   total: number
   manualCount: number
   automaticCount: number
+  completedCount: number
+  deletedCount: number
+  withResultCount: number
   activeDays: number
   averagePerActiveDay: number
   meetingCount: number
@@ -142,4 +164,5 @@ export type ActivityActionState = {
   success: boolean
   error: string | null
   activityId?: string
+  nextActivityId?: string
 }

@@ -1040,7 +1040,7 @@ function JobFormShell({
                   type="button"
                   onClick={onDelete}
                   disabled={isDeleting}
-                  className="jobs-page__job-form-modal__delete inline-flex min-h-10 min-w-0 shrink-0 items-center justify-center whitespace-nowrap rounded-2xl border border-red-400/70 bg-[linear-gradient(155deg,rgba(239,68,68,0.92)_0%,rgba(220,38,38,0.9)_100%)] px-3 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_10px_20px_rgba(220,38,38,0.26)] transition duration-200 hover:-translate-y-[1px] hover:border-red-500/80 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.30),0_14px_26px_rgba(220,38,38,0.32)] disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[170px] sm:px-4"
+                  className="standard-form-modal__danger-action inline-flex min-w-0 shrink-0 items-center justify-center whitespace-nowrap !px-3 sm:min-w-[170px] sm:!px-5"
                 >
                   {isDeleting ? (
                     <>
@@ -1061,7 +1061,7 @@ function JobFormShell({
                   type="button"
                   onClick={onClose}
                   disabled={isDeleting}
-                  className="jobs-page__job-form-modal__cancel inline-flex min-h-10 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.88)_0%,rgba(238,242,247,0.8)_100%)] px-3 py-2.5 text-sm font-medium text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_18px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_10px_22px_rgba(15,23,42,0.14)] disabled:cursor-not-allowed disabled:opacity-60 sm:px-4"
+                  className="standard-form-modal__cancel-action inline-flex shrink-0 items-center justify-center !px-3 sm:!px-5"
                 >
                   ZRUŠIT
                 </button>
@@ -1069,7 +1069,7 @@ function JobFormShell({
                 <SubmitButton
                   label={submitLabel}
                   disabled={isDeleting || !companySelectionIsValid}
-                  className="shrink-0 !px-3 sm:!px-4"
+                  className="shrink-0 !px-3 sm:!px-5"
                 />
               </div>
             </div>
@@ -1102,7 +1102,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={isDisabled}
-      className={`jobs-page__job-form-modal__submit inline-flex min-h-10 items-center justify-center rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_14px_28px_rgba(24,78,129,0.34)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_18px_32px_rgba(24,78,129,0.4)] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`standard-form-modal__primary-action inline-flex items-center justify-center ${className}`}
     >
       {pending ? 'UKLÁDÁM…' : label}
     </button>

@@ -19,6 +19,7 @@ import {
   type ActivityReportInput,
   type ActivityOverview,
   type ActivityProfile,
+  type ActivityReportOrigin,
   type ActivityRow,
   type ActivitySourceType,
   type ActivityStatus,
@@ -104,6 +105,7 @@ export async function getActivities(
   let request = supabase
     .from('activities')
     .select('*', { count: 'exact' })
+    .is('deleted_at', null)
     .order('occurred_at', { ascending: false })
     .order('created_at', { ascending: false })
 
@@ -160,6 +162,65 @@ export async function getActivities(
   }
 }
 
+export async function getManualActivityById(activityId: string): Promise<ActivityListItem | null> {
+  const normalizedId = normalizeUuid(activityId)
+  if (!normalizedId) return null
+
+  const { supabase, profile, isAdmin } = await getActivityRuntimeContext()
+  let request = supabase
+    .from('activities')
+    .select('*')
+    .eq('id', normalizedId)
+    .eq('origin', 'manual')
+    .is('deleted_at', null)
+
+  if (!isAdmin) request = request.eq('user_id', profile.id)
+
+  const { data, error } = await request.maybeSingle<ActivityRow>()
+  if (error) throw new Error(`Aktivitu se nepodařilo načíst: ${error.message}`)
+  if (!data) return null
+
+  const [item] = await hydrateActivityRows(supabase, [data])
+  return item ?? null
+}
+
+export async function getManualActivityPage(input: {
+  userId?: string | null
+  kind: 'planned' | 'logged'
+  offset?: number
+  limit?: number
+}): Promise<{ items: ActivityListItem[]; total: number; nextOffset: number; hasMore: boolean }> {
+  const { supabase, profile, isAdmin } = await getActivityRuntimeContext()
+  const requestedUserId = normalizeUuid(input.userId)
+  const userId = isAdmin ? requestedUserId : profile.id
+  if (!userId) throw new Error('Uživatel aktivit nebyl nalezen.')
+
+  const offset = Math.max(0, Math.floor(input.offset ?? 0))
+  const limit = Math.min(Math.max(1, Math.floor(input.limit ?? 20)), MAX_PAGE_SIZE)
+  let request = supabase
+    .from('activities')
+    .select('*', { count: 'exact' })
+    .eq('user_id', userId)
+    .eq('origin', 'manual')
+    .is('deleted_at', null)
+
+  request = input.kind === 'planned'
+    ? request
+        .eq('status', 'planned')
+        .order('scheduled_for', { ascending: true, nullsFirst: false })
+    : request
+        .in('status', ['logged', 'completed'])
+        .order('occurred_at', { ascending: false })
+
+  const { data, error, count } = await request.range(offset, offset + limit - 1)
+  if (error) throw new Error(`Další aktivity se nepodařilo načíst: ${error.message}`)
+
+  const items = await hydrateActivityRows(supabase, (data ?? []) as ActivityRow[])
+  const total = count ?? 0
+  const nextOffset = offset + items.length
+  return { items, total, nextOffset, hasMore: nextOffset < total }
+}
+
 export async function getActivityOverview(filters: {
   userId?: string | null
   clientId?: string | null
@@ -175,11 +236,13 @@ export async function getActivityOverview(filters: {
   let todayRequest = supabase
     .from('activities')
     .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null)
     .gte('occurred_at', todayStart)
     .lte('occurred_at', todayEnd)
   let plannedRequest = supabase
     .from('activities')
     .select('*', { count: 'exact' })
+    .is('deleted_at', null)
     .eq('status', 'planned')
     .gte('scheduled_for', nowIso)
     .order('scheduled_for', { ascending: true, nullsFirst: false })
@@ -187,11 +250,13 @@ export async function getActivityOverview(filters: {
   let overdueRequest = supabase
     .from('activities')
     .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null)
     .eq('status', 'planned')
     .lt('scheduled_for', nowIso)
   let lastActivityRequest = supabase
     .from('activities')
     .select('*')
+    .is('deleted_at', null)
     .order('occurred_at', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(1)
@@ -293,6 +358,9 @@ export async function getActivityAdminReport(
   const dateToIso = normalizeActivityDateBoundary(input.dateTo, true)
   if (!dateFromIso || !dateToIso) throw new Error('Vyberte platné období reportu.')
   if (dateFromIso > dateToIso) throw new Error('Datum od musí být před datem do.')
+  const originFilter: ActivityReportOrigin = input.originFilter === 'manual' || input.originFilter === 'automatic'
+    ? input.originFilter
+    : 'all'
 
   const rows: ActivityRow[] = []
   const batchSize = 1000
@@ -307,7 +375,10 @@ export async function getActivityAdminReport(
       .order('occurred_at', { ascending: false })
       .order('created_at', { ascending: false })
 
+    if (!input.includeDeleted) request = request.is('deleted_at', null)
+
     if (selectedUserId) request = request.eq('user_id', selectedUserId)
+    if (originFilter !== 'all') request = request.eq('origin', originFilter)
 
     const { data, error } = await request.range(offset, offset + batchSize - 1)
     if (error) throw new Error(`Report aktivit se nepodařilo načíst: ${error.message}`)
@@ -365,6 +436,8 @@ export async function getActivityAdminReport(
   return {
     dateFrom: input.dateFrom,
     dateTo: input.dateTo,
+    includeDeleted: Boolean(input.includeDeleted),
+    originFilter,
     selectedUserId,
     selectedUserName: selectedUserId
       ? items.find((item) => item.user_id === selectedUserId)?.user_name
@@ -374,6 +447,9 @@ export async function getActivityAdminReport(
     total: items.length,
     manualCount: items.filter((item) => item.origin === 'manual').length,
     automaticCount: items.filter((item) => item.origin === 'automatic').length,
+    completedCount: items.filter((item) => item.status === 'completed' || Boolean(item.completed_at)).length,
+    deletedCount: items.filter((item) => Boolean(item.deleted_at)).length,
+    withResultCount: items.filter((item) => Boolean(item.completion_result?.trim())).length,
     activeDays,
     averagePerActiveDay: activeDays ? Math.round((items.length / activeDays) * 10) / 10 : 0,
     meetingCount: items.filter((item) => item.source_type === 'meeting').length,

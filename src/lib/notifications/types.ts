@@ -4,6 +4,7 @@ export type NotificationCategory =
   | 'meetings'
   | 'offers'
   | 'jobs'
+  | 'activities'
   | 'system'
 
 export type NotificationPriority = 'low' | 'normal' | 'high'

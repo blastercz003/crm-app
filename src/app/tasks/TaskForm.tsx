@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, useState } from 'react'
+import { Bell, Check, Repeat2 } from 'lucide-react'
+import { useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { getRepeatIntervalLabel } from './taskUi'
+import { ClientAutocomplete } from '@/components/ui/client-autocomplete'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 
 type UserOption = {
@@ -24,7 +26,7 @@ type ClientContactOption = {
   is_primary: boolean
 }
 
-type TaskFormValues = {
+export type TaskFormValues = {
   title?: string | null
   note?: string | null
   due_date?: string | null
@@ -51,6 +53,7 @@ type TaskFormProps = {
   error?: string | null
   extraActions?: React.ReactNode
   modalMode?: boolean
+  showModalCancel?: boolean
 }
 
 const inputClassName =
@@ -70,14 +73,6 @@ const modalPanelClass =
 const modalPanelTitleClass =
   'task-form__panel-title mb-3 text-[11px] font-semibold uppercase tracking-[0.18em]'
 
-function normalizeSearchText(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
 export default function TaskForm({
   users,
   clients,
@@ -91,9 +86,8 @@ export default function TaskForm({
   error,
   extraActions,
   modalMode = false,
+  showModalCancel = true,
 }: TaskFormProps) {
-  const companyInputRef = useRef<HTMLInputElement>(null)
-
   const initialCompanyName = initialValues?.company_name ?? ''
   const initialClientId = initialValues?.client_id ?? ''
   const initialContactId = initialValues?.client_contact_id ?? ''
@@ -102,106 +96,19 @@ export default function TaskForm({
   const [selectedClientId, setSelectedClientId] = useState(initialClientId)
   const [selectedContactId, setSelectedContactId] = useState(initialContactId)
   const [contactPerson, setContactPerson] = useState(initialValues?.contact_person ?? '')
-  const [companyTouched, setCompanyTouched] = useState(false)
-  const [companyHasFocus, setCompanyHasFocus] = useState(false)
+  const [repeatInterval, setRepeatInterval] = useState(initialValues?.repeat_interval ?? '')
 
-  const selectedClient =
-    clients.find((client) => client.id === selectedClientId) ?? null
   const selectedClientContacts = contacts.filter(
     (contact) => contact.client_id === selectedClientId
   )
 
-  const companySelectionIsValid =
-    Boolean(selectedClientId) &&
-    Boolean(selectedClient) &&
-    companyName.trim() === (selectedClient?.name ?? '')
-
-  const showCompanyError = companyTouched && !companySelectionIsValid
-
-  function setAutocompleteSelection(start: number, end: number) {
-    requestAnimationFrame(() => {
-      companyInputRef.current?.focus()
-      companyInputRef.current?.setSelectionRange(start, end)
-    })
-  }
-
-  function handleCompanyChange(nextRawValue: string) {
-    setCompanyTouched(true)
-
-    const trimmedValue = nextRawValue.trim()
-    const normalizedValue = normalizeSearchText(trimmedValue)
-
-    if (!trimmedValue) {
-      setCompanyName('')
-      setSelectedClientId('')
+  function handleCompanyChange(nextCompanyName: string, nextClientId: string) {
+    if (nextClientId !== selectedClientId) {
       setSelectedContactId('')
-      return
+      setContactPerson('')
     }
-
-    const exactMatch =
-      clients.find(
-        (client) => normalizeSearchText(client.name) === normalizedValue
-      ) ?? null
-
-    if (exactMatch) {
-      setCompanyName(exactMatch.name)
-      setSelectedClientId(exactMatch.id)
-      setSelectedContactId('')
-      return
-    }
-
-    const prefixMatches = clients.filter((client) =>
-      normalizeSearchText(client.name).startsWith(normalizedValue)
-    )
-
-    if (prefixMatches.length === 1) {
-      const matchedClient = prefixMatches[0]
-      const completedName = matchedClient.name
-
-      setCompanyName(completedName)
-      setSelectedClientId(matchedClient.id)
-      setSelectedContactId('')
-
-      setAutocompleteSelection(nextRawValue.length, completedName.length)
-      return
-    }
-
-    setCompanyName(nextRawValue)
-    setSelectedClientId('')
-    setSelectedContactId('')
-  }
-
-  function handleCompanyFocus() {
-    setCompanyHasFocus(true)
-  }
-
-  function handleCompanyBlur() {
-    setCompanyHasFocus(false)
-    setCompanyTouched(true)
-
-    const trimmedValue = companyName.trim()
-    const normalizedValue = normalizeSearchText(trimmedValue)
-
-    if (!trimmedValue) {
-      setCompanyName('')
-      setSelectedClientId('')
-      setSelectedContactId('')
-      return
-    }
-
-    const exactMatch =
-      clients.find(
-        (client) => normalizeSearchText(client.name) === normalizedValue
-      ) ?? null
-
-    if (exactMatch) {
-      setCompanyName(exactMatch.name)
-      setSelectedClientId(exactMatch.id)
-      return
-    }
-
-    setSelectedClientId('')
-    setSelectedContactId('')
+    setCompanyName(nextCompanyName)
+    setSelectedClientId(nextClientId)
   }
 
   function handleContactChange(nextContactId: string) {
@@ -212,27 +119,6 @@ export default function TaskForm({
 
     setContactPerson(nextContact?.name ?? '')
   }
-
-  const companyStatusText = (() => {
-    const trimmedValue = companyName.trim()
-
-    if (!trimmedValue) {
-      return modalMode ? '' : 'Začni psát název firmy.'
-    }
-
-    if (companySelectionIsValid) {
-      return 'Klient nalezen v databázi.'
-    }
-
-    return 'Firma není napojená na klienta z databáze.'
-  })()
-
-  const companyStatusClassName =
-    companySelectionIsValid
-      ? 'text-emerald-700'
-      : companyName.trim()
-        ? 'text-amber-700'
-        : 'text-gray-500'
 
   const pendingSubmitLabel =
     submitLabel.trim().length > 0 && submitLabel === submitLabel.toUpperCase()
@@ -266,6 +152,7 @@ export default function TaskForm({
       >
         <input type="hidden" name="client_id" value={selectedClientId} />
         <input type="hidden" name="client_contact_id" value={selectedContactId} />
+        {modalMode ? <input type="hidden" name="repeat_interval" value={repeatInterval} /> : null}
         <div className={modalMode ? 'min-h-0 flex-1 overflow-y-auto pb-4' : ''}>
         <div className={modalMode ? 'space-y-4' : 'grid gap-5 md:grid-cols-2'}>
         <section className={modalMode ? modalPanelClass : 'contents'}>
@@ -298,48 +185,16 @@ export default function TaskForm({
           <div className={modalMode ? 'grid gap-3 md:grid-cols-2' : 'contents'}>
         <div className="md:col-span-2">
           <label htmlFor="company_name" className={labelClassName}>
-            Firma
+            Klient <span className="font-normal text-zinc-400">(volitelné)</span>
           </label>
-          <input
-            ref={companyInputRef}
+          <ClientAutocomplete
             id="company_name"
-            name="company_name"
-            type="text"
+            clients={clients}
             value={companyName}
-            autoComplete="off"
-            placeholder="Začni psát název firmy"
-            onChange={(event) => handleCompanyChange(event.target.value)}
-            onFocus={handleCompanyFocus}
-            onBlur={handleCompanyBlur}
-            className={`clients-modal__input task-form__input mb-1 w-full rounded-2xl border bg-white/96 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] transition duration-200 ease-out focus:ring-2 ${
-              showCompanyError
-                ? 'border-amber-300 focus:border-amber-300 focus:ring-amber-100'
-                : companySelectionIsValid && !companyHasFocus
-                  ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
-                  : 'border-gray-200 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]'
-            }`}
+            selectedClientId={selectedClientId}
+            onChange={handleCompanyChange}
+            inputClassName={inputClassName}
           />
-
-          <div className={`task-form__company-status mt-1 rounded-2xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94)] ${modalMode ? 'px-3 py-2.5' : 'px-4 py-3'}`}>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-              Napojení na klienta
-            </div>
-            <div className="mt-1 text-sm text-gray-900">
-              {companySelectionIsValid
-                ? selectedClient?.name
-                : 'Žádný klient není vybraný'}
-            </div>
-          </div>
-
-          {companyStatusText ? (
-            <p className={`mt-2 text-sm ${companyStatusClassName}`}>
-              {companyStatusText}
-            </p>
-          ) : null}
-
-          <p className="mt-2 text-xs text-gray-500">
-            Klient je volitelný. Úkol může fungovat i jako běžný interní úkol mezi uživateli.
-          </p>
         </div>
 
         <div className="min-w-0">
@@ -405,7 +260,7 @@ export default function TaskForm({
           {modalMode ? (
             <h3 className={modalPanelTitleClass}>Termín a režim</h3>
           ) : null}
-          <div className={modalMode ? 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4' : 'contents'}>
+          <div className={modalMode ? 'grid gap-3 sm:grid-cols-3' : 'contents'}>
         <div className="min-w-0">
           <label htmlFor="due_date" className={labelClassName}>
             Termín
@@ -453,27 +308,65 @@ export default function TaskForm({
           </select>
         </div>
 
-        <div className="min-w-0">
-          <label htmlFor="repeat_interval" className={labelClassName}>
-            Opakování úkolu
-          </label>
-          <select
-            id="repeat_interval"
-            name="repeat_interval"
-            defaultValue={initialValues?.repeat_interval ?? ''}
-            className={selectClassName}
-            style={selectArrowStyle}
-          >
-            <option value="">Bez opakování</option>
-            <option value="daily">{getRepeatIntervalLabel('daily')}</option>
-            <option value="weekly">{getRepeatIntervalLabel('weekly')}</option>
-            <option value="monthly">{getRepeatIntervalLabel('monthly')}</option>
-          </select>
-          <p className="mt-2 text-xs text-gray-500">
-            Opakování vyžaduje termín. Po dokončení se automaticky vytvoří další výskyt.
-          </p>
-        </div>
           </div>
+
+          {modalMode ? (
+            <div className="mt-4">
+              <p className={labelClassName}>Upozornění a opakování</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="task-form__notification-info activities-modal__option-toggle cursor-default">
+                  <span className="activities-modal__option-icon"><Bell aria-hidden size={17} /></span>
+                  <span className="min-w-0 flex-1 text-left">
+                    <strong className="block text-xs font-semibold">Upozornění uživatele</strong>
+                    <span className="mt-0.5 block text-[10px] leading-4 opacity-70">Automaticky při přiřazení úkolu</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={Boolean(repeatInterval)}
+                  onClick={() => setRepeatInterval((current) => current ? '' : 'weekly')}
+                  className={`activities-modal__option-toggle ${repeatInterval ? 'activities-modal__option-toggle--active' : ''}`}
+                >
+                  <span className="activities-modal__option-icon"><Repeat2 aria-hidden size={17} /></span>
+                  <span className="min-w-0 flex-1 text-left">
+                    <strong className="block text-xs font-semibold">Opakovat úkol</strong>
+                    <span className="mt-0.5 block text-[10px] leading-4 opacity-70">Po dokončení vytvoří další</span>
+                  </span>
+                  {repeatInterval ? <Check aria-hidden size={16} className="shrink-0" /> : null}
+                </button>
+              </div>
+
+              {repeatInterval ? (
+                <div className="activities-modal__recurrence mt-3 rounded-xl border border-zinc-200/75 bg-zinc-50/70 p-2.5">
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['daily', 'weekly', 'monthly'] as const).map((interval) => (
+                      <button
+                        key={interval}
+                        type="button"
+                        aria-pressed={repeatInterval === interval}
+                        onClick={() => setRepeatInterval(interval)}
+                        className={`activities-modal__recurrence-choice ${repeatInterval === interval ? 'activities-modal__recurrence-choice--active' : ''}`}
+                      >
+                        {getRepeatIntervalLabel(interval)}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[10px] leading-4 text-zinc-500">Opakování vyžaduje termín. Další úkol vznikne až po dokončení tohoto výskytu.</p>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="min-w-0">
+              <label htmlFor="repeat_interval" className={labelClassName}>Opakování úkolu</label>
+              <select id="repeat_interval" name="repeat_interval" defaultValue={initialValues?.repeat_interval ?? ''} className={selectClassName} style={selectArrowStyle}>
+                <option value="">Bez opakování</option>
+                <option value="daily">{getRepeatIntervalLabel('daily')}</option>
+                <option value="weekly">{getRepeatIntervalLabel('weekly')}</option>
+                <option value="monthly">{getRepeatIntervalLabel('monthly')}</option>
+              </select>
+              <p className="mt-2 text-xs text-gray-500">Opakování vyžaduje termín. Po dokončení se automaticky vytvoří další výskyt.</p>
+            </div>
+          )}
         </section>
 
         {!modalMode ? taskNoteField : null}
@@ -489,10 +382,11 @@ export default function TaskForm({
         <TaskFormActions
           submitLabel={submitLabel}
           pendingSubmitLabel={pendingSubmitLabel}
-          extraActions={extraActions}
-          onCancel={onCancel}
-          cancelHref={cancelHref}
-          cancelLabel={cancelLabel}
+              extraActions={extraActions}
+              onCancel={onCancel}
+              cancelHref={cancelHref}
+              cancelLabel={cancelLabel}
+              showCancel={showModalCancel}
         />
       </PendingFieldset>
     </form>
@@ -554,6 +448,7 @@ function TaskFormActions({
   onCancel,
   cancelHref,
   cancelLabel,
+  showCancel,
 }: {
   submitLabel: string
   pendingSubmitLabel: string
@@ -561,6 +456,7 @@ function TaskFormActions({
   onCancel?: () => void
   cancelHref: string
   cancelLabel: string
+  showCancel: boolean
 }) {
   const { pending } = useFormStatus()
 
@@ -570,6 +466,7 @@ function TaskFormActions({
         <div className="tasks-form__actions-shell -mx-4 -mb-3 mt-4 sm:-mx-5 sm:-mb-4">
           <MobileModalActions
             onCancel={onCancel}
+            showCancel={showCancel}
             submitLabel={submitLabel}
             pendingSubmitLabel={pendingSubmitLabel}
             visualStyle="client-modal"

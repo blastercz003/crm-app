@@ -67,6 +67,7 @@ type JobFormValues = {
 type NewJobButtonProps = {
   className?: string
   isAdmin?: boolean
+  label?: string
 }
 
 const initialCreateState: CreateJobActionState = {
@@ -77,6 +78,7 @@ const initialCreateState: CreateJobActionState = {
 export function NewJobButton({
   className,
   isAdmin = true,
+  label = 'NOVÁ ZAKÁZKA',
 }: NewJobButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
@@ -108,7 +110,7 @@ export function NewJobButton({
         aria-disabled={!isAdmin}
         className={`${resolvedClassName} ${!isAdmin ? 'cursor-not-allowed' : ''}`}
       >
-        NOVÁ ZAKÁZKA
+        {label}
       </button>
 
       {isOpen ? (
@@ -473,7 +475,7 @@ function JobFormShell({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
+      className="fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -482,10 +484,7 @@ function JobFormShell({
         }
       }}
     >
-      <div
-        className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-4"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-      >
+      <div className="flex h-full min-h-0 items-center justify-center">
         <div
           className="jobs-page__modal-shell jobs-page__job-form-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
           style={{

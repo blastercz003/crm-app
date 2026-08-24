@@ -11,6 +11,7 @@ export type TaskFormActionState = {
   success: boolean
   error: string | null
   taskTitle?: string
+  taskId?: string
 }
 
 export type CreateTaskActionState = TaskFormActionState
@@ -438,6 +439,7 @@ async function createTaskRecord(formData: FormData) {
   })
 
   revalidatePath('/tasks')
+  revalidatePath('/activities')
   revalidatePath('/dashboard')
   revalidatePath('/notifications')
   revalidatePath('/clients')
@@ -448,6 +450,7 @@ async function createTaskRecord(formData: FormData) {
 
   return {
     taskTitle: title,
+    taskId: notificationTask?.id,
   }
 }
 
@@ -673,6 +676,7 @@ async function updateTaskRecord(taskId: string, formData: FormData) {
   })
 
   revalidatePath('/tasks')
+  revalidatePath('/activities')
   revalidatePath(`/tasks/${taskId}`)
   revalidatePath(`/tasks/${taskId}/edit`)
   revalidatePath('/dashboard')
@@ -704,6 +708,7 @@ export async function createTaskModalAction(
       success: true,
       error: null,
       taskTitle: result.taskTitle,
+      taskId: result.taskId,
     }
   } catch (error) {
     return {
@@ -883,6 +888,7 @@ async function updateTaskStatusRecord(
   })
 
   revalidatePath('/tasks')
+  revalidatePath('/activities')
   revalidatePath(`/tasks/${taskId}`)
   revalidatePath('/dashboard')
   revalidatePath('/notifications')
@@ -942,6 +948,7 @@ export async function deleteTask(taskId: string) {
   })
 
   revalidatePath('/tasks')
+  revalidatePath('/activities')
   revalidatePath('/clients')
 
   if (existingTask.client_id) {

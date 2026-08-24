@@ -5,32 +5,38 @@ import { useFormStatus } from 'react-dom'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
+  Bell,
+  BellOff,
   CalendarClock,
+  Check,
+  ChevronDown,
   ClipboardPenLine,
   Mail,
   MapPin,
   Phone,
   Plus,
+  Repeat2,
   X,
 } from 'lucide-react'
 import { createManualActivityAction } from './actions'
 import { ActionFeedbackToast, useAnimatedActionToast } from '@/components/ui/action-feedback-toast'
 import { ModalHeading } from '@/components/ui/modal-heading'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
-import type { ActivityActionState, ActivityClientOption, ActivityListItem, ManualActivityType } from '@/lib/activities/types'
+import type { ActivityActionState, ActivityClientOption, ActivityListItem, ActivityRecurrenceUnit, ManualActivityType } from '@/lib/activities/types'
 
 const INITIAL_STATE: ActivityActionState = { success: false, error: null }
 
 const ACTIVITY_TYPES: Array<{
   value: ManualActivityType
   label: string
+  mobileLabel: string
   icon: typeof Phone
 }> = [
-  { value: 'phone_call', label: 'Telefonát', icon: Phone },
-  { value: 'email', label: 'E-mail', icon: Mail },
-  { value: 'in_person_meeting', label: 'Osobní kontakt', icon: MapPin },
-  { value: 'work_log', label: 'Pracovní zápis', icon: ClipboardPenLine },
-  { value: 'other', label: 'Ostatní', icon: Plus },
+  { value: 'phone_call', label: 'Telefonát', mobileLabel: 'Telefon', icon: Phone },
+  { value: 'email', label: 'E-mail', mobileLabel: 'E-mail', icon: Mail },
+  { value: 'in_person_meeting', label: 'Osobní kontakt', mobileLabel: 'Kontakt', icon: MapPin },
+  { value: 'work_log', label: 'Pracovní zápis', mobileLabel: 'Zápis', icon: ClipboardPenLine },
+  { value: 'other', label: 'Ostatní', mobileLabel: 'Ostatní', icon: Plus },
 ]
 
 function toLocalDateTimeInput(date: Date) {
@@ -57,27 +63,39 @@ function SubmitButton({ planned, editing }: { planned: boolean; editing: boolean
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#2473aa] bg-[linear-gradient(155deg,#4d96cb_0%,#2f7fb8_55%,#236a9e_100%)] px-5 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(35,106,158,0.25)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60"
+      className="standard-form-modal__primary-action inline-flex items-center justify-center"
     >
       {pending ? 'UKLÁDÁM…' : editing ? 'ULOŽIT ZMĚNY' : planned ? 'NAPLÁNOVAT AKTIVITU' : 'ULOŽIT AKTIVITU'}
     </button>
   )
 }
 
-export function ActivityFormModal({ clients, activity = null, initialClientId = '', action, onClose, onSaved }: {
+export function ActivityFormModal({ clients, activity = null, initialClientId = '', initialValues, action, onClose, onSaved }: {
   clients: ActivityClientOption[]
   activity?: ActivityListItem | null
   initialClientId?: string
+  initialValues?: {
+    title?: string
+    description?: string
+    activityType?: ManualActivityType
+  }
   action: ActivityFormAction
   onClose: () => void
-  onSaved: () => void
+  onSaved: (state: ActivityActionState) => void
 }) {
   const [state, formAction] = useActionState(action, INITIAL_STATE)
   const editing = Boolean(activity)
   const [mode, setMode] = useState<'logged' | 'planned'>(() => activity?.status === 'planned' ? 'planned' : 'logged')
+  const [reminderEnabled, setReminderEnabled] = useState(activity?.reminder_enabled ?? false)
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(Boolean(activity?.recurrence_unit))
+  const [recurrenceUnit, setRecurrenceUnit] = useState<ActivityRecurrenceUnit>(activity?.recurrence_unit ?? 'week')
+  const [recurrenceInterval, setRecurrenceInterval] = useState(activity?.recurrence_interval ?? 1)
+  const [customRecurrence, setCustomRecurrence] = useState(Boolean(activity?.recurrence_interval && activity.recurrence_interval > 1))
   const [activityType, setActivityType] = useState<ManualActivityType>(() => {
     const value = activity?.activity_type as ManualActivityType | undefined
-    return value && ACTIVITY_TYPES.some((type) => type.value === value) ? value : 'phone_call'
+    return value && ACTIVITY_TYPES.some((type) => type.value === value)
+      ? value
+      : initialValues?.activityType ?? 'phone_call'
   })
   const now = useState(() => new Date(activity?.occurred_at ?? Date.now()))[0]
   const plannedDefault = useState(() => {
@@ -174,8 +192,8 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
   useBodyScrollLock(true)
 
   useEffect(() => {
-    if (state.success) onSaved()
-  }, [onSaved, state.success])
+    if (state.success) onSaved(state)
+  }, [onSaved, state])
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -187,45 +205,51 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
 
   return (
     <div
-      className="activities-modal fixed inset-0 z-[120] overflow-y-auto overscroll-contain bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
+      className="activities-modal fixed inset-0 z-[120] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="activity-form-title"
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
     >
-      <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-        <section className="activities-modal__shell relative w-full max-w-2xl overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(249,250,251,0.95)_48%,rgba(244,244,245,0.93)_100%)] shadow-[0_32px_82px_rgba(24,24,27,0.34)]">
-          <header className="activities-modal__header flex items-start justify-between gap-4 border-b border-zinc-200/75 px-5 py-4 sm:px-6">
+      <div className="flex h-full min-h-0 items-center justify-center" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+        <section className="standard-form-modal__shell activities-modal__shell relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(249,250,251,0.95)_48%,rgba(244,244,245,0.93)_100%)] shadow-[0_32px_82px_rgba(24,24,27,0.34)]">
+          <header className="standard-form-modal__header activities-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200/75 px-5 py-4 sm:px-6">
             <ModalHeading id="activity-form-title" section="AKTIVITY" title={editing ? 'Upravit aktivitu' : 'Nová aktivita'} />
-            <button type="button" onClick={onClose} aria-label="Zavřít" className="activities-modal__close inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600 shadow-sm transition hover:-translate-y-px hover:text-zinc-900"><X aria-hidden size={18} /></button>
+            <button type="button" onClick={onClose} aria-label="Zavřít" className="standard-form-modal__close activities-modal__close inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600 shadow-sm transition hover:-translate-y-px hover:text-zinc-900"><X aria-hidden size={18} /></button>
           </header>
 
-          <form action={formAction} className="activities-modal__body space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+          <form action={formAction} className="flex min-h-0 flex-1 flex-col">
             <input type="hidden" name="mode" value={mode} />
             <input type="hidden" name="activity_type" value={activityType} />
             <input type="hidden" name="occurred_at" value={toLocalDateTimeInput(now)} />
+            <input type="hidden" name="reminder_enabled" value={mode === 'planned' && reminderEnabled ? 'true' : 'false'} />
+            <input type="hidden" name="recurrence_enabled" value={mode === 'planned' && recurrenceEnabled ? 'true' : 'false'} />
+            <input type="hidden" name="recurrence_unit" value={recurrenceUnit} />
+            <input type="hidden" name="recurrence_interval" value={recurrenceInterval} />
+
+            <div className="standard-form-modal__body activities-modal__body min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6">
 
             <fieldset>
               <div className="activities-modal__mode-switch grid grid-cols-2 gap-2 rounded-2xl border border-zinc-200/80 bg-zinc-100/75 p-1.5">
-                <button type="button" onClick={() => setMode('logged')} className={`activities-modal__mode ${mode === 'logged' ? 'activities-modal__mode--active' : ''}`}><ClipboardPenLine aria-hidden size={17} /> Zapsat hotovou činnost</button>
-                <button type="button" onClick={() => setMode('planned')} className={`activities-modal__mode ${mode === 'planned' ? 'activities-modal__mode--active' : ''}`}><CalendarClock aria-hidden size={17} /> Naplánovat další krok</button>
+                <button type="button" onClick={() => setMode('logged')} className={`activities-modal__mode ${mode === 'logged' ? 'activities-modal__mode--active' : ''}`}><ClipboardPenLine aria-hidden size={17} /> Zapsat činnost</button>
+                <button type="button" onClick={() => setMode('planned')} className={`activities-modal__mode ${mode === 'planned' ? 'activities-modal__mode--active' : ''}`}><CalendarClock aria-hidden size={17} /> Naplánovat aktivitu</button>
               </div>
             </fieldset>
 
             <fieldset>
               <legend className="activities-modal__label">Typ aktivity</legend>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="mt-2 grid grid-cols-5 gap-1.5 sm:gap-2">
                 {ACTIVITY_TYPES.map((type) => {
                   const Icon = type.icon
                   const selected = activityType === type.value
-                  return <button key={type.value} type="button" onClick={() => setActivityType(type.value)} aria-pressed={selected} className={`activities-modal__type ${selected ? 'activities-modal__type--active' : ''}`}><Icon aria-hidden size={17} /><span>{type.label}</span></button>
+                  return <button key={type.value} type="button" onClick={() => setActivityType(type.value)} aria-pressed={selected} className={`activities-modal__type min-w-0 ${selected ? 'activities-modal__type--active' : ''}`}><Icon aria-hidden size={17} /><span className="sm:hidden">{type.mobileLabel}</span><span className="hidden sm:inline">{type.label}</span></button>
                 })}
               </div>
             </fieldset>
 
             <div>
               <label htmlFor="activity-title" className="activities-modal__label">{mode === 'planned' ? 'Co chcete udělat?' : 'Co jste udělal/a?'}</label>
-              <input id="activity-title" name="title" required maxLength={240} autoFocus defaultValue={activity?.title ?? ''} className="activities-modal__input mt-2" placeholder={mode === 'planned' ? 'Např. Zavolat klientovi ohledně nabídky' : 'Např. Volala jsem třem potenciálním klientům'} />
+              <input id="activity-title" name="title" required maxLength={240} autoFocus defaultValue={activity?.title ?? initialValues?.title ?? ''} className="activities-modal__input mt-2" placeholder={mode === 'planned' ? 'Např. Zavolat klientovi ohledně nabídky' : 'Např. Volala jsem třem potenciálním klientům'} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -280,15 +304,113 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
               {mode === 'planned' ? <div key="planned-date"><label htmlFor="activity-scheduled-for" className="activities-modal__label">Termín</label><input id="activity-scheduled-for" name="scheduled_for" type="datetime-local" required defaultValue={toLocalDateTimeInput(plannedDefault)} className="activities-modal__input mt-2" /></div> : <div key="logged-date"><label htmlFor="activity-occurred-visible" className="activities-modal__label">Datum a čas zápisu</label><input id="activity-occurred-visible" type="datetime-local" disabled value={toLocalDateTimeInput(now)} className="activities-modal__input mt-2 opacity-75" /></div>}
             </div>
 
+            {mode === 'planned' ? (
+              <div>
+                <p id="activity-planning-options-label" className="activities-modal__label">Upozornění a opakování</p>
+                <fieldset aria-labelledby="activity-planning-options-label" className="activities-modal__planning-options mt-2 rounded-2xl border border-zinc-200/80 bg-white/55 p-3.5 sm:p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    aria-pressed={reminderEnabled}
+                    onClick={() => setReminderEnabled((current) => !current)}
+                    className={`activities-modal__option-toggle ${reminderEnabled ? 'activities-modal__option-toggle--active' : ''}`}
+                  >
+                    <span className="activities-modal__option-icon">
+                      {reminderEnabled ? <Bell aria-hidden size={17} /> : <BellOff aria-hidden size={17} />}
+                    </span>
+                    <span className="min-w-0 flex-1 text-left">
+                      <strong className="block text-xs font-semibold">Notifikace</strong>
+                      <span className="mt-0.5 block text-[10px] leading-4 opacity-70">15 minut před termínem</span>
+                    </span>
+                    {reminderEnabled ? <Check aria-hidden size={16} className="shrink-0" /> : null}
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-pressed={recurrenceEnabled}
+                    onClick={() => setRecurrenceEnabled((current) => !current)}
+                    className={`activities-modal__option-toggle ${recurrenceEnabled ? 'activities-modal__option-toggle--active' : ''}`}
+                  >
+                    <span className="activities-modal__option-icon"><Repeat2 aria-hidden size={17} /></span>
+                    <span className="min-w-0 flex-1 text-left">
+                      <strong className="block text-xs font-semibold">Opakovat aktivitu</strong>
+                      <span className="mt-0.5 block text-[10px] leading-4 opacity-70">Po dokončení vytvoří další</span>
+                    </span>
+                    {recurrenceEnabled ? <Check aria-hidden size={16} className="shrink-0" /> : null}
+                  </button>
+                </div>
+
+                {recurrenceEnabled ? (
+                  <div className="activities-modal__recurrence mt-3 rounded-xl border border-zinc-200/75 bg-zinc-50/70 p-2.5">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {([
+                        { label: 'DENNĚ', unit: 'day' as const },
+                        { label: 'TÝDNĚ', unit: 'week' as const },
+                        { label: 'MĚSÍČNĚ', unit: 'month' as const },
+                      ]).map((option) => (
+                        <button
+                          key={option.unit}
+                          type="button"
+                          aria-pressed={!customRecurrence && recurrenceUnit === option.unit && recurrenceInterval === 1}
+                          onClick={() => { setRecurrenceUnit(option.unit); setRecurrenceInterval(1); setCustomRecurrence(false) }}
+                          className={`activities-modal__recurrence-choice ${!customRecurrence && recurrenceUnit === option.unit && recurrenceInterval === 1 ? 'activities-modal__recurrence-choice--active' : ''}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        aria-pressed={customRecurrence}
+                        onClick={() => { setCustomRecurrence(true); setRecurrenceInterval((current) => Math.max(2, current)) }}
+                        className={`activities-modal__recurrence-choice ${customRecurrence ? 'activities-modal__recurrence-choice--active' : ''}`}
+                      >
+                        VLASTNÍ
+                      </button>
+                    </div>
+
+                    {customRecurrence ? (
+                      <div className="mt-2.5 grid grid-cols-[auto_5rem_minmax(8rem,1fr)] items-center gap-2 text-xs font-semibold text-zinc-600">
+                        <span>Každé</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={recurrenceInterval}
+                          onChange={(event) => setRecurrenceInterval(Math.min(365, Math.max(1, Number(event.target.value) || 1)))}
+                          className="activities-modal__input h-10 px-3 text-center"
+                          aria-label="Interval opakování"
+                        />
+                        <span className="relative min-w-0">
+                          <select
+                            value={recurrenceUnit}
+                            onChange={(event) => setRecurrenceUnit(event.target.value as ActivityRecurrenceUnit)}
+                            className="activities-modal__input h-10 min-w-0 appearance-none rounded-[0.85rem] py-0 pr-9"
+                            aria-label="Jednotka opakování"
+                          >
+                            <option value="day">dny</option>
+                            <option value="week">týdny</option>
+                            <option value="month">měsíce</option>
+                          </select>
+                          <ChevronDown aria-hidden size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 [html[data-theme='dark']_&]:text-slate-400" />
+                        </span>
+                      </div>
+                    ) : null}
+                    <p className="mt-2 text-[10px] leading-4 text-zinc-500">Další termín se vytvoří až po dokončení této aktivity. Zmeškané termíny se nepřidávají zpětně.</p>
+                  </div>
+                ) : null}
+                </fieldset>
+              </div>
+            ) : null}
+
             <div>
               <label htmlFor="activity-description" className="activities-modal__label">Doplňující poznámka <span className="font-normal text-zinc-400">(volitelné)</span></label>
-              <textarea id="activity-description" name="description" maxLength={5000} rows={3} defaultValue={activity?.description ?? ''} className="activities-modal__input mt-2 min-h-24 resize-y py-3" placeholder="Podrobnosti, domluvený další postup nebo výsledek…" />
+              <textarea id="activity-description" name="description" maxLength={5000} rows={3} defaultValue={activity?.description ?? initialValues?.description ?? ''} className="activities-modal__input mt-2 min-h-24 resize-y py-3 sm:h-[91px] sm:min-h-[91px]" placeholder="Podrobnosti, domluvený další postup nebo výsledek…" />
             </div>
 
             {state.error ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{state.error}</div> : null}
+            </div>
 
-            <footer className="flex flex-col-reverse gap-3 border-t border-zinc-200/75 pt-5 sm:flex-row sm:justify-end">
-              <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50">ZRUŠIT</button>
+            <footer className="standard-form-modal__footer activities-modal__footer flex shrink-0 flex-col-reverse gap-3 border-t border-zinc-200/75 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
               <SubmitButton planned={mode === 'planned'} editing={editing} />
             </footer>
           </form>
@@ -298,11 +420,12 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
   )
 }
 
-export function NewActivityButton({ clients, initialClientId = '', label = 'NOVÁ AKTIVITA', className }: {
+export function NewActivityButton({ clients, initialClientId = '', label = 'NOVÁ AKTIVITA', className, replaceClassName = false }: {
   clients: ActivityClientOption[]
   initialClientId?: string
   label?: string
   className?: string
+  replaceClassName?: boolean
 }) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -321,12 +444,11 @@ export function NewActivityButton({ clients, initialClientId = '', label = 'NOV�
     router.refresh()
   }
 
-  const resolvedClassName = [
-    'inline-flex items-center justify-center rounded-2xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_26px_rgba(9,48,82,0.32)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#1f5f8e] hover:bg-[linear-gradient(160deg,rgba(56,125,177,0.95)_0%,rgba(37,109,163,0.96)_45%,rgba(22,86,138,0.98)_100%)]',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const defaultClassName =
+    'inline-flex items-center justify-center rounded-2xl border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.42),0_12px_26px_rgba(9,48,82,0.32)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#1f5f8e] hover:bg-[linear-gradient(160deg,rgba(56,125,177,0.95)_0%,rgba(37,109,163,0.96)_45%,rgba(22,86,138,0.98)_100%)]'
+  const resolvedClassName = replaceClassName && className
+    ? className
+    : [defaultClassName, className].filter(Boolean).join(' ')
 
   return (
     <>
