@@ -224,6 +224,7 @@ export type ActivityWorkspaceData = {
   jobs: {
     available: boolean
     canEdit: boolean
+    listHref: '/jobs' | '/jobs-portal'
     selectedPeriod: ActivityWorkspaceJobPeriod
     selectedStatus: ActivityWorkspaceJobStatus | 'active' | 'all'
     items: ActivityWorkspaceJob[]

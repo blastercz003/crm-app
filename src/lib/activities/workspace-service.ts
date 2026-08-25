@@ -57,6 +57,7 @@ type WorkspaceProfileRow = {
   can_view_activities: boolean | null
   can_view_offers: boolean | null
   can_view_jobs: boolean | null
+  can_view_jobs_portal: boolean | null
   jobs_sales_scope: 'MICHAL' | 'LÍDA' | null
 }
 
@@ -179,17 +180,17 @@ export async function getActivitiesWorkspace(input: {
   const [viewerProfileResponse, usersResponse] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, name, role, can_view_activities, can_view_offers, can_view_jobs, jobs_sales_scope')
+      .select('id, name, role, can_view_activities, can_view_offers, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
       .eq('id', profile.id)
       .single<WorkspaceProfileRow>(),
     isAdmin
       ? profilesClient!
           .from('profiles')
-          .select('id, name, role, can_view_activities, can_view_offers, can_view_jobs, jobs_sales_scope')
+          .select('id, name, role, can_view_activities, can_view_offers, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
           .or('role.eq.admin,can_view_activities.eq.true')
           .order('name', { ascending: true })
       : Promise.resolve({
-          data: [{ ...profile, can_view_offers: null, can_view_jobs: true, jobs_sales_scope: null } as WorkspaceProfileRow],
+          data: [{ ...profile, can_view_offers: null, can_view_jobs: true, can_view_jobs_portal: false, jobs_sales_scope: null } as WorkspaceProfileRow],
           error: null,
         }),
   ])
@@ -364,7 +365,13 @@ export async function getActivitiesWorkspace(input: {
     error: null,
   }
 
-  const canViewJobs = isAdmin || Boolean(viewerProfile.can_view_jobs)
+  const hasScopedJobsPortalAccess = Boolean(
+    viewerProfile.can_view_jobs_portal && viewerProfile.jobs_sales_scope,
+  )
+  const canViewJobs = isAdmin || Boolean(viewerProfile.can_view_jobs) || hasScopedJobsPortalAccess
+  const jobsListHref: '/jobs' | '/jobs-portal' = !isAdmin && viewerProfile.can_view_jobs_portal
+    ? '/jobs-portal'
+    : '/jobs'
   const selectedJobPeriod = JOB_PERIODS.includes(input.jobPeriod as ActivityWorkspaceJobPeriod)
     ? input.jobPeriod as ActivityWorkspaceJobPeriod
     : 'this_week'
@@ -709,6 +716,7 @@ export async function getActivitiesWorkspace(input: {
     jobs: {
       available: canViewJobs,
       canEdit: isAdmin,
+      listHref: jobsListHref,
       selectedPeriod: selectedJobPeriod,
       selectedStatus: selectedJobStatus,
       items: jobs,

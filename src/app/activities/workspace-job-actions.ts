@@ -8,6 +8,7 @@ type JobAccessProfile = {
   name: string | null
   role: string | null
   can_view_jobs: boolean | null
+  can_view_jobs_portal: boolean | null
   jobs_sales_scope: 'MICHAL' | 'LÍDA' | null
 }
 
@@ -24,11 +25,18 @@ export async function getWorkspaceJobDetailAction(jobId: string): Promise<Activi
     const { supabase, profile, isAdmin } = await getActivityRuntimeContext()
     const { data: accessProfile, error: profileError } = await supabase
       .from('profiles')
-      .select('name, role, can_view_jobs, jobs_sales_scope')
+      .select('name, role, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
       .eq('id', profile.id)
       .single<JobAccessProfile>()
 
-    if (profileError || !accessProfile || (!isAdmin && !accessProfile.can_view_jobs)) {
+    const hasScopedPortalAccess = Boolean(
+      accessProfile?.can_view_jobs_portal && accessProfile.jobs_sales_scope,
+    )
+    if (
+      profileError
+      || !accessProfile
+      || (!isAdmin && !accessProfile.can_view_jobs && !hasScopedPortalAccess)
+    ) {
       return { success: false, error: 'Nemáte oprávnění zobrazit tuto zakázku.', job: null }
     }
 
