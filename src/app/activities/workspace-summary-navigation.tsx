@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Activity, AlertTriangle, CalendarDays, Wrench } from 'lucide-react'
 
 type SummaryCard = {
@@ -17,6 +17,83 @@ const ICONS = {
   violet: CalendarDays,
   emerald: Wrench,
 } as const
+
+const KPI_COUNT_DURATION_MS = 4500
+const KPI_COUNT_STAGGER_MS = 120
+
+function parseSummaryValue(value: string): [number, number] | null {
+  const match = value.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/)
+  if (!match) return null
+  return [Number(match[1]), Number(match[2])]
+}
+
+function AnimatedSummaryValue({ value, index }: { value: string; index: number }) {
+  const parsedTarget = parseSummaryValue(value)
+  const targetFirst = parsedTarget?.[0] ?? null
+  const targetSecond = parsedTarget?.[1] ?? null
+  const [displayed, setDisplayed] = useState<[number, number]>([0, 0])
+  const displayedRef = useRef(displayed)
+  const hasAnimatedRef = useRef(false)
+
+  useEffect(() => {
+    if (targetFirst === null || targetSecond === null) return
+
+    const target: [number, number] = [targetFirst, targetSecond]
+    let animationFrame = 0
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduceMotion) {
+      animationFrame = requestAnimationFrame(() => {
+        displayedRef.current = target
+        setDisplayed(target)
+        hasAnimatedRef.current = true
+      })
+      return () => cancelAnimationFrame(animationFrame)
+    }
+
+    const start = hasAnimatedRef.current ? displayedRef.current : [0, 0] as [number, number]
+    const delay = hasAnimatedRef.current ? 0 : index * KPI_COUNT_STAGGER_MS
+    const startedAt = performance.now() + delay
+    const step = (now: number) => {
+      if (now < startedAt) {
+        animationFrame = requestAnimationFrame(step)
+        return
+      }
+
+      const progress = Math.min(1, (now - startedAt) / KPI_COUNT_DURATION_MS)
+      const eased = progress * progress * (3 - 2 * progress)
+      const next: [number, number] = [
+        Math.round(start[0] + (target[0] - start[0]) * eased),
+        Math.round(start[1] + (target[1] - start[1]) * eased),
+      ]
+
+      if (next[0] !== displayedRef.current[0] || next[1] !== displayedRef.current[1]) {
+        displayedRef.current = next
+        setDisplayed(next)
+      }
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(step)
+      } else {
+        displayedRef.current = target
+        setDisplayed(target)
+        hasAnimatedRef.current = true
+      }
+    }
+
+    animationFrame = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [index, targetFirst, targetSecond])
+
+  if (!parsedTarget) return value
+
+  return (
+    <>
+      <span aria-hidden="true">{displayed[0]} / {displayed[1]}</span>
+      <span className="sr-only">{value}</span>
+    </>
+  )
+}
 
 export function WorkspaceSummaryNavigation({ cards }: { cards: SummaryCard[] }) {
   const highlightedTargetRef = useRef<HTMLElement | null>(null)
@@ -48,7 +125,7 @@ export function WorkspaceSummaryNavigation({ cards }: { cards: SummaryCard[] }) 
     }
 
     const duration = Math.min(1350, Math.max(1050, Math.abs(distance) * 0.8))
-    const startedAt = performance.now()
+    let startedAt: number | null = null
     const controller = new AbortController()
     let animationFrame = 0
 
@@ -59,6 +136,7 @@ export function WorkspaceSummaryNavigation({ cards }: { cards: SummaryCard[] }) 
     }
 
     const step = (now: number) => {
+      if (startedAt === null) startedAt = now
       const progress = Math.min(1, (now - startedAt) / duration)
       const eased = progress < 0.5
         ? 4 * progress * progress * progress
@@ -111,7 +189,7 @@ export function WorkspaceSummaryNavigation({ cards }: { cards: SummaryCard[] }) 
 
   return (
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Rychlá navigace v pracovní ploše">
-      {cards.map((card) => {
+      {cards.map((card, index) => {
         const Icon = ICONS[card.tone]
         return (
           <button
@@ -126,9 +204,16 @@ export function WorkspaceSummaryNavigation({ cards }: { cards: SummaryCard[] }) 
             <span className="flex items-start justify-between gap-3">
               <span className="min-w-0">
                 <span className="block min-h-6 text-[9px] font-semibold uppercase leading-3 tracking-[0.045em] text-[var(--text-secondary)] sm:min-h-0 sm:text-[10px] sm:tracking-[0.08em]">{card.label}</span>
-                <span className="activities-workspace__kpi-value mt-1.5 block whitespace-nowrap text-[26px] font-semibold leading-none tracking-tight text-[var(--text-primary)] sm:text-[28px]">{card.value}</span>
+                <span className="activities-workspace__kpi-value mt-1.5 block whitespace-nowrap text-[26px] font-semibold leading-none tracking-tight text-[var(--text-primary)] tabular-nums sm:text-[28px]"><AnimatedSummaryValue value={card.value} index={index} /></span>
               </span>
-              <span className="activities-page__summary-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" data-tone={card.tone}><Icon aria-hidden size={17} /></span>
+              <span
+                className="activities-page__summary-icon activities-page__summary-icon--animated flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                data-tone={card.tone}
+                style={{
+                  '--kpi-wake-delay': `${index * KPI_COUNT_STAGGER_MS}ms`,
+                  '--kpi-finish-delay': `${KPI_COUNT_DURATION_MS + index * KPI_COUNT_STAGGER_MS}ms`,
+                } as CSSProperties}
+              ><Icon aria-hidden size={17} /></span>
             </span>
           </button>
         )

@@ -17971,6 +17971,148 @@ html[data-theme='dark'] .activities-page__panel {
 .activities-page__summary-icon[data-tone='slate'] { background: #f1f5f9; color: #64748b; }
 .activities-page__summary-icon[data-tone='violet'] { background: #ede9fe; color: #7c3aed; }
 
+.activities-page__summary-icon--animated {
+  --kpi-glow-color: rgba(14, 165, 233, 0.5);
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  animation-name: activities-summary-icon-wake, activities-summary-icon-finish;
+  animation-duration: 2000ms, 400ms;
+  animation-delay: var(--kpi-wake-delay, 0ms), var(--kpi-finish-delay, 4500ms);
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both, none;
+}
+
+.activities-page__summary-icon--animated[data-tone='amber'] { --kpi-glow-color: rgba(245, 158, 11, 0.5); }
+.activities-page__summary-icon--animated[data-tone='violet'] { --kpi-glow-color: rgba(139, 92, 246, 0.5); }
+.activities-page__summary-icon--animated[data-tone='emerald'] { --kpi-glow-color: rgba(16, 185, 129, 0.5); }
+
+html[data-theme='dark'] .activities-page__summary-icon--animated { --kpi-glow-color: rgba(14, 165, 233, 0.34); }
+html[data-theme='dark'] .activities-page__summary-icon--animated[data-tone='amber'] { --kpi-glow-color: rgba(245, 158, 11, 0.34); }
+html[data-theme='dark'] .activities-page__summary-icon--animated[data-tone='violet'] { --kpi-glow-color: rgba(139, 92, 246, 0.34); }
+html[data-theme='dark'] .activities-page__summary-icon--animated[data-tone='emerald'] { --kpi-glow-color: rgba(16, 185, 129, 0.34); }
+
+.activities-page__summary-icon--animated::before {
+  position: absolute;
+  z-index: -1;
+  inset: -13px;
+  border-radius: 18px;
+  background: radial-gradient(circle, var(--kpi-glow-color) 0%, color-mix(in srgb, var(--kpi-glow-color) 45%, transparent) 38%, transparent 72%);
+  content: '';
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.55);
+  animation-name: activities-summary-glow-wake, activities-summary-glow-finish;
+  animation-duration: 2000ms, 400ms;
+  animation-delay: var(--kpi-wake-delay, 0ms), var(--kpi-finish-delay, 4500ms);
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), ease-out;
+  animation-fill-mode: both, none;
+}
+
+.activities-page__summary-icon--animated > svg {
+  position: relative;
+  z-index: 1;
+  transform-origin: center;
+  animation-duration: 2000ms, 400ms;
+  animation-delay: var(--kpi-wake-delay, 0ms), var(--kpi-finish-delay, 4500ms);
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both, none;
+}
+
+.activities-page__summary-icon--animated[data-tone='blue'] > svg {
+  animation-name: activities-summary-symbol-activity, activities-summary-symbol-finish;
+}
+
+.activities-page__summary-icon--animated[data-tone='amber'] > svg {
+  animation-name: activities-summary-symbol-task, activities-summary-symbol-finish;
+}
+
+.activities-page__summary-icon--animated[data-tone='violet'] > svg {
+  animation-name: activities-summary-symbol-meeting, activities-summary-symbol-finish;
+}
+
+.activities-page__summary-icon--animated[data-tone='emerald'] > svg {
+  animation-name: activities-summary-symbol-job, activities-summary-symbol-finish;
+}
+
+@keyframes activities-summary-icon-wake {
+  0% {
+    opacity: 0.48;
+    transform: translateY(4px) scale(0.78);
+  }
+  48% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.12);
+  }
+  72% {
+    transform: translateY(1px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes activities-summary-icon-finish {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+}
+
+@keyframes activities-summary-glow-wake {
+  0% { opacity: 0; transform: scale(0.45); }
+  34% { opacity: 0.95; transform: scale(0.9); }
+  68% { opacity: 0.38; transform: scale(1.16); }
+  100% { opacity: 0; transform: scale(1.34); }
+}
+
+@keyframes activities-summary-glow-finish {
+  0%, 100% { opacity: 0; transform: scale(0.78); }
+  42% { opacity: 0.82; transform: scale(1.12); }
+}
+
+@keyframes activities-summary-symbol-activity {
+  0% { opacity: 0.35; transform: rotate(-18deg) scale(0.62); }
+  42% { opacity: 1; transform: rotate(10deg) scale(1.2); }
+  68% { transform: rotate(-5deg) scale(0.96); }
+  100% { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+@keyframes activities-summary-symbol-task {
+  0% { opacity: 0.35; transform: translateY(5px) rotate(-8deg) scale(0.65); }
+  34% { opacity: 1; transform: translateY(-5px) rotate(7deg) scale(1.16); }
+  56% { transform: translateY(2px) rotate(-5deg) scale(1.02); }
+  76% { transform: translateY(-1px) rotate(2deg) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
+}
+
+@keyframes activities-summary-symbol-meeting {
+  0% { opacity: 0.35; transform: translateY(7px) scale(0.68); }
+  40% { opacity: 1; transform: translateY(-6px) scale(1.17); }
+  66% { transform: translateY(2px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes activities-summary-symbol-job {
+  0% { opacity: 0.35; transform: rotate(-32deg) scale(0.65); }
+  40% { opacity: 1; transform: rotate(16deg) scale(1.18); }
+  64% { transform: rotate(-9deg) scale(0.98); }
+  82% { transform: rotate(4deg) scale(1.02); }
+  100% { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+@keyframes activities-summary-symbol-finish {
+  0%, 100% { transform: scale(1); }
+  42% { transform: scale(1.22); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activities-page__summary-icon--animated,
+  .activities-page__summary-icon--animated::before,
+  .activities-page__summary-icon--animated > svg {
+    animation: none;
+  }
+}
+
 .activities-workspace__kpi[data-tone='blue'] {
   border-color: rgba(56, 163, 219, 0.26) !important;
   background: linear-gradient(145deg, #ffffff 0%, #e1f3fc 100%) !important;
