@@ -108,12 +108,14 @@ type ProfilePermissionRow = {
 type DispatcherCalendarFeedRow = {
   token: string
   enabled: boolean
+  calendar_scope: 'all_jobs' | 'sales_owner'
   disabled_at: string | null
 }
 
 type DispatcherGoogleCalendarRow = {
   calendar_id: string | null
   enabled: boolean
+  calendar_scope: 'all_jobs' | 'sales_owner'
   disabled_at: string | null
 }
 
@@ -483,12 +485,12 @@ export default async function JobsPage({
 
   const dispatcherFeedPromise = supabase
       .from('dispatcher_job_calendar_feeds')
-      .select('token, enabled, disabled_at')
+      .select('token, enabled, calendar_scope, disabled_at')
       .eq('user_id', user.id)
       .maybeSingle()
   const dispatcherGooglePromise = supabase
       .from('dispatcher_job_google_calendar_integrations')
-      .select('calendar_id, enabled, disabled_at')
+      .select('calendar_id, enabled, calendar_scope, disabled_at')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -569,13 +571,17 @@ export default async function JobsPage({
   const dispatcherGoogle =
     dispatcherGoogleResponse.data as DispatcherGoogleCalendarRow | null
   const isDispatcherCalendarActivated = Boolean(
-    dispatcherFeed?.enabled && !dispatcherFeed.disabled_at
+    dispatcherFeed?.calendar_scope === 'all_jobs' &&
+      dispatcherFeed.enabled &&
+      !dispatcherFeed.disabled_at
   )
-  const dispatcherCalendarFeedPath = dispatcherFeed?.token
+  const dispatcherCalendarFeedPath =
+    dispatcherFeed?.calendar_scope === 'all_jobs' && dispatcherFeed.token
     ? `/api/dispatcher-job-calendars/${dispatcherFeed.token}`
     : null
   const isDispatcherGoogleConnected = Boolean(
-    dispatcherGoogle?.enabled &&
+    dispatcherGoogle?.calendar_scope === 'all_jobs' &&
+      dispatcherGoogle.enabled &&
       !dispatcherGoogle.disabled_at &&
       dispatcherGoogle.calendar_id
   )

@@ -120,7 +120,7 @@ function formatStickyNoteDate(value: string) {
   }).format(new Date(value))
 }
 
-function StickyNoteFormModal({
+export function StickyNoteFormModal({
   clients,
   note,
   onClose,

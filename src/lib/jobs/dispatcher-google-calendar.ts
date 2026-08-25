@@ -1,7 +1,12 @@
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import type { DispatcherCalendarJobRow } from './dispatcher-calendar-feed'
+import {
+  DISPATCHER_CALENDAR_NAMES,
+  isDispatcherCalendarSalesOwner,
+  type DispatcherCalendarScope,
+} from './dispatcher-calendar-scope'
 
-export const DISPATCHER_GOOGLE_CALENDAR_NAME = 'B-ENERGY VŠECHNY ZAKÁZKY'
+export const DISPATCHER_GOOGLE_CALENDAR_NAME = DISPATCHER_CALENDAR_NAMES.all_jobs
 export const DISPATCHER_GOOGLE_CALENDAR_TIME_ZONE = 'Europe/Prague'
 const DISPATCHER_GOOGLE_CALENDAR_ALARM_MINUTES = 120
 const DISPATCHER_GOOGLE_CALENDAR_UID_PREFIX = 'b-energy-vsechny-zakazky-google'
@@ -21,6 +26,7 @@ type DispatcherGoogleIntegrationRow = {
   refresh_token: string
   calendar_id: string | null
   calendar_name: string
+  calendar_scope: DispatcherCalendarScope
   enabled: boolean
   disabled_at: string | null
   connected_at: string | null
@@ -43,7 +49,7 @@ type GoogleSyncContext = {
 }
 
 const INTEGRATION_SELECT =
-  'user_id, google_sub, google_email, refresh_token, calendar_id, calendar_name, enabled, disabled_at, connected_at'
+  'user_id, google_sub, google_email, refresh_token, calendar_id, calendar_name, calendar_scope, enabled, disabled_at, connected_at'
 
 const JOB_SELECT = `
   id,
@@ -61,7 +67,8 @@ const JOB_SELECT = `
   invoice_status,
   evidence_status,
   marny_vyjezd,
-  pohotovost
+  pohotovost,
+  sales_owner
 `
 
 function getServiceClient() {
@@ -110,7 +117,7 @@ function getEvidenceStatusLabel(status: DispatcherCalendarJobRow['evidence_statu
   return { nove: 'Zapsat', zapsano: 'Zapsáno' }[status]
 }
 
-function buildSummary(job: DispatcherCalendarJobRow) {
+function buildSummary(job: DispatcherCalendarJobRow, scope: DispatcherCalendarScope) {
   const jobNumber = job.job_number.trim()
   const companyName = job.company_name.trim()
   const baseSummary =
@@ -119,7 +126,11 @@ function buildSummary(job: DispatcherCalendarJobRow) {
       : jobNumber
         ? `Zakázka ${jobNumber}`
         : companyName || 'Zakázka'
-  const summary = job.pohotovost ? `${baseSummary} · POHOTOVOST` : baseSummary
+  const onCallSummary = job.pohotovost ? `${baseSummary} · POHOTOVOST` : baseSummary
+  const summary =
+    scope === 'sales_owner' && job.marny_vyjezd
+      ? `MARNÝ VÝJEZD · ${onCallSummary}`
+      : onCallSummary
 
   return job.job_status === 'storno' ? `STORNO · ${summary}` : summary
 }
@@ -140,15 +151,16 @@ function buildDescription(job: DispatcherCalendarJobRow) {
     `Stav zakázky: ${getJobStatusLabel(job.job_status)}`,
     `Fakturace: ${getInvoiceStatusLabel(job.invoice_status)}`,
     `Evidence: ${getEvidenceStatusLabel(job.evidence_status)}`,
+    job.marny_vyjezd ? 'Marný výjezd: Ano' : null,
     job.info_note?.trim() ? `Info poznámka: ${job.info_note.trim()}` : null,
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n')
 }
 
-function buildGoogleEvent(job: DispatcherCalendarJobRow) {
+function buildGoogleEvent(job: DispatcherCalendarJobRow, scope: DispatcherCalendarScope) {
   return {
-    summary: buildSummary(job),
+    summary: buildSummary(job, scope),
     description: buildDescription(job),
     location: job.site_address?.trim() || undefined,
     start: {
@@ -240,15 +252,22 @@ async function refreshAccessToken(refreshToken: string) {
   return payload.access_token
 }
 
-async function createGoogleCalendar(accessToken: string) {
+async function createGoogleCalendar(
+  accessToken: string,
+  calendarScope: DispatcherCalendarScope
+) {
+  const calendarName = DISPATCHER_CALENDAR_NAMES[calendarScope]
   const payload = await fetchGoogleJson<{ id?: string }>(
     'https://www.googleapis.com/calendar/v3/calendars',
     {
       method: 'POST',
       body: JSON.stringify({
-        summary: DISPATCHER_GOOGLE_CALENDAR_NAME,
+        summary: calendarName,
         timeZone: DISPATCHER_GOOGLE_CALENDAR_TIME_ZONE,
-        description: 'Kompletní přehled zakázek B-ENERGY pro dispečera.',
+        description:
+          calendarScope === 'sales_owner'
+            ? 'Přehled vlastních zakázek B-ENERGY.'
+            : 'Kompletní přehled zakázek B-ENERGY pro dispečera.',
       }),
     },
     accessToken
@@ -268,6 +287,28 @@ async function googleCalendarExists(calendarId: string, accessToken: string) {
   return true
 }
 
+async function updateGoogleCalendarMetadata(
+  calendarId: string,
+  accessToken: string,
+  calendarScope: DispatcherCalendarScope
+) {
+  await fetchGoogleJson(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        summary: DISPATCHER_CALENDAR_NAMES[calendarScope],
+        timeZone: DISPATCHER_GOOGLE_CALENDAR_TIME_ZONE,
+        description:
+          calendarScope === 'sales_owner'
+            ? 'Přehled vlastních zakázek B-ENERGY.'
+            : 'Kompletní přehled zakázek B-ENERGY pro dispečera.',
+      }),
+    },
+    accessToken
+  )
+}
+
 async function getSyncContext(userId: string): Promise<GoogleSyncContext | null> {
   const supabase = getServiceClient()
   const { data, error } = await supabase
@@ -282,7 +323,7 @@ async function getSyncContext(userId: string): Promise<GoogleSyncContext | null>
   const accessToken = await refreshAccessToken(data.refresh_token)
   let calendarId = data.calendar_id
   if (!calendarId || !(await googleCalendarExists(calendarId, accessToken))) {
-    calendarId = await createGoogleCalendar(accessToken)
+    calendarId = await createGoogleCalendar(accessToken, data.calendar_scope)
     const { error: updateError } = await supabase
       .from('dispatcher_job_google_calendar_integrations')
       .update({ calendar_id: calendarId })
@@ -310,7 +351,10 @@ async function insertGoogleEvent(context: GoogleSyncContext, job: DispatcherCale
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       context.calendarId
     )}/events`,
-    { method: 'POST', body: JSON.stringify(buildGoogleEvent(job)) },
+    {
+      method: 'POST',
+      body: JSON.stringify(buildGoogleEvent(job, context.integration.calendar_scope)),
+    },
     context.accessToken
   )
 }
@@ -324,7 +368,10 @@ async function patchGoogleEvent(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       context.calendarId
     )}/events/${encodeURIComponent(eventId)}`,
-    { method: 'PATCH', body: JSON.stringify(buildGoogleEvent(job)) },
+    {
+      method: 'PATCH',
+      body: JSON.stringify(buildGoogleEvent(job, context.integration.calendar_scope)),
+    },
     context.accessToken
   )
 }
@@ -410,7 +457,9 @@ export async function syncDispatcherGoogleCalendarItem(params: {
 }) {
   const context = await getSyncContext(params.userId)
   if (!context) return null
-  if (params.job.marny_vyjezd) return cancelWithContext(context, params.job.id)
+  if (context.integration.calendar_scope === 'all_jobs' && params.job.marny_vyjezd) {
+    return cancelWithContext(context, params.job.id)
+  }
   return syncWithContext(context, params.job)
 }
 
@@ -429,20 +478,53 @@ export async function backfillDispatcherGoogleCalendarItemsForUser(userId: strin
 
   const { data: existingItems, error: itemsError } = await context.supabase
     .from('dispatcher_job_google_calendar_items')
-    .select('job_id')
+    .select('job_id, user_id, google_event_id, sequence, is_cancelled, cancelled_at')
     .eq('user_id', userId)
   if (itemsError) throw new Error(`Nepodařilo se načíst Google položky: ${itemsError.message}`)
 
-  const { data: jobs, error: jobsError } = await context.supabase
+  const { data: profile, error: profileError } = await context.supabase
+    .from('profiles')
+    .select('role, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
+    .eq('id', userId)
+    .maybeSingle<{
+      role: string | null
+      can_view_jobs: boolean | null
+      can_view_jobs_portal: boolean | null
+      jobs_sales_scope: string | null
+    }>()
+  if (profileError) {
+    throw new Error(`Nepodařilo se načíst rozsah Google kalendáře: ${profileError.message}`)
+  }
+
+  const salesOwner = isDispatcherCalendarSalesOwner(profile?.jobs_sales_scope)
+    ? profile.jobs_sales_scope
+    : null
+  if (context.integration.calendar_scope === 'sales_owner' && !salesOwner) {
+    throw new Error('Uživatel nemá nastavený rozsah zakázek pro portálový kalendář.')
+  }
+
+  let jobsQuery = context.supabase
     .from('jobs')
     .select(JOB_SELECT)
-    .or('marny_vyjezd.is.null,marny_vyjezd.eq.false')
     .order('start_at', { ascending: true })
+  jobsQuery =
+    context.integration.calendar_scope === 'sales_owner'
+      ? jobsQuery.eq('sales_owner', salesOwner)
+      : jobsQuery.or('marny_vyjezd.is.null,marny_vyjezd.eq.false')
+
+  const { data: jobs, error: jobsError } = await jobsQuery
   if (jobsError) throw new Error(`Nepodařilo se načíst zakázky: ${jobsError.message}`)
 
-  const existingJobIds = new Set((existingItems ?? []).map((item) => item.job_id))
+  const typedItems = (existingItems ?? []) as DispatcherGoogleItemRow[]
+  const existingJobIds = new Set(typedItems.map((item) => item.job_id))
   const typedJobs = (jobs ?? []) as DispatcherCalendarJobRow[]
+  const desiredJobIds = new Set(typedJobs.map((job) => job.id))
   const insertedCount = typedJobs.filter((job) => !existingJobIds.has(job.id)).length
+  for (const item of typedItems) {
+    if (!item.is_cancelled && !desiredJobIds.has(item.job_id)) {
+      await cancelWithContext(context, item.job_id)
+    }
+  }
   for (const job of typedJobs) await syncWithContext(context, job)
   return { insertedCount }
 }
@@ -470,7 +552,9 @@ export async function completeDispatcherGoogleCalendarOAuth(params: {
   code: string
   redirectUri: string
   userId: string
+  calendarScope?: DispatcherCalendarScope
 }) {
+  const calendarScope = params.calendarScope ?? 'all_jobs'
   const supabase = getServiceClient()
   const tokens = await exchangeAuthorizationCode(params.code, params.redirectUri)
   const { data: existing, error: readError } = await supabase
@@ -486,8 +570,36 @@ export async function completeDispatcherGoogleCalendarOAuth(params: {
   }
 
   let calendarId = existing?.calendar_id ?? null
+  if (
+    existing &&
+    existing.calendar_scope !== calendarScope &&
+    calendarId
+  ) {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      }
+    )
+    if (response.status !== 404 && !response.ok) {
+      throw new Error(await readGoogleError(response))
+    }
+
+    const { error: oldItemsError } = await supabase
+      .from('dispatcher_job_google_calendar_items')
+      .delete()
+      .eq('user_id', params.userId)
+    if (oldItemsError) {
+      throw new Error(`Nepodařilo se vyčistit původní Google události: ${oldItemsError.message}`)
+    }
+    calendarId = null
+  }
+
   if (!calendarId || !(await googleCalendarExists(calendarId, tokens.access_token))) {
-    calendarId = await createGoogleCalendar(tokens.access_token)
+    calendarId = await createGoogleCalendar(tokens.access_token, calendarScope)
+  } else {
+    await updateGoogleCalendarMetadata(calendarId, tokens.access_token, calendarScope)
   }
 
   const now = new Date().toISOString()
@@ -499,7 +611,8 @@ export async function completeDispatcherGoogleCalendarOAuth(params: {
       google_email: existing?.google_email ?? null,
       refresh_token: refreshToken,
       calendar_id: calendarId,
-      calendar_name: DISPATCHER_GOOGLE_CALENDAR_NAME,
+      calendar_name: DISPATCHER_CALENDAR_NAMES[calendarScope],
+      calendar_scope: calendarScope,
       enabled: true,
       disabled_at: null,
       connected_at: existing?.connected_at ?? now,

@@ -6,10 +6,13 @@ import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
 import {
   activateDispatcherCalendarAction,
+  activatePortalJobCalendarAction,
   disconnectDispatcherGoogleCalendarAction,
+  disconnectPortalJobGoogleCalendarAction,
   type DispatcherCalendarActivationState,
   type DispatcherGoogleDisconnectState,
 } from './dispatcher-calendar-actions'
+import type { DispatcherCalendarScope } from '@/lib/jobs/dispatcher-calendar-scope'
 
 type DispatcherCalendarButtonProps = {
   className?: string
@@ -19,6 +22,7 @@ type DispatcherCalendarButtonProps = {
   initialGoogleConfigured: boolean
   initialMessage?: string | null
   initialError?: string | null
+  calendarScope?: DispatcherCalendarScope
 }
 
 function buildFeedUrls(feedPath: string | undefined, origin: string | null) {
@@ -58,6 +62,7 @@ export function DispatcherCalendarButton({
   initialGoogleConfigured,
   initialMessage = null,
   initialError = null,
+  calendarScope = 'all_jobs',
 }: DispatcherCalendarButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -68,11 +73,15 @@ export function DispatcherCalendarButton({
     feedPath: initialFeedPath ?? undefined,
   }
   const [activationState, activationAction] = useActionState(
-    activateDispatcherCalendarAction,
+    calendarScope === 'sales_owner'
+      ? activatePortalJobCalendarAction
+      : activateDispatcherCalendarAction,
     initialActivationState
   )
   const [disconnectState, disconnectAction] = useActionState(
-    disconnectDispatcherGoogleCalendarAction,
+    calendarScope === 'sales_owner'
+      ? disconnectPortalJobGoogleCalendarAction
+      : disconnectDispatcherGoogleCalendarAction,
     { success: false, error: null } satisfies DispatcherGoogleDisconnectState
   )
 
@@ -92,7 +101,10 @@ export function DispatcherCalendarButton({
 
   const origin = typeof window === 'undefined' ? null : window.location.origin
   const feedUrls = buildFeedUrls(activationState.feedPath, origin)
-  const googleConnectPath = '/api/dispatcher-job-google-calendar/connect'
+  const googleConnectPath =
+    calendarScope === 'sales_owner'
+      ? '/api/dispatcher-job-google-calendar/connect?scope=sales_owner'
+      : '/api/dispatcher-job-google-calendar/connect'
   const googleConnectUrl = origin
     ? new URL(googleConnectPath, origin).toString()
     : googleConnectPath
@@ -124,7 +136,11 @@ export function DispatcherCalendarButton({
           <header className="meetings-calendar-modal__header meetings-modal__header flex items-start justify-between gap-4 border-b border-gray-100/90 px-4 py-4 sm:px-5">
             <ModalHeading
               section="ZAKÁZKY"
-              title="B-ENERGY VŠECHNY ZAKÁZKY"
+              title={
+                calendarScope === 'sales_owner'
+                  ? 'B-ENERGY MOJE ZAKÁZKY'
+                  : 'B-ENERGY VŠECHNY ZAKÁZKY'
+              }
               id="dispatcher-calendar-modal-title"
             />
             <button
@@ -140,9 +156,9 @@ export function DispatcherCalendarButton({
           <div className="meetings-calendar-modal__body meetings-modal__body max-h-[calc(100dvh-8rem)] space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
             <section className="meetings-calendar-modal__intro-card rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)]">
               <p className="meetings-calendar-modal__intro-text text-sm leading-6 text-zinc-600">
-                Do osobního kalendáře se synchronizují všechny zakázky kromě
-                marných výjezdů. Kalendář je pouze pro čtení a změny se provádějí
-                v aplikaci.
+                {calendarScope === 'sales_owner'
+                  ? 'Do osobního kalendáře se synchronizují všechny vaše přidělené zakázky včetně marných výjezdů. Kalendář je pouze pro čtení a změny se provádějí v aplikaci.'
+                  : 'Do osobního kalendáře se synchronizují všechny zakázky kromě marných výjezdů. Kalendář je pouze pro čtení a změny se provádějí v aplikaci.'}
               </p>
 
               {initialMessage ? (
@@ -207,7 +223,11 @@ export function DispatcherCalendarButton({
 
               <CalendarCard
                 title="Google Calendar"
-                description="V Google účtu se vytvoří samostatný kalendář všech zakázek."
+                description={
+                  calendarScope === 'sales_owner'
+                    ? 'V Google účtu se vytvoří samostatný kalendář vašich zakázek.'
+                    : 'V Google účtu se vytvoří samostatný kalendář všech zakázek.'
+                }
               >
                 {isGoogleConnected ? (
                   <div className="meetings-calendar-modal__status mt-4 rounded-xl border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">

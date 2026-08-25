@@ -8,9 +8,22 @@ import {
   syncDispatcherGoogleCalendarItem,
 } from './dispatcher-google-calendar'
 import { getServiceRoleClient } from '@/lib/supabase/service'
+import {
+  isDispatcherCalendarSalesOwner,
+  type DispatcherCalendarScope,
+} from './dispatcher-calendar-scope'
 
-type UserIdRow = {
+type CalendarUserRow = {
   user_id: string
+  calendar_scope: DispatcherCalendarScope
+}
+
+type CalendarProfileRow = {
+  id: string
+  role: string | null
+  can_view_jobs: boolean | null
+  can_view_jobs_portal: boolean | null
+  jobs_sales_scope: string | null
 }
 
 const JOB_SELECT = `
@@ -29,7 +42,8 @@ const JOB_SELECT = `
   invoice_status,
   evidence_status,
   marny_vyjezd,
-  pohotovost
+  pohotovost,
+  sales_owner
 `
 
 function getServiceClient() {
@@ -47,12 +61,12 @@ async function getActiveDispatcherCalendarUsers() {
   const [feedsResponse, googleResponse] = await Promise.all([
     supabase
       .from('dispatcher_job_calendar_feeds')
-      .select('user_id')
+      .select('user_id, calendar_scope')
       .eq('enabled', true)
       .is('disabled_at', null),
     supabase
       .from('dispatcher_job_google_calendar_integrations')
-      .select('user_id')
+      .select('user_id, calendar_scope')
       .eq('enabled', true)
       .is('disabled_at', null),
   ])
@@ -64,14 +78,53 @@ async function getActiveDispatcherCalendarUsers() {
     throw new Error(`Nepodařilo se načíst aktivní Google kalendáře: ${googleResponse.error.message}`)
   }
 
-  return {
-    feedUserIds: Array.from(
-      new Set(((feedsResponse.data ?? []) as UserIdRow[]).map((row) => row.user_id))
-    ),
-    googleUserIds: Array.from(
-      new Set(((googleResponse.data ?? []) as UserIdRow[]).map((row) => row.user_id))
-    ),
+  const feedRows = (feedsResponse.data ?? []) as CalendarUserRow[]
+  const googleRows = (googleResponse.data ?? []) as CalendarUserRow[]
+  const userIds = Array.from(
+    new Set([...feedRows, ...googleRows].map((row) => row.user_id))
+  )
+  const { data: profiles, error: profilesError } = userIds.length
+    ? await supabase
+        .from('profiles')
+        .select('id, role, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
+        .in('id', userIds)
+    : { data: [], error: null }
+
+  if (profilesError) {
+    throw new Error(`Nepodařilo se načíst rozsahy kalendářů: ${profilesError.message}`)
   }
+
+  const profilesById = new Map(
+    ((profiles ?? []) as CalendarProfileRow[]).map((profile) => [profile.id, profile])
+  )
+
+  const enrich = (row: CalendarUserRow) => ({
+    ...row,
+    profile: profilesById.get(row.user_id) ?? null,
+  })
+
+  return {
+    feedUsers: feedRows.map(enrich),
+    googleUsers: googleRows.map(enrich),
+  }
+}
+
+function shouldSyncJob(
+  target: CalendarUserRow & { profile: CalendarProfileRow | null },
+  job: DispatcherCalendarJobRow
+) {
+  if (target.calendar_scope === 'all_jobs') {
+    const hasAccess =
+      target.profile?.role === 'admin' || target.profile?.can_view_jobs === true
+    return hasAccess && !job.marny_vyjezd
+  }
+
+  return (
+    target.profile?.role !== 'admin' &&
+    target.profile?.can_view_jobs_portal === true &&
+    isDispatcherCalendarSalesOwner(target.profile.jobs_sales_scope) &&
+    job.sales_owner === target.profile.jobs_sales_scope
+  )
 }
 
 async function settleCalendarOperations(operations: Promise<unknown>[]) {
@@ -86,14 +139,23 @@ async function settleCalendarOperations(operations: Promise<unknown>[]) {
 }
 
 export async function syncDispatcherCalendarsForJob(job: DispatcherCalendarJobRow) {
-  const { feedUserIds, googleUserIds } = await getActiveDispatcherCalendarUsers()
+  const { feedUsers, googleUsers } = await getActiveDispatcherCalendarUsers()
 
   await settleCalendarOperations([
-    ...feedUserIds.map((userId) =>
-      syncDispatcherJobCalendarItem({ jobId: job.id, userId, job })
+    ...feedUsers.map((target) =>
+      shouldSyncJob(target, job)
+        ? syncDispatcherJobCalendarItem({
+            jobId: job.id,
+            userId: target.user_id,
+            job,
+            calendarScope: target.calendar_scope,
+          })
+        : cancelDispatcherJobCalendarItem({ jobId: job.id, userId: target.user_id })
     ),
-    ...googleUserIds.map((userId) =>
-      syncDispatcherGoogleCalendarItem({ userId, job })
+    ...googleUsers.map((target) =>
+      shouldSyncJob(target, job)
+        ? syncDispatcherGoogleCalendarItem({ userId: target.user_id, job })
+        : cancelDispatcherGoogleCalendarItem({ userId: target.user_id, jobId: job.id })
     ),
   ])
 }
@@ -116,14 +178,14 @@ export async function syncDispatcherCalendarsForJobId(jobId: string) {
 }
 
 export async function cancelDispatcherCalendarsForJob(jobId: string) {
-  const { feedUserIds, googleUserIds } = await getActiveDispatcherCalendarUsers()
+  const { feedUsers, googleUsers } = await getActiveDispatcherCalendarUsers()
 
   await settleCalendarOperations([
-    ...feedUserIds.map((userId) =>
-      cancelDispatcherJobCalendarItem({ jobId, userId })
+    ...feedUsers.map((target) =>
+      cancelDispatcherJobCalendarItem({ jobId, userId: target.user_id })
     ),
-    ...googleUserIds.map((userId) =>
-      cancelDispatcherGoogleCalendarItem({ jobId, userId })
+    ...googleUsers.map((target) =>
+      cancelDispatcherGoogleCalendarItem({ jobId, userId: target.user_id })
     ),
   ])
 }

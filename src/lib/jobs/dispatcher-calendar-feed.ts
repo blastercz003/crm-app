@@ -1,6 +1,12 @@
 import { getServiceRoleClient } from '@/lib/supabase/service'
+import {
+  DISPATCHER_CALENDAR_NAMES,
+  isDispatcherCalendarSalesOwner,
+  type DispatcherCalendarSalesOwner,
+  type DispatcherCalendarScope,
+} from './dispatcher-calendar-scope'
 
-export const DISPATCHER_JOB_CALENDAR_NAME = 'B-ENERGY VŠECHNY ZAKÁZKY'
+export const DISPATCHER_JOB_CALENDAR_NAME = DISPATCHER_CALENDAR_NAMES.all_jobs
 export const DISPATCHER_JOB_CALENDAR_TIME_ZONE = 'Europe/Prague'
 const DISPATCHER_JOB_CALENDAR_ALARM_MINUTES = 120
 const DISPATCHER_JOB_CALENDAR_UID_PREFIX = 'b-energy-vsechny-zakazky'
@@ -9,6 +15,7 @@ type DispatcherCalendarFeedRow = {
   user_id: string
   token: string
   enabled: boolean
+  calendar_scope: DispatcherCalendarScope
   disabled_at: string | null
 }
 
@@ -38,6 +45,7 @@ export type DispatcherCalendarJobRow = {
   evidence_status: 'nove' | 'zapsano'
   marny_vyjezd: boolean | null
   pohotovost: boolean | null
+  sales_owner: string | null
 }
 
 type DispatcherCalendarEvent = {
@@ -155,7 +163,7 @@ function getEvidenceStatusLabel(status: DispatcherCalendarJobRow['evidence_statu
   }[status]
 }
 
-function buildSummary(job: DispatcherCalendarJobRow) {
+function buildSummary(job: DispatcherCalendarJobRow, scope: DispatcherCalendarScope) {
   const jobNumber = job.job_number.trim()
   const companyName = job.company_name.trim()
   const baseSummary =
@@ -164,7 +172,11 @@ function buildSummary(job: DispatcherCalendarJobRow) {
       : jobNumber
         ? `Zakázka ${jobNumber}`
         : companyName || 'Zakázka'
-  const summary = job.pohotovost ? `${baseSummary} · POHOTOVOST` : baseSummary
+  const onCallSummary = job.pohotovost ? `${baseSummary} · POHOTOVOST` : baseSummary
+  const summary =
+    scope === 'sales_owner' && job.marny_vyjezd
+      ? `MARNÝ VÝJEZD · ${onCallSummary}`
+      : onCallSummary
 
   return job.job_status === 'storno' ? `STORNO · ${summary}` : summary
 }
@@ -185,6 +197,7 @@ function buildDescription(job: DispatcherCalendarJobRow) {
     `Stav zakázky: ${getJobStatusLabel(job.job_status)}`,
     `Fakturace: ${getInvoiceStatusLabel(job.invoice_status)}`,
     `Evidence: ${getEvidenceStatusLabel(job.evidence_status)}`,
+    job.marny_vyjezd ? 'Marný výjezd: Ano' : null,
     job.info_note?.trim() ? `Info poznámka: ${job.info_note.trim()}` : null,
   ]
     .filter((line): line is string => Boolean(line))
@@ -197,14 +210,17 @@ function buildEventUid(userId: string, jobId: string) {
 
 function buildCalendarEvent(
   job: DispatcherCalendarJobRow,
-  item: DispatcherCalendarItemRow
+  item: DispatcherCalendarItemRow,
+  scope: DispatcherCalendarScope
 ): DispatcherCalendarEvent | null {
-  if (!job.start_at || !job.end_at || job.marny_vyjezd) return null
+  if (!job.start_at || !job.end_at || (scope === 'all_jobs' && job.marny_vyjezd)) {
+    return null
+  }
 
   return {
     uid: item.uid,
     sequence: item.sequence,
-    summary: buildSummary(job),
+    summary: buildSummary(job, scope),
     description: buildDescription(job),
     location: job.site_address?.trim() || null,
     startIso: job.start_at,
@@ -276,14 +292,18 @@ const JOB_SELECT = `
   invoice_status,
   evidence_status,
   marny_vyjezd,
-  pohotovost
+  pohotovost,
+  sales_owner
 `
 
-export async function ensureDispatcherJobCalendarFeed(userId: string) {
+export async function ensureDispatcherJobCalendarFeed(
+  userId: string,
+  calendarScope: DispatcherCalendarScope = 'all_jobs'
+) {
   const supabase = getServiceClient()
   const { data: existingFeed, error: readError } = await supabase
     .from('dispatcher_job_calendar_feeds')
-    .select('user_id, token, enabled, disabled_at')
+    .select('user_id, token, enabled, calendar_scope, disabled_at')
     .eq('user_id', userId)
     .maybeSingle<DispatcherCalendarFeedRow>()
 
@@ -292,10 +312,14 @@ export async function ensureDispatcherJobCalendarFeed(userId: string) {
   }
 
   if (existingFeed) {
-    if (!existingFeed.enabled || existingFeed.disabled_at) {
+    if (
+      !existingFeed.enabled ||
+      existingFeed.disabled_at ||
+      existingFeed.calendar_scope !== calendarScope
+    ) {
       const { error } = await supabase
         .from('dispatcher_job_calendar_feeds')
-        .update({ enabled: true, disabled_at: null })
+        .update({ enabled: true, disabled_at: null, calendar_scope: calendarScope })
         .eq('user_id', userId)
 
       if (error) {
@@ -303,14 +327,25 @@ export async function ensureDispatcherJobCalendarFeed(userId: string) {
       }
     }
 
-    return { ...existingFeed, enabled: true, disabled_at: null }
+    return {
+      ...existingFeed,
+      enabled: true,
+      disabled_at: null,
+      calendar_scope: calendarScope,
+    }
   }
 
   const token = globalThis.crypto.randomUUID().replaceAll('-', '')
   const { data, error } = await supabase
     .from('dispatcher_job_calendar_feeds')
-    .insert({ user_id: userId, token, enabled: true, disabled_at: null })
-    .select('user_id, token, enabled, disabled_at')
+    .insert({
+      user_id: userId,
+      token,
+      enabled: true,
+      calendar_scope: calendarScope,
+      disabled_at: null,
+    })
+    .select('user_id, token, enabled, calendar_scope, disabled_at')
     .single<DispatcherCalendarFeedRow>()
 
   if (error || !data) {
@@ -324,8 +359,10 @@ export async function syncDispatcherJobCalendarItem(params: {
   jobId: string
   userId: string
   job: DispatcherCalendarJobRow
+  calendarScope?: DispatcherCalendarScope
 }) {
-  if (params.job.marny_vyjezd) {
+  const calendarScope = params.calendarScope ?? 'all_jobs'
+  if (calendarScope === 'all_jobs' && params.job.marny_vyjezd) {
     return cancelDispatcherJobCalendarItem(params)
   }
 
@@ -356,7 +393,7 @@ export async function syncDispatcherJobCalendarItem(params: {
     throw new Error(`Nepodařilo se synchronizovat dispečerský kalendář: ${error.message}`)
   }
 
-  return buildCalendarEvent(params.job, item)
+  return buildCalendarEvent(params.job, item, calendarScope)
 }
 
 export async function cancelDispatcherJobCalendarItem(params: {
@@ -392,19 +429,33 @@ export async function cancelDispatcherJobCalendarItem(params: {
   }
 }
 
-export async function backfillDispatcherJobCalendarItemsForUser(userId: string) {
+export async function backfillDispatcherJobCalendarItemsForUser(
+  userId: string,
+  calendarScope: DispatcherCalendarScope = 'all_jobs',
+  salesOwner: DispatcherCalendarSalesOwner | null = null
+) {
   const supabase = getServiceClient()
-  await ensureDispatcherJobCalendarFeed(userId)
+  await ensureDispatcherJobCalendarFeed(userId, calendarScope)
+
+  if (calendarScope === 'sales_owner' && !salesOwner) {
+    throw new Error('Uživatel nemá nastavený rozsah zakázek pro portálový kalendář.')
+  }
+
+  let jobsQuery = supabase
+    .from('jobs')
+    .select(JOB_SELECT)
+    .order('start_at', { ascending: true })
+
+  jobsQuery =
+    calendarScope === 'sales_owner'
+      ? jobsQuery.eq('sales_owner', salesOwner)
+      : jobsQuery.or('marny_vyjezd.is.null,marny_vyjezd.eq.false')
 
   const [jobsResponse, itemsResponse] = await Promise.all([
-    supabase
-      .from('jobs')
-      .select(JOB_SELECT)
-      .or('marny_vyjezd.is.null,marny_vyjezd.eq.false')
-      .order('start_at', { ascending: true }),
+    jobsQuery,
     supabase
       .from('dispatcher_job_calendar_items')
-      .select('job_id')
+      .select('job_id, user_id, uid, sequence, is_cancelled, cancelled_at')
       .eq('user_id', userId),
   ])
 
@@ -415,26 +466,42 @@ export async function backfillDispatcherJobCalendarItemsForUser(userId: string) 
     throw new Error(`Nepodařilo se načíst položky kalendáře: ${itemsResponse.error.message}`)
   }
 
-  const existingJobIds = new Set((itemsResponse.data ?? []).map((item) => item.job_id))
-  const missingJobs = ((jobsResponse.data ?? []) as DispatcherCalendarJobRow[]).filter(
-    (job) => !existingJobIds.has(job.id)
-  )
-
-  if (missingJobs.length === 0) return { insertedCount: 0 }
-
+  const jobs = (jobsResponse.data ?? []) as DispatcherCalendarJobRow[]
+  const desiredJobIds = new Set(jobs.map((job) => job.id))
+  const existingItems = (itemsResponse.data ?? []) as DispatcherCalendarItemRow[]
+  const existingByJobId = new Map(existingItems.map((item) => [item.job_id, item]))
+  const missingJobs = jobs.filter((job) => !existingByJobId.has(job.id))
   const now = new Date().toISOString()
-  const { error } = await supabase.from('dispatcher_job_calendar_items').insert(
-    missingJobs.map((job) => ({
-      job_id: job.id,
-      user_id: userId,
-      uid: buildEventUid(userId, job.id),
-      sequence: 1,
-      is_cancelled: false,
-      cancelled_at: null,
-      created_at: now,
+  const rowsToUpsert = jobs
+    .filter((job) => !existingByJobId.has(job.id) || existingByJobId.get(job.id)?.is_cancelled)
+    .map((job) => {
+      const existing = existingByJobId.get(job.id)
+      return {
+        job_id: job.id,
+        user_id: userId,
+        uid: existing?.uid ?? buildEventUid(userId, job.id),
+        sequence: (existing?.sequence ?? 0) + 1,
+        is_cancelled: false,
+        cancelled_at: null,
+        updated_at: now,
+      }
+    })
+  const staleRows = existingItems
+    .filter((item) => !item.is_cancelled && !desiredJobIds.has(item.job_id))
+    .map((item) => ({
+      ...item,
+      sequence: item.sequence + 1,
+      is_cancelled: true,
+      cancelled_at: now,
       updated_at: now,
     }))
-  )
+
+  const rows = [...rowsToUpsert, ...staleRows]
+  if (rows.length === 0) return { insertedCount: 0 }
+
+  const { error } = await supabase
+    .from('dispatcher_job_calendar_items')
+    .upsert(rows)
 
   if (error) {
     throw new Error(`Nepodařilo se doplnit zakázky do kalendáře: ${error.message}`)
@@ -447,7 +514,7 @@ export async function getDispatcherJobCalendarFeedByToken(token: string) {
   const supabase = getServiceClient()
   const { data: feed, error: feedError } = await supabase
     .from('dispatcher_job_calendar_feeds')
-    .select('user_id, token, enabled, disabled_at')
+    .select('user_id, token, enabled, calendar_scope, disabled_at')
     .eq('token', token)
     .maybeSingle<DispatcherCalendarFeedRow>()
 
@@ -455,6 +522,33 @@ export async function getDispatcherJobCalendarFeedByToken(token: string) {
     throw new Error(`Nepodařilo se načíst dispečerský feed: ${feedError.message}`)
   }
   if (!feed || !feed.enabled || feed.disabled_at) return null
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
+    .eq('id', feed.user_id)
+    .maybeSingle<{
+      role: string | null
+      can_view_jobs: boolean | null
+      can_view_jobs_portal: boolean | null
+      jobs_sales_scope: string | null
+    }>()
+
+  if (profileError) {
+    throw new Error(`Nepodařilo se ověřit rozsah kalendáře: ${profileError.message}`)
+  }
+
+  const salesOwner = isDispatcherCalendarSalesOwner(profile?.jobs_sales_scope)
+    ? profile.jobs_sales_scope
+    : null
+  const hasScopeAccess =
+    feed.calendar_scope === 'all_jobs'
+      ? profile?.role === 'admin' || profile?.can_view_jobs === true
+      : profile?.role !== 'admin' &&
+        profile?.can_view_jobs_portal === true &&
+        salesOwner !== null
+
+  if (!hasScopeAccess) return null
 
   const { data: items, error: itemsError } = await supabase
     .from('dispatcher_job_calendar_items')
@@ -469,13 +563,17 @@ export async function getDispatcherJobCalendarFeedByToken(token: string) {
   const activeItems = typedItems.filter((item) => !item.is_cancelled)
   const activeJobIds = activeItems.map((item) => item.job_id)
   const jobsResponses = await Promise.all(
-    chunkValues(activeJobIds, 75).map((jobIds) =>
-      supabase
+    chunkValues(activeJobIds, 75).map((jobIds) => {
+      let query = supabase
         .from('jobs')
         .select(JOB_SELECT)
         .in('id', jobIds)
-        .or('marny_vyjezd.is.null,marny_vyjezd.eq.false')
-    )
+      query =
+        feed.calendar_scope === 'sales_owner'
+          ? query.eq('sales_owner', salesOwner)
+          : query.or('marny_vyjezd.is.null,marny_vyjezd.eq.false')
+      return query
+    })
   )
   const jobsError = jobsResponses.find((response) => response.error)?.error
 
@@ -491,7 +589,7 @@ export async function getDispatcherJobCalendarFeedByToken(token: string) {
   const activeEvents = activeItems
     .map((item) => {
       const job = jobById.get(item.job_id)
-      return job ? buildCalendarEvent(job, item) : null
+      return job ? buildCalendarEvent(job, item, feed.calendar_scope) : null
     })
     .filter((event): event is DispatcherCalendarEvent => Boolean(event))
   const cancelledEvents = typedItems
@@ -509,7 +607,7 @@ export async function getDispatcherJobCalendarFeedByToken(token: string) {
       'PRODID:-//B-ENERGY//Dispatcher Job Calendar Feed//CS',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      `X-WR-CALNAME:${escapeIcsText(DISPATCHER_JOB_CALENDAR_NAME)}`,
+      `X-WR-CALNAME:${escapeIcsText(DISPATCHER_CALENDAR_NAMES[feed.calendar_scope])}`,
       `X-WR-TIMEZONE:${DISPATCHER_JOB_CALENDAR_TIME_ZONE}`,
       'X-PUBLISHED-TTL:PT15M',
       ...events.flatMap(serializeEvent),

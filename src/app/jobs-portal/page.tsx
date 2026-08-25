@@ -8,6 +8,7 @@ import { JobsPortalFilterSubmitButton } from './jobs-portal-filter-submit-button
 import { JobsPortalFilterResetLink } from './jobs-portal-filter-reset-link'
 import { hasJobInfoContent } from '@/app/jobs/info-note-shared'
 import { querySupabaseInBatches } from '@/lib/supabase/query-in-batches'
+import { DispatcherCalendarButton } from '@/app/jobs/dispatcher-calendar-button'
 
 export const metadata: Metadata = {
   title: 'Portál zakázek',
@@ -49,6 +50,20 @@ type ProfilePermissionRow = {
   role: string | null
 }
 
+type DispatcherCalendarFeedRow = {
+  token: string
+  enabled: boolean
+  calendar_scope: 'all_jobs' | 'sales_owner'
+  disabled_at: string | null
+}
+
+type DispatcherGoogleCalendarRow = {
+  calendar_id: string | null
+  enabled: boolean
+  calendar_scope: 'all_jobs' | 'sales_owner'
+  disabled_at: string | null
+}
+
 type JobsPortalSearchParams = {
   q?: string | string[]
   status?: string | string[]
@@ -56,6 +71,8 @@ type JobsPortalSearchParams = {
   sort?: string | string[]
   date_from?: string | string[]
   date_to?: string | string[]
+  dispatcher_calendar_status?: string | string[]
+  dispatcher_calendar_error?: string | string[]
 }
 
 const JOB_STATUS_OPTIONS: JobStatus[] = [
@@ -222,6 +239,12 @@ export default async function JobsPortalPage({
   const sortParam = getSingleParam(params?.sort)
   const dateFromParam = getSingleParam(params?.date_from)
   const dateToParam = getSingleParam(params?.date_to)
+  const dispatcherCalendarStatus = getSingleParam(
+    params?.dispatcher_calendar_status
+  )
+  const dispatcherCalendarError = getSingleParam(
+    params?.dispatcher_calendar_error
+  )
 
   const query = queryParam.trim()
   const jobStatus = isJobStatus(statusParam) ? statusParam : ''
@@ -301,6 +324,57 @@ export default async function JobsPortalPage({
   if (allowedSalesOwners.length === 0) {
     throw new Error('Uživatel nemá nastavený rozsah zakázek pro portál.')
   }
+
+  const canUsePortalCalendar =
+    typedProfile.role !== 'admin' && typedProfile.jobs_sales_scope !== null
+  let dispatcherFeed: DispatcherCalendarFeedRow | null = null
+  let dispatcherGoogle: DispatcherGoogleCalendarRow | null = null
+
+  if (canUsePortalCalendar) {
+    const [feedResponse, googleResponse] = await Promise.all([
+      supabase
+        .from('dispatcher_job_calendar_feeds')
+        .select('token, enabled, calendar_scope, disabled_at')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('dispatcher_job_google_calendar_integrations')
+        .select('calendar_id, enabled, calendar_scope, disabled_at')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ])
+
+    if (feedResponse.error) {
+      throw new Error('Nepodařilo se načíst stav kalendáře zakázek.')
+    }
+    if (googleResponse.error) {
+      throw new Error('Nepodařilo se načíst stav Google kalendáře zakázek.')
+    }
+
+    dispatcherFeed = feedResponse.data as DispatcherCalendarFeedRow | null
+    dispatcherGoogle = googleResponse.data as DispatcherGoogleCalendarRow | null
+  }
+
+  const isDispatcherCalendarActivated = Boolean(
+    dispatcherFeed?.calendar_scope === 'sales_owner' &&
+      dispatcherFeed.enabled &&
+      !dispatcherFeed.disabled_at
+  )
+  const dispatcherCalendarFeedPath =
+    dispatcherFeed?.calendar_scope === 'sales_owner' && dispatcherFeed.token
+      ? `/api/dispatcher-job-calendars/${dispatcherFeed.token}`
+      : null
+  const isDispatcherGoogleConnected = Boolean(
+    dispatcherGoogle?.calendar_scope === 'sales_owner' &&
+      dispatcherGoogle.enabled &&
+      !dispatcherGoogle.disabled_at &&
+      dispatcherGoogle.calendar_id
+  )
+  const dispatcherCalendarMessage = dispatcherCalendarStatus.startsWith('created:')
+    ? `Google kalendář byl připojen a synchronizoval ${dispatcherCalendarStatus.slice(8)} zakázek.`
+    : dispatcherCalendarStatus === 'connected'
+      ? 'Google kalendář byl úspěšně připojen.'
+      : null
 
   let request = supabase
     .from('jobs')
@@ -578,7 +652,21 @@ export default async function JobsPortalPage({
                   </div>
                 </div>
 
-                <div className="jobs-page__filter-divider flex items-center justify-end gap-2 border-t border-gray-100 pt-3">
+                <div className="jobs-page__filter-divider flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-3">
+                  {canUsePortalCalendar ? (
+                    <DispatcherCalendarButton
+                      className="basis-full w-full px-3"
+                      calendarScope="sales_owner"
+                      initiallyActivated={isDispatcherCalendarActivated}
+                      initialFeedPath={dispatcherCalendarFeedPath}
+                      initialGoogleConnected={isDispatcherGoogleConnected}
+                      initialGoogleConfigured={Boolean(
+                        process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                      )}
+                      initialMessage={dispatcherCalendarMessage}
+                      initialError={dispatcherCalendarError || null}
+                    />
+                  ) : null}
                   <JobsPortalFilterResetLink
                     href="/jobs-portal"
                     className="jobs-page__filter-reset inline-flex h-9 min-w-[132px] items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-sm font-medium uppercase text-gray-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)]"
@@ -743,6 +831,19 @@ export default async function JobsPortalPage({
                 </div>
 
                 <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:border-t-0 sm:pt-0">
+                  {canUsePortalCalendar ? (
+                    <DispatcherCalendarButton
+                      calendarScope="sales_owner"
+                      initiallyActivated={isDispatcherCalendarActivated}
+                      initialFeedPath={dispatcherCalendarFeedPath}
+                      initialGoogleConnected={isDispatcherGoogleConnected}
+                      initialGoogleConfigured={Boolean(
+                        process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                      )}
+                      initialMessage={dispatcherCalendarMessage}
+                      initialError={dispatcherCalendarError || null}
+                    />
+                  ) : null}
                   <div className="flex flex-wrap items-center gap-2 sm:contents">
                   <button
                     type="submit"

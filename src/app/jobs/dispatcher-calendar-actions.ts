@@ -7,6 +7,7 @@ import {
   ensureDispatcherJobCalendarFeed,
 } from '@/lib/jobs/dispatcher-calendar-feed'
 import { disconnectDispatcherGoogleCalendar } from '@/lib/jobs/dispatcher-google-calendar'
+import type { DispatcherCalendarScope } from '@/lib/jobs/dispatcher-calendar-scope'
 
 export type DispatcherCalendarActivationState = {
   success: boolean
@@ -21,20 +22,20 @@ export type DispatcherGoogleDisconnectState = {
   deletedCalendar?: boolean
 }
 
-export async function activateDispatcherCalendarAction(
-  _previousState: DispatcherCalendarActivationState,
-  _formData: FormData
+async function activateCalendar(
+  calendarScope: DispatcherCalendarScope
 ): Promise<DispatcherCalendarActivationState> {
-  void _previousState
-  void _formData
-
   try {
-    const { user, error } = await requireDispatcherCalendarAccess()
+    const { user, error, salesOwner } = await requireDispatcherCalendarAccess(calendarScope)
     if (!user) return { success: false, error }
 
-    const feed = await ensureDispatcherJobCalendarFeed(user.id)
-    const backfill = await backfillDispatcherJobCalendarItemsForUser(user.id)
-    revalidatePath('/jobs')
+    const feed = await ensureDispatcherJobCalendarFeed(user.id, calendarScope)
+    const backfill = await backfillDispatcherJobCalendarItemsForUser(
+      user.id,
+      calendarScope,
+      salesOwner
+    )
+    revalidatePath(calendarScope === 'sales_owner' ? '/jobs-portal' : '/jobs')
 
     return {
       success: true,
@@ -53,19 +54,33 @@ export async function activateDispatcherCalendarAction(
   }
 }
 
-export async function disconnectDispatcherGoogleCalendarAction(
-  _previousState: DispatcherGoogleDisconnectState,
+export async function activateDispatcherCalendarAction(
+  _previousState: DispatcherCalendarActivationState,
   _formData: FormData
-): Promise<DispatcherGoogleDisconnectState> {
+): Promise<DispatcherCalendarActivationState> {
   void _previousState
   void _formData
+  return activateCalendar('all_jobs')
+}
 
+export async function activatePortalJobCalendarAction(
+  _previousState: DispatcherCalendarActivationState,
+  _formData: FormData
+): Promise<DispatcherCalendarActivationState> {
+  void _previousState
+  void _formData
+  return activateCalendar('sales_owner')
+}
+
+async function disconnectGoogleCalendar(
+  calendarScope: DispatcherCalendarScope
+): Promise<DispatcherGoogleDisconnectState> {
   try {
-    const { user, error } = await requireDispatcherCalendarAccess()
+    const { user, error } = await requireDispatcherCalendarAccess(calendarScope)
     if (!user) return { success: false, error }
 
     const result = await disconnectDispatcherGoogleCalendar(user.id)
-    revalidatePath('/jobs')
+    revalidatePath(calendarScope === 'sales_owner' ? '/jobs-portal' : '/jobs')
     return {
       success: true,
       error: null,
@@ -80,4 +95,22 @@ export async function disconnectDispatcherGoogleCalendarAction(
           : 'Nepodařilo se odpojit Google kalendář.',
     }
   }
+}
+
+export async function disconnectDispatcherGoogleCalendarAction(
+  _previousState: DispatcherGoogleDisconnectState,
+  _formData: FormData
+): Promise<DispatcherGoogleDisconnectState> {
+  void _previousState
+  void _formData
+  return disconnectGoogleCalendar('all_jobs')
+}
+
+export async function disconnectPortalJobGoogleCalendarAction(
+  _previousState: DispatcherGoogleDisconnectState,
+  _formData: FormData
+): Promise<DispatcherGoogleDisconnectState> {
+  void _previousState
+  void _formData
+  return disconnectGoogleCalendar('sales_owner')
 }

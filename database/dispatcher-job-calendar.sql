@@ -4,10 +4,17 @@ create table if not exists public.dispatcher_job_calendar_feeds (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   token text not null unique default encode(gen_random_bytes(24), 'hex'),
   enabled boolean not null default true,
+  calendar_scope text not null default 'all_jobs',
   disabled_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.dispatcher_job_calendar_feeds
+  drop constraint if exists dispatcher_job_calendar_feeds_scope_check;
+alter table public.dispatcher_job_calendar_feeds
+  add constraint dispatcher_job_calendar_feeds_scope_check
+  check (calendar_scope in ('all_jobs', 'sales_owner'));
 
 create table if not exists public.dispatcher_job_calendar_items (
   job_id uuid not null,
@@ -31,12 +38,19 @@ create table if not exists public.dispatcher_job_google_calendar_integrations (
   refresh_token text not null,
   calendar_id text,
   calendar_name text not null default 'B-ENERGY VSECHNY ZAKAZKY',
+  calendar_scope text not null default 'all_jobs',
   enabled boolean not null default true,
   disabled_at timestamptz,
   connected_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.dispatcher_job_google_calendar_integrations
+  drop constraint if exists dispatcher_job_google_calendar_integrations_scope_check;
+alter table public.dispatcher_job_google_calendar_integrations
+  add constraint dispatcher_job_google_calendar_integrations_scope_check
+  check (calendar_scope in ('all_jobs', 'sales_owner'));
 
 create unique index if not exists dispatcher_job_google_calendar_integrations_google_sub_idx
   on public.dispatcher_job_google_calendar_integrations (google_sub)
@@ -60,6 +74,14 @@ create table if not exists public.dispatcher_job_google_calendar_items (
 
 create index if not exists dispatcher_job_google_calendar_items_user_id_idx
   on public.dispatcher_job_google_calendar_items (user_id, is_cancelled, updated_at desc);
+
+create index if not exists dispatcher_job_calendar_feeds_active_scope_idx
+  on public.dispatcher_job_calendar_feeds (calendar_scope, user_id)
+  where enabled = true and disabled_at is null;
+
+create index if not exists dispatcher_job_google_calendar_integrations_active_scope_idx
+  on public.dispatcher_job_google_calendar_integrations (calendar_scope, user_id)
+  where enabled = true and disabled_at is null;
 
 create or replace function public.touch_updated_at()
 returns trigger

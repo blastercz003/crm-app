@@ -10,6 +10,7 @@ import { CreateJobModal } from '@/app/jobs/new-job-button'
 import { NewOfferModal } from '@/app/offers/new-offer-button'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ActivityFormModal } from '@/app/activities/new-activity-button'
+import { StickyNoteFormModal } from '@/app/activities/sticky-notes-workspace'
 import { createManualActivityAction } from '@/app/activities/actions'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
 import { ModalHeading } from '@/components/ui/modal-heading'
@@ -85,6 +86,7 @@ type OfferOption = {
 
 type QuickActionKey =
   | 'activity'
+  | 'sticky_note'
   | 'meeting'
   | 'task'
   | 'offer'
@@ -1204,7 +1206,7 @@ export function DashboardMobileQuickActions({
       addActivityLog: true,
     })
 
-    const requiresOptions = ['activity', 'client', 'task', 'meeting', 'job', 'offer'].includes(action)
+    const requiresOptions = ['activity', 'sticky_note', 'client', 'task', 'meeting', 'job', 'offer'].includes(action)
 
     if (requiresOptions && !(await ensureQuickActionOptions())) {
       return
@@ -1286,6 +1288,11 @@ export function DashboardMobileQuickActions({
     {
       key: 'activity' as const,
       label: 'AKTIVITA',
+      visible: canViewActivities,
+    },
+    {
+      key: 'sticky_note' as const,
+      label: 'LÍSTEČEK',
       visible: canViewActivities,
     },
     {
@@ -2136,6 +2143,22 @@ export function DashboardMobileQuickActions({
             handleActionSuccess({
               title: 'AKTIVITA ULOŽENA',
               message: 'Záznam byl přidán do historie aktivit.',
+              tone: 'success',
+            })
+          }}
+        />
+      ) : null}
+
+      {activeAction === 'sticky_note' ? (
+        <StickyNoteFormModal
+          clients={clients}
+          note={null}
+          onClose={() => setActiveAction(null)}
+          onSaved={() => {
+            setActiveAction(null)
+            handleActionSuccess({
+              title: 'LÍSTEČEK VYTVOŘEN',
+              message: 'Lísteček byl vytvořen.',
               tone: 'success',
             })
           }}

@@ -2,8 +2,6 @@ import { getDispatcherJobCalendarFeedByToken } from '@/lib/jobs/dispatcher-calen
 
 export const dynamic = 'force-dynamic'
 
-const CALENDAR_FILENAME = 'B-ENERGY-VSECHNY-ZAKAZKY.ics'
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -16,6 +14,14 @@ export async function GET(
       return new Response('Kalendář nebyl nalezen.', { status: 404 })
     }
 
+    const isPersonal = feed.feed.calendar_scope === 'sales_owner'
+    const calendarFilename = isPersonal
+      ? 'B-ENERGY-MOJE-ZAKAZKY.ics'
+      : 'B-ENERGY-VSECHNY-ZAKAZKY.ics'
+    const calendarName = isPersonal
+      ? 'B-ENERGY MOJE ZAKAZKY'
+      : 'B-ENERGY VSECHNY ZAKAZKY'
+
     return new Response(feed.ics, {
       status: 200,
       headers: {
@@ -23,8 +29,8 @@ export async function GET(
         'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
         Pragma: 'no-cache',
         Expires: '0',
-        'Content-Disposition': `inline; filename="${CALENDAR_FILENAME}"`,
-        'X-WR-CALNAME': 'B-ENERGY VSECHNY ZAKAZKY',
+        'Content-Disposition': `inline; filename="${calendarFilename}"`,
+        'X-WR-CALNAME': calendarName,
       },
     })
   } catch (error) {
