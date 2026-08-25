@@ -334,7 +334,7 @@ export function StickyNoteFormModal({
             </div>
             <p className="mt-2 text-[11px] leading-4 text-zinc-500 sm:hidden">Připomenutí přijde 15 minut před termínem.</p>
 
-            {reminderEnabled ? <label className="activities-modal__label mt-4 block text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500">Termín Lístečku<input type="datetime-local" name="reminder_at" required defaultValue={toLocalDateTimeInput(note?.reminder_at ?? null)} className="activities-modal__input mt-2 w-full rounded-xl border border-zinc-200 bg-white/85 px-4 py-3 text-sm font-normal normal-case tracking-normal text-zinc-900 outline-none focus:border-[#6fa9d1] focus:ring-2 focus:ring-[#b9d8ef]/55" /></label> : null}
+            {reminderEnabled ? <label className="activities-modal__label mt-4 block min-w-0 max-w-full text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500">Termín Lístečku<input type="datetime-local" name="reminder_at" required defaultValue={toLocalDateTimeInput(note?.reminder_at ?? null)} className="activities-modal__input activities-modal__datetime-input mt-2 block min-w-0 max-w-full appearance-none rounded-xl border border-zinc-200 bg-white/85 px-4 text-sm font-normal normal-case tracking-normal text-zinc-900 outline-none focus:border-[#6fa9d1] focus:ring-2 focus:ring-[#b9d8ef]/55" /></label> : null}
 
             {state.error ? <div role="alert" className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{state.error}</div> : null}
 
