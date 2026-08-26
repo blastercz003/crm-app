@@ -18,6 +18,7 @@ import { finalizeTechnicianInputValue } from '@/lib/jobs/technicians'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { requestModalMotionClose, useModalMotionClose } from '@/components/ui/modal-motion'
 
 type JobStatus =
   | 'nova'
@@ -1802,7 +1803,7 @@ function JobStatusModal({
   options,
   canEdit,
   isPending,
-  onClose,
+  onClose: closeImmediately,
   onSaveStatus,
 }: {
   jobNumber: string
@@ -1813,10 +1814,12 @@ function JobStatusModal({
   onClose: () => void
   onSaveStatus: (status: JobStatus) => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const title = canEdit ? 'Změnit stav zakázky:' : 'Stav zakázky:'
 
   const modalContent = (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[120] bg-zinc-950/48 p-3 backdrop-blur-sm sm:p-4 print:hidden"
       role="dialog"
       aria-modal="true"
@@ -1827,7 +1830,7 @@ function JobStatusModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div data-modal-motion-surface className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
@@ -1873,7 +1876,7 @@ function JobStatusModal({
                     key={option.value}
                     type="button"
                     disabled={isPending}
-                    onClick={() => onSaveStatus(option.value)}
+                    onClick={() => requestModalMotionClose(() => onSaveStatus(option.value))}
                     data-status={option.value}
                     className="jobs-page__status-option flex w-full items-center justify-end rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -2017,7 +2020,7 @@ function EvidenceStatusModal({
   options,
   canEdit,
   isPending,
-  onClose,
+  onClose: closeImmediately,
   onSaveEvidenceStatus,
 }: {
   jobNumber: string
@@ -2027,10 +2030,12 @@ function EvidenceStatusModal({
   onClose: () => void
   onSaveEvidenceStatus: (status: EvidenceStatus) => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const title = canEdit ? 'Změnit stav evidence:' : 'Stav evidence:'
 
   const modalContent = (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[120] bg-zinc-950/48 p-3 backdrop-blur-sm sm:p-4 print:hidden"
       role="dialog"
       aria-modal="true"
@@ -2041,7 +2046,7 @@ function EvidenceStatusModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div data-modal-motion-surface className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
@@ -2072,7 +2077,7 @@ function EvidenceStatusModal({
                     key={option.value}
                     type="button"
                     disabled={isPending}
-                    onClick={() => onSaveEvidenceStatus(option.value)}
+                    onClick={() => requestModalMotionClose(() => onSaveEvidenceStatus(option.value))}
                     data-status={option.value}
                     className="jobs-page__evidence-option flex w-full items-center justify-between rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.84)_100%)] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-out hover:-translate-y-[1px] hover:border-[#c8dced] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_9px_14px_rgba(15,23,42,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -2114,7 +2119,7 @@ function ModalShell({
   description,
   descriptionAsBadge = false,
   showHeaderDivider = true,
-  onClose,
+  onClose: closeImmediately,
   children,
 }: {
   title: string
@@ -2124,6 +2129,7 @@ function ModalShell({
   onClose: () => void
   children: React.ReactNode
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -2135,6 +2141,7 @@ function ModalShell({
 
   const modalContent = (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px] print:hidden"
       role="dialog"
       aria-modal="true"
@@ -2145,7 +2152,7 @@ function ModalShell({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-5 shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)]">
+        <div data-modal-motion-surface className="jobs-page__modal-shell relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] p-5 shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)]">
           <div
             className={`jobs-page__modal-header mb-4 flex items-start justify-between gap-4 ${
               showHeaderDivider ? 'border-b border-gray-100 pb-4' : ''

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   getTechnicianAvailabilityDataAction,
@@ -170,7 +171,8 @@ export function TechnicianAvailabilityButton({
   )
 }
 
-function TechnicianAvailabilityModal({ onClose }: { onClose: () => void }) {
+function TechnicianAvailabilityModal({ onClose: closeImmediately }: { onClose: () => void }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [data, setData] = useState<TechnicianAvailabilityData | null>(null)
   const [selectedFriday, setSelectedFriday] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -309,8 +311,8 @@ function TechnicianAvailabilityModal({ onClose }: { onClose: () => void }) {
     (Boolean(data?.canManage) || entry.technician_id === data?.currentUserId)
 
   const modalContent = (
-    <div className="fixed inset-0 z-[170] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-[2px] sm:p-6" role="dialog" aria-modal="true" aria-labelledby="technician-availability-title">
-      <div className="jobs-page__modal-shell technician-availability-modal flex h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,248,252,0.95)_52%,rgba(233,242,249,0.92)_100%)] shadow-[0_28px_70px_rgba(15,23,42,0.28)] sm:h-[min(760px,calc(100dvh-3rem))]">
+    <div data-modal-motion-root className="fixed inset-0 z-[170] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-[2px] sm:p-6" role="dialog" aria-modal="true" aria-labelledby="technician-availability-title">
+      <div data-modal-motion-surface className="jobs-page__modal-shell technician-availability-modal flex h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.98)_0%,rgba(244,248,252,0.95)_52%,rgba(233,242,249,0.92)_100%)] shadow-[0_28px_70px_rgba(15,23,42,0.28)] sm:h-[min(760px,calc(100dvh-3rem))]">
         <header className="jobs-page__modal-header flex items-start justify-between gap-4 border-b border-white/80 px-5 py-5 sm:px-7 sm:py-6">
           <ModalHeading section="ZAKÁZKY" title="POHOTOVOST A DOSTUPNOST" id="technician-availability-title" />
           <button type="button" onClick={onClose} aria-label="Zavřít" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/85 bg-white/85 text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_7px_16px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px] hover:text-slate-900">

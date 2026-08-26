@@ -8,6 +8,7 @@ import {
 } from './actions'
 import { MeetingForm } from '@/components/meetings/meeting-form'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 
 type ClientOption = {
   id: string
@@ -115,7 +116,7 @@ function EditMeetingModal({
   meeting,
   clients,
   contacts,
-  onClose,
+  onClose: closeImmediately,
   onSaved,
 }: {
   meeting: MeetingFormValues
@@ -124,6 +125,7 @@ function EditMeetingModal({
   onClose: () => void
   onSaved?: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(
     updateMeetingModalAction,
     initialUpdateState
@@ -147,6 +149,7 @@ function EditMeetingModal({
 
   const modalContent = (
     <div
+      data-modal-motion-root
       className="meetings-modal__overlay fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -157,7 +160,7 @@ function EditMeetingModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="standard-form-modal__shell meetings-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[900px] flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] will-change-transform transform-gpu lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
+        <div data-modal-motion-surface className="standard-form-modal__shell meetings-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[900px] flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] will-change-transform transform-gpu lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
           <div
             aria-hidden="true"
             className="meetings-modal__shell-frame pointer-events-none absolute inset-0 rounded-3xl border border-white/65"

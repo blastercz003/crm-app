@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { OperationalProtocolDraftInput } from '@/lib/operational-protocols/types'
@@ -211,7 +212,7 @@ function OperationalProtocolsModal({
   onTabChange,
   draft,
   onDraftChange,
-  onClose,
+  onClose: closeImmediately,
   isGenerating,
   generationError,
   generatedProtocol,
@@ -235,8 +236,11 @@ function OperationalProtocolsModal({
   onCancelClose: () => void
   onConfirmClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
+  const cancelCloseConfirmation = useModalMotionClose(onCancelClose, 'confirmation')
   return (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[150] overflow-y-auto bg-zinc-950/42 p-2 backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -246,7 +250,7 @@ function OperationalProtocolsModal({
       }}
     >
       <div className="mx-auto flex min-h-full w-full max-w-[1180px] items-start justify-center py-1 sm:items-center sm:py-0">
-        <div className="flex max-h-[calc(100dvh-1rem)] min-h-[min(720px,calc(100dvh-1rem))] w-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(244,248,252,0.96)_100%)] shadow-[0_36px_84px_rgba(24,24,27,0.3)] sm:max-h-[calc(100dvh-2rem)] sm:min-h-[min(720px,calc(100dvh-2rem))] sm:rounded-[30px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(12,20,34,0.99)_0%,rgba(8,15,27,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.5)]">
+        <div data-modal-motion-surface className="flex max-h-[calc(100dvh-1rem)] min-h-[min(720px,calc(100dvh-1rem))] w-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.98)_0%,rgba(244,248,252,0.96)_100%)] shadow-[0_36px_84px_rgba(24,24,27,0.3)] sm:max-h-[calc(100dvh-2rem)] sm:min-h-[min(720px,calc(100dvh-2rem))] sm:rounded-[30px] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(12,20,34,0.99)_0%,rgba(8,15,27,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.5)]">
           <header className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200/75 px-4 py-4 sm:px-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.14)]">
             <ModalHeading
               section="FAKTURY"
@@ -332,16 +336,18 @@ function OperationalProtocolsModal({
 
       {showCloseConfirmation ? (
         <div
+          data-modal-motion-root
+          data-modal-motion-profile="confirmation"
           className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/35 p-4 backdrop-blur-[3px]"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="operational-protocol-close-title"
           aria-describedby="operational-protocol-close-description"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) onCancelClose()
+            if (event.target === event.currentTarget) cancelCloseConfirmation()
           }}
         >
-          <div className="w-full max-w-[500px] rounded-[28px] border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.99)_0%,rgba(239,247,252,0.98)_100%)] p-5 shadow-[0_28px_70px_rgba(15,23,42,0.32)] sm:p-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,25,42,0.99)_0%,rgba(8,16,29,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_30px_74px_rgba(0,0,0,0.58)]">
+          <div data-modal-motion-surface className="w-full max-w-[500px] rounded-[28px] border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.99)_0%,rgba(239,247,252,0.98)_100%)] p-5 shadow-[0_28px_70px_rgba(15,23,42,0.32)] sm:p-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,25,42,0.99)_0%,rgba(8,16,29,0.99)_100%)] [html[data-theme='dark']_&]:shadow-[0_30px_74px_rgba(0,0,0,0.58)]">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2676a8] [html[data-theme='dark']_&]:text-[#8fd3f7]">
               ROZPRACOVANÝ PROTOKOL
             </p>
@@ -369,7 +375,7 @@ function OperationalProtocolsModal({
               </button>
               <button
                 type="button"
-                onClick={onCancelClose}
+                onClick={cancelCloseConfirmation}
                 autoFocus
                 className="h-11 rounded-2xl border border-zinc-200 bg-white/85 px-5 text-xs font-semibold text-zinc-700 shadow-sm transition duration-200 hover:-translate-y-[1px] hover:text-zinc-950 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[rgba(15,25,42,0.9)] [html[data-theme='dark']_&]:text-slate-200 [html[data-theme='dark']_&:hover]:text-white"
               >

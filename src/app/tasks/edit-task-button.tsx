@@ -9,6 +9,7 @@ import {
 } from './actions'
 import TaskForm from './TaskForm'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 
 type UserOption = {
   id: string
@@ -129,7 +130,7 @@ function EditTaskModal({
   clients,
   contacts,
   action,
-  onClose,
+  onClose: closeImmediately,
   onSaved,
 }: {
   task: TaskFormValues
@@ -143,6 +144,7 @@ function EditTaskModal({
   onClose: () => void
   onSaved?: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(action, initialUpdateState)
   const deleteTaskAction = useMemo(() => deleteTask.bind(null, task.id), [task.id])
 
@@ -164,6 +166,7 @@ function EditTaskModal({
 
   return (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -174,7 +177,7 @@ function EditTaskModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="standard-form-modal__shell clients-modal__shell tasks-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
+        <div data-modal-motion-surface className="standard-form-modal__shell clients-modal__shell tasks-modal__shell relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl border border-gray-200/95 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] lg:shadow-[0_40px_96px_rgba(24,24,27,0.38)] sm:max-h-[calc(100dvh-2rem)]">
           <span
             aria-hidden
             className="clients-modal__shell-frame tasks-modal__shell-frame pointer-events-none absolute inset-0 rounded-3xl border border-white/65"

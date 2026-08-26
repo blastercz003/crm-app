@@ -14,6 +14,7 @@ import { StickyNoteFormModal } from '@/app/activities/sticky-notes-workspace'
 import { createManualActivityAction } from '@/app/activities/actions'
 import { ReceivedInvoicesModal } from '@/components/dashboard/received-invoices-modal'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import {
   clearMyDashboardQuickNoteAction,
   upsertMyDashboardQuickNoteAction,
@@ -372,7 +373,7 @@ function ManualNotificationModal({
   users,
   historyItems,
   historyLoading,
-  onClose,
+  onClose: closeImmediately,
   onSent,
   onResent,
 }: {
@@ -383,6 +384,7 @@ function ManualNotificationModal({
   onSent: (sentCount: number) => Promise<void> | void
   onResent: (sentCount: number) => Promise<void> | void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [includeTechnicians, setIncludeTechnicians] = useState(false)
   const [title, setTitle] = useState('')
@@ -440,7 +442,7 @@ function ManualNotificationModal({
   }
 
   return (
-    <div className="manual-notifications-modal fixed inset-0 z-[110] hidden lg:block">
+    <div data-modal-motion-root className="manual-notifications-modal fixed inset-0 z-[110] hidden lg:block">
       <button
         type="button"
         aria-label="Zavřít ruční notifikace"
@@ -449,7 +451,7 @@ function ManualNotificationModal({
       />
 
       <div className="absolute inset-0 overflow-y-auto p-4">
-        <div className="manual-notifications-modal__shell mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
+        <div data-modal-motion-surface className="manual-notifications-modal__shell mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
           <div className="manual-notifications-modal__header mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <ModalHeading section="Dashboard" title="Ruční notifikace" />
 

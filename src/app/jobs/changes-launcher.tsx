@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { requestModalMotionClose } from '@/components/ui/modal-motion'
 import { ChangesButton } from './changes-button'
 import {
   getJobsChangesModalDataAction,
@@ -77,11 +78,13 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
   }
 
   function closeModal() {
-    setMarkedChanges({})
-    setIsConfirmOpen(false)
-    setIsHelpOpen(false)
-    setConfirmError(null)
-    setIsOpen(false)
+    requestModalMotionClose(() => {
+      setMarkedChanges({})
+      setIsConfirmOpen(false)
+      setIsHelpOpen(false)
+      setConfirmError(null)
+      setIsOpen(false)
+    })
   }
 
   useEffect(() => {
@@ -147,7 +150,7 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
       setMarkedChanges({})
       setIsConfirmOpen(false)
       await reloadData()
-      setIsOpen(false)
+      requestModalMotionClose(() => setIsOpen(false))
     })
   }
 
@@ -159,6 +162,7 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
 
   const modalContent = isOpen ? (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[160] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
@@ -171,6 +175,7 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
+          data-modal-motion-surface
           className="jobs-page__modal-shell jobs-page__changes-modal relative flex w-full max-w-[1200px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)] xl:h-[min(640px,calc(100dvh-4rem))]"
           style={{
             maxHeight:
@@ -331,8 +336,8 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
           </footer>
 
           {isHelpOpen && typeof document !== 'undefined' ? createPortal(
-            <div className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]">
-              <div className="clients-modal__shell flex max-h-[min(80dvh,720px)] w-full max-w-[720px] flex-col overflow-hidden rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(245,250,255,0.95)_52%,rgba(224,242,254,0.9)_100%)] shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
+            <div data-modal-motion-root className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]">
+              <div data-modal-motion-surface className="clients-modal__shell flex max-h-[min(80dvh,720px)] w-full max-w-[720px] flex-col overflow-hidden rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(245,250,255,0.95)_52%,rgba(224,242,254,0.9)_100%)] shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
                 <header className="flex shrink-0 items-start justify-between gap-4 border-b border-sky-100/90 px-5 py-4 [html[data-theme='dark']_&]:border-sky-300/10 sm:px-6 sm:py-5">
                   <ModalHeading
                     section="ZAKÁZKY"
@@ -340,7 +345,7 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
                   />
                   <button
                     type="button"
-                    onClick={() => setIsHelpOpen(false)}
+                    onClick={() => requestModalMotionClose(() => setIsHelpOpen(false))}
                     aria-label="Zavřít nápovědu"
                     className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/90 bg-white/85 text-sm font-semibold text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_8px_18px_rgba(39,39,42,0.1)] transition duration-200 hover:-translate-y-[1px] hover:text-zinc-900 [html[data-theme='dark']_&]:border-slate-400/18 [html[data-theme='dark']_&]:bg-slate-950/70 [html[data-theme='dark']_&]:text-slate-300 [html[data-theme='dark']_&]:hover:text-white"
                   >
@@ -401,8 +406,8 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
           ) : null}
 
           {isConfirmOpen && typeof document !== 'undefined' ? createPortal(
-            <div className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
-              <div className="clients-modal__shell w-full max-w-md rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(239,248,255,0.94)_56%,rgba(224,242,254,0.9)_100%)] p-5 shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
+            <div data-modal-motion-root data-modal-motion-profile="confirmation" className="fixed inset-0 z-[170] flex items-center justify-center bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
+              <div data-modal-motion-surface className="clients-modal__shell w-full max-w-md rounded-[28px] border border-sky-200/80 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(239,248,255,0.94)_56%,rgba(224,242,254,0.9)_100%)] p-5 shadow-[0_28px_64px_rgba(24,78,129,0.24)] [html[data-theme='dark']_&]:border-sky-300/16 [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(15,23,42,0.99)_0%,rgba(13,25,42,0.97)_52%,rgba(15,36,55,0.95)_100%)] [html[data-theme='dark']_&]:shadow-[0_28px_64px_rgba(0,0,0,0.44)]">
                 <div className="space-y-2">
                   <ModalHeading
                     section="ZAKÁZKY"
@@ -425,8 +430,10 @@ export function ChangesLauncher({ initialCount, className }: ChangesLauncherProp
                     type="button"
                     onClick={() => {
                       if (isSaving) return
-                      setIsConfirmOpen(false)
-                      setConfirmError(null)
+                      requestModalMotionClose(() => {
+                        setIsConfirmOpen(false)
+                        setConfirmError(null)
+                      }, 'confirmation')
                     }}
                     disabled={isSaving}
                     className="inline-flex items-center justify-center rounded-2xl border border-red-500/90 bg-[linear-gradient(155deg,rgba(239,68,68,0.96)_0%,rgba(220,38,38,0.96)_100%)] px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(185,28,28,0.24)] transition duration-200 hover:-translate-y-[1px] hover:border-red-400 hover:bg-[linear-gradient(155deg,rgba(248,86,86,0.98)_0%,rgba(230,45,45,0.98)_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_13px_26px_rgba(185,28,28,0.3)] [html[data-theme='dark']_&]:border-red-400/24 [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(62,19,27,0.84)_0%,rgba(50,14,24,0.9)_100%)] [html[data-theme='dark']_&]:text-red-200 [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_22px_rgba(0,0,0,0.24)] disabled:pointer-events-none disabled:opacity-60"

@@ -10,6 +10,7 @@ import {
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 
 type ClientOption = {
   id: string
@@ -101,7 +102,7 @@ function CopyOfferModal({
   offerNumber,
   clients,
   contacts,
-  onClose,
+  onClose: closeImmediately,
 }: {
   offerId: string
   offerNumber: string
@@ -109,6 +110,7 @@ function CopyOfferModal({
   contacts: ClientContactOption[]
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const router = useRouter()
   const [state, formAction] = useActionState(
     duplicateOfferModalAction,
@@ -227,6 +229,7 @@ function CopyOfferModal({
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[100] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -237,7 +240,7 @@ function CopyOfferModal({
       }}
     >
       <div className="flex min-h-full items-start justify-center py-3 sm:items-center sm:py-4">
-        <div className="standard-form-modal__shell clients-modal__shell relative flex w-full flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div data-modal-motion-surface className="standard-form-modal__shell clients-modal__shell relative flex w-full flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden className="clients-modal__shell-frame pointer-events-none absolute inset-0 rounded-[30px] border border-white/65" />
           <div aria-hidden className="clients-modal__shell-sheen pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95" />
           <div aria-hidden className="clients-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]" />

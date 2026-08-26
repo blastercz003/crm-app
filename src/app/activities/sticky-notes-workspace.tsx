@@ -26,6 +26,7 @@ import {
 import { ActionFeedbackToast, useAnimatedActionToast } from '@/components/ui/action-feedback-toast'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { requestModalMotionClose, useModalMotionClose } from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { ActivityClientOption } from '@/lib/activities/types'
 import {
@@ -131,6 +132,7 @@ export function StickyNoteFormModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const requestClose = useModalMotionClose(onClose)
   const updateAction = useMemo(
     () => note
       ? updateStickyNoteAction.bind(null, note.id) as StickyFormAction
@@ -226,24 +228,24 @@ export function StickyNoteFormModal({
   }
 
   useEffect(() => {
-    if (state.success) onSaved()
+    if (state.success) requestModalMotionClose(onSaved)
   }, [onSaved, state.success])
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') requestClose()
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [onClose])
+  }, [requestClose])
 
   return (
-    <div className="activities-sticky-form fixed inset-0 z-[145] overflow-y-auto bg-zinc-950/42 p-3 backdrop-blur-[5px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="sticky-form-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <div data-modal-motion-root className="activities-sticky-form fixed inset-0 z-[145] overflow-y-auto bg-zinc-950/42 p-3 backdrop-blur-[5px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="sticky-form-title" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
       <div className="flex min-h-full items-center justify-center py-3 sm:py-5">
-        <section className="activities-sticky-form__shell w-full max-w-2xl overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.98)_0%,rgba(249,250,251,0.96)_48%,rgba(244,244,245,0.94)_100%)] shadow-[0_34px_88px_rgba(24,24,27,0.38)]">
+        <section data-modal-motion-surface className="activities-sticky-form__shell w-full max-w-2xl overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.98)_0%,rgba(249,250,251,0.96)_48%,rgba(244,244,245,0.94)_100%)] shadow-[0_34px_88px_rgba(24,24,27,0.38)]">
           <header className="activities-sticky-form__header flex items-start justify-between gap-4 border-b border-zinc-200/75 px-5 py-4 sm:px-6">
             <ModalHeading id="sticky-form-title" section="LÍSTEČKY" title={note ? 'Upravit Lísteček' : 'Nový Lísteček'} />
-            <button type="button" onClick={onClose} aria-label="Zavřít" className="activities-modal__close activities-sticky__secondary inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600 shadow-sm transition hover:-translate-y-px hover:border-[#9dc7e5] hover:bg-white hover:text-zinc-900"><X aria-hidden size={18} /></button>
+            <button type="button" onClick={requestClose} aria-label="Zavřít" className="activities-modal__close activities-sticky__secondary inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600 shadow-sm transition hover:-translate-y-px hover:border-[#9dc7e5] hover:bg-white hover:text-zinc-900"><X aria-hidden size={18} /></button>
           </header>
           <form action={formAction} className="px-5 py-5 sm:px-6">
             <input type="hidden" name="color" value={color} />
@@ -755,12 +757,13 @@ function NotesManagerModal({
   onConvert: Parameters<typeof NoteCard>[0]['onConvert']
   armedNoteAction: ArmedNoteAction
 }) {
+  const requestClose = useModalMotionClose(onClose)
   useBodyScrollLock(true)
   useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) { if (event.key === 'Escape') onClose() }
+    function closeOnEscape(event: KeyboardEvent) { if (event.key === 'Escape') requestClose() }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [onClose])
+  }, [requestClose])
 
   const tabs: Array<{ value: StickyNoteView; label: string; count: number }> = [
     { value: 'active', label: 'Aktivní', count: counts.active },
@@ -781,9 +784,9 @@ function NotesManagerModal({
   }
 
   return (
-    <div className="activities-sticky-manager fixed inset-0 z-[135] overflow-hidden overscroll-none bg-zinc-950/42 p-3 backdrop-blur-[5px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="sticky-manager-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <div className="flex h-full min-h-0 items-center justify-center"><section className="activities-sticky-manager__shell flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.98)_0%,rgba(249,250,251,0.96)_48%,rgba(244,244,245,0.94)_100%)] shadow-[0_34px_88px_rgba(24,24,27,0.38)]">
-        <header className="activities-sticky-manager__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200/75 px-5 py-4 sm:px-6"><div><ModalHeading id="sticky-manager-title" section="SOUKROMÁ PRACOVNÍ PLOCHA" title="Lístečky" /><p className="mt-1.5 text-xs text-zinc-500">Zobrazeno {items.length} z {total}</p></div><button type="button" onClick={onClose} aria-label="Zavřít" className="activities-sticky__secondary inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600"><X aria-hidden size={18} /></button></header>
+    <div data-modal-motion-root className="activities-sticky-manager fixed inset-0 z-[135] overflow-hidden overscroll-none bg-zinc-950/42 p-3 backdrop-blur-[5px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="sticky-manager-title" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
+      <div className="flex h-full min-h-0 items-center justify-center"><section data-modal-motion-surface className="activities-sticky-manager__shell flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.98)_0%,rgba(249,250,251,0.96)_48%,rgba(244,244,245,0.94)_100%)] shadow-[0_34px_88px_rgba(24,24,27,0.38)]">
+        <header className="activities-sticky-manager__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200/75 px-5 py-4 sm:px-6"><div><ModalHeading id="sticky-manager-title" section="SOUKROMÁ PRACOVNÍ PLOCHA" title="Lístečky" /><p className="mt-1.5 text-xs text-zinc-500">Zobrazeno {items.length} z {total}</p></div><button type="button" onClick={requestClose} aria-label="Zavřít" className="activities-sticky__secondary inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600"><X aria-hidden size={18} /></button></header>
         <nav className="flex shrink-0 gap-2 overflow-x-auto border-b border-zinc-200/75 px-5 py-3 sm:px-6" aria-label="Zobrazení Lístečků">{tabs.map((tab) => <button key={tab.value} type="button" onClick={() => onView(tab.value)} aria-pressed={view === tab.value} className={`activities-sticky__tab inline-flex h-9 items-center gap-2 rounded-xl border px-4 text-xs font-semibold ${view === tab.value ? 'activities-sticky__tab--active' : ''}`}>{tab.label}<span>{tab.count}</span></button>)}</nav>
         <div onScroll={handleItemsScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
           {pending ? <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500"><LoaderCircle aria-hidden size={17} className="animate-spin" /> Načítám Lístečky…</div> : items.length ? (

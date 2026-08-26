@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { toggleOfferPresetItem } from '@/app/offers/actions'
 import { OFFER_SERVICE_GROUP_LABEL } from '@/lib/offers/presets'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { requestModalMotionClose } from '@/components/ui/modal-motion'
 
 type OfferServicesModalProps = {
   offerId: string
@@ -51,6 +52,7 @@ export function OfferServicesModal({
   selectedServices,
 }: OfferServicesModalProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const closeModal = () => requestModalMotionClose(() => setIsOpen(false))
   const selectedServiceSet = new Set(selectedServices)
 
   return (
@@ -95,17 +97,18 @@ export function OfferServicesModal({
 
       {isOpen ? (
         <div
+          data-modal-motion-root
           className="offers-detail-page__services-modal-overlay fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
           aria-modal="true"
           role="dialog"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setIsOpen(false)
+              closeModal()
             }
           }}
         >
           <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center">
-            <div className="offers-detail-page__services-modal-shell flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(249,252,255,0.82)_50%,rgba(245,250,255,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_36px_84px_rgba(24,24,27,0.32)]">
+            <div data-modal-motion-surface className="offers-detail-page__services-modal-shell flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(249,252,255,0.82)_50%,rgba(245,250,255,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_30px_72px_rgba(24,24,27,0.28)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_36px_84px_rgba(24,24,27,0.32)]">
               <div className="offers-detail-page__services-modal-header flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
                 <div>
                   <ModalHeading section="NABÍDKY" title="Upravit služby" />
@@ -115,7 +118,7 @@ export function OfferServicesModal({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeModal}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(241,245,250,0.86)_100%)] text-lg text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_8px_18px_rgba(15,23,42,0.1)] transition duration-200 ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_11px_22px_rgba(15,23,42,0.14)]"
                   aria-label="Zavřít modal"
                 >
@@ -161,7 +164,7 @@ export function OfferServicesModal({
               <div className="offers-detail-page__services-modal-footer border-t border-[#d8e4ef] px-4 py-4 sm:px-6">
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeModal}
                   className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-900 px-5 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
                 >
                   Zavřít

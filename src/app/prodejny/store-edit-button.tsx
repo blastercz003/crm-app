@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { updateStoreAction, type UpdateStoreFormState } from './actions'
 
 type StoreEditButtonProps = {
@@ -76,7 +77,7 @@ function StoreEditModal({
   state,
   onSubmit,
   isPending,
-  onClose,
+  onClose: closeImmediately,
 }: {
   store: StoreEditButtonProps['store']
   state: UpdateStoreFormState
@@ -84,6 +85,7 @@ function StoreEditModal({
   isPending: boolean
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   useBodyScrollLock(true)
 
   useEffect(() => {
@@ -99,6 +101,7 @@ function StoreEditModal({
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       aria-modal="true"
       role="dialog"
@@ -109,7 +112,7 @@ function StoreEditModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center">
-        <div className="stores-page__modal flex max-h-[calc(100vh-2rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+        <div data-modal-motion-surface className="stores-page__modal flex max-h-[calc(100vh-2rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
             <div>
               <ModalHeading section="PRODEJNY" title="Upravit prodejnu" />

@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import {
   createVehicleLogbookEntryAction,
   type CreateVehicleLogbookEntryState,
@@ -28,8 +29,9 @@ function NewTripModal({
   vehicleLabel,
   currentOdometerKm,
   today,
-  onClose,
+  onClose: closeImmediately,
 }: NewTripButtonProps & { onClose: () => void }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction, pending] = useActionState(
     createVehicleLogbookEntryAction,
     createVehicleLogbookEntryInitialState
@@ -81,6 +83,7 @@ function NewTripModal({
 
   return (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-zinc-950/45 p-3 backdrop-blur-[5px] sm:p-5"
       role="dialog"
       aria-modal="true"
@@ -89,7 +92,7 @@ function NewTripModal({
         if (event.target === event.currentTarget && !pending) onClose()
       }}
     >
-      <div className="vehicle-logbook-page__modal vehicle-logbook-page__trip-modal my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(245,248,251,0.94)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)] sm:max-h-[calc(100dvh-2.5rem)]">
+      <div data-modal-motion-surface className="vehicle-logbook-page__modal vehicle-logbook-page__trip-modal my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(245,248,251,0.94)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.3)] sm:max-h-[calc(100dvh-2.5rem)]">
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <ModalHeading

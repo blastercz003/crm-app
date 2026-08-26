@@ -11,6 +11,10 @@ import {
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import {
+  requestModalMotionClose,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { OfferOrderModal } from './offer-order-modal'
 
 const STATUS_BADGE_WIDTH_CLASS = 'w-[150px]'
@@ -127,8 +131,10 @@ export function OfferStatusButton({
       return
     }
     if (nextStatus === 'ordered') {
-      setIsOpen(false)
-      setIsOrderModalOpen(true)
+      requestModalMotionClose(() => {
+        setIsOpen(false)
+        setIsOrderModalOpen(true)
+      })
       return
     }
 
@@ -136,7 +142,7 @@ export function OfferStatusButton({
       try {
         await setOfferStatusFromList(offerId, nextStatus)
         showToast(buildStatusChangedToast(currentStatus, nextStatus))
-        setIsOpen(false)
+        requestModalMotionClose(() => setIsOpen(false))
       } catch (error) {
         showToast({
           title: 'CHYBA',
@@ -162,9 +168,11 @@ export function OfferStatusButton({
       try {
         await setOfferStatusFromList(offerId, 'rejected', text)
         showToast(buildStatusChangedToast(currentStatus, 'rejected'))
-        setIsRejectOpen(false)
-        setIsOpen(false)
-        setRejectReason('')
+        requestModalMotionClose(() => {
+          setIsRejectOpen(false)
+          setIsOpen(false)
+          setRejectReason('')
+        })
       } catch (error) {
         setRejectError(
           error instanceof Error
@@ -180,8 +188,10 @@ export function OfferStatusButton({
       try {
         await setOfferStatusFromList(offerId, 'realizace')
         showToast(buildStatusChangedToast(currentStatus, 'realizace'))
-        setIsRealizaceConfirmOpen(false)
-        setIsOpen(false)
+        requestModalMotionClose(() => {
+          setIsRealizaceConfirmOpen(false)
+          setIsOpen(false)
+        }, 'confirmation')
       } catch (error) {
         showToast({
           title: 'CHYBA',
@@ -273,7 +283,7 @@ function StatusModal({
   currentStatus,
   targets,
   isPending,
-  onClose,
+  onClose: closeImmediately,
   onChangeStatus,
 }: {
   offerNumber: string
@@ -283,6 +293,8 @@ function StatusModal({
   onClose: () => void
   onChangeStatus: (status: OfferStatus) => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -295,6 +307,7 @@ function StatusModal({
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="offers-page__status-modal__overlay fixed inset-0 z-[100] bg-zinc-950/38 p-3 backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -305,7 +318,7 @@ function StatusModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="offers-page__status-modal relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div data-modal-motion-surface className="offers-page__status-modal relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden="true" className="offers-page__status-modal__frame pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div aria-hidden="true" className="offers-page__status-modal__top-line pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden="true" className="offers-page__status-modal__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
@@ -371,13 +384,15 @@ function StatusModal({
 
 function RealizaceConfirmModal({
   isPending,
-  onClose,
+  onClose: closeImmediately,
   onConfirm,
 }: {
   isPending: boolean
   onClose: () => void
   onConfirm: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately, 'confirmation')
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -390,6 +405,8 @@ function RealizaceConfirmModal({
 
   return createPortal(
     <div
+      data-modal-motion-root
+      data-modal-motion-profile="confirmation"
       className="offers-page__status-confirm-modal__overlay fixed inset-0 z-[220] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -400,7 +417,7 @@ function RealizaceConfirmModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="offers-page__status-confirm-modal relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div data-modal-motion-surface className="offers-page__status-confirm-modal relative w-full max-w-md overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden className="offers-page__status-confirm-modal__frame pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div aria-hidden className="offers-page__status-confirm-modal__top-line pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden className="offers-page__status-confirm-modal__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />
@@ -442,7 +459,7 @@ function RejectReasonModal({
   error,
   isPending,
   onChange,
-  onClose,
+  onClose: closeImmediately,
   onConfirm,
 }: {
   value: string
@@ -452,6 +469,8 @@ function RejectReasonModal({
   onClose: () => void
   onConfirm: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -464,6 +483,7 @@ function RejectReasonModal({
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="offers-page__reject-modal__overlay fixed inset-0 z-[110] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -474,7 +494,7 @@ function RejectReasonModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="offers-page__reject-modal relative w-full max-w-lg overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
+        <div data-modal-motion-surface className="offers-page__reject-modal relative w-full max-w-lg overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_45%,rgba(236,243,249,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]">
           <div aria-hidden className="offers-page__reject-modal__frame pointer-events-none absolute inset-0 rounded-[28px] border border-white/65" />
           <div aria-hidden className="offers-page__reject-modal__top-line pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-100" />
           <div aria-hidden className="offers-page__reject-modal__glow pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.70),transparent_70%)]" />

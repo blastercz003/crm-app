@@ -21,6 +21,7 @@ import {
 import { createManualActivityAction } from './actions'
 import { ActionFeedbackToast, useAnimatedActionToast } from '@/components/ui/action-feedback-toast'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { requestModalMotionClose, useModalMotionClose } from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { ActivityActionState, ActivityClientOption, ActivityListItem, ActivityRecurrenceUnit, ManualActivityType } from '@/lib/activities/types'
 
@@ -95,6 +96,7 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
   onClose: () => void
   onSaved: (state: ActivityActionState) => void
 }) {
+  const requestClose = useModalMotionClose(onClose)
   const [state, formAction] = useActionState(action, INITIAL_STATE)
   const editing = Boolean(activity)
   const [mode, setMode] = useState<'logged' | 'planned'>(() => activity?.status === 'planned' ? 'planned' : 'logged')
@@ -204,30 +206,31 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
   useBodyScrollLock(true)
 
   useEffect(() => {
-    if (state.success) onSaved(state)
+    if (state.success) requestModalMotionClose(() => onSaved(state))
   }, [onSaved, state])
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') requestClose()
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [onClose])
+  }, [requestClose])
 
   return (
     <div
+      data-modal-motion-root
       className="activities-modal fixed inset-0 z-[120] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="activity-form-title"
-      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+      onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}
     >
-      <div className="flex h-full min-h-0 items-center justify-center" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-        <section className="standard-form-modal__shell activities-modal__shell relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(249,250,251,0.95)_48%,rgba(244,244,245,0.93)_100%)] shadow-[0_32px_82px_rgba(24,24,27,0.34)]">
+      <div className="flex h-full min-h-0 items-center justify-center" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
+        <section data-modal-motion-surface className="standard-form-modal__shell activities-modal__shell relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-zinc-200/85 bg-[linear-gradient(168deg,rgba(255,255,255,0.97)_0%,rgba(249,250,251,0.95)_48%,rgba(244,244,245,0.93)_100%)] shadow-[0_32px_82px_rgba(24,24,27,0.34)]">
           <header className="standard-form-modal__header activities-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200/75 px-5 py-4 sm:px-6">
             <ModalHeading id="activity-form-title" section="AKTIVITY" title={editing ? 'Upravit aktivitu' : 'Nová aktivita'} />
-            <button type="button" onClick={onClose} aria-label="Zavřít" className="standard-form-modal__close activities-modal__close inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600 shadow-sm transition hover:-translate-y-px hover:text-zinc-900"><X aria-hidden size={18} /></button>
+            <button type="button" onClick={requestClose} aria-label="Zavřít" className="standard-form-modal__close activities-modal__close inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600 shadow-sm transition hover:-translate-y-px hover:text-zinc-900"><X aria-hidden size={18} /></button>
           </header>
 
           <form action={formAction} className="flex min-h-0 flex-1 flex-col">

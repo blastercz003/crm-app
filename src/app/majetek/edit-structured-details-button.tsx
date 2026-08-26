@@ -13,6 +13,7 @@ import {
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 
 type StructuredDetailsProps = {
   assetId: string
@@ -102,13 +103,14 @@ function EditStructuredDetailsModal({
   assetId,
   kind,
   currentValues,
-  onClose,
+  onClose: closeImmediately,
 }: {
   assetId: string
   kind: AssetStructuredDetailsKind
   currentValues: Record<string, string | number | null>
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(updateAssetStructuredDetailsAction, initialState)
   const router = useRouter()
 
@@ -122,6 +124,7 @@ function EditStructuredDetailsModal({
 
   return (
     <div
+      data-modal-motion-root
       className="clients-modal fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-zinc-950/38 p-4 [-webkit-overflow-scrolling:touch] backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -135,7 +138,7 @@ function EditStructuredDetailsModal({
         className="flex min-h-[calc(100dvh-2rem)] items-start justify-center py-2 sm:min-h-full sm:items-center sm:py-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
-        <div className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
+        <div data-modal-motion-surface className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
           <span aria-hidden className="clients-modal__shell-frame pointer-events-none absolute inset-0 rounded-3xl border border-white/65" />
           <span aria-hidden className="clients-modal__shell-sheen pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-95" />
           <span aria-hidden className="clients-modal__shell-halo pointer-events-none absolute inset-x-10 top-1 h-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.72),transparent_70%)]" />

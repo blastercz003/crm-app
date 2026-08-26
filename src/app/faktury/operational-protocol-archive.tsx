@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { requestModalMotionClose } from '@/components/ui/modal-motion'
 import type {
   OperationalProtocolDraftInput,
   OperationalProtocolListItem,
@@ -456,12 +457,14 @@ export function OperationalProtocolArchive({
 
       {deleteTarget ? (
         <div
+          data-modal-motion-root
+          data-modal-motion-profile="confirmation"
           className="fixed inset-0 z-[180] flex items-center justify-center bg-zinc-950/38 p-4 backdrop-blur-[4px]"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="delete-operational-protocol-title"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !activeAction) setDeleteTarget(null)
+            if (event.target === event.currentTarget && !activeAction) requestModalMotionClose(() => setDeleteTarget(null), 'confirmation')
           }}
         >
           <div className="w-full max-w-[500px] rounded-[28px] border border-white/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.99)_0%,rgba(244,248,252,0.98)_100%)] p-5 shadow-[0_30px_74px_rgba(15,23,42,0.34)] sm:p-6 [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.18)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(15,25,42,0.99)_0%,rgba(8,16,29,0.99)_100%)]">

@@ -2,6 +2,7 @@
 
 import type { ReactNode, RefObject } from 'react'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 
 export type JobAttachmentCategoryOption = {
   value: 'predavaci_protokol' | 'foto' | 'jine'
@@ -123,7 +124,7 @@ export function JobAttachmentsModalContent({
   uploadButtonLabel = 'Nahrát soubory',
   onCategoryChange,
   onFilesChange,
-  onClose,
+  onClose: closeImmediately,
   onUpload,
   onOpenAttachment,
   onDownloadAttachment,
@@ -132,8 +133,10 @@ export function JobAttachmentsModalContent({
   onDownloadSecondaryAttachment,
   showDeleteAttachment = true,
 }: JobAttachmentsModalContentProps) {
+  const onClose = useModalMotionClose(closeImmediately)
   return (
     <div
+      data-modal-motion-root
       className="jobs-page__info-modal__overlay fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       aria-modal="true"
       role="dialog"
@@ -144,7 +147,7 @@ export function JobAttachmentsModalContent({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-5xl items-center justify-center">
-        <div className="jobs-page__info-modal__attachments-shell flex max-h-[calc(100vh-2rem)] w-full max-w-[960px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+        <div data-modal-motion-surface className="jobs-page__info-modal__attachments-shell flex max-h-[calc(100vh-2rem)] w-full max-w-[960px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>

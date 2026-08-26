@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import {
   ActionFeedbackToast,
   useAnimatedActionToast,
@@ -97,11 +98,12 @@ export function ProvizePayoutModalLauncher({
 
 function ProvizePayoutModal({
   owners,
-  onClose,
+  onClose: closeImmediately,
 }: {
   owners: ProvizeSalesOwner[]
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const router = useRouter()
   const [selectedOwner, setSelectedOwner] = useState<ProvizeSalesOwner | null>(null)
   const [draft, setDraft] = useState<ProvizePayoutDraftData | null>(null)
@@ -301,6 +303,7 @@ function ProvizePayoutModal({
   return createPortal(
     <>
       <div
+        data-modal-motion-root
         className="fixed inset-0 z-[140] bg-zinc-950/42 p-3 backdrop-blur-[5px] sm:p-4"
         aria-modal="true"
         role="dialog"
@@ -311,7 +314,7 @@ function ProvizePayoutModal({
         }}
       >
         <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-center">
-          <div className="provize-payout-modal flex max-h-[calc(100vh-1.5rem)] w-full max-w-[1260px] flex-col overflow-hidden rounded-[30px] border border-zinc-200 bg-white shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+          <div data-modal-motion-surface className="provize-payout-modal flex max-h-[calc(100vh-1.5rem)] w-full max-w-[1260px] flex-col overflow-hidden rounded-[30px] border border-zinc-200 bg-white shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
             <div className="provize-payout-modal__header border-b border-white/70 px-4 py-4 sm:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>

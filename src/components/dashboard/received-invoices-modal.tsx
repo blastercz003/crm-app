@@ -18,6 +18,7 @@ import type { ReceivedInvoiceFilter, ReceivedInvoiceRow } from '@/lib/received-i
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
 import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import Image from 'next/image'
 
 type ModeKey = 'upload' | 'view'
@@ -231,6 +232,7 @@ export function ReceivedInvoicesModal({
   isOpen: boolean
   onClose: () => void
 }) {
+  const requestClose = useModalMotionClose(onClose)
   const [isPending, startTransition] = useTransition()
   const [rows, setRows] = useState<ReceivedInvoiceRow[]>([])
   const [filter, setFilter] = useState<ReceivedInvoiceFilter>('unpaid')
@@ -372,7 +374,7 @@ export function ReceivedInvoicesModal({
   }
 
   function handleClose() {
-    onClose()
+    requestClose()
   }
 
   function updateRowLocally(nextRow: ReceivedInvoiceRow) {
@@ -551,13 +553,13 @@ export function ReceivedInvoicesModal({
   if (!isOpen || typeof document === 'undefined') return null
 
   return createPortal(
-    <>
+    <div data-modal-motion-root className="fixed inset-0 z-[100]">
       <div
         aria-hidden="true"
-        className="received-invoices-modal__overlay fixed inset-0 z-[100] bg-zinc-950/38 backdrop-blur-[3.5px] supports-[backdrop-filter]:backdrop-blur-[3.5px]"
+        className="received-invoices-modal__overlay absolute inset-0 bg-zinc-950/38 backdrop-blur-[3.5px] supports-[backdrop-filter]:backdrop-blur-[3.5px]"
       />
       <div
-        className="received-invoices-modal fixed inset-0 z-[101] overflow-y-auto p-4 sm:p-4"
+        className="received-invoices-modal absolute inset-0 z-[1] overflow-y-auto p-4 sm:p-4"
         role="dialog"
         aria-modal="true"
         onMouseDown={(event) => {
@@ -566,6 +568,7 @@ export function ReceivedInvoicesModal({
       >
         <div className="flex min-h-full items-center justify-center">
         <div
+          data-modal-motion-surface
           className="received-invoices-modal__shell relative flex w-full max-w-[1320px] flex-col overflow-hidden rounded-[30px] border border-zinc-200/86 bg-[linear-gradient(160deg,rgba(255,255,255,0.9)_0%,rgba(244,248,252,0.82)_55%,rgba(236,243,249,0.74)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] transition-[height] duration-200 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             height:
@@ -977,7 +980,7 @@ export function ReceivedInvoicesModal({
         </div>
         </div>
       </div>
-    </>,
+    </div>,
     document.body
   )
 }

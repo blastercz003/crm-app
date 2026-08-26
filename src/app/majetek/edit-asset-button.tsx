@@ -9,6 +9,7 @@ import { updateAssetAction, type UpdateAssetActionState } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { MoneyInput } from '@/components/ui/money-input'
 
 type AssetCategoryOption = {
@@ -100,12 +101,13 @@ export function EditAssetButton({
 function EditAssetModal({
   asset,
   categories,
-  onClose,
+  onClose: closeImmediately,
 }: {
   asset: AssetToEdit
   categories: AssetCategoryOption[]
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(updateAssetAction, initialUpdateState)
   const router = useRouter()
 
@@ -119,6 +121,7 @@ function EditAssetModal({
 
   return (
     <div
+      data-modal-motion-root
       className="clients-modal fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-zinc-950/38 p-4 [-webkit-overflow-scrolling:touch] backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -133,6 +136,7 @@ function EditAssetModal({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
+          data-modal-motion-surface
           className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
         >
           <span

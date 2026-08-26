@@ -17,6 +17,7 @@ import {
 } from '../jobs/edit-job-button'
 import { GLASS_SECONDARY_BUTTON_CLASS } from '@/components/ui/glass-secondary-button'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { JobAttachmentsModalContent } from '@/components/attachments/job-attachments-modal-content'
 import { JobPpRequiredToggle } from '@/components/jobs/job-pp-required-toggle'
 import { normalizeTechnicianSearchText } from '@/lib/jobs/technicians'
@@ -1351,7 +1352,7 @@ function CostItemsModal({
   financeId,
   jobNumber,
   technicianOptions,
-  onClose,
+  onClose: closeImmediately,
   onOptimisticCostChange,
   onSavingChange,
 }: {
@@ -1362,6 +1363,7 @@ function CostItemsModal({
   onOptimisticCostChange: (value: number | null) => void
   onSavingChange: (isSaving: boolean) => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const router = useRouter()
   const [rows, setRows] = useState<CostRowDraft[]>(() => createBaseDraftRows())
   const [isLoading, setIsLoading] = useState(true)
@@ -1654,6 +1656,7 @@ function CostItemsModal({
 
   const modalContent = (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[120] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       aria-modal="true"
       role="dialog"
@@ -1664,7 +1667,7 @@ function CostItemsModal({
       }}
     >
       <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-center">
-        <div className="jobs-page__modal-shell faktury-page__costs-modal flex max-h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
+        <div data-modal-motion-surface className="jobs-page__modal-shell faktury-page__costs-modal flex max-h-[calc(100vh-2rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] sm:max-h-[calc(100vh-3rem)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.28)]">
           <div className="px-4 py-4 sm:px-6">
             <div className="faktury-page__costs-modal__header flex items-start justify-between gap-4">
               <div>

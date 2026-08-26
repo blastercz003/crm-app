@@ -13,6 +13,7 @@ import {
 } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 
 type BSafe24FilesModalLauncherProps = {
   contractId: string
@@ -109,7 +110,7 @@ function BSafe24FilesModal({
   initialFiles,
   canUpload,
   canDelete,
-  onClose,
+  onClose: closeImmediately,
 }: {
   contractId: string
   contractNumber: string
@@ -118,6 +119,7 @@ function BSafe24FilesModal({
   canDelete: boolean
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const router = useRouter()
   const [files, setFiles] = useState<BSafe24FileRow[]>(initialFiles)
   const [category, setCategory] = useState<BSafe24FileCategory>('other')
@@ -223,6 +225,7 @@ function BSafe24FilesModal({
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[120] overflow-y-auto bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
@@ -233,7 +236,7 @@ function BSafe24FilesModal({
       }}
     >
       <div className="mx-auto flex min-h-full w-full max-w-5xl items-center justify-center">
-        <div className="flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.34)] sm:max-h-[calc(100vh-3rem)]">
+        <div data-modal-motion-surface className="flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[28px] border border-zinc-200/72 bg-[linear-gradient(168deg,rgba(255,255,255,0.86)_0%,rgba(249,250,251,0.76)_42%,rgba(244,244,245,0.68)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.24)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.16)] [html[data-theme='dark']_&]:bg-[linear-gradient(168deg,rgba(17,27,46,0.98)_0%,rgba(12,20,34,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_36px_84px_rgba(0,0,0,0.34)] sm:max-h-[calc(100vh-3rem)]">
           <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6">
             <div>
               <ModalHeading section="B-SAFE 24" title="Soubory B-SAFE 24" />

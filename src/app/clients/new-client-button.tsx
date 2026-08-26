@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/action-feedback-toast'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type NewClientButtonProps = {
@@ -82,7 +83,7 @@ export function NewClientButton({
 }
 
 export function CreateClientModal({
-  onClose,
+  onClose: closeImmediately,
   onToast,
   onSuccess,
   suppressSuccessToast = false,
@@ -92,6 +93,7 @@ export function CreateClientModal({
   onSuccess?: (state: CreateClientActionState) => void
   suppressSuccessToast?: boolean
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(
     createClientModalAction,
     initialCreateState
@@ -123,6 +125,7 @@ export function CreateClientModal({
 
   const modalContent = (
       <div
+        data-modal-motion-root
         className="clients-modal fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
@@ -134,6 +137,7 @@ export function CreateClientModal({
     >
       <div className="flex h-full min-h-0 items-center justify-center">
         <div
+          data-modal-motion-surface
           className="standard-form-modal__shell clients-modal__shell relative flex h-[calc(100dvh-1.5rem)] min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-[calc(100dvh-2rem)] sm:max-h-[760px] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
         >
           <div

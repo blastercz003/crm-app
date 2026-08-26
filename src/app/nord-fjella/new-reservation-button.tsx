@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   createNordFjellaReservationAction,
@@ -51,12 +52,13 @@ export function NewReservationButton({ guests, settings }: NewReservationButtonP
 function CreateReservationModal({
   guests,
   settings,
-  onClose,
+  onClose: closeImmediately,
 }: {
   guests: NordFjellaGuestRow[]
   settings: NordFjellaSettingsRow | null
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState<CreateNordFjellaReservationActionState, FormData>(
     createNordFjellaReservationAction,
     createNordFjellaReservationInitialState
@@ -175,6 +177,7 @@ function CreateReservationModal({
 
   const modalContent = (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-zinc-950/38 p-4 [-webkit-overflow-scrolling:touch] backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -188,7 +191,7 @@ function CreateReservationModal({
         className="flex min-h-[calc(100dvh-2rem)] items-start justify-center py-2 sm:min-h-full sm:items-center sm:py-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
-        <div className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
+        <div data-modal-motion-surface className="clients-modal__shell relative flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
           <div className="clients-modal__header flex shrink-0 items-start justify-between gap-4 border-b border-gray-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-4 py-3 sm:px-5 sm:py-4">
             <div className="min-w-0">
               <ModalHeading section="NORD FJELLA" title="Nový pronájem" />

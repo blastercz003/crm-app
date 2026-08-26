@@ -20,6 +20,7 @@ import {
 } from './actions'
 import { JobFormToggleCard } from '@/components/jobs/job-pp-required-toggle'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { TechnicianNamesInput } from './technician-names-input'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
@@ -209,7 +210,7 @@ function EditJobModal({
   offerSuggestions,
   jobOfferSuggestions,
   technicianSuggestions,
-  onClose,
+  onClose: closeImmediately,
 }: {
   job: JobFormValues
   clientSuggestions: ClientOption[]
@@ -219,6 +220,7 @@ function EditJobModal({
   technicianSuggestions: string[]
   onClose: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const router = useRouter()
   const [formSuggestions, setFormSuggestions] =
     useState<JobFormSuggestions | null>(null)
@@ -303,8 +305,9 @@ function EditJobModal({
 
 function JobFormLoadingModal({ onClose }: { onClose: () => void }) {
   return createPortal(
-    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm [html[data-theme='dark']_&]:bg-[#020617]/72">
+    <div data-modal-motion-root className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm [html[data-theme='dark']_&]:bg-[#020617]/72">
       <section
+        data-modal-motion-surface
         role="dialog"
         aria-modal="true"
         aria-label="Načítání formuláře zakázky"
@@ -337,8 +340,9 @@ function JobFormLoadError({
   onClose: () => void
 }) {
   return createPortal(
-    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+    <div data-modal-motion-root className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
       <section
+        data-modal-motion-surface
         role="dialog"
         aria-modal="true"
         aria-label="Nepodařilo se načíst formulář zakázky"
@@ -656,6 +660,7 @@ function JobFormShell({
 
   const modalContent = (
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-zinc-950/38 p-3 [-webkit-overflow-scrolling:touch] backdrop-blur-[5px] lg:backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -670,6 +675,7 @@ function JobFormShell({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         <div
+          data-modal-motion-surface
           className="jobs-page__modal-shell jobs-page__job-form-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]"
           style={{
             maxHeight:

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition, type PointerEvent as ReactP
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { requestModalMotionClose, useModalMotionClose } from '@/components/ui/modal-motion'
 import { SuccessConfirmationModal } from '@/components/ui/success-confirmation-modal'
 import {
   createConnectionPointFolderCommentAction,
@@ -422,7 +423,7 @@ function ConfirmModal({
   title,
   message,
   confirmLabel,
-  onClose,
+  onClose: closeImmediately,
   onConfirm,
   destructive = false,
 }: {
@@ -434,12 +435,15 @@ function ConfirmModal({
   onConfirm: () => void
   destructive?: boolean
 }) {
+  const onClose = useModalMotionClose(closeImmediately, 'confirmation')
   useBodyScrollLock(isOpen)
 
   if (!isOpen || typeof document === 'undefined') return null
 
   return createPortal(
     <div
+      data-modal-motion-root
+      data-modal-motion-profile="confirmation"
       className="fixed inset-0 z-[130] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -448,7 +452,7 @@ function ConfirmModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="soubory-page__confirm-modal w-full max-w-lg rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
+        <div data-modal-motion-surface className="soubory-page__confirm-modal w-full max-w-lg rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
           <div className="soubory-page__confirm-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
             <ModalHeading section="Přípojné body" title={title} variant="compact" />
             <button
@@ -470,7 +474,7 @@ function ConfirmModal({
             </button>
             <button
               type="button"
-              onClick={onConfirm}
+              onClick={() => requestModalMotionClose(onConfirm, 'confirmation')}
               className={`soubory-page__confirm-modal__confirm inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-medium uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_12px_24px_rgba(185,28,28,0.14)] transition duration-200 hover:-translate-y-[1px] ${
                 destructive
                   ? 'border-red-500/85 bg-[linear-gradient(155deg,#ef4444_0%,#dc2626_100%)]'
@@ -1292,13 +1296,14 @@ export function FolderDetailClient({ folder, uploadGroups, comments, canEdit }: 
 
 function CommentEditModal({
   comment,
-  onClose,
+  onClose: closeImmediately,
   onSaved,
 }: {
   comment: FolderComment | null
   onClose: () => void
   onSaved: () => void
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const [body, setBody] = useState(comment?.body ?? '')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -1332,6 +1337,7 @@ function CommentEditModal({
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[132] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -1340,7 +1346,7 @@ function CommentEditModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className="soubory-page__comment-edit-modal w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
+        <div data-modal-motion-surface className="soubory-page__comment-edit-modal w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)]">
           <div className="soubory-page__comment-edit-modal__header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
             <ModalHeading section="Přípojné body" title="Upravit komentář" />
             <button

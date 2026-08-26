@@ -4,6 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useState, useTransitio
 import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import {
   updateJobInfoAlertAction,
   updateJobInfoAction,
@@ -277,7 +278,7 @@ export function InfoNoteModal({
   readOnly,
   onPersistedStateChange,
   onSaveSuccess,
-  onClose,
+  onClose: closeImmediately,
   updateInfoAction,
   updateInfoAlertAction,
   getAttachmentsAction,
@@ -307,6 +308,7 @@ export function InfoNoteModal({
   uploadAttachmentAction: InfoNoteUploadAction
   deleteAttachmentAction: InfoNoteDeleteAction
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   const boundAction = useMemo(
     () => updateInfoAction.bind(null, jobId),
     [jobId, updateInfoAction]
@@ -517,8 +519,8 @@ export function InfoNoteModal({
   }
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/38 px-4 py-6 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
-      <div className="jobs-page__modal-shell jobs-page__info-modal relative w-full max-w-xl overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
+    <div data-modal-motion-root className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/38 px-4 py-6 backdrop-blur-[5px] lg:backdrop-blur-[6px]">
+      <div data-modal-motion-surface className="jobs-page__modal-shell jobs-page__info-modal relative w-full max-w-xl overflow-hidden rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] shadow-[0_30px_72px_rgba(24,24,27,0.28)] lg:shadow-[0_36px_84px_rgba(24,24,27,0.32)]">
         <div className="jobs-page__info-modal__header flex items-center justify-between border-b border-zinc-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.70)_0%,rgba(255,255,255,0.24)_100%)] px-5 py-4">
           <div>
             <ModalHeading section="ZAKÁZKY" title="Info k zakázce" />

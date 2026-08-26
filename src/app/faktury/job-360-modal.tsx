@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { ModalHeading } from '@/components/ui/modal-heading'
+import { useModalMotionClose } from '@/components/ui/modal-motion'
 import {
   openJobAttachmentAction,
   openOfferOrderAttachmentAction,
@@ -86,8 +87,9 @@ const ATTACHMENT_CATEGORY_LABELS: Record<string, string> = {
 export function Job360Modal({
   financeId,
   jobNumber,
-  onClose,
+  onClose: closeImmediately,
 }: Job360ModalProps) {
+  const onClose = useModalMotionClose(closeImmediately)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [data, setData] = useState<Job360Data | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -175,6 +177,7 @@ export function Job360Modal({
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[150] bg-zinc-950/48 p-2 backdrop-blur-[6px] sm:p-4"
       role="dialog"
       aria-modal="true"
