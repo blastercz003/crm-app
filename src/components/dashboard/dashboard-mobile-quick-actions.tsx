@@ -80,6 +80,7 @@ type OfferOption = {
   client_id: string
   offer_number: string
   title: string
+  order_reference: string | null
   realization_starts_at: string | null
   realization_ends_at: string | null
   realization_address: string | null
@@ -385,6 +386,7 @@ function ManualNotificationModal({
   onResent: (sentCount: number) => Promise<void> | void
 }) {
   const onClose = useModalMotionClose(closeImmediately)
+  useBodyScrollLock(true)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [includeTechnicians, setIncludeTechnicians] = useState(false)
   const [title, setTitle] = useState('')
@@ -450,8 +452,8 @@ function ManualNotificationModal({
         onClick={onClose}
       />
 
-      <div className="absolute inset-0 overflow-y-auto p-4">
-        <div data-modal-motion-surface className="manual-notifications-modal__shell mx-auto mt-12 w-full max-w-6xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
+      <div className="absolute inset-0 grid place-items-center overflow-y-auto p-4">
+        <div data-modal-motion-surface className="manual-notifications-modal__shell max-h-[calc(100dvh-2rem)] w-full max-w-6xl overflow-y-auto rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.9)_0%,rgba(249,250,251,0.82)_42%,rgba(244,244,245,0.74)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_30px_72px_rgba(24,24,27,0.28)] lg:p-6">
           <div className="manual-notifications-modal__header mb-4 flex items-start justify-between gap-4 border-b border-white/70 pb-4">
             <ModalHeading section="Dashboard" title="Ruční notifikace" />
 
@@ -472,7 +474,7 @@ function ManualNotificationModal({
                   <label className="manual-notifications-modal__label mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
                     Příjemci
                   </label>
-                  <label className="manual-notifications-modal__recipient-item mb-2 flex cursor-pointer items-center gap-2 rounded-xl border border-white/75 bg-white/55 px-3 py-2 text-sm text-zinc-800 transition hover:bg-white/75">
+                  <label className="manual-notifications-modal__recipient-item manual-notifications-modal__recipient-item--group mb-2 flex cursor-pointer items-center gap-2 rounded-xl border border-white/75 bg-white/55 px-3 py-2 text-sm text-zinc-800 transition hover:bg-white/75 [html[data-theme='dark']_&]:border-slate-700/80 [html[data-theme='dark']_&]:bg-slate-900/90 [html[data-theme='dark']_&]:text-slate-100 [html[data-theme='dark']_&]:hover:bg-slate-800/90">
                     <input
                       type="checkbox"
                       className="manual-notifications-modal__checkbox h-4 w-4 rounded border-zinc-300 text-[#2f77af] focus:ring-[#2f77af]"
@@ -653,7 +655,7 @@ export function DashboardMobileQuickActions({
   const [contacts, setContacts] = useState<ClientContactOption[]>([])
   const [offers, setOffers] = useState<OfferOption[]>([])
   const [areQuickActionOptionsLoaded, setAreQuickActionOptionsLoaded] = useState(false)
-  const [areQuickActionOptionsLoading, setAreQuickActionOptionsLoading] = useState(false)
+  const [preparingAction, setPreparingAction] = useState<QuickActionKey | null>(null)
   const [isSheetMounted, setIsSheetMounted] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isTodayJobsMounted, setIsTodayJobsMounted] = useState(false)
@@ -699,6 +701,7 @@ export function DashboardMobileQuickActions({
   const todayJobsCloseTimerRef = useRef<number | null>(null)
   const quickNotesCloseTimerRef = useRef<number | null>(null)
   const iconSpinResetTimerRef = useRef<number | null>(null)
+  const quickActionOptionsPromiseRef = useRef<Promise<boolean> | null>(null)
   const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
 
   useBodyScrollLock(isSheetMounted && !isDesktopViewport)
@@ -1018,6 +1021,7 @@ export function DashboardMobileQuickActions({
     requestAnimationFrame(() => {
       setIsSheetOpen(true)
     })
+    void ensureQuickActionOptions()
     triggerHaptic(10)
   }
 
@@ -1199,8 +1203,10 @@ export function DashboardMobileQuickActions({
   }, [isSheetMounted])
 
   async function handleActionSelect(action: QuickActionKey) {
+    if (preparingAction) return
+
     closeTodayJobsImmediately()
-    closeSheet()
+    setPreparingAction(action)
     void trackUserPresence({
       route: '/dashboard',
       section: 'Dashboard',
@@ -1208,12 +1214,15 @@ export function DashboardMobileQuickActions({
       addActivityLog: true,
     })
 
-    const requiresOptions = ['activity', 'sticky_note', 'client', 'task', 'meeting', 'job', 'offer'].includes(action)
+    const requiresOptions = ['activity', 'sticky_note', 'task', 'meeting', 'job', 'offer'].includes(action)
 
     if (requiresOptions && !(await ensureQuickActionOptions())) {
+      setPreparingAction(null)
       return
     }
 
+    closeSheet()
+    setPreparingAction(null)
     setActiveAction(action)
   }
 
@@ -1248,26 +1257,37 @@ export function DashboardMobileQuickActions({
 
   async function ensureQuickActionOptions() {
     if (areQuickActionOptionsLoaded) return true
+    if (quickActionOptionsPromiseRef.current) {
+      return quickActionOptionsPromiseRef.current
+    }
 
-    setAreQuickActionOptionsLoading(true)
+    const request = (async () => {
+      try {
+        const options = await getDashboardQuickActionOptionsAction()
+        setUsers(options.users)
+        setClients(options.clients)
+        setContacts(options.contacts)
+        setOffers(options.offers)
+        setAreQuickActionOptionsLoaded(true)
+        return true
+      } catch (error) {
+        handleModalError(
+          error instanceof Error
+            ? error.message
+            : 'Data rychlé akce se nepodařilo načíst.'
+        )
+        return false
+      }
+    })()
+
+    quickActionOptionsPromiseRef.current = request
 
     try {
-      const options = await getDashboardQuickActionOptionsAction()
-      setUsers(options.users)
-      setClients(options.clients)
-      setContacts(options.contacts)
-      setOffers(options.offers)
-      setAreQuickActionOptionsLoaded(true)
-      return true
-    } catch (error) {
-      handleModalError(
-        error instanceof Error
-          ? error.message
-          : 'Data rychlé akce se nepodařilo načíst.'
-      )
-      return false
+      return await request
     } finally {
-      setAreQuickActionOptionsLoading(false)
+      if (quickActionOptionsPromiseRef.current === request) {
+        quickActionOptionsPromiseRef.current = null
+      }
     }
   }
 
@@ -1982,10 +2002,17 @@ export function DashboardMobileQuickActions({
                   <button
                     type="button"
                     aria-label={action.label}
+                    aria-busy={preparingAction === action.key}
                     onClick={() => void handleActionSelect(action.key)}
-                    disabled={areQuickActionOptionsLoading}
+                    disabled={preparingAction !== null}
                     className={`dashboard-floating-actions-sheet__button flex w-full items-center justify-between rounded-[22px] border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 text-left font-semibold uppercase tracking-[0.03em] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_18px_rgba(15,23,42,0.08)] transition duration-[180ms] ease-out hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_22px_rgba(15,23,42,0.12)] ${
                       isDesktopViewport ? 'min-h-[56px] py-3.5 text-[15px]' : 'min-h-[52px] py-3 text-[15px]'
+                    } ${
+                      preparingAction === action.key
+                        ? 'translate-y-[1px] scale-[0.985] border-[#7cb3d8] shadow-[inset_0_3px_8px_rgba(41,128,185,0.16),inset_0_1px_0_rgba(255,255,255,0.9)] hover:translate-y-[1px]'
+                        : preparingAction
+                          ? 'cursor-default'
+                          : ''
                     }`}
                   >
                     <span>{action.label}</span>

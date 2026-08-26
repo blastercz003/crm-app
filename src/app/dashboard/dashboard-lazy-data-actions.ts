@@ -24,6 +24,7 @@ export type DashboardQuickActionOptions = {
     client_id: string
     offer_number: string
     title: string
+    order_reference: string | null
     realization_starts_at: string | null
     realization_ends_at: string | null
     realization_address: string | null
@@ -58,7 +59,7 @@ export async function getDashboardQuickActionOptionsAction(): Promise<DashboardQ
     supabase
       .from('offers')
       .select(
-        'id, client_id, offer_number, title, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
+        'id, client_id, offer_number, title, order_reference, realization_starts_at, realization_ends_at, realization_address, offer_type, status'
       )
       .eq('offer_type', 'classic')
       .neq('status', 'realizace')
@@ -93,6 +94,7 @@ export async function getDashboardQuickActionOptionsAction(): Promise<DashboardQ
         client_id: String(item.client_id).trim(),
         offer_number: String(item.offer_number).trim(),
         title: String(item.title).trim(),
+        order_reference: String(item.order_reference ?? '').trim() || null,
         realization_starts_at: item.realization_starts_at ?? null,
         realization_ends_at: item.realization_ends_at ?? null,
         realization_address: item.realization_address ?? null,

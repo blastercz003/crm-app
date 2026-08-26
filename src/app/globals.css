@@ -2452,6 +2452,26 @@ html[data-theme='dark'] .manual-notifications-modal__recipient-item:hover {
   background: rgba(30, 41, 59, 0.72);
 }
 
+html[data-theme='dark'] .manual-notifications-modal__recipient-item--group {
+  border-color: rgba(92, 167, 219, 0.22);
+  background: linear-gradient(
+    155deg,
+    rgba(20, 33, 53, 0.98) 0%,
+    rgba(14, 24, 40, 0.96) 100%
+  ) !important;
+  color: #e5edf7;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme='dark'] .manual-notifications-modal__recipient-item--group:hover {
+  border-color: rgba(92, 167, 219, 0.3);
+  background: linear-gradient(
+    155deg,
+    rgba(27, 43, 68, 0.98) 0%,
+    rgba(18, 31, 50, 0.97) 100%
+  ) !important;
+}
+
 html[data-theme='dark'] .manual-notifications-modal__checkbox {
   border-color: rgba(148, 163, 184, 0.28);
   background: rgba(15, 23, 42, 0.94);
