@@ -5,7 +5,10 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  requestModalMotionClose,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { createConnectionPointFolderAction } from './actions'
 
 type FolderOverviewItem = {
@@ -38,7 +41,7 @@ function CreateFolderModal({
 }: {
   isOpen: boolean
   onClose: () => void
-  onCreated: () => void
+  onCreated: (folderId: string) => void
 }) {
   const onClose = useModalMotionClose(closeImmediately)
   const [name, setName] = useState('')
@@ -60,9 +63,15 @@ function CreateFolderModal({
         return
       }
 
+      const folderId = result.folderId
+      if (!folderId) {
+        setError('Složka byla vytvořena, ale nepodařilo se otevřít její detail.')
+        return
+      }
+
       setName('')
       setError(null)
-      onCreated()
+      requestModalMotionClose(() => onCreated(folderId))
     })
   }
 
@@ -204,9 +213,9 @@ export function FoldersOverviewClient({ folders }: FoldersOverviewClientProps) {
       <CreateFolderModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onCreated={() => {
+        onCreated={(folderId) => {
           setIsCreateOpen(false)
-          router.refresh()
+          router.push(`/pripojne-body/${folderId}`)
         }}
       />
     </>

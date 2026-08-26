@@ -193,7 +193,7 @@ function useBodyScrollLock(isOpen: boolean) {
 function SimpleModal({
   isOpen,
   title,
-  onClose,
+  onClose: closeImmediately,
   children,
   className = '',
 }: {
@@ -203,12 +203,14 @@ function SimpleModal({
   children: ReactNode
   className?: string
 }) {
+  const onClose = useModalMotionClose(closeImmediately)
   useBodyScrollLock(isOpen)
 
   if (!isOpen || typeof document === 'undefined') return null
 
   return createPortal(
     <div
+      data-modal-motion-root
       className="fixed inset-0 z-[130] bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4"
       role="dialog"
       aria-modal="true"
@@ -217,7 +219,7 @@ function SimpleModal({
       }}
     >
       <div className="flex h-full items-center justify-center">
-        <div className={`w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] ${className}`}>
+        <div data-modal-motion-surface className={`w-full max-w-2xl rounded-[28px] border border-zinc-200/86 bg-[linear-gradient(168deg,rgba(255,255,255,0.96)_0%,rgba(249,250,251,0.92)_42%,rgba(244,244,245,0.88)_100%)] shadow-[0_34px_84px_rgba(24,24,27,0.34)] ${className}`}>
           <div className="soubory-page__modal-header flex items-start justify-between gap-4 border-b border-white/70 px-5 py-4">
             <ModalHeading section="Přípojné body" title={title} />
             <button

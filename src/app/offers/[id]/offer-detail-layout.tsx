@@ -771,6 +771,7 @@ export function OfferDetailLayout({
               <OfferPdfLink
                 offerId={offer.id}
                 guardUnsavedChanges
+                mobilePendingLabel="PŘIPRAVUJI PDF…"
                 className="offers-detail-page__footer-pdf-button inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_24px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800"
               >
                 GENEROVAT PDF
