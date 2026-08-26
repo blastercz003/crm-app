@@ -16,7 +16,10 @@ import {
 import { JobFormToggleCard } from '@/components/jobs/job-pp-required-toggle'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { TechnicianNamesInput } from './technician-names-input'
 
@@ -167,12 +170,10 @@ export function CreateJobModal({
     }
   }, [])
 
-  useEffect(() => {
-    if (state.success) {
-      onSuccess?.(state)
-      onClose()
-    }
-  }, [onClose, onSuccess, state])
+  useModalActionSuccess(state.success, () => {
+    onSuccess?.(state)
+    onClose()
+  })
 
   if (suggestionsError) {
     return <JobFormLoadError message={suggestionsError} onClose={onClose} />

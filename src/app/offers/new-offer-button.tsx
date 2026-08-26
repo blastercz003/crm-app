@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
@@ -10,7 +10,10 @@ import {
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type ClientOption = {
@@ -212,12 +215,10 @@ export function NewOfferModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success && state.offerId) {
-      onClose()
-      router.push(`/offers/${state.offerId}`)
-    }
-  }, [onClose, router, state.offerId, state.success])
+  useModalActionSuccess(state.success && Boolean(state.offerId), () => {
+    onClose()
+    router.push(`/offers/${state.offerId}`)
+  })
 
   const modalContent = (
     <div

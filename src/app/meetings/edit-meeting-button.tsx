@@ -8,7 +8,10 @@ import {
 } from './actions'
 import { MeetingForm } from '@/components/meetings/meeting-form'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 
 type ClientOption = {
   id: string
@@ -131,12 +134,10 @@ function EditMeetingModal({
     initialUpdateState
   )
 
-  useEffect(() => {
-    if (state.success) {
-      onSaved?.()
-      onClose()
-    }
-  }, [onClose, onSaved, state.success])
+  useModalActionSuccess(state.success, () => {
+    onSaved?.()
+    onClose()
+  })
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow

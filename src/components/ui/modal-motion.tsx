@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 export type ModalMotionProfile = 'standard' | 'confirmation'
 
@@ -40,9 +40,38 @@ export function useModalMotionClose(
   onClose: () => void,
   profile: ModalMotionProfile = 'standard'
 ) {
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
   return useCallback(
-    () => requestModalMotionClose(onClose, profile),
-    [onClose, profile]
+    () => requestModalMotionClose(() => onCloseRef.current(), profile),
+    [profile]
   )
 }
 
+export function useModalActionSuccess(
+  success: boolean,
+  onSuccess: () => void
+) {
+  const handledRef = useRef(false)
+  const onSuccessRef = useRef(onSuccess)
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess
+  }, [onSuccess])
+
+  useEffect(() => {
+    if (!success) {
+      handledRef.current = false
+      return
+    }
+
+    if (handledRef.current) return
+
+    handledRef.current = true
+    onSuccessRef.current()
+  }, [success])
+}

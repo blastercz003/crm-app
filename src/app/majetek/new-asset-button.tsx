@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useFormStatus } from 'react-dom'
@@ -8,7 +8,10 @@ import { createAssetAction, type CreateAssetActionState } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { MoneyInput } from '@/components/ui/money-input'
 
 type AssetCategoryOption = {
@@ -95,10 +98,9 @@ function CreateAssetModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (!state.success || !state.assetId) return
+  useModalActionSuccess(state.success && Boolean(state.assetId), () => {
     router.push(`/majetek/${state.assetId}`)
-  }, [router, state.assetId, state.success])
+  })
 
   return (
     <div

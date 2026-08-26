@@ -26,7 +26,11 @@ import {
 import { ActionFeedbackToast, useAnimatedActionToast } from '@/components/ui/action-feedback-toast'
 import { CreateTaskModal } from '@/app/tasks/new-task-button'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { requestModalMotionClose, useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  requestModalMotionClose,
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { ActivityClientOption } from '@/lib/activities/types'
 import {
@@ -227,9 +231,9 @@ export function StickyNoteFormModal({
     }
   }
 
-  useEffect(() => {
-    if (state.success) requestModalMotionClose(onSaved)
-  }, [onSaved, state.success])
+  useModalActionSuccess(state.success, () => {
+    requestModalMotionClose(onSaved)
+  })
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {

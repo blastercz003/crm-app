@@ -4,7 +4,10 @@ import { useActionState, useCallback, useEffect, useMemo, useState, useTransitio
 import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import {
   updateJobInfoAlertAction,
   updateJobInfoAction,
@@ -334,26 +337,14 @@ export function InfoNoteModal({
   const effectiveAlertEnabled =
     modalHasInfoContent && isAlertEnabled && !isCompletedJob
 
-  useEffect(() => {
-    if (readOnly) return
-
-    if (state.success) {
-      onSaveSuccess({
-        infoNote: draftValue.trim() || null,
-        hasAttachments: attachments.length > 0,
-        infoAlertEnabled: effectiveAlertEnabled,
-      })
-      onClose()
-    }
-  }, [
-    attachments.length,
-    draftValue,
-    effectiveAlertEnabled,
-    onClose,
-    onSaveSuccess,
-    readOnly,
-    state.success,
-  ])
+  useModalActionSuccess(!readOnly && state.success, () => {
+    onSaveSuccess({
+      infoNote: draftValue.trim() || null,
+      hasAttachments: attachments.length > 0,
+      infoAlertEnabled: effectiveAlertEnabled,
+    })
+    onClose()
+  })
 
   useEffect(() => {
     let cancelled = false

@@ -3,7 +3,10 @@
 import { useActionState, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import {
   createVehicleLogbookFuelAction,
   type CreateVehicleLogbookFuelState,
@@ -71,9 +74,7 @@ function FuelEntryModal({
     }
   }, [onClose, pending])
 
-  useEffect(() => {
-    if (state.success) onClose()
-  }, [onClose, state.success])
+  useModalActionSuccess(state.success, onClose)
 
   return (
     <div

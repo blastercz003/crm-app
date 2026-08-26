@@ -11,7 +11,10 @@ import {
 } from '@/components/ui/action-feedback-toast'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type NewClientButtonProps = {
@@ -101,18 +104,16 @@ export function CreateClientModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success) {
-      onSuccess?.(state)
-      if (!suppressSuccessToast) {
-        onToast({
-          type: 'success',
-          message: 'Klient byl vytvořen.',
-        })
-      }
-      onClose()
+  useModalActionSuccess(state.success, () => {
+    onSuccess?.(state)
+    if (!suppressSuccessToast) {
+      onToast({
+        type: 'success',
+        message: 'Klient byl vytvořen.',
+      })
     }
-  }, [onClose, onSuccess, onToast, state, suppressSuccessToast])
+    onClose()
+  })
 
   useEffect(() => {
     if (!state.error) return

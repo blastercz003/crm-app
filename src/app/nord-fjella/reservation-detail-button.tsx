@@ -5,7 +5,10 @@ import { createPortal } from 'react-dom'
 import { useFormStatus } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import type {
   NordFjellaGuestRow,
   NordFjellaPaymentRow,
@@ -185,11 +188,7 @@ function ReservationDetailModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success) {
-      onClose()
-    }
-  }, [onClose, state.success])
+  useModalActionSuccess(state.success, onClose)
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {

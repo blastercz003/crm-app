@@ -3,7 +3,10 @@
 import { useActionState, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import {
   createVehicleLogbookEntryAction,
   type CreateVehicleLogbookEntryState,
@@ -70,9 +73,7 @@ function NewTripModal({
     }
   }, [onClose, pending])
 
-  useEffect(() => {
-    if (state.success) onClose()
-  }, [onClose, state.success])
+  useModalActionSuccess(state.success, onClose)
 
   function handleEntryTypeChange(nextType: EntryType) {
     setEntryType(nextType)

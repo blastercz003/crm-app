@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useFormStatus } from 'react-dom'
@@ -13,7 +13,10 @@ import {
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 
 type StructuredDetailsProps = {
   assetId: string
@@ -116,11 +119,10 @@ function EditStructuredDetailsModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (!state.success) return
+  useModalActionSuccess(state.success, () => {
     router.refresh()
     onClose()
-  }, [onClose, router, state.success])
+  })
 
   return (
     <div

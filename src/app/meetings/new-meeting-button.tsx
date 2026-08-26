@@ -13,7 +13,10 @@ import {
   useAnimatedActionToast,
 } from '@/components/ui/action-feedback-toast'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type ClientOption = {
@@ -120,18 +123,16 @@ export function CreateMeetingModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success) {
-      onSuccess?.(state)
-      if (!suppressSuccessToast) {
-        onToast({
-          type: 'success',
-          message: 'Schůzka byla vytvořena.',
-        })
-      }
-      onClose()
+  useModalActionSuccess(state.success, () => {
+    onSuccess?.(state)
+    if (!suppressSuccessToast) {
+      onToast({
+        type: 'success',
+        message: 'Schůzka byla vytvořena.',
+      })
     }
-  }, [onClose, onSuccess, onToast, state, suppressSuccessToast])
+    onClose()
+  })
 
   useEffect(() => {
     if (!state.error) return

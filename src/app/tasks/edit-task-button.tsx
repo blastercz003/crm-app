@@ -9,7 +9,10 @@ import {
 } from './actions'
 import TaskForm from './TaskForm'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 
 type UserOption = {
   id: string
@@ -148,12 +151,10 @@ function EditTaskModal({
   const [state, formAction] = useActionState(action, initialUpdateState)
   const deleteTaskAction = useMemo(() => deleteTask.bind(null, task.id), [task.id])
 
-  useEffect(() => {
-    if (state.success) {
-      onSaved?.()
-      onClose()
-    }
-  }, [onClose, onSaved, state.success])
+  useModalActionSuccess(state.success, () => {
+    onSaved?.()
+    onClose()
+  })
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow

@@ -4,7 +4,10 @@ import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import {
   createNordFjellaReservationAction,
@@ -98,11 +101,7 @@ function CreateReservationModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success) {
-      onClose()
-    }
-  }, [onClose, state.success])
+  useModalActionSuccess(state.success, onClose)
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {

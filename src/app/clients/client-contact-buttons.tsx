@@ -10,7 +10,10 @@ import {
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 
 type ClientContact = {
   id: string
@@ -171,18 +174,16 @@ function ClientContactModal({
     initialState
   )
 
-  useEffect(() => {
-    if (state.success) {
-      onToast?.({
-        type: 'success',
-        message:
-          mode === 'create'
-            ? 'Kontaktní osoba byla vytvořena.'
-            : 'Kontaktní osoba byla upravena.',
-      })
-      onClose()
-    }
-  }, [mode, onClose, onToast, state.success])
+  useModalActionSuccess(state.success, () => {
+    onToast?.({
+      type: 'success',
+      message:
+        mode === 'create'
+          ? 'Kontaktní osoba byla vytvořena.'
+          : 'Kontaktní osoba byla upravena.',
+    })
+    onClose()
+  })
 
   useEffect(() => {
     if (!state.error) return

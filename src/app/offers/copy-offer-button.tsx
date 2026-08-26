@@ -10,7 +10,10 @@ import {
 } from './actions'
 import { MobileModalActions } from '@/components/ui/mobile-modal-actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 
 type ClientOption = {
   id: string
@@ -209,12 +212,10 @@ function CopyOfferModal({
           .slice(0, 6)
       : []
 
-  useEffect(() => {
-    if (state.success && state.offerId) {
-      onClose()
-      router.push(`/offers/${state.offerId}`)
-    }
-  }, [onClose, router, state.offerId, state.success])
+  useModalActionSuccess(state.success && Boolean(state.offerId), () => {
+    onClose()
+    router.push(`/offers/${state.offerId}`)
+  })
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow

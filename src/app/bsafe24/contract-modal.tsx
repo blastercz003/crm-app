@@ -11,7 +11,10 @@ import {
 } from './actions'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
@@ -287,11 +290,7 @@ function BSafe24ContractModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success) {
-      onClose()
-    }
-  }, [onClose, state.success])
+  useModalActionSuccess(state.success, onClose)
 
   function handleDeleteContract() {
     if (!contract?.id || mode !== 'edit') {

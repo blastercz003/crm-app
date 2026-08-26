@@ -20,7 +20,10 @@ import {
 } from './actions'
 import { JobFormToggleCard } from '@/components/jobs/job-pp-required-toggle'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { TechnicianNamesInput } from './technician-names-input'
 
 type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
@@ -250,12 +253,10 @@ function EditJobModal({
     }
   }, [job.offer_id])
 
-  useEffect(() => {
-    if (state.success) {
-      router.refresh()
-      onClose()
-    }
-  }, [onClose, router, state.success])
+  useModalActionSuccess(state.success, () => {
+    router.refresh()
+    onClose()
+  })
 
   function handleDeleteClick() {
     const isConfirmed = window.confirm(

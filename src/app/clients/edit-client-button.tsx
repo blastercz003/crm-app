@@ -8,7 +8,10 @@ import {
   type UpdateClientActionState,
 } from './actions'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 
 export type ClientForEditing = {
   id: string
@@ -99,11 +102,7 @@ export function EditClientModal({
     initialUpdateState
   )
 
-  useEffect(() => {
-    if (state.success) {
-      onClose()
-    }
-  }, [onClose, state.success])
+  useModalActionSuccess(state.success, onClose)
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow

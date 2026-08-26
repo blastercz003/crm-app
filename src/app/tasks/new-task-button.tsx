@@ -13,7 +13,10 @@ import {
 } from '@/components/ui/action-feedback-toast'
 import TaskForm, { type TaskFormValues } from './TaskForm'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 
 type UserOption = {
@@ -135,18 +138,16 @@ export function CreateTaskModal({
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success) {
-      onSuccess?.(state)
-      if (!suppressSuccessToast) {
-        onToast({
-          type: 'success',
-          message: 'Úkol byl vytvořen.',
-        })
-      }
-      onClose()
+  useModalActionSuccess(state.success, () => {
+    onSuccess?.(state)
+    if (!suppressSuccessToast) {
+      onToast({
+        type: 'success',
+        message: 'Úkol byl vytvořen.',
+      })
     }
-  }, [onClose, onSuccess, onToast, state, suppressSuccessToast])
+    onClose()
+  })
 
   useEffect(() => {
     if (!state.error) return

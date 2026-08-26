@@ -21,7 +21,11 @@ import {
 import { createManualActivityAction } from './actions'
 import { ActionFeedbackToast, useAnimatedActionToast } from '@/components/ui/action-feedback-toast'
 import { ModalHeading } from '@/components/ui/modal-heading'
-import { requestModalMotionClose, useModalMotionClose } from '@/components/ui/modal-motion'
+import {
+  requestModalMotionClose,
+  useModalActionSuccess,
+  useModalMotionClose,
+} from '@/components/ui/modal-motion'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import type { ActivityActionState, ActivityClientOption, ActivityListItem, ActivityRecurrenceUnit, ManualActivityType } from '@/lib/activities/types'
 
@@ -205,9 +209,9 @@ export function ActivityFormModal({ clients, activity = null, initialClientId = 
 
   useBodyScrollLock(true)
 
-  useEffect(() => {
-    if (state.success) requestModalMotionClose(() => onSaved(state))
-  }, [onSaved, state])
+  useModalActionSuccess(state.success, () => {
+    requestModalMotionClose(() => onSaved(state))
+  })
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
