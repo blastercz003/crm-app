@@ -1,7 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  AnimatedStatisticsNumber,
+  AnimatedStatisticsProvider,
+  useAnimatedStatisticsProgress,
+} from '@/components/ui/animated-statistics-number'
 import { ModalHeading } from '@/components/ui/modal-heading'
 import { SlidingFourTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
@@ -114,6 +119,20 @@ function formatCompactMoney(value: number) {
   }).format(value)} Kč`
 }
 
+function formatCount(value: number) {
+  return formatMetric(Math.round(value))
+}
+
+function AnimatedMetric({
+  value,
+  formatter = formatMetric,
+}: {
+  value: number
+  formatter?: (value: number) => string
+}) {
+  return <AnimatedStatisticsNumber value={value} formatter={formatter} />
+}
+
 export function FakturyStatisticsModalLauncher({
   className,
 }: FakturyStatisticsModalLauncherProps) {
@@ -137,12 +156,30 @@ export function FakturyStatisticsModalLauncher({
 
 function FakturyStatisticsModal({ onClose }: { onClose: () => void }) {
   const requestVersionRef = useRef(0)
+  const [completedAnimationKeys, setCompletedAnimationKeys] = useState(
+    () => new Set<string>()
+  )
   const [view, setView] = useState<FinanceStatisticsView>('month')
   const [section, setSection] = useState<StatisticsSection>('summary')
   const [anchorDate, setAnchorDate] = useState(getPragueToday)
   const [payload, setPayload] = useState<FinanceStatisticsPayload | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const animationKey = payload
+    ? `${payload.view}:${payload.period.from}:${payload.period.to}:${section}`
+    : ''
+  const shouldAnimateStatistics = Boolean(
+    animationKey && !completedAnimationKeys.has(animationKey)
+  )
+  const handleStatisticsAnimationComplete = useCallback(() => {
+    if (!animationKey) return
+    setCompletedAnimationKeys((current) => {
+      if (current.has(animationKey)) return current
+      const next = new Set(current)
+      next.add(animationKey)
+      return next
+    })
+  }, [animationKey])
 
   useBodyScrollLock(true)
 
@@ -315,15 +352,21 @@ function FakturyStatisticsModal({ onClose }: { onClose: () => void }) {
                 {errorMessage ? 'Statistika není dostupná.' : 'Načítám statistiku...'}
               </div>
             ) : (
-              <div
-                className={`min-w-0 transition-opacity ${isPending ? 'opacity-55' : 'opacity-100'}`}
-                aria-busy={isPending}
+              <AnimatedStatisticsProvider
+                key={animationKey}
+                animate={shouldAnimateStatistics}
+                onComplete={handleStatisticsAnimationComplete}
               >
-                {section === 'summary' ? <SummarySection payload={payload} /> : null}
-                {section === 'people' ? <PeopleSection payload={payload} /> : null}
-                {section === 'customers' ? <CustomersSection payload={payload} /> : null}
-                {section === 'technology' ? <TechnologySection payload={payload} /> : null}
-              </div>
+                <div
+                  className={`min-w-0 transition-opacity ${isPending ? 'opacity-55' : 'opacity-100'}`}
+                  aria-busy={isPending}
+                >
+                  {section === 'summary' ? <SummarySection payload={payload} /> : null}
+                  {section === 'people' ? <PeopleSection payload={payload} /> : null}
+                  {section === 'customers' ? <CustomersSection payload={payload} /> : null}
+                  {section === 'technology' ? <TechnologySection payload={payload} /> : null}
+                </div>
+              </AnimatedStatisticsProvider>
             )}
           </div>
         </div>
@@ -382,7 +425,7 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
                 Počet zakázek
               </div>
               <div className="mt-1 text-[30px] font-semibold leading-none text-zinc-900 [html[data-theme='dark']_&]:text-slate-100">
-                {formatMetric(payload.summary.jobCount)}
+                <AnimatedMetric value={payload.summary.jobCount} formatter={formatCount} />
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
@@ -401,23 +444,27 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
           <div className="mt-3 grid grid-cols-2 gap-2">
             <SummaryMiniMetric
               label="Marné výjezdy"
-              value={formatMetric(payload.summary.wastedTripCount)}
+              value={<AnimatedMetric value={payload.summary.wastedTripCount} formatter={formatCount} />}
+              title={formatCount(payload.summary.wastedTripCount)}
               tone="danger"
             />
             <SummaryMiniMetric
               label="Pohotovosti"
-              value={formatMetric(payload.summary.standbyCount)}
+              value={<AnimatedMetric value={payload.summary.standbyCount} formatter={formatCount} />}
+              title={formatCount(payload.summary.standbyCount)}
               tone="standby"
             />
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <SummaryMiniMetric
               label="Kompletní finance"
-              value={formatMetric(payload.summary.completeFinanceJobCount)}
+              value={<AnimatedMetric value={payload.summary.completeFinanceJobCount} formatter={formatCount} />}
+              title={formatCount(payload.summary.completeFinanceJobCount)}
             />
             <SummaryMiniMetric
               label="Chybějící finance"
-              value={formatMetric(missingFinanceJobCount)}
+              value={<AnimatedMetric value={missingFinanceJobCount} formatter={formatCount} />}
+              title={formatCount(missingFinanceJobCount)}
             />
           </div>
         </SummaryPanel>
@@ -426,33 +473,37 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
           <div className="grid grid-cols-2 gap-2">
             <SummaryPrimaryMetric
               label="Ujeté kilometry"
-              value={`${formatMetric(payload.summary.kilometers)} km`}
+              value={<AnimatedMetric value={payload.summary.kilometers} formatter={(value) => `${formatMetric(value)} km`} />}
+              title={`${formatMetric(payload.summary.kilometers)} km`}
             />
             <SummaryPrimaryMetric
               label="Odpracované hodiny"
-              value={`${formatMetric(payload.summary.hours)} h`}
+              value={<AnimatedMetric value={payload.summary.hours} formatter={(value) => `${formatMetric(value)} h`} />}
+              title={`${formatMetric(payload.summary.hours)} h`}
             />
           </div>
           <div className="mt-2 grid grid-cols-2 divide-x divide-zinc-200/75 rounded-2xl border border-zinc-200/75 bg-white/55 px-3 py-2.5 [html[data-theme='dark']_&]:divide-[rgba(148,163,184,0.11)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.11)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.34)]">
             <CompactValue
               label="Průměr km / zakázku"
-              value={`${formatMetric(payload.summary.averageKilometersPerJob)} km`}
+              value={<AnimatedMetric value={payload.summary.averageKilometersPerJob} formatter={(value) => `${formatMetric(value)} km`} />}
             />
             <div className="pl-3">
               <CompactValue
                 label="Průměr hodin / zakázku"
-                value={`${formatMetric(payload.summary.averageHoursPerJob)} h`}
+                value={<AnimatedMetric value={payload.summary.averageHoursPerJob} formatter={(value) => `${formatMetric(value)} h`} />}
               />
             </div>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <SummaryMiniMetric
               label="Aktivní technici"
-              value={formatMetric(activeTechnicians.length)}
+              value={<AnimatedMetric value={activeTechnicians.length} formatter={formatCount} />}
+              title={formatCount(activeTechnicians.length)}
             />
             <SummaryMiniMetric
               label="Ø zakázek na technika"
-              value={formatMetric(averageJobsPerTechnician)}
+              value={<AnimatedMetric value={averageJobsPerTechnician} />}
+              title={formatMetric(averageJobsPerTechnician)}
             />
           </div>
         </SummaryPanel>
@@ -471,7 +522,7 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
                 }`}
                 title={formatMoney(payload.summary.profit)}
               >
-                {formatMoney(payload.summary.profit)}
+                <AnimatedMetric value={payload.summary.profit} formatter={formatMoney} />
               </div>
             </div>
             <div className="rounded-xl border border-[#9bc5e1]/70 bg-[#e8f3fa] px-2.5 py-1.5 text-right [html[data-theme='dark']_&]:border-[rgba(82,166,224,0.25)] [html[data-theme='dark']_&]:bg-[rgba(32,85,126,0.28)]">
@@ -479,18 +530,20 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
                 Marže
               </div>
               <div className="text-sm font-semibold text-[#2877aa] [html[data-theme='dark']_&]:text-[#67b8ed]">
-                {formatMetric(profitMargin)} %
+                <AnimatedMetric value={profitMargin} formatter={(value) => `${formatMetric(value)} %`} />
               </div>
             </div>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <SummaryMiniMetric
               label="Celkový prodej"
-              value={formatMoney(payload.summary.sale)}
+              value={<AnimatedMetric value={payload.summary.sale} formatter={formatMoney} />}
+              title={formatMoney(payload.summary.sale)}
             />
             <SummaryMiniMetric
               label="Celkové náklady"
-              value={formatMoney(payload.summary.cost)}
+              value={<AnimatedMetric value={payload.summary.cost} formatter={formatMoney} />}
+              title={formatMoney(payload.summary.cost)}
             />
           </div>
           <FinanceComposition
@@ -499,18 +552,18 @@ function SummarySection({ payload }: { payload: FinanceStatisticsPayload }) {
             profit={payload.summary.profit}
           />
           <div className="mt-2 grid grid-cols-2 divide-x divide-zinc-200/75 px-1 [html[data-theme='dark']_&]:divide-[rgba(148,163,184,0.11)]">
-            <CompactValue label="Průměrný prodej" value={formatMoney(averageSale)} />
+            <CompactValue label="Průměrný prodej" value={<AnimatedMetric value={averageSale} formatter={formatMoney} />} />
             <div className="pl-3">
               <CompactValue
                 label="Průměrný zisk"
-                value={formatMoney(averageProfit)}
+                value={<AnimatedMetric value={averageProfit} formatter={formatMoney} />}
                 accent
               />
             </div>
           </div>
           <ProgressLine
             value={financeCompleteness}
-            label={`Finance: ${payload.summary.completeFinanceJobCount} z ${payload.summary.jobCount} zakázek`}
+            label={<>Finance: <AnimatedMetric value={payload.summary.completeFinanceJobCount} formatter={formatCount} /> z <AnimatedMetric value={payload.summary.jobCount} formatter={formatCount} /> zakázek</>}
           />
         </SummaryPanel>
       </section>
@@ -546,13 +599,13 @@ function SummaryPanel({
   )
 }
 
-function SummaryPrimaryMetric({ label, value }: { label: string; value: string }) {
+function SummaryPrimaryMetric({ label, value, title }: { label: string; value: ReactNode; title?: string }) {
   return (
     <div className="min-w-0 rounded-2xl border border-white/80 bg-white/75 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_20px_rgba(15,23,42,0.05)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.11)] [html[data-theme='dark']_&]:bg-[rgba(5,12,23,0.42)] [html[data-theme='dark']_&]:shadow-none">
       <div className="text-[9px] font-semibold uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">
         {label}
       </div>
-      <div className="mt-1 truncate text-lg font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-slate-100" title={value}>
+      <div className="mt-1 truncate text-lg font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-slate-100" title={title}>
         {value}
       </div>
     </div>
@@ -562,10 +615,12 @@ function SummaryPrimaryMetric({ label, value }: { label: string; value: string }
 function SummaryMiniMetric({
   label,
   value,
+  title,
   tone = 'default',
 }: {
   label: string
-  value: string
+  value: ReactNode
+  title?: string
   tone?: 'default' | 'danger' | 'standby'
 }) {
   const boxToneClass =
@@ -588,7 +643,7 @@ function SummaryMiniMetric({
       </div>
       <div
         className={`mt-1 truncate text-base font-semibold ${textToneClass}`}
-        title={value}
+        title={title}
       >
         {value}
       </div>
@@ -606,6 +661,8 @@ function PercentageRing({
   tone?: 'primary' | 'danger' | 'standby'
 }) {
   const safeValue = Math.min(Math.max(value, 0), 100)
+  const progress = useAnimatedStatisticsProgress()
+  const animatedValue = safeValue * progress
 
   return (
     <div className="relative h-[76px] w-[76px] shrink-0">
@@ -631,7 +688,7 @@ function PercentageRing({
           fill="none"
           strokeWidth="4"
           pathLength="100"
-          strokeDasharray={`${safeValue} ${100 - safeValue}`}
+          strokeDasharray={`${animatedValue} ${100 - animatedValue}`}
           strokeLinecap="round"
           className={
             tone === 'danger'
@@ -652,7 +709,7 @@ function PercentageRing({
                 : "text-zinc-900 [html[data-theme='dark']_&]:text-slate-100"
           }`}
         >
-          {formatMetric(value)} %
+          <AnimatedMetric value={value} formatter={(metric) => `${formatMetric(metric)} %`} />
         </span>
         <span
           className={`text-[8px] uppercase tracking-[0.05em] ${
@@ -679,6 +736,7 @@ function FinanceComposition({
   cost: number
   profit: number
 }) {
+  const progress = useAnimatedStatisticsProgress()
   const hasPositiveComposition = sale > 0 && cost >= 0 && profit >= 0
   const costShare = hasPositiveComposition
     ? Math.min(Math.max((cost / sale) * 100, 0), 100)
@@ -700,12 +758,12 @@ function FinanceComposition({
           <>
             <span
               className="h-full bg-slate-400/80 [html[data-theme='dark']_&]:bg-slate-500"
-              style={{ width: `${costShare}%` }}
+              style={{ width: `${costShare * progress}%` }}
               title={`Náklady ${formatMetric(costShare)} %`}
             />
             <span
               className="h-full bg-[#2980B9] [html[data-theme='dark']_&]:bg-[#67b8ed]"
-              style={{ width: `${profitShare}%` }}
+              style={{ width: `${profitShare * progress}%` }}
               title={`Zisk ${formatMetric(profitShare)} %`}
             />
           </>
@@ -717,19 +775,20 @@ function FinanceComposition({
   )
 }
 
-function ProgressLine({ value, label }: { value: number; label: string }) {
+function ProgressLine({ value, label }: { value: number; label: ReactNode }) {
   const safeValue = Math.min(Math.max(value, 0), 100)
+  const progress = useAnimatedStatisticsProgress()
 
   return (
     <div className="mt-3">
       <div className="mb-1.5 flex items-center justify-between gap-2 text-[9px] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">
         <span>{label}</span>
-        <span className="font-semibold">{formatMetric(value)} %</span>
+        <span className="font-semibold"><AnimatedMetric value={value} formatter={(metric) => `${formatMetric(metric)} %`} /></span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-zinc-200/80 [html[data-theme='dark']_&]:bg-slate-700/70">
         <div
           className="h-full rounded-full bg-[#2980B9] [html[data-theme='dark']_&]:bg-[#67b8ed]"
-          style={{ width: `${safeValue}%` }}
+          style={{ width: `${safeValue * progress}%` }}
         />
       </div>
     </div>
@@ -1025,9 +1084,9 @@ function SalesOwnerCard({
   owner: FinanceStatisticsPayload['salesOwners'][number]
 }) {
   const metrics = [
-    { label: 'Prodej', value: formatMoney(owner.sale) },
-    { label: 'Náklady', value: formatMoney(owner.cost) },
-    { label: 'Zisk', value: formatMoney(owner.profit), accent: true },
+    { label: 'Prodej', value: owner.sale },
+    { label: 'Náklady', value: owner.cost },
+    { label: 'Zisk', value: owner.profit, accent: true },
   ]
 
   return (
@@ -1038,7 +1097,7 @@ function SalesOwnerCard({
         </div>
         <div className="text-right">
           <div className="text-lg font-semibold leading-none text-zinc-900 [html[data-theme='dark']_&]:text-slate-100">
-            {formatMetric(owner.jobCount)}
+            <AnimatedMetric value={owner.jobCount} formatter={formatCount} />
           </div>
           <div className="mt-1 text-[9px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">
             zakázek
@@ -1061,9 +1120,9 @@ function SalesOwnerCard({
                   ? 'text-[#2877aa] [html[data-theme=\'dark\']_&]:text-[#67b8ed]'
                   : 'text-zinc-800 [html[data-theme=\'dark\']_&]:text-slate-200'
               }`}
-              title={metric.value}
+              title={formatMoney(metric.value)}
             >
-              {metric.value}
+              <AnimatedMetric value={metric.value} formatter={formatMoney} />
             </div>
           </div>
         ))}
@@ -1072,20 +1131,20 @@ function SalesOwnerCard({
       <div className="mt-2 grid grid-cols-2 divide-x divide-zinc-200/75 rounded-xl border border-zinc-200/75 bg-white/55 px-2 py-2 [html[data-theme='dark']_&]:divide-[rgba(148,163,184,0.11)] [html[data-theme='dark']_&]:border-[rgba(148,163,184,0.11)] [html[data-theme='dark']_&]:bg-[rgba(15,25,42,0.5)]">
         <CompactValue
           label="Průměrný zisk"
-          value={formatMoney(owner.averageProfitPerJob)}
+          value={<AnimatedMetric value={owner.averageProfitPerJob} formatter={formatMoney} />}
           accent
         />
         <div className="pl-2">
           <CompactValue
             label="Marže"
-            value={`${formatMetric(owner.profitMargin)} %`}
+            value={<AnimatedMetric value={owner.profitMargin} formatter={(value) => `${formatMetric(value)} %`} />}
             accent
           />
         </div>
       </div>
 
       <div className="mt-2 text-[9px] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">
-        Finance vyplněny u {owner.financialJobCount} z {owner.jobCount} zakázek
+        Finance vyplněny u <AnimatedMetric value={owner.financialJobCount} formatter={formatCount} /> z <AnimatedMetric value={owner.jobCount} formatter={formatCount} /> zakázek
       </div>
     </article>
   )
@@ -1139,25 +1198,31 @@ function CustomersSection({ payload }: { payload: FinanceStatisticsPayload }) {
           <section className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             <CustomerKpiCard
               label="Počet zákazníků"
-              value={formatMetric(payload.customerSummary.customerCount)}
+              value={payload.customerSummary.customerCount}
+              formatter={formatCount}
             />
             <CustomerKpiCard
               label="Opakovaní zákazníci"
-              value={formatMetric(payload.customerSummary.repeatCustomerCount)}
-              detail={`${formatMetric(repeatCustomerRate)} %`}
+              value={payload.customerSummary.repeatCustomerCount}
+              formatter={formatCount}
+              detail={<AnimatedMetric value={repeatCustomerRate} formatter={(value) => `${formatMetric(value)} %`} />}
+              detailTitle={`${formatMetric(repeatCustomerRate)} %`}
             />
             <CustomerKpiCard
               label="Zakázek / zákazníka"
-              value={formatMetric(payload.customerSummary.averageJobsPerCustomer)}
+              value={payload.customerSummary.averageJobsPerCustomer}
             />
             <CustomerKpiCard
               label="Prodej / zákazníka"
-              value={formatMoney(payload.customerSummary.averageSalePerCustomer)}
+              value={payload.customerSummary.averageSalePerCustomer}
+              formatter={formatMoney}
             />
             <CustomerKpiCard
               label="Zisk / zákazníka"
-              value={formatMoney(payload.customerSummary.averageProfitPerCustomer)}
-              detail={`TOP 3: ${formatMetric(payload.customerSummary.topThreeSaleShare)} % prodeje`}
+              value={payload.customerSummary.averageProfitPerCustomer}
+              formatter={formatMoney}
+              detail={<>TOP 3: <AnimatedMetric value={payload.customerSummary.topThreeSaleShare} formatter={(value) => `${formatMetric(value)} %`} /> prodeje</>}
+              detailTitle={`TOP 3: ${formatMetric(payload.customerSummary.topThreeSaleShare)} % prodeje`}
               accent
               className="col-span-2 lg:col-span-1"
             />
@@ -1167,14 +1232,16 @@ function CustomersSection({ payload }: { payload: FinanceStatisticsPayload }) {
             <CustomerDonutCard
               title="Zakázky podle zákazníka"
               items={jobsChartItems}
-              centerValue={formatMetric(payload.summary.jobCount)}
+              centerValue={payload.summary.jobCount}
+              centerFormatter={formatCount}
               centerLabel="zakázek"
               valueFormatter={formatMetric}
             />
             <CustomerDonutCard
               title="Prodej podle zákazníka"
               items={saleChartItems}
-              centerValue={formatCompactMoney(payload.summary.sale)}
+              centerValue={payload.summary.sale}
+              centerFormatter={formatCompactMoney}
               centerLabel="celkem"
               valueFormatter={formatMoney}
             />
@@ -1231,13 +1298,17 @@ function buildCustomerDonutItems(
 function CustomerKpiCard({
   label,
   value,
+  formatter = formatMetric,
   detail,
+  detailTitle,
   accent = false,
   className = '',
 }: {
   label: string
-  value: string
-  detail?: string
+  value: number
+  formatter?: (value: number) => string
+  detail?: ReactNode
+  detailTitle?: string
   accent?: boolean
   className?: string
 }) {
@@ -1252,14 +1323,14 @@ function CustomerKpiCard({
             ? 'text-[#2877aa] [html[data-theme=\'dark\']_&]:text-[#67b8ed]'
             : 'text-zinc-900 [html[data-theme=\'dark\']_&]:text-slate-100'
         }`}
-        title={value}
+        title={formatter(value)}
       >
-        {value}
+        <AnimatedMetric value={value} formatter={formatter} />
       </div>
       {detail ? (
         <div
           className="mt-1 truncate text-[9px] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500"
-          title={detail}
+          title={detailTitle}
         >
           {detail}
         </div>
@@ -1272,15 +1343,18 @@ function CustomerDonutCard({
   title,
   items,
   centerValue,
+  centerFormatter,
   centerLabel,
   valueFormatter,
 }: {
   title: string
   items: CustomerDonutItem[]
-  centerValue: string
+  centerValue: number
+  centerFormatter: (value: number) => string
   centerLabel: string
   valueFormatter: (value: number) => string
 }) {
+  const progress = useAnimatedStatisticsProgress()
   const total = items.reduce((sum, item) => sum + item.value, 0)
   const percentages = items.map((item) =>
     total > 0 ? (item.value / total) * 100 : 0
@@ -1309,29 +1383,37 @@ function CustomerDonutCard({
               strokeWidth="6"
               className="stroke-zinc-200/75 [html[data-theme='dark']_&]:stroke-slate-700/65"
             />
-            {segments.map((item, index) => (
-              <circle
-                key={item.label}
-                cx="21"
-                cy="21"
-                r="15.5"
-                fill="none"
-                strokeWidth="6"
-                pathLength="100"
-                stroke={CUSTOMER_CHART_COLORS[index]}
-                strokeDasharray={`${item.percentage} ${100 - item.percentage}`}
-                strokeDashoffset={item.offset}
-              >
-                <title>{`${item.label}: ${valueFormatter(item.value)} (${formatMetric(item.percentage)} %)`}</title>
-              </circle>
-            ))}
+            {segments.map((item, index) => {
+              const precedingPercentage = -item.offset
+              const visiblePercentage = Math.min(
+                Math.max(progress * 100 - precedingPercentage, 0),
+                item.percentage
+              )
+
+              return (
+                <circle
+                  key={item.label}
+                  cx="21"
+                  cy="21"
+                  r="15.5"
+                  fill="none"
+                  strokeWidth="6"
+                  pathLength="100"
+                  stroke={CUSTOMER_CHART_COLORS[index]}
+                  strokeDasharray={`${visiblePercentage} ${100 - visiblePercentage}`}
+                  strokeDashoffset={item.offset}
+                >
+                  <title>{`${item.label}: ${valueFormatter(item.value)} (${formatMetric(item.percentage)} %)`}</title>
+                </circle>
+              )
+            })}
           </svg>
           <div className="absolute inset-[30px] flex flex-col items-center justify-center rounded-full bg-white/72 text-center [html[data-theme='dark']_&]:bg-[rgba(13,23,39,0.94)]">
             <div
               className="max-w-[96px] truncate text-sm font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-slate-100"
-              title={centerValue}
+              title={centerFormatter(centerValue)}
             >
-              {centerValue}
+              <AnimatedMetric value={centerValue} formatter={centerFormatter} />
             </div>
             <div className="mt-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">
               {centerLabel}
@@ -1360,7 +1442,7 @@ function CustomerDonutCard({
                   {item.label}
                 </span>
                 <span className="whitespace-nowrap font-semibold text-zinc-900 [html[data-theme='dark']_&]:text-slate-100">
-                  {formatMetric(percentage)} %
+                  <AnimatedMetric value={percentage} formatter={(value) => `${formatMetric(value)} %`} />
                 </span>
               </div>
             )
@@ -1568,26 +1650,29 @@ function TechnologySection({ payload }: { payload: FinanceStatisticsPayload }) {
           <section className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             <CustomerKpiCard
               label="Použitá zařízení"
-              value={formatMetric(payload.generatorSummary.generatorCount)}
+              value={payload.generatorSummary.generatorCount}
+              formatter={formatCount}
             />
             <CustomerKpiCard
               label="Zakázky s DA"
-              value={formatMetric(payload.generatorSummary.assignedJobCount)}
-              detail={`${formatMetric(payload.generatorSummary.assignmentRate)} % všech zakázek`}
+              value={payload.generatorSummary.assignedJobCount}
+              formatter={formatCount}
+              detail={<><AnimatedMetric value={payload.generatorSummary.assignmentRate} formatter={(value) => `${formatMetric(value)} %`} /> všech zakázek</>}
+              detailTitle={`${formatMetric(payload.generatorSummary.assignmentRate)} % všech zakázek`}
             />
             <CustomerKpiCard
               label="Zakázky bez DA"
-              value={formatMetric(payload.generatorSummary.unassignedJobCount)}
+              value={payload.generatorSummary.unassignedJobCount}
+              formatter={formatCount}
             />
             <CustomerKpiCard
               label="Zakázek / zařízení"
-              value={formatMetric(
-                payload.generatorSummary.averageJobsPerGenerator
-              )}
+              value={payload.generatorSummary.averageJobsPerGenerator}
             />
             <CustomerKpiCard
               label="Podíl TOP 3"
-              value={`${formatMetric(payload.generatorSummary.topThreeUsageShare)} %`}
+              value={payload.generatorSummary.topThreeUsageShare}
+              formatter={(value) => `${formatMetric(value)} %`}
               detail="z použití všech DA"
               accent
               className="col-span-2 lg:col-span-1"
@@ -1598,16 +1683,16 @@ function TechnologySection({ payload }: { payload: FinanceStatisticsPayload }) {
             <CustomerDonutCard
               title="Pokrytí zakázek technikou"
               items={assignmentItems}
-              centerValue={`${formatMetric(payload.generatorSummary.assignmentRate)} %`}
+              centerValue={payload.generatorSummary.assignmentRate}
+              centerFormatter={(value) => `${formatMetric(value)} %`}
               centerLabel="s DA"
               valueFormatter={formatMetric}
             />
             <CustomerDonutCard
               title="Rozložení využití DA"
               items={usageItems}
-              centerValue={formatMetric(
-                payload.generatorSummary.assignedJobCount
-              )}
+              centerValue={payload.generatorSummary.assignedJobCount}
+              centerFormatter={formatCount}
               centerLabel="použití"
               valueFormatter={formatMetric}
             />
@@ -1829,7 +1914,7 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   )
 }
 
-function CompactValue({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+function CompactValue({ label, value, accent = false }: { label: string; value: ReactNode; accent?: boolean }) {
   return (
     <div className="min-w-0">
       <div className="text-[9px] uppercase tracking-[0.08em] text-zinc-500 [html[data-theme='dark']_&]:text-slate-500">{label}</div>

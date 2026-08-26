@@ -188,7 +188,7 @@ export type ActivityWorkspaceData = {
     activeTasks: number
     meetingsToday: number
     meetingsTotal: number
-    jobsToday: number
+    jobsThisWeek: number
     jobsTotal: number
   }
   manualActivities: {

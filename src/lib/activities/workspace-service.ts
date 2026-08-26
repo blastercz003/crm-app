@@ -410,17 +410,17 @@ export async function getActivitiesWorkspace(input: {
 
   const emptyJobsResponse = { data: [] as WorkspaceJobRow[], count: 0, error: null }
   const emptyJobsCountResponse = { data: null, count: 0, error: null }
-  let jobsTodayRequest = supabase
+  let jobsThisWeekRequest = supabase
     .from('jobs')
     .select('id', { count: 'exact', head: true })
-    .lte('start_at', `${todayKey}T23:59:59`)
-    .gte('end_at', `${todayKey}T00:00:00`)
+    .lte('start_at', weekEnd)
+    .gte('end_at', weekStart)
   let jobsTotalRequest = supabase
     .from('jobs')
     .select('id', { count: 'exact', head: true })
 
   if (jobSalesOwner) {
-    jobsTodayRequest = jobsTodayRequest.eq('sales_owner', jobSalesOwner)
+    jobsThisWeekRequest = jobsThisWeekRequest.eq('sales_owner', jobSalesOwner)
     jobsTotalRequest = jobsTotalRequest.eq('sales_owner', jobSalesOwner)
   }
   const canLoadSelectedJobs = canViewJobs && (isAdmin && viewingOwnProfile || Boolean(jobSalesOwner))
@@ -441,7 +441,7 @@ export async function getActivitiesWorkspace(input: {
     offersResponse,
     offerStatusCountsResponse,
     jobsResponse,
-    jobsTodayResponse,
+    jobsThisWeekResponse,
     jobsTotalResponse,
     stickyNotes,
     stickyCounts,
@@ -502,7 +502,7 @@ export async function getActivitiesWorkspace(input: {
     canLoadSelectedJobs
       ? jobsRequest
       : Promise.resolve(emptyJobsResponse),
-    canLoadSelectedJobs ? jobsTodayRequest : Promise.resolve(emptyJobsCountResponse),
+    canLoadSelectedJobs ? jobsThisWeekRequest : Promise.resolve(emptyJobsCountResponse),
     canLoadSelectedJobs ? jobsTotalRequest : Promise.resolve(emptyJobsCountResponse),
     getStickyNotes({ view: 'active', limit: WORKSPACE_LIMITS.stickyNotes }),
     getStickyNoteCounts(),
@@ -523,7 +523,7 @@ export async function getActivitiesWorkspace(input: {
     [meetingsTotalResponse, 'Celkový počet schůzek se nepodařilo spočítat'],
     [offersResponse, 'Nabídky se nepodařilo načíst'],
     [jobsResponse, 'Zakázky se nepodařilo načíst'],
-    [jobsTodayResponse, 'Dnešní zakázky se nepodařilo spočítat'],
+    [jobsThisWeekResponse, 'Zakázky v tomto týdnu se nepodařilo spočítat'],
     [jobsTotalResponse, 'Celkový počet zakázek se nepodařilo spočítat'],
   ] as const
   for (const [response, label] of responsesToCheck) assertResponse(response, label)
@@ -676,7 +676,7 @@ export async function getActivitiesWorkspace(input: {
       activeTasks,
       meetingsToday,
       meetingsTotal,
-      jobsToday: countOf(jobsTodayResponse),
+      jobsThisWeek: countOf(jobsThisWeekResponse),
       jobsTotal: countOf(jobsTotalResponse),
     },
     manualActivities: {

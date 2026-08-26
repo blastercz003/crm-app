@@ -18,6 +18,10 @@ import {
 import { ProvizeHistoryModalLauncher } from './provize-history-modal'
 import { ProvizePayoutModalLauncher } from './provize-payout-modal'
 import { ProvizeInteractiveTable } from './provize-interactive-table'
+import {
+  ProvizeStatsOverview,
+  type ProvizeStatsOverviewItem,
+} from './provize-stats-overview'
 
 export const metadata: Metadata = {
   title: 'Provize',
@@ -547,6 +551,26 @@ export default async function ProvizePage({
     dateFrom,
     dateTo,
   })
+  const statsOverviewItems: ProvizeStatsOverviewItem[] = isAdmin
+    ? SALES_OWNER_OPTIONS.map((owner) => ({
+        label: owner,
+        unpaidValue: unpaidCommissionByOwner.get(owner) ?? 0,
+        paidValue: paidCommissionByOwner.get(owner) ?? 0,
+      }))
+    : [
+        {
+          label: currentSalesOwner ?? 'Moje provize',
+          unpaidValue: currentSalesOwner
+            ? (unpaidCommissionByOwner.get(currentSalesOwner) ?? 0)
+            : 0,
+          paidValue: currentSalesOwner
+            ? (paidCommissionByOwner.get(currentSalesOwner) ?? 0)
+            : 0,
+        },
+      ]
+  const statsAnimationKey = `${yearScope}:${statsOverviewItems
+    .map((item) => `${item.label}:${item.unpaidValue}:${item.paidValue}`)
+    .join('|')}`
 
   return (
     <main className="jobs-page provize-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)]">
@@ -889,45 +913,10 @@ export default async function ProvizePage({
               </div>
             </div>
 
-            <div className={`mt-3 grid gap-2.5 ${isAdmin ? '' : 'flex-1'}`}>
-              {isAdmin ? (
-                <>
-                  <StatsCard
-                    label="MICHAL"
-                    unpaidValue={formatCurrency(
-                      unpaidCommissionByOwner.get('MICHAL') ?? 0
-                    )}
-                    paidValue={formatCurrency(
-                      paidCommissionByOwner.get('MICHAL') ?? 0
-                    )}
-                  />
-                  <StatsCard
-                    label="LÍDA"
-                    unpaidValue={formatCurrency(
-                      unpaidCommissionByOwner.get('LÍDA') ?? 0
-                    )}
-                    paidValue={formatCurrency(
-                      paidCommissionByOwner.get('LÍDA') ?? 0
-                    )}
-                  />
-                </>
-              ) : (
-                <StatsCard
-                  className="h-full"
-                  label={currentSalesOwner ?? 'Moje provize'}
-                  unpaidValue={formatCurrency(
-                    currentSalesOwner
-                      ? (unpaidCommissionByOwner.get(currentSalesOwner) ?? 0)
-                      : 0
-                  )}
-                  paidValue={formatCurrency(
-                    currentSalesOwner
-                      ? (paidCommissionByOwner.get(currentSalesOwner) ?? 0)
-                      : 0
-                  )}
-                />
-              )}
-            </div>
+            <ProvizeStatsOverview
+              items={statsOverviewItems}
+              animationKey={statsAnimationKey}
+            />
           </section>
         </section>
 
@@ -1097,48 +1086,6 @@ function DesktopFilterSelect({
         </span>
       </div>
     </div>
-  )
-}
-
-function StatsCard({
-  className,
-  label,
-  unpaidValue,
-  paidValue,
-}: {
-  className?: string
-  label: string
-  unpaidValue: string
-  paidValue: string
-}) {
-  return (
-    <article
-      className={`rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_20px_rgba(15,23,42,0.08)] [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.22)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(24,45,78,0.56)_0%,rgba(18,36,66,0.48)_52%,rgba(14,28,53,0.52)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_14px_28px_rgba(8,20,37,0.24)] ${
-        className ?? ''
-      }`}
-    >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 [html[data-theme='dark']_&]:text-slate-300">
-        {label}
-      </div>
-      <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">
-            Nevyplacené
-          </div>
-          <div className="mt-0.5 text-lg font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-            {unpaidValue}
-          </div>
-        </div>
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500 [html[data-theme='dark']_&]:text-slate-400">
-            Vyplacené
-          </div>
-          <div className="mt-0.5 text-lg font-semibold text-gray-900 [html[data-theme='dark']_&]:text-[#f8fbff]">
-            {paidValue}
-          </div>
-        </div>
-      </div>
-    </article>
   )
 }
 
