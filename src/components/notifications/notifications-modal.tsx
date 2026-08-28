@@ -28,6 +28,7 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   offers: 'Nabídky',
   jobs: 'Zakázky',
   activities: 'Aktivity',
+  weather: 'Počasí',
   system: 'Systém',
 }
 

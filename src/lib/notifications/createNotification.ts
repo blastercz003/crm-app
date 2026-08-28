@@ -21,6 +21,7 @@ type CreateNotificationInput = {
   priority?: NotificationPriority
   dedupeKey?: string | null
   skipSelfNotification?: boolean
+  returnExistingOnDuplicate?: boolean
 }
 
 export async function createNotification(input: CreateNotificationInput) {
@@ -35,7 +36,7 @@ export async function createNotification(input: CreateNotificationInput) {
 
   const supabase = input.supabase ?? (await createClient())
 
-  const { error } = await supabase
+  const { data: createdNotification, error } = await supabase
     .from('notifications')
     .insert({
       recipient_user_id: recipientUserId,
@@ -50,6 +51,8 @@ export async function createNotification(input: CreateNotificationInput) {
       priority: input.priority ?? 'normal',
       dedupe_key: input.dedupeKey ?? null,
     })
+    .select('id')
+    .single<{ id: string }>()
 
   if (error) {
     const message = error.message.toLowerCase()
@@ -58,7 +61,17 @@ export async function createNotification(input: CreateNotificationInput) {
       input.dedupeKey &&
       (message.includes('duplicate') || message.includes('unique'))
     ) {
-      return null
+      if (!input.returnExistingOnDuplicate) return null
+
+      const { data: existingNotification } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('dedupe_key', input.dedupeKey)
+        .maybeSingle<{ id: string }>()
+
+      return existingNotification
+        ? { success: true as const, id: existingNotification.id, deduplicated: true }
+        : null
     }
 
     throw new Error(`Nepodařilo se vytvořit notifikaci: ${error.message}`)
@@ -75,7 +88,11 @@ export async function createNotification(input: CreateNotificationInput) {
     console.error('Nepodařilo se odeslat push notifikaci.', pushError)
   }
 
-  return { success: true }
+  return {
+    success: true as const,
+    id: createdNotification.id,
+    deduplicated: false,
+  }
 }
 
 export async function getAdminProfileIds(supabase: SupabaseClient) {
