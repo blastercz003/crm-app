@@ -185,17 +185,32 @@ function HazardBadge({ event }: { event: WeatherEventListItem }) {
 function EventCard({
   event,
   onOpen,
+  onPreview,
+  onPreviewEnd,
 }: {
   event: WeatherEventListItem
   onOpen: (event: WeatherEventListItem, trigger: HTMLButtonElement) => void
+  onPreview: (event: WeatherEventListItem) => void
+  onPreviewEnd: (event: WeatherEventListItem) => void
 }) {
   const hazard = HAZARD_PRESENTATION[event.hazardType]
   const Icon = hazard.icon
+  const desktopPreviewAvailable = () => window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches
   return (
     <button
       type="button"
       onClick={(clickEvent) => onOpen(event, clickEvent.currentTarget)}
-      className="activities-workspace__row weather-alerts__event-card weather-alerts__record-surface group flex min-h-[78px] min-w-0 max-w-full flex-col overflow-hidden rounded-[18px] border p-2.5 text-left sm:min-h-[96px] sm:rounded-[22px] sm:p-3.5"
+      onPointerEnter={(pointerEvent) => {
+        if (pointerEvent.pointerType === 'mouse' && desktopPreviewAvailable()) onPreview(event)
+      }}
+      onPointerLeave={(pointerEvent) => {
+        if (pointerEvent.pointerType === 'mouse') onPreviewEnd(event)
+      }}
+      onFocus={() => {
+        if (desktopPreviewAvailable()) onPreview(event)
+      }}
+      onBlur={() => onPreviewEnd(event)}
+      className="activities-workspace__row weather-alerts__event-card weather-alerts__record-surface group flex min-h-[68px] min-w-0 max-w-full flex-col overflow-hidden rounded-[18px] border p-2.5 text-left sm:min-h-[82px] sm:rounded-[22px] sm:p-3.5"
     >
       <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface)] text-[var(--accent)] sm:h-9 sm:w-9 sm:rounded-xl">
@@ -627,7 +642,7 @@ function sourceHealthPresentation(
 
   return {
     label: 'ŽIVĚ',
-    description: 'Data se automaticky obnovují každých 5 minut.',
+      description: 'Aktualizace každých 5 minut.',
     badge: 'border-emerald-200 bg-emerald-50 text-emerald-700 [html[data-theme=dark]_&]:border-emerald-400/25 [html[data-theme=dark]_&]:bg-emerald-400/10 [html[data-theme=dark]_&]:text-emerald-300',
     dot: 'bg-emerald-500 motion-safe:animate-pulse [html[data-theme=dark]_&]:bg-emerald-400',
   }
@@ -693,22 +708,33 @@ function WeatherSourceStatusCard({
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">Zdroj dat ČHMÚ</h2>
           <p className="mt-0.5 text-[11px] leading-4 text-[var(--text-secondary)]">{presentation.description}</p>
         </div>
-        <span
-          role="status"
-          aria-label={`Stav načítání dat ČHMÚ: ${presentation.label}`}
-          className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[9px] font-bold uppercase tracking-[0.1em] ${presentation.badge}`}
-        >
-          <i aria-hidden className={`h-1.5 w-1.5 rounded-full ${presentation.dot}`} />
-          {presentation.label}
-        </span>
-      </div>
-      <div className="flex flex-1 items-center">
-        <div className="weather-alerts__record-surface mt-4 w-full rounded-2xl border px-3.5 py-3">
-          <span className="text-[9px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]">Poslední úspěšná aktualizace</span>
-          <strong className="mt-1 block text-sm text-[var(--text-primary)]">{formatDateTime(status.lastSuccessAt, 'Zatím neproběhla')}</strong>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            disabled={isRefreshing}
+            onClick={onRefresh}
+            aria-label="Obnovit zobrazení"
+            title="Obnovit zobrazení"
+            className="inline-flex h-7 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:cursor-wait disabled:opacity-70"
+          >
+            <RefreshCw aria-hidden size={12} className={isRefreshing ? 'animate-spin' : ''} />
+          </button>
+          <span
+            role="status"
+            aria-label={`Stav načítání dat ČHMÚ: ${presentation.label}`}
+            className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[9px] font-bold uppercase tracking-[0.1em] ${presentation.badge}`}
+          >
+            <i aria-hidden className={`h-1.5 w-1.5 rounded-full ${presentation.dot}`} />
+            {presentation.label}
+          </span>
         </div>
       </div>
-      <button type="button" disabled={isRefreshing} onClick={onRefresh} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[10px] font-bold uppercase text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:cursor-wait disabled:opacity-70"><RefreshCw aria-hidden size={13} className={isRefreshing ? 'animate-spin' : ''} /><span className="inline-block min-w-[112px]">{isRefreshing ? 'Aktualizuji data' : 'Obnovit zobrazení'}</span></button>
+      <div className="flex flex-1 items-center">
+        <div className="weather-alerts__record-surface mt-4 w-full rounded-2xl border px-3 py-2.5">
+          <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Poslední úspěšná aktualizace</span>
+          <strong className="mt-0.5 block text-xs text-[var(--text-primary)]">{formatDateTime(status.lastSuccessAt, 'Zatím neproběhla')}</strong>
+        </div>
+      </div>
     </section>
   )
 }
@@ -735,6 +761,7 @@ export function WeatherAlertsDashboard({
   const [hazardFilter, setHazardFilter] = useState<HazardFilter>('all')
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [previewedEventId, setPreviewedEventId] = useState<string | null>(null)
   const [isRefreshing, startRefresh] = useTransition()
   const refreshWorkspace = useCallback(() => {
     startRefresh(() => router.refresh())
@@ -756,6 +783,9 @@ export function WeatherAlertsDashboard({
   }), [events, hazardFilter, severityFilter])
   const filtersActive = hazardFilter !== 'all' || severityFilter !== 'all'
   const activeFilterCount = Number(hazardFilter !== 'all') + Number(severityFilter !== 'all')
+  const previewedEvent = previewedEventId
+    ? filteredEvents.find((event) => event.id === previewedEventId) ?? null
+    : null
   const selectedIndex = selected ? filteredEvents.findIndex((event) => event.id === selected.id) : -1
   const previousEvent = selectedIndex > 0 ? filteredEvents[selectedIndex - 1] : null
   const nextEvent = selectedIndex >= 0 && selectedIndex < filteredEvents.length - 1 ? filteredEvents[selectedIndex + 1] : null
@@ -785,6 +815,7 @@ export function WeatherAlertsDashboard({
     window.history.replaceState(null, '', '/weather-alerts')
   }
   const openPopup = (event: WeatherEventListItem, button: HTMLElement | SVGElement) => {
+    setPreviewedEventId(null)
     if (event.status === 'ended' || event.status === 'cancelled') setTab('history')
     setSelectedDetail(null)
     setDetailLoading(true)
@@ -916,10 +947,10 @@ export function WeatherAlertsDashboard({
           </div>
 
           <div className="mt-5">
-            <WeatherAlertMap events={filteredEvents} onEventOpen={openPopup} />
+            <WeatherAlertMap events={previewedEvent ? [previewedEvent] : filteredEvents} onEventOpen={openPopup} />
           </div>
 
-          {filteredEvents.length > 0 ? <div className="mt-5 grid min-w-0 gap-3 md:grid-cols-2">{filteredEvents.map((event) => <EventCard key={event.id} event={event} onOpen={openPopup} />)}</div> : <div className="weather-alerts__record-surface mt-5 flex min-h-[132px] flex-col items-center justify-center rounded-[22px] border border-dashed px-5 py-4 text-center"><CircleAlert aria-hidden size={24} className={filtersActive ? 'text-[var(--accent)]' : 'text-emerald-500'} /><strong className="mt-2 text-sm text-[var(--text-primary)]">{filtersActive ? 'Žádná výstraha neodpovídá zvoleným filtrům.' : tab === 'active' ? 'ČHMÚ nyní neeviduje aktivní výstrahu.' : 'V historii zatím nejsou žádné výstrahy.'}</strong><span className="mt-1 text-xs text-[var(--text-secondary)]">{filtersActive ? 'Zkuste změnit typ jevu nebo stupeň nebezpečí.' : 'Data se automaticky průběžně obnovují.'}</span>{filtersActive ? <button type="button" onClick={() => { setHazardFilter('all'); setSeverityFilter('all') }} className="mt-3 h-9 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[10px] font-bold uppercase text-[var(--accent)]">Zrušit filtry</button> : null}</div>}
+          {filteredEvents.length > 0 ? <div className="mt-5 grid min-w-0 gap-3 md:grid-cols-2">{filteredEvents.map((event) => <EventCard key={event.id} event={event} onOpen={openPopup} onPreview={(previewEvent) => setPreviewedEventId(previewEvent.id)} onPreviewEnd={(previewEvent) => setPreviewedEventId((current) => current === previewEvent.id ? null : current)} />)}</div> : <div className="weather-alerts__record-surface mt-5 flex min-h-[132px] flex-col items-center justify-center rounded-[22px] border border-dashed px-5 py-4 text-center"><CircleAlert aria-hidden size={24} className={filtersActive ? 'text-[var(--accent)]' : 'text-emerald-500'} /><strong className="mt-2 text-sm text-[var(--text-primary)]">{filtersActive ? 'Žádná výstraha neodpovídá zvoleným filtrům.' : tab === 'active' ? 'ČHMÚ nyní neeviduje aktivní výstrahu.' : 'V historii zatím nejsou žádné výstrahy.'}</strong><span className="mt-1 text-xs text-[var(--text-secondary)]">{filtersActive ? 'Zkuste změnit typ jevu nebo stupeň nebezpečí.' : 'Data se automaticky průběžně obnovují.'}</span>{filtersActive ? <button type="button" onClick={() => { setHazardFilter('all'); setSeverityFilter('all') }} className="mt-3 h-9 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[10px] font-bold uppercase text-[var(--accent)]">Zrušit filtry</button> : null}</div>}
         </section>
 
         <aside className="min-w-0">
