@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import {
@@ -125,6 +125,7 @@ function CopyOfferModal({
   const [selectedContactId, setSelectedContactId] = useState('')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
+  const companyInputRef = useRef<HTMLInputElement>(null)
 
   const selectedClient =
     clients.find((client) => client.id === selectedClientId) ?? null
@@ -149,7 +150,13 @@ function CopyOfferModal({
     setSelectedClientId(client.id)
     setSelectedContactId('')
     setCompanyTouched(true)
-    setCompanyHasFocus(false)
+  }
+
+  function setAutocompleteSelection(start: number, end: number) {
+    requestAnimationFrame(() => {
+      companyInputRef.current?.focus()
+      companyInputRef.current?.setSelectionRange(start, end)
+    })
   }
 
   function handleCompanyChange(nextRawValue: string) {
@@ -171,6 +178,18 @@ function CopyOfferModal({
 
     if (exactMatch) {
       selectClient(exactMatch)
+      return
+    }
+
+    const prefixMatches = clients.filter((client) =>
+      normalizeSearchText(client.name).startsWith(normalizedValue)
+    )
+
+    if (prefixMatches.length === 1) {
+      const matchedClient = prefixMatches[0]
+
+      selectClient(matchedClient)
+      setAutocompleteSelection(nextRawValue.length, matchedClient.name.length)
       return
     }
 
@@ -200,17 +219,6 @@ function CopyOfferModal({
       selectClient(exactMatch)
     }
   }
-
-  const suggestions =
-    companyHasFocus && companyName.trim()
-      ? clients
-          .filter((client) =>
-            normalizeSearchText(client.name).includes(
-              normalizeSearchText(companyName)
-            )
-          )
-          .slice(0, 6)
-      : []
 
   useModalActionSuccess(state.success && Boolean(state.offerId), () => {
     onClose()
@@ -294,38 +302,25 @@ function CopyOfferModal({
                 <input type="hidden" name="client_id" value={selectedClientId} />
                 <div className="relative">
                   <input
+                    ref={companyInputRef}
                     id="copy_offer_client"
                     value={companyName}
                     onChange={(event) => handleCompanyChange(event.target.value)}
                     onFocus={() => setCompanyHasFocus(true)}
                     onBlur={handleCompanyBlur}
+                    autoComplete="off"
                     placeholder="Začni psát název klienta"
-                    aria-autocomplete="list"
+                    aria-autocomplete="inline"
                     className={[
                       'clients-modal__input w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-4 py-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:ring-2',
                       showCompanyError
                         ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                        : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]',
+                        : companySelectionIsValid && !companyHasFocus
+                          ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
+                          : 'border-white/75 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]',
                     ].join(' ')}
                   />
 
-                  {suggestions.length > 0 ? (
-                    <div className="offers-page__copy-modal__suggestions absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.97)_0%,rgba(243,248,252,0.94)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_20px_36px_rgba(15,23,42,0.16)]">
-                      {suggestions.map((client) => (
-                        <button
-                          key={client.id}
-                          type="button"
-                          onMouseDown={(event) => {
-                            event.preventDefault()
-                            selectClient(client)
-                          }}
-                          className="offers-page__copy-modal__suggestion block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-[#eef6fd]"
-                        >
-                          {client.name}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
                 {showCompanyError ? (
                   <p className="offers-page__copy-modal__error mt-2 text-xs text-red-600">

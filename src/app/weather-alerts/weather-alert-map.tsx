@@ -53,7 +53,7 @@ export function WeatherAlertMap({ events, compact = false, onEventOpen }: Weathe
   const affectedAreaCount = eventByArea.size
 
   return (
-    <div className={`overflow-hidden rounded-[22px] border border-[var(--surface-border)] bg-[var(--surface-muted)] ${compact ? 'p-3' : 'p-3.5 sm:p-4'}`}>
+    <div className={`weather-alerts__record-surface overflow-hidden rounded-[22px] border ${compact ? 'p-3' : 'p-3.5 sm:p-4'}`}>
       {!compact ? (
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>

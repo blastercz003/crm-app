@@ -45,6 +45,11 @@ export async function syncWeatherAlerts() {
     const client = getServiceRoleClient()
     const now = new Date().toISOString()
     if (client) {
+      const { data: failureState } = await client
+        .from('weather_source_state')
+        .select('consecutive_failure_count')
+        .eq('source', CHMI_SOURCE)
+        .maybeSingle<{ consecutive_failure_count: number | null }>()
       await Promise.allSettled([
         client
           .from('weather_sync_runs')
@@ -57,13 +62,15 @@ export async function syncWeatherAlerts() {
           .eq('id', imported.syncRunId),
         client
           .from('weather_source_state')
-          .update({
+          .upsert({
+            source: CHMI_SOURCE,
             last_error_at: now,
             last_error_code: 'WEATHER_PROCESSING_FAILED',
             last_error_message: message(error).slice(0, 2_000),
+            consecutive_failure_count:
+              (failureState?.consecutive_failure_count ?? 0) + 1,
             updated_at: now,
-          })
-          .eq('source', CHMI_SOURCE),
+          }, { onConflict: 'source' }),
       ])
     }
     throw error

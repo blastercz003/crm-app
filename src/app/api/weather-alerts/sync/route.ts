@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { reportRouteError } from '@/lib/errors/reportRouteError'
+import { notifyAdminsAfterWeatherSyncFailure } from '@/lib/weather-alerts/failure-notifications'
 import { syncWeatherAlerts } from '@/lib/weather-alerts/orchestrator'
 import { WeatherSyncAlreadyRunningError } from '@/lib/weather-alerts/sync'
 
@@ -52,12 +53,15 @@ export async function GET(request: Request) {
       )
     }
 
-    await reportRouteError({
-      error,
-      route: '/api/weather-alerts/sync',
-      section: 'weather-alerts',
-      errorType: 'WeatherAlertsSyncRouteError',
-    })
+    await Promise.allSettled([
+      reportRouteError({
+        error,
+        route: '/api/weather-alerts/sync',
+        section: 'weather-alerts',
+        errorType: 'WeatherAlertsSyncRouteError',
+      }),
+      notifyAdminsAfterWeatherSyncFailure(),
+    ])
 
     return NextResponse.json(
       {

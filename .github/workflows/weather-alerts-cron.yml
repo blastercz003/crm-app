@@ -24,14 +24,26 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [ -z "${WEATHER_ALERTS_AUTOMATION_TOKEN:-}" ]; then
+            echo "Missing GitHub Actions secret: WEATHER_ALERTS_AUTOMATION_TOKEN"
+            exit 1
+          fi
+          if [ -z "${WEATHER_ALERTS_AUTOMATION_URL:-}" ]; then
+            echo "Missing GitHub Actions secret: WEATHER_ALERTS_AUTOMATION_URL"
+            exit 1
+          fi
+
           response=$(curl --silent --show-error \
             --retry 2 \
-            --retry-delay 3 \
+            --retry-delay 5 \
+            --retry-max-time 220 \
             --retry-all-errors \
             --connect-timeout 15 \
-            --max-time 150 \
+            --max-time 105 \
             --write-out '\n%{http_code}' \
             -H "Authorization: Bearer $WEATHER_ALERTS_AUTOMATION_TOKEN" \
+            -H "Accept: application/json" \
+            -H "User-Agent: B-Energy-Weather-Alerts-Cron/1.0" \
             "$WEATHER_ALERTS_AUTOMATION_URL")
 
           body=$(echo "$response" | sed '$d')

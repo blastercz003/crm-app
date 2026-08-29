@@ -131,10 +131,34 @@ export type WeatherEventListItem = {
   onsetAt: string | null
   validTo: string | null
   status: WeatherEventStatus
+  currentVersionNumber: number
   firstSeenAt: string
   lastChangedAt: string
   endedAt: string | null
   areas: WeatherEventAreaSummary[]
+}
+
+export type WeatherEventVersionSummary = {
+  id: string
+  versionNumber: number
+  status: WeatherEventStatus
+  severityColor: 'yellow' | 'orange' | 'red'
+  headline: string
+  issuedAt: string | null
+  effectiveAt: string | null
+  onsetAt: string | null
+  validTo: string | null
+  changeReasons: string[]
+  affectedAreaCount: number
+}
+
+export type WeatherEventDetail = {
+  eventId: string
+  currentVersionNumber: number
+  issuedAt: string | null
+  effectiveAt: string | null
+  parameters: Record<string, string | string[]>
+  versions: WeatherEventVersionSummary[]
 }
 
 export type WeatherAlertsWorkspace = {

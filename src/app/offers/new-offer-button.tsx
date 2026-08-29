@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
@@ -118,6 +118,7 @@ export function NewOfferModal({
   const [contactPerson, setContactPerson] = useState('')
   const [companyTouched, setCompanyTouched] = useState(false)
   const [companyHasFocus, setCompanyHasFocus] = useState(false)
+  const companyInputRef = useRef<HTMLInputElement>(null)
 
   const selectedClient =
     clients.find((client) => client.id === selectedClientId) ?? null
@@ -131,6 +132,13 @@ export function NewOfferModal({
     companyName.trim() === (selectedClient?.name ?? '')
 
   const showCompanyError = companyTouched && !companySelectionIsValid
+
+  function setAutocompleteSelection(start: number, end: number) {
+    requestAnimationFrame(() => {
+      companyInputRef.current?.focus()
+      companyInputRef.current?.setSelectionRange(start, end)
+    })
+  }
 
   function handleCompanyChange(nextRawValue: string) {
     setCompanyTouched(true)
@@ -156,6 +164,21 @@ export function NewOfferModal({
       setSelectedClientId(exactMatch.id)
       setSelectedContactId('')
       setContactPerson('')
+      return
+    }
+
+    const prefixMatches = clients.filter((client) =>
+      normalizeSearchText(client.name).startsWith(normalizedValue)
+    )
+
+    if (prefixMatches.length === 1) {
+      const matchedClient = prefixMatches[0]
+
+      setCompanyName(matchedClient.name)
+      setSelectedClientId(matchedClient.id)
+      setSelectedContactId('')
+      setContactPerson('')
+      setAutocompleteSelection(nextRawValue.length, matchedClient.name.length)
       return
     }
 
@@ -201,17 +224,6 @@ export function NewOfferModal({
 
     setContactPerson(nextContact?.name ?? '')
   }
-
-  const suggestions =
-    companyHasFocus && companyName.trim()
-      ? clients
-          .filter((client) =>
-            normalizeSearchText(client.name).includes(
-              normalizeSearchText(companyName)
-            )
-          )
-          .slice(0, 6)
-      : []
 
   useBodyScrollLock(true)
 
@@ -325,41 +337,24 @@ export function NewOfferModal({
                       <input type="hidden" name="client_id" value={selectedClientId} />
                       <div className="relative">
                         <input
+                          ref={companyInputRef}
                           value={companyName}
                           onChange={(event) => handleCompanyChange(event.target.value)}
                           onFocus={() => setCompanyHasFocus(true)}
                           onBlur={handleCompanyBlur}
+                          autoComplete="off"
+                          aria-autocomplete="inline"
                           placeholder="Začni psát název klienta"
                           className={[
-                            'clients-modal__input offers-page__new-modal__input h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]',
+                            'clients-modal__input offers-page__new-modal__input h-10 w-full rounded-xl border bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:ring-2',
                             showCompanyError
                               ? 'border-red-300 focus:border-red-300 focus:ring-red-100'
-                              : '',
+                              : companySelectionIsValid && !companyHasFocus
+                                ? 'border-emerald-300 focus:border-emerald-300 focus:ring-emerald-100'
+                                : 'border-zinc-200/80 focus:border-[#9dc7e5] focus:ring-[#b9d8ef]',
                           ].join(' ')}
                         />
 
-                        {suggestions.length > 0 ? (
-                          <div className="offers-page__new-modal__suggestions absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.97)_0%,rgba(243,248,252,0.94)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_20px_36px_rgba(15,23,42,0.16)]">
-                            {suggestions.map((client) => (
-                              <button
-                                key={client.id}
-                                type="button"
-                                onMouseDown={(event) => {
-                                  event.preventDefault()
-                                  setCompanyName(client.name)
-                                  setSelectedClientId(client.id)
-                                  setSelectedContactId('')
-                                  setContactPerson('')
-                                  setCompanyTouched(true)
-                                  setCompanyHasFocus(false)
-                                }}
-                                className="offers-page__new-modal__suggestion block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-[#eef6fd]"
-                              >
-                                {client.name}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
                       </div>
                       {showCompanyError ? (
                         <p className="offers-page__new-modal__error mt-2 text-xs text-red-600">

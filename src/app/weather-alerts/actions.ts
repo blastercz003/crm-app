@@ -5,11 +5,16 @@ import {
   getWeatherNotificationPreferences,
   updateWeatherNotificationPreferences,
 } from '@/lib/weather-alerts/preferences'
-import type { WeatherNotificationPreferences } from '@/lib/weather-alerts/types'
+import { getWeatherEventDetail } from '@/lib/weather-alerts/service'
+import type { WeatherEventDetail, WeatherNotificationPreferences } from '@/lib/weather-alerts/types'
 
 type WeatherPreferencesActionResult =
   | { success: true; preferences: WeatherNotificationPreferences; error: null }
   | { success: false; preferences: null; error: string }
+
+type WeatherEventDetailActionResult =
+  | { success: true; detail: WeatherEventDetail; error: null }
+  | { success: false; detail: null; error: string }
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Nastavení výstrah se nepodařilo zpracovat.'
@@ -37,5 +42,13 @@ export async function updateWeatherNotificationPreferencesAction(input: {
     return { success: true, preferences, error: null }
   } catch (error) {
     return { success: false, preferences: null, error: errorMessage(error) }
+  }
+}
+
+export async function getWeatherEventDetailAction(eventId: string): Promise<WeatherEventDetailActionResult> {
+  try {
+    return { success: true, detail: await getWeatherEventDetail(eventId), error: null }
+  } catch (error) {
+    return { success: false, detail: null, error: errorMessage(error) }
   }
 }
