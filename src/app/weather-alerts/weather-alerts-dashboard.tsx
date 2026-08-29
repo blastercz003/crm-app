@@ -28,6 +28,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   startTransition,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -154,7 +155,7 @@ function StatusBadge({ event }: { event: WeatherEventListItem }) {
         ? { label: 'AKTUALIZOVANÁ', className: 'border-violet-500/35 bg-violet-500/10 text-violet-700 [html[data-theme=dark]_&]:text-violet-300' }
         : { label: 'NOVÁ', className: 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300' }
   return (
-    <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[9px] font-bold tracking-[0.09em] ${status.className}`}>
+    <span className={`inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full border px-1.5 text-[7px] font-bold tracking-[0.05em] sm:h-6 sm:px-2.5 sm:text-[9px] sm:tracking-[0.09em] ${status.className}`}>
       {status.label}
     </span>
   )
@@ -163,9 +164,20 @@ function StatusBadge({ event }: { event: WeatherEventListItem }) {
 function SeverityBadge({ event }: { event: WeatherEventListItem }) {
   const severity = SEVERITY_PRESENTATION[event.severityColor]
   return (
-    <span className={`inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-[9px] font-bold tracking-[0.09em] ${severity.border} ${severity.surface} ${severity.text}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${severity.dot}`} />
+    <span className={`inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-1.5 text-[7px] font-bold tracking-[0.05em] sm:h-6 sm:gap-1.5 sm:px-2.5 sm:text-[9px] sm:tracking-[0.09em] ${severity.border} ${severity.surface} ${severity.text}`}>
+      <span className={`h-1 w-1 rounded-full sm:h-1.5 sm:w-1.5 ${severity.dot}`} />
       {severity.short}
+    </span>
+  )
+}
+
+function HazardBadge({ event }: { event: WeatherEventListItem }) {
+  const hazard = HAZARD_PRESENTATION[event.hazardType]
+  const Icon = hazard.icon
+  return (
+    <span className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-1.5 text-[7px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] sm:h-6 sm:gap-1.5 sm:px-2.5 sm:text-[9px] sm:tracking-[0.09em]">
+      <Icon aria-hidden size={12} className="h-2.5 w-2.5 shrink-0 text-[var(--accent)] sm:h-3 sm:w-3" />
+      {hazard.label}
     </span>
   )
 }
@@ -183,24 +195,24 @@ function EventCard({
     <button
       type="button"
       onClick={(clickEvent) => onOpen(event, clickEvent.currentTarget)}
-      className="activities-workspace__row weather-alerts__event-card weather-alerts__record-surface group flex min-h-[96px] min-w-0 max-w-full flex-col overflow-hidden rounded-[22px] border p-3.5 text-left"
+      className="activities-workspace__row weather-alerts__event-card weather-alerts__record-surface group flex min-h-[78px] min-w-0 max-w-full flex-col overflow-hidden rounded-[18px] border p-2.5 text-left sm:min-h-[96px] sm:rounded-[22px] sm:p-3.5"
     >
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface)] text-[var(--accent)]">
-          <Icon aria-hidden size={18} />
+      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface)] text-[var(--accent)] sm:h-9 sm:w-9 sm:rounded-xl">
+          <Icon aria-hidden size={18} className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
+          <span className="flex flex-nowrap items-center gap-1 sm:flex-wrap sm:gap-2">
             <StatusBadge event={event} />
             <SeverityBadge event={event} />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-secondary)]">{hazard.label}</span>
+            <HazardBadge event={event} />
           </span>
-          <strong className="mt-1.5 block line-clamp-2 text-[14px] font-semibold leading-[18px] text-[var(--text-primary)]">
+          <strong className="mt-1 block line-clamp-2 text-[12px] font-semibold leading-4 text-[var(--text-primary)] sm:mt-1.5 sm:text-[14px] sm:leading-[18px]">
             {event.headline || event.eventName}{' '}
             <span className="whitespace-nowrap font-medium text-[var(--text-secondary)]">(do {formatShortDateTime(event.validTo)})</span>
           </strong>
         </span>
-        <ChevronRight aria-hidden size={18} className="mt-3 shrink-0 text-[var(--text-tertiary)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
+        <ChevronRight aria-hidden size={18} className="h-4 w-4 shrink-0 self-center text-[var(--text-tertiary)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)] sm:mt-3 sm:h-[18px] sm:w-[18px] sm:self-auto" />
       </div>
     </button>
   )
@@ -335,7 +347,7 @@ function EventPopup({
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge event={event} />
               <SeverityBadge event={event} />
-              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">{hazard.label}</span>
+              <HazardBadge event={event} />
             </div>
             <h2 id={`weather-event-${event.id}`} className="mt-2 text-lg font-semibold leading-6 text-[var(--text-primary)] sm:text-xl">
               {event.headline || event.eventName}
@@ -507,7 +519,7 @@ function NotificationSettings({ initialPreferences }: { initialPreferences: Weat
   }
 
   return (
-    <section className="activities-page__panel rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+    <section className="activities-page__panel h-full rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--accent)]">
           {preferences.notificationsEnabled ? <Bell aria-hidden size={19} /> : <BellOff aria-hidden size={19} />}
@@ -625,14 +637,17 @@ function WeatherSourceStatusCard({
   initialStatus,
   isRefreshing,
   onRefresh,
+  onDataVersionChange,
 }: {
   initialStatus: WeatherSourceStatus
   isRefreshing: boolean
   onRefresh: () => void
+  onDataVersionChange: () => void
 }) {
   const [status, setStatus] = useState(initialStatus)
   const [now, setNow] = useState(() => Date.now())
   const [statusReadFailures, setStatusReadFailures] = useState(0)
+  const latestDataVersionRef = useRef(initialStatus.dataVersion)
   const presentation = sourceHealthPresentation(status, now, statusReadFailures)
 
   useEffect(() => {
@@ -652,6 +667,10 @@ function WeatherSourceStatusCard({
       }
       setStatus(result.status)
       setStatusReadFailures(0)
+      if (result.status.dataVersion !== latestDataVersionRef.current) {
+        latestDataVersionRef.current = result.status.dataVersion
+        onDataVersionChange()
+      }
     }
 
     const interval = window.setInterval(() => { void refreshStatus() }, 60_000)
@@ -665,10 +684,10 @@ function WeatherSourceStatusCard({
       window.clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
+  }, [onDataVersionChange])
 
   return (
-    <section className="activities-page__panel rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+    <section className="activities-page__panel flex h-full flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">Zdroj dat ČHMÚ</h2>
@@ -683,9 +702,11 @@ function WeatherSourceStatusCard({
           {presentation.label}
         </span>
       </div>
-      <div className="weather-alerts__record-surface mt-4 rounded-2xl border px-3.5 py-3">
-        <span className="text-[9px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]">Poslední úspěšná aktualizace</span>
-        <strong className="mt-1 block text-sm text-[var(--text-primary)]">{formatDateTime(status.lastSuccessAt, 'Zatím neproběhla')}</strong>
+      <div className="flex flex-1 items-center">
+        <div className="weather-alerts__record-surface mt-4 w-full rounded-2xl border px-3.5 py-3">
+          <span className="text-[9px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]">Poslední úspěšná aktualizace</span>
+          <strong className="mt-1 block text-sm text-[var(--text-primary)]">{formatDateTime(status.lastSuccessAt, 'Zatím neproběhla')}</strong>
+        </div>
       </div>
       <button type="button" disabled={isRefreshing} onClick={onRefresh} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[10px] font-bold uppercase text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:cursor-wait disabled:opacity-70"><RefreshCw aria-hidden size={13} className={isRefreshing ? 'animate-spin' : ''} /><span className="inline-block min-w-[112px]">{isRefreshing ? 'Aktualizuji data' : 'Obnovit zobrazení'}</span></button>
     </section>
@@ -713,7 +734,11 @@ export function WeatherAlertsDashboard({
   const [detailError, setDetailError] = useState<string | null>(null)
   const [hazardFilter, setHazardFilter] = useState<HazardFilter>('all')
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [isRefreshing, startRefresh] = useTransition()
+  const refreshWorkspace = useCallback(() => {
+    startRefresh(() => router.refresh())
+  }, [router, startRefresh])
   const mounted = useSyncExternalStore(
     () => () => undefined,
     () => true,
@@ -730,6 +755,7 @@ export function WeatherAlertsDashboard({
       - new Date(right.onsetAt ?? right.firstSeenAt).getTime()
   }), [events, hazardFilter, severityFilter])
   const filtersActive = hazardFilter !== 'all' || severityFilter !== 'all'
+  const activeFilterCount = Number(hazardFilter !== 'all') + Number(severityFilter !== 'all')
   const selectedIndex = selected ? filteredEvents.findIndex((event) => event.id === selected.id) : -1
   const previousEvent = selectedIndex > 0 ? filteredEvents[selectedIndex - 1] : null
   const nextEvent = selectedIndex >= 0 && selectedIndex < filteredEvents.length - 1 ? filteredEvents[selectedIndex + 1] : null
@@ -790,7 +816,10 @@ export function WeatherAlertsDashboard({
         <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 shrink-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">ČHMÚ · CELÁ ČESKÁ REPUBLIKA</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">
+                <span className="lg:hidden">ČHMÚ · CELÁ ČR</span>
+                <span className="hidden lg:inline">ČHMÚ · CELÁ ČESKÁ REPUBLIKA</span>
+              </p>
               <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Přehled výstrah</h2>
             </div>
             <div className="hidden min-w-0 items-center gap-2 lg:flex">
@@ -836,52 +865,84 @@ export function WeatherAlertsDashboard({
             </div>
           </div>
 
-          <div className="weather-alerts__record-surface mt-4 flex min-w-0 flex-col gap-2 rounded-[18px] border p-2.5 sm:flex-row sm:items-center lg:hidden">
-            <span className="flex shrink-0 items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.11em] text-[var(--text-secondary)]">
-              <Filter aria-hidden size={14} /> Filtry
-            </span>
-            <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Filtrovat podle typu jevu</span>
-              <select
-                value={hazardFilter}
-                onChange={(event) => setHazardFilter(event.target.value as HazardFilter)}
-                className="h-10 w-full min-w-0 appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] py-0 pl-3 pr-9 text-xs font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)]"
-              >
-                {HAZARD_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-              <ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
-            </label>
-            <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Filtrovat podle stupně nebezpečí</span>
-              <select
-                value={severityFilter}
-                onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}
-                className="h-10 w-full min-w-0 appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] py-0 pl-3 pr-9 text-xs font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)]"
-              >
-                {SEVERITY_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-              <ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
-            </label>
-            <span aria-live="polite" className="shrink-0 px-1 text-center text-[10px] font-semibold text-[var(--text-secondary)]">
-              {filteredEvents.length} z {events.length}
-            </span>
+          <div className="weather-alerts__record-surface mt-4 min-w-0 overflow-hidden rounded-[18px] border lg:hidden">
+            <button
+              type="button"
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="weather-mobile-filters"
+              onClick={() => setMobileFiltersOpen((open) => !open)}
+              className="flex h-11 w-full min-w-0 items-center justify-between gap-3 px-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-[10px] font-bold uppercase tracking-[0.11em] text-[var(--text-secondary)]">
+                <Filter aria-hidden size={14} className="shrink-0" />
+                <span>Filtry</span>
+                {activeFilterCount > 0 ? (
+                  <span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] px-2 py-1 text-[9px] tracking-normal text-[var(--accent)]">
+                    {activeFilterCount} aktivní
+                  </span>
+                ) : null}
+              </span>
+              <span className="flex shrink-0 items-center gap-2 text-[10px] font-semibold text-[var(--text-secondary)]">
+                <span aria-live="polite">{filteredEvents.length}/{events.length}</span>
+                <ChevronDown aria-hidden size={15} className={`transition-transform duration-200 ${mobileFiltersOpen ? 'rotate-180' : ''}`} />
+              </span>
+            </button>
+            {mobileFiltersOpen ? (
+              <div id="weather-mobile-filters" className="grid gap-2 border-t border-[var(--surface-border)] p-2.5 sm:grid-cols-2">
+                <label className="relative min-w-0">
+                  <span className="sr-only">Filtrovat podle typu jevu</span>
+                  <select
+                    value={hazardFilter}
+                    onChange={(event) => setHazardFilter(event.target.value as HazardFilter)}
+                    className="h-10 w-full min-w-0 appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] py-0 pl-3 pr-9 text-xs font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)]"
+                  >
+                    {HAZARD_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                  <ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
+                </label>
+                <label className="relative min-w-0">
+                  <span className="sr-only">Filtrovat podle stupně nebezpečí</span>
+                  <select
+                    value={severityFilter}
+                    onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}
+                    className="h-10 w-full min-w-0 appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] py-0 pl-3 pr-9 text-xs font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)]"
+                  >
+                    {SEVERITY_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                  <ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
+                </label>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-5">
             <WeatherAlertMap events={filteredEvents} onEventOpen={openPopup} />
           </div>
 
-          {filteredEvents.length > 0 ? <div className="mt-5 grid min-w-0 gap-3 md:grid-cols-2">{filteredEvents.map((event) => <EventCard key={event.id} event={event} onOpen={openPopup} />)}</div> : <div className="weather-alerts__record-surface mt-5 flex min-h-52 flex-col items-center justify-center rounded-[22px] border border-dashed px-5 text-center"><CircleAlert aria-hidden size={28} className={filtersActive ? 'text-[var(--accent)]' : 'text-emerald-500'} /><strong className="mt-3 text-sm text-[var(--text-primary)]">{filtersActive ? 'Žádná výstraha neodpovídá zvoleným filtrům.' : tab === 'active' ? 'ČHMÚ nyní neeviduje relevantní aktivní výstrahu.' : 'V historii zatím nejsou žádné výstrahy.'}</strong><span className="mt-1 text-xs text-[var(--text-secondary)]">{filtersActive ? 'Zkuste změnit typ jevu nebo stupeň nebezpečí.' : 'Data se automaticky průběžně obnovují.'}</span>{filtersActive ? <button type="button" onClick={() => { setHazardFilter('all'); setSeverityFilter('all') }} className="mt-3 h-9 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[10px] font-bold uppercase text-[var(--accent)]">Zrušit filtry</button> : null}</div>}
+          {filteredEvents.length > 0 ? <div className="mt-5 grid min-w-0 gap-3 md:grid-cols-2">{filteredEvents.map((event) => <EventCard key={event.id} event={event} onOpen={openPopup} />)}</div> : <div className="weather-alerts__record-surface mt-5 flex min-h-[132px] flex-col items-center justify-center rounded-[22px] border border-dashed px-5 py-4 text-center"><CircleAlert aria-hidden size={24} className={filtersActive ? 'text-[var(--accent)]' : 'text-emerald-500'} /><strong className="mt-2 text-sm text-[var(--text-primary)]">{filtersActive ? 'Žádná výstraha neodpovídá zvoleným filtrům.' : tab === 'active' ? 'ČHMÚ nyní neeviduje aktivní výstrahu.' : 'V historii zatím nejsou žádné výstrahy.'}</strong><span className="mt-1 text-xs text-[var(--text-secondary)]">{filtersActive ? 'Zkuste změnit typ jevu nebo stupeň nebezpečí.' : 'Data se automaticky průběžně obnovují.'}</span>{filtersActive ? <button type="button" onClick={() => { setHazardFilter('all'); setSeverityFilter('all') }} className="mt-3 h-9 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[10px] font-bold uppercase text-[var(--accent)]">Zrušit filtry</button> : null}</div>}
         </section>
 
-        <aside className="space-y-4">
-          <NotificationSettings initialPreferences={workspace.preferences} />
-          <WeatherSourceStatusCard
-            key={`${workspace.sourceStatus.lastSuccessAt ?? 'none'}:${workspace.sourceStatus.lastAttemptAt ?? 'none'}:${workspace.sourceStatus.consecutiveFailureCount}`}
-            initialStatus={workspace.sourceStatus}
-            isRefreshing={isRefreshing}
-            onRefresh={() => startRefresh(() => router.refresh())}
-          />
+        <aside className="min-w-0">
+          <p className="mb-3 text-[10px] text-[var(--text-secondary)] sm:hidden">
+            Přejetím do strany zobrazíte další panel.
+          </p>
+          <div
+            className="activities-manual-carousel weather-alerts-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[24px] sm:block sm:space-y-4 sm:snap-none sm:overflow-visible sm:rounded-none"
+            aria-label="Nastavení upozornění a stav zdroje dat ČHMÚ"
+          >
+            <div className="min-w-0 snap-start snap-always sm:snap-none">
+              <NotificationSettings initialPreferences={workspace.preferences} />
+            </div>
+            <div className="min-w-0 snap-start snap-always sm:snap-none">
+              <WeatherSourceStatusCard
+                key={`${workspace.sourceStatus.dataVersion}:${workspace.sourceStatus.lastSuccessAt ?? 'none'}:${workspace.sourceStatus.lastAttemptAt ?? 'none'}:${workspace.sourceStatus.consecutiveFailureCount}`}
+                initialStatus={workspace.sourceStatus}
+                isRefreshing={isRefreshing}
+                onRefresh={refreshWorkspace}
+                onDataVersionChange={refreshWorkspace}
+              />
+            </div>
+          </div>
         </aside>
       </div>
 
