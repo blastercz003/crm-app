@@ -105,6 +105,7 @@ type DashboardMobileQuickActionsProps = {
   canViewJobs: boolean
   canViewOffers: boolean
   canViewWeatherAlerts: boolean
+  hasActiveWeatherAlert?: boolean
   canCreateJobs: boolean
   isAdmin: boolean
   receivedInvoicesDueCount?: number
@@ -651,6 +652,7 @@ export function DashboardMobileQuickActions({
   canViewJobs,
   canViewOffers,
   canViewWeatherAlerts,
+  hasActiveWeatherAlert = false,
   canCreateJobs,
   isAdmin,
   receivedInvoicesDueCount = 0,
@@ -1554,6 +1556,14 @@ export function DashboardMobileQuickActions({
           }}
         >
           <WeatherAlertsFloatingIcon className="h-8 w-8" />
+          {hasActiveWeatherAlert ? (
+            <span
+              aria-hidden="true"
+              className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-amber-500 bg-yellow-400 px-1.5 text-[13px] font-black leading-none text-amber-950 shadow-[0_4px_12px_rgba(234,179,8,0.38)]"
+            >
+              !
+            </span>
+          ) : null}
         </Link>
       ) : null}
 
@@ -1685,6 +1695,14 @@ export function DashboardMobileQuickActions({
           }}
         >
           <WeatherAlertsFloatingIcon className="h-9 w-9" />
+          {hasActiveWeatherAlert ? (
+            <span
+              aria-hidden="true"
+              className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-amber-500 bg-yellow-400 px-1.5 text-[13px] font-black leading-none text-amber-950 shadow-[0_4px_12px_rgba(234,179,8,0.38)]"
+            >
+              !
+            </span>
+          ) : null}
         </Link>
       ) : null}
 

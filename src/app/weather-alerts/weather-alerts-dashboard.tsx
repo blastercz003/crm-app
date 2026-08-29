@@ -19,13 +19,11 @@ import {
   Radio,
   RefreshCw,
   Snowflake,
-  Smartphone,
   Waves,
   Wind,
   X,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import {
   startTransition,
   useCallback,
@@ -38,9 +36,11 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalMotionClose } from '@/components/ui/modal-motion'
-import { getCurrentPushSubscription, supportsPushNotifications } from '@/app/settings/password/push-subscription-client'
 import { getWeatherEventDetailAction, getWeatherSourceStatusAction, updateWeatherNotificationPreferencesAction } from './actions'
 import { WeatherAlertMap } from './weather-alert-map'
+import { WeatherForecastOutlookPanel } from './weather-forecast-outlook-panel'
+import { WeatherObservationExtremesPanel } from './weather-observation-extremes-panel'
+import { WeatherRadarPanel } from './weather-radar-panel'
 import { WeatherSummaryStats, type WeatherSummaryCard } from './weather-summary-stats'
 import type {
   WeatherAlertsWorkspace,
@@ -50,6 +50,25 @@ import type {
   WeatherNotificationPreferences,
   WeatherSourceStatus,
 } from '@/lib/weather-alerts/types'
+import type { WeatherInsightsWorkspace } from '@/lib/weather-insights/types'
+
+const EMPTY_WEATHER_INSIGHTS_WORKSPACE: WeatherInsightsWorkspace = {
+  generatedAt: '',
+  feeds: [],
+  radar: {
+    frames: [],
+    latestObservationAt: null,
+    latestForecastAt: null,
+  },
+  observations: {
+    snapshotAt: null,
+    extremes: [],
+  },
+  forecast: {
+    issuedAt: null,
+    outlooks: [],
+  },
+}
 
 const HAZARD_PRESENTATION: Record<
   WeatherHazardType,
@@ -155,7 +174,7 @@ function StatusBadge({ event }: { event: WeatherEventListItem }) {
         ? { label: 'AKTUALIZOVANÁ', className: 'border-violet-500/35 bg-violet-500/10 text-violet-700 [html[data-theme=dark]_&]:text-violet-300' }
         : { label: 'NOVÁ', className: 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300' }
   return (
-    <span className={`inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full border px-1.5 text-[7px] font-bold tracking-[0.05em] sm:h-6 sm:px-2.5 sm:text-[9px] sm:tracking-[0.09em] ${status.className}`}>
+    <span className={`inline-flex h-[15px] shrink-0 items-center whitespace-nowrap rounded-full border px-1 text-[6px] font-bold tracking-[0.035em] sm:h-[17px] sm:px-1.5 sm:text-[7px] sm:tracking-[0.06em] ${status.className}`}>
       {status.label}
     </span>
   )
@@ -164,8 +183,8 @@ function StatusBadge({ event }: { event: WeatherEventListItem }) {
 function SeverityBadge({ event }: { event: WeatherEventListItem }) {
   const severity = SEVERITY_PRESENTATION[event.severityColor]
   return (
-    <span className={`inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-1.5 text-[7px] font-bold tracking-[0.05em] sm:h-6 sm:gap-1.5 sm:px-2.5 sm:text-[9px] sm:tracking-[0.09em] ${severity.border} ${severity.surface} ${severity.text}`}>
-      <span className={`h-1 w-1 rounded-full sm:h-1.5 sm:w-1.5 ${severity.dot}`} />
+    <span className={`inline-flex h-[15px] shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border px-1 text-[6px] font-bold tracking-[0.035em] sm:h-[17px] sm:gap-1 sm:px-1.5 sm:text-[7px] sm:tracking-[0.06em] ${severity.border} ${severity.surface} ${severity.text}`}>
+      <span className={`h-[3px] w-[3px] rounded-full sm:h-1 sm:w-1 ${severity.dot}`} />
       {severity.short}
     </span>
   )
@@ -175,8 +194,8 @@ function HazardBadge({ event }: { event: WeatherEventListItem }) {
   const hazard = HAZARD_PRESENTATION[event.hazardType]
   const Icon = hazard.icon
   return (
-    <span className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-1.5 text-[7px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] sm:h-6 sm:gap-1.5 sm:px-2.5 sm:text-[9px] sm:tracking-[0.09em]">
-      <Icon aria-hidden size={12} className="h-2.5 w-2.5 shrink-0 text-[var(--accent)] sm:h-3 sm:w-3" />
+    <span className="inline-flex h-[15px] shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-1 text-[6px] font-bold uppercase tracking-[0.035em] text-[var(--text-secondary)] sm:h-[17px] sm:gap-1 sm:px-1.5 sm:text-[7px] sm:tracking-[0.06em]">
+      <Icon aria-hidden size={9} className="h-2 w-2 shrink-0 text-[var(--accent)] sm:h-[9px] sm:w-[9px]" />
       {hazard.label}
     </span>
   )
@@ -210,7 +229,7 @@ function EventCard({
         if (desktopPreviewAvailable()) onPreview(event)
       }}
       onBlur={() => onPreviewEnd(event)}
-      className="activities-workspace__row weather-alerts__event-card weather-alerts__record-surface group flex min-h-[68px] min-w-0 max-w-full flex-col overflow-hidden rounded-[18px] border p-2.5 text-left sm:min-h-[82px] sm:rounded-[22px] sm:p-3.5"
+      className="activities-workspace__row weather-alerts__event-card weather-alerts__record-surface group flex min-h-[60px] w-full min-w-0 max-w-full self-stretch flex-col overflow-hidden rounded-[18px] border px-2.5 py-2 text-left sm:min-h-[64px] sm:rounded-[22px] sm:px-3.5 sm:py-2"
     >
       <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface)] text-[var(--accent)] sm:h-9 sm:w-9 sm:rounded-xl">
@@ -445,68 +464,6 @@ function EventPopup({
   )
 }
 
-type PushDeviceState = 'checking' | 'enabled' | 'missing' | 'prompt' | 'blocked' | 'unsupported'
-
-function PushPermissionStatus() {
-  const [state, setState] = useState<PushDeviceState>('checking')
-
-  useEffect(() => {
-    let active = true
-    const check = async () => {
-      if (!supportsPushNotifications()) {
-        if (active) setState('unsupported')
-        return
-      }
-      if (Notification.permission === 'denied') {
-        if (active) setState('blocked')
-        return
-      }
-      if (Notification.permission !== 'granted') {
-        if (active) setState('prompt')
-        return
-      }
-      const subscription = await getCurrentPushSubscription()
-      if (active) setState(subscription ? 'enabled' : 'missing')
-    }
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') void check()
-    }
-    void check()
-    window.addEventListener('focus', refreshWhenVisible)
-    document.addEventListener('visibilitychange', refreshWhenVisible)
-    return () => {
-      active = false
-      window.removeEventListener('focus', refreshWhenVisible)
-      document.removeEventListener('visibilitychange', refreshWhenVisible)
-    }
-  }, [])
-
-  const presentation = {
-    checking: { label: 'Zjišťuji stav', text: 'Kontroluji oprávnění tohoto zařízení.', tone: 'text-[var(--text-secondary)]', dot: 'bg-slate-400' },
-    enabled: { label: 'Aktivní', text: 'PWA oznámení jsou na tomto zařízení zapnutá.', tone: 'text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', dot: 'bg-emerald-500' },
-    missing: { label: 'Vyžaduje zapnutí', text: 'Prohlížeč oznámení povoluje, zařízení ale není přihlášené k odběru.', tone: 'text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'bg-amber-500' },
-    prompt: { label: 'Nepovoleno', text: 'Oznámení zatím nebyla v tomto prohlížeči povolena.', tone: 'text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'bg-amber-500' },
-    blocked: { label: 'Blokováno', text: 'Oznámení jsou v nastavení prohlížeče nebo zařízení zablokovaná.', tone: 'text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500' },
-    unsupported: { label: 'Nedostupné', text: 'Tento prohlížeč nebo způsob otevření aplikace PWA oznámení nepodporuje.', tone: 'text-[var(--text-secondary)]', dot: 'bg-slate-400' },
-  }[state]
-
-  return (
-    <div className="weather-alerts__record-surface mt-4 rounded-2xl border p-3.5">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--accent)]"><Smartphone aria-hidden size={17} /></span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <strong className="text-xs font-semibold text-[var(--text-primary)]">PWA oznámení na zařízení</strong>
-            <span className={`inline-flex items-center gap-1.5 rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 py-1 text-[8px] font-bold uppercase tracking-[0.08em] ${presentation.tone}`}><i className={`h-1.5 w-1.5 rounded-full ${presentation.dot}`} />{presentation.label}</span>
-          </div>
-          <p className="mt-1.5 text-[11px] leading-4 text-[var(--text-secondary)]">{presentation.text}</p>
-          {state !== 'checking' && state !== 'enabled' && state !== 'unsupported' ? <Link href="/settings/password" className="mt-2 inline-flex text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--accent)] hover:underline">Spravovat oznámení zařízení</Link> : null}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function NotificationSettings({ initialPreferences }: { initialPreferences: WeatherNotificationPreferences }) {
   const [preferences, setPreferences] = useState(initialPreferences)
   const [pending, setPending] = useState(false)
@@ -590,7 +547,6 @@ function NotificationSettings({ initialPreferences }: { initialPreferences: Weat
         </div>
       </div>
 
-      <PushPermissionStatus />
       {message ? <p aria-live="polite" className={`mt-2 text-[11px] ${message === 'Nastavení bylo uloženo.' ? 'text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300' : 'text-red-600 [html[data-theme=dark]_&]:text-red-300'}`}>{message}</p> : null}
     </section>
   )
@@ -741,9 +697,11 @@ function WeatherSourceStatusCard({
 
 export function WeatherAlertsDashboard({
   workspace,
+  initialInsights,
   initialEventId,
 }: {
   workspace: WeatherAlertsWorkspace
+  initialInsights?: WeatherInsightsWorkspace
   initialEventId?: string
 }) {
   const router = useRouter()
@@ -762,6 +720,9 @@ export function WeatherAlertsDashboard({
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [previewedEventId, setPreviewedEventId] = useState<string | null>(null)
+  const [insights, setInsights] = useState(
+    () => initialInsights ?? EMPTY_WEATHER_INSIGHTS_WORKSPACE,
+  )
   const [isRefreshing, startRefresh] = useTransition()
   const refreshWorkspace = useCallback(() => {
     startRefresh(() => router.refresh())
@@ -791,6 +752,44 @@ export function WeatherAlertsDashboard({
   const nextEvent = selectedIndex >= 0 && selectedIndex < filteredEvents.length - 1 ? filteredEvents[selectedIndex + 1] : null
   const severeCount = workspace.activeEvents.filter((event) => event.severityLevel >= 2).length
   const upcomingCount = workspace.activeEvents.filter((event) => event.status === 'upcoming').length
+
+  useEffect(() => {
+    let disposed = false
+    let running = false
+    const refreshInsights = async () => {
+      if (running || document.visibilityState !== 'visible') return
+      running = true
+      try {
+        const response = await fetch('/api/weather-insights', {
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        })
+        const payload = await response.json() as {
+          ok?: boolean
+          workspace?: WeatherInsightsWorkspace
+        }
+        if (!disposed && response.ok && payload.ok && payload.workspace) {
+          setInsights(payload.workspace)
+        }
+      } catch {
+        // Panel ponechá poslední platná data; stav kanálu ukáže další úspěšné načtení.
+      } finally {
+        running = false
+      }
+    }
+    const interval = window.setInterval(() => {
+      void refreshInsights()
+    }, 4 * 60_000)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void refreshInsights()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      disposed = true
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     if (!selected) return
@@ -843,8 +842,8 @@ export function WeatherAlertsDashboard({
     <>
       <WeatherSummaryStats cards={summary} />
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+      <div className="grid items-start gap-5 xl:grid-cols-4 xl:gap-3">
+        <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:h-full">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 shrink-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">
@@ -946,11 +945,86 @@ export function WeatherAlertsDashboard({
             ) : null}
           </div>
 
-          <div className="mt-5">
-            <WeatherAlertMap events={previewedEvent ? [previewedEvent] : filteredEvents} onEventOpen={openPopup} />
+          <div className="weather-alerts__record-surface mt-5 min-w-0 overflow-hidden rounded-[22px] border p-3.5 sm:p-4 min-[1400px]:h-[440px]">
+            <div className="h-full min-w-0 min-[1400px]:grid min-[1400px]:grid-cols-[minmax(0,1fr)_400px] min-[1400px]:gap-5">
+              <WeatherAlertMap
+                events={previewedEvent ? [previewedEvent] : filteredEvents}
+                embedded
+                onEventOpen={openPopup}
+              />
+
+              <div className="hidden min-h-0 min-w-0 border-l border-[var(--surface-border)] pl-5 min-[1400px]:flex min-[1400px]:flex-col">
+                <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
+                    {tab === 'active' ? 'Aktuální výstrahy' : 'Historie výstrah'}
+                  </h3>
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 text-[9px] font-bold text-[var(--text-secondary)]">
+                    {filteredEvents.length}
+                  </span>
+                </div>
+
+                {filteredEvents.length > 0 ? (
+                  <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain pb-2 pr-1 pt-1">
+                    {filteredEvents.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        onOpen={openPopup}
+                        onPreview={(previewEvent) => setPreviewedEventId(previewEvent.id)}
+                        onPreviewEnd={(previewEvent) => setPreviewedEventId((current) => current === previewEvent.id ? null : current)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 text-center">
+                    <CircleAlert aria-hidden size={22} className={filtersActive ? 'text-[var(--accent)]' : 'text-emerald-500'} />
+                    <strong className="mt-2 text-xs leading-5 text-[var(--text-primary)]">
+                      {filtersActive ? 'Žádná výstraha neodpovídá zvoleným filtrům.' : tab === 'active' ? 'ČHMÚ nyní neeviduje aktivní výstrahu.' : 'V historii zatím nejsou žádné výstrahy.'}
+                    </strong>
+                    <span className="mt-1 text-[10px] leading-4 text-[var(--text-secondary)]">
+                      {filtersActive ? 'Zkuste změnit typ jevu nebo stupeň nebezpečí.' : 'Data se automaticky průběžně obnovují.'}
+                    </span>
+                    {filtersActive ? (
+                      <button type="button" onClick={() => { setHazardFilter('all'); setSeverityFilter('all') }} className="mt-3 h-8 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[9px] font-bold uppercase text-[var(--accent)]">
+                        Zrušit filtry
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {filteredEvents.length > 0 ? <div className="mt-5 grid min-w-0 gap-3 md:grid-cols-2">{filteredEvents.map((event) => <EventCard key={event.id} event={event} onOpen={openPopup} onPreview={(previewEvent) => setPreviewedEventId(previewEvent.id)} onPreviewEnd={(previewEvent) => setPreviewedEventId((current) => current === previewEvent.id ? null : current)} />)}</div> : <div className="weather-alerts__record-surface mt-5 flex min-h-[132px] flex-col items-center justify-center rounded-[22px] border border-dashed px-5 py-4 text-center"><CircleAlert aria-hidden size={24} className={filtersActive ? 'text-[var(--accent)]' : 'text-emerald-500'} /><strong className="mt-2 text-sm text-[var(--text-primary)]">{filtersActive ? 'Žádná výstraha neodpovídá zvoleným filtrům.' : tab === 'active' ? 'ČHMÚ nyní neeviduje aktivní výstrahu.' : 'V historii zatím nejsou žádné výstrahy.'}</strong><span className="mt-1 text-xs text-[var(--text-secondary)]">{filtersActive ? 'Zkuste změnit typ jevu nebo stupeň nebezpečí.' : 'Data se automaticky průběžně obnovují.'}</span>{filtersActive ? <button type="button" onClick={() => { setHazardFilter('all'); setSeverityFilter('all') }} className="mt-3 h-9 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[10px] font-bold uppercase text-[var(--accent)]">Zrušit filtry</button> : null}</div>}
+          <div className="min-[1400px]:hidden">
+            {filteredEvents.length > 0 ? (
+              <div className="mt-5 grid min-w-0 gap-3 md:grid-cols-2">
+                {filteredEvents.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    onOpen={openPopup}
+                    onPreview={(previewEvent) => setPreviewedEventId(previewEvent.id)}
+                    onPreviewEnd={(previewEvent) => setPreviewedEventId((current) => current === previewEvent.id ? null : current)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="weather-alerts__record-surface mt-5 flex min-h-[132px] flex-col items-center justify-center rounded-[22px] border border-dashed px-5 py-4 text-center">
+                <CircleAlert aria-hidden size={24} className={filtersActive ? 'text-[var(--accent)]' : 'text-emerald-500'} />
+                <strong className="mt-2 text-sm text-[var(--text-primary)]">
+                  {filtersActive ? 'Žádná výstraha neodpovídá zvoleným filtrům.' : tab === 'active' ? 'ČHMÚ nyní neeviduje aktivní výstrahu.' : 'V historii zatím nejsou žádné výstrahy.'}
+                </strong>
+                <span className="mt-1 text-xs text-[var(--text-secondary)]">
+                  {filtersActive ? 'Zkuste změnit typ jevu nebo stupeň nebezpečí.' : 'Data se automaticky průběžně obnovují.'}
+                </span>
+                {filtersActive ? (
+                  <button type="button" onClick={() => { setHazardFilter('all'); setSeverityFilter('all') }} className="mt-3 h-9 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[10px] font-bold uppercase text-[var(--accent)]">
+                    Zrušit filtry
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </div>
         </section>
 
         <aside className="min-w-0">
@@ -976,6 +1050,12 @@ export function WeatherAlertsDashboard({
           </div>
         </aside>
       </div>
+
+      <WeatherRadarPanel radar={insights.radar} />
+
+      <WeatherObservationExtremesPanel observations={insights.observations} />
+
+      <WeatherForecastOutlookPanel forecast={insights.forecast} />
 
       {mounted && selected ? createPortal(
         <EventPopup

@@ -24,8 +24,8 @@ export default function WeatherAlertsLoading() {
           ))}
         </div>
 
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+        <div className="grid items-start gap-5 xl:grid-cols-4 xl:gap-3">
+          <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3">
             <div className="flex items-center justify-between gap-3">
               <div><Skeleton className="h-2.5 w-40" /><Skeleton className="mt-2 h-6 w-44" /></div>
               <Skeleton className="h-11 w-44" />

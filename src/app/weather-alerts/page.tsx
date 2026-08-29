@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { unstable_noStore as noStore } from 'next/cache'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 import { getWeatherAlertsWorkspace } from '@/lib/weather-alerts/service'
+import { getWeatherInsightsWorkspace } from '@/lib/weather-insights/service'
 import { WeatherAlertsDashboard } from './weather-alerts-dashboard'
 
 export const metadata: Metadata = { title: 'Výstrahy počasí' }
@@ -19,7 +20,10 @@ export default async function WeatherAlertsPage({
 }) {
   noStore()
   const params = searchParams ? await searchParams : {}
-  const workspace = await getWeatherAlertsWorkspace()
+  const [workspace, insightsWorkspace] = await Promise.all([
+    getWeatherAlertsWorkspace(),
+    getWeatherInsightsWorkspace(),
+  ])
 
   return (
     <main className="activities-page weather-alerts-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)] text-[var(--foreground)]">
@@ -37,6 +41,7 @@ export default async function WeatherAlertsPage({
 
         <WeatherAlertsDashboard
           workspace={workspace}
+          initialInsights={insightsWorkspace}
           initialEventId={firstParam(params.event)}
         />
       </div>

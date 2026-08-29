@@ -1236,6 +1236,7 @@ export default async function DashboardPage({
   const canViewNordFjella = isAdmin || Boolean(profile?.can_view_nord_fjella)
   const canViewProvize = canViewProvizeSection(profile?.role ?? null, profile)
   const canViewActivities = isAdmin || Boolean(profile?.can_view_activities)
+  const canViewWeatherAlerts = Boolean(profile?.can_view_weather_alerts)
   const canViewHandoverProtocolUpload =
     isTechnik ||
     canViewHandoverProtocolUploadSection(profile?.role ?? null, profile)
@@ -1366,6 +1367,7 @@ export default async function DashboardPage({
     unreadNotificationsResponse,
     receivedInvoicesDueCount,
     orderedOffersCountResponse,
+    activeWeatherAlertsResponse,
   ] = await Promise.all([
     dashboardTasksQuery(),
 
@@ -1403,6 +1405,13 @@ export default async function DashboardPage({
           .from('offers')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'ordered')
+      : Promise.resolve({ count: 0, error: null }),
+
+    canViewWeatherAlerts
+      ? supabase
+          .from('weather_events')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'active')
       : Promise.resolve({ count: 0, error: null }),
   ])
 
@@ -1502,8 +1511,15 @@ export default async function DashboardPage({
     )
   }
 
+  if (activeWeatherAlertsResponse.error) {
+    throw new Error(
+      `Nepodařilo se načíst stav aktivních výstrah: ${activeWeatherAlertsResponse.error.message}`
+    )
+  }
+
   const orderedOffersCount = Number(orderedOffersCountResponse.count ?? 0)
   const unreadNotificationCount = Number(unreadNotificationsResponse.count ?? 0)
+  const hasActiveWeatherAlert = Number(activeWeatherAlertsResponse.count ?? 0) > 0
 
   const dashboardOfferClientIds = Array.from(
     new Set(dashboardOffers.map((offer) => offer.client_id).filter(Boolean))
@@ -1603,7 +1619,15 @@ export default async function DashboardPage({
           <main className="relative z-10 flex flex-1 flex-col">
             <AppBadgeSync count={unreadNotificationCount} />
             <SafeRealtimeRefresh
-              scopes={['jobs', 'meetings', 'notifications', 'offers', 'tasks']}
+              scopes={[
+                'jobs',
+                'meetings',
+                'notifications',
+                'offers',
+                'tasks',
+                'weather',
+                'weather_alerts',
+              ]}
             />
             <DashboardStartupReadyBridge />
             <DashboardMeetingNotificationSync />
@@ -1847,7 +1871,8 @@ export default async function DashboardPage({
               canViewActivities={canViewActivities}
               canViewJobs={Boolean(profile?.can_view_jobs)}
               canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
-              canViewWeatherAlerts={Boolean(profile?.can_view_weather_alerts)}
+              canViewWeatherAlerts={canViewWeatherAlerts}
+              hasActiveWeatherAlert={hasActiveWeatherAlert}
               canCreateJobs={isAdmin}
               isAdmin={isAdmin}
               receivedInvoicesDueCount={receivedInvoicesDueCount}

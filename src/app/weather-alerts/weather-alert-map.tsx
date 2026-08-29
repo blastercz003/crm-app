@@ -9,6 +9,7 @@ type MapTrigger = HTMLElement | SVGElement
 type WeatherAlertMapProps = {
   events: WeatherEventListItem[]
   compact?: boolean
+  embedded?: boolean
   onEventOpen?: (event: WeatherEventListItem, trigger: MapTrigger) => void
 }
 
@@ -36,7 +37,12 @@ function compareEvents(left: WeatherEventListItem, right: WeatherEventListItem) 
   return leftEnd - rightEnd
 }
 
-export function WeatherAlertMap({ events, compact = false, onEventOpen }: WeatherAlertMapProps) {
+export function WeatherAlertMap({
+  events,
+  compact = false,
+  embedded = false,
+  onEventOpen,
+}: WeatherAlertMapProps) {
   const [focusedCode, setFocusedCode] = useState<string | null>(null)
   const eventByArea = useMemo(() => {
     const result = new Map<string, WeatherEventListItem>()
@@ -53,7 +59,11 @@ export function WeatherAlertMap({ events, compact = false, onEventOpen }: Weathe
   const affectedAreaCount = eventByArea.size
 
   return (
-    <div className={`weather-alerts__record-surface overflow-hidden rounded-[22px] border ${compact ? 'p-3' : 'p-3.5 sm:p-4'}`}>
+    <div
+      className={embedded
+        ? 'flex h-full min-w-0 flex-col overflow-hidden'
+        : `weather-alerts__record-surface overflow-hidden rounded-[22px] border ${compact ? 'p-3' : 'p-3.5 sm:p-4'}`}
+    >
       {!compact ? (
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -70,13 +80,13 @@ export function WeatherAlertMap({ events, compact = false, onEventOpen }: Weathe
         </div>
       ) : null}
 
-      <div className="relative mx-auto w-full max-w-[900px]">
+      <div className={`relative w-full max-w-[900px] ${embedded ? 'flex min-h-0 flex-1 items-center self-start' : 'mx-auto'}`}>
         <svg
           viewBox={orpMap.viewBox.join(' ')}
           role={compact ? undefined : 'img'}
           aria-hidden={compact || undefined}
           aria-label={compact ? undefined : 'Mapa České republiky s územím zasaženým výstrahami ČHMÚ'}
-          className={`block h-auto w-full overflow-visible ${compact ? 'max-h-[220px]' : 'max-h-[390px]'}`}
+          className={`block h-auto w-full overflow-visible ${compact ? 'max-h-[220px]' : embedded ? 'max-h-full' : 'max-h-[390px]'}`}
         >
           {orpMap.areas.map((area) => {
             const event = eventByArea.get(area.code)
@@ -116,9 +126,6 @@ export function WeatherAlertMap({ events, compact = false, onEventOpen }: Weathe
         ) : null}
       </div>
 
-      {!compact && affectedAreaCount > 0 ? (
-        <p className="mt-1 text-center text-[9px] text-[var(--text-tertiary)]">Kliknutím na zvýrazněnou oblast otevřete detail nejsilnější výstrahy.</p>
-      ) : null}
     </div>
   )
 }
