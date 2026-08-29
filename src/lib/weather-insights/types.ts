@@ -137,12 +137,19 @@ export type WeatherForecastOutlook = {
   headline: string | null
   textWeather: string | null
   textWind: string | null
+  dangerousPhenomena: Array<{
+    name: string
+    textComment: string
+  }>
   relevantPhenomena: Array<{
     key: WeatherForecastPhenomenonKey
     name: string
     textComment: string
     source: 'structured' | 'forecast_text'
   }>
+  sourceUrl: string | null
+  sourceFileName: string | null
+  senderName: string | null
 }
 
 export type WeatherInsightsWorkspace = {

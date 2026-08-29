@@ -6,6 +6,7 @@ import type { WeatherNotificationPreferences } from './types'
 type PreferenceRow = {
   notifications_enabled: boolean
   include_yellow_warnings: boolean
+  extended_notifications_enabled: boolean
   updated_at: string
 }
 
@@ -13,7 +14,7 @@ export async function getWeatherNotificationPreferences(): Promise<WeatherNotifi
   const { supabase, user } = await getWeatherAlertsRuntimeContext()
   const { data, error } = await supabase
     .from('weather_notification_preferences')
-    .select('notifications_enabled,include_yellow_warnings,updated_at')
+    .select('notifications_enabled,include_yellow_warnings,extended_notifications_enabled,updated_at')
     .eq('user_id', user.id)
     .maybeSingle<PreferenceRow>()
 
@@ -24,6 +25,7 @@ export async function getWeatherNotificationPreferences(): Promise<WeatherNotifi
   return {
     notificationsEnabled: data?.notifications_enabled ?? false,
     includeYellowWarnings: data?.include_yellow_warnings ?? false,
+    extendedNotificationsEnabled: data?.extended_notifications_enabled ?? false,
     updatedAt: data?.updated_at ?? null,
   }
 }
@@ -31,6 +33,7 @@ export async function getWeatherNotificationPreferences(): Promise<WeatherNotifi
 export async function updateWeatherNotificationPreferences(input: {
   notificationsEnabled: boolean
   includeYellowWarnings: boolean
+  extendedNotificationsEnabled: boolean
 }): Promise<WeatherNotificationPreferences> {
   const { supabase, user } = await getWeatherAlertsRuntimeContext()
   const now = new Date().toISOString()
@@ -48,6 +51,8 @@ export async function updateWeatherNotificationPreferences(input: {
     notifications_enabled: Boolean(input.notificationsEnabled),
     include_yellow_warnings:
       Boolean(input.notificationsEnabled) && Boolean(input.includeYellowWarnings),
+    extended_notifications_enabled:
+      Boolean(input.notificationsEnabled) && Boolean(input.extendedNotificationsEnabled),
     updated_at: now,
   }
   const query = current
@@ -69,6 +74,7 @@ export async function updateWeatherNotificationPreferences(input: {
   return {
     notificationsEnabled: values.notifications_enabled,
     includeYellowWarnings: values.include_yellow_warnings,
+    extendedNotificationsEnabled: values.extended_notifications_enabled,
     updatedAt: now,
   }
 }

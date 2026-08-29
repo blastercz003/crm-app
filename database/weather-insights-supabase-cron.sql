@@ -105,7 +105,7 @@ begin
 
   perform cron.schedule(
     'weather_insights_observations_every_ten_minutes',
-    '8-59/10 * * * *',
+    '0-59/10 * * * *',
     $job$select public.request_weather_insights_endpoint('/api/weather-insights/observations/sync');$job$
   );
 
@@ -142,7 +142,7 @@ select
 from (
   values
     ('weather_insights_radar_every_five_minutes', '4-59/5 * * * *'),
-    ('weather_insights_observations_every_ten_minutes', '8-59/10 * * * *'),
+    ('weather_insights_observations_every_ten_minutes', '0-59/10 * * * *'),
     ('weather_insights_forecast_hourly', '17 * * * *')
 ) as expected(jobname, schedule)
 order by check_type, object_name;

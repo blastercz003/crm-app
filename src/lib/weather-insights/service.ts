@@ -75,7 +75,10 @@ type ForecastSnapshotRow = {
   headline: string | null
   text_weather: string | null
   text_wind: string | null
+  dangerous_phenomena: unknown
   relevant_phenomena: unknown
+  source_url: string | null
+  source_file_name: string | null
   metadata: Record<string, unknown> | null
 }
 
@@ -125,6 +128,20 @@ function normalizeRelevantPhenomena(value: unknown) {
       textComment,
       source,
     })
+  }
+  return result
+}
+
+function normalizeDangerousPhenomena(value: unknown) {
+  if (!Array.isArray(value)) return []
+  const result: WeatherForecastOutlook['dangerousPhenomena'] = []
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue
+    const record = item as Record<string, unknown>
+    const name = typeof record.name === 'string' ? record.name.trim() : ''
+    const textComment =
+      typeof record.textComment === 'string' ? record.textComment.trim() : ''
+    if (name) result.push({ name, textComment })
   }
   return result
 }
@@ -239,7 +256,14 @@ function latestForecastOutlooks(rows: ForecastSnapshotRow[], now: number) {
       headline: row.headline,
       textWeather: row.text_weather,
       textWind: row.text_wind,
+      dangerousPhenomena: normalizeDangerousPhenomena(row.dangerous_phenomena),
       relevantPhenomena,
+      sourceUrl: row.source_url,
+      sourceFileName: row.source_file_name,
+      senderName:
+        typeof row.metadata?.senderName === 'string'
+          ? row.metadata.senderName
+          : null,
     })
   }
   outlooks.sort((left, right) => {
@@ -289,7 +313,7 @@ export async function getWeatherInsightsWorkspace(): Promise<WeatherInsightsWork
       supabase
         .from('weather_forecast_snapshots')
         .select(
-          'id,issued_at,valid_from,valid_to,scope_type,region_code,region_name,headline,text_weather,text_wind,relevant_phenomena,metadata',
+          'id,issued_at,valid_from,valid_to,scope_type,region_code,region_name,headline,text_weather,text_wind,dangerous_phenomena,relevant_phenomena,source_url,source_file_name,metadata',
         )
         .gte('valid_to', forecastFrom)
         .order('issued_at', { ascending: false })

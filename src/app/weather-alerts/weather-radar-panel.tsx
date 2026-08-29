@@ -42,6 +42,12 @@ function projection() {
 
 const MAP_PROJECTION = projection()
 
+// SVG atributy musí mít při SSR a hydrataci znak po znaku stejnou hodnotu.
+// Různé JS enginy se mohou v trigonometrickém výpočtu lišit v posledním bitu.
+function stableSvgCoordinate(value: number) {
+  return value.toFixed(4)
+}
+
 function formatRadarTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'Čas neuveden'
@@ -129,16 +135,16 @@ export function WeatherRadarPanel({ radar }: { radar: RadarWorkspace }) {
           currentFrame.bounds.south,
         )
         return {
-          x: northwest.x,
-          y: northwest.y,
-          width: southeast.x - northwest.x,
-          height: southeast.y - northwest.y,
+          x: stableSvgCoordinate(northwest.x),
+          y: stableSvgCoordinate(northwest.y),
+          width: stableSvgCoordinate(southeast.x - northwest.x),
+          height: stableSvgCoordinate(southeast.y - northwest.y),
         }
       })()
     : null
 
   return (
-    <section className="activities-page__panel min-w-0 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+    <section className="activities-page__panel h-full min-w-0 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
@@ -177,10 +183,10 @@ export function WeatherRadarPanel({ radar }: { radar: RadarWorkspace }) {
         ) : null}
       </div>
 
-      <div className="weather-alerts__record-surface mt-4 overflow-hidden rounded-[22px] border p-3 sm:p-4">
+      <div className="weather-alerts__record-surface mt-4 flex h-[274px] items-center justify-center overflow-hidden rounded-[22px] border sm:h-[362px] lg:h-[422px]">
         {currentFrame && imageGeometry ? (
           <>
-            <div className="relative mx-auto flex h-[250px] w-full max-w-[1080px] items-center justify-center overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_50%_42%,color-mix(in_srgb,var(--surface-strong)_94%,var(--accent)_6%),var(--surface-muted))] sm:h-[330px] lg:h-[390px]">
+            <div className="relative mx-auto flex h-[250px] w-full max-w-[1080px] items-center justify-center overflow-hidden sm:h-[330px] lg:h-[390px]">
               <svg
                 viewBox={orpMap.viewBox.join(' ')}
                 role="img"
@@ -227,26 +233,6 @@ export function WeatherRadarPanel({ radar }: { radar: RadarWorkspace }) {
               </div>
             </div>
 
-            <div className="mx-auto mt-3 flex w-full max-w-[1080px] items-center gap-3">
-              <span className="hidden shrink-0 text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)] sm:inline">
-                Vývoj
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(0, frames.length - 1)}
-                value={safeFrameIndex}
-                onChange={(event) => {
-                  setFrameIndex(Number(event.target.value))
-                  setPlaying(false)
-                }}
-                aria-label="Čas radarového snímku"
-                className="h-1.5 min-w-0 flex-1 cursor-pointer accent-[var(--accent)]"
-              />
-              <span className="w-10 shrink-0 text-right text-[9px] font-semibold text-[var(--text-secondary)]">
-                {safeFrameIndex + 1}/{frames.length}
-              </span>
-            </div>
           </>
         ) : (
           <div className="flex min-h-[180px] flex-col items-center justify-center px-5 text-center sm:min-h-[230px]">

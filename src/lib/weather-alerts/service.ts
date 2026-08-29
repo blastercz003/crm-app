@@ -55,6 +55,7 @@ type AreaRow = {
 type PreferenceRow = {
   notifications_enabled: boolean
   include_yellow_warnings: boolean
+  extended_notifications_enabled: boolean
   updated_at: string
 }
 
@@ -172,7 +173,7 @@ export async function getWeatherAlertsWorkspace(): Promise<WeatherAlertsWorkspac
         .limit(80),
       supabase
         .from('weather_notification_preferences')
-        .select('notifications_enabled,include_yellow_warnings,updated_at')
+        .select('notifications_enabled,include_yellow_warnings,extended_notifications_enabled,updated_at')
         .eq('user_id', user.id)
         .maybeSingle<PreferenceRow>(),
     ])
@@ -268,6 +269,7 @@ export async function getWeatherAlertsWorkspace(): Promise<WeatherAlertsWorkspac
     preferences: {
       notificationsEnabled: preference?.notifications_enabled ?? false,
       includeYellowWarnings: preference?.include_yellow_warnings ?? false,
+      extendedNotificationsEnabled: preference?.extended_notifications_enabled ?? false,
       updatedAt: preference?.updated_at ?? null,
     },
     sourceStatus,

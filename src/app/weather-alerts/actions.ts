@@ -39,6 +39,7 @@ export async function getWeatherNotificationPreferencesAction(): Promise<Weather
 export async function updateWeatherNotificationPreferencesAction(input: {
   notificationsEnabled: boolean
   includeYellowWarnings: boolean
+  extendedNotificationsEnabled: boolean
 }): Promise<WeatherPreferencesActionResult> {
   try {
     const preferences = await updateWeatherNotificationPreferences(input)

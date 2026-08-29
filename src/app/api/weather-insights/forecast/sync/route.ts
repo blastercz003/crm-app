@@ -3,6 +3,7 @@ import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { isWeatherAutomationAuthorized } from '@/lib/weather-alerts/automation-auth'
 import { WeatherFeedAlreadyRunningError } from '@/lib/weather-insights/feed-sync'
 import { syncChmiForecastOutlook } from '@/lib/weather-insights/forecast-sync'
+import { dispatchForecastInsightNotifications } from '@/lib/weather-insights/notifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,8 +21,22 @@ export async function GET(request: Request) {
 
   try {
     const result = await syncChmiForecastOutlook()
+    let notifications = null
+    try {
+      notifications = await dispatchForecastInsightNotifications({
+        issuedAt: result.issuedAt,
+      })
+    } catch (notificationError) {
+      await reportRouteError({
+        error: notificationError,
+        route: '/api/weather-insights/forecast/sync',
+        section: 'weather-alerts',
+        errorType: 'WeatherForecastNotificationDispatchError',
+      })
+      notifications = { error: true }
+    }
     return NextResponse.json(
-      { ok: true, skipped: false, ...result },
+      { ok: true, skipped: false, ...result, notifications },
       { headers: RESPONSE_HEADERS },
     )
   } catch (error) {

@@ -93,6 +93,7 @@ export type WeatherReconciliationResult = {
 export type WeatherNotificationPreferences = {
   notificationsEnabled: boolean
   includeYellowWarnings: boolean
+  extendedNotificationsEnabled: boolean
   updatedAt: string | null
 }
 

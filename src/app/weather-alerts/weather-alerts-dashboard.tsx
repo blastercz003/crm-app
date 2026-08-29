@@ -19,6 +19,7 @@ import {
   Radio,
   RefreshCw,
   Snowflake,
+  Sparkles,
   Waves,
   Wind,
   X,
@@ -478,6 +479,7 @@ function NotificationSettings({ initialPreferences }: { initialPreferences: Weat
       const result = await updateWeatherNotificationPreferencesAction({
         notificationsEnabled: next.notificationsEnabled,
         includeYellowWarnings: next.includeYellowWarnings,
+        extendedNotificationsEnabled: next.extendedNotificationsEnabled,
       })
       setPending(false)
       if (!result.success) {
@@ -505,7 +507,12 @@ function NotificationSettings({ initialPreferences }: { initialPreferences: Weat
           aria-label="Zapnout upozornění na výstrahy počasí"
           aria-checked={preferences.notificationsEnabled}
           disabled={pending}
-          onClick={() => save({ ...preferences, notificationsEnabled: !preferences.notificationsEnabled, includeYellowWarnings: preferences.notificationsEnabled ? false : preferences.includeYellowWarnings })}
+          onClick={() => save({
+            ...preferences,
+            notificationsEnabled: !preferences.notificationsEnabled,
+            includeYellowWarnings: preferences.notificationsEnabled ? false : preferences.includeYellowWarnings,
+            extendedNotificationsEnabled: preferences.notificationsEnabled ? false : preferences.extendedNotificationsEnabled,
+          })}
           className={`relative h-7 w-12 shrink-0 rounded-full border transition ${preferences.notificationsEnabled ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'} disabled:opacity-60`}
         >
           <span className={`absolute top-1 h-[18px] w-[18px] rounded-full bg-white shadow transition ${preferences.notificationsEnabled ? 'left-[25px]' : 'left-1'}`} />
@@ -519,22 +526,40 @@ function NotificationSettings({ initialPreferences }: { initialPreferences: Weat
             <strong className="text-[var(--text-primary)]">Oranžové a červené výstrahy</strong> jsou při zapnutých upozorněních zahrnuté automaticky.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={!preferences.notificationsEnabled || pending}
-          onClick={() => save({ ...preferences, includeYellowWarnings: !preferences.includeYellowWarnings })}
-          className="flex w-full items-center justify-between gap-3 border-t border-[var(--surface-border)] px-3.5 py-3 text-left transition hover:bg-yellow-400/[0.06] disabled:opacity-45"
-        >
-          <span className="flex min-w-0 items-start gap-2.5">
-            <CheckCircle2 aria-hidden size={16} className="mt-0.5 shrink-0 text-yellow-500" />
-            <span className="text-[11px] leading-4 text-[var(--text-secondary)]">
-              <strong className="text-[var(--text-primary)]">Zahrnout také žluté výstrahy</strong> pro upozornění i na nižší stupeň nebezpečí.
+        <div className="grid grid-cols-2 border-t border-[var(--surface-border)]">
+          <button
+            type="button"
+            disabled={!preferences.notificationsEnabled || pending}
+            onClick={() => save({ ...preferences, includeYellowWarnings: !preferences.includeYellowWarnings })}
+            className="flex min-w-0 items-center justify-between gap-2 px-3 py-3 text-left transition hover:bg-yellow-400/[0.06] disabled:opacity-45 sm:px-3.5"
+          >
+            <span className="flex min-w-0 items-start gap-2">
+              <CheckCircle2 aria-hidden size={15} className="mt-0.5 shrink-0 text-yellow-500" />
+              <span className="min-w-0 text-[9px] leading-[13px] text-[var(--text-secondary)] sm:text-[10px] sm:leading-[14px]">
+                <strong className="block text-[var(--text-primary)]">Žluté výstrahy</strong>
+              </span>
             </span>
-          </span>
-          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${preferences.includeYellowWarnings ? 'border-yellow-400 bg-yellow-400 text-slate-950' : 'border-[var(--text-tertiary)]'}`}>
-            {preferences.includeYellowWarnings ? '✓' : ''}
-          </span>
-        </button>
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[12px] ${preferences.includeYellowWarnings ? 'border-yellow-400 bg-yellow-400 text-slate-950' : 'border-[var(--text-tertiary)]'}`}>
+              {preferences.includeYellowWarnings ? '✓' : ''}
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={!preferences.notificationsEnabled || pending}
+            onClick={() => save({ ...preferences, extendedNotificationsEnabled: !preferences.extendedNotificationsEnabled })}
+            className="flex min-w-0 items-center justify-between gap-2 border-l border-[var(--surface-border)] px-3 py-3 text-left transition hover:bg-sky-400/[0.06] disabled:opacity-45 sm:px-3.5"
+          >
+            <span className="flex min-w-0 items-start gap-2">
+              <Sparkles aria-hidden size={15} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+              <span className="min-w-0 text-[9px] leading-[13px] text-[var(--text-secondary)] sm:text-[10px] sm:leading-[14px]">
+                <strong className="block text-[var(--text-primary)]">Rozšířená</strong>
+              </span>
+            </span>
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[12px] ${preferences.extendedNotificationsEnabled ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--text-tertiary)]'}`}>
+              {preferences.extendedNotificationsEnabled ? '✓' : ''}
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 border-t border-[var(--surface-border)] pt-4">
@@ -842,7 +867,7 @@ export function WeatherAlertsDashboard({
     <>
       <WeatherSummaryStats cards={summary} />
 
-      <div className="grid items-start gap-5 xl:grid-cols-4 xl:gap-3">
+      <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
         <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:h-full">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 shrink-0">
@@ -1027,12 +1052,12 @@ export function WeatherAlertsDashboard({
           </div>
         </section>
 
-        <aside className="min-w-0">
+        <aside className="min-w-0 xl:h-full">
           <p className="mb-3 text-[10px] text-[var(--text-secondary)] sm:hidden">
             Přejetím do strany zobrazíte další panel.
           </p>
           <div
-            className="activities-manual-carousel weather-alerts-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[24px] sm:block sm:space-y-4 sm:snap-none sm:overflow-visible sm:rounded-none"
+            className="activities-manual-carousel weather-alerts-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[24px] sm:block sm:space-y-4 sm:snap-none sm:overflow-visible sm:rounded-none xl:flex xl:h-full xl:flex-col xl:justify-between xl:space-y-0"
             aria-label="Nastavení upozornění a stav zdroje dat ČHMÚ"
           >
             <div className="min-w-0 snap-start snap-always sm:snap-none">
@@ -1051,11 +1076,16 @@ export function WeatherAlertsDashboard({
         </aside>
       </div>
 
-      <WeatherRadarPanel radar={insights.radar} />
+      <div className="grid items-stretch gap-5 xl:grid-cols-4 xl:gap-3">
+        <div className="min-w-0 xl:col-span-3">
+          <WeatherRadarPanel radar={insights.radar} />
+        </div>
+        <div className="min-w-0">
+          <WeatherForecastOutlookPanel forecast={insights.forecast} compact />
+        </div>
+      </div>
 
       <WeatherObservationExtremesPanel observations={insights.observations} />
-
-      <WeatherForecastOutlookPanel forecast={insights.forecast} />
 
       {mounted && selected ? createPortal(
         <EventPopup

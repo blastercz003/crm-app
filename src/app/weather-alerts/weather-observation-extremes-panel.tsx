@@ -18,6 +18,7 @@ type ObservationsWorkspace = WeatherInsightsWorkspace['observations']
 
 type MetricPresentation = {
   label: string
+  mobileLabel: string
   shortLabel: string
   icon: LucideIcon
   tone: string
@@ -34,6 +35,7 @@ const METRIC_ORDER: WeatherObservationMetricKey[] = [
 const METRIC_PRESENTATION: Record<WeatherObservationMetricKey, MetricPresentation> = {
   temperature_max: {
     label: 'Nejvyšší teplota',
+    mobileLabel: 'Nejvyšší',
     shortLabel: 'Maximum teploty',
     icon: ThermometerSun,
     tone: 'text-orange-700 [html[data-theme=dark]_&]:text-orange-300',
@@ -41,6 +43,7 @@ const METRIC_PRESENTATION: Record<WeatherObservationMetricKey, MetricPresentatio
   },
   temperature_min: {
     label: 'Nejnižší teplota',
+    mobileLabel: 'Nejnižší',
     shortLabel: 'Minimum teploty',
     icon: ThermometerSnowflake,
     tone: 'text-sky-700 [html[data-theme=dark]_&]:text-sky-300',
@@ -48,6 +51,7 @@ const METRIC_PRESENTATION: Record<WeatherObservationMetricKey, MetricPresentatio
   },
   wind_gust_max: {
     label: 'Nejsilnější náraz',
+    mobileLabel: 'Vítr',
     shortLabel: 'Náraz větru',
     icon: Wind,
     tone: 'text-cyan-700 [html[data-theme=dark]_&]:text-cyan-300',
@@ -55,6 +59,7 @@ const METRIC_PRESENTATION: Record<WeatherObservationMetricKey, MetricPresentatio
   },
   precipitation_max: {
     label: 'Nejvyšší srážky',
+    mobileLabel: 'Déšť',
     shortLabel: 'Srážky za hodinu',
     icon: CloudRain,
     tone: 'text-indigo-700 [html[data-theme=dark]_&]:text-indigo-300',
@@ -103,7 +108,8 @@ function MetricCard({
         </span>
         <div className="min-w-0">
           <h3 className="truncate text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)] sm:text-[11px]">
-            {presentation.label}
+            <span className="sm:hidden">{presentation.mobileLabel}</span>
+            <span className="hidden sm:inline">{presentation.label}</span>
           </h3>
           <span className="block truncate text-[8px] text-[var(--text-tertiary)] sm:text-[9px]">
             {presentation.shortLabel}
@@ -165,8 +171,8 @@ export function WeatherObservationExtremesPanel({
   const hasData = observations.extremes.length > 0
 
   return (
-    <section className="activities-page__panel min-w-0 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section id="weather-observations" className="activities-page__panel relative min-w-0 scroll-mt-6 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 pr-[92px] sm:pr-0">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--accent)]">
             <Gauge aria-hidden size={18} />
@@ -176,11 +182,11 @@ export function WeatherObservationExtremesPanel({
               Naměřené extrémy
             </h2>
             <p className="mt-0.5 text-[10px] text-[var(--text-secondary)]">
-              Aktuální hodnoty z referenčních stanic ČHMÚ
+              Aktuální hodnoty ze stanic ČHMÚ
             </p>
           </div>
         </div>
-        <span className="inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+        <span className="absolute right-4 top-4 inline-flex h-5 shrink-0 items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-1.5 text-[6px] font-bold uppercase tracking-[0.045em] text-[var(--text-secondary)] sm:static sm:h-7 sm:px-2.5 sm:text-[8px] sm:tracking-[0.08em]">
           {formatSnapshotTime(observations.snapshotAt)}
         </span>
       </div>
