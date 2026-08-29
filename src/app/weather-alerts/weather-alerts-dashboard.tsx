@@ -38,7 +38,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useModalMotionClose } from '@/components/ui/modal-motion'
 import { getCurrentPushSubscription, supportsPushNotifications } from '@/app/settings/password/push-subscription-client'
-import { getWeatherEventDetailAction, updateWeatherNotificationPreferencesAction } from './actions'
+import { getWeatherEventDetailAction, getWeatherSourceStatusAction, updateWeatherNotificationPreferencesAction } from './actions'
 import { WeatherAlertMap } from './weather-alert-map'
 import { WeatherSummaryStats, type WeatherSummaryCard } from './weather-summary-stats'
 import type {
@@ -47,6 +47,7 @@ import type {
   WeatherEventListItem,
   WeatherHazardType,
   WeatherNotificationPreferences,
+  WeatherSourceStatus,
 } from '@/lib/weather-alerts/types'
 
 const HAZARD_PRESENTATION: Record<
@@ -527,24 +528,30 @@ function NotificationSettings({ initialPreferences }: { initialPreferences: Weat
         </button>
       </div>
 
-      <div className="weather-alerts__record-surface mt-4 rounded-2xl border px-3.5 py-3">
-        <div className="flex items-start gap-2.5"><CheckCircle2 aria-hidden size={16} className="mt-0.5 shrink-0 text-orange-500" /><p className="text-[11px] leading-4 text-[var(--text-secondary)]"><strong className="text-[var(--text-primary)]">Oranžové a červené výstrahy</strong> jsou při zapnutých upozorněních zahrnuté automaticky.</p></div>
+      <div className="weather-alerts__record-surface mt-4 overflow-hidden rounded-2xl border">
+        <div className="flex items-start gap-2.5 px-3.5 py-3">
+          <CheckCircle2 aria-hidden size={16} className="mt-0.5 shrink-0 text-orange-500" />
+          <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+            <strong className="text-[var(--text-primary)]">Oranžové a červené výstrahy</strong> jsou při zapnutých upozorněních zahrnuté automaticky.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={!preferences.notificationsEnabled || pending}
+          onClick={() => save({ ...preferences, includeYellowWarnings: !preferences.includeYellowWarnings })}
+          className="flex w-full items-center justify-between gap-3 border-t border-[var(--surface-border)] px-3.5 py-3 text-left transition hover:bg-yellow-400/[0.06] disabled:opacity-45"
+        >
+          <span className="flex min-w-0 items-start gap-2.5">
+            <CheckCircle2 aria-hidden size={16} className="mt-0.5 shrink-0 text-yellow-500" />
+            <span className="text-[11px] leading-4 text-[var(--text-secondary)]">
+              <strong className="text-[var(--text-primary)]">Zahrnout také žluté výstrahy</strong> pro upozornění i na nižší stupeň nebezpečí.
+            </span>
+          </span>
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${preferences.includeYellowWarnings ? 'border-yellow-400 bg-yellow-400 text-slate-950' : 'border-[var(--text-tertiary)]'}`}>
+            {preferences.includeYellowWarnings ? '✓' : ''}
+          </span>
+        </button>
       </div>
-
-      <button
-        type="button"
-        disabled={!preferences.notificationsEnabled || pending}
-        onClick={() => save({ ...preferences, includeYellowWarnings: !preferences.includeYellowWarnings })}
-        className="weather-alerts__record-surface mt-2 flex w-full items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition hover:border-yellow-400/45 disabled:opacity-45"
-      >
-        <span>
-          <strong className="block text-sm font-medium text-[var(--text-primary)]">Zahrnout také žluté výstrahy</strong>
-          <span className="mt-0.5 block text-[11px] leading-4 text-[var(--text-secondary)]">Volitelně upozorní i na nižší stupeň nebezpečí.</span>
-        </span>
-        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${preferences.includeYellowWarnings ? 'border-yellow-400 bg-yellow-400 text-slate-950' : 'border-[var(--text-tertiary)]'}`}>
-          {preferences.includeYellowWarnings ? '✓' : ''}
-        </span>
-      </button>
 
       <div className="mt-4 border-t border-[var(--surface-border)] pt-4">
         <h3 className="text-[9px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]">Sledované meteorologické jevy</h3>
@@ -558,6 +565,129 @@ function NotificationSettings({ initialPreferences }: { initialPreferences: Weat
 
       <PushPermissionStatus />
       {message ? <p aria-live="polite" className={`mt-2 text-[11px] ${message === 'Nastavení bylo uloženo.' ? 'text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300' : 'text-red-600 [html[data-theme=dark]_&]:text-red-300'}`}>{message}</p> : null}
+    </section>
+  )
+}
+
+const SOURCE_LIVE_MAX_AGE = 20 * 60 * 1_000
+const SOURCE_ERROR_MAX_AGE = 30 * 60 * 1_000
+
+type SourceHealthPresentation = {
+  label: 'ŽIVĚ' | 'ZPOŽDĚNÍ' | 'CHYBA'
+  description: string
+  badge: string
+  dot: string
+}
+
+function sourceHealthPresentation(
+  status: WeatherSourceStatus,
+  now: number,
+  statusReadFailures: number,
+): SourceHealthPresentation {
+  const lastSuccessTime = status.lastSuccessAt ? Date.parse(status.lastSuccessAt) : Number.NaN
+  const lastSuccessAge = Number.isFinite(lastSuccessTime) ? Math.max(0, now - lastSuccessTime) : Number.POSITIVE_INFINITY
+
+  if (
+    statusReadFailures >= 3
+    || status.consecutiveFailureCount >= 3
+    || lastSuccessAge > SOURCE_ERROR_MAX_AGE
+  ) {
+    return {
+      label: 'CHYBA',
+      description: 'Automatické načítání dat momentálně nefunguje.',
+      badge: 'border-red-200 bg-red-50 text-red-700 [html[data-theme=dark]_&]:border-red-400/25 [html[data-theme=dark]_&]:bg-red-400/10 [html[data-theme=dark]_&]:text-red-300',
+      dot: 'bg-red-500 [html[data-theme=dark]_&]:bg-red-400',
+    }
+  }
+
+  if (
+    statusReadFailures > 0
+    || status.consecutiveFailureCount > 0
+    || lastSuccessAge > SOURCE_LIVE_MAX_AGE
+  ) {
+    return {
+      label: 'ZPOŽDĚNÍ',
+      description: 'Aktualizace dat má zpoždění, systém pokračuje v dalších pokusech.',
+      badge: 'border-amber-200 bg-amber-50 text-amber-700 [html[data-theme=dark]_&]:border-amber-400/25 [html[data-theme=dark]_&]:bg-amber-400/10 [html[data-theme=dark]_&]:text-amber-300',
+      dot: 'bg-amber-500 [html[data-theme=dark]_&]:bg-amber-400',
+    }
+  }
+
+  return {
+    label: 'ŽIVĚ',
+    description: 'Data se automaticky obnovují každých 5 minut.',
+    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700 [html[data-theme=dark]_&]:border-emerald-400/25 [html[data-theme=dark]_&]:bg-emerald-400/10 [html[data-theme=dark]_&]:text-emerald-300',
+    dot: 'bg-emerald-500 motion-safe:animate-pulse [html[data-theme=dark]_&]:bg-emerald-400',
+  }
+}
+
+function WeatherSourceStatusCard({
+  initialStatus,
+  isRefreshing,
+  onRefresh,
+}: {
+  initialStatus: WeatherSourceStatus
+  isRefreshing: boolean
+  onRefresh: () => void
+}) {
+  const [status, setStatus] = useState(initialStatus)
+  const [now, setNow] = useState(() => Date.now())
+  const [statusReadFailures, setStatusReadFailures] = useState(0)
+  const presentation = sourceHealthPresentation(status, now, statusReadFailures)
+
+  useEffect(() => {
+    let disposed = false
+    let requestPending = false
+
+    const refreshStatus = async () => {
+      if (requestPending || document.visibilityState !== 'visible') return
+      requestPending = true
+      const result = await getWeatherSourceStatusAction()
+      requestPending = false
+      if (disposed) return
+      setNow(Date.now())
+      if (!result.success) {
+        setStatusReadFailures((current) => current + 1)
+        return
+      }
+      setStatus(result.status)
+      setStatusReadFailures(0)
+    }
+
+    const interval = window.setInterval(() => { void refreshStatus() }, 60_000)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void refreshStatus()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      disposed = true
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
+  return (
+    <section className="activities-page__panel rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Zdroj dat ČHMÚ</h2>
+          <p className="mt-0.5 text-[11px] leading-4 text-[var(--text-secondary)]">{presentation.description}</p>
+        </div>
+        <span
+          role="status"
+          aria-label={`Stav načítání dat ČHMÚ: ${presentation.label}`}
+          className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[9px] font-bold uppercase tracking-[0.1em] ${presentation.badge}`}
+        >
+          <i aria-hidden className={`h-1.5 w-1.5 rounded-full ${presentation.dot}`} />
+          {presentation.label}
+        </span>
+      </div>
+      <div className="weather-alerts__record-surface mt-4 rounded-2xl border px-3.5 py-3">
+        <span className="text-[9px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]">Poslední úspěšná aktualizace</span>
+        <strong className="mt-1 block text-sm text-[var(--text-primary)]">{formatDateTime(status.lastSuccessAt, 'Zatím neproběhla')}</strong>
+      </div>
+      <button type="button" disabled={isRefreshing} onClick={onRefresh} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[10px] font-bold uppercase text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:cursor-wait disabled:opacity-70"><RefreshCw aria-hidden size={13} className={isRefreshing ? 'animate-spin' : ''} /><span className="inline-block min-w-[112px]">{isRefreshing ? 'Aktualizuji data' : 'Obnovit zobrazení'}</span></button>
     </section>
   )
 }
@@ -605,7 +735,6 @@ export function WeatherAlertsDashboard({
   const nextEvent = selectedIndex >= 0 && selectedIndex < filteredEvents.length - 1 ? filteredEvents[selectedIndex + 1] : null
   const severeCount = workspace.activeEvents.filter((event) => event.severityLevel >= 2).length
   const upcomingCount = workspace.activeEvents.filter((event) => event.status === 'upcoming').length
-  const lastSync = workspace.sourceStatus.lastSuccessAt
 
   useEffect(() => {
     if (!selected) return
@@ -646,7 +775,6 @@ export function WeatherAlertsDashboard({
     window.history.replaceState(null, '', `/weather-alerts?event=${event.id}`)
   }
 
-  const sourceHealthy = workspace.sourceStatus.consecutiveFailureCount === 0
   const summary = useMemo<WeatherSummaryCard[]>(() => [
     { label: 'Aktivní výstrahy', value: workspace.activeEvents.length, tone: 'blue' },
     { label: 'Vyšší nebezpečí', value: severeCount, tone: 'amber' },
@@ -748,11 +876,12 @@ export function WeatherAlertsDashboard({
 
         <aside className="space-y-4">
           <NotificationSettings initialPreferences={workspace.preferences} />
-          <section className="activities-page__panel rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
-            <div className="flex items-center gap-3"><span className={`h-2.5 w-2.5 rounded-full ${sourceHealthy ? 'bg-emerald-500' : 'bg-red-500'}`} /><div><h2 className="text-sm font-semibold text-[var(--text-primary)]">Zdroj dat ČHMÚ</h2><p className="mt-0.5 text-[11px] text-[var(--text-secondary)]">{sourceHealthy ? 'Poslední načtení proběhlo v pořádku.' : 'Poslední načtení hlásí problém.'}</p></div></div>
-            <div className="weather-alerts__record-surface mt-4 rounded-2xl border px-3.5 py-3"><span className="text-[9px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]">Poslední aktualizace</span><strong className="mt-1 block text-sm text-[var(--text-primary)]">{formatDateTime(lastSync, 'Zatím neproběhla')}</strong></div>
-            <button type="button" disabled={isRefreshing} onClick={() => startRefresh(() => router.refresh())} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[10px] font-bold uppercase text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:cursor-wait disabled:opacity-70"><RefreshCw aria-hidden size={13} className={isRefreshing ? 'animate-spin' : ''} /><span className="inline-block min-w-[112px]">{isRefreshing ? 'Aktualizuji data' : 'Obnovit zobrazení'}</span></button>
-          </section>
+          <WeatherSourceStatusCard
+            key={`${workspace.sourceStatus.lastSuccessAt ?? 'none'}:${workspace.sourceStatus.lastAttemptAt ?? 'none'}:${workspace.sourceStatus.consecutiveFailureCount}`}
+            initialStatus={workspace.sourceStatus}
+            isRefreshing={isRefreshing}
+            onRefresh={() => startRefresh(() => router.refresh())}
+          />
         </aside>
       </div>
 

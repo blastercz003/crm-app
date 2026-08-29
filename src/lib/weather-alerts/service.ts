@@ -9,6 +9,7 @@ import type {
   WeatherEventListItem,
   WeatherEventStatus,
   WeatherHazardType,
+  WeatherSourceStatus,
 } from './types'
 
 type EventRow = {
@@ -111,6 +112,43 @@ function compareActiveEvents(left: EventRow, right: EventRow) {
   return eventTime(left) - eventTime(right)
 }
 
+async function readWeatherSourceStatus(): Promise<WeatherSourceStatus> {
+  const serviceClient = getServiceRoleClient()
+  if (!serviceClient) {
+    return {
+      lastSuccessAt: null,
+      lastAttemptAt: null,
+      lastErrorAt: null,
+      consecutiveFailureCount: 0,
+      dataVersion: 0,
+    }
+  }
+
+  const { data, error } = await serviceClient
+    .from('weather_source_state')
+    .select(
+      'last_success_at,last_attempt_at,last_error_at,consecutive_failure_count,data_version',
+    )
+    .eq('source', 'chmi')
+    .maybeSingle<SourceStateRow>()
+  if (error) {
+    throw new Error(`Stav zdroje ČHMÚ se nepodařilo načíst: ${error.message}`)
+  }
+
+  return {
+    lastSuccessAt: data?.last_success_at ?? null,
+    lastAttemptAt: data?.last_attempt_at ?? null,
+    lastErrorAt: data?.last_error_at ?? null,
+    consecutiveFailureCount: data?.consecutive_failure_count ?? 0,
+    dataVersion: data?.data_version ?? 0,
+  }
+}
+
+export async function getWeatherSourceStatus(): Promise<WeatherSourceStatus> {
+  await getWeatherAlertsRuntimeContext()
+  return readWeatherSourceStatus()
+}
+
 export async function getWeatherAlertsWorkspace(): Promise<WeatherAlertsWorkspace> {
   const { supabase, user } = await getWeatherAlertsRuntimeContext({
     redirectOnDenied: true,
@@ -145,21 +183,7 @@ export async function getWeatherAlertsWorkspace(): Promise<WeatherAlertsWorkspac
     preferenceResult.error
   if (error) throw new Error(`Výstrahy počasí se nepodařilo načíst: ${error.message}`)
 
-  const serviceClient = getServiceRoleClient()
-  let source: SourceStateRow | null = null
-  if (serviceClient) {
-    const { data, error: sourceError } = await serviceClient
-      .from('weather_source_state')
-      .select(
-        'last_success_at,last_attempt_at,last_error_at,consecutive_failure_count,data_version',
-      )
-      .eq('source', 'chmi')
-      .maybeSingle<SourceStateRow>()
-    if (sourceError) {
-      throw new Error(`Stav zdroje ČHMÚ se nepodařilo načíst: ${sourceError.message}`)
-    }
-    source = data
-  }
+  const sourceStatus = await readWeatherSourceStatus()
 
   const activeRows = (activeResult.data ?? []) as unknown as EventRow[]
   const historyRows = (historyResult.data ?? []) as unknown as EventRow[]
@@ -246,13 +270,7 @@ export async function getWeatherAlertsWorkspace(): Promise<WeatherAlertsWorkspac
       includeYellowWarnings: preference?.include_yellow_warnings ?? false,
       updatedAt: preference?.updated_at ?? null,
     },
-    sourceStatus: {
-      lastSuccessAt: source?.last_success_at ?? null,
-      lastAttemptAt: source?.last_attempt_at ?? null,
-      lastErrorAt: source?.last_error_at ?? null,
-      consecutiveFailureCount: source?.consecutive_failure_count ?? 0,
-      dataVersion: source?.data_version ?? 0,
-    },
+    sourceStatus,
   }
 }
 

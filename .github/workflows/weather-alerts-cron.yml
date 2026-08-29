@@ -1,8 +1,8 @@
 name: Weather Alerts Sync Cron
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
+  # Supabase pg_cron is the primary scheduler. This workflow remains available
+  # only as a manual emergency trigger so duplicate automatic runs cannot occur.
   workflow_dispatch:
 
 permissions:

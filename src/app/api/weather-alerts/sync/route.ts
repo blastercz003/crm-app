@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { timingSafeEqual } from 'node:crypto'
 import { reportRouteError } from '@/lib/errors/reportRouteError'
+import { isWeatherAutomationAuthorized } from '@/lib/weather-alerts/automation-auth'
 import { notifyAdminsAfterWeatherSyncFailure } from '@/lib/weather-alerts/failure-notifications'
 import { syncWeatherAlerts } from '@/lib/weather-alerts/orchestrator'
 import { WeatherSyncAlreadyRunningError } from '@/lib/weather-alerts/sync'
@@ -13,21 +13,8 @@ const RESPONSE_HEADERS = {
   'Cache-Control': 'no-store, max-age=0',
 } as const
 
-function isAuthorized(request: Request) {
-  const token = process.env.WEATHER_ALERTS_AUTOMATION_TOKEN
-  if (!token) return false
-
-  const authorization = request.headers.get('authorization') ?? ''
-  const providedToken = authorization.startsWith('Bearer ')
-    ? authorization.slice('Bearer '.length).trim()
-    : ''
-
-  if (!providedToken || providedToken.length !== token.length) return false
-  return timingSafeEqual(Buffer.from(providedToken), Buffer.from(token))
-}
-
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isWeatherAutomationAuthorized(request)) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401, headers: RESPONSE_HEADERS },

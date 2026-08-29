@@ -101,7 +101,7 @@ export function WeatherAlertMap({ events, compact = false, onEventOpen }: Weathe
                     onEventOpen(event, keyEvent.currentTarget)
                   }
                 }}
-                className={`stroke-[0.65] transition-[fill,stroke,opacity] duration-150 focus:outline-none ${event ? `${SEVERITY_STYLE[event.severityColor]} cursor-pointer hover:brightness-95 focus:stroke-[var(--accent)] focus:stroke-[2.5]` : 'fill-[var(--surface-strong)] stroke-[var(--surface-border)] opacity-80'}`}
+                className={`stroke-[0.65] transition-[fill,stroke,opacity] duration-150 focus:outline-none ${event ? `${SEVERITY_STYLE[event.severityColor]} cursor-pointer hover:brightness-95 focus:stroke-[var(--accent)] focus:stroke-[2.5]` : 'fill-[#dfe8f1] stroke-[#afbfce] opacity-90 [html[data-theme=dark]_&]:fill-[var(--surface-strong)] [html[data-theme=dark]_&]:stroke-[var(--surface-border)] [html[data-theme=dark]_&]:opacity-80'}`}
                 style={{ vectorEffect: 'non-scaling-stroke' }}
               />
             )

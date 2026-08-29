@@ -11,6 +11,7 @@ type WeatherSourceFailureState = {
 }
 
 export const WEATHER_FAILURE_NOTIFICATION_THRESHOLD = 3
+export const WEATHER_STALE_NOTIFICATION_THRESHOLD_MS = 30 * 60 * 1_000
 
 function formatDateTime(value: string | null) {
   if (!value) return 'zatím neproběhlo'
@@ -38,18 +39,32 @@ export async function notifyAdminsAfterWeatherSyncFailure() {
   if (error) throw error
 
   const failureCount = data?.consecutive_failure_count ?? 0
-  if (failureCount < WEATHER_FAILURE_NOTIFICATION_THRESHOLD) {
-    return { notified: false, reason: 'below_threshold' as const, failureCount }
+  const lastSuccessTime = data?.last_success_at
+    ? Date.parse(data.last_success_at)
+    : Number.NaN
+  const stale = !Number.isFinite(lastSuccessTime)
+    || Date.now() - lastSuccessTime >= WEATHER_STALE_NOTIFICATION_THRESHOLD_MS
+
+  if (failureCount < WEATHER_FAILURE_NOTIFICATION_THRESHOLD && !stale) {
+    return {
+      notified: false,
+      reason: 'healthy' as const,
+      failureCount,
+      stale: false,
+    }
   }
 
   const incidentKey = data?.last_success_at ?? 'before-first-success'
+  const failureMessage = failureCount >= WEATHER_FAILURE_NOTIFICATION_THRESHOLD
+    ? `Automatické načítání dat ČHMÚ selhalo ${failureCount}× za sebou.`
+    : 'Automatické načítání dat ČHMÚ neproběhlo déle než 30 minut.'
   await createNotificationsForAdmins({
     supabase: client,
     actorUserId: null,
     category: 'weather',
     type: 'weather_sync_unavailable',
     title: 'VÝSTRAHY ČHMÚ – VÝPADEK SYNCHRONIZACE',
-    message: `Automatické načítání dat ČHMÚ selhalo ${failureCount}× za sebou. Poslední úspěšná aktualizace: ${formatDateTime(data?.last_success_at ?? null)}.`,
+    message: `${failureMessage} Poslední úspěšná aktualizace: ${formatDateTime(data?.last_success_at ?? null)}.`,
     entityType: 'weather_sync',
     entityId: CHMI_SOURCE,
     href: '/weather-alerts',
@@ -62,6 +77,7 @@ export async function notifyAdminsAfterWeatherSyncFailure() {
   return {
     notified: true,
     failureCount,
+    stale,
     lastErrorAt: data?.last_error_at ?? null,
   }
 }

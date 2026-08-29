@@ -161,15 +161,17 @@ export type WeatherEventDetail = {
   versions: WeatherEventVersionSummary[]
 }
 
+export type WeatherSourceStatus = {
+  lastSuccessAt: string | null
+  lastAttemptAt: string | null
+  lastErrorAt: string | null
+  consecutiveFailureCount: number
+  dataVersion: number
+}
+
 export type WeatherAlertsWorkspace = {
   activeEvents: WeatherEventListItem[]
   historyEvents: WeatherEventListItem[]
   preferences: WeatherNotificationPreferences
-  sourceStatus: {
-    lastSuccessAt: string | null
-    lastAttemptAt: string | null
-    lastErrorAt: string | null
-    consecutiveFailureCount: number
-    dataVersion: number
-  }
+  sourceStatus: WeatherSourceStatus
 }
