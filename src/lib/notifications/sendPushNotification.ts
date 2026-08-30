@@ -15,6 +15,15 @@ type SendPushNotificationInput = {
   href?: string | null
 }
 
+export type PushNotificationDeliveryResult = {
+  success: boolean
+  subscriptionCount: number
+  sentCount: number
+  failedCount: number
+  removedSubscriptionCount: number
+  reason?: string
+}
+
 type PushSupabaseClient =
   | Awaited<ReturnType<typeof createClient>>
   | NonNullable<ReturnType<typeof getServiceRoleClient>>
@@ -53,10 +62,21 @@ async function getUnreadNotificationCount(
   return count ?? 0
 }
 
-export async function sendPushNotificationToUser(input: SendPushNotificationInput) {
+export async function sendPushNotificationToUser(
+  input: SendPushNotificationInput,
+): Promise<PushNotificationDeliveryResult> {
   const config = getPushConfig()
 
-  if (!config) return { success: false, reason: 'missing-push-config' }
+  if (!config) {
+    return {
+      success: false,
+      subscriptionCount: 0,
+      sentCount: 0,
+      failedCount: 0,
+      removedSubscriptionCount: 0,
+      reason: 'missing-push-config',
+    }
+  }
 
   const serviceClient = getServiceRoleClient()
   const supabase = serviceClient ?? (await createClient())
@@ -67,13 +87,26 @@ export async function sendPushNotificationToUser(input: SendPushNotificationInpu
     .eq('user_id', input.recipientUserId)
 
   if (error) {
-    return { success: false, reason: error.message }
+    return {
+      success: false,
+      subscriptionCount: 0,
+      sentCount: 0,
+      failedCount: 0,
+      removedSubscriptionCount: 0,
+      reason: error.message,
+    }
   }
 
   const rows = (subscriptions ?? []) as PushSubscriptionRow[]
 
   if (rows.length === 0) {
-    return { success: true, sentCount: 0 }
+    return {
+      success: true,
+      subscriptionCount: 0,
+      sentCount: 0,
+      failedCount: 0,
+      removedSubscriptionCount: 0,
+    }
   }
 
   webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey)
@@ -118,8 +151,15 @@ export async function sendPushNotificationToUser(input: SendPushNotificationInpu
       .in('endpoint', expiredEndpoints)
   }
 
+  const sentCount = results.filter((result) => result.status === 'fulfilled').length
+  const failedCount = results.length - sentCount
+
   return {
-    success: true,
-    sentCount: results.filter((result) => result.status === 'fulfilled').length,
+    success: failedCount === 0,
+    subscriptionCount: rows.length,
+    sentCount,
+    failedCount,
+    removedSubscriptionCount: expiredEndpoints.length,
+    reason: failedCount > 0 ? 'push-delivery-failed' : undefined,
   }
 }

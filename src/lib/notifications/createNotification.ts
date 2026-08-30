@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { sendPushNotificationToUser } from './sendPushNotification'
+import type { PushNotificationDeliveryResult } from './sendPushNotification'
 import type { NotificationCategory, NotificationPriority } from './types'
 
 type SupabaseClient =
@@ -77,8 +78,9 @@ export async function createNotification(input: CreateNotificationInput) {
     throw new Error(`Nepodařilo se vytvořit notifikaci: ${error.message}`)
   }
 
+  let pushDelivery: PushNotificationDeliveryResult
   try {
-    await sendPushNotificationToUser({
+    pushDelivery = await sendPushNotificationToUser({
       recipientUserId,
       title: input.title,
       message: input.message,
@@ -86,12 +88,21 @@ export async function createNotification(input: CreateNotificationInput) {
     })
   } catch (pushError) {
     console.error('Nepodařilo se odeslat push notifikaci.', pushError)
+    pushDelivery = {
+      success: false,
+      subscriptionCount: 0,
+      sentCount: 0,
+      failedCount: 0,
+      removedSubscriptionCount: 0,
+      reason: pushError instanceof Error ? pushError.message : 'unexpected-push-error',
+    }
   }
 
   return {
     success: true as const,
     id: createdNotification.id,
     deduplicated: false,
+    pushDelivery,
   }
 }
 

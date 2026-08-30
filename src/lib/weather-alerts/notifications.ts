@@ -99,6 +99,7 @@ async function storeDelivery(
     dedupeKey: string
     status: DeliveryStatus
     notificationId: string | null
+    pushDelivery: Record<string, unknown>
     errorMessage: string | null
   },
 ) {
@@ -114,6 +115,7 @@ async function storeDelivery(
         dedupe_key: input.dedupeKey,
         delivery_status: input.status,
         notification_id: input.notificationId,
+        push_delivery: input.pushDelivery,
         error_message: input.errorMessage,
       },
       { onConflict: 'dedupe_key' },
@@ -256,6 +258,11 @@ export async function dispatchWeatherNotifications(input: {
           dedupeKey,
           status,
           notificationId: notification.id,
+          pushDelivery: notification.deduplicated
+            ? { attempted: false, reason: 'deduplicated' }
+            : notification.pushDelivery
+              ? { ...notification.pushDelivery }
+              : { attempted: false, reason: 'push-result-unavailable' },
           errorMessage: null,
         })
         existingDeliveries.set(dedupeKey, status)
@@ -271,6 +278,7 @@ export async function dispatchWeatherNotifications(input: {
             dedupeKey,
             status: 'failed',
             notificationId: null,
+            pushDelivery: { attempted: false, reason: 'notification-create-failed' },
             errorMessage: text.slice(0, 2_000),
           })
           existingDeliveries.set(dedupeKey, 'failed')

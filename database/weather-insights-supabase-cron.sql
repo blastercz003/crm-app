@@ -40,7 +40,8 @@ begin
   if endpoint_path not in (
     '/api/weather-insights/radar/sync',
     '/api/weather-insights/observations/sync',
-    '/api/weather-insights/forecast/sync'
+    '/api/weather-insights/forecast/sync',
+    '/api/weather-insights/notifications/daily'
   ) then
     raise exception 'Nepovolený endpoint doplňkových dat počasí.';
   end if;
@@ -82,7 +83,7 @@ end;
 $$;
 
 comment on function public.request_weather_insights_endpoint(text) is
-  'Bezpečně zařadí synchronizaci radaru, měřených extrémů nebo výhledu ČHMÚ přes pg_net.';
+  'Bezpečně zařadí synchronizaci dat počasí nebo denní meteorologický přehled přes pg_net.';
 
 revoke all on function public.request_weather_insights_endpoint(text)
   from public, anon, authenticated;
@@ -94,7 +95,8 @@ begin
   where jobname in (
     'weather_insights_radar_every_five_minutes',
     'weather_insights_observations_every_ten_minutes',
-    'weather_insights_forecast_hourly'
+    'weather_insights_forecast_hourly',
+    'weather_insights_daily_summary_every_ten_minutes'
   );
 
   perform cron.schedule(
@@ -113,6 +115,12 @@ begin
     'weather_insights_forecast_hourly',
     '17 * * * *',
     $job$select public.request_weather_insights_endpoint('/api/weather-insights/forecast/sync');$job$
+  );
+
+  perform cron.schedule(
+    'weather_insights_daily_summary_every_ten_minutes',
+    '0-59/10 * * * *',
+    $job$select public.request_weather_insights_endpoint('/api/weather-insights/notifications/daily');$job$
   );
 
   -- Po prvním nasazení načteme všechny tři zdroje bez čekání na nejbližší interval.
@@ -143,6 +151,7 @@ from (
   values
     ('weather_insights_radar_every_five_minutes', '4-59/5 * * * *'),
     ('weather_insights_observations_every_ten_minutes', '0-59/10 * * * *'),
-    ('weather_insights_forecast_hourly', '17 * * * *')
+    ('weather_insights_forecast_hourly', '17 * * * *'),
+    ('weather_insights_daily_summary_every_ten_minutes', '0-59/10 * * * *')
 ) as expected(jobname, schedule)
 order by check_type, object_name;

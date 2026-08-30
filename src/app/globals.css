@@ -15911,17 +15911,34 @@ html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-cancel {
   color: #fee2e2;
 }
 
-html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-save,
 html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-preview {
   border-color: rgba(148, 163, 184, 0.16);
   background: linear-gradient(155deg, rgba(15, 23, 42, 0.96) 0%, rgba(12, 20, 34, 0.92) 100%);
   color: #e5edf7;
 }
 
-html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-add {
-  border-color: rgba(78, 160, 220, 0.28);
-  background: linear-gradient(155deg, rgba(47, 119, 175, 0.98) 0%, rgba(35, 100, 153, 0.96) 100%);
-  color: #f8fbff;
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-add,
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-save {
+  border-color: rgba(92, 167, 219, 0.38) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(56, 125, 177, 0.98) 0%,
+    rgba(41, 105, 152, 0.96) 45%,
+    rgba(30, 86, 129, 0.96) 100%
+  ) !important;
+  color: #f8fbff !important;
+}
+
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-add:hover,
+html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-save:hover {
+  border-color: rgba(78, 160, 220, 0.45) !important;
+  background: linear-gradient(
+    155deg,
+    rgba(66, 140, 191, 0.98) 0%,
+    rgba(47, 119, 175, 0.96) 45%,
+    rgba(35, 100, 153, 0.96) 100%
+  ) !important;
+  color: #f8fbff !important;
 }
 
 html[data-theme='dark'] .jobs-page__handover-modal .jobs-page__handover-remove {

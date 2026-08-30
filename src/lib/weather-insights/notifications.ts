@@ -108,6 +108,12 @@ function pragueParts(date: Date) {
   }
 }
 
+function preferenceStartsNextDay(preferenceUpdatedAt: string, now: Date) {
+  const current = pragueParts(now)
+  const updated = pragueParts(new Date(preferenceUpdatedAt))
+  return updated.dateKey === current.dateKey && updated.hour >= 9
+}
+
 function formatPeriod(validFrom: string, validTo: string) {
   const formatter = new Intl.DateTimeFormat('cs-CZ', {
     timeZone: PRAGUE_TIME_ZONE,
@@ -228,6 +234,14 @@ async function recordNotification(
       ...input,
       status,
       notificationId: notification.id,
+      payload: {
+        ...input.payload,
+        pushDelivery: notification.deduplicated
+          ? { attempted: false, reason: 'deduplicated' }
+          : notification.pushDelivery
+            ? { ...notification.pushDelivery }
+            : { attempted: false, reason: 'push-result-unavailable' },
+      },
       errorMessage: null,
     })
     return status
@@ -394,7 +408,7 @@ export async function dispatchDailyWeatherSummary(input: {
   const now = input.now ?? new Date()
   const local = pragueParts(now)
   const result = emptyResult()
-  if (local.hour !== 9) return result
+  if (local.hour < 9) return result
 
   const preferences = await extendedPreferences(client)
   const from = new Date(now.getTime() - 24 * 60 * 60 * 1_000).toISOString()
@@ -416,7 +430,9 @@ export async function dispatchDailyWeatherSummary(input: {
   }
 
   for (const preference of preferences) {
-    if (pragueParts(new Date(preference.updated_at)).dateKey === local.dateKey) {
+    // Zapnutí před 09:00 zahrne uživatele ještě do dnešního přehledu.
+    // Zapnutí v 09:00 nebo později začne platit od následujícího dne.
+    if (preferenceStartsNextDay(preference.updated_at, now)) {
       result.skippedCount += 1
       continue
     }
