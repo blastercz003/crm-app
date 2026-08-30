@@ -640,6 +640,12 @@ async function updateClientValues(formData: FormData) {
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${id}`)
+  revalidatePath('/jobs')
+  revalidatePath('/tasks')
+  revalidatePath('/meetings')
+  revalidatePath('/calendar')
+  revalidatePath('/activities')
+  revalidatePath('/dashboard')
 
   return { id }
 }

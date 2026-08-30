@@ -261,7 +261,11 @@ function JobFormShell({
       })
     })
 
-    if (job?.client_id && job.company_name?.trim()) {
+    if (
+      job?.client_id &&
+      job.company_name?.trim() &&
+      !map.has(job.client_id)
+    ) {
       map.set(job.client_id, {
         id: job.client_id,
         name: job.company_name.trim(),
@@ -275,7 +279,12 @@ function JobFormShell({
 
   const companyInputRef = useRef<HTMLInputElement>(null)
 
-  const [companyName, setCompanyName] = useState(job?.company_name ?? '')
+  const canonicalCompanyName =
+    companyOptions.find((client) => client.id === job?.client_id)?.name ??
+    job?.company_name ??
+    ''
+
+  const [companyName, setCompanyName] = useState(canonicalCompanyName)
   const [selectedClientId, setSelectedClientId] = useState(job?.client_id ?? '')
   const [selectedContactId, setSelectedContactId] = useState(job?.client_contact_id ?? '')
   const [selectedOfferId, setSelectedOfferId] = useState('')

@@ -1342,7 +1342,11 @@ function EditableCompanyCell({
       map.set(id, { id, name })
     })
 
-    if (job.client_id && (value ?? '').trim()) {
+    if (
+      job.client_id &&
+      (value ?? '').trim() &&
+      !map.has(job.client_id)
+    ) {
       map.set(job.client_id, {
         id: job.client_id,
         name: (value ?? '').trim(),
@@ -1384,7 +1388,12 @@ function EditableCompanyCell({
   }
 
   function startEditing() {
-    setCompanyName(value ?? '')
+    const canonicalCompanyName =
+      companyOptions.find((client) => client.id === job.client_id)?.name ??
+      value ??
+      ''
+
+    setCompanyName(canonicalCompanyName)
     setSelectedClientId(job.client_id ?? '')
     setIsEditing(true)
   }

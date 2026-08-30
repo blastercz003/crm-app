@@ -94,25 +94,9 @@ export function HandoverProtocolButton({
             : 'w-8 bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_12px_22px_rgba(41,128,185,0.3)]'
         }`}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-4 w-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M7 3h7l5 5v13H7a2 2 0 01-2-2V5a2 2 0 012-2z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M14 3v5h5M9 13h6M9 17h6"
-          />
-        </svg>
+        <span aria-hidden="true" className="text-sm font-semibold leading-none tracking-normal md:text-[12px] md:font-bold">
+          PP
+        </span>
       </button>
 
       {isOpen ? <HandoverProtocolModal job={job} onClose={() => setIsOpen(false)} /> : null}
