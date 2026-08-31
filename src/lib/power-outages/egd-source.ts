@@ -383,6 +383,13 @@ export async function loadEgdOutages(input: {
       Origin: 'https://www.egd.cz',
       Referer: `${EGD_OUTAGES_PAGE_URL}/`,
       'User-Agent': EGD_BROWSER_USER_AGENT,
+      'Sec-CH-UA': '"Not)A;Brand";v="8", "Chromium";v="140", "Google Chrome";v="140"',
+      'Sec-CH-UA-Mobile': '?0',
+      'Sec-CH-UA-Platform': '"macOS"',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-site',
+      Priority: 'u=1, i',
     },
     body: JSON.stringify({
       operationName: 'filterOutages',
@@ -391,7 +398,17 @@ export async function loadEgdOutages(input: {
     }),
   }, { timeoutMs: 35_000, maxBytes: 16 * 1024 * 1024, retryCount: 3 })
   if (!api.response.ok) {
-    throw new Error(`Rozhraní odstávek EG.D odpovědělo HTTP ${api.response.status}.`)
+    const responseHint = api.text
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180)
+    const server = api.response.headers.get('server')
+    throw new Error(
+      `Rozhraní odstávek EG.D odpovědělo HTTP ${api.response.status}`
+      + `${server ? ` (server: ${server})` : ''}`
+      + `${responseHint ? `: ${responseHint}` : '.'}`,
+    )
   }
 
   const unwrapped = unwrapEgdResponse(
