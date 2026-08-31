@@ -73,7 +73,7 @@ function NotificationSettings({ initial }: { initial: PowerOutageNotificationPre
     startTransition(async () => {
       const result = await updatePowerOutageNotificationPreferencesAction({
         notificationsEnabled: next.notificationsEnabled,
-        reminder24hEnabled: next.reminder24hEnabled,
+        reminder24hEnabled: false,
       })
       if (result.success) setPreferences(result.preferences)
       else {
@@ -89,14 +89,10 @@ function NotificationSettings({ initial }: { initial: PowerOutageNotificationPre
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><BellRing aria-hidden size={18} /></span>
         <div className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Nastavení</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">Upozornění na odstávky</h2></div>
       </div>
-      <div className="mt-4 space-y-2.5">
+      <div className="mt-4">
         <div className="weather-alerts__record-surface flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border px-3.5 py-3">
           <span className="min-w-0"><strong className="block text-xs text-[var(--text-primary)]">Nově nalezené odstávky</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">Běžná notifikace aplikace a PWA.</small></span>
-          <Switch checked={preferences.notificationsEnabled} disabled={pending} label="Upozornění na nové odstávky" onChange={(checked) => save({ ...preferences, notificationsEnabled: checked, reminder24hEnabled: checked ? preferences.reminder24hEnabled : false })} />
-        </div>
-        <div className="weather-alerts__record-surface flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border px-3.5 py-3">
-          <span className="min-w-0"><strong className="block text-xs text-[var(--text-primary)]">Připomenout 24 hodin předem</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">Doplňkové připomenutí blížícího se termínu.</small></span>
-          <Switch checked={preferences.reminder24hEnabled} disabled={pending || !preferences.notificationsEnabled} label="Připomenout odstávku 24 hodin předem" onChange={(checked) => save({ ...preferences, reminder24hEnabled: checked })} />
+          <Switch checked={preferences.notificationsEnabled} disabled={pending} label="Upozornění na nové odstávky" onChange={(checked) => save({ ...preferences, notificationsEnabled: checked, reminder24hEnabled: false })} />
         </div>
       </div>
       <div className="mt-auto pt-3">
@@ -130,7 +126,7 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
   }
 
   return (
-    <section className="activities-page__panel flex h-[360px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto">
+    <section className="activities-page__panel flex h-[360px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto lg:p-4">
       <div className="flex items-start justify-between gap-2">
         <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><DatabaseZap aria-hidden size={18} /></span>
@@ -142,19 +138,19 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
         </div>
       </div>
 
-      <button type="button" onClick={onOpen} className="mt-4 min-h-0 flex-1 text-left">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední pokus</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastAttemptAt)}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Úspěšně načteno</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastSuccessAt)}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Zpracováno</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Nalezené změny</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
+      <button type="button" onClick={onOpen} className="mt-4 min-h-0 flex-1 text-left lg:mt-3">
+        <div className="grid grid-cols-2 gap-2 lg:gap-1.5">
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední pokus</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastAttemptAt)}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Úspěšně načteno</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastSuccessAt)}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Zpracováno</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Nalezené změny</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
         </div>
-        <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5">
+        <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5 lg:mt-2 lg:py-2">
           <span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Pokrytí relevantních obcí</small><strong className="mt-0.5 block truncate text-[10px] text-[var(--text-primary)]">{source.municipalityCoverage}</strong></span>
           <ChevronRight aria-hidden size={15} className="shrink-0 text-[var(--text-secondary)]" />
         </div>
       </button>
-      {source.lastErrorMessage || refreshError ? <p className="mt-2 line-clamp-2 text-[9px] font-semibold leading-4 text-red-600 [html[data-theme=dark]_&]:text-red-300">{refreshError ?? source.lastErrorMessage}</p> : null}
+      {source.lastErrorMessage || refreshError ? <p className="mt-2 line-clamp-2 text-[9px] font-semibold leading-4 text-red-600 lg:mt-1.5 [html[data-theme=dark]_&]:text-red-300">{refreshError ?? source.lastErrorMessage}</p> : null}
     </section>
   )
 }

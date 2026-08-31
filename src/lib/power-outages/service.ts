@@ -53,6 +53,12 @@ type InformedRow = {
   created_at: string
 }
 
+type JobLinkRow = {
+  match_id: string
+  job_id: string
+  job_number: string
+}
+
 type RegistryRow = {
   distributor: 'cez' | 'egd' | 'unknown'
   verification_status: 'pending' | 'verified' | 'probable' | 'needs_review' | 'not_found' | 'error'
@@ -196,6 +202,29 @@ async function loadLatestInformedRows(client: SupabaseClient, matchIds: string[]
   return rows
 }
 
+async function loadJobLinks(client: SupabaseClient, matchIds: string[]) {
+  const rows: JobLinkRow[] = []
+  const batchSize = 75
+
+  for (let from = 0; from < matchIds.length; from += batchSize) {
+    const batch = matchIds.slice(from, from + batchSize)
+    const { data, error } = await client
+      .from('power_outage_job_links')
+      .select('match_id,job_id,job_number')
+      .in('match_id', batch)
+      .order('job_number', { ascending: false })
+
+    // Umožní bezpečně nasadit aplikaci ještě před spuštěním databázové migrace.
+    if (error?.code === '42P01' || error?.code === 'PGRST205') return []
+    if (error) {
+      throw new Error(`Vazby odstávek na zakázky se nepodařilo načíst: ${error.message}`)
+    }
+    rows.push(...((data ?? []) as JobLinkRow[]))
+  }
+
+  return rows
+}
+
 export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
   const { supabase, user } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
 
@@ -300,11 +329,20 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
   ] as unknown as MatchRelationRow[]
   const matchIds = [...new Set([...currentRows, ...archiveRows].map((row) => row.id))]
   const informedByMatch = new Map<string, InformedRow>()
+  const jobLinksByMatch = new Map<string, JobLinkRow[]>()
 
   if (matchIds.length > 0) {
-    const informedData = await loadLatestInformedRows(supabase, matchIds)
+    const [informedData, jobLinkData] = await Promise.all([
+      loadLatestInformedRows(supabase, matchIds),
+      loadJobLinks(supabase, matchIds),
+    ])
     for (const row of informedData) {
       if (!informedByMatch.has(row.match_id)) informedByMatch.set(row.match_id, row)
+    }
+    for (const row of jobLinkData) {
+      const existing = jobLinksByMatch.get(row.match_id) ?? []
+      existing.push(row)
+      jobLinksByMatch.set(row.match_id, existing)
     }
   }
 
@@ -312,6 +350,8 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
     const outage = relationOne(row.outage)
     if (!outage) return null
     const informed = informedByMatch.get(row.id)
+    const linkedJobs = jobLinksByMatch.get(row.id) ?? []
+    const linkedJob = linkedJobs[0]
     return {
       matchId: row.id,
       outageId: row.outage_id,
@@ -342,6 +382,13 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
       },
       informed: informed?.informed ?? false,
       informedAt: informed?.created_at ?? null,
+      linkedJob: linkedJob
+        ? {
+            id: linkedJob.job_id,
+            jobNumber: linkedJob.job_number,
+            matchCount: linkedJobs.length,
+          }
+        : null,
     }
   }
 
@@ -355,7 +402,7 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
     .sort(compareArchive)
   const preferences: PowerOutageNotificationPreferences = {
     notificationsEnabled: preferenceResult.data?.notifications_enabled ?? false,
-    reminder24hEnabled: preferenceResult.data?.reminder_24h_enabled ?? false,
+    reminder24hEnabled: false,
     updatedAt: preferenceResult.data?.updated_at ?? null,
   }
 

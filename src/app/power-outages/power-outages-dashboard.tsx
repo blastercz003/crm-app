@@ -17,7 +17,7 @@ export function PowerOutagesDashboard({ workspace }: { workspace: PowerOutageWor
     <>
       <PowerOutageSummaryStats cards={summaryCards} />
 
-      <div className="grid items-start gap-5 xl:grid-cols-4 xl:gap-3">
+      <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
         <PowerOutageRecords workspace={workspace} />
 
         <PowerOutageSidebar

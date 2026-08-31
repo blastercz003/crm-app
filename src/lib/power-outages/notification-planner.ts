@@ -3,11 +3,10 @@ import 'server-only'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
-type EventKind = 'new_outage' | 'schedule_changed' | 'cancelled' | 'reminder_24h'
+type EventKind = 'new_outage' | 'schedule_changed' | 'cancelled'
 
 type PreferenceRow = {
   user_id: string
-  reminder_24h_enabled: boolean
   updated_at: string
 }
 
@@ -65,9 +64,6 @@ export type PowerOutageNotificationPlanResult = {
 }
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
-const REMINDER_EARLIEST_MS = 23.75 * 60 * 60 * 1_000
-const REMINDER_LATEST_MS = 24.25 * 60 * 60 * 1_000
-
 function relationOne<T>(value: T | T[]) {
   return Array.isArray(value) ? value[0] : value
 }
@@ -217,17 +213,7 @@ function buildCandidate(input: {
     } satisfies PlannedCandidate
   }
 
-  return {
-    userId: input.preference.user_id,
-    outageId: outage.id,
-    outageVersionId: input.version?.id ?? null,
-    matchId: input.match.id,
-    eventKind: input.eventKind,
-    dedupeKey,
-    title: 'Odstávka začne přibližně za 24 hodin',
-    message: `${label} · ${formatPeriod(outage.starts_at, outage.ends_at)}.`,
-    href: `/power-outages?match=${input.match.id}`,
-  } satisfies PlannedCandidate
+  return null
 }
 
 async function loadVersions(client: ServiceClient, outageIds: string[]) {
@@ -257,17 +243,13 @@ async function existingDedupeKeys(client: ServiceClient, keys: string[]) {
   return existing
 }
 
-export async function planPowerOutageNotifications(input: {
-  now?: Date
-} = {}): Promise<PowerOutageNotificationPlanResult> {
+export async function planPowerOutageNotifications(): Promise<PowerOutageNotificationPlanResult> {
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení pro plánování upozornění na odstávky.')
-  const now = input.now ?? new Date()
-  const nowTime = now.getTime()
 
   const { data: preferenceData, error: preferenceError } = await client
     .from('power_outage_notification_preferences')
-    .select('user_id,reminder_24h_enabled,updated_at')
+    .select('user_id,updated_at')
     .eq('notifications_enabled', true)
   if (preferenceError) throw preferenceError
   const preferences = (preferenceData ?? []) as PreferenceRow[]
@@ -354,22 +336,6 @@ export async function planPowerOutageNotifications(input: {
         })
         if (candidate) candidates.push(candidate)
       })
-
-      const startIn = timestamp(outage.starts_at) - nowTime
-      if (
-        preference.reminder_24h_enabled
-        && outage.source_status === 'scheduled'
-        && startIn >= REMINDER_EARLIEST_MS
-        && startIn <= REMINDER_LATEST_MS
-      ) {
-        const candidate = buildCandidate({
-          preference,
-          match,
-          version: currentVersion,
-          eventKind: 'reminder_24h',
-        })
-        if (candidate) candidates.push(candidate)
-      }
     }
   }
 

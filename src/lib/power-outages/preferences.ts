@@ -23,7 +23,7 @@ export async function getPowerOutageNotificationPreferences(): Promise<PowerOuta
 
   return {
     notificationsEnabled: data?.notifications_enabled ?? false,
-    reminder24hEnabled: data?.reminder_24h_enabled ?? false,
+    reminder24hEnabled: false,
     updatedAt: data?.updated_at ?? null,
   }
 }
@@ -36,8 +36,7 @@ export async function updatePowerOutageNotificationPreferences(input: {
   const now = new Date().toISOString()
   const values = {
     notifications_enabled: Boolean(input.notificationsEnabled),
-    reminder_24h_enabled:
-      Boolean(input.notificationsEnabled) && Boolean(input.reminder24hEnabled),
+    reminder_24h_enabled: false,
     updated_at: now,
   }
   const { data: existing, error: existingError } = await supabase

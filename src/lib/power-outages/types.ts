@@ -38,6 +38,11 @@ export type PowerOutageListItem = {
   }
   informed: boolean
   informedAt: string | null
+  linkedJob: {
+    id: string
+    jobNumber: string
+    matchCount: number
+  } | null
 }
 
 export type PowerOutageDetail = {
