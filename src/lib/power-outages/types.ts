@@ -1,5 +1,5 @@
 export type PowerOutageSource = 'cez' | 'egd'
-export type PowerOutageMatchStatus = 'confirmed' | 'needs_review'
+export type PowerOutageMatchStatus = 'confirmed' | 'needs_review' | 'dismissed'
 export type PowerOutageSourceStatus = 'pending' | 'live' | 'warning' | 'error'
 
 export type PowerOutageNotificationPreferences = {
@@ -90,8 +90,8 @@ export type PowerOutageDetail = {
   }>
   matchAudit: Array<{
     id: string
-    previousStatus: PowerOutageMatchStatus | 'dismissed'
-    nextStatus: PowerOutageMatchStatus | 'dismissed'
+    previousStatus: PowerOutageMatchStatus
+    nextStatus: PowerOutageMatchStatus
     note: string | null
     actorUserId: string
     createdAt: string

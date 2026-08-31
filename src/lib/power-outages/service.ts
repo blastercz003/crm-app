@@ -37,7 +37,7 @@ type MatchRelationRow = {
   id: string
   outage_id: string
   store_id: string | null
-  match_status: PowerOutageMatchStatus | 'dismissed'
+  match_status: PowerOutageMatchStatus
   confidence: number | string
   match_reasons: unknown
   store_chain_name: string
@@ -202,6 +202,8 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
   const [
     currentResult,
     archiveResult,
+    currentDismissedResult,
+    archiveDismissedResult,
     analyzedResult,
     currentCountResult,
     archiveCountResult,
@@ -222,6 +224,20 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
       .from('power_outage_store_matches')
       .select(MATCH_COLUMNS)
       .neq('match_status', 'dismissed')
+      .not('power_outages.archived_at', 'is', null)
+      .order('ends_at', { referencedTable: 'power_outages', ascending: false })
+      .limit(200),
+    supabase
+      .from('power_outage_store_matches')
+      .select(MATCH_COLUMNS)
+      .eq('match_status', 'dismissed')
+      .is('power_outages.archived_at', null)
+      .order('starts_at', { referencedTable: 'power_outages', ascending: true })
+      .limit(200),
+    supabase
+      .from('power_outage_store_matches')
+      .select(MATCH_COLUMNS)
+      .eq('match_status', 'dismissed')
       .not('power_outages.archived_at', 'is', null)
       .order('ends_at', { referencedTable: 'power_outages', ascending: false })
       .limit(200),
@@ -258,6 +274,8 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
   const firstError = [
     currentResult.error,
     archiveResult.error,
+    currentDismissedResult.error,
+    archiveDismissedResult.error,
     analyzedResult.error,
     currentCountResult.error,
     archiveCountResult.error,
@@ -272,8 +290,14 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
     throw new Error('Stav katalogu Prodejen není dostupný.')
   }
 
-  const currentRows = (currentResult.data ?? []) as unknown as MatchRelationRow[]
-  const archiveRows = (archiveResult.data ?? []) as unknown as MatchRelationRow[]
+  const currentRows = [
+    ...(currentResult.data ?? []),
+    ...(currentDismissedResult.data ?? []),
+  ] as unknown as MatchRelationRow[]
+  const archiveRows = [
+    ...(archiveResult.data ?? []),
+    ...(archiveDismissedResult.data ?? []),
+  ] as unknown as MatchRelationRow[]
   const matchIds = [...new Set([...currentRows, ...archiveRows].map((row) => row.id))]
   const informedByMatch = new Map<string, InformedRow>()
 
@@ -286,7 +310,7 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
 
   const mapMatch = (row: MatchRelationRow): PowerOutageListItem | null => {
     const outage = relationOne(row.outage)
-    if (!outage || row.match_status === 'dismissed') return null
+    if (!outage) return null
     const informed = informedByMatch.get(row.id)
     return {
       matchId: row.id,
@@ -361,7 +385,7 @@ type DetailMatchRow = {
   outage_id: string
   outage_address_id: string | null
   store_id: string | null
-  match_status: PowerOutageMatchStatus | 'dismissed'
+  match_status: PowerOutageMatchStatus
   match_method: 'city_street' | 'manual'
   confidence: number | string
   match_reasons: unknown
@@ -461,7 +485,7 @@ export async function getPowerOutageDetail(matchId: string): Promise<PowerOutage
     sourceUpdatedAt: outage.source_updated_at,
     firstSeenAt: outage.first_seen_at,
     lastSeenAt: outage.last_seen_at,
-    matchStatus: match.match_status === 'dismissed' ? 'needs_review' : match.match_status,
+    matchStatus: match.match_status,
     matchMethod: match.match_method,
     confidence: Number(match.confidence),
     matchReasons: stringArray(match.match_reasons),

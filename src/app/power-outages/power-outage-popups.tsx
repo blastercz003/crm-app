@@ -2,6 +2,7 @@
 
 import {
   Check,
+  Ban,
   CircleAlert,
   Clipboard,
   Database,
@@ -10,7 +11,10 @@ import {
   History,
   Link2,
   MapPin,
+  LoaderCircle,
+  RotateCcw,
   SearchCheck,
+  ShieldCheck,
   X,
   Zap,
 } from 'lucide-react'
@@ -77,6 +81,7 @@ export function PowerOutagePopupShell({
   title,
   onClose,
   children,
+  compact = false,
 }: {
   titleId: string
   icon: React.ReactNode
@@ -84,6 +89,7 @@ export function PowerOutagePopupShell({
   title: string
   onClose: () => void
   children: React.ReactNode
+  compact?: boolean
 }) {
   const shellRef = useRef<HTMLElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -117,7 +123,7 @@ export function PowerOutagePopupShell({
 
   return (
     <div data-modal-motion-root className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/42 p-2.5 backdrop-blur-[4px] sm:p-6" onPointerDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
-      <section ref={shellRef} data-modal-motion-surface role="dialog" aria-modal="true" aria-labelledby={titleId} className="weather-alerts-popup weather-alerts__surface activities-manual-preview activities-manual-preview--mobile flex max-h-[calc(100dvh-20px)] min-h-0 w-full max-w-[760px] flex-col overflow-hidden rounded-[26px] border border-[var(--surface-border)] bg-[var(--surface-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.68),0_28px_70px_rgba(15,23,42,0.34)] sm:max-h-[calc(100dvh-48px)]">
+      <section ref={shellRef} data-modal-motion-surface role="dialog" aria-modal="true" aria-labelledby={titleId} className={`weather-alerts-popup weather-alerts__surface activities-manual-preview activities-manual-preview--mobile flex max-h-[calc(100dvh-20px)] min-h-0 w-full flex-col overflow-hidden rounded-[26px] border border-[var(--surface-border)] bg-[var(--surface-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.68),0_28px_70px_rgba(15,23,42,0.34)] sm:max-h-[calc(100dvh-48px)] ${compact ? 'max-w-[620px]' : 'max-w-[760px]'}`}>
         <header className="flex shrink-0 items-start gap-3 border-b border-[var(--surface-border)] p-4 sm:p-5">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-400/30 bg-sky-500/10 text-[var(--accent)]">{icon}</span>
           <div className="min-w-0 flex-1">
@@ -141,7 +147,121 @@ function LoadingDetail() {
   )
 }
 
-function DetailPopup({ item, detail, loading, error, onClose }: { item: PowerOutageListItem; detail: PowerOutageDetail | null; loading: boolean; error: string | null; onClose: () => void }) {
+function MatchResolutionPopup({
+  detail,
+  onClose,
+  onChanged,
+}: {
+  detail: PowerOutageDetail
+  onClose: () => void
+  onChanged: (status: PowerOutageListItem['matchStatus']) => void
+}) {
+  const [note, setNote] = useState('')
+  const [pendingStatus, setPendingStatus] = useState<PowerOutageListItem['matchStatus'] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const matchedAddress = detail.addresses.find((address) => address.id === detail.outageAddressId)
+    ?? detail.addresses[0]
+
+  const updateStatus = async (status: PowerOutageListItem['matchStatus']) => {
+    if (pendingStatus) return
+    setPendingStatus(status)
+    setError(null)
+    try {
+      const response = await fetch(`/api/power-outages/matches/${detail.matchId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, note: note.trim() || null }),
+      })
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || 'Stav shody se nepodařilo uložit.')
+      }
+      onChanged(status)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Stav shody se nepodařilo uložit.')
+      setPendingStatus(null)
+    }
+  }
+
+  const actionButton = (
+    status: PowerOutageListItem['matchStatus'],
+    label: string,
+    icon: React.ReactNode,
+    tone: 'primary' | 'danger' | 'neutral',
+  ) => (
+    <button
+      type="button"
+      disabled={Boolean(pendingStatus)}
+      onClick={() => void updateStatus(status)}
+      className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-[10px] font-bold uppercase tracking-[0.05em] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60 ${tone === 'primary'
+        ? 'border-emerald-500/40 bg-emerald-500 text-white shadow-[0_10px_24px_rgba(16,185,129,0.2)]'
+        : tone === 'danger'
+          ? 'border-red-400/35 bg-red-500/10 text-red-700 [html[data-theme=dark]_&]:text-red-300'
+          : 'border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-primary)]'
+      }`}
+    >
+      {pendingStatus === status ? <LoaderCircle aria-hidden size={15} className="animate-spin" /> : icon}
+      {label}
+    </button>
+  )
+
+  return (
+    <PowerOutagePopupShell
+      titleId={`power-outage-resolution-${detail.matchId}`}
+      eyebrow="ODSTÁVKY · OVĚŘENÍ SHODY"
+      title={`${detail.store.chainName} · ${detail.store.storeNumber}`}
+      icon={<ShieldCheck aria-hidden size={21} />}
+      onClose={onClose}
+      compact
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
+        <p className="text-xs leading-5 text-[var(--text-secondary)]">
+          Porovnejte adresu prodejny s adresou uvedenou distributorem. Potvrzené shody mohou vytvářet upozornění.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+            <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Prodejna v aplikaci</span>
+            <strong className="mt-1.5 block text-xs text-[var(--text-primary)]">{detail.store.address}, {detail.store.city}</strong>
+          </div>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+            <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Adresa distributora</span>
+            <strong className="mt-1.5 block text-xs text-[var(--text-primary)]">
+              {matchedAddress?.rawAddress || [matchedAddress?.street, matchedAddress?.municipality].filter(Boolean).join(', ') || 'Neuvedeno'}
+            </strong>
+          </div>
+        </div>
+        <label className="mt-4 block">
+          <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Poznámka k ověření (volitelná)</span>
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value.slice(0, 1_000))}
+            disabled={Boolean(pendingStatus)}
+            rows={3}
+            placeholder="Např. ověřeno podle oznámení distributora…"
+            className="mt-2 w-full resize-none rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 py-3 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)] focus:border-[var(--accent)] disabled:opacity-60"
+          />
+        </label>
+        {error ? <p className="mt-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-700 [html[data-theme=dark]_&]:text-red-300">{error}</p> : null}
+      </div>
+      <footer className="grid shrink-0 gap-2 border-t border-[var(--surface-border)] p-4 sm:grid-cols-2 sm:p-5">
+        {detail.matchStatus === 'needs_review' ? <>
+          {actionButton('confirmed', 'POTVRDIT SHODU', <Check aria-hidden size={15} />, 'primary')}
+          {actionButton('dismissed', 'NENÍ TO TATO PRODEJNA', <Ban aria-hidden size={15} />, 'danger')}
+        </> : null}
+        {detail.matchStatus === 'confirmed'
+          ? actionButton('needs_review', 'VRÁTIT K OVĚŘENÍ', <RotateCcw aria-hidden size={15} />, 'neutral')
+          : null}
+        {detail.matchStatus === 'dismissed'
+          ? actionButton('needs_review', 'ZNOVU POSOUDIT', <RotateCcw aria-hidden size={15} />, 'neutral')
+          : null}
+        <button type="button" disabled={Boolean(pendingStatus)} onClick={onClose} className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 text-[10px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-50">ZRUŠIT</button>
+      </footer>
+    </PowerOutagePopupShell>
+  )
+}
+
+function DetailPopup({ item, detail, loading, error, onClose, onStatusChanged }: { item: PowerOutageListItem; detail: PowerOutageDetail | null; loading: boolean; error: string | null; onClose: () => void; onStatusChanged: (status: PowerOutageListItem['matchStatus']) => void }) {
+  const [resolutionOpen, setResolutionOpen] = useState(false)
   return (
     <PowerOutagePopupShell titleId={`power-outage-detail-${item.matchId}`} eyebrow="ODSTÁVKY · KOMPLETNÍ DETAIL" title={`${item.store.chainName} · ${item.store.storeNumber}`} icon={<Zap aria-hidden size={21} />} onClose={onClose}>
       {loading ? <LoadingDetail /> : error || !detail ? (
@@ -155,7 +275,12 @@ function DetailPopup({ item, detail, loading, error, onClose }: { item: PowerOut
           <div className="flex flex-wrap gap-1.5">
             <span className="inline-flex h-6 items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 text-[8px] font-bold uppercase text-[var(--accent)]">{sourceName(detail.source)}</span>
             <span className="inline-flex h-6 items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 text-[8px] font-bold uppercase text-[var(--text-secondary)]">{statusLabel(detail.sourceStatus)}</span>
-            <span className="inline-flex h-6 items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 text-[8px] font-bold uppercase text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{matchLabel(detail.matchStatus)}</span>
+            <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[8px] font-bold uppercase ${detail.matchStatus === 'confirmed'
+              ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'
+              : detail.matchStatus === 'dismissed'
+                ? 'border-slate-400/40 bg-slate-400/10 text-slate-600 [html[data-theme=dark]_&]:text-slate-300'
+                : 'border-amber-400/40 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
+            }`}>{matchLabel(detail.matchStatus)}</span>
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -202,6 +327,10 @@ function DetailPopup({ item, detail, loading, error, onClose }: { item: PowerOut
               <PowerOutageDetailRow label="Revize prodejen" value={String(detail.storeRevision)} />
             </div>
             {detail.matchReasons.length > 0 ? <div className="mt-2 flex flex-wrap gap-1.5">{detail.matchReasons.map((reason) => <span key={reason} className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-1 text-[9px] text-[var(--text-secondary)]">{reasonLabel(reason)}</span>)}</div> : null}
+            <button type="button" onClick={() => setResolutionOpen(true)} className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 text-[9px] font-bold uppercase tracking-[0.05em] text-[var(--accent)] transition hover:-translate-y-px">
+              {detail.matchStatus === 'needs_review' ? <ShieldCheck aria-hidden size={14} /> : <RotateCcw aria-hidden size={14} />}
+              {detail.matchStatus === 'needs_review' ? 'OVĚŘIT SHODU' : detail.matchStatus === 'confirmed' ? 'UPRAVIT OVĚŘENÍ' : 'ZNOVU POSOUDIT'}
+            </button>
           </section>
 
           <section className="mt-5">
@@ -224,6 +353,7 @@ function DetailPopup({ item, detail, loading, error, onClose }: { item: PowerOut
           </section>
         </div>
       )}
+      {resolutionOpen && detail ? <MatchResolutionPopup detail={detail} onClose={() => setResolutionOpen(false)} onChanged={onStatusChanged} /> : null}
     </PowerOutagePopupShell>
   )
 }
@@ -295,6 +425,7 @@ export function PowerOutagePopupLayer({
   detailLoading,
   detailError,
   onClose,
+  onStatusChanged,
 }: {
   mode: 'detail' | 'announcement' | null
   item: PowerOutageListItem | null
@@ -302,11 +433,12 @@ export function PowerOutagePopupLayer({
   detailLoading: boolean
   detailError: string | null
   onClose: () => void
+  onStatusChanged: (status: PowerOutageListItem['matchStatus']) => void
 }) {
   if (!mode || !item || typeof document === 'undefined') return null
   return createPortal(
     mode === 'detail'
-      ? <DetailPopup item={item} detail={detail} loading={detailLoading} error={detailError} onClose={onClose} />
+      ? <DetailPopup item={item} detail={detail} loading={detailLoading} error={detailError} onClose={onClose} onStatusChanged={onStatusChanged} />
       : <AnnouncementPopup item={item} onClose={onClose} />,
     document.body,
   )

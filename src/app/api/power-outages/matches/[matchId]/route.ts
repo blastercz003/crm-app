@@ -4,6 +4,7 @@ import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { resolvePowerOutageStoreMatch } from '@/lib/power-outages/match-resolution'
 import { isPowerOutageRequestAuthorized } from '@/lib/power-outages/request-access'
 import { createClient } from '@/lib/supabase/server'
+import { planPowerOutageNotifications } from '@/lib/power-outages/notification-planner'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,7 +18,7 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ matchId: string }> },
 ) {
-  if (!(await isPowerOutageRequestAuthorized(request))) {
+  if (!(await isPowerOutageRequestAuthorized(request, { adminOnly: true }))) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -37,7 +38,15 @@ export async function POST(
       actorUserId: user.id,
       note: payload.note,
     })
-    return NextResponse.json({ ok: true, ...result })
+    let notificationPlanning = null
+    if (result.changed && payload.status === 'confirmed') {
+      try {
+        notificationPlanning = await planPowerOutageNotifications()
+      } catch (planningError) {
+        console.error('Potvrzená shoda byla uložena, ale plán upozornění se nepodařilo obnovit.', planningError)
+      }
+    }
+    return NextResponse.json({ ok: true, ...result, notificationPlanning })
   } catch (error) {
     await reportRouteError({
       error,

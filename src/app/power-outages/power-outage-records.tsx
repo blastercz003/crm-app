@@ -15,7 +15,9 @@ import {
   Zap,
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ActionFeedbackToast, useAnimatedActionToast } from '@/components/ui/action-feedback-toast'
 import type {
   PowerOutageDetail,
   PowerOutageListItem,
@@ -28,7 +30,7 @@ import { PowerOutagePopupLayer } from './power-outage-popups'
 
 type Tab = 'current' | 'archive'
 type SourceFilter = 'all' | PowerOutageSource
-type MatchFilter = 'all' | PowerOutageMatchStatus
+type MatchFilter = 'visible' | PowerOutageMatchStatus
 type TimeFilter = 'all' | 'today' | '7d' | '30d'
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
@@ -63,12 +65,15 @@ function SourceBadge({ source }: { source: PowerOutageSource }) {
 
 function MatchBadge({ status }: { status: PowerOutageMatchStatus }) {
   const review = status === 'needs_review'
+  const dismissed = status === 'dismissed'
   return (
-    <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[8px] font-bold uppercase tracking-[0.07em] ${review
+    <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[8px] font-bold uppercase tracking-[0.07em] ${dismissed
+      ? 'border-slate-400/45 bg-slate-400/10 text-slate-600 [html[data-theme=dark]_&]:text-slate-300'
+      : review
       ? 'border-amber-400/45 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
       : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'
     }`}>
-      {review ? 'K OVĚŘENÍ' : 'POTVRZENO'}
+      {dismissed ? 'ZAMÍTNUTO' : review ? 'K OVĚŘENÍ' : 'POTVRZENO'}
     </span>
   )
 }
@@ -194,12 +199,14 @@ function EmptyState({ tab, filtered }: { tab: Tab; filtered: boolean }) {
 
 export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorkspace }) {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { toast, isVisible: isToastVisible, showToast } = useAnimatedActionToast()
   const [tab, setTab] = useState<Tab>('current')
   const [query, setQuery] = useState('')
   const [chainFilter, setChainFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all')
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
-  const [matchFilter, setMatchFilter] = useState<MatchFilter>('all')
+  const [matchFilter, setMatchFilter] = useState<MatchFilter>('visible')
   const [popupMode, setPopupMode] = useState<'detail' | 'announcement' | null>(null)
   const [selectedItem, setSelectedItem] = useState<PowerOutageListItem | null>(null)
   const [selectedDetail, setSelectedDetail] = useState<PowerOutageDetail | null>(null)
@@ -209,7 +216,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
   const openedDeepLinkRef = useRef<string | null>(null)
   const now = useMemo(() => new Date(workspace.generatedAt).getTime(), [workspace.generatedAt])
   const records = tab === 'current' ? workspace.currentOutages : workspace.archivedOutages
-  const hasFilters = Boolean(query.trim()) || chainFilter !== 'all' || sourceFilter !== 'all' || timeFilter !== 'all' || matchFilter !== 'all'
+  const hasFilters = Boolean(query.trim()) || chainFilter !== 'all' || sourceFilter !== 'all' || timeFilter !== 'all' || matchFilter !== 'visible'
 
   const filtered = useMemo(() => {
     const normalizedQuery = normalize(query)
@@ -224,7 +231,8 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
       .filter((item) => {
         if (chainFilter !== 'all' && item.store.chainName !== chainFilter) return false
         if (sourceFilter !== 'all' && item.source !== sourceFilter) return false
-        if (matchFilter !== 'all' && item.matchStatus !== matchFilter) return false
+        if (matchFilter === 'visible' && item.matchStatus === 'dismissed') return false
+        if (matchFilter !== 'visible' && item.matchStatus !== matchFilter) return false
         if (normalizedQuery) {
           const haystack = normalize([
             item.store.chainName,
@@ -270,7 +278,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
     setChainFilter('all')
     setSourceFilter('all')
     setTimeFilter('all')
-    setMatchFilter('all')
+    setMatchFilter('visible')
   }
 
   const openAnnouncement = (item: PowerOutageListItem) => {
@@ -304,6 +312,24 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
     setSelectedDetail(null)
     setDetailError(null)
     setDetailLoading(false)
+  }
+
+  const handleStatusChanged = (status: PowerOutageMatchStatus) => {
+    showToast({
+      title: status === 'confirmed'
+        ? 'SHODA POTVRZENA'
+        : status === 'dismissed'
+          ? 'SHODA ZAMÍTNUTA'
+          : 'VRÁCENO K OVĚŘENÍ',
+      message: status === 'confirmed'
+        ? 'Odstávka je připravena pro upozornění.'
+        : status === 'dismissed'
+          ? 'Nesprávná shoda byla skryta z běžného přehledu.'
+          : 'Záznam byl vrácen mezi shody k ověření.',
+      tone: 'success',
+    })
+    closePopup()
+    router.refresh()
   }
 
   useEffect(() => {
@@ -362,9 +388,10 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
             <option value="30d">{tab === 'current' ? 'Následujících 30 dní' : 'Posledních 30 dní'}</option>
           </SelectControl>
           <SelectControl label="Stav shody" value={matchFilter} onChange={(value) => setMatchFilter(value as MatchFilter)}>
-            <option value="all">Všechny shody</option>
+            <option value="visible">Běžné shody</option>
             <option value="needs_review">K ověření</option>
             <option value="confirmed">Potvrzené</option>
+            <option value="dismissed">Zamítnuté</option>
           </SelectControl>
           <button type="button" onClick={clearFilters} disabled={!hasFilters} aria-label="Zrušit filtry" title="Zrušit filtry" className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:cursor-default disabled:opacity-35 sm:flex"><X aria-hidden size={15} /></button>
         </div>
@@ -429,7 +456,8 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
           </div>
         ) : <EmptyState tab={tab} filtered={hasFilters} />}
       </div>
-      <PowerOutagePopupLayer mode={popupMode} item={selectedItem} detail={selectedDetail} detailLoading={detailLoading} detailError={detailError} onClose={closePopup} />
+      <PowerOutagePopupLayer mode={popupMode} item={selectedItem} detail={selectedDetail} detailLoading={detailLoading} detailError={detailError} onClose={closePopup} onStatusChanged={handleStatusChanged} />
+      {toast ? <ActionFeedbackToast toast={toast} isVisible={isToastVisible} /> : null}
     </section>
   )
 }
