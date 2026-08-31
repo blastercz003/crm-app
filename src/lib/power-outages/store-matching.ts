@@ -8,6 +8,7 @@ export type MatchableStore = {
   storeNumber: string
   city: string
   address: string
+  addressNumbers: string[]
 }
 
 export type MatchableOutageAddress = {
@@ -18,13 +19,14 @@ export type MatchableOutageAddress = {
   street: string
   normalizedMunicipality: string
   normalizedStreet: string
+  addressNumbers: string[]
 }
 
 export type PowerOutageStoreMatchCandidate = {
   outageId: string
   outageAddressId: string
   store: MatchableStore
-  matchStatus: 'needs_review'
+  matchStatus: 'confirmed' | 'needs_review'
   confidence: number
   reasons: string[]
 }
@@ -35,6 +37,14 @@ function normalizeStreet(value: string) {
     .replace(/^(?:tr|trida)\s+/, 'trida ')
     .replace(/\s+\d+[a-z]?(?:\s+\d+[a-z]?)?$/, '')
     .trim()
+}
+
+function normalizedAddressNumbers(values: string[]) {
+  return new Set(
+    values
+      .map((value) => normalizePowerOutageText(value).replace(/\s+/g, ''))
+      .filter(Boolean),
+  )
 }
 
 function canonicalMunicipality(value: string) {
@@ -87,22 +97,56 @@ export function buildPowerOutageStoreMatches(
     }
 
     const outageStreet = normalizeStreet(address.normalizedStreet || address.street)
+    // Záznam bez konkrétní ulice nesmí vytvořit shodu pro všechny prodejny
+    // ve městě. Takové zdrojové záznamy zůstávají pouze v importovaném katalogu.
+    if (!outageStreet) continue
+    const outageNumbers = normalizedAddressNumbers(address.addressNumbers)
+
     for (const store of candidateStores.values()) {
       const storeStreet = normalizeStreet(store.address)
       const exactStreet = Boolean(outageStreet && storeStreet === outageStreet)
-      if (outageStreet && !exactStreet) continue
+      if (!exactStreet) continue
+
+      const storeNumbers = normalizedAddressNumbers(store.addressNumbers)
+      const matchingNumbers = [...storeNumbers]
+        .filter((value) => outageNumbers.has(value))
+      if (
+        storeNumbers.size > 0
+        && outageNumbers.size > 0
+        && matchingNumbers.length === 0
+      ) {
+        continue
+      }
+
+      const allStoreNumbersMatch = storeNumbers.size > 0
+        && outageNumbers.size > 0
+        && matchingNumbers.length === storeNumbers.size
+      const partialNumberMatch = matchingNumbers.length > 0 && !allStoreNumbersMatch
+      const matchStatus = allStoreNumbersMatch ? 'confirmed' : 'needs_review'
 
       const candidate: PowerOutageStoreMatchCandidate = {
         outageId: address.outageId,
         outageAddressId: address.id,
         store,
-        // Automatická shoda města a ulice je dostatečná pro zobrazení
-        // odstávky, ale zůstává K OVĚŘENÍ. Potvrdit ji může až uživatel.
-        matchStatus: 'needs_review',
-        confidence: exactStreet ? 0.9 : 0.55,
-        reasons: exactStreet
-          ? ['municipality_exact', 'street_exact', 'manual_confirmation_required']
-          : ['municipality_exact', 'source_street_missing', 'manual_review_required'],
+        matchStatus,
+        confidence: allStoreNumbersMatch
+          ? 1
+          : partialNumberMatch
+            ? 0.9
+            : storeNumbers.size === 0
+              ? 0.78
+              : 0.72,
+        reasons: [
+          'municipality_exact',
+          'street_exact',
+          ...(allStoreNumbersMatch
+            ? ['address_numbers_exact', 'auto_confirmed']
+            : partialNumberMatch
+              ? ['address_numbers_partial', 'manual_confirmation_required']
+              : storeNumbers.size === 0
+                ? ['store_address_numbers_missing', 'manual_confirmation_required']
+                : ['source_address_numbers_missing', 'manual_confirmation_required']),
+        ],
       }
       const key = `${candidate.outageId}:${store.id}`
       const previous = bestByOutageStore.get(key)

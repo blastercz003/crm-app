@@ -39,6 +39,12 @@ function normalizeEgdAddress(address: EgdAddress) {
   const longitude = address.stredUlice?.delka
     ?? firstDetail?.poloha?.delka
     ?? null
+  const houseNumbers = [...new Set(details
+    .map((detail) => optionalText(detail.cisloPopisne))
+    .filter((value): value is string => Boolean(value)))]
+  const orientationNumbers = [...new Set(details
+    .map((detail) => optionalText(detail.cisloOrientacni))
+    .filter((value): value is string => Boolean(value)))]
   const key = powerOutageAddressKey([
     municipality,
     townPart,
@@ -65,14 +71,12 @@ function normalizeEgdAddress(address: EgdAddress) {
     longitude,
     metadata: {
       buildingCount: details.length,
-      houseNumberSample: details
-        .map((detail) => optionalText(detail.cisloPopisne))
-        .filter((value): value is string => Boolean(value))
-        .slice(0, 12),
-      orientationNumberSample: details
-        .map((detail) => optionalText(detail.cisloOrientacni))
-        .filter((value): value is string => Boolean(value))
-        .slice(0, 12),
+      // Úplné množiny jsou nutné pro přesné párování prodejen. Pořadí
+      // popisného a orientačního čísla při porovnání nehraje roli.
+      houseNumbers,
+      orientationNumbers,
+      houseNumberSample: houseNumbers.slice(0, 12),
+      orientationNumberSample: orientationNumbers.slice(0, 12),
     },
   } satisfies NormalizedPowerOutageAddress
 }

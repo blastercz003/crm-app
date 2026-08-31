@@ -7,6 +7,10 @@ import {
   STORE_IMPORT_ALLOWED_CHAINS,
   type StoreImportAllowedChain,
 } from '@/lib/stores/import'
+import {
+  reconcilePowerOutageStoreMatches,
+  StoreMatchSyncAlreadyRunningError,
+} from '@/lib/power-outages/store-match-sync'
 
 type StoresAccessRow = {
   role: string | null
@@ -24,8 +28,11 @@ type StoreUpsertPayload = {
 }
 
 type ExistingStoreImportRow = {
+  id: string
   chain_name: string
   store_number: string
+  city: string
+  address: string
   phone_2: string | null
   phone_3: string | null
 }
@@ -42,10 +49,16 @@ export type AnalyzeStoresImportResult = {
     reasons: string[]
     raw: Record<string, string>
   }>
+  existingCount?: number
+  newCount?: number
+  changedCount?: number
+  missingCount?: number
 }
 
 export type ImportStoresResult = AnalyzeStoresImportResult & {
   importedCount: number
+  removedCount: number
+  matchingStatus: 'completed' | 'already_running' | 'failed'
 }
 
 export type UpdateStoreFormState = {
@@ -147,6 +160,40 @@ function readOptionalTextField(formData: FormData, fieldName: string) {
   return value || null
 }
 
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = []
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size))
+  }
+  return result
+}
+
+async function refreshPowerOutageMatches() {
+  try {
+    await reconcilePowerOutageStoreMatches({ triggerKind: 'store_change' })
+    return 'completed' as const
+  } catch (error) {
+    if (error instanceof StoreMatchSyncAlreadyRunningError) {
+      return 'already_running' as const
+    }
+    return 'failed' as const
+  }
+}
+
+async function loadExistingChainStores(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  chainName: StoreImportAllowedChain,
+) {
+  const { data, error } = await supabase
+    .from('stores')
+    .select('id,chain_name,store_number,city,address,phone_2,phone_3')
+    .eq('chain_name', chainName)
+  if (error) {
+    throw new Error(`Nepodařilo se načíst aktuální prodejny řetězce: ${error.message}`)
+  }
+  return (data ?? []) as ExistingStoreImportRow[]
+}
+
 export async function analyzeStoresImportAction(
   formData: FormData
 ): Promise<AnalyzeStoresImportResult> {
@@ -168,6 +215,9 @@ export async function analyzeStoresImportAction(
     const expectedChainName = getExpectedChainName(formData)
     const fileBuffer = await readImportFile(formData)
     const parsed = await parseStoresImportWorkbook(fileBuffer, expectedChainName)
+    const existingStores = await loadExistingChainStores(access.supabase, expectedChainName)
+    const existingByNumber = new Map(existingStores.map((store) => [store.store_number, store]))
+    const importedNumbers = new Set(parsed.validRows.map((row) => row.store_number))
 
     return {
       success: true,
@@ -177,6 +227,16 @@ export async function analyzeStoresImportAction(
       validCount: parsed.validRows.length,
       invalidCount: parsed.invalidRows.length,
       invalidRows: parsed.invalidRows,
+      existingCount: existingStores.length,
+      newCount: parsed.validRows.filter((row) => !existingByNumber.has(row.store_number)).length,
+      changedCount: parsed.validRows.filter((row) => {
+        const existing = existingByNumber.get(row.store_number)
+        return Boolean(existing && (
+          existing.city.trim() !== row.city.trim()
+          || existing.address.trim() !== row.address.trim()
+        ))
+      }).length,
+      missingCount: existingStores.filter((store) => !importedNumbers.has(store.store_number)).length,
     }
   } catch (error) {
     return {
@@ -207,36 +267,25 @@ export async function importStoresFromWorkbookAction(
         invalidCount: 0,
         invalidRows: [],
         importedCount: 0,
+        removedCount: 0,
+        matchingStatus: 'failed',
       }
     }
 
     const expectedChainName = getExpectedChainName(formData)
+    const replaceEntireChain = formData.get('replace_entire_chain') === 'true'
     const fileBuffer = await readImportFile(formData)
     const parsed = await parseStoresImportWorkbook(fileBuffer, expectedChainName)
-
-    const storeNumbers = parsed.validRows.map((row) => row.store_number)
-    let existingStoresByNumber = new Map<string, ExistingStoreImportRow>()
-
-    if (storeNumbers.length > 0) {
-      const { data: existingStores, error: existingStoresError } = await access.supabase
-        .from('stores')
-        .select('chain_name, store_number, phone_2, phone_3')
-        .eq('chain_name', expectedChainName)
-        .in('store_number', storeNumbers)
-
-      if (existingStoresError) {
-        throw new Error(
-          `Nepodařilo se načíst existující prodejny pro porovnání importu: ${existingStoresError.message}`
-        )
-      }
-
-      existingStoresByNumber = new Map(
-        ((existingStores ?? []) as ExistingStoreImportRow[]).map((store) => [
-          store.store_number,
-          store,
-        ])
+    if (replaceEntireChain && parsed.invalidRows.length > 0) {
+      throw new Error(
+        'Úplnou synchronizaci řetězce nelze provést, dokud soubor obsahuje neplatné řádky. Oprav je, nebo vypni nahrazení celého řetězce.',
       )
     }
+
+    const existingStores = await loadExistingChainStores(access.supabase, expectedChainName)
+    const existingStoresByNumber = new Map(
+      existingStores.map((store) => [store.store_number, store]),
+    )
 
     const payload = parsed.validRows.map<StoreUpsertPayload>((row) => {
       const existingStore = existingStoresByNumber.get(row.store_number)
@@ -262,8 +311,31 @@ export async function importStoresFromWorkbookAction(
       }
     }
 
+    let removedCount = 0
+    if (replaceEntireChain) {
+      const importedNumbers = new Set(payload.map((store) => store.store_number))
+      const obsoleteIds = existingStores
+        .filter((store) => !importedNumbers.has(store.store_number))
+        .map((store) => store.id)
+      for (const ids of chunks(obsoleteIds, 100)) {
+        const { error } = await access.supabase
+          .from('stores')
+          .delete()
+          .in('id', ids)
+        if (error) {
+          throw new Error(`Nepodařilo se odstranit neaktuální prodejny: ${error.message}`)
+        }
+        removedCount += ids.length
+      }
+    }
+
+    // Přepočet pracuje pouze s daty uloženými v Supabase a nezvyšuje počet
+    // požadavků na veřejná rozhraní ČEZ ani EG.D.
+    const matchingStatus = await refreshPowerOutageMatches()
+
     revalidatePath('/prodejny')
     revalidatePath('/dashboard')
+    revalidatePath('/power-outages')
 
     return {
       success: true,
@@ -274,6 +346,8 @@ export async function importStoresFromWorkbookAction(
       invalidCount: parsed.invalidRows.length,
       invalidRows: parsed.invalidRows,
       importedCount: payload.length,
+      removedCount,
+      matchingStatus,
     }
   } catch (error) {
     return {
@@ -285,6 +359,8 @@ export async function importStoresFromWorkbookAction(
       invalidCount: 0,
       invalidRows: [],
       importedCount: 0,
+      removedCount: 0,
+      matchingStatus: 'failed',
     }
   }
 }
@@ -330,7 +406,10 @@ export async function updateStoreAction(
       throw new Error(`Nepodařilo se uložit změny prodejny: ${error.message}`)
     }
 
+    await refreshPowerOutageMatches()
+
     revalidatePath('/prodejny')
+    revalidatePath('/power-outages')
 
     return {
       success: true,

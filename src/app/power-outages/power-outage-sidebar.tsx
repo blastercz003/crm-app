@@ -20,6 +20,7 @@ import type {
   PowerOutageSourceDiagnostic,
   PowerOutageSourceStatus,
   PowerOutageSourceSummary,
+  PowerOutageStoreCoverage,
 } from '@/lib/power-outages/types'
 import {
   getPowerOutageSourceDiagnosticAction,
@@ -158,6 +159,45 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
   )
 }
 
+function StoreCoveragePanel({ coverage }: { coverage: PowerOutageStoreCoverage }) {
+  const percent = Math.min(100, Math.max(0, coverage.coveragePercent))
+
+  return (
+    <section className="activities-page__panel flex h-[360px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><Route aria-hidden size={18} /></span>
+        <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Databáze prodejen</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">Pokrytí adres</h2></span>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+        <div className="flex items-end justify-between gap-3">
+          <span><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Ověřeno pro porovnání</small><strong className="mt-1 block text-[11px] text-[var(--text-primary)]">{coverage.readyStoreCount} z {coverage.totalStoreCount} adres</strong></span>
+          <strong className="text-3xl font-semibold leading-none tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]">
+          <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500" style={{ width: `${percent}%` }} />
+        </div>
+      </div>
+
+      <div className="mt-2.5 grid grid-cols-3 gap-2">
+        <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Čeká</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{coverage.pendingStoreCount}</strong></div>
+        <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">K ověření</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{coverage.reviewStoreCount}</strong></div>
+        <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Nenalezeno</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{coverage.failedStoreCount}</strong></div>
+      </div>
+
+      <div className="mt-2.5 grid grid-cols-2 gap-2 text-[9px] font-semibold text-[var(--text-secondary)]">
+        <span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2">ČEZ: <strong className="text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></span>
+        <span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2">EG.D: <strong className="text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
+      </div>
+
+      <p className="mt-auto pt-3 text-[8px] leading-4 text-[var(--text-secondary)]">
+        Revize {coverage.catalogRevision} · aktualizace katalogu {formatDateTime(coverage.catalogLastChangedAt)}
+        {coverage.unknownDistributorCount > 0 ? ` · bez distributora ${coverage.unknownDistributorCount}` : ''}
+      </p>
+    </section>
+  )
+}
+
 function runStatusLabel(status: PowerOutageSourceDiagnostic['runs'][number]['status']) {
   return ({ running: 'Probíhá', succeeded: 'Úspěch', no_change: 'Bez změny', failed: 'Chyba', skipped: 'Přeskočeno' })[status]
 }
@@ -213,7 +253,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
   )
 }
 
-export function PowerOutageSidebar({ preferences, sources }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[] }) {
+export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[]; storeCoverage: PowerOutageStoreCoverage }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
   const [diagnostic, setDiagnostic] = useState<PowerOutageSourceDiagnostic | null>(null)
   const [loading, setLoading] = useState(false)
@@ -239,9 +279,10 @@ export function PowerOutageSidebar({ preferences, sources }: { preferences: Powe
 
   return (
     <>
-      <aside className="activities-manual-carousel grid min-w-0 auto-cols-[calc(100%-18px)] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[24px] pb-1 lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none lg:pb-0" aria-label="Nastavení upozornění a stav zdrojů odstávek">
+      <aside className="activities-manual-carousel grid min-w-0 auto-cols-[calc(100%-18px)] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[24px] pb-1 lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none lg:pb-0" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
         <div className="min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
         {sources.map((source) => <div key={source.source} className="min-w-0 snap-start snap-always lg:snap-none"><SourcePanel source={source} onOpen={() => void openSource(source.source)} /></div>)}
+        <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} /></div>
       </aside>
       {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} onClose={close} />, document.body) : null}
     </>

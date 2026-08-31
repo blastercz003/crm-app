@@ -20,7 +20,11 @@ export function PowerOutagesDashboard({ workspace }: { workspace: PowerOutageWor
       <div className="grid items-start gap-5 xl:grid-cols-4 xl:gap-3">
         <PowerOutageRecords workspace={workspace} />
 
-        <PowerOutageSidebar preferences={workspace.preferences} sources={workspace.sources} />
+        <PowerOutageSidebar
+          preferences={workspace.preferences}
+          sources={workspace.sources}
+          storeCoverage={workspace.storeCoverage}
+        />
       </div>
     </>
   )

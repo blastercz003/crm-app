@@ -32,6 +32,14 @@ export class StoreRegistryRunAlreadyRunningError extends Error {
   }
 }
 
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = []
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size))
+  }
+  return result
+}
+
 function fingerprintPart(value: string) {
   return value
     .normalize('NFD')
@@ -148,27 +156,31 @@ export async function auditPowerOutageStoreRegistry(
     const registry = (registryResult.data ?? []) as RegistryRow[]
     const byStoreId = new Map(registry.map((row) => [row.store_id, row]))
     const currentStoreIds = new Set(stores.map((store) => store.id))
-    let queuedCount = 0
-
-    for (const store of stores) {
+    const changedSnapshots = stores.flatMap((store) => {
       const snapshot = registrySnapshot(store)
       const existing = byStoreId.get(store.id)
       const changed = !existing || existing.address_fingerprint !== snapshot.address_fingerprint
-      if (changed) queuedCount += 1
+      return changed ? [{
+        ...snapshot,
+        needs_refresh: true,
+        verification_status: 'pending',
+        ruian_address_id: null,
+        municipality_code: null,
+        distributor: 'unknown',
+        normalized_municipality: '',
+        normalized_street: '',
+        house_number: null,
+        orientation_number: null,
+        last_verified_at: null,
+        last_error_code: null,
+        last_error_message: null,
+      }] : []
+    })
+
+    for (const batch of chunks(changedSnapshots, 400)) {
       const { error } = await client
         .from('power_outage_store_registry')
-        .upsert({
-          ...snapshot,
-          ...(changed ? {
-            needs_refresh: true,
-            verification_status: 'pending',
-            ruian_address_id: null,
-            municipality_code: null,
-            distributor: 'unknown',
-            last_error_code: null,
-            last_error_message: null,
-          } : {}),
-        }, { onConflict: 'store_id' })
+        .upsert(batch, { onConflict: 'store_id' })
       if (error) throw error
     }
 
@@ -190,12 +202,17 @@ export async function auditPowerOutageStoreRegistry(
         status: 'succeeded',
         finished_at: finishedAt,
         store_count: stores.length,
-        queued_count: queuedCount,
+        queued_count: changedSnapshots.length,
         orphaned_count: orphanedIds.length,
       })
       .eq('id', run.id)
     if (finishError) throw finishError
-    return { status: 'succeeded' as const, storeCount: stores.length, queuedCount, orphanedCount: orphanedIds.length }
+    return {
+      status: 'succeeded' as const,
+      storeCount: stores.length,
+      queuedCount: changedSnapshots.length,
+      orphanedCount: orphanedIds.length,
+    }
   } catch (error) {
     await client
       .from('power_outage_store_audit_runs')

@@ -10,6 +10,7 @@ import {
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
 type OutageRow = { id: string; source: 'cez' | 'egd' }
+type JsonObject = Record<string, unknown>
 type ExistingMatchRow = {
   id: string
   outage_id: string
@@ -40,6 +41,39 @@ function chunks<T>(values: T[], size: number) {
   return result
 }
 
+function addressNumbersFromText(value: string) {
+  const addressPart = (value.split(',')[0] ?? value).trim()
+  const match = addressPart.match(/(?:^|\s)(\d+[a-z]?)(?:\s*\/\s*(\d+[a-z]?))?\s*$/i)
+  return [...new Set([match?.[1], match?.[2]].filter((item): item is string => Boolean(item)))]
+}
+
+function stringValues(value: unknown) {
+  const values = Array.isArray(value) ? value : value == null ? [] : [value]
+  return values.flatMap((item) => {
+    if (typeof item !== 'string' && typeof item !== 'number') return []
+    return String(item).match(/\d+[a-z]?/gi) ?? []
+  })
+}
+
+function sourceAddressNumbers(input: {
+  houseNumber: unknown
+  orientationNumber: unknown
+  metadata: unknown
+}) {
+  const metadata = input.metadata && typeof input.metadata === 'object' && !Array.isArray(input.metadata)
+    ? input.metadata as JsonObject
+    : {}
+  return [...new Set([
+    ...stringValues(input.houseNumber),
+    ...stringValues(input.orientationNumber),
+    ...stringValues(metadata.houseNumbers),
+    ...stringValues(metadata.orientationNumbers),
+    ...stringValues(metadata.evidenceNumbers),
+    ...stringValues(metadata.houseNumberSample),
+    ...stringValues(metadata.orientationNumberSample),
+  ])]
+}
+
 async function loadAllStores(client: ServiceClient) {
   const stores: MatchableStore[] = []
   const pageSize = 1_000
@@ -57,6 +91,7 @@ async function loadAllStores(client: ServiceClient) {
         storeNumber: String(row.store_number),
         city: String(row.city),
         address: String(row.address),
+        addressNumbers: addressNumbersFromText(String(row.address)),
       })
     }
     if ((data?.length ?? 0) < pageSize) break
@@ -93,7 +128,7 @@ async function loadOutageAddresses(
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await client
         .from('power_outage_addresses')
-        .select('id,outage_id,municipality,town_part,street,normalized_municipality,normalized_street')
+        .select('id,outage_id,municipality,town_part,street,house_number,orientation_number,normalized_municipality,normalized_street,metadata')
         .in('outage_id', ids)
         .order('id')
         .range(from, from + pageSize - 1)
@@ -107,6 +142,11 @@ async function loadOutageAddresses(
           street: String(row.street),
           normalizedMunicipality: String(row.normalized_municipality),
           normalizedStreet: String(row.normalized_street),
+          addressNumbers: sourceAddressNumbers({
+            houseNumber: row.house_number,
+            orientationNumber: row.orientation_number,
+            metadata: row.metadata,
+          }),
         })
       }
       if ((data?.length ?? 0) < pageSize) break
@@ -234,10 +274,12 @@ export async function reconcilePowerOutageStoreMatches(input: {
 
     const staleIds = existingMatches
       .filter((match) => (
-        match.store_id
-        && match.match_method === 'city_street'
+        match.match_method === 'city_street'
         && !match.resolved_at
-        && !desiredKeys.has(`${match.outage_id}:${match.store_id}`)
+        && (
+          !match.store_id
+          || !desiredKeys.has(`${match.outage_id}:${match.store_id}`)
+        )
       ))
       .map((match) => match.id)
     for (const ids of chunks(staleIds, 400)) {
@@ -249,19 +291,24 @@ export async function reconcilePowerOutageStoreMatches(input: {
     }
 
     const completedAt = new Date().toISOString()
-    const sources = [...new Set(outages.map((outage) => outage.source))]
-    const { error: revisionError } = await client
-      .from('power_outage_source_state')
-      .update({ store_revision_processed: catalogState.revision })
-      .in('source', ['cez', 'egd'])
-    if (revisionError) throw revisionError
-
-    const confirmedCount = existingMatches.filter((item) => (
-      item.match_status === 'confirmed'
-      && item.store_id
-      && desiredKeys.has(`${item.outage_id}:${item.store_id}`)
-    )).length
-    const reviewCount = candidates.length
+    const confirmedKeys = new Set(
+      existingMatches
+        .filter((item) => item.match_status === 'confirmed' && item.store_id)
+        .map((item) => `${item.outage_id}:${item.store_id}`),
+    )
+    const reviewKeys = new Set<string>()
+    for (const candidate of candidates) {
+      const key = `${candidate.outageId}:${candidate.store.id}`
+      const existing = existingByKey.get(key)
+      if (existing?.resolved_at || existing?.match_method === 'manual') {
+        if (existing.match_status === 'needs_review') reviewKeys.add(key)
+        continue
+      }
+      if (candidate.matchStatus === 'confirmed') confirmedKeys.add(key)
+      else reviewKeys.add(key)
+    }
+    const confirmedCount = confirmedKeys.size
+    const reviewCount = reviewKeys.size
     const { error: finishError } = await client
       .from('power_outage_match_runs')
       .update({
@@ -274,7 +321,7 @@ export async function reconcilePowerOutageStoreMatches(input: {
         review_count: reviewCount,
         preserved_manual_count: preservedManualCount,
         removed_stale_count: staleIds.length,
-        metadata: { sourceCount: sources.length },
+        metadata: { sourceCount: new Set(outages.map((outage) => outage.source)).size },
       })
       .eq('id', run.id)
     if (finishError) throw finishError

@@ -6,6 +6,10 @@ import {
   auditPowerOutageStoreRegistry,
   StoreRegistryRunAlreadyRunningError,
 } from '@/lib/power-outages/store-registry'
+import {
+  reconcilePowerOutageStoreMatches,
+  StoreMatchSyncAlreadyRunningError,
+} from '@/lib/power-outages/store-match-sync'
 import { claimPowerOutageTask, finishPowerOutageTask } from '@/lib/power-outages/task-lock'
 
 export const runtime = 'nodejs'
@@ -29,8 +33,23 @@ async function run(request: Request, allowAdminSession: boolean) {
       return NextResponse.json({ ok: true, skipped: true, reason: 'Úplný audit Prodejen již probíhá.' }, { headers: HEADERS })
     }
     const result = await auditPowerOutageStoreRegistry(allowAdminSession ? 'manual' : 'scheduled')
-    await finishPowerOutageTask({ taskKey: 'store_audit', lockToken, succeeded: true, metadata: result })
-    return NextResponse.json({ ok: true, ...result }, { headers: HEADERS })
+    let matching: Awaited<ReturnType<typeof reconcilePowerOutageStoreMatches>> | null = null
+    let matchingSkipped = false
+    if (result.queuedCount > 0 || result.orphanedCount > 0) {
+      try {
+        // Audit opravuje katalog a následně pouze přepočítá lokálně uložená data.
+        matching = await reconcilePowerOutageStoreMatches({ triggerKind: 'store_change' })
+      } catch (matchingError) {
+        if (matchingError instanceof StoreMatchSyncAlreadyRunningError) {
+          matchingSkipped = true
+        } else {
+          throw matchingError
+        }
+      }
+    }
+    const metadata = { ...result, matching, matchingSkipped }
+    await finishPowerOutageTask({ taskKey: 'store_audit', lockToken, succeeded: true, metadata })
+    return NextResponse.json({ ok: true, ...metadata }, { headers: HEADERS })
   } catch (error) {
     if (error instanceof StoreRegistryRunAlreadyRunningError) {
       if (lockToken) {

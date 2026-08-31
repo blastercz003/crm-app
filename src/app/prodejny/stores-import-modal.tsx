@@ -38,6 +38,7 @@ export function StoresImportModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [analysis, setAnalysis] = useState<AnalyzeStoresImportResult>(emptyAnalysis)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [replaceEntireChain, setReplaceEntireChain] = useState(true)
   const [isPending, startTransition] = useTransition()
   const [isImporting, startImportTransition] = useTransition()
 
@@ -68,6 +69,7 @@ export function StoresImportModal({
     const formData = new FormData()
     formData.set('chain_name', selectedChain)
     formData.set('file', selectedFile)
+    formData.set('replace_entire_chain', replaceEntireChain ? 'true' : 'false')
     return formData
   }
 
@@ -103,6 +105,17 @@ export function StoresImportModal({
       return
     }
 
+    const missingCount = analysis.missingCount ?? 0
+    if (
+      replaceEntireChain
+      && missingCount > 0
+      && !window.confirm(
+        `Nový soubor neobsahuje ${missingCount} současných prodejen řetězce ${selectedChain}. Po synchronizaci budou odstraněny. Pokračovat?`,
+      )
+    ) {
+      return
+    }
+
     startImportTransition(async () => {
       const result = await importStoresFromWorkbookAction(formData)
       setAnalysis(result)
@@ -111,7 +124,15 @@ export function StoresImportModal({
         return
       }
 
-      setSuccessMessage(`Importováno záznamů: ${result.importedCount}`)
+      setSuccessMessage([
+        `Importováno záznamů: ${result.importedCount}.`,
+        replaceEntireChain ? `Odstraněno neaktuálních: ${result.removedCount}.` : '',
+        result.matchingStatus === 'completed'
+          ? 'Párování odstávek bylo aktualizováno.'
+          : result.matchingStatus === 'already_running'
+            ? 'Přepočet již probíhá na pozadí.'
+            : 'Přepočet převezme následující automatický běh.',
+      ].filter(Boolean).join(' '))
       router.refresh()
     })
   }
@@ -177,9 +198,11 @@ export function StoresImportModal({
                   </label>
                   <select
                     value={selectedChain}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setSelectedChain(event.target.value as (typeof CHAIN_OPTIONS)[number])
-                    }
+                      setAnalysis(emptyAnalysis)
+                      setSuccessMessage(null)
+                    }}
                     disabled={isPending || isImporting}
                     className="stores-page__field-input h-10 w-full rounded-xl border border-white/75 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(241,245,250,0.88)_100%)] px-3 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]"
                   >
@@ -231,13 +254,33 @@ export function StoresImportModal({
                     isPending ||
                     isImporting ||
                     !analysis.success ||
-                    analysis.validCount === 0
+                    analysis.validCount === 0 ||
+                    (replaceEntireChain && analysis.invalidCount > 0)
                   }
                   className="stores-page__primary-button inline-flex h-10 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_20px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isImporting ? 'IMPORTUJI...' : 'IMPORTOVAT VALIDNÍ'}
+                  {isImporting
+                    ? 'IMPORTUJI...'
+                    : replaceEntireChain
+                      ? 'SYNCHRONIZOVAT ŘETĚZEC'
+                      : 'IMPORTOVAT VALIDNÍ'}
                 </button>
               </div>
+
+              <label className="stores-page__rules-box mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border border-[#8dbfe0]/55 bg-[#2980B9]/8 px-4 py-3 text-sm text-[#1e5f8c]">
+                <input
+                  type="checkbox"
+                  checked={replaceEntireChain}
+                  onChange={(event) => setReplaceEntireChain(event.target.checked)}
+                  disabled={isPending || isImporting}
+                  className="mt-0.5 h-4 w-4 rounded border-[#76a9d3] text-[#2980B9]"
+                />
+                <span>
+                  <strong>Nahradit celý řetězec obsahem souboru.</strong>{' '}
+                  Prodejny, které v bezchybném souboru chybí, budou po importu odstraněny.
+                  Pokud soubor obsahuje chybný řádek, úplná synchronizace se bezpečně zablokuje.
+                </span>
+              </label>
             </div>
           </div>
 
@@ -255,15 +298,23 @@ export function StoresImportModal({
             ) : null}
 
             {analysis.success ? (
-              <div className="mb-4 grid gap-3 md:grid-cols-4">
-                <SummaryCard label="Načteno řádků" value={analysis.totalRows} />
-                <SummaryCard label="Validních" value={analysis.validCount} tone="success" />
-                <SummaryCard label="Chybných" value={analysis.invalidCount} tone="danger" />
-                <SummaryCard
-                  label="Vybraný řetězec"
-                  value={selectedChain}
-                  tone="neutral"
-                />
+              <div className="mb-4 space-y-3">
+                <div className="grid gap-3 md:grid-cols-4">
+                  <SummaryCard label="Načteno řádků" value={analysis.totalRows} />
+                  <SummaryCard label="Validních" value={analysis.validCount} tone="success" />
+                  <SummaryCard label="Chybných" value={analysis.invalidCount} tone="danger" />
+                  <SummaryCard label="Vybraný řetězec" value={selectedChain} />
+                </div>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <SummaryCard label="Nyní v databázi" value={analysis.existingCount ?? 0} />
+                  <SummaryCard label="Nových" value={analysis.newCount ?? 0} />
+                  <SummaryCard label="Změněných adres" value={analysis.changedCount ?? 0} />
+                  <SummaryCard
+                    label={replaceEntireChain ? 'K odstranění' : 'Chybí v souboru'}
+                    value={analysis.missingCount ?? 0}
+                    tone={replaceEntireChain && (analysis.missingCount ?? 0) > 0 ? 'danger' : 'neutral'}
+                  />
+                </div>
               </div>
             ) : (
               <div className="stores-page__empty-state rounded-3xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.92)_0%,rgba(240,245,250,0.86)_100%)] px-4 py-6 text-center text-sm text-gray-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">

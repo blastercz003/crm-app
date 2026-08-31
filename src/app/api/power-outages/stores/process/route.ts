@@ -3,6 +3,10 @@ import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { isPowerOutageAutomationAuthorized } from '@/lib/power-outages/automation-auth'
 import { isPowerOutageRequestAuthorized } from '@/lib/power-outages/request-access'
 import { processPowerOutageStoreRegistryQueue } from '@/lib/power-outages/store-registry'
+import {
+  reconcilePowerOutageStoreMatches,
+  StoreMatchSyncAlreadyRunningError,
+} from '@/lib/power-outages/store-match-sync'
 import { claimPowerOutageTask, finishPowerOutageTask } from '@/lib/power-outages/task-lock'
 
 export const runtime = 'nodejs'
@@ -27,8 +31,23 @@ async function run(request: Request, allowAdminSession: boolean) {
       return NextResponse.json({ ok: true, skipped: true, reason: 'Zpracování změn Prodejen již probíhá.' }, { headers: HEADERS })
     }
     const result = await processPowerOutageStoreRegistryQueue(requestedLimit)
-    await finishPowerOutageTask({ taskKey: 'store_queue', lockToken, succeeded: true, metadata: result })
-    return NextResponse.json({ ok: true, ...result }, { headers: HEADERS })
+    let matching: Awaited<ReturnType<typeof reconcilePowerOutageStoreMatches>> | null = null
+    let matchingSkipped = false
+    if (result.processedCount > 0) {
+      try {
+        // Pouze přepočet nad daty v Supabase; nevytváří další požadavky na ČEZ ani EG.D.
+        matching = await reconcilePowerOutageStoreMatches({ triggerKind: 'store_change' })
+      } catch (matchingError) {
+        if (matchingError instanceof StoreMatchSyncAlreadyRunningError) {
+          matchingSkipped = true
+        } else {
+          throw matchingError
+        }
+      }
+    }
+    const metadata = { ...result, matching, matchingSkipped }
+    await finishPowerOutageTask({ taskKey: 'store_queue', lockToken, succeeded: true, metadata })
+    return NextResponse.json({ ok: true, ...metadata }, { headers: HEADERS })
   } catch (error) {
     if (lockToken) {
       await finishPowerOutageTask({
