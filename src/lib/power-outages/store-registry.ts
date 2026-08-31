@@ -307,7 +307,9 @@ export async function processPowerOutageStoreRegistryQueue(limit = 40) {
         })
         .eq('id', row.id)
     }
-    await new Promise((resolve) => setTimeout(resolve, 180))
+    // Stejné veřejné rozhraní používá také synchronizace ČEZ. Pomalejší
+    // fronta předchází krátkým burstům a následnému HTTP 429.
+    await new Promise((resolve) => setTimeout(resolve, 900))
   }
 
   return {

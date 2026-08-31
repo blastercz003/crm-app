@@ -7,6 +7,14 @@ import { fetchPowerOutageSource, parseSourceJson } from './source-http'
 const EGD_OUTAGES_PAGE_URL = 'https://www.egd.cz/odstavky-elektrina'
 const EGD_CONFIG_PASSWORD = 'sdkaM87sZaLNQCpM'
 const EGD_ALLOWED_API_ORIGIN = 'https://api.egd.cz'
+const EGD_BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+const EGD_PAGE_HEADERS = {
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'cs-CZ,cs;q=0.9,en;q=0.8',
+  'Cache-Control': 'no-cache',
+  'User-Agent': EGD_BROWSER_USER_AGENT,
+} as const
 
 const egdDrupalSettingsSchema = z.object({
   eon: z.object({
@@ -298,7 +306,7 @@ export async function loadEgdOutages(input: {
   const daysAhead = Math.min(90, Math.max(1, Math.round(input.daysAhead ?? 30)))
 
   const page = await fetchPowerOutageSource(EGD_OUTAGES_PAGE_URL, {
-    headers: { Accept: 'text/html' },
+    headers: EGD_PAGE_HEADERS,
   })
   if (!page.response.ok) {
     throw new Error(`Veřejná stránka EG.D odpověděla HTTP ${page.response.status}.`)
@@ -321,13 +329,20 @@ export async function loadEgdOutages(input: {
 
   const api = await fetchPowerOutageSource(config.endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'Accept-Language': 'cs-CZ,cs;q=0.9,en;q=0.8',
+      Origin: 'https://www.egd.cz',
+      Referer: `${EGD_OUTAGES_PAGE_URL}/`,
+      'User-Agent': EGD_BROWSER_USER_AGENT,
+    },
     body: JSON.stringify({
       operationName: 'filterOutages',
       query: 'query filterOutages($encodedQuery: String!) {\n  processEncodedQuery(encodedQuery: $encodedQuery)\n}',
       variables: { encodedQuery },
     }),
-  }, { timeoutMs: 35_000, maxBytes: 16 * 1024 * 1024 })
+  }, { timeoutMs: 35_000, maxBytes: 16 * 1024 * 1024, retryCount: 3 })
   if (!api.response.ok) {
     throw new Error(`Rozhraní odstávek EG.D odpovědělo HTTP ${api.response.status}.`)
   }

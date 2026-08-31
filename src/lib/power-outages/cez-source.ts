@@ -95,7 +95,7 @@ export async function searchCezAddresses(queryInput: string) {
 
   const { response, text } = await fetchPowerOutageSource(url.toString(), {
     headers: { Accept: 'application/json' },
-  })
+  }, { retryCount: 4, timeoutMs: 35_000 })
   if (!response.ok) {
     throw new Error(`Vyhledávání adres ČEZ odpovědělo HTTP ${response.status}.`)
   }
@@ -113,7 +113,7 @@ export async function inspectCezAddress(addressId: number) {
   const url = `${CEZ_API_ORIGIN}/cezd/api/inspectaddress/${addressId}`
   const { response, text } = await fetchPowerOutageSource(url, {
     headers: { Accept: 'application/json' },
-  })
+  }, { retryCount: 4, timeoutMs: 35_000 })
   if (!response.ok) {
     throw new Error(`Kontrola odstávek ČEZ odpověděla HTTP ${response.status}.`)
   }
@@ -179,7 +179,7 @@ async function mapWithConcurrency<T, R>(
       cursor += 1
       results[index] = await mapper(values[index])
       // Veřejné rozhraní není zatěžováno okamžitou sérií dalších požadavků.
-      await new Promise((resolve) => setTimeout(resolve, 180))
+      await new Promise((resolve) => setTimeout(resolve, 900))
     }
   }
 
@@ -219,7 +219,7 @@ export async function loadCezOutagesForStoreCatalog(
 
   const resolved = await mapWithConcurrency(
     [...storesByCity.values()],
-    options.concurrency ?? 3,
+    options.concurrency ?? 1,
     async (cityStores) => {
       if (cityStores.every((store) => store.distributor === 'egd')) {
         return { address: null, attemptedCount: 0 }
@@ -261,7 +261,7 @@ export async function loadCezOutagesForStoreCatalog(
 
   const inspections = await mapWithConcurrency(
     [...selectedByTown.values()],
-    options.concurrency ?? 3,
+    options.concurrency ?? 1,
     (address) => inspectCezAddress(address.id),
   )
 

@@ -39,8 +39,8 @@ export async function fetchPowerOutageSource(
         await response.arrayBuffer().catch(() => undefined)
         const retryAfterSeconds = Number(response.headers.get('retry-after') ?? 0)
         const delayMs = retryAfterSeconds > 0
-          ? Math.min(5_000, retryAfterSeconds * 1_000)
-          : 500 * 2 ** attempt
+          ? Math.min(60_000, retryAfterSeconds * 1_000)
+          : 2_000 * 2 ** attempt
         await new Promise((resolve) => setTimeout(resolve, delayMs))
         continue
       }
@@ -64,7 +64,7 @@ export async function fetchPowerOutageSource(
     } catch (error) {
       lastError = error
       if (attempt + 1 >= attempts) throw error
-      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt))
+      await new Promise((resolve) => setTimeout(resolve, 1_000 * 2 ** attempt))
     } finally {
       clearTimeout(timeout)
     }

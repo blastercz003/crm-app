@@ -39,7 +39,7 @@ begin
   if endpoint_path not in (
     '/api/power-outages/sync?source=cez',
     '/api/power-outages/sync?source=egd',
-    '/api/power-outages/stores/process?limit=40',
+    '/api/power-outages/stores/process?limit=10',
     '/api/power-outages/watchdog',
     '/api/power-outages/archive',
     '/api/power-outages/stores/audit'
@@ -128,7 +128,7 @@ begin
   perform cron.schedule(
     'power_outages_store_queue_every_fifteen_minutes',
     '7-59/15 * * * *',
-    $job$select public.request_power_outages_endpoint('/api/power-outages/stores/process?limit=40');$job$
+    $job$select public.request_power_outages_endpoint('/api/power-outages/stores/process?limit=10');$job$
   );
 
   perform cron.schedule(
