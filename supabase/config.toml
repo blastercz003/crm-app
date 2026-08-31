@@ -1,0 +1,4 @@
+project_id = "meeting-crm"
+
+[functions.power-outages-egd-probe]
+verify_jwt = false

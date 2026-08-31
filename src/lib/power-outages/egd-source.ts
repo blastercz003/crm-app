@@ -69,6 +69,16 @@ const egdListResponseSchema = z.object({
   }).passthrough(),
 }).passthrough()
 
+const egdEdgeSourceResponseSchema = z.object({
+  ok: z.literal(true),
+  source: z.literal('egd'),
+  configSource: z.enum(['live-html', 'built-in-fallback']),
+  queryScope: z.string().min(1),
+  dateFrom: z.string().min(1),
+  dateTo: z.string().min(1),
+  outages: z.array(egdOutageSchema),
+}).passthrough()
+
 export type EgdAddress = z.infer<typeof egdAddressSchema>
 export type EgdOutage = z.infer<typeof egdOutageSchema>
 
@@ -87,6 +97,28 @@ type EgdRuntimeConfig = {
 }
 
 let cachedRuntimeConfig: (EgdRuntimeConfig & { expiresAt: number }) | null = null
+
+function edgeSourceConfig() {
+  const token = process.env.POWER_OUTAGES_EGD_EDGE_TOKEN?.trim()
+  if (!token) return null
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  if (!supabaseUrl) {
+    throw new Error('Pro EG.D Edge zdroj chybí NEXT_PUBLIC_SUPABASE_URL.')
+  }
+  const supabaseOrigin = new URL(supabaseUrl).origin
+  const endpoint = new URL(
+    process.env.POWER_OUTAGES_EGD_EDGE_URL?.trim()
+      || `${supabaseOrigin}/functions/v1/power-outages-egd-probe`,
+  )
+  if (endpoint.protocol !== 'https:' || endpoint.origin !== supabaseOrigin) {
+    throw new Error('EG.D Edge zdroj musí být hostovaný ve stejném Supabase projektu.')
+  }
+  if (endpoint.pathname !== '/functions/v1/power-outages-egd-probe') {
+    throw new Error('EG.D Edge zdroj obsahuje neočekávanou cestu funkce.')
+  }
+  return { endpoint: endpoint.toString(), token }
+}
 
 function gqlName(value: string): GraphQlNode {
   return { kind: 'Name', value }
@@ -278,6 +310,59 @@ function formatDate(date: Date) {
   return `${year}-${month}-${day}`
 }
 
+async function loadEgdOutagesFromEdge(input: {
+  city?: string
+  daysAhead?: number
+}): Promise<EgdOutageLoadResult | null> {
+  const config = edgeSourceConfig()
+  if (!config) return null
+
+  const response = await fetchPowerOutageSource(config.endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      mode: 'source',
+      city: input.city?.trim() ?? '',
+      daysAhead: input.daysAhead ?? 30,
+    }),
+  }, { timeoutMs: 55_000, maxBytes: 20 * 1024 * 1024, retryCount: 2 })
+
+  if (!response.response.ok) {
+    let detail = ''
+    try {
+      const parsed = JSON.parse(response.text) as { error?: unknown }
+      detail = typeof parsed.error === 'string' ? parsed.error : ''
+    } catch {
+      detail = response.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    }
+    throw new Error(
+      `Supabase Edge zdroj EG.D odpověděl HTTP ${response.response.status}`
+      + `${detail ? `: ${detail.slice(0, 300)}` : '.'}`,
+    )
+  }
+
+  const parsed = egdEdgeSourceResponseSchema.safeParse(
+    parseSourceJson(response.text, 'Supabase Edge zdroj EG.D'),
+  )
+  if (!parsed.success) {
+    throw new Error('Supabase Edge zdroj EG.D vrátil neočekávaná data.')
+  }
+
+  return {
+    outages: parsed.data.outages,
+    queryScope: `edge:${parsed.data.queryScope}`,
+    dateFrom: parsed.data.dateFrom,
+    dateTo: parsed.data.dateTo,
+    ...(parsed.data.configSource === 'built-in-fallback'
+      ? { fallbackReason: 'Supabase Edge zdroj použil vestavěnou runtime konfiguraci EG.D.' }
+      : {}),
+  }
+}
+
 function encodeEgdQuery(value: unknown) {
   const base64 = Buffer.from(JSON.stringify(value), 'utf8').toString('base64')
   return Buffer.from(base64, 'utf8').toString('hex').split('').reverse().join('')
@@ -357,6 +442,9 @@ export async function loadEgdOutages(input: {
     throw new Error('Název obce pro EG.D může mít nejvýše 120 znaků.')
   }
   const daysAhead = Math.min(90, Math.max(1, Math.round(input.daysAhead ?? 30)))
+
+  const edgeLoaded = await loadEgdOutagesFromEdge({ city, daysAhead })
+  if (edgeLoaded) return edgeLoaded
 
   const config = await loadEgdRuntimeConfig()
 
