@@ -95,7 +95,32 @@ function formatDateTime(value: string) {
   }).format(new Date(value))
 }
 
+function localDateKey(value: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PRAGUE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
 function formatPeriod(startsAt: string, endsAt: string) {
+  if (localDateKey(startsAt) === localDateKey(endsAt)) {
+    const date = new Intl.DateTimeFormat('cs-CZ', {
+      timeZone: PRAGUE_TIME_ZONE,
+      day: 'numeric',
+      month: 'numeric',
+    }).format(new Date(startsAt))
+    const timeFormatter = new Intl.DateTimeFormat('cs-CZ', {
+      timeZone: PRAGUE_TIME_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    return `${date} ${timeFormatter.format(new Date(startsAt))}–${timeFormatter.format(new Date(endsAt))}`
+  }
   return `${formatDateTime(startsAt)}–${formatDateTime(endsAt)}`
 }
 
