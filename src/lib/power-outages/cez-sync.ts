@@ -334,9 +334,10 @@ export async function importCezOutagesForStores(input: {
         existingPayloadByExternalId.set(String(row.external_id), String(row.payload_sha256))
       }
     }
-    const changed = normalized.some((outage) => (
+    const changedRecordCount = normalized.filter((outage) => (
       existingPayloadByExternalId.get(outage.externalId) !== outage.payloadSha256
-    ))
+    )).length
+    const changed = changedRecordCount > 0
     const saved = await upsertCezOutages(client, normalized, completedAt)
     const missingCount = input.completeCatalogScan && scanComplete
       ? await markMissingCezOutages(
@@ -366,6 +367,8 @@ export async function importCezOutagesForStores(input: {
           ? { store_revision_processed: catalogState.revision }
           : {}),
         metadata: {
+          sourceOutageCount: loaded.outages.length,
+          changedRecordCount,
           searchedStoreCount: loaded.searchedStoreCount,
           coveredTownCount: loaded.coveredTownCount,
           skippedStoreCount: loaded.skippedStoreCount,
@@ -398,6 +401,7 @@ export async function importCezOutagesForStores(input: {
         address_upsert_count: saved.addressCount,
         payload_sha256: batchPayloadSha256,
         metadata: {
+          changedRecordCount,
           searchedStoreCount: loaded.searchedStoreCount,
           coveredTownCount: loaded.coveredTownCount,
           skippedStoreCount: loaded.skippedStoreCount,

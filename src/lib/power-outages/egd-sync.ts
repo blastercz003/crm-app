@@ -267,6 +267,24 @@ export async function importEgdOutages(input: {
         dateTo: loaded.dateTo,
       },
     })
+    const existingPayloadByExternalId = new Map<string, string>()
+    for (const externalIdBatch of chunks(normalized.map((outage) => outage.externalId), 100)) {
+      const { data: existingRows, error: existingError } = await client
+        .from('power_outages')
+        .select('external_id,payload_sha256')
+        .eq('source', 'egd')
+        .in('external_id', externalIdBatch)
+      if (existingError) throw existingError
+      for (const row of existingRows ?? []) {
+        existingPayloadByExternalId.set(String(row.external_id), String(row.payload_sha256))
+      }
+    }
+    const changedRecordCount = normalized.filter((outage) => (
+      existingPayloadByExternalId.get(outage.externalId) !== outage.payloadSha256
+    )).length
+    const coveredMunicipalityCount = new Set(
+      normalized.flatMap((outage) => outage.addresses.map((address) => address.municipality).filter(Boolean)),
+    ).size
     const saved = await upsertEgdOutages(client, normalized, completedAt)
     const missingCount = await markMissingEgdOutages(
       client,
@@ -274,7 +292,7 @@ export async function importEgdOutages(input: {
       completedAt,
     )
     const counts = await countEgdOutages(client, completedAt)
-    const changed = sourceState?.latest_payload_sha256 !== payloadSha256
+    const changed = changedRecordCount > 0 || sourceState?.latest_payload_sha256 !== payloadSha256
 
     const { error: sourceUpdateError } = await client
       .from('power_outage_source_state')
@@ -297,6 +315,8 @@ export async function importEgdOutages(input: {
           dateFrom: loaded.dateFrom,
           dateTo: loaded.dateTo,
           sourceOutageCount: loaded.outages.length,
+          changedRecordCount,
+          coveredMunicipalityCount,
           normalizedTermCount: normalized.length,
           missingCount,
           fallbackReason: loaded.fallbackReason ?? null,
@@ -319,6 +339,8 @@ export async function importEgdOutages(input: {
           dateFrom: loaded.dateFrom,
           dateTo: loaded.dateTo,
           normalizedTermCount: normalized.length,
+          changedRecordCount,
+          coveredMunicipalityCount,
           missingCount,
           fallbackReason: loaded.fallbackReason ?? null,
         },

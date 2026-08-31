@@ -9,6 +9,7 @@ export type PowerOutageTaskKey =
   | 'watchdog'
   | 'archive'
   | 'store_audit'
+  | 'notification_plan'
 
 export async function claimPowerOutageTask(
   taskKey: PowerOutageTaskKey,
