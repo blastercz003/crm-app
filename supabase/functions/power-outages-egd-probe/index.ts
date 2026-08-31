@@ -60,16 +60,13 @@ function jsonResponse(body: unknown, status = 200) {
   })
 }
 
-function compressedJsonResponse(body: unknown, status = 200) {
-  const json = JSON.stringify(body)
-  const compressed = new Blob([json])
-    .stream()
-    .pipeThrough(new CompressionStream("gzip"))
-  return new Response(compressed, {
+function sourceJsonResponse(body: unknown, status = 200) {
+  // Kompresi necháváme na HTTP gatewayi. Ruční CompressionStream nad zhruba
+  // osmimetabajtovým payloadem spotřebovával zbytečně CPU Edge workeru.
+  return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Cache-Control": "no-store",
-      "Content-Encoding": "gzip",
       "Content-Type": "application/json; charset=utf-8",
       "X-Content-Type-Options": "nosniff",
     },
@@ -371,6 +368,7 @@ Deno.serve(async (request) => {
   const daysAhead = Math.min(90, Math.max(1, requestedDaysAhead))
 
   const testedAt = new Date().toISOString()
+  const edgeRegion = Deno.env.get("SB_REGION") ?? null
   let endpoint: string
   let configSource: "live-html" | "built-in-fallback" = "built-in-fallback"
   let pageResult: JsonRecord = {}
@@ -458,9 +456,10 @@ Deno.serve(async (request) => {
       if (!outages) {
         return jsonResponse({ ok: false, error: "Invalid EG.D payload." }, 502)
       }
-      return compressedJsonResponse({
+      return sourceJsonResponse({
         ok: true,
         source: "egd",
+        edgeRegion,
         configSource,
         queryScope: city || "whole-distribution-area",
         dateFrom: filter.datumOd,
@@ -471,6 +470,7 @@ Deno.serve(async (request) => {
     return jsonResponse({
       ok,
       testedAt,
+      edgeRegion,
       configSource,
       page: pageResult,
       api: {
@@ -488,6 +488,7 @@ Deno.serve(async (request) => {
     return jsonResponse({
       ok: false,
       testedAt,
+      edgeRegion,
       configSource,
       page: pageResult,
       api: { error: safeErrorMessage(error) },

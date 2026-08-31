@@ -7,6 +7,7 @@ import { fetchPowerOutageSource, parseSourceJson } from './source-http'
 const EGD_OUTAGES_PAGE_URL = 'https://www.egd.cz/odstavky-elektrina'
 const EGD_CONFIG_PASSWORD = 'sdkaM87sZaLNQCpM'
 const EGD_ALLOWED_API_ORIGIN = 'https://api.egd.cz'
+const EGD_EDGE_REGION = 'eu-central-1'
 // Hodnoty jsou veřejnou runtime konfigurací stránky EG.D, nikoli privátními
 // přihlašovacími údaji. Slouží pouze jako fallback, pokud EG.D zablokuje IP
 // produkčního serveru ještě před stažením veřejného HTML.
@@ -117,6 +118,7 @@ function edgeSourceConfig() {
   if (endpoint.pathname !== '/functions/v1/power-outages-egd-probe') {
     throw new Error('EG.D Edge zdroj obsahuje neočekávanou cestu funkce.')
   }
+  endpoint.searchParams.set('forceFunctionRegion', EGD_EDGE_REGION)
   return { endpoint: endpoint.toString(), token }
 }
 
@@ -323,6 +325,7 @@ async function loadEgdOutagesFromEdge(input: {
       Authorization: `Bearer ${config.token}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      'x-region': EGD_EDGE_REGION,
     },
     body: JSON.stringify({
       mode: 'source',
@@ -334,8 +337,17 @@ async function loadEgdOutagesFromEdge(input: {
   if (!response.response.ok) {
     let detail = ''
     try {
-      const parsed = JSON.parse(response.text) as { error?: unknown }
-      detail = typeof parsed.error === 'string' ? parsed.error : ''
+      const parsed = JSON.parse(response.text) as {
+        error?: unknown
+        api?: { error?: unknown; status?: unknown }
+      }
+      detail = typeof parsed.error === 'string'
+        ? parsed.error
+        : typeof parsed.api?.error === 'string'
+          ? parsed.api.error
+          : typeof parsed.api?.status === 'number'
+            ? `API EG.D odpovědělo HTTP ${parsed.api.status}.`
+            : ''
     } catch {
       detail = response.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     }
