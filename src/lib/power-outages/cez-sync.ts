@@ -8,6 +8,7 @@ import {
 } from './cez-source'
 import { powerOutageSha256 } from './normalization'
 import { storePowerOutageSourceSnapshot } from './source-snapshots'
+import { powerOutageErrorMessage } from './error-message'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
@@ -28,9 +29,18 @@ export class CezSyncAlreadyRunningError extends Error {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Neznámá chyba synchronizace odstávek ČEZ.'
+  return powerOutageErrorMessage(
+    error,
+    'Neznámá chyba synchronizace odstávek ČEZ.',
+  )
+}
+
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = []
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size))
+  }
+  return result
 }
 
 function outageRow(outage: NormalizedPowerOutage, observedAt: string) {
@@ -64,18 +74,20 @@ async function upsertCezOutages(
 ) {
   if (outages.length === 0) return { outageCount: 0, addressCount: 0 }
 
-  const { data: savedOutages, error: outageError } = await client
-    .from('power_outages')
-    .upsert(
-      outages.map((outage) => outageRow(outage, observedAt)),
-      { onConflict: 'source,external_id' },
-    )
-    .select('id,external_id')
-  if (outageError) throw outageError
-
-  const outageIdByExternal = new Map(
-    (savedOutages ?? []).map((row) => [String(row.external_id), String(row.id)]),
-  )
+  const outageIdByExternal = new Map<string, string>()
+  for (const batch of chunks(outages, 50)) {
+    const { data: savedOutages, error: outageError } = await client
+      .from('power_outages')
+      .upsert(
+        batch.map((outage) => outageRow(outage, observedAt)),
+        { onConflict: 'source,external_id' },
+      )
+      .select('id,external_id')
+    if (outageError) throw outageError
+    for (const row of savedOutages ?? []) {
+      outageIdByExternal.set(String(row.external_id), String(row.id))
+    }
+  }
   let addressCount = 0
 
   for (const outage of outages) {
@@ -103,21 +115,29 @@ async function upsertCezOutages(
       metadata: address.metadata,
     }))
 
-    if (addressRows.length > 0) {
+    for (const addressBatch of chunks(addressRows, 300)) {
       const { error } = await client
         .from('power_outage_addresses')
-        .upsert(addressRows, { onConflict: 'outage_id,address_key' })
+        .upsert(addressBatch, { onConflict: 'outage_id,address_key' })
       if (error) throw error
     }
 
-    const currentKeys = addressRows.map((row) => row.address_key)
-    let staleQuery = client
+    const currentKeys = new Set(addressRows.map((row) => row.address_key))
+    const { data: existingAddresses, error: existingAddressError } = await client
       .from('power_outage_addresses')
-      .delete()
+      .select('id,address_key')
       .eq('outage_id', outageId)
-    if (currentKeys.length > 0) staleQuery = staleQuery.not('address_key', 'in', `(${currentKeys.join(',')})`)
-    const { error: staleError } = await staleQuery
-    if (staleError) throw staleError
+    if (existingAddressError) throw existingAddressError
+    const staleAddressIds = (existingAddresses ?? [])
+      .filter((row) => !currentKeys.has(String(row.address_key)))
+      .map((row) => String(row.id))
+    for (const staleBatch of chunks(staleAddressIds, 300)) {
+      const { error: staleError } = await client
+        .from('power_outage_addresses')
+        .delete()
+        .in('id', staleBatch)
+      if (staleError) throw staleError
+    }
 
     addressCount += addressRows.length
   }
@@ -274,12 +294,12 @@ export async function importCezOutagesForStores(input: {
     })
 
     const existingPayloadByExternalId = new Map<string, string>()
-    if (normalized.length > 0) {
+    for (const externalIdBatch of chunks(normalized.map((outage) => outage.externalId), 50)) {
       const { data: existingRows, error: existingError } = await client
         .from('power_outages')
         .select('external_id,payload_sha256')
         .eq('source', 'cez')
-        .in('external_id', normalized.map((outage) => outage.externalId))
+        .in('external_id', externalIdBatch)
       if (existingError) throw existingError
       for (const row of existingRows ?? []) {
         existingPayloadByExternalId.set(String(row.external_id), String(row.payload_sha256))

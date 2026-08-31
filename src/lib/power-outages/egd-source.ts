@@ -7,6 +7,11 @@ import { fetchPowerOutageSource, parseSourceJson } from './source-http'
 const EGD_OUTAGES_PAGE_URL = 'https://www.egd.cz/odstavky-elektrina'
 const EGD_CONFIG_PASSWORD = 'sdkaM87sZaLNQCpM'
 const EGD_ALLOWED_API_ORIGIN = 'https://api.egd.cz'
+// Hodnoty jsou veřejnou runtime konfigurací stránky EG.D, nikoli privátními
+// přihlašovacími údaji. Slouží pouze jako fallback, pokud EG.D zablokuje IP
+// produkčního serveru ještě před stažením veřejného HTML.
+const EGD_FALLBACK_API_URL_ENCRYPTED = 'kbWiCdDEsscQjA846IB+i4uREhhXplGAqdBvcFGfD8A='
+const EGD_FALLBACK_API_TOKEN_ENCRYPTED = 'UfzeedON5iYaplMVa6EsK7StcLnqHMPa2faF4e/Gids='
 const EGD_BROWSER_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
 const EGD_PAGE_HEADERS = {
@@ -76,6 +81,12 @@ export type EgdOutageLoadResult = {
 }
 
 type GraphQlNode = Record<string, unknown>
+type EgdRuntimeConfig = {
+  endpoint: string
+  fallbackReason?: string
+}
+
+let cachedRuntimeConfig: (EgdRuntimeConfig & { expiresAt: number }) | null = null
 
 function gqlName(value: string): GraphQlNode {
   return { kind: 'Name', value }
@@ -194,18 +205,9 @@ function decryptEgdRuntimeValue(value: string) {
   ]).toString('utf8')
 }
 
-function parseEgdRuntimeConfig(html: string) {
-  const scriptPattern = /<script[^>]+data-drupal-selector=["']drupal-settings-json["'][^>]*>([\s\S]*?)<\/script>/i
-  const match = html.match(scriptPattern)
-  if (!match?.[1]) {
-    throw new Error('Veřejná stránka EG.D neobsahuje očekávanou runtime konfiguraci.')
-  }
-
-  const settings = egdDrupalSettingsSchema.parse(
-    parseSourceJson(match[1], 'Runtime konfigurace EG.D'),
-  )
-  const apiBase = decryptEgdRuntimeValue(settings.eon.BLACKOUT.api_url)
-  const apiToken = decryptEgdRuntimeValue(settings.eon.BLACKOUT.api_token)
+function validateEgdRuntimeConfig(encryptedApiUrl: string, encryptedApiToken: string) {
+  const apiBase = decryptEgdRuntimeValue(encryptedApiUrl)
+  const apiToken = decryptEgdRuntimeValue(encryptedApiToken)
   const endpoint = new URL(`${apiBase}${apiToken}`)
 
   if (endpoint.origin !== EGD_ALLOWED_API_ORIGIN) {
@@ -216,6 +218,57 @@ function parseEgdRuntimeConfig(html: string) {
   }
 
   return { endpoint: endpoint.toString() }
+}
+
+function parseEgdRuntimeConfig(html: string) {
+  const scriptPattern = /<script[^>]+data-drupal-selector=["']drupal-settings-json["'][^>]*>([\s\S]*?)<\/script>/i
+  const match = html.match(scriptPattern)
+  if (!match?.[1]) {
+    throw new Error('Veřejná stránka EG.D neobsahuje očekávanou runtime konfiguraci.')
+  }
+
+  const settings = egdDrupalSettingsSchema.parse(
+    parseSourceJson(match[1], 'Runtime konfigurace EG.D'),
+  )
+  return validateEgdRuntimeConfig(
+    settings.eon.BLACKOUT.api_url,
+    settings.eon.BLACKOUT.api_token,
+  )
+}
+
+function fallbackEgdRuntimeConfig(reason: unknown): EgdRuntimeConfig {
+  const encryptedApiUrl = process.env.EGD_BLACKOUT_API_URL_ENCRYPTED?.trim()
+    || EGD_FALLBACK_API_URL_ENCRYPTED
+  const encryptedApiToken = process.env.EGD_BLACKOUT_API_TOKEN_ENCRYPTED?.trim()
+    || EGD_FALLBACK_API_TOKEN_ENCRYPTED
+  return {
+    ...validateEgdRuntimeConfig(encryptedApiUrl, encryptedApiToken),
+    fallbackReason: reason instanceof Error
+      ? `Runtime HTML EG.D nebylo dostupné: ${reason.message}`.slice(0, 1_000)
+      : 'Runtime HTML EG.D nebylo dostupné.',
+  }
+}
+
+async function loadEgdRuntimeConfig(): Promise<EgdRuntimeConfig> {
+  if (cachedRuntimeConfig && cachedRuntimeConfig.expiresAt > Date.now()) {
+    return cachedRuntimeConfig
+  }
+
+  let config: EgdRuntimeConfig
+  try {
+    const page = await fetchPowerOutageSource(EGD_OUTAGES_PAGE_URL, {
+      headers: EGD_PAGE_HEADERS,
+    })
+    if (!page.response.ok) {
+      throw new Error(`Veřejná stránka EG.D odpověděla HTTP ${page.response.status}.`)
+    }
+    config = parseEgdRuntimeConfig(page.text)
+  } catch (error) {
+    config = fallbackEgdRuntimeConfig(error)
+  }
+
+  cachedRuntimeConfig = { ...config, expiresAt: Date.now() + 30 * 60_000 }
+  return config
 }
 
 function formatDate(date: Date) {
@@ -305,13 +358,7 @@ export async function loadEgdOutages(input: {
   }
   const daysAhead = Math.min(90, Math.max(1, Math.round(input.daysAhead ?? 30)))
 
-  const page = await fetchPowerOutageSource(EGD_OUTAGES_PAGE_URL, {
-    headers: EGD_PAGE_HEADERS,
-  })
-  if (!page.response.ok) {
-    throw new Error(`Veřejná stránka EG.D odpověděla HTTP ${page.response.status}.`)
-  }
-  const config = parseEgdRuntimeConfig(page.text)
+  const config = await loadEgdRuntimeConfig()
 
   const dateFrom = new Date()
   const dateTo = new Date(dateFrom)
@@ -361,6 +408,7 @@ export async function loadEgdOutages(input: {
     queryScope: city || 'whole-distribution-area',
     dateFrom: filter.datumOd,
     dateTo: filter.datumDo,
+    ...(config.fallbackReason ? { fallbackReason: config.fallbackReason } : {}),
   }
 }
 

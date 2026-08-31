@@ -7,6 +7,7 @@ import {
   reconcilePowerOutageStoreMatches,
   StoreMatchSyncAlreadyRunningError,
 } from './store-match-sync'
+import { powerOutageErrorMessage } from './error-message'
 
 export type PowerOutageSyncSource = 'all' | 'cez' | 'egd'
 
@@ -97,7 +98,7 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
         sourceResults.push({
           source: 'cez',
           ok: false,
-          error: error instanceof Error ? error.message : 'Synchronizace ČEZ selhala.',
+          error: powerOutageErrorMessage(error, 'Synchronizace ČEZ selhala.'),
         })
       }
     }
@@ -118,7 +119,7 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
         sourceResults.push({
           source: 'egd',
           ok: false,
-          error: error instanceof Error ? error.message : 'Synchronizace EG.D selhala.',
+          error: powerOutageErrorMessage(error, 'Synchronizace EG.D selhala.'),
         })
       }
     }

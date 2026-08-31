@@ -5,6 +5,7 @@ import { normalizeEgdOutage, type NormalizedEgdOutage } from './egd-normalizer'
 import { loadEgdOutagesWithCityFallback } from './egd-source'
 import { powerOutageSha256 } from './normalization'
 import { storePowerOutageSourceSnapshot } from './source-snapshots'
+import { powerOutageErrorMessage } from './error-message'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
@@ -22,9 +23,10 @@ export class EgdSyncAlreadyRunningError extends Error {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Neznámá chyba synchronizace odstávek EG.D.'
+  return powerOutageErrorMessage(
+    error,
+    'Neznámá chyba synchronizace odstávek EG.D.',
+  )
 }
 
 function chunks<T>(values: T[], size: number) {
