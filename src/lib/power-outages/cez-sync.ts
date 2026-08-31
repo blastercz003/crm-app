@@ -22,6 +22,8 @@ type SourceState = {
 
 type CatalogState = { revision: number }
 
+const CEZ_SCAN_STATE_VERSION = 2
+
 export class CezSyncAlreadyRunningError extends Error {
   constructor() {
     super('Předchozí synchronizace odstávek ČEZ stále probíhá.')
@@ -235,7 +237,8 @@ export async function importCezOutagesForStores(input: {
   const scan = previousScan && typeof previousScan === 'object'
     ? previousScan as Record<string, unknown>
     : null
-  const sameRevisionScan = scan?.storeRevision === catalogState.revision
+  const sameRevisionScan = scan?.version === CEZ_SCAN_STATE_VERSION
+    && scan.storeRevision === catalogState.revision
     && Number.isInteger(scan.nextStoreIndex)
   const storedNextIndex = sameRevisionScan ? Number(scan?.nextStoreIndex) : 0
   const hasActiveScan = storedNextIndex > 0 && storedNextIndex < sortedStores.length
@@ -287,10 +290,10 @@ export async function importCezOutagesForStores(input: {
     )
     const nextIndex = Math.min(sortedStores.length, startIndex + batchStores.length)
     const scanComplete = nextIndex >= sortedStores.length
-    const previousExternalIds = Array.isArray(scan?.externalIds)
+    const previousExternalIds = hasActiveScan && Array.isArray(scan?.externalIds)
       ? scan.externalIds.filter((value): value is string => typeof value === 'string')
       : []
-    const previousBatchHashes = Array.isArray(scan?.batchHashes)
+    const previousBatchHashes = hasActiveScan && Array.isArray(scan?.batchHashes)
       ? scan.batchHashes.filter((value): value is string => typeof value === 'string')
       : []
     const scanExternalIds = [...new Set([
@@ -371,11 +374,14 @@ export async function importCezOutagesForStores(input: {
           missingCount,
           lastFullScanAt: scanComplete ? completedAt : lastFullScanAt,
           cezScan: scanComplete ? null : {
+            version: CEZ_SCAN_STATE_VERSION,
             storeRevision: catalogState.revision,
             nextStoreIndex: nextIndex,
             externalIds: scanExternalIds,
             batchHashes: scanBatchHashes,
-            startedAt: scan?.startedAt ?? startedAt,
+            startedAt: hasActiveScan && typeof scan?.startedAt === 'string'
+              ? scan.startedAt
+              : startedAt,
           },
         },
       })
