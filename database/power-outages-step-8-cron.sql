@@ -102,6 +102,7 @@ begin
       'power_outages_sync_daily',
       'power_outages_refresh_every_three_hours',
       'power_outages_cez_every_six_hours',
+      'power_outages_cez_continuation_every_fifteen_minutes',
       'power_outages_egd_every_six_hours',
       'power_outages_store_queue_every_fifteen_minutes',
       'power_outages_watchdog_hourly',
@@ -113,10 +114,13 @@ begin
   end loop;
 
   perform cron.schedule(
-    'power_outages_cez_every_six_hours',
-    '11 */6 * * *',
+    'power_outages_cez_continuation_every_fifteen_minutes',
+    '4-59/15 * * * *',
     $job$select public.request_power_outages_endpoint('/api/power-outages/sync?source=cez');$job$
   );
+
+  -- Jednotlivý běh zpracuje jen jednu dávku. Aplikace pokračuje v rozpracovaném
+  -- katalogu, ale po dokončení povolí nový úplný cyklus nejvýše jednou za 6 hodin.
 
   -- EG.D běží uprostřed mezi běhy ČEZ, takže se veřejné zdroje ani aplikace nezatěžují současně.
   perform cron.schedule(
@@ -156,7 +160,7 @@ commit;
 
 with expected(jobname, schedule) as (
   values
-    ('power_outages_cez_every_six_hours', '11 */6 * * *'),
+    ('power_outages_cez_continuation_every_fifteen_minutes', '4-59/15 * * * *'),
     ('power_outages_egd_every_six_hours', '41 3-23/6 * * *'),
     ('power_outages_store_queue_every_fifteen_minutes', '7-59/15 * * * *'),
     ('power_outages_watchdog_hourly', '17 * * * *'),
@@ -182,7 +186,8 @@ select 'STATE', 'legacy power outage cron jobs removed',
     select 1 from cron.job
     where jobname in (
       'power_outages_sync_daily',
-      'power_outages_refresh_every_three_hours'
+      'power_outages_refresh_every_three_hours',
+      'power_outages_cez_every_six_hours'
     )
   )
 order by check_type, object_name;

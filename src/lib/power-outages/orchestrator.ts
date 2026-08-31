@@ -89,8 +89,14 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
         triggerKind: 'scheduled',
         completeCatalogScan: true,
         batchSize: 80,
+        minimumFullScanIntervalMs: 6 * 60 * 60 * 1_000,
       })
-      sourceResults.push({ source: 'cez', ok: true, result })
+      sourceResults.push({
+        source: 'cez',
+        ok: true,
+        skipped: result.status === 'skipped',
+        result,
+      })
     } catch (error) {
       if (error instanceof CezSyncAlreadyRunningError) {
         sourceResults.push({ source: 'cez', ok: true, skipped: true })
@@ -126,10 +132,11 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
   }
 
   const successfulCount = sourceResults.filter((result) => result.ok).length
+  const completedCount = sourceResults.filter((result) => result.ok && !result.skipped).length
   let matching: Awaited<ReturnType<typeof reconcilePowerOutageStoreMatches>> | null = null
   let matchingError: string | null = null
   let matchingSkipped = false
-  if (successfulCount > 0) {
+  if (completedCount > 0) {
     try {
       matching = await reconcilePowerOutageStoreMatches({ triggerKind: 'source_sync' })
     } catch (error) {
@@ -141,6 +148,8 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
           : 'Párování odstávek s Prodejnami selhalo.'
       }
     }
+  } else if (successfulCount > 0) {
+    matchingSkipped = true
   }
 
   return {

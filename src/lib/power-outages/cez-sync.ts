@@ -17,6 +17,7 @@ type SourceState = {
   data_version: number | null
   latest_payload_sha256: string | null
   metadata: Record<string, unknown> | null
+  store_revision_processed: number | null
 }
 
 type CatalogState = { revision: number }
@@ -195,6 +196,7 @@ export async function importCezOutagesForStores(input: {
   triggerKind?: 'scheduled' | 'manual' | 'store_change' | 'retry'
   completeCatalogScan?: boolean
   batchSize?: number
+  minimumFullScanIntervalMs?: number
 }) {
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení Supabase pro import ČEZ.')
@@ -216,7 +218,7 @@ export async function importCezOutagesForStores(input: {
   const [{ data: sourceState, error: stateError }, { data: catalogState, error: catalogError }] = await Promise.all([
     client
       .from('power_outage_source_state')
-      .select('consecutive_failure_count,data_version,latest_payload_sha256,metadata')
+      .select('consecutive_failure_count,data_version,latest_payload_sha256,metadata,store_revision_processed')
       .eq('source', 'cez')
       .maybeSingle<SourceState>(),
     client
@@ -227,6 +229,37 @@ export async function importCezOutagesForStores(input: {
   ])
   if (stateError) throw stateError
   if (catalogError) throw catalogError
+
+  const sortedStores = [...input.stores].sort((left, right) => left.id.localeCompare(right.id))
+  const previousScan = sourceState?.metadata?.cezScan
+  const scan = previousScan && typeof previousScan === 'object'
+    ? previousScan as Record<string, unknown>
+    : null
+  const sameRevisionScan = scan?.storeRevision === catalogState.revision
+    && Number.isInteger(scan.nextStoreIndex)
+  const storedNextIndex = sameRevisionScan ? Number(scan?.nextStoreIndex) : 0
+  const hasActiveScan = storedNextIndex > 0 && storedNextIndex < sortedStores.length
+  const lastFullScanAt = typeof sourceState?.metadata?.lastFullScanAt === 'string'
+    ? sourceState.metadata.lastFullScanAt
+    : null
+  const lastFullScanTime = lastFullScanAt ? Date.parse(lastFullScanAt) : Number.NaN
+  const minimumFullScanIntervalMs = Math.max(0, input.minimumFullScanIntervalMs ?? 0)
+  const catalogAlreadyProcessed = (sourceState?.store_revision_processed ?? 0) >= catalogState.revision
+  const waitForNextFullScan = Boolean(input.completeCatalogScan)
+    && !hasActiveScan
+    && catalogAlreadyProcessed
+    && Number.isFinite(lastFullScanTime)
+    && Date.now() - lastFullScanTime < minimumFullScanIntervalMs
+
+  if (waitForNextFullScan) {
+    return {
+      status: 'skipped' as const,
+      reason: 'full_scan_interval' as const,
+      lastFullScanAt,
+      nextEligibleAt: new Date(lastFullScanTime + minimumFullScanIntervalMs).toISOString(),
+      storeRevision: catalogState.revision,
+    }
+  }
 
   const { data: run, error: runError } = await client
     .from('power_outage_sync_runs')
@@ -242,17 +275,10 @@ export async function importCezOutagesForStores(input: {
   if (runError) throw runError
 
   try {
-    const sortedStores = [...input.stores].sort((left, right) => left.id.localeCompare(right.id))
     const requestedBatchSize = input.batchSize == null
       ? sortedStores.length
       : Math.min(250, Math.max(1, Math.trunc(input.batchSize)))
-    const previousScan = sourceState?.metadata?.cezScan
-    const scan = previousScan && typeof previousScan === 'object'
-      ? previousScan as Record<string, unknown>
-      : null
-    const sameRevisionScan = scan?.storeRevision === catalogState.revision
-      && Number.isInteger(scan.nextStoreIndex)
-    const startIndex = sameRevisionScan ? Number(scan?.nextStoreIndex) : 0
+    const startIndex = hasActiveScan ? storedNextIndex : 0
     const batchStores = sortedStores.slice(startIndex, startIndex + requestedBatchSize)
     const loaded = await loadCezOutagesForStoreCatalog(batchStores)
     const normalized = loaded.outages.map((outage) => normalizeCezOutage(outage))
@@ -343,6 +369,7 @@ export async function importCezOutagesForStores(input: {
           inspectedAddressCount: loaded.inspectedAddressCount,
           completeCatalogScan: Boolean(input.completeCatalogScan),
           missingCount,
+          lastFullScanAt: scanComplete ? completedAt : lastFullScanAt,
           cezScan: scanComplete ? null : {
             storeRevision: catalogState.revision,
             nextStoreIndex: nextIndex,
