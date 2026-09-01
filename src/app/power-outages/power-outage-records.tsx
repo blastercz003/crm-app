@@ -96,10 +96,7 @@ function StatusBadge({ item, now }: { item: PowerOutageListItem; now: number }) 
         ? 'UKONČENA'
         : 'PLÁNOVANÁ'
   return (
-    <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[8px] font-bold uppercase tracking-[0.07em] lg:w-[88px] lg:justify-center lg:whitespace-nowrap ${active
-      ? 'border-sky-400/45 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'
-      : 'border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]'
-    }`}>
+    <span className="inline-flex h-6 items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2.5 text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--accent)] lg:w-[88px] lg:justify-center lg:whitespace-nowrap">
       {label}
     </span>
   )
@@ -502,7 +499,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
           <div className="max-h-[500px] overflow-y-auto overscroll-contain [scrollbar-gutter:stable] xl:min-h-0 xl:max-h-none xl:flex-1">
             <div className="hidden lg:block">
               <table className="w-full table-fixed border-collapse text-left">
-                <thead className="sticky top-0 z-10 bg-[var(--surface-strong)] shadow-[0_1px_0_var(--surface-border)]">
+                <thead className="power-outages-table__header sticky top-0 z-10 shadow-[0_1px_0_var(--surface-border)]">
                   <tr className="text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">
                     <th className="w-[17%] px-3 py-2.5">Firma / prodejna</th>
                     <th className="w-[16%] px-3 py-2.5">Adresa</th>
@@ -522,15 +519,15 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
                           <span className="min-w-0"><strong className="block truncate text-[11px] text-[var(--text-primary)]">{item.store.chainName}</strong><small className="block truncate text-[9px] font-semibold text-[var(--text-secondary)]">Prodejna č. {item.store.storeNumber}</small></span>
                         </div>
                       </td>
-                      <td className="px-3 py-3 align-middle"><span className="block truncate text-[10px] text-[var(--text-primary)]">{item.store.address}</span><small className="block truncate text-[9px] text-[var(--text-secondary)]">{item.store.city}</small></td>
+                      <td className="px-3 py-3 align-middle"><span className="block truncate text-[10px] text-[var(--text-primary)]">{item.store.city}</span><small className="block truncate text-[9px] text-[var(--text-secondary)]">{item.store.address}</small></td>
                       <td className="px-3 py-3 align-middle"><SourceBadge source={item.source} /></td>
                       <td className="px-3 py-3 align-middle text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.startsAt)}</td>
                       <td className="px-3 py-3 align-middle text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.endsAt)}</td>
                       <td className="px-3 py-3 align-middle"><div className="flex flex-nowrap items-center gap-1"><MatchBadge status={item.matchStatus} /><StatusBadge item={item} now={now} /><LinkedJobBadge item={item} /></div></td>
                       <td className="px-3 py-3 align-middle">
                         <div className="flex justify-end gap-1.5">
-                          <button type="button" onClick={() => void openDetail(item)} aria-label={`Otevřít detail odstávky pro prodejnu ${item.store.storeNumber}`} title="Detail odstávky" className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)] transition hover:-translate-y-px hover:text-[var(--accent)]"><Eye aria-hidden size={14} /></button>
-                          <button type="button" onClick={() => openAnnouncement(item)} aria-label={`Vytvořit oznámení o odstávce pro prodejnu ${item.store.storeNumber}`} title="Oznámení o odstávce" className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)] transition hover:-translate-y-px hover:text-[var(--accent)]"><Send aria-hidden size={13} /></button>
+                          <button type="button" onClick={() => void openDetail(item)} aria-label={`Otevřít detail odstávky pro prodejnu ${item.store.storeNumber}`} title="Detail odstávky" className="flex h-8 w-8 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Eye aria-hidden size={14} /></button>
+                          <button type="button" onClick={() => openAnnouncement(item)} aria-label={`Vytvořit oznámení o odstávce pro prodejnu ${item.store.storeNumber}`} title="Oznámení o odstávce" className="flex h-8 w-8 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Send aria-hidden size={13} /></button>
                         </div>
                       </td>
                     </tr>

@@ -130,7 +130,7 @@ export function PowerOutagePopupShell({
             <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--text-secondary)]">{eyebrow}</span>
             <h2 id={titleId} className="mt-1 text-lg font-semibold leading-6 text-[var(--text-primary)] sm:text-xl">{title}</h2>
           </div>
-          <button ref={closeRef} type="button" onClick={requestClose} aria-label="Zavřít" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] shadow-sm transition hover:-translate-y-px hover:text-[var(--text-primary)]"><X aria-hidden size={18} /></button>
+          <button ref={closeRef} type="button" onClick={requestClose} aria-label="Zavřít" className="power-outages-popup__close flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] shadow-sm transition hover:-translate-y-px hover:text-[var(--text-primary)]"><X aria-hidden size={18} /></button>
         </header>
         {children}
       </section>

@@ -1499,9 +1499,9 @@ export async function submitOfferForApprovalWithAutosave(
   } catch (error) {
     await reportActionError({
       error,
-      action: 'sendOfferToClient',
+      action: 'submitOfferForApprovalWithAutosave',
       section: 'offers',
-      errorType: 'SendOfferToClientError',
+      errorType: 'SubmitOfferForApprovalWithAutosaveError',
       context: { offerId },
     })
     return {

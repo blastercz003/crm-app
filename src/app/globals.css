@@ -2008,6 +2008,25 @@ html[data-theme='dark'] .weather-alerts__record-surface {
   background: linear-gradient(155deg, rgba(18, 29, 48, 0.9), rgba(13, 22, 37, 0.92)) !important;
 }
 
+.power-outages-table__header {
+  background: rgb(241, 245, 249);
+}
+
+html[data-theme='dark'] .power-outages-table__header {
+  background: rgb(16, 26, 43);
+}
+
+.power-outages-popup__close:focus,
+.power-outages-popup__close:focus-visible {
+  outline: none !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme='dark'] .power-outages-popup__close:focus,
+html[data-theme='dark'] .power-outages-popup__close:focus-visible {
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.34);
+}
+
 button.weather-alerts__event-card {
   transition:
     transform 180ms ease,

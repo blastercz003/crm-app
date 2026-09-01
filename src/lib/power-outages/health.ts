@@ -44,6 +44,7 @@ function sourceHealth(
   storeRevision: number,
   nowMs: number,
   latestRun: LatestRun | undefined,
+  taskState: TaskState | undefined,
 ) {
   const successMs = state.last_success_at
     ? new Date(state.last_success_at).getTime()
@@ -52,11 +53,21 @@ function sourceHealth(
     ? Math.max(0, (nowMs - successMs) / 3_600_000)
     : null
   const storeCatalogPending = state.store_revision_processed < storeRevision
+  const consecutiveFailureCount = Math.max(
+    state.consecutive_failure_count,
+    taskState?.consecutive_failure_count ?? 0,
+  )
 
   let status: 'pending' | 'live' | 'warning' | 'error'
-  if (ageHours === null) status = 'pending'
-  else if (state.consecutive_failure_count >= 2 || ageHours > 36) status = 'error'
-  else if (state.consecutive_failure_count > 0 || ageHours > 30 || storeCatalogPending) status = 'warning'
+  if (ageHours === null) {
+    status = consecutiveFailureCount >= 2
+      ? 'error'
+      : consecutiveFailureCount > 0
+        ? 'warning'
+        : 'pending'
+  }
+  else if (consecutiveFailureCount >= 2 || ageHours > 14) status = 'error'
+  else if (consecutiveFailureCount > 0 || ageHours > 8 || storeCatalogPending) status = 'warning'
   else status = 'live'
   const metadata = state.metadata ?? {}
   const changeValue = metadata.changedRecordCount
@@ -71,9 +82,9 @@ function sourceHealth(
     lastSuccessAt: state.last_success_at,
     lastChangeAt: state.last_change_at,
     ageHours,
-    consecutiveFailureCount: state.consecutive_failure_count,
-    lastErrorCode: state.last_error_code,
-    lastErrorMessage: state.last_error_message,
+    consecutiveFailureCount,
+    lastErrorCode: state.last_error_code ?? taskState?.last_error_code ?? null,
+    lastErrorMessage: state.last_error_message ?? taskState?.last_error_message ?? null,
     activeOutageCount: state.active_outage_count,
     futureOutageCount: state.future_outage_count,
     dataVersion: state.data_version,
@@ -140,14 +151,22 @@ export async function getPowerOutageHealth() {
   for (const run of (recentRuns ?? []) as LatestRun[]) {
     if (!latestRuns.has(run.source)) latestRuns.set(run.source, run)
   }
+  const tasks = (taskStates ?? []) as TaskState[]
+  const taskByKey = new Map(tasks.map((task) => [task.task_key, task]))
   const sources = ((states ?? []) as SourceState[]).map((state) => (
-    sourceHealth(state, catalog.revision, now.getTime(), latestRuns.get(state.source))
+    sourceHealth(
+      state,
+      catalog.revision,
+      now.getTime(),
+      latestRuns.get(state.source),
+      taskByKey.get(`sync_${state.source}`),
+    )
   ))
   const hasError = sources.some((source) => source.status === 'error')
   const hasPending = sources.some((source) => source.status === 'pending')
   const hasWarning = sources.some((source) => source.status === 'warning')
     || matchRun?.status === 'failed'
-    || ((taskStates ?? []) as TaskState[]).some((task) => task.last_status === 'failed')
+    || tasks.some((task) => task.last_status === 'failed')
 
   return {
     status: hasError
@@ -164,7 +183,7 @@ export async function getPowerOutageHealth() {
     },
     sources,
     matching: matchRun ?? null,
-    tasks: (taskStates ?? []) as TaskState[],
+    tasks,
   }
 }
 

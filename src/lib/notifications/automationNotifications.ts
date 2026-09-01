@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createNotification } from '@/lib/notifications/createNotification'
 import { buildAssetDetailHref } from '@/lib/majetek/detail'
 import { getJobPpNotRequiredSet } from '@/lib/jobs/pp-requirements'
@@ -116,6 +118,7 @@ type AutomationRunResult = {
   sent: number
   skippedOutsideWindow: boolean
   details: {
+    repairedOfferApprovals: number
     meetingsOverdue24h: number
     tasksOverdue: number
     jobsMissingPp: number
@@ -146,6 +149,85 @@ type StickyNoteReminderRow = {
   user_id: string
   title: string | null
   reminder_at: string
+}
+
+type SubmittedOfferForNotificationRepair = {
+  id: string
+  offer_number: string
+  current_version: number
+  submitted_version: number | null
+  created_by: string
+  approver_user_id: string | null
+}
+
+async function repairMissingOfferApprovalNotifications(supabase: ServiceClient) {
+  const { data: offers, error: offersError } = await supabase
+    .from('offers')
+    .select('id, offer_number, current_version, submitted_version, created_by, approver_user_id')
+    .eq('status', 'submitted')
+    .not('submitted_version', 'is', null)
+    .not('approver_user_id', 'is', null)
+    .order('submitted_at', { ascending: false })
+    .limit(500)
+
+  if (offersError) {
+    throw new Error(`Oprava notifikací nabídek selhala při načítání nabídek: ${offersError.message}`)
+  }
+
+  const rows = (offers ?? []) as SubmittedOfferForNotificationRepair[]
+  if (rows.length === 0) return 0
+
+  const offerIds = rows.map((offer) => offer.id)
+  const authorIds = Array.from(new Set(rows.map((offer) => offer.created_by)))
+  const [{ data: existing, error: existingError }, { data: profiles, error: profilesError }] =
+    await Promise.all([
+      supabase
+        .from('notifications')
+        .select('entity_id')
+        .eq('type', 'offer_approval_requested')
+        .in('entity_id', offerIds),
+      supabase.from('profiles').select('id, name').in('id', authorIds),
+    ])
+
+  if (existingError) {
+    throw new Error(`Oprava notifikací nabídek selhala při kontrole historie: ${existingError.message}`)
+  }
+  if (profilesError) {
+    throw new Error(`Oprava notifikací nabídek selhala při načítání autorů: ${profilesError.message}`)
+  }
+
+  const notifiedOfferIds = new Set(
+    (existing ?? []).map((notification) => String(notification.entity_id ?? '')).filter(Boolean)
+  )
+  const authorNames = new Map(
+    (profiles ?? []).map((profile) => [String(profile.id), String(profile.name ?? 'Uživatel')])
+  )
+  let repaired = 0
+
+  for (const offer of rows) {
+    if (notifiedOfferIds.has(offer.id) || !offer.approver_user_id) continue
+
+    const version = offer.submitted_version ?? offer.current_version
+    const notification = await createNotification({
+      supabase,
+      recipientUserId: offer.approver_user_id,
+      actorUserId: offer.created_by,
+      category: 'offers',
+      type: 'offer_approval_requested',
+      title: 'Nabídka ke schválení',
+      message: `${authorNames.get(offer.created_by) ?? 'Uživatel'} odeslal nabídku ${offer.offer_number} ke schválení.`,
+      entityType: 'offer',
+      entityId: offer.id,
+      href: `/offers/${offer.id}`,
+      priority: 'high',
+      dedupeKey: `offer_approval_requested:${offer.id}:${version}`,
+      returnExistingOnDuplicate: true,
+    })
+
+    if (notification && !notification.deduplicated) repaired += 1
+  }
+
+  return repaired
 }
 
 type MeetingRow = {
@@ -969,16 +1051,18 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
     throw new Error('Chybí SUPABASE_SERVICE_ROLE_KEY nebo NEXT_PUBLIC_SUPABASE_URL pro automatické notifikace.')
   }
 
-  const [activityReminders, stickyNoteReminders] = await Promise.all([
+  const [activityReminders, stickyNoteReminders, repairedOfferApprovals] = await Promise.all([
     sendActivityReminderNotifications(supabase, now),
     sendStickyNoteReminderNotifications(supabase, now),
+    repairMissingOfferApprovalNotifications(supabase),
   ])
 
   if (!isWithinSendWindow(now)) {
     return {
-      sent: activityReminders.sent + stickyNoteReminders.sent,
+      sent: repairedOfferApprovals + activityReminders.sent + stickyNoteReminders.sent,
       skippedOutsideWindow: true,
       details: {
+        repairedOfferApprovals,
         meetingsOverdue24h: 0,
         tasksOverdue: 0,
         jobsMissingPp: 0,
@@ -1011,10 +1095,12 @@ export async function runNotificationAutomations(now = new Date()): Promise<Auto
       jobsMissingPpTechnicians +
       receivedInvoicesDue +
       assetInsuranceExpiring6w +
+      repairedOfferApprovals +
       activityReminders.sent +
       stickyNoteReminders.sent,
     skippedOutsideWindow: false,
     details: {
+      repairedOfferApprovals,
       meetingsOverdue24h,
       tasksOverdue,
       jobsMissingPp,

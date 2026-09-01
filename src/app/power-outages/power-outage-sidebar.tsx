@@ -108,6 +108,7 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const status = STATUS_PRESENTATION[source.status]
+  const needsAttention = Boolean(refreshError) || source.status === 'warning' || source.status === 'error'
 
   const refresh = async () => {
     if (refreshing) return
@@ -134,7 +135,17 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
         </button>
         <div className="flex shrink-0 items-center gap-1.5">
           <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Ručně obnovit data ${sourceName(source.source)}`} title="Ručně obnovit data" className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button>
-          <span className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold tracking-[0.07em] ${status.badge}`}><i aria-hidden className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />{status.label}</span>
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`${status.label} – otevřít provozní detail ${sourceName(source.source)}`}
+            title="Otevřít provozní detail"
+            className={`relative inline-flex h-8 w-[82px] items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold tracking-[0.07em] transition hover:-translate-y-px ${status.badge}`}
+          >
+            <i aria-hidden className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+            {status.label}
+            {needsAttention ? <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--surface-strong)] bg-amber-400 text-[9px] font-black leading-none text-slate-950 shadow-sm">!</span> : null}
+          </button>
         </div>
       </div>
 
@@ -150,7 +161,6 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
           <ChevronRight aria-hidden size={15} className="shrink-0 text-[var(--text-secondary)]" />
         </div>
       </button>
-      {source.lastErrorMessage || refreshError ? <p className="mt-2 line-clamp-2 text-[9px] font-semibold leading-4 text-red-600 lg:mt-1.5 [html[data-theme=dark]_&]:text-red-300">{refreshError ?? source.lastErrorMessage}</p> : null}
     </section>
   )
 }
@@ -211,7 +221,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
             <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Aktuální stav zdroje</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{status.label}</strong></span>
-            <span className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[8px] font-bold tracking-[0.07em] ${status.badge}`}><i className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />{status.label}</span>
+            <span className={`inline-flex h-8 w-[82px] items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold tracking-[0.07em] ${status.badge}`}><i className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />{status.label}</span>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <PowerOutageDetailRow label="Poslední pokus" value={formatDateTime(diagnostic.sourceState.lastAttemptAt)} />

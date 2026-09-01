@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createClient } from '@/lib/supabase/server'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { sendPushNotificationToUser } from './sendPushNotification'
@@ -35,7 +37,11 @@ export async function createNotification(input: CreateNotificationInput) {
     return null
   }
 
-  const supabase = input.supabase ?? (await createClient())
+  // Notification creation is a server-side operation. Always prefer the
+  // service-role client so a legitimate cross-user notification does not
+  // depend on the actor's RLS permissions. Browser clients never receive the
+  // service key and cannot call this module directly.
+  const supabase = getServiceRoleClient() ?? input.supabase ?? (await createClient())
 
   const { data: createdNotification, error } = await supabase
     .from('notifications')
