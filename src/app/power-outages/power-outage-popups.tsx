@@ -40,7 +40,11 @@ function formatDateTime(value: string | null) {
 }
 
 function sourceName(source: PowerOutageListItem['source']) {
-  return source === 'cez' ? 'ČEZ Distribuce' : 'EG.D'
+  return source === 'cez' ? 'ČEZ Distribuce' : source === 'egd' ? 'EG.D' : 'PREdistribuce'
+}
+
+function sourceLinkLabel(source: PowerOutageListItem['source']) {
+  return source === 'cez' ? 'Vyhledat u ČEZ' : source === 'egd' ? 'Otevřít mapu EG.D' : 'Otevřít přehled PRE'
 }
 
 function statusLabel(status: PowerOutageListItem['sourceStatus']) {
@@ -327,7 +331,7 @@ function DetailPopup({ item, detail, loading, error, onClose, onStatusChanged }:
 
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {detail.announcementUrl ? <a href={detail.announcementUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/12 px-4 text-[9px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px hover:bg-sky-500/18"><FileText aria-hidden size={14} /> Oznámení ČEZ (PDF)</a> : null}
-            {detail.sourceUrl ? <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 text-[9px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px"><ExternalLink aria-hidden size={14} /> {detail.source === 'cez' ? 'Vyhledat u ČEZ' : 'Otevřít mapu EG.D'}</a> : null}
+            {detail.sourceUrl ? <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 text-[9px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px"><ExternalLink aria-hidden size={14} /> {sourceLinkLabel(detail.source)}</a> : null}
             <button type="button" onClick={() => setResolutionOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 text-[9px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px sm:col-span-2">
               {detail.matchStatus === 'needs_review' ? <ShieldCheck aria-hidden size={14} /> : <RotateCcw aria-hidden size={14} />}
               {detail.matchStatus === 'needs_review' ? 'Ověřit shodu' : detail.matchStatus === 'confirmed' ? 'Upravit ověření' : 'Znovu posoudit'}
@@ -366,6 +370,7 @@ function DetailPopup({ item, detail, loading, error, onClose, onStatusChanged }:
               <PowerOutageDetailRow label="Poprvé zachyceno" value={formatDateTime(detail.firstSeenAt)} />
               <PowerOutageDetailRow label="Naposledy potvrzeno" value={formatDateTime(detail.lastSeenAt)} />
               {detail.sourceUpdatedAt ? <PowerOutageDetailRow label="Aktualizováno distributorem" value={formatDateTime(detail.sourceUpdatedAt)} /> : null}
+              {detail.contractor ? <PowerOutageDetailRow label="Provádějící firma" value={detail.contractor} /> : null}
             </div>
             {detail.description ? <p className="mt-2 whitespace-pre-line rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3.5 text-xs leading-5 text-[var(--text-primary)]">{detail.description}</p> : null}
           </details>

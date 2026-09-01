@@ -3,6 +3,7 @@ import type { PowerOutageSource } from './types'
 const CEZ_OUTAGE_SEARCH_URL = 'https://www.cezdistribuce.cz/pro-zakazniky/potrebuji-vyresit/stavajici-pripojeni/overeni-planovane-odstavky'
 const CEZ_ANNOUNCEMENT_ORIGIN = 'https://cdn.bezstavy.cz'
 const EGD_OUTAGE_MAP_URL = 'https://www.egd.cz/odstavky-elektrina'
+const PRE_OUTAGE_LIST_URL = 'https://www.predistribuce.cz/cs/distribucni-sit/stav-distribucni-site/'
 
 const CEZ_PDF_KEY_PATTERN = /^pdf\/[a-z0-9][a-z0-9._-]*\.pdf$/i
 
@@ -11,6 +12,7 @@ export function powerOutageSourceUrl(
   municipalityCode?: string | null,
 ) {
   if (source === 'egd') return EGD_OUTAGE_MAP_URL
+  if (source === 'pre') return PRE_OUTAGE_LIST_URL
 
   const url = new URL(CEZ_OUTAGE_SEARCH_URL)
   const code = municipalityCode?.trim()
@@ -26,4 +28,3 @@ export function cezAnnouncementUrl(value: unknown) {
   const url = new URL(candidate, `${CEZ_ANNOUNCEMENT_ORIGIN}/`)
   return url.origin === CEZ_ANNOUNCEMENT_ORIGIN ? url.toString() : null
 }
-

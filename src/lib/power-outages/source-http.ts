@@ -10,6 +10,7 @@ export async function fetchPowerOutageSource(
     timeoutMs?: number
     maxBytes?: number
     retryCount?: number
+    decodeText?: boolean
   } = {},
 ) {
   const attempts = Math.min(4, Math.max(1, (options.retryCount ?? 2) + 1))
@@ -59,7 +60,9 @@ export async function fetchPowerOutageSource(
       return {
         response,
         body,
-        text: new TextDecoder('utf-8', { fatal: true }).decode(body),
+        text: options.decodeText === false
+          ? ''
+          : new TextDecoder('utf-8', { fatal: true }).decode(body),
       }
     } catch (error) {
       lastError = error

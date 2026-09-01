@@ -92,7 +92,7 @@ function normalize(value: string) {
 function SourceBadge({ source }: { source: PowerOutageSource }) {
   return (
     <span className="inline-flex h-5 w-[36px] items-center justify-center whitespace-nowrap rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-1 text-[7px] font-bold uppercase tracking-[0.06em] text-[var(--accent)] lg:h-6 lg:w-[44px] lg:px-1.5 lg:text-[9px] lg:tracking-[0.08em]">
-      {source === 'cez' ? 'ČEZ' : 'EG.D'}
+      {source === 'cez' ? 'ČEZ' : source === 'egd' ? 'EG.D' : 'PRE'}
     </span>
   )
 }
@@ -518,6 +518,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
             <option value="all">Všichni distributoři</option>
             <option value="cez">ČEZ</option>
             <option value="egd">EG.D</option>
+            <option value="pre">PRE</option>
           </SelectControl>
           <SelectControl label="Termín" value={timeFilter} onChange={(value) => setTimeFilter(value as TimeFilter)}>
             <option value="all">Všechny termíny</option>

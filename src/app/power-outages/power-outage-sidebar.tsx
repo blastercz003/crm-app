@@ -47,7 +47,11 @@ function formatDateTime(value: string | null) {
 }
 
 function sourceName(source: PowerOutageSource) {
-  return source === 'cez' ? 'ČEZ Distribuce' : 'EG.D'
+  return source === 'cez' ? 'ČEZ Distribuce' : source === 'egd' ? 'EG.D' : 'PREdistribuce'
+}
+
+function sourceShortName(source: PowerOutageSource) {
+  return source === 'cez' ? 'ČEZ' : source === 'egd' ? 'EG.D' : 'PRE'
 }
 
 const STATUS_PRESENTATION: Record<PowerOutageSourceStatus, { label: string; badge: string; dot: string }> = {
@@ -214,9 +218,10 @@ function StoreCoveragePanel({ coverage, onOpenAnalysis, onOpenDetail }: { covera
 
       <div className="mt-2.5">
         <span className="mb-1 block text-[6px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Distribuční území</span>
-        <div className="grid grid-cols-3 gap-1.5 text-center text-[7px] font-bold uppercase tracking-[0.035em]">
+        <div className="grid grid-cols-4 gap-1 text-center text-[7px] font-bold uppercase tracking-[0.02em]">
           <span className="rounded-xl border border-orange-500/35 bg-orange-500/8 px-1.5 py-2 text-[10px] text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></span>
           <span className="rounded-xl border border-red-500/35 bg-red-500/8 px-1.5 py-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
+          <span className="rounded-xl border border-violet-500/35 bg-violet-500/8 px-1 py-2 text-[10px] text-violet-700 [html[data-theme=dark]_&]:text-violet-300">PRE <strong className="ml-0.5 text-[10px] text-[var(--text-primary)]">{coverage.preStoreCount}</strong></span>
           <span className="rounded-xl border border-slate-400/30 bg-slate-400/8 px-1.5 py-2 text-[10px] text-slate-600 [html[data-theme=dark]_&]:text-slate-300">Bez <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></span>
         </div>
       </div>
@@ -235,7 +240,7 @@ function catalogChangeLabel(kind: PowerOutageStoreCoverage['catalogLastChangeKin
 
 function CoverageDetailPopup({ coverage, sources, onClose }: { coverage: PowerOutageStoreCoverage; sources: PowerOutageSourceSummary[]; onClose: () => void }) {
   const percent = Math.min(100, Math.max(0, coverage.coveragePercent))
-  const sourceRows = (['cez', 'egd'] as const).map((source) => ({
+  const sourceRows = (['cez', 'egd', 'pre'] as const).map((source) => ({
     source,
     summary: sources.find((item) => item.source === source) ?? null,
   }))
@@ -266,9 +271,10 @@ function CoverageDetailPopup({ coverage, sources, onClose }: { coverage: PowerOu
 
         <section className="mt-4">
           <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Distribuční území</h3>
-          <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="rounded-2xl border border-orange-500/35 bg-orange-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></div>
             <div className="rounded-2xl border border-red-500/35 bg-red-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></div>
+            <div className="rounded-2xl border border-violet-500/35 bg-violet-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-violet-700 [html[data-theme=dark]_&]:text-violet-300">PRE</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.preStoreCount}</strong></div>
             <div className="rounded-2xl border border-slate-400/30 bg-slate-400/8 p-3 text-center"><small className="block text-[8px] font-bold text-slate-600 [html[data-theme=dark]_&]:text-slate-300">BEZ</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></div>
           </div>
           <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Údaj vyjadřuje přiřazené distribuční území prodejny, nikoliv počet odstávek. „Bez“ znamená, že území zatím nebylo spolehlivě přiřazeno.</p>
@@ -284,11 +290,11 @@ function CoverageDetailPopup({ coverage, sources, onClose }: { coverage: PowerOu
 
         <section className="mt-4">
           <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zpracování aktuální revize</h3>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
             {sourceRows.map(({ source, summary }) => {
               const processedRevision = summary?.storeRevisionProcessed ?? 0
               const current = processedRevision >= coverage.catalogRevision
-              return <div key={source} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-3"><strong className="text-xs text-[var(--text-primary)]">{source === 'cez' ? 'ČEZ' : 'EG.D'}</strong><span className={`rounded-lg border px-2 py-1 text-[7px] font-bold ${current ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300' : 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{current ? 'AKTUÁLNÍ' : 'ZPRACOVÁNÍ'}</span></div><p className="mt-2 text-[9px] text-[var(--text-secondary)]">Zpracovaná revize <strong className="text-[var(--text-primary)]">{processedRevision} / {coverage.catalogRevision}</strong></p></div>
+              return <div key={source} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-3"><strong className="text-xs text-[var(--text-primary)]">{sourceShortName(source)}</strong><span className={`rounded-lg border px-2 py-1 text-[7px] font-bold ${current ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300' : 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{current ? 'AKTUÁLNÍ' : 'ZPRACOVÁNÍ'}</span></div><p className="mt-2 text-[9px] text-[var(--text-secondary)]">Zpracovaná revize <strong className="text-[var(--text-primary)]">{processedRevision} / {coverage.catalogRevision}</strong></p></div>
             })}
           </div>
         </section>
@@ -358,7 +364,9 @@ function SourceProgress({ diagnostic }: { diagnostic: PowerOutageSourceDiagnosti
 function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: { source: PowerOutageSource; diagnostic: PowerOutageSourceDiagnostic | null; loading: boolean; error: string | null; onClose: () => void }) {
   const schedule = source === 'cez'
     ? 'Hlavní kontrola každých 6 hodin; rozpracované dávky pokračují každých 15 minut.'
-    : 'Kontrola celé distribuční oblasti každých 6 hodin s časovým posunem vůči ČEZ.'
+    : source === 'egd'
+      ? 'Kontrola celé distribuční oblasti každých 6 hodin s časovým posunem vůči ČEZ.'
+      : 'Stažení oficiálního exportu celé distribuční oblasti každé 3 hodiny; jeden malý požadavek za běh.'
   const status = diagnostic ? STATUS_PRESENTATION[diagnostic.status] : STATUS_PRESENTATION.pending
 
   return (

@@ -5,6 +5,7 @@ import { getServiceRoleClient } from '@/lib/supabase/service'
 export type PowerOutageTaskKey =
   | 'sync_cez'
   | 'sync_egd'
+  | 'sync_pre'
   | 'store_queue'
   | 'watchdog'
   | 'archive'

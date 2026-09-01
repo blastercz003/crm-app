@@ -12,6 +12,7 @@ type PreferenceRow = {
 
 type OutageRow = {
   id: string
+  source: 'cez' | 'egd' | 'pre'
   source_status: 'scheduled' | 'active' | 'completed' | 'cancelled'
   starts_at: string
   ends_at: string
@@ -271,7 +272,7 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
     .select(`
       id,outage_id,store_chain_name,store_number,store_city,store_address,
       first_matched_at,resolved_at,
-      outage:power_outages!inner(id,source_status,starts_at,ends_at)
+      outage:power_outages!inner(id,source,source_status,starts_at,ends_at)
     `)
     .eq('match_status', 'confirmed')
   if (matchError) throw matchError
@@ -296,6 +297,12 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
     for (const match of matches) {
       const outage = relationOne(match.outage)
       if (!outage) {
+        skippedCount += 1
+        continue
+      }
+      // PRE je zavedené bez notifikací. Aktivace bude samostatný, výslovný krok
+      // až po ověření stability syntetických identifikátorů zdroje.
+      if (outage.source === 'pre') {
         skippedCount += 1
         continue
       }

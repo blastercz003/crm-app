@@ -35,7 +35,7 @@ async function run(request: Request, allowAdminSession: boolean) {
     let matchingSkipped = false
     if (result.processedCount > 0) {
       try {
-        // Pouze přepočet nad daty v Supabase; nevytváří další požadavky na ČEZ ani EG.D.
+        // Pouze přepočet nad daty v Supabase; nevytváří další požadavky na ČEZ, EG.D ani PRE.
         matching = await reconcilePowerOutageStoreMatches({ triggerKind: 'store_change' })
       } catch (matchingError) {
         if (matchingError instanceof StoreMatchSyncAlreadyRunningError) {

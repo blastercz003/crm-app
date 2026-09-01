@@ -5,7 +5,7 @@ import { getPowerOutageRuntimeContext } from './access'
 import type { PowerOutageSource, PowerOutageSourceDiagnostic } from './types'
 
 type SourceState = {
-  source: 'cez' | 'egd'
+  source: 'cez' | 'egd' | 'pre'
   last_attempt_at: string | null
   last_success_at: string | null
   last_change_at: string | null
@@ -20,7 +20,7 @@ type SourceState = {
 }
 
 type LatestRun = {
-  source: 'cez' | 'egd'
+  source: 'cez' | 'egd' | 'pre'
   status: 'running' | 'succeeded' | 'no_change' | 'failed' | 'skipped'
   source_record_count: number
   outage_upsert_count: number
@@ -79,10 +79,9 @@ function sourceHealth(
     && cezScan
     && finiteInteger(cezScan.storeRevision) === storeRevision,
   )
-  const processing = storeCatalogPending && (
-    activeCezScan
-    || taskState?.last_status === 'running'
-    || consecutiveFailureCount === 0
+  const processing = taskState?.last_status === 'running' || (
+    storeCatalogPending
+    && (activeCezScan || consecutiveFailureCount === 0)
   )
   const lastProgressMs = state.last_attempt_at ? Date.parse(state.last_attempt_at) : Number.NaN
   const taskStartedMs = taskState?.last_started_at ? Date.parse(taskState.last_started_at) : Number.NaN
@@ -93,7 +92,7 @@ function sourceHealth(
       : taskState?.last_status === 'running'
         ? !Number.isFinite(taskStartedMs) || nowMs - taskStartedMs > 90 * 60 * 1_000
         : Number.isFinite(catalogChangedMs) && nowMs - catalogChangedMs > (
-            state.source === 'cez' ? 45 * 60 * 1_000 : 7 * 60 * 60 * 1_000
+            state.source === 'cez' ? 45 * 60 * 1_000 : state.source === 'pre' ? 4 * 60 * 60 * 1_000 : 7 * 60 * 60 * 1_000
           )
   )
 
@@ -105,8 +104,8 @@ function sourceHealth(
         ? 'warning'
         : 'pending'
   }
-  else if (consecutiveFailureCount >= 2 || ageHours > 14) status = 'error'
-  else if (consecutiveFailureCount > 0 || ageHours > 8 || processingStalled) status = 'warning'
+  else if (consecutiveFailureCount >= 2 || ageHours > (state.source === 'pre' ? 8 : 14)) status = 'error'
+  else if (consecutiveFailureCount > 0 || ageHours > (state.source === 'pre' ? 5 : 8) || processingStalled) status = 'warning'
   else if (processing) status = 'processing'
   else status = 'live'
   const changeValue = latestRunMetadata.changedRecordCount
@@ -137,7 +136,7 @@ function sourceHealth(
         : null,
     municipalityCoverage: typeof coverageValue === 'number' && Number.isFinite(coverageValue)
       ? `${Math.max(0, Math.trunc(coverageValue))} obcí`
-      : state.source === 'egd'
+      : state.source === 'egd' || state.source === 'pre'
         ? 'Celá distribuční oblast'
         : 'Probíhá průběžná kontrola',
   }
@@ -154,6 +153,7 @@ export async function getPowerOutageHealth() {
     { data: taskStates, error: taskStateError },
     { data: latestCezRun, error: latestCezRunError },
     { data: latestEgdRun, error: latestEgdRunError },
+    { data: latestPreRun, error: latestPreRunError },
   ] = await Promise.all([
     client
       .from('power_outage_source_state')
@@ -190,6 +190,14 @@ export async function getPowerOutageHealth() {
       .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    client
+      .from('power_outage_sync_runs')
+      .select('source,status,source_record_count,outage_upsert_count,metadata')
+      .eq('source', 'pre')
+      .in('status', ['succeeded', 'no_change'])
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
   if (stateError) throw stateError
   if (catalogError) throw catalogError
@@ -197,11 +205,13 @@ export async function getPowerOutageHealth() {
   if (taskStateError) throw taskStateError
   if (latestCezRunError) throw latestCezRunError
   if (latestEgdRunError) throw latestEgdRunError
+  if (latestPreRunError) throw latestPreRunError
 
   const now = new Date()
   const latestRuns = new Map<PowerOutageSource, LatestRun>()
   if (latestCezRun) latestRuns.set('cez', latestCezRun as LatestRun)
   if (latestEgdRun) latestRuns.set('egd', latestEgdRun as LatestRun)
+  if (latestPreRun) latestRuns.set('pre', latestPreRun as LatestRun)
   const tasks = (taskStates ?? []) as TaskState[]
   const taskByKey = new Map(tasks.map((task) => [task.task_key, task]))
   const sources = ((states ?? []) as SourceState[]).map((state) => (
@@ -245,9 +255,9 @@ export async function getPowerOutageHealth() {
 export async function getPowerOutageSourceDiagnostic(
   source: PowerOutageSource,
 ): Promise<PowerOutageSourceDiagnostic> {
-  if (source !== 'cez' && source !== 'egd') throw new Error('Neznámý zdroj odstávek.')
+  if (source !== 'cez' && source !== 'egd' && source !== 'pre') throw new Error('Neznámý zdroj odstávek.')
   const { supabase } = await getPowerOutageRuntimeContext()
-  const taskKey = source === 'cez' ? 'sync_cez' : 'sync_egd'
+  const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
 
   const [stateResult, taskResult, catalogResult, storeCountResult, runsResult, health] = await Promise.all([
     supabase

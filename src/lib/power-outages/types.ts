@@ -1,4 +1,4 @@
-export type PowerOutageSource = 'cez' | 'egd'
+export type PowerOutageSource = 'cez' | 'egd' | 'pre'
 export type PowerOutageMatchStatus = 'confirmed' | 'needs_review' | 'dismissed'
 export type PowerOutageSourceStatus = 'pending' | 'live' | 'processing' | 'warning' | 'error'
 
@@ -56,6 +56,7 @@ export type PowerOutageDetail = {
   sourceStatus: PowerOutageListItem['sourceStatus']
   title: string
   description: string | null
+  contractor: string | null
   startsAt: string
   endsAt: string
   archiveAt: string
@@ -200,6 +201,7 @@ export type PowerOutageStoreCoverage = {
   coveragePercent: number
   cezStoreCount: number
   egdStoreCount: number
+  preStoreCount: number
   unknownDistributorCount: number
   catalogRevision: number
   catalogLastChangedAt: string

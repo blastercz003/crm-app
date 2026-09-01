@@ -69,7 +69,7 @@ export type CezStoreLookup = {
   address: string
   verifiedAddressId?: number | null
   verifiedTownCode?: number | null
-  distributor?: 'cez' | 'egd' | 'unknown' | null
+  distributor?: 'cez' | 'egd' | 'pre' | 'unknown' | null
 }
 
 export type CezCatalogLoadResult = {
@@ -221,7 +221,7 @@ export async function loadCezOutagesForStoreCatalog(
     [...storesByCity.values()],
     options.concurrency ?? 1,
     async (cityStores) => {
-      if (cityStores.every((store) => store.distributor === 'egd')) {
+      if (cityStores.every((store) => store.distributor === 'egd' || store.distributor === 'pre')) {
         return { address: null, attemptedCount: 0 }
       }
       const verified = cityStores.find((store) => (

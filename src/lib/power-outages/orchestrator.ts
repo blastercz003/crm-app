@@ -3,13 +3,14 @@ import 'server-only'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { CezSyncAlreadyRunningError, importCezOutagesForStores } from './cez-sync'
 import { EgdSyncAlreadyRunningError, importEgdOutages } from './egd-sync'
+import { PreSyncAlreadyRunningError, importPreOutages } from './pre-sync'
 import {
   reconcilePowerOutageStoreMatches,
   StoreMatchSyncAlreadyRunningError,
 } from './store-match-sync'
 import { powerOutageErrorMessage } from './error-message'
 
-export type PowerOutageSyncSource = 'all' | 'cez' | 'egd'
+export type PowerOutageSyncSource = 'all' | 'cez' | 'egd' | 'pre'
 
 type StoreRow = {
   id: string
@@ -21,7 +22,7 @@ type StoreRegistryLookup = {
   store_id: string
   ruian_address_id: number | null
   municipality_code: string | null
-  distributor: 'cez' | 'egd' | 'unknown'
+  distributor: 'cez' | 'egd' | 'pre' | 'unknown'
 }
 
 async function loadStoreCatalog() {
@@ -73,7 +74,7 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
   const startedAt = new Date().toISOString()
   const stores = await loadStoreCatalog()
   const sourceResults: Array<{
-    source: 'cez' | 'egd'
+    source: 'cez' | 'egd' | 'pre'
     ok: boolean
     skipped?: boolean
     result?: unknown
@@ -81,7 +82,7 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
   }> = []
 
   // Zdroje zpracujeme postupně. Snižuje to maximální paměť při velkém EG.D
-  // snapshotu a omezuje současný tlak na dvě veřejná rozhraní.
+  // snapshotu a omezuje současný tlak na veřejná rozhraní distributorů.
   if (source === 'all' || source === 'cez') {
     try {
       const result = await importCezOutagesForStores({
@@ -126,6 +127,23 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
           source: 'egd',
           ok: false,
           error: powerOutageErrorMessage(error, 'Synchronizace EG.D selhala.'),
+        })
+      }
+    }
+  }
+
+  if (source === 'all' || source === 'pre') {
+    try {
+      const result = await importPreOutages({ triggerKind: 'scheduled' })
+      sourceResults.push({ source: 'pre', ok: true, result })
+    } catch (error) {
+      if (error instanceof PreSyncAlreadyRunningError) {
+        sourceResults.push({ source: 'pre', ok: true, skipped: true })
+      } else {
+        sourceResults.push({
+          source: 'pre',
+          ok: false,
+          error: powerOutageErrorMessage(error, 'Synchronizace PRE selhala.'),
         })
       }
     }

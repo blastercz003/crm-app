@@ -4,7 +4,7 @@ import { getServiceRoleClient } from '@/lib/supabase/service'
 import { syncPowerOutages } from './orchestrator'
 
 type SourceRefreshState = {
-  source: 'cez' | 'egd'
+  source: 'cez' | 'egd' | 'pre'
   last_success_at: string | null
   consecutive_failure_count: number
   store_revision_processed: number
@@ -32,7 +32,7 @@ export async function refreshPowerOutagesIfNeeded() {
 
   const typedSources = (sources ?? []) as SourceRefreshState[]
   const reasons: string[] = []
-  if (typedSources.length !== 2 || typedSources.some((source) => !source.last_success_at)) {
+  if (typedSources.length !== 3 || typedSources.some((source) => !source.last_success_at)) {
     reasons.push('initial_sync')
   }
   if (typedSources.some((source) => source.consecutive_failure_count > 0)) {

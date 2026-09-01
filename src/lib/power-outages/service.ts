@@ -66,7 +66,7 @@ type ViewedMatchRow = {
 
 type RegistryRow = {
   store_chain_name: string
-  distributor: 'cez' | 'egd' | 'unknown'
+  distributor: 'cez' | 'egd' | 'pre' | 'unknown'
   verification_status: 'pending' | 'verified' | 'probable' | 'needs_review' | 'not_found' | 'error'
   needs_refresh: boolean
   is_active: boolean
@@ -179,6 +179,7 @@ function storeCoverage(
     coveragePercent: active.length > 0 ? Math.round((ready / active.length) * 1_000) / 10 : 0,
     cezStoreCount: active.filter((row) => row.distributor === 'cez').length,
     egdStoreCount: active.filter((row) => row.distributor === 'egd').length,
+    preStoreCount: active.filter((row) => row.distributor === 'pre').length,
     unknownDistributorCount: active.filter((row) => row.distributor === 'unknown').length,
     catalogRevision: catalog.revision,
     catalogLastChangedAt: catalog.last_changed_at,
@@ -578,6 +579,9 @@ export async function getPowerOutageDetail(matchId: string): Promise<PowerOutage
     sourceStatus: outage.source_status,
     title: outage.title?.trim() || 'Plánovaná odstávka elektřiny',
     description: outage.description,
+    contractor: typeof outage.metadata?.contractor === 'string'
+      ? outage.metadata.contractor.trim() || null
+      : null,
     startsAt: outage.starts_at,
     endsAt: outage.ends_at,
     archiveAt: outage.archive_at,

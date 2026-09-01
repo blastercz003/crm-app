@@ -83,6 +83,7 @@ function distributor(value: string | null | undefined) {
   const compact = normalized.replace(/\s+/g, '')
   if (compact.includes('cez')) return 'cez' as const
   if (compact.includes('egd') || compact.includes('eon')) return 'egd' as const
+  if (compact.includes('predistribuce') || compact === 'pre') return 'pre' as const
   return 'unknown' as const
 }
 

@@ -3,6 +3,7 @@ import { ZodError } from 'zod'
 import { reportRouteError } from '@/lib/errors/reportRouteError'
 import { probeCezSource } from '@/lib/power-outages/cez-source'
 import { probeEgdSource } from '@/lib/power-outages/egd-source'
+import { probePreSource } from '@/lib/power-outages/pre-source'
 import { isPowerOutageRequestAuthorized } from '@/lib/power-outages/request-access'
 
 export const runtime = 'nodejs'
@@ -31,9 +32,9 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const source = url.searchParams.get('source') ?? 'all'
-  if (!['all', 'cez', 'egd'].includes(source)) {
+  if (!['all', 'cez', 'egd', 'pre'].includes(source)) {
     return NextResponse.json(
-      { ok: false, error: 'Parametr source musí být all, cez nebo egd.' },
+      { ok: false, error: 'Parametr source musí být all, cez, egd nebo pre.' },
       { status: 400, headers: RESPONSE_HEADERS },
     )
   }
@@ -64,6 +65,13 @@ export async function GET(request: Request) {
               ok: false as const,
               error: errorMessage(error),
             }))
+        : null,
+      source === 'all' || source === 'pre'
+        ? probePreSource().catch((error: unknown) => ({
+            source: 'pre' as const,
+            ok: false as const,
+            error: errorMessage(error),
+          }))
         : null,
     ].filter((probe): probe is NonNullable<typeof probe> => probe !== null),
   )

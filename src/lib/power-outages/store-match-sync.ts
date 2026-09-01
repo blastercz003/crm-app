@@ -9,7 +9,7 @@ import {
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
-type OutageRow = { id: string; source: 'cez' | 'egd' }
+type OutageRow = { id: string; source: 'cez' | 'egd' | 'pre' }
 type JsonObject = Record<string, unknown>
 type ExistingMatchRow = {
   id: string

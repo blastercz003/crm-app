@@ -20,9 +20,9 @@ async function run(request: Request, allowAdminSession: boolean) {
   }
 
   const sourceValue = new URL(request.url).searchParams.get('source') ?? 'all'
-  if (!['all', 'cez', 'egd'].includes(sourceValue)) {
+  if (!['all', 'cez', 'egd', 'pre'].includes(sourceValue)) {
     return NextResponse.json(
-      { ok: false, error: 'Parametr source musí být all, cez nebo egd.' },
+      { ok: false, error: 'Parametr source musí být all, cez, egd nebo pre.' },
       { status: 400, headers: HEADERS },
     )
   }
@@ -32,6 +32,8 @@ async function run(request: Request, allowAdminSession: boolean) {
       ? 'sync_cez'
       : sourceValue === 'egd'
         ? 'sync_egd'
+        : sourceValue === 'pre'
+          ? 'sync_pre'
         : null
     const lockToken = taskKey ? await claimPowerOutageTask(taskKey, 90 * 60) : null
     if (taskKey && !lockToken) {

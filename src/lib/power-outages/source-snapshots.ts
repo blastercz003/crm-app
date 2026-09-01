@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function storePowerOutageSourceSnapshot(input: {
   client: SupabaseClient
-  source: 'cez' | 'egd'
+  source: 'cez' | 'egd' | 'pre'
   payloadSha256: string
   payload: unknown
   recordCount: number
