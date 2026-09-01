@@ -62,7 +62,31 @@ function reasonLabel(reason: string) {
     content_changed: 'Změna zdrojových dat',
     city_match: 'Shoda města',
     street_match: 'Shoda ulice',
+    municipality_exact: 'Přesná shoda města',
+    street_exact: 'Přesná shoda ulice',
+    address_numbers_exact: 'Přesná shoda čísla domu',
+    address_numbers_partial: 'Částečná shoda čísla domu',
+    store_address_numbers_missing: 'U prodejny chybí číslo domu',
+    source_address_numbers_missing: 'U distributora chybí číslo domu',
+    auto_confirmed: 'Automaticky potvrzeno',
+    manual_confirmation_required: 'Vyžaduje ruční ověření',
   } as Record<string, string>)[reason] ?? reason.replaceAll('_', ' ')
+}
+
+function outageAddressLabel(address: PowerOutageDetail['addresses'][number] | undefined) {
+  if (!address) return 'Distributor neuvedl konkrétní adresu.'
+  return address.rawAddress
+    || [address.street, address.houseNumber, address.orientationNumber, address.municipality]
+      .filter(Boolean)
+      .join(' ')
+    || 'Distributor neuvedl konkrétní adresu.'
+}
+
+function matchMethodLabel(detail: PowerOutageDetail) {
+  if (detail.matchMethod === 'manual') return 'Ruční přiřazení'
+  if (detail.matchReasons.includes('address_numbers_exact')) return 'Město + ulice + číslo domu'
+  if (detail.matchReasons.includes('address_numbers_partial')) return 'Město + ulice + částečná shoda čísla'
+  return 'Město + ulice, číslo vyžaduje ověření'
 }
 
 export function PowerOutageDetailRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
@@ -262,6 +286,10 @@ function MatchResolutionPopup({
 
 function DetailPopup({ item, detail, loading, error, onClose, onStatusChanged }: { item: PowerOutageListItem; detail: PowerOutageDetail | null; loading: boolean; error: string | null; onClose: () => void; onStatusChanged: (status: PowerOutageListItem['matchStatus']) => void }) {
   const [resolutionOpen, setResolutionOpen] = useState(false)
+  const matchedAddress = detail?.addresses.find((address) => address.id === detail.outageAddressId)
+    ?? detail?.addresses[0]
+  const otherAddresses = detail?.addresses.filter((address) => address.id !== matchedAddress?.id) ?? []
+
   return (
     <PowerOutagePopupShell titleId={`power-outage-detail-${item.matchId}`} eyebrow="ODSTÁVKY · KOMPLETNÍ DETAIL" title={`${item.store.chainName} · ${item.store.storeNumber}`} icon={<Zap aria-hidden size={21} />} onClose={onClose}>
       {loading ? <LoadingDetail /> : error || !detail ? (
@@ -283,74 +311,88 @@ function DetailPopup({ item, detail, loading, error, onClose, onStatusChanged }:
             }`}>{matchLabel(detail.matchStatus)}</span>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <PowerOutageDetailRow label="Řetězec" value={detail.store.chainName} />
-            <PowerOutageDetailRow label="Číslo prodejny" value={detail.store.storeNumber} />
-            <PowerOutageDetailRow label="Distributor" value={sourceName(detail.source)} />
-            <PowerOutageDetailRow label="Termín od" value={formatDateTime(detail.startsAt)} />
-            <PowerOutageDetailRow label="Termín do" value={formatDateTime(detail.endsAt)} />
-            <PowerOutageDetailRow label="Archivace" value={formatDateTime(detail.archiveAt)} />
+          <section className="mt-4 rounded-[20px] border border-sky-400/25 bg-sky-500/6 p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><MapPin aria-hidden size={16} /></span>
+              <span className="min-w-0">
+                <strong className="block text-sm text-[var(--text-primary)]">{detail.store.city}</strong>
+                <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">{detail.store.address}</span>
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-sky-400/20 pt-3">
+              <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Termín od</small><strong className="mt-1 block text-[11px] tabular-nums text-[var(--text-primary)] sm:text-xs">{formatDateTime(detail.startsAt)}</strong></span>
+              <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Termín do</small><strong className="mt-1 block text-[11px] tabular-nums text-[var(--text-primary)] sm:text-xs">{formatDateTime(detail.endsAt)}</strong></span>
+            </div>
+          </section>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {detail.announcementUrl ? <a href={detail.announcementUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/12 px-4 text-[9px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px hover:bg-sky-500/18"><FileText aria-hidden size={14} /> Oznámení ČEZ (PDF)</a> : null}
+            {detail.sourceUrl ? <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 text-[9px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px"><ExternalLink aria-hidden size={14} /> {detail.source === 'cez' ? 'Vyhledat u ČEZ' : 'Otevřít mapu EG.D'}</a> : null}
+            <button type="button" onClick={() => setResolutionOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 text-[9px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px sm:col-span-2">
+              {detail.matchStatus === 'needs_review' ? <ShieldCheck aria-hidden size={14} /> : <RotateCcw aria-hidden size={14} />}
+              {detail.matchStatus === 'needs_review' ? 'Ověřit shodu' : detail.matchStatus === 'confirmed' ? 'Upravit ověření' : 'Znovu posoudit'}
+            </button>
           </div>
 
           <section className="mt-5">
-            <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><MapPin aria-hidden size={14} /> Prodejna a zdrojová oblast</h3>
-            <div className="mt-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
-              <strong className="text-sm text-[var(--text-primary)]">{detail.store.address}, {detail.store.city}</strong>
-              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{[detail.municipality, detail.district, detail.region].filter(Boolean).join(' · ') || 'Distributor neuvedl další územní údaje.'}</p>
-              {detail.addresses.length > 0 ? <div className="mt-3 flex flex-wrap gap-1.5">{detail.addresses.slice(0, 30).map((address) => <span key={address.id} className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2.5 py-1 text-[9px] text-[var(--text-secondary)]">{address.rawAddress || [address.street, address.houseNumber, address.municipality].filter(Boolean).join(' ')}</span>)}</div> : null}
-            </div>
-          </section>
-
-          <section className="mt-5">
-            <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><Database aria-hidden size={14} /> Zdrojová data</h3>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <PowerOutageDetailRow label="Název zdroje" value={detail.title} />
-              <PowerOutageDetailRow label="Aktualizováno distributorem" value={formatDateTime(detail.sourceUpdatedAt)} />
-              <PowerOutageDetailRow label="Poprvé zachyceno" value={formatDateTime(detail.firstSeenAt)} />
-              <PowerOutageDetailRow label="Naposledy potvrzeno" value={formatDateTime(detail.lastSeenAt)} />
-            </div>
-            {detail.description ? <p className="mt-2 whitespace-pre-line rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5 text-xs leading-5 text-[var(--text-primary)]">{detail.description}</p> : null}
-            <div className="mt-2 flex flex-wrap gap-2">
-              {detail.sourceUrl ? <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[9px] font-bold uppercase text-[var(--accent)] transition hover:-translate-y-px"><ExternalLink aria-hidden size={13} /> Zdroj distributora</a> : null}
-              {detail.announcementUrl ? <a href={detail.announcementUrl} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[9px] font-bold uppercase text-[var(--accent)] transition hover:-translate-y-px"><FileText aria-hidden size={13} /> Zdrojové oznámení</a> : null}
-            </div>
-          </section>
-
-          <section className="mt-5">
             <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><SearchCheck aria-hidden size={14} /> Výsledek párování</h3>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+                <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Adresa prodejny</span>
+                <strong className="mt-1.5 block text-xs leading-5 text-[var(--text-primary)]">{detail.store.city} · {detail.store.address}</strong>
+              </div>
+              <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/6 p-3.5">
+                <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Odpovídající adresa distributora</span>
+                <strong className="mt-1.5 block text-xs leading-5 text-[var(--text-primary)]">{outageAddressLabel(matchedAddress)}</strong>
+              </div>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
               <PowerOutageDetailRow label="Výsledek" value={matchLabel(detail.matchStatus)} />
-              <PowerOutageDetailRow label="Metoda" value={detail.matchMethod === 'city_street' ? 'Shoda města a ulice' : 'Ruční přiřazení'} />
+              <PowerOutageDetailRow label="Metoda" value={matchMethodLabel(detail)} />
               <PowerOutageDetailRow label="Jistota shody" value={`${Math.round(detail.confidence * 100)} %`} />
-              <PowerOutageDetailRow label="Poprvé spárováno" value={formatDateTime(detail.firstMatchedAt)} />
-              <PowerOutageDetailRow label="Naposledy ověřeno" value={formatDateTime(detail.lastVerifiedAt)} />
-              <PowerOutageDetailRow label="Revize prodejen" value={String(detail.storeRevision)} />
             </div>
             {detail.matchReasons.length > 0 ? <div className="mt-2 flex flex-wrap gap-1.5">{detail.matchReasons.map((reason) => <span key={reason} className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-1 text-[9px] text-[var(--text-secondary)]">{reasonLabel(reason)}</span>)}</div> : null}
-            <button type="button" onClick={() => setResolutionOpen(true)} className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 text-[9px] font-bold uppercase tracking-[0.05em] text-[var(--accent)] transition hover:-translate-y-px">
-              {detail.matchStatus === 'needs_review' ? <ShieldCheck aria-hidden size={14} /> : <RotateCcw aria-hidden size={14} />}
-              {detail.matchStatus === 'needs_review' ? 'OVĚŘIT SHODU' : detail.matchStatus === 'confirmed' ? 'UPRAVIT OVĚŘENÍ' : 'ZNOVU POSOUDIT'}
-            </button>
           </section>
 
-          <section className="mt-5">
-            <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Historie změn</h3>
-            <div className="mt-2 space-y-2">
-              {detail.versions.map((version) => <div key={version.id} className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 py-3"><span className="min-w-0"><strong className="block text-[11px] text-[var(--text-primary)]">Verze {version.versionNumber}</strong><small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">{version.changeReasons.length ? version.changeReasons.map(reasonLabel).join(' · ') : 'Aktualizace zdrojového záznamu'}</small></span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(version.createdAt)}</time></div>)}
-              {detail.matchAudit.map((audit) => <div key={audit.id} className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 py-3"><span className="min-w-0"><strong className="block text-[11px] text-[var(--text-primary)]">Párování: {matchLabel(audit.previousStatus)} → {matchLabel(audit.nextStatus)}</strong>{audit.note ? <small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">{audit.note}</small> : null}</span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(audit.createdAt)}</time></div>)}
-              {detail.versions.length === 0 && detail.matchAudit.length === 0 ? <p className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--text-secondary)]">Pro tuto odstávku zatím nebyla zaznamenána změna.</p> : null}
+          {otherAddresses.length > 0 ? <details className="mt-5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+            <summary className="cursor-pointer list-none text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Další dotčené adresy ({otherAddresses.length})</summary>
+            <div className="mt-3 flex flex-wrap gap-1.5">{otherAddresses.map((address) => <span key={address.id} className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2.5 py-1 text-[9px] text-[var(--text-secondary)]">{outageAddressLabel(address)}</span>)}</div>
+          </details> : null}
+
+          <details className="mt-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]"><Database aria-hidden size={14} /> Zdrojová data</summary>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <PowerOutageDetailRow label="Název zdroje" value={detail.title} />
+              <PowerOutageDetailRow label="Poprvé zachyceno" value={formatDateTime(detail.firstSeenAt)} />
+              <PowerOutageDetailRow label="Naposledy potvrzeno" value={formatDateTime(detail.lastSeenAt)} />
+              {detail.sourceUpdatedAt ? <PowerOutageDetailRow label="Aktualizováno distributorem" value={formatDateTime(detail.sourceUpdatedAt)} /> : null}
             </div>
-          </section>
+            {detail.description ? <p className="mt-2 whitespace-pre-line rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3.5 text-xs leading-5 text-[var(--text-primary)]">{detail.description}</p> : null}
+          </details>
 
-          <section className="mt-5">
-            <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><Link2 aria-hidden size={14} /> Technická ID</h3>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <details className="mt-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Historie změn ({detail.versions.length + detail.matchAudit.length + detail.informedHistory.length})</summary>
+            <div className="mt-3 space-y-2">
+              {detail.versions.map((version) => <div key={version.id} className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3.5 py-3"><span className="min-w-0"><strong className="block text-[11px] text-[var(--text-primary)]">Verze {version.versionNumber}</strong><small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">{version.changeReasons.length ? version.changeReasons.map(reasonLabel).join(' · ') : 'Aktualizace zdrojového záznamu'}</small></span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(version.createdAt)}</time></div>)}
+              {detail.matchAudit.map((audit) => <div key={audit.id} className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3.5 py-3"><span className="min-w-0"><strong className="block text-[11px] text-[var(--text-primary)]">Párování: {matchLabel(audit.previousStatus)} → {matchLabel(audit.nextStatus)}</strong>{audit.note ? <small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">{audit.note}</small> : null}</span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(audit.createdAt)}</time></div>)}
+              {detail.informedHistory.map((audit) => <div key={audit.id} className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3.5 py-3"><span className="min-w-0"><strong className="block text-[11px] text-[var(--text-primary)]">Informování: {audit.informed ? 'zákazník informován' : 'označení zrušeno'}</strong>{audit.note ? <small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">{audit.note}</small> : null}</span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(audit.createdAt)}</time></div>)}
+              {detail.versions.length === 0 && detail.matchAudit.length === 0 && detail.informedHistory.length === 0 ? <p className="text-xs text-[var(--text-secondary)]">Pro tuto odstávku zatím nebyla zaznamenána změna.</p> : null}
+            </div>
+          </details>
+
+          <details className="mt-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]"><Link2 aria-hidden size={14} /> Technické údaje</summary>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <PowerOutageDetailRow label="Archivace" value={formatDateTime(detail.archiveAt)} />
+              <PowerOutageDetailRow label="Revize prodejen" value={String(detail.storeRevision)} />
+              <PowerOutageDetailRow label="Poprvé spárováno" value={formatDateTime(detail.firstMatchedAt)} />
+              <PowerOutageDetailRow label="Naposledy ověřeno" value={formatDateTime(detail.lastVerifiedAt)} />
               <PowerOutageDetailRow label="ID shody" value={detail.matchId} mono />
               <PowerOutageDetailRow label="ID odstávky" value={detail.outageId} mono />
               <PowerOutageDetailRow label="ID distributora" value={detail.externalId} mono />
               <PowerOutageDetailRow label="ID prodejny" value={detail.storeId ?? 'Neuvedeno'} mono />
             </div>
-          </section>
+          </details>
         </div>
       )}
       {resolutionOpen && detail ? <MatchResolutionPopup detail={detail} onClose={() => setResolutionOpen(false)} onChanged={onStatusChanged} /> : null}

@@ -8,23 +8,7 @@ import {
   powerOutageSha256,
   powerOutageStatus,
 } from './normalization'
-
-const CEZ_PUBLIC_OUTAGE_URL = 'https://www.cezdistribuce.cz/cs/pro-zakazniky/potrebuji-vyresit/stavajici-pripojeni/bez-elektriny'
-
-function safeCezAnnouncementUrl(value: string | null | undefined) {
-  if (!value) return null
-  try {
-    const url = new URL(value)
-    return url.protocol === 'https:'
-      && (url.hostname.endsWith('cezdistribuce.cz') || url.hostname.endsWith('bezstavy.cz'))
-      ? url.toString()
-      : null
-  } catch {
-    // `announcement_key` bývá pouze interní klíč. Bez doložené veřejné
-    // cesty z něj URL neskládáme, aby aplikace neposílala nefunkční odkazy.
-    return null
-  }
-}
+import { cezAnnouncementUrl, powerOutageSourceUrl } from './public-links'
 
 export type NormalizedPowerOutageAddress = {
   externalAddressId: string | null
@@ -147,7 +131,7 @@ export function normalizeCezOutage(
 
   const addresses = normalizeCezAddresses(outage)
   const firstTown = outage.addresses?.towns?.[0]
-  const archiveAt = new Date(endsAt.getTime() + 24 * 60 * 60 * 1_000)
+  const archiveAt = endsAt
 
   return {
     source: 'cez',
@@ -162,8 +146,8 @@ export function normalizeCezOutage(
     municipalityCode: firstTown ? String(firstTown.code) : null,
     district: firstTown?.district ?? null,
     region: null,
-    sourceUrl: CEZ_PUBLIC_OUTAGE_URL,
-    announcementUrl: safeCezAnnouncementUrl(outage.announcement_key),
+    sourceUrl: powerOutageSourceUrl('cez', firstTown ? String(firstTown.code) : null),
+    announcementUrl: cezAnnouncementUrl(outage.announcement_key),
     payloadSha256: powerOutageSha256(outage),
     sourceUpdatedAt: null,
     metadata: {

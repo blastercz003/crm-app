@@ -12,8 +12,7 @@ import {
   powerOutageSha256,
   powerOutageStatus,
 } from './normalization'
-
-const EGD_PUBLIC_OUTAGE_URL = 'https://www.egd.cz/odstavky-elektrina'
+import { powerOutageSourceUrl } from './public-links'
 
 export type NormalizedEgdOutage = Omit<NormalizedPowerOutage, 'source'> & {
   source: 'egd'
@@ -128,12 +127,12 @@ export function normalizeEgdOutage(
       description: outage.popis?.trim() || null,
       startsAt: startsAt.toISOString(),
       endsAt: endsAt.toISOString(),
-      archiveAt: new Date(endsAt.getTime() + 24 * 60 * 60 * 1_000).toISOString(),
+      archiveAt: endsAt.toISOString(),
       municipality: firstAddress?.municipality ?? null,
       municipalityCode: null,
       district: null,
       region: null,
-      sourceUrl: EGD_PUBLIC_OUTAGE_URL,
+      sourceUrl: powerOutageSourceUrl('egd'),
       announcementUrl: null,
       payloadSha256: powerOutageSha256({ outage, term, termIndex }),
       sourceUpdatedAt: null,

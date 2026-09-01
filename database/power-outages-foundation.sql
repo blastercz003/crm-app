@@ -266,7 +266,7 @@ create table if not exists public.power_outages (
   constraint power_outages_status_check
     check (source_status in ('scheduled', 'active', 'completed', 'cancelled')),
   constraint power_outages_period_check
-    check (ends_at > starts_at and archive_at = ends_at + interval '24 hours'),
+    check (ends_at > starts_at and archive_at = ends_at),
   constraint power_outages_payload_hash_check
     check (payload_sha256 ~ '^[a-f0-9]{64}$'),
   constraint power_outages_seen_check
@@ -278,7 +278,7 @@ create table if not exists public.power_outages (
 );
 
 comment on column public.power_outages.archive_at is
-  'Záznam se na stránce přesune do archivu přesně 24 hodin po termínu konce.';
+  'Termín způsobilosti k přesunu do archivu; odpovídá ends_at.';
 
 create index if not exists power_outages_timeline_idx
   on public.power_outages (archive_at, starts_at, ends_at);
@@ -398,7 +398,7 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  new.archive_at := new.ends_at + interval '24 hours';
+  new.archive_at := new.ends_at;
   if tg_op = 'INSERT' and new.last_seen_at < new.first_seen_at then
     new.first_seen_at := new.last_seen_at;
   end if;

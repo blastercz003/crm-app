@@ -4,7 +4,7 @@ alter table public.power_outages
   add column if not exists archived_at timestamptz;
 
 comment on column public.power_outages.archived_at is
-  'Okamžik skutečného přesunu záznamu do archivu; nejdříve 24 hodin po ends_at.';
+  'Okamžik skutečného přesunu záznamu do archivu při prvním hodinovém běhu po ends_at.';
 
 create or replace function public.prepare_power_outage_row()
 returns trigger
@@ -12,7 +12,10 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  new.archive_at := new.ends_at + interval '24 hours';
+  new.archive_at := new.ends_at;
+  if new.ends_at > now() then
+    new.archived_at := null;
+  end if;
   if tg_op = 'INSERT' and new.last_seen_at < new.first_seen_at then
     new.first_seen_at := new.last_seen_at;
   end if;

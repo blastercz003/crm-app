@@ -3,6 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getPowerOutageHealth } from './health'
 import { getPowerOutageRuntimeContext } from './access'
+import { cezAnnouncementUrl, powerOutageSourceUrl } from './public-links'
 import type {
   PowerOutageFilterOptions,
   PowerOutageDetail,
@@ -504,10 +505,12 @@ type DetailMatchRow = {
     external_id: string
     archive_at: string
     municipality_code: string | null
+    metadata: Record<string, unknown> | null
   }> | (OutageRelationRow & {
     external_id: string
     archive_at: string
     municipality_code: string | null
+    metadata: Record<string, unknown> | null
   })
 }
 
@@ -526,7 +529,7 @@ export async function getPowerOutageDetail(matchId: string): Promise<PowerOutage
       first_matched_at,last_verified_at,resolved_at,
       outage:power_outages!inner(
         id,external_id,source,source_status,title,description,starts_at,ends_at,archive_at,archived_at,
-        municipality,municipality_code,district,region,source_url,announcement_url,source_updated_at,
+        municipality,municipality_code,district,region,source_url,announcement_url,source_updated_at,metadata,
         first_seen_at,last_seen_at
       )
     `)
@@ -583,8 +586,9 @@ export async function getPowerOutageDetail(matchId: string): Promise<PowerOutage
     municipalityCode: outage.municipality_code,
     district: outage.district,
     region: outage.region,
-    sourceUrl: outage.source_url,
-    announcementUrl: outage.announcement_url,
+    sourceUrl: powerOutageSourceUrl(outage.source, outage.municipality_code),
+    announcementUrl: outage.announcement_url
+      ?? (outage.source === 'cez' ? cezAnnouncementUrl(outage.metadata?.announcementKey) : null),
     sourceUpdatedAt: outage.source_updated_at,
     firstSeenAt: outage.first_seen_at,
     lastSeenAt: outage.last_seen_at,

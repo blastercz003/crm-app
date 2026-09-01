@@ -6,7 +6,10 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  new.archive_at := new.ends_at + interval '24 hours';
+  new.archive_at := new.ends_at;
+  if new.ends_at > now() then
+    new.archived_at := null;
+  end if;
   if tg_op = 'INSERT' and new.last_seen_at < new.first_seen_at then
     new.first_seen_at := new.last_seen_at;
   end if;
