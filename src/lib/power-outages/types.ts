@@ -222,7 +222,7 @@ export type StoreAddressAnalysisItem = {
   storeNumber: string
   currentCity: string
   currentAddress: string
-  verificationStatus: 'needs_review' | 'not_found' | 'error'
+  verificationStatus: 'pending' | 'verified' | 'probable' | 'needs_review' | 'not_found' | 'error'
   suggestionId: string | null
   addressFingerprint: string
   analysisStatus: 'pending' | 'verified' | 'normalization' | 'needs_review' | 'insufficient' | 'not_found' | 'error'

@@ -14,7 +14,8 @@ type RegistryRow = {
   store_city: string
   store_address: string
   address_fingerprint: string
-  verification_status: 'needs_review' | 'not_found' | 'error'
+  needs_refresh: boolean
+  verification_status: 'pending' | 'verified' | 'probable' | 'needs_review' | 'not_found' | 'error'
 }
 
 type SuggestionRow = {
@@ -74,11 +75,16 @@ function normalizeComparable(value: string) {
     .replace(/\s+/g, ' ')
 }
 function streetPart(value: string) {
-  return normalizeComparable(value).replace(/\s+\d+[a-z]?(?:\s*\/\s*\d+[a-z]?)?.*$/, '').trim()
+  return normalizeComparable(value).replace(/\s+\d+[a-z]?(?:\s*\/\s*\d+[a-z]?)?$/, '').trim()
 }
 function addressNumbers(value: string) {
-  const trailingNumber = value.trim().match(/(\d+[a-z]?)(?:\s*\/\s*(\d+[a-z]?))?\s*$/i)
-  return new Set((trailingNumber?.slice(1) ?? []).map((part) => normalizeComparable(part ?? '')).filter(Boolean))
+  for (const part of value.split(',').map((item) => item.trim()).filter(Boolean).reverse()) {
+    const trailingNumber = part.match(/(?:^|\s)(\d+[a-z]?)(?:\s*\/\s*(\d+[a-z]?))?\s*$/i)
+    if (trailingNumber) {
+      return new Set(trailingNumber.slice(1).map((item) => normalizeComparable(item ?? '')).filter(Boolean))
+    }
+  }
+  return new Set<string>()
 }
 function setsEqual(left: Set<string>, right: Set<string>) {
   return left.size === right.size && [...left].every((value) => right.has(value))
@@ -246,12 +252,15 @@ async function geocodeAddress(row: RegistryRow) {
 async function loadEligibleRegistry(client: ServiceClient) {
   const rows: RegistryRow[] = []
   for (let from = 0; ; from += 1_000) {
-    const { data, error } = await client.from('power_outage_store_registry').select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint,verification_status').eq('is_active', true).eq('needs_refresh', false).in('verification_status', [...ELIGIBLE_STATUSES]).order('store_chain_name').order('store_number').range(from, from + 999)
+    const { data, error } = await client.from('power_outage_store_registry').select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint,needs_refresh,verification_status').eq('is_active', true).order('store_chain_name').order('store_number').range(from, from + 999)
     if (error) throw error
     rows.push(...((data ?? []) as RegistryRow[]))
     if ((data?.length ?? 0) < 1_000) break
   }
-  return rows
+  return rows.filter((row) => (
+    addressNumbers(row.store_address).size === 0
+    || (!row.needs_refresh && ELIGIBLE_STATUSES.includes(row.verification_status as typeof ELIGIBLE_STATUSES[number]))
+  ))
 }
 function currentSuggestion(row: RegistryRow, suggestion: SuggestionRow | undefined) {
   return suggestion?.address_fingerprint === row.address_fingerprint && Number(objectValue(suggestion.metadata).analyzerVersion) === ANALYZER_VERSION ? suggestion : null
