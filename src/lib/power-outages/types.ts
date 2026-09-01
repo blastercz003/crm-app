@@ -211,7 +211,9 @@ export type StoreAddressAnalysisItem = {
   currentCity: string
   currentAddress: string
   verificationStatus: 'needs_review' | 'not_found' | 'error'
-  analysisStatus: 'pending' | 'suggested' | 'needs_review' | 'not_found' | 'error'
+  suggestionId: string | null
+  addressFingerprint: string
+  analysisStatus: 'pending' | 'verified' | 'normalization' | 'needs_review' | 'insufficient' | 'not_found' | 'error'
   confidence: number | null
   suggestedCity: string | null
   suggestedAddress: string | null
@@ -222,6 +224,18 @@ export type StoreAddressAnalysisItem = {
   candidateCount: number | null
   analyzedAt: string | null
   errorMessage: string | null
+  nearbyCandidates: StoreAddressNearbyCandidate[]
+}
+
+export type StoreAddressNearbyCandidate = {
+  id: string
+  poiName: string
+  city: string
+  address: string
+  label: string | null
+  longitude: number
+  latitude: number
+  distanceMeters: number
 }
 
 export type PowerOutageFilterOptions = {

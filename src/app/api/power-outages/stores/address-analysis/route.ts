@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   }
   try {
     const body = await request.json().catch(() => ({})) as { limit?: unknown }
-    const limit = typeof body.limit === 'number' ? body.limit : 20
+    const limit = typeof body.limit === 'number' ? body.limit : 10
     const result = await analyzeStoreAddresses(limit)
     return NextResponse.json({ ok: true, ...result }, { headers: HEADERS })
   } catch (error) {
