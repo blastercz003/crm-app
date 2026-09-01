@@ -199,8 +199,8 @@ export default async function ActivitiesPage({
 
   const summaryCards = [
     { label: 'Aktivity dnes / tento týden', value: `${workspace.kpis.activitiesToday} / ${workspace.kpis.activitiesThisWeek}`, tone: 'blue', targetId: 'pracovni-agenda', targetLabel: 'Pracovní agenda' },
-    { label: 'Úkoly po termínu / celkem', value: `${workspace.kpis.overdueTasks} / ${workspace.kpis.activeTasks}`, tone: 'amber', targetId: 'pracovni-ukoly', targetLabel: 'Úkoly' },
-    { label: 'Schůzky dnes / celkem', value: `${workspace.kpis.meetingsToday} / ${workspace.kpis.meetingsTotal}`, tone: 'violet', targetId: 'pracovni-schuzky', targetLabel: 'Schůzky' },
+    { label: 'Úkoly dnes / celkem', value: `${workspace.kpis.tasksDueTodayOrOverdue} / ${workspace.kpis.activeTasks}`, tone: 'amber', targetId: 'pracovni-ukoly', targetLabel: 'Úkoly' },
+    { label: 'Schůzky týden / celkem', value: `${workspace.kpis.meetingsThisWeek} / ${workspace.kpis.meetingsTotal}`, tone: 'violet', targetId: 'pracovni-schuzky', targetLabel: 'Schůzky' },
     { label: 'Zakázky týden / celkem', value: `${workspace.kpis.jobsThisWeek} / ${workspace.kpis.jobsTotal}`, tone: 'emerald', targetId: 'pracovni-zakazky', targetLabel: 'Zakázky' },
   ] as const
   const offerEyebrow = workspace.offers.selectedStatus === 'submitted'

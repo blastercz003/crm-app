@@ -434,9 +434,10 @@ export async function getActivitiesWorkspace(input: {
     systemTodayResponse,
     selectedSystemTodayResponse,
     tasksResponse,
+    tasksDueTodayOrOverdueResponse,
     overdueTasksResponse,
     meetingsResponse,
-    meetingsTodayResponse,
+    meetingsThisWeekResponse,
     meetingsTotalResponse,
     offersResponse,
     offerStatusCountsResponse,
@@ -484,6 +485,13 @@ export async function getActivitiesWorkspace(input: {
       .neq('status', 'done')
       .or(taskOwnerFilter)
       .not('due_date', 'is', null)
+      .lte('due_date', todayKey),
+    supabase
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .neq('status', 'done')
+      .or(taskOwnerFilter)
+      .not('due_date', 'is', null)
       .lt('due_date', todayKey),
     meetingsRequest,
     supabase
@@ -491,8 +499,8 @@ export async function getActivitiesWorkspace(input: {
       .select('id', { count: 'exact', head: true })
       .eq('status', 'planned')
       .eq('assigned_user_id', selectedUser.id)
-      .gte('meeting_datetime', todayStart)
-      .lte('meeting_datetime', todayEnd),
+      .gte('meeting_datetime', weekStart)
+      .lte('meeting_datetime', weekEnd),
     supabase
       .from('meetings')
       .select('id', { count: 'exact', head: true })
@@ -517,9 +525,10 @@ export async function getActivitiesWorkspace(input: {
     [systemTodayResponse, 'Dnešní automatické záznamy se nepodařilo spočítat'],
     [selectedSystemTodayResponse, 'Dnešní automatické záznamy uživatele se nepodařilo spočítat'],
     [tasksResponse, 'Úkoly se nepodařilo načíst'],
+    [tasksDueTodayOrOverdueResponse, 'Dnešní úkoly a úkoly po termínu se nepodařilo spočítat'],
     [overdueTasksResponse, 'Úkoly po termínu se nepodařilo spočítat'],
     [meetingsResponse, 'Schůzky se nepodařilo načíst'],
-    [meetingsTodayResponse, 'Dnešní schůzky se nepodařilo spočítat'],
+    [meetingsThisWeekResponse, 'Schůzky v tomto týdnu se nepodařilo spočítat'],
     [meetingsTotalResponse, 'Celkový počet schůzek se nepodařilo spočítat'],
     [offersResponse, 'Nabídky se nepodařilo načíst'],
     [jobsResponse, 'Zakázky se nepodařilo načíst'],
@@ -650,9 +659,10 @@ export async function getActivitiesWorkspace(input: {
     ? countOf(selectedSystemTodayResponse)
     : systemToday
   const activitiesThisWeek = countOf(activitiesThisWeekResponse)
+  const tasksDueTodayOrOverdue = countOf(tasksDueTodayOrOverdueResponse)
   const overdueTasks = countOf(overdueTasksResponse)
   const activeTasks = countOf(tasksResponse)
-  const meetingsToday = countOf(meetingsTodayResponse)
+  const meetingsThisWeek = countOf(meetingsThisWeekResponse)
   const meetingsTotal = countOf(meetingsTotalResponse)
   const upcomingMeetings = countOf(meetingsResponse)
   const offersTotal = countOf(offersResponse)
@@ -672,9 +682,9 @@ export async function getActivitiesWorkspace(input: {
     kpis: {
       activitiesToday: manualLoggedToday + selectedSystemToday,
       activitiesThisWeek,
-      overdueTasks,
+      tasksDueTodayOrOverdue,
       activeTasks,
-      meetingsToday,
+      meetingsThisWeek,
       meetingsTotal,
       jobsThisWeek: countOf(jobsThisWeekResponse),
       jobsTotal: countOf(jobsTotalResponse),
@@ -702,7 +712,7 @@ export async function getActivitiesWorkspace(input: {
     meetings: {
       items: meetings,
       upcomingTotal: upcomingMeetings,
-      todayTotal: meetingsToday,
+      thisWeekTotal: meetingsThisWeek,
     },
     offers: {
       available: canViewOffers,

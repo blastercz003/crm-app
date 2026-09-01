@@ -46,6 +46,7 @@ export type DispatcherCalendarJobRow = {
   marny_vyjezd: boolean | null
   pohotovost: boolean | null
   sales_owner: string | null
+  updated_at: string
 }
 
 type DispatcherCalendarEvent = {
@@ -293,7 +294,8 @@ const JOB_SELECT = `
   evidence_status,
   marny_vyjezd,
   pohotovost,
-  sales_owner
+  sales_owner,
+  updated_at
 `
 
 export async function ensureDispatcherJobCalendarFeed(

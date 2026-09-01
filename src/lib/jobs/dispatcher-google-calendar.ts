@@ -39,6 +39,7 @@ type DispatcherGoogleItemRow = {
   sequence: number
   is_cancelled: boolean
   cancelled_at: string | null
+  updated_at: string
 }
 
 type GoogleSyncContext = {
@@ -46,6 +47,7 @@ type GoogleSyncContext = {
   integration: DispatcherGoogleIntegrationRow
   accessToken: string
   calendarId: string
+  calendarWasCreated: boolean
 }
 
 const INTEGRATION_SELECT =
@@ -68,7 +70,8 @@ const JOB_SELECT = `
   evidence_status,
   marny_vyjezd,
   pohotovost,
-  sales_owner
+  sales_owner,
+  updated_at
 `
 
 function getServiceClient() {
@@ -322,8 +325,10 @@ async function getSyncContext(userId: string): Promise<GoogleSyncContext | null>
 
   const accessToken = await refreshAccessToken(data.refresh_token)
   let calendarId = data.calendar_id
+  let calendarWasCreated = false
   if (!calendarId || !(await googleCalendarExists(calendarId, accessToken))) {
     calendarId = await createGoogleCalendar(accessToken, data.calendar_scope)
+    calendarWasCreated = true
     const { error: updateError } = await supabase
       .from('dispatcher_job_google_calendar_integrations')
       .update({ calendar_id: calendarId })
@@ -331,7 +336,7 @@ async function getSyncContext(userId: string): Promise<GoogleSyncContext | null>
     if (updateError) throw new Error(`Nepodařilo se uložit ID kalendáře: ${updateError.message}`)
   }
 
-  return { supabase, integration: data, accessToken, calendarId }
+  return { supabase, integration: data, accessToken, calendarId, calendarWasCreated }
 }
 
 async function fetchGoogleEvent(context: GoogleSyncContext, eventId: string) {
@@ -394,7 +399,7 @@ async function syncWithContext(
 ) {
   const { data: existingItem, error: itemError } = await context.supabase
     .from('dispatcher_job_google_calendar_items')
-    .select('job_id, user_id, google_event_id, sequence, is_cancelled, cancelled_at')
+    .select('job_id, user_id, google_event_id, sequence, is_cancelled, cancelled_at, updated_at')
     .eq('job_id', job.id)
     .eq('user_id', context.integration.user_id)
     .maybeSingle<DispatcherGoogleItemRow>()
@@ -428,7 +433,7 @@ async function syncWithContext(
 async function cancelWithContext(context: GoogleSyncContext, jobId: string) {
   const { data: existingItem, error: itemError } = await context.supabase
     .from('dispatcher_job_google_calendar_items')
-    .select('job_id, user_id, google_event_id, sequence, is_cancelled, cancelled_at')
+    .select('job_id, user_id, google_event_id, sequence, is_cancelled, cancelled_at, updated_at')
     .eq('job_id', jobId)
     .eq('user_id', context.integration.user_id)
     .maybeSingle<DispatcherGoogleItemRow>()
@@ -472,13 +477,16 @@ export async function cancelDispatcherGoogleCalendarItem(params: {
   return cancelWithContext(context, params.jobId)
 }
 
-export async function backfillDispatcherGoogleCalendarItemsForUser(userId: string) {
+export async function backfillDispatcherGoogleCalendarItemsForUser(
+  userId: string,
+  options: { force?: boolean } = {}
+) {
   const context = await getSyncContext(userId)
   if (!context) return { insertedCount: 0 }
 
   const { data: existingItems, error: itemsError } = await context.supabase
     .from('dispatcher_job_google_calendar_items')
-    .select('job_id, user_id, google_event_id, sequence, is_cancelled, cancelled_at')
+    .select('job_id, user_id, google_event_id, sequence, is_cancelled, cancelled_at, updated_at')
     .eq('user_id', userId)
   if (itemsError) throw new Error(`Nepodařilo se načíst Google položky: ${itemsError.message}`)
 
@@ -516,17 +524,38 @@ export async function backfillDispatcherGoogleCalendarItemsForUser(userId: strin
   if (jobsError) throw new Error(`Nepodařilo se načíst zakázky: ${jobsError.message}`)
 
   const typedItems = (existingItems ?? []) as DispatcherGoogleItemRow[]
+  const existingByJobId = new Map(typedItems.map((item) => [item.job_id, item]))
   const existingJobIds = new Set(typedItems.map((item) => item.job_id))
   const typedJobs = (jobs ?? []) as DispatcherCalendarJobRow[]
   const desiredJobIds = new Set(typedJobs.map((job) => job.id))
   const insertedCount = typedJobs.filter((job) => !existingJobIds.has(job.id)).length
+  let cancelledCount = 0
   for (const item of typedItems) {
     if (!item.is_cancelled && !desiredJobIds.has(item.job_id)) {
       await cancelWithContext(context, item.job_id)
+      cancelledCount += 1
     }
   }
-  for (const job of typedJobs) await syncWithContext(context, job)
-  return { insertedCount }
+  const force = options.force === true || context.calendarWasCreated
+  const jobsToSync = typedJobs.filter((job) => {
+    const item = existingByJobId.get(job.id)
+    if (force || !item || item.is_cancelled) return true
+
+    const jobUpdatedAt = new Date(job.updated_at).getTime()
+    const itemUpdatedAt = new Date(item.updated_at).getTime()
+    return (
+      !Number.isFinite(jobUpdatedAt) ||
+      !Number.isFinite(itemUpdatedAt) ||
+      jobUpdatedAt > itemUpdatedAt
+    )
+  })
+
+  for (const job of jobsToSync) await syncWithContext(context, job)
+  return {
+    insertedCount,
+    updatedCount: Math.max(0, jobsToSync.length - insertedCount),
+    cancelledCount,
+  }
 }
 
 export function createDispatcherGoogleCalendarOAuthUrl(params: {
@@ -620,7 +649,9 @@ export async function completeDispatcherGoogleCalendarOAuth(params: {
     })
   if (error) throw new Error(`Nepodařilo se uložit Google propojení: ${error.message}`)
 
-  const backfill = await backfillDispatcherGoogleCalendarItemsForUser(params.userId)
+  const backfill = await backfillDispatcherGoogleCalendarItemsForUser(params.userId, {
+    force: true,
+  })
   return { calendarId, insertedCount: backfill.insertedCount }
 }
 

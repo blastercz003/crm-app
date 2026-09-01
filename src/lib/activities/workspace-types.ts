@@ -184,9 +184,9 @@ export type ActivityWorkspaceData = {
   kpis: {
     activitiesToday: number
     activitiesThisWeek: number
-    overdueTasks: number
+    tasksDueTodayOrOverdue: number
     activeTasks: number
-    meetingsToday: number
+    meetingsThisWeek: number
     meetingsTotal: number
     jobsThisWeek: number
     jobsTotal: number
@@ -210,7 +210,7 @@ export type ActivityWorkspaceData = {
   meetings: {
     items: ActivityWorkspaceMeeting[]
     upcomingTotal: number
-    todayTotal: number
+    thisWeekTotal: number
   }
   offers: {
     available: boolean

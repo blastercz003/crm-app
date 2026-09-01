@@ -161,6 +161,23 @@ export function DispatcherCalendarButton({
                   : 'Do osobního kalendáře se synchronizují všechny zakázky kromě marných výjezdů. Kalendář je pouze pro čtení a změny se provádějí v aplikaci.'}
               </p>
 
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex min-h-7 items-center rounded-full border border-[#76a9d3]/55 bg-[#e5f3fc] px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#267eb8]">
+                  Typ: Zakázky
+                </span>
+                <span className="text-xs font-medium text-zinc-500">
+                  Název v telefonu:{' '}
+                  {calendarScope === 'sales_owner'
+                    ? 'B-ENERGY MOJE ZAKÁZKY'
+                    : 'B-ENERGY VŠECHNY ZAKÁZKY'}
+                </span>
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-zinc-500">
+                Kalendář B-ENERGY SCHŮZKY je samostatný starší odběr. Aktivace
+                zakázek jej v telefonu automaticky neodstraní.
+              </p>
+
               {initialMessage ? (
                 <div className="meetings-calendar-modal__status mt-3 rounded-xl border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                   {initialMessage}
@@ -192,8 +209,12 @@ export function DispatcherCalendarButton({
 
             <div className="grid gap-3 md:grid-cols-2">
               <CalendarCard
-                title="iPhone / Apple Kalendář"
-                description="Otevři osobní odběr nebo zkopíruj jeho zabezpečený odkaz."
+                title="iPhone / Apple Kalendář – zakázky"
+                description={
+                  calendarScope === 'sales_owner'
+                    ? 'Otevři osobní odběr B-ENERGY MOJE ZAKÁZKY nebo zkopíruj jeho zabezpečený odkaz.'
+                    : 'Otevři odběr B-ENERGY VŠECHNY ZAKÁZKY nebo zkopíruj jeho zabezpečený odkaz.'
+                }
               >
                 {activationState.success && feedUrls.webcalUrl ? (
                   <>
@@ -222,7 +243,7 @@ export function DispatcherCalendarButton({
               </CalendarCard>
 
               <CalendarCard
-                title="Google Calendar"
+                title="Google Calendar – zakázky"
                 description={
                   calendarScope === 'sales_owner'
                     ? 'V Google účtu se vytvoří samostatný kalendář vašich zakázek.'
