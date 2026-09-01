@@ -6,13 +6,14 @@ import {
   CircleAlert,
   DatabaseZap,
   History,
+  MapPinCheck,
   RefreshCw,
   Route,
   ShieldCheck,
   TimerReset,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import type {
   PowerOutageNotificationPreferences,
@@ -27,6 +28,7 @@ import {
   updatePowerOutageNotificationPreferencesAction,
 } from './actions'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
+import { StoreAddressAnalysisPopup } from './store-address-analysis-popup'
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
   timeZone: 'Europe/Prague',
@@ -49,6 +51,7 @@ function sourceName(source: PowerOutageSource) {
 
 const STATUS_PRESENTATION: Record<PowerOutageSourceStatus, { label: string; badge: string; dot: string }> = {
   live: { label: 'ŽIVĚ', badge: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', dot: 'bg-emerald-500' },
+  processing: { label: 'ZPRACOVÁNÍ', badge: 'border-sky-500/40 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300', dot: 'bg-sky-500 animate-pulse motion-reduce:animate-none' },
   warning: { label: 'ZPOŽDĚNÍ', badge: 'border-amber-500/40 bg-amber-500/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'bg-amber-500' },
   error: { label: 'CHYBA', badge: 'border-red-500/40 bg-red-500/10 text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500' },
   pending: { label: 'ČEKÁM', badge: 'border-slate-400/40 bg-slate-400/10 text-[var(--text-secondary)]', dot: 'bg-slate-400' },
@@ -140,10 +143,10 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
             onClick={onOpen}
             aria-label={`${status.label} – otevřít provozní detail ${sourceName(source.source)}`}
             title="Otevřít provozní detail"
-            className={`relative inline-flex h-8 w-[82px] items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold tracking-[0.07em] transition hover:-translate-y-px ${status.badge}`}
+            className={`relative inline-flex h-8 w-[92px] items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] transition hover:-translate-y-px ${status.badge}`}
           >
-            <i aria-hidden className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-            {status.label}
+            <i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
+            <span className="translate-y-px">{status.label}</span>
             {needsAttention ? <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--surface-strong)] bg-amber-400 text-[9px] font-black leading-none text-slate-950 shadow-sm">!</span> : null}
           </button>
         </div>
@@ -153,8 +156,8 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
         <div className="grid grid-cols-2 gap-2 lg:gap-1.5">
           <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední pokus</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastAttemptAt)}</strong></div>
           <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Úspěšně načteno</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastSuccessAt)}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Zpracováno</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Nalezené změny</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední dávka</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Změny v dávce</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
         </div>
         <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5 lg:mt-2 lg:py-2">
           <span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Pokrytí relevantních obcí</small><strong className="mt-0.5 block truncate text-[10px] text-[var(--text-primary)]">{source.municipalityCoverage}</strong></span>
@@ -165,15 +168,16 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
   )
 }
 
-function StoreCoveragePanel({ coverage }: { coverage: PowerOutageStoreCoverage }) {
+function StoreCoveragePanel({ coverage, onOpen }: { coverage: PowerOutageStoreCoverage; onOpen: () => void }) {
   const percent = Math.min(100, Math.max(0, coverage.coveragePercent))
 
   return (
     <section className="activities-page__panel flex h-[360px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto">
-      <div className="flex items-center gap-3">
+      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><Route aria-hidden size={18} /></span>
-        <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Databáze prodejen</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">Pokrytí adres</h2></span>
-      </div>
+        <span className="min-w-0 flex-1"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Databáze prodejen</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">Pokrytí adres</h2></span>
+        <ChevronRight aria-hidden size={16} className="ml-auto shrink-0 text-[var(--text-secondary)]" />
+      </button>
 
       <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
         <div className="flex items-end justify-between gap-3">
@@ -197,16 +201,64 @@ function StoreCoveragePanel({ coverage }: { coverage: PowerOutageStoreCoverage }
         <span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2">EG.D: <strong className="text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
       </div>
 
-      <p className="mt-auto pt-3 text-[8px] leading-4 text-[var(--text-secondary)]">
-        Revize {coverage.catalogRevision} · aktualizace katalogu {formatDateTime(coverage.catalogLastChangedAt)}
-        {coverage.unknownDistributorCount > 0 ? ` · bez distributora ${coverage.unknownDistributorCount}` : ''}
-      </p>
+      <button type="button" onClick={onOpen} className="mt-auto flex items-center gap-2 pt-3 text-left text-[8px] leading-4 text-[var(--text-secondary)] transition hover:text-[var(--accent)]">
+        <MapPinCheck aria-hidden size={13} className="shrink-0" />
+        <span>Revize {coverage.catalogRevision} · aktualizace katalogu {formatDateTime(coverage.catalogLastChangedAt)}{coverage.unknownDistributorCount > 0 ? ` · bez distributora ${coverage.unknownDistributorCount}` : ''}</span>
+      </button>
     </section>
   )
 }
 
 function runStatusLabel(status: PowerOutageSourceDiagnostic['runs'][number]['status']) {
   return ({ running: 'Probíhá', succeeded: 'Úspěch', no_change: 'Bez změny', failed: 'Chyba', skipped: 'Přeskočeno' })[status]
+}
+
+function taskStatusLabel(status: 'pending' | 'running' | 'succeeded' | 'failed') {
+  return ({ pending: 'Čeká', running: 'Probíhá', succeeded: 'Dokončeno', failed: 'Selhalo' } as const)[status] ?? 'Neuvedeno'
+}
+
+function sourceStatusDescription(diagnostic: PowerOutageSourceDiagnostic) {
+  if (diagnostic.status === 'error') return 'Zdroj opakovaně selhal nebo jsou jeho data příliš stará. Níže je uvedena poslední známá chyba a poslední úspěšné načtení.'
+  if (diagnostic.status === 'warning') return 'Kontrola se neposouvá v očekávaném intervalu nebo poslední běh selhal. Dříve načtená data zůstávají dostupná.'
+  if (diagnostic.status === 'processing') return diagnostic.progress?.phase === 'queued'
+    ? 'Nová revize databáze prodejen čeká na nejbližší automatické zpracování.'
+    : 'Systém právě zpracovává novou revizi databáze prodejen a průběžně ukládá dokončené výsledky.'
+  if (diagnostic.status === 'live') return 'Zdroj se načítá správně a porovnání používá aktuální revizi databáze prodejen.'
+  return 'Zdroj čeká na první úspěšné načtení dat.'
+}
+
+function SourceProgress({ diagnostic }: { diagnostic: PowerOutageSourceDiagnostic }) {
+  const progress = diagnostic.progress
+  if (!progress) return null
+  const percent = progress.percent == null ? null : Math.round(progress.percent * 10) / 10
+
+  return (
+    <section className="mt-3 rounded-2xl border border-sky-500/30 bg-sky-500/8 p-3.5">
+      <div className="flex items-end justify-between gap-3">
+        <span>
+          <small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-sky-700 [html[data-theme=dark]_&]:text-sky-300">Zpracování revize {progress.storeRevision}</small>
+          <strong className="mt-1 block text-sm text-[var(--text-primary)]">
+            {progress.mode === 'determinate'
+              ? `${progress.processedStoreCount ?? 0} z ${progress.totalStoreCount} prodejen`
+              : progress.phase === 'queued'
+                ? 'Zařazeno ke zpracování'
+                : 'Načítání celé distribuční oblasti'}
+          </strong>
+        </span>
+        {percent == null ? null : <strong className="text-xl font-semibold tabular-nums text-sky-600 [html[data-theme=dark]_&]:text-sky-300">{percent.toLocaleString('cs-CZ')} %</strong>}
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10">
+        {percent == null
+          ? <div className="h-full w-2/5 animate-pulse rounded-full bg-sky-500 motion-reduce:animate-none" />
+          : <div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${percent}%` }} />}
+      </div>
+      <div className="mt-2 grid gap-x-4 gap-y-1 text-[9px] leading-4 text-[var(--text-secondary)] sm:grid-cols-2">
+        <span>Poslední posun: <strong className="text-[var(--text-primary)]">{formatDateTime(progress.lastProgressAt)}</strong></span>
+        {progress.completedBatchCount == null ? null : <span>Dokončené dávky: <strong className="text-[var(--text-primary)]">{progress.completedBatchCount}</strong></span>}
+        <span className="sm:col-span-2">{progress.phase === 'queued' ? 'Spuštění proběhne automaticky podle plánovače.' : 'Údaj se automaticky obnovuje z naší databáze; nevytváří další dotazy na distributora.'}</span>
+      </div>
+    </section>
+  )
 }
 
 function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: { source: PowerOutageSource; diagnostic: PowerOutageSourceDiagnostic | null; loading: boolean; error: string | null; onClose: () => void }) {
@@ -220,9 +272,10 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
       {loading ? <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center p-6 text-center"><span className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--surface-border)] border-t-[var(--accent)]" /><strong className="mt-4 text-sm text-[var(--text-primary)]">Načítám provozní stav…</strong></div> : error || !diagnostic ? <div className="flex min-h-[300px] flex-1 flex-col items-center justify-center p-6 text-center"><CircleAlert aria-hidden size={28} className="text-red-500" /><strong className="mt-3 text-sm text-[var(--text-primary)]">Provozní detail se nepodařilo načíst</strong><p className="mt-1 max-w-md text-xs leading-5 text-[var(--text-secondary)]">{error ?? 'Data nejsou dostupná.'}</p></div> : (
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
-            <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Aktuální stav zdroje</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{status.label}</strong></span>
-            <span className={`inline-flex h-8 w-[82px] items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold tracking-[0.07em] ${status.badge}`}><i className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />{status.label}</span>
+            <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Aktuální stav zdroje</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{status.label}</strong><span className="mt-1 block max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{sourceStatusDescription(diagnostic)}</span></span>
+            <span className={`relative inline-flex h-8 w-[92px] items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] ${status.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} /><span className="translate-y-px">{status.label}</span></span>
           </div>
+          <SourceProgress diagnostic={diagnostic} />
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <PowerOutageDetailRow label="Poslední pokus" value={formatDateTime(diagnostic.sourceState.lastAttemptAt)} />
             <PowerOutageDetailRow label="Poslední úspěch" value={formatDateTime(diagnostic.sourceState.lastSuccessAt)} />
@@ -231,7 +284,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
             <PowerOutageDetailRow label="Budoucí odstávky" value={String(diagnostic.sourceState.futureOutageCount)} />
             <PowerOutageDetailRow label="Verze dat" value={String(diagnostic.sourceState.dataVersion)} />
             <PowerOutageDetailRow label="Zpracovaná revize prodejen" value={`${diagnostic.sourceState.storeRevisionProcessed} / ${diagnostic.catalogRevision}`} />
-            <PowerOutageDetailRow label="Stav plánované úlohy" value={diagnostic.task?.lastStatus ?? 'Neuvedeno'} />
+            <PowerOutageDetailRow label="Stav plánované úlohy" value={diagnostic.task ? taskStatusLabel(diagnostic.task.lastStatus) : 'Neuvedeno'} />
             <PowerOutageDetailRow label="Selhání v řadě" value={String(Math.max(diagnostic.sourceState.consecutiveFailureCount, diagnostic.task?.consecutiveFailureCount ?? 0))} />
           </div>
 
@@ -239,21 +292,21 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
             <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><Route aria-hidden size={14} /> Proces načítání</h3>
             <p className="mt-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5 text-xs leading-5 text-[var(--text-primary)]">{schedule}</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {['Stažení veřejných dat distributora', 'Normalizace a kontrola termínů', 'Uložení změn a historie verzí', 'Párování prodejen podle města a ulice'].map((step, index) => <div key={step} className="flex items-center gap-2.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[9px] font-bold text-[var(--accent)]">{index + 1}</span><span className="text-[10px] font-semibold text-[var(--text-primary)]">{step}</span></div>)}
+              {['Stažení veřejných dat distributora', 'Normalizace a kontrola termínů', 'Uložení změn a historie verzí', 'Párování podle města, ulice a čísel domu; neúplné adresy k ověření'].map((step, index) => <div key={step} className="flex items-center gap-2.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[9px] font-bold text-[var(--accent)]">{index + 1}</span><span className="text-[10px] font-semibold text-[var(--text-primary)]">{step}</span></div>)}
             </div>
           </section>
 
-          {(diagnostic.sourceState.lastErrorMessage || diagnostic.task?.lastErrorMessage) ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-red-600 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Poslední chyba</h3><div className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5"><strong className="text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{diagnostic.sourceState.lastErrorCode ?? diagnostic.task?.lastErrorCode ?? 'CHYBA ZDROJE'}</strong><p className="mt-1 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.sourceState.lastErrorMessage ?? diagnostic.task?.lastErrorMessage}</p></div></section> : null}
+          {(['warning', 'error'] as PowerOutageSourceStatus[]).includes(diagnostic.status) && (diagnostic.sourceState.lastErrorMessage || diagnostic.task?.lastErrorMessage) ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-red-600 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Poslední chyba</h3><div className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5"><strong className="text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{diagnostic.sourceState.lastErrorCode ?? diagnostic.task?.lastErrorCode ?? 'CHYBA ZDROJE'}</strong><p className="mt-1 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.sourceState.lastErrorMessage ?? diagnostic.task?.lastErrorMessage}</p></div></section> : null}
 
           <section className="mt-5">
             <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Poslední synchronizační běhy</h3>
             <div className="mt-2 space-y-2">
-              {diagnostic.runs.map((run) => <div key={run.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 py-3"><div className="flex items-start justify-between gap-3"><span><strong className="block text-[11px] text-[var(--text-primary)]">{runStatusLabel(run.status)} · {run.sourceRecordCount} záznamů</strong><small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">Uloženo {run.outageUpsertCount} odstávek a {run.addressUpsertCount} adres</small></span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(run.startedAt)}</time></div>{run.errorMessage ? <p className="mt-2 text-[9px] leading-4 text-red-600 [html[data-theme=dark]_&]:text-red-300">{run.errorCode}: {run.errorMessage}</p> : null}</div>)}
+              {diagnostic.runs.map((run) => <div key={run.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 py-3"><div className="flex items-start justify-between gap-3"><span><strong className="block text-[11px] text-[var(--text-primary)]">{runStatusLabel(run.status)} · {run.sourceRecordCount} záznamů ve dávce</strong><small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">Revize {run.storeRevision} · uloženo {run.outageUpsertCount} odstávek a {run.addressUpsertCount} adres</small></span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(run.startedAt)}</time></div>{run.errorMessage ? <p className="mt-2 text-[9px] leading-4 text-red-600 [html[data-theme=dark]_&]:text-red-300">{run.errorCode}: {run.errorMessage}</p> : null}</div>)}
               {diagnostic.runs.length === 0 ? <p className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--text-secondary)]">Historie běhů zatím není dostupná.</p> : null}
             </div>
           </section>
 
-          <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><TimerReset aria-hidden size={14} /> Technický stav</h3><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="Poslední start úlohy" value={formatDateTime(diagnostic.task?.lastStartedAt ?? null)} /><PowerOutageDetailRow label="Poslední dokončení" value={formatDateTime(diagnostic.task?.lastFinishedAt ?? null)} /><PowerOutageDetailRow label="Reference zdroje" value={diagnostic.sourceState.latestSourceRef ?? 'Neuvedeno'} mono /><PowerOutageDetailRow label="Hash posledních dat" value={diagnostic.sourceState.latestPayloadSha256 ?? 'Neuvedeno'} mono /></div></section>
+          <details className="mt-5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5"><summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><TimerReset aria-hidden size={14} /> Technické podrobnosti</summary><div className="mt-3 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="Poslední start úlohy" value={formatDateTime(diagnostic.task?.lastStartedAt ?? null)} /><PowerOutageDetailRow label="Poslední dokončení" value={formatDateTime(diagnostic.task?.lastFinishedAt ?? null)} /><PowerOutageDetailRow label="Reference zdroje" value={diagnostic.sourceState.latestSourceRef ?? 'Neuvedeno'} mono /><PowerOutageDetailRow label="Hash posledních dat" value={diagnostic.sourceState.latestPayloadSha256 ?? 'Neuvedeno'} mono /></div></details>
         </div>
       )}
     </PowerOutagePopupShell>
@@ -262,6 +315,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
 
 export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[]; storeCoverage: PowerOutageStoreCoverage }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
+  const [showAddressAnalysis, setShowAddressAnalysis] = useState(false)
   const [diagnostic, setDiagnostic] = useState<PowerOutageSourceDiagnostic | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -284,6 +338,27 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
     setLoading(false)
   }
 
+  useEffect(() => {
+    if (!selectedSource || diagnostic?.status !== 'processing') return
+
+    let cancelled = false
+    const refreshDiagnostic = async () => {
+      const result = await getPowerOutageSourceDiagnosticAction(selectedSource)
+      if (cancelled) return
+      if (result.success) {
+        setDiagnostic(result.diagnostic)
+        setError(null)
+      } else {
+        setError(result.error)
+      }
+    }
+    const intervalId = window.setInterval(() => void refreshDiagnostic(), 20_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [selectedSource, diagnostic?.status])
+
   return (
     <>
       <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
@@ -293,10 +368,11 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
         <aside className="power-outages-mobile-aside-carousel activities-manual-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
           <div className="min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
           {sources.map((source) => <div key={source.source} className="min-w-0 snap-start snap-always lg:snap-none"><SourcePanel source={source} onOpen={() => void openSource(source.source)} /></div>)}
-          <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} /></div>
+          <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpen={() => setShowAddressAnalysis(true)} /></div>
         </aside>
       </div>
       {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} onClose={close} />, document.body) : null}
+      {showAddressAnalysis && typeof document !== 'undefined' ? createPortal(<StoreAddressAnalysisPopup onClose={() => setShowAddressAnalysis(false)} />, document.body) : null}
     </>
   )
 }

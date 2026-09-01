@@ -1,6 +1,6 @@
 export type PowerOutageSource = 'cez' | 'egd'
 export type PowerOutageMatchStatus = 'confirmed' | 'needs_review' | 'dismissed'
-export type PowerOutageSourceStatus = 'pending' | 'live' | 'warning' | 'error'
+export type PowerOutageSourceStatus = 'pending' | 'live' | 'processing' | 'warning' | 'error'
 
 export type PowerOutageNotificationPreferences = {
   notificationsEnabled: boolean
@@ -161,6 +161,17 @@ export type PowerOutageSourceDiagnostic = {
     lockExpiresAt: string | null
   } | null
   catalogRevision: number
+  progress: {
+    mode: 'determinate' | 'indeterminate'
+    phase: 'queued' | 'loading'
+    storeRevision: number
+    processedStoreCount: number | null
+    totalStoreCount: number
+    percent: number | null
+    completedBatchCount: number | null
+    startedAt: string | null
+    lastProgressAt: string | null
+  } | null
   runs: Array<{
     id: string
     triggerKind: 'scheduled' | 'manual' | 'store_change' | 'retry'
@@ -193,6 +204,26 @@ export type PowerOutageStoreCoverage = {
   catalogLastChangedAt: string
 }
 
+export type StoreAddressAnalysisItem = {
+  registryId: string
+  chainName: string
+  storeNumber: string
+  currentCity: string
+  currentAddress: string
+  verificationStatus: 'needs_review' | 'not_found' | 'error'
+  analysisStatus: 'pending' | 'suggested' | 'needs_review' | 'not_found' | 'error'
+  confidence: number | null
+  suggestedCity: string | null
+  suggestedAddress: string | null
+  suggestedLabel: string | null
+  suggestedZip: string | null
+  longitude: number | null
+  latitude: number | null
+  candidateCount: number | null
+  analyzedAt: string | null
+  errorMessage: string | null
+}
+
 export type PowerOutageFilterOptions = {
   sources: PowerOutageSource[]
   chains: string[]
@@ -212,7 +243,7 @@ export type PowerOutageWorkspace = {
   archivedOutages: PowerOutageListItem[]
   filters: PowerOutageFilterOptions
   sources: PowerOutageSourceSummary[]
-  sourceHealth: 'pending' | 'live' | 'warning' | 'error'
+  sourceHealth: PowerOutageSourceStatus
   storeCoverage: PowerOutageStoreCoverage
   preferences: PowerOutageNotificationPreferences
 }

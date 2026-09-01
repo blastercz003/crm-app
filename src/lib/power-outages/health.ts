@@ -39,9 +39,22 @@ type TaskState = {
   last_error_message: string | null
 }
 
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function finiteInteger(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : null
+}
+
 function sourceHealth(
   state: SourceState,
   storeRevision: number,
+  storeRevisionChangedAt: string,
   nowMs: number,
   latestRun: LatestRun | undefined,
   taskState: TaskState | undefined,
@@ -58,7 +71,32 @@ function sourceHealth(
     taskState?.consecutive_failure_count ?? 0,
   )
 
-  let status: 'pending' | 'live' | 'warning' | 'error'
+  const metadata = state.metadata ?? {}
+  const cezScan = state.source === 'cez' ? objectValue(metadata.cezScan) : null
+  const activeCezScan = Boolean(
+    storeCatalogPending
+    && cezScan
+    && finiteInteger(cezScan.storeRevision) === storeRevision,
+  )
+  const processing = storeCatalogPending && (
+    activeCezScan
+    || taskState?.last_status === 'running'
+    || consecutiveFailureCount === 0
+  )
+  const lastProgressMs = state.last_attempt_at ? Date.parse(state.last_attempt_at) : Number.NaN
+  const taskStartedMs = taskState?.last_started_at ? Date.parse(taskState.last_started_at) : Number.NaN
+  const catalogChangedMs = Date.parse(storeRevisionChangedAt)
+  const processingStalled = processing && (
+    activeCezScan
+      ? !Number.isFinite(lastProgressMs) || nowMs - lastProgressMs > 45 * 60 * 1_000
+      : taskState?.last_status === 'running'
+        ? !Number.isFinite(taskStartedMs) || nowMs - taskStartedMs > 90 * 60 * 1_000
+        : Number.isFinite(catalogChangedMs) && nowMs - catalogChangedMs > (
+            state.source === 'cez' ? 45 * 60 * 1_000 : 7 * 60 * 60 * 1_000
+          )
+  )
+
+  let status: 'pending' | 'live' | 'processing' | 'warning' | 'error'
   if (ageHours === null) {
     status = consecutiveFailureCount >= 2
       ? 'error'
@@ -67,9 +105,9 @@ function sourceHealth(
         : 'pending'
   }
   else if (consecutiveFailureCount >= 2 || ageHours > 14) status = 'error'
-  else if (consecutiveFailureCount > 0 || ageHours > 8 || storeCatalogPending) status = 'warning'
+  else if (consecutiveFailureCount > 0 || ageHours > 8 || processingStalled) status = 'warning'
+  else if (processing) status = 'processing'
   else status = 'live'
-  const metadata = state.metadata ?? {}
   const changeValue = metadata.changedRecordCount
   const coverageValue = state.source === 'cez'
     ? metadata.coveredTownCount
@@ -157,6 +195,7 @@ export async function getPowerOutageHealth() {
     sourceHealth(
       state,
       catalog.revision,
+      catalog.last_changed_at,
       now.getTime(),
       latestRuns.get(state.source),
       taskByKey.get(`sync_${state.source}`),
@@ -164,6 +203,7 @@ export async function getPowerOutageHealth() {
   ))
   const hasError = sources.some((source) => source.status === 'error')
   const hasPending = sources.some((source) => source.status === 'pending')
+  const hasProcessing = sources.some((source) => source.status === 'processing')
   const hasWarning = sources.some((source) => source.status === 'warning')
     || matchRun?.status === 'failed'
     || tasks.some((task) => task.last_status === 'failed')
@@ -175,7 +215,9 @@ export async function getPowerOutageHealth() {
         ? 'warning' as const
         : hasPending
           ? 'pending' as const
-          : 'live' as const,
+          : hasProcessing
+            ? 'processing' as const
+            : 'live' as const,
     checkedAt: now.toISOString(),
     storeCatalog: {
       revision: catalog.revision,
@@ -194,10 +236,10 @@ export async function getPowerOutageSourceDiagnostic(
   const { supabase } = await getPowerOutageRuntimeContext()
   const taskKey = source === 'cez' ? 'sync_cez' : 'sync_egd'
 
-  const [stateResult, taskResult, catalogResult, runsResult, health] = await Promise.all([
+  const [stateResult, taskResult, catalogResult, storeCountResult, runsResult, health] = await Promise.all([
     supabase
       .from('power_outage_source_state')
-      .select('source,last_attempt_at,last_success_at,last_change_at,last_error_at,latest_source_ref,latest_payload_sha256,active_outage_count,future_outage_count,consecutive_failure_count,last_error_code,last_error_message,data_version,store_revision_processed,lock_expires_at')
+      .select('source,last_attempt_at,last_success_at,last_change_at,last_error_at,latest_source_ref,latest_payload_sha256,active_outage_count,future_outage_count,consecutive_failure_count,last_error_code,last_error_message,data_version,store_revision_processed,lock_expires_at,metadata')
       .eq('source', source)
       .single(),
     supabase
@@ -211,15 +253,18 @@ export async function getPowerOutageSourceDiagnostic(
       .eq('singleton', true)
       .single<{ revision: number }>(),
     supabase
+      .from('stores')
+      .select('id', { count: 'exact', head: true }),
+    supabase
       .from('power_outage_sync_runs')
-      .select('id,trigger_kind,status,started_at,finished_at,source_record_count,outage_upsert_count,address_upsert_count,store_match_count,store_review_count,store_revision,error_code,error_message')
+      .select('id,trigger_kind,status,started_at,finished_at,source_record_count,outage_upsert_count,address_upsert_count,store_match_count,store_review_count,store_revision,error_code,error_message,metadata')
       .eq('source', source)
       .order('started_at', { ascending: false })
       .limit(12),
     getPowerOutageHealth(),
   ])
 
-  const error = [stateResult.error, taskResult.error, catalogResult.error, runsResult.error].find(Boolean)
+  const error = [stateResult.error, taskResult.error, catalogResult.error, storeCountResult.error, runsResult.error].find(Boolean)
   if (error) throw new Error(`Provozní detail ${source.toUpperCase()} se nepodařilo načíst: ${error.message}`)
   if (!stateResult.data || !catalogResult.data) throw new Error(`Provozní stav ${source.toUpperCase()} není dostupný.`)
 
@@ -227,6 +272,44 @@ export async function getPowerOutageSourceDiagnostic(
   const task = taskResult.data
   const summary = health.sources.find((item) => item.source === source)
   const status = summary?.status ?? 'pending'
+  const catalogRevision = Number(catalogResult.data.revision)
+  const totalStoreCount = Math.max(0, storeCountResult.count ?? 0)
+  const stateMetadata = objectValue(state.metadata) ?? {}
+  const scan = source === 'cez' ? objectValue(stateMetadata.cezScan) : null
+  const scanRevision = finiteInteger(scan?.storeRevision)
+  const scanIndex = finiteInteger(scan?.nextStoreIndex)
+  const batchHashes = Array.isArray(scan?.batchHashes) ? scan.batchHashes : []
+  const isStoreRevisionPending = Number(state.store_revision_processed) < catalogRevision
+  const activeCezScan = source === 'cez'
+    && isStoreRevisionPending
+    && scanRevision === catalogRevision
+  const progress = status === 'processing'
+    ? source === 'cez'
+      ? {
+          mode: 'determinate' as const,
+          phase: activeCezScan ? 'loading' as const : 'queued' as const,
+          storeRevision: catalogRevision,
+          processedStoreCount: activeCezScan ? Math.min(totalStoreCount, scanIndex ?? 0) : 0,
+          totalStoreCount,
+          percent: totalStoreCount > 0
+            ? Math.min(100, Math.max(0, ((activeCezScan ? scanIndex ?? 0 : 0) / totalStoreCount) * 100))
+            : 0,
+          completedBatchCount: activeCezScan ? batchHashes.length : 0,
+          startedAt: activeCezScan && typeof scan?.startedAt === 'string' ? scan.startedAt : null,
+          lastProgressAt: activeCezScan ? state.last_attempt_at : null,
+        }
+      : {
+          mode: 'indeterminate' as const,
+          phase: task?.last_status === 'running' ? 'loading' as const : 'queued' as const,
+          storeRevision: catalogRevision,
+          processedStoreCount: null,
+          totalStoreCount,
+          percent: null,
+          completedBatchCount: null,
+          startedAt: task?.last_status === 'running' ? task.last_started_at : null,
+          lastProgressAt: state.last_attempt_at,
+        }
+    : null
 
   return {
     generatedAt: new Date().toISOString(),
@@ -258,7 +341,8 @@ export async function getPowerOutageSourceDiagnostic(
       lastErrorMessage: task.last_error_message,
       lockExpiresAt: task.lock_expires_at,
     } : null,
-    catalogRevision: catalogResult.data.revision,
+    catalogRevision,
+    progress,
     runs: (runsResult.data ?? []).map((run) => ({
       id: run.id,
       triggerKind: run.trigger_kind,
