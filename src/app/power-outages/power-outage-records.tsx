@@ -11,6 +11,7 @@ import {
   Search,
   SearchCheck,
   Send,
+  SlidersHorizontal,
   Store,
   X,
   Zap,
@@ -52,6 +53,34 @@ function formatDateTime(value: string) {
   return Number.isNaN(date.getTime()) ? 'Neuvedeno' : DATE_TIME_FORMATTER.format(date)
 }
 
+const MOBILE_DATE_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
+  timeZone: 'Europe/Prague',
+  day: 'numeric',
+  month: 'numeric',
+  year: 'numeric',
+})
+
+const MOBILE_TIME_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
+  timeZone: 'Europe/Prague',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+function formatMobilePeriod(startsAt: string, endsAt: string) {
+  const starts = new Date(startsAt)
+  const ends = new Date(endsAt)
+  if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) return 'Termín neuveden'
+
+  const startDate = MOBILE_DATE_FORMATTER.format(starts)
+  const endDate = MOBILE_DATE_FORMATTER.format(ends)
+  const start = `${startDate} ${MOBILE_TIME_FORMATTER.format(starts)}`
+  const end = startDate === endDate
+    ? MOBILE_TIME_FORMATTER.format(ends)
+    : `${endDate} ${MOBILE_TIME_FORMATTER.format(ends)}`
+
+  return `${start} → ${end}`
+}
+
 function normalize(value: string) {
   return value
     .normalize('NFD')
@@ -62,7 +91,7 @@ function normalize(value: string) {
 
 function SourceBadge({ source }: { source: PowerOutageSource }) {
   return (
-    <span className="inline-flex h-6 items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2.5 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]">
+    <span className="inline-flex h-5 w-[36px] items-center justify-center whitespace-nowrap rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-1 text-[7px] font-bold uppercase tracking-[0.06em] text-[var(--accent)] lg:h-6 lg:w-[44px] lg:px-1.5 lg:text-[9px] lg:tracking-[0.08em]">
       {source === 'cez' ? 'ČEZ' : 'EG.D'}
     </span>
   )
@@ -72,7 +101,7 @@ function MatchBadge({ status }: { status: PowerOutageMatchStatus }) {
   const review = status === 'needs_review'
   const dismissed = status === 'dismissed'
   return (
-    <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[8px] font-bold uppercase tracking-[0.07em] lg:w-[88px] lg:justify-center lg:whitespace-nowrap ${dismissed
+    <span className={`inline-flex h-5 w-[66px] items-center justify-center whitespace-nowrap rounded-full border px-1.5 text-[7px] font-bold uppercase tracking-[0.035em] lg:h-6 lg:w-[88px] lg:px-2.5 lg:text-[8px] lg:tracking-[0.07em] ${dismissed
       ? 'border-slate-400/45 bg-slate-400/10 text-slate-600 [html[data-theme=dark]_&]:text-slate-300'
       : review
       ? 'border-amber-400/45 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
@@ -96,13 +125,13 @@ function StatusBadge({ item, now }: { item: PowerOutageListItem; now: number }) 
         ? 'UKONČENA'
         : 'PLÁNOVANÁ'
   return (
-    <span className="inline-flex h-6 items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2.5 text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--accent)] lg:w-[88px] lg:justify-center lg:whitespace-nowrap">
+    <span className="hidden h-5 w-[66px] items-center justify-center whitespace-nowrap rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-1.5 text-[7px] font-bold uppercase tracking-[0.035em] text-[var(--accent)] lg:inline-flex lg:h-6 lg:w-[88px] lg:px-2.5 lg:text-[8px] lg:tracking-[0.07em]">
       {label}
     </span>
   )
 }
 
-function LinkedJobBadge({ item }: { item: PowerOutageListItem }) {
+function LinkedJobBadge({ item, mobileOverlay = false }: { item: PowerOutageListItem; mobileOverlay?: boolean }) {
   if (!item.linkedJob) return null
 
   const additionalCount = Math.max(0, item.linkedJob.matchCount - 1)
@@ -115,9 +144,11 @@ function LinkedJobBadge({ item }: { item: PowerOutageListItem }) {
       href={`/jobs?q=${encodeURIComponent(item.linkedJob.jobNumber)}`}
       aria-label={title}
       title={title}
-      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-400/45 bg-emerald-400/12 text-emerald-700 transition hover:-translate-y-px hover:bg-emerald-400/20 [html[data-theme=dark]_&]:text-emerald-300"
+      className={mobileOverlay
+        ? 'absolute -bottom-1 -right-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-emerald-400/55 bg-emerald-100 text-emerald-700 shadow-sm transition hover:scale-105 [html[data-theme=dark]_&]:bg-emerald-950 [html[data-theme=dark]_&]:text-emerald-300'
+        : 'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-400/45 bg-emerald-400/12 text-emerald-700 transition hover:-translate-y-px hover:bg-emerald-400/20 lg:h-6 lg:w-6 [html[data-theme=dark]_&]:text-emerald-300'}
     >
-      <Check aria-hidden size={13} strokeWidth={3} />
+      <Check aria-hidden size={mobileOverlay ? 8 : 13} strokeWidth={3} />
     </Link>
   )
 }
@@ -178,40 +209,33 @@ function MobileOutageCard({
   onAnnouncement: () => void
 }) {
   return (
-    <article className="weather-alerts__record-surface rounded-[20px] border px-3.5 py-3">
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]">
-          <Zap aria-hidden size={18} />
+    <article className="power-outages-mobile-card weather-alerts__record-surface rounded-[18px] border px-3 py-2.5">
+      <div className="grid min-w-0 grid-cols-[20px_minmax(0,1fr)] gap-x-2">
+        <span className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-sky-400/20 bg-sky-500/10 text-[var(--accent)]">
+          <Zap aria-hidden size={11} />
           {isNew ? <NewOutageIndicator /> : null}
+          <LinkedJobBadge item={item} mobileOverlay />
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 flex-nowrap items-center justify-end gap-1">
             <SourceBadge source={item.source} />
             <MatchBadge status={item.matchStatus} />
             <StatusBadge item={item} now={now} />
-            <LinkedJobBadge item={item} />
-          </div>
-          <div className="mt-2 flex min-w-0 items-baseline gap-1.5">
-            <strong className="truncate text-sm text-[var(--text-primary)]">{item.store.chainName}</strong>
-            <span className="shrink-0 text-[10px] font-bold text-[var(--text-secondary)]">č. {item.store.storeNumber}</span>
-          </div>
-          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
-            <MapPin aria-hidden size={12} className="shrink-0" />
-            <span className="truncate">{item.store.address}, {item.store.city}</span>
-          </span>
-          <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[var(--surface-border)] pt-2">
-            <span className="min-w-0 text-[9px] font-semibold text-[var(--text-secondary)]">
-              <i className="mb-0.5 block not-italic uppercase tracking-[0.08em]">Od</i>
-              <b className="block truncate font-bold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.startsAt)}</b>
-            </span>
-            <span className="min-w-0 text-[9px] font-semibold text-[var(--text-secondary)]">
-              <i className="mb-0.5 block not-italic uppercase tracking-[0.08em]">Do</i>
-              <b className="block truncate font-bold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.endsAt)}</b>
-            </span>
-          </div>
-          <div className="mt-2 flex justify-end gap-1.5">
-            <button type="button" onClick={onDetail} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2.5 text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] transition hover:text-[var(--accent)]"><Eye aria-hidden size={13} /> Detail</button>
-            <button type="button" onClick={onAnnouncement} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2.5 text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] transition hover:text-[var(--accent)]"><Send aria-hidden size={12} /> Oznámení</button>
+        </div>
+        <div className="col-span-2 mt-1 flex min-w-0 items-baseline gap-1.5">
+          <Store aria-hidden size={11} className="shrink-0 self-center text-[var(--text-secondary)]" />
+          <strong className="truncate text-[13px] text-[var(--text-primary)]">{item.store.chainName}</strong>
+          <span className="shrink-0 text-[9px] font-bold text-[var(--text-secondary)]">č. {item.store.storeNumber}</span>
+        </div>
+        <span className="col-span-2 mt-1 flex min-w-0 items-center gap-1.5 text-[10px]">
+          <MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" />
+          <strong className="shrink-0 font-semibold text-[var(--text-primary)]">{item.store.city}</strong>
+          <span className="truncate text-[var(--text-secondary)]">· {item.store.address}</span>
+        </span>
+        <div className="col-span-2 mt-1.5 flex min-w-0 items-center justify-between gap-2">
+          <strong className="min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong>
+          <div className="flex shrink-0 gap-1.5">
+            <button type="button" onClick={onDetail} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-sky-400/20 bg-sky-500/10 px-2.5 text-[7px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Eye aria-hidden size={12} /> Detail</button>
+            <button type="button" onClick={onAnnouncement} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-sky-400/20 bg-sky-500/10 px-2.5 text-[7px] font-bold uppercase tracking-[0.04em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Send aria-hidden size={11} /> Oznámení</button>
           </div>
         </div>
       </div>
@@ -249,6 +273,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all')
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [matchFilter, setMatchFilter] = useState<MatchFilter>('visible')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [popupMode, setPopupMode] = useState<'detail' | 'announcement' | null>(null)
   const [selectedItem, setSelectedItem] = useState<PowerOutageListItem | null>(null)
   const [selectedDetail, setSelectedDetail] = useState<PowerOutageDetail | null>(null)
@@ -265,6 +290,13 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
   const now = useMemo(() => new Date(workspace.generatedAt).getTime(), [workspace.generatedAt])
   const records = tab === 'current' ? workspace.currentOutages : workspace.archivedOutages
   const hasFilters = Boolean(query.trim()) || chainFilter !== 'all' || sourceFilter !== 'all' || timeFilter !== 'all' || matchFilter !== 'visible'
+  const activeFilterCount = [
+    Boolean(query.trim()),
+    chainFilter !== 'all',
+    sourceFilter !== 'all',
+    timeFilter !== 'all',
+    matchFilter !== 'visible',
+  ].filter(Boolean).length
   const newMatchIds = useMemo(() => {
     const next = new Set(rememberedNewMatchIds)
     for (const item of workspace.currentOutages) {
@@ -366,6 +398,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
     setSourceFilter('all')
     setTimeFilter('all')
     setMatchFilter('visible')
+    setFiltersOpen(false)
   }
 
   const openAnnouncement = (item: PowerOutageListItem) => {
@@ -441,16 +474,36 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
   return (
     <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:flex xl:h-0 xl:min-h-full xl:flex-col xl:overflow-hidden">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center xl:grid-cols-[175px_minmax(0,1fr)_160px] xl:gap-2">
-        <div className="lg:col-start-1 lg:row-start-1">
-          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Databáze distributorů</span>
-          <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Přehled odstávek</h2>
+        <div className="min-w-0 lg:contents">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+            <div className="flex min-w-0 items-center justify-between gap-2 lg:block">
+              <span className="text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)] min-[360px]:text-[9px] min-[360px]:tracking-[0.13em] lg:text-[10px] lg:tracking-[0.14em]">Databáze distributorů</span>
+              <div className="weather-alerts__record-surface grid h-8 w-[106px] shrink-0 grid-cols-2 rounded-xl border p-0.5 min-[360px]:h-9 min-[360px]:w-[122px] lg:hidden">
+                <button type="button" onClick={() => setTab('current')} aria-pressed={tab === 'current'} className={`rounded-[10px] px-1 text-[6px] font-bold uppercase transition min-[360px]:text-[7px] ${tab === 'current' ? 'bg-[var(--surface-strong)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Aktuální</button>
+                <button type="button" onClick={() => setTab('archive')} aria-pressed={tab === 'archive'} className={`rounded-[10px] px-1 text-[6px] font-bold uppercase transition min-[360px]:text-[7px] ${tab === 'archive' ? 'bg-[var(--surface-strong)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Archiv</button>
+              </div>
+            </div>
+            <h2 className="mt-1 whitespace-nowrap text-xl font-semibold text-[var(--text-primary)]">Přehled odstávek</h2>
+          </div>
+          <div className="weather-alerts__record-surface hidden h-12 shrink-0 grid-cols-2 rounded-2xl border p-1 lg:col-start-2 lg:row-start-1 lg:grid xl:col-start-3">
+            <button type="button" onClick={() => setTab('current')} aria-pressed={tab === 'current'} className={`rounded-xl px-5 text-[10px] font-bold uppercase transition xl:px-3 ${tab === 'current' ? 'bg-[var(--surface-strong)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Aktuální</button>
+            <button type="button" onClick={() => setTab('archive')} aria-pressed={tab === 'archive'} className={`rounded-xl px-5 text-[10px] font-bold uppercase transition xl:px-3 ${tab === 'archive' ? 'bg-[var(--surface-strong)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Archiv</button>
+          </div>
         </div>
-        <div className="weather-alerts__record-surface grid h-12 shrink-0 grid-cols-2 rounded-2xl border p-1 lg:col-start-2 lg:row-start-1 xl:col-start-3">
-          <button type="button" onClick={() => setTab('current')} aria-pressed={tab === 'current'} className={`rounded-xl px-5 text-[10px] font-bold uppercase transition xl:px-3 ${tab === 'current' ? 'bg-[var(--surface-strong)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Aktuální</button>
-          <button type="button" onClick={() => setTab('archive')} aria-pressed={tab === 'archive'} className={`rounded-xl px-5 text-[10px] font-bold uppercase transition xl:px-3 ${tab === 'archive' ? 'bg-[var(--surface-strong)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Archiv</button>
-        </div>
-        <div className="weather-alerts__record-surface rounded-[22px] border p-3 sm:p-3.5 lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:p-1.5 xl:col-span-1 xl:col-start-2 xl:row-start-1">
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(120px,1.35fr)_repeat(4,minmax(82px,1fr))] xl:gap-1.5">
+        <div className="weather-alerts__record-surface rounded-[22px] border p-1 lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:p-1.5 xl:col-span-1 xl:col-start-2 xl:row-start-1">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+            aria-controls="power-outage-mobile-filters"
+            className="flex h-8 w-full items-center gap-2 rounded-xl px-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)] lg:hidden"
+          >
+            <SlidersHorizontal aria-hidden size={14} className="shrink-0 text-[var(--accent)]" />
+            <span className="flex-1">Filtry</span>
+            {activeFilterCount > 0 ? <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1.5 text-[8px] text-white">{activeFilterCount}</span> : null}
+            <ChevronDown aria-hidden size={14} className={`shrink-0 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <div id="power-outage-mobile-filters" className={`${filtersOpen ? 'grid' : 'hidden'} mt-1.5 gap-2 p-1 sm:grid-cols-2 lg:mt-0 lg:grid lg:p-0 xl:grid-cols-[minmax(120px,1.35fr)_repeat(4,minmax(82px,1fr))] xl:gap-1.5`}>
           <label className="relative min-w-0 sm:col-span-2 xl:col-span-1">
             <span className="sr-only">Vyhledat odstávku</span>
             <Search aria-hidden size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
@@ -479,12 +532,12 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
             <option value="dismissed">Zamítnuté</option>
           </SelectControl>
           </div>
-          {hasFilters ? <button type="button" onClick={clearFilters} className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[9px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)] sm:hidden"><X aria-hidden size={12} /> Zrušit filtry</button> : null}
+          {hasFilters ? <button type="button" onClick={clearFilters} className={`${filtersOpen ? 'inline-flex' : 'hidden'} mb-1 ml-1 mt-2 h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] lg:hidden`}><X aria-hidden size={12} /> Zrušit filtry</button> : null}
         </div>
       </div>
 
-      <div className="weather-alerts__record-surface mt-3 overflow-hidden rounded-[22px] border xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-        <div className="flex h-11 items-center justify-between gap-3 border-b border-[var(--surface-border)] px-3.5 sm:px-4">
+      <div className="power-outages-records-shell weather-alerts__record-surface mt-3 overflow-visible rounded-[22px] border lg:overflow-hidden xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+        <div className="hidden h-11 items-center justify-between gap-3 border-b border-[var(--surface-border)] px-3.5 sm:px-4 lg:flex">
           <div className="flex min-w-0 items-center gap-2">
             {tab === 'current' ? <CalendarDays aria-hidden size={14} className="shrink-0 text-[var(--accent)]" /> : <Archive aria-hidden size={14} className="shrink-0 text-[var(--accent)]" />}
             <h3 className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{tab === 'current' ? 'Aktuální nalezené odstávky' : 'Archiv odstávek'}</h3>
@@ -496,7 +549,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
         </div>
 
         {filtered.length > 0 ? (
-          <div className="max-h-[500px] overflow-y-auto overscroll-contain [scrollbar-gutter:stable] xl:min-h-0 xl:max-h-none xl:flex-1">
+          <div className="-mx-2 max-h-[610px] overflow-y-auto px-2 py-1 overscroll-contain [scrollbar-gutter:auto] lg:mx-0 lg:max-h-[500px] lg:px-0 lg:py-0 lg:[scrollbar-gutter:stable] xl:min-h-0 xl:max-h-none xl:flex-1">
             <div className="hidden lg:block">
               <table className="w-full table-fixed border-collapse text-left">
                 <thead className="power-outages-table__header sticky top-0 z-10 shadow-[0_1px_0_var(--surface-border)]">
@@ -535,7 +588,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
                 </tbody>
               </table>
             </div>
-            <div className="grid gap-2.5 p-2.5 lg:hidden">
+            <div className="grid gap-2.5 lg:hidden">
               {filtered.map((item) => <MobileOutageCard key={item.matchId} item={item} isNew={newMatchIds.has(item.matchId)} now={now} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} />)}
             </div>
           </div>

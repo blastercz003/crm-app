@@ -286,11 +286,16 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
 
   return (
     <>
-      <aside className="activities-manual-carousel grid min-w-0 auto-cols-[calc(100%-18px)] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[24px] pb-1 lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none lg:pb-0" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
-        <div className="min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
-        {sources.map((source) => <div key={source.source} className="min-w-0 snap-start snap-always lg:snap-none"><SourcePanel source={source} onOpen={() => void openSource(source.source)} /></div>)}
-        <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} /></div>
-      </aside>
+      <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
+        <p className="mb-2 text-[10px] text-[var(--text-secondary)] lg:hidden">
+          Přejetím do strany zobrazíte další část.
+        </p>
+        <aside className="power-outages-mobile-aside-carousel activities-manual-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
+          <div className="min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
+          {sources.map((source) => <div key={source.source} className="min-w-0 snap-start snap-always lg:snap-none"><SourcePanel source={source} onOpen={() => void openSource(source.source)} /></div>)}
+          <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} /></div>
+        </aside>
+      </div>
       {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} onClose={close} />, document.body) : null}
     </>
   )
