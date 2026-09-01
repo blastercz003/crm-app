@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Archive, Database, SearchCheck, Zap } from 'lucide-react'
 
-type SummaryTone = 'blue' | 'amber' | 'violet' | 'emerald'
+type SummaryTone = 'blue' | 'amber' | 'violet' | 'emerald' | 'slate'
 
 export type PowerOutageSummaryCard = {
   label: string
@@ -16,6 +16,7 @@ const ICONS = {
   amber: Zap,
   violet: SearchCheck,
   emerald: Archive,
+  slate: Archive,
 } as const
 
 const COUNT_DURATION_MS = 4_500

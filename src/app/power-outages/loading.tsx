@@ -17,7 +17,7 @@ export default function PowerOutagesLoading() {
 
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} data-tone={(['blue', 'amber', 'violet', 'emerald'] as const)[index]} className="activities-page__panel activities-workspace__kpi h-[92px] rounded-[22px] border p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(15,23,42,0.08)] sm:h-[88px]">
+            <div key={index} data-tone={(['blue', 'amber', 'violet', 'slate'] as const)[index]} className="activities-page__panel activities-workspace__kpi h-[92px] rounded-[22px] border p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(15,23,42,0.08)] sm:h-[88px]">
               <Skeleton className="h-3 w-28" />
               <Skeleton className="mt-5 h-9 w-14" />
             </div>

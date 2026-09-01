@@ -10,7 +10,7 @@ export function PowerOutagesDashboard({ workspace }: { workspace: PowerOutageWor
     { label: 'ANALYZOVÁNO', value: workspace.statistics.analyzedOutageCount, tone: 'blue' },
     { label: 'NALEZENÉ ODSTÁVKY', value: workspace.statistics.currentMatchCount, tone: 'amber' },
     { label: 'K OVĚŘENÍ', value: workspace.statistics.needsReviewCount, tone: 'violet' },
-    { label: 'ARCHIVOVÁNO', value: workspace.statistics.archivedMatchCount, tone: 'emerald' },
+    { label: 'ARCHIVOVÁNO', value: workspace.statistics.archivedMatchCount, tone: 'slate' },
   ]
 
   return (

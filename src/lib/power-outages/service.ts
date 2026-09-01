@@ -145,16 +145,16 @@ function storeCoverage(
     row.needs_refresh || row.verification_status === 'pending'
   )).length
   const review = active.filter((row) => row.verification_status === 'needs_review').length
-  const failed = active.filter((row) => (
-    row.verification_status === 'not_found' || row.verification_status === 'error'
-  )).length
+  const notFound = active.filter((row) => row.verification_status === 'not_found').length
+  const error = active.filter((row) => row.verification_status === 'error').length
 
   return {
     totalStoreCount: active.length,
     readyStoreCount: ready,
     pendingStoreCount: pending,
     reviewStoreCount: review,
-    failedStoreCount: failed,
+    notFoundStoreCount: notFound,
+    errorStoreCount: error,
     coveragePercent: active.length > 0 ? Math.round((ready / active.length) * 1_000) / 10 : 0,
     cezStoreCount: active.filter((row) => row.distributor === 'cez').length,
     egdStoreCount: active.filter((row) => row.distributor === 'egd').length,

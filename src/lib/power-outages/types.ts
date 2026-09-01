@@ -182,7 +182,8 @@ export type PowerOutageStoreCoverage = {
   readyStoreCount: number
   pendingStoreCount: number
   reviewStoreCount: number
-  failedStoreCount: number
+  notFoundStoreCount: number
+  errorStoreCount: number
   coveragePercent: number
   cezStoreCount: number
   egdStoreCount: number

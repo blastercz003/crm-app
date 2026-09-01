@@ -175,10 +175,11 @@ function StoreCoveragePanel({ coverage }: { coverage: PowerOutageStoreCoverage }
         </div>
       </div>
 
-      <div className="mt-2.5 grid grid-cols-3 gap-2">
-        <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Čeká</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{coverage.pendingStoreCount}</strong></div>
-        <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">K ověření</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{coverage.reviewStoreCount}</strong></div>
-        <div className="weather-alerts__record-surface rounded-xl border p-2.5"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Nenalezeno</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{coverage.failedStoreCount}</strong></div>
+      <div className="mt-2.5 grid grid-cols-4 gap-1.5">
+        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Ke kontrole</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.pendingStoreCount}</strong></div>
+        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Nejednoznačné</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.reviewStoreCount}</strong></div>
+        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Nedohledáno</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.notFoundStoreCount}</strong></div>
+        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Chyba ověření</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.errorStoreCount}</strong></div>
       </div>
 
       <div className="mt-2.5 grid grid-cols-2 gap-2 text-[9px] font-semibold text-[var(--text-secondary)]">
