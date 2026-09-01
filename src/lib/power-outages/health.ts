@@ -127,6 +127,7 @@ function sourceHealth(
     futureOutageCount: state.future_outage_count,
     dataVersion: state.data_version,
     storeCatalogPending,
+    storeRevisionProcessed: state.store_revision_processed,
     processedRecordCount: latestRun?.source_record_count ?? 0,
     changeCount: typeof changeValue === 'number' && Number.isFinite(changeValue)
       ? Math.max(0, Math.trunc(changeValue))

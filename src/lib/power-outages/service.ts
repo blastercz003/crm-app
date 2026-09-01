@@ -64,6 +64,7 @@ type ViewedMatchRow = {
 }
 
 type RegistryRow = {
+  store_chain_name: string
   distributor: 'cez' | 'egd' | 'unknown'
   verification_status: 'pending' | 'verified' | 'probable' | 'needs_review' | 'not_found' | 'error'
   needs_refresh: boolean
@@ -138,7 +139,7 @@ function filterOptions(items: PowerOutageListItem[]): PowerOutageFilterOptions {
 
 function storeCoverage(
   rows: RegistryRow[],
-  catalog: { revision: number; last_changed_at: string },
+  catalog: { revision: number; last_changed_at: string; last_change_kind: 'initial' | 'insert' | 'update' | 'delete' },
 ): PowerOutageStoreCoverage {
   const active = rows.filter((row) => row.is_active)
   const ready = active.filter((row) => (
@@ -151,6 +152,21 @@ function storeCoverage(
   const review = active.filter((row) => row.verification_status === 'needs_review').length
   const notFound = active.filter((row) => row.verification_status === 'not_found').length
   const error = active.filter((row) => row.verification_status === 'error').length
+  const chains = [...new Set(active.map((row) => row.store_chain_name))]
+    .sort((left, right) => left.localeCompare(right, 'cs'))
+    .map((chainName) => {
+      const rows = active.filter((row) => row.store_chain_name === chainName)
+      return {
+        chainName,
+        totalStoreCount: rows.length,
+        readyStoreCount: rows.filter((row) => !row.needs_refresh && (row.verification_status === 'verified' || row.verification_status === 'probable')).length,
+        pendingStoreCount: rows.filter((row) => row.needs_refresh || row.verification_status === 'pending').length,
+        reviewStoreCount: rows.filter((row) => row.verification_status === 'needs_review').length,
+        notFoundStoreCount: rows.filter((row) => row.verification_status === 'not_found').length,
+        errorStoreCount: rows.filter((row) => row.verification_status === 'error').length,
+        unknownDistributorCount: rows.filter((row) => row.distributor === 'unknown').length,
+      }
+    })
 
   return {
     totalStoreCount: active.length,
@@ -165,6 +181,8 @@ function storeCoverage(
     unknownDistributorCount: active.filter((row) => row.distributor === 'unknown').length,
     catalogRevision: catalog.revision,
     catalogLastChangedAt: catalog.last_changed_at,
+    catalogLastChangeKind: catalog.last_change_kind,
+    chains,
   }
 }
 
@@ -174,7 +192,7 @@ async function loadStoreRegistry(client: SupabaseClient) {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await client
       .from('power_outage_store_registry')
-      .select('distributor,verification_status,needs_refresh,is_active')
+      .select('store_chain_name,distributor,verification_status,needs_refresh,is_active')
       .order('id')
       .range(from, from + pageSize - 1)
     if (error) {
@@ -323,9 +341,9 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
     loadStoreRegistry(supabase),
     supabase
       .from('power_outage_store_catalog_state')
-      .select('revision,last_changed_at')
+      .select('revision,last_changed_at,last_change_kind')
       .eq('singleton', true)
-      .single<{ revision: number; last_changed_at: string }>(),
+      .single<{ revision: number; last_changed_at: string; last_change_kind: 'initial' | 'insert' | 'update' | 'delete' }>(),
     supabase
       .from('power_outage_notification_preferences')
       .select('notifications_enabled,reminder_24h_enabled,updated_at')

@@ -125,6 +125,7 @@ export type PowerOutageSourceSummary = {
   futureOutageCount: number
   dataVersion: number
   storeCatalogPending: boolean
+  storeRevisionProcessed: number
   processedRecordCount: number
   changeCount: number | null
   municipalityCoverage: string
@@ -202,6 +203,17 @@ export type PowerOutageStoreCoverage = {
   unknownDistributorCount: number
   catalogRevision: number
   catalogLastChangedAt: string
+  catalogLastChangeKind: 'initial' | 'insert' | 'update' | 'delete'
+  chains: Array<{
+    chainName: string
+    totalStoreCount: number
+    readyStoreCount: number
+    pendingStoreCount: number
+    reviewStoreCount: number
+    notFoundStoreCount: number
+    errorStoreCount: number
+    unknownDistributorCount: number
+  }>
 }
 
 export type StoreAddressAnalysisItem = {

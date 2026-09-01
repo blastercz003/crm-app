@@ -80,8 +80,9 @@ function addressNumbers(value: string) {
 
 function distributor(value: string | null | undefined) {
   const normalized = normalizePowerOutageText(value)
-  if (normalized.includes('cez')) return 'cez' as const
-  if (normalized.includes('egd') || normalized.includes('e on')) return 'egd' as const
+  const compact = normalized.replace(/\s+/g, '')
+  if (compact.includes('cez')) return 'cez' as const
+  if (compact.includes('egd') || compact.includes('eon')) return 'egd' as const
   return 'unknown' as const
 }
 
@@ -300,6 +301,7 @@ export async function processPowerOutageStoreRegistryQueue(limit = 40) {
           metadata: {
             resolver: 'cez-public-address-v1',
             candidateCount: candidates.length,
+            selectedDso: selected?.dso ?? null,
             selectedTownPart: selected?.townPart ?? null,
             selectedDistrict: selected?.district ?? null,
             selectedRegion: selected?.region ?? null,

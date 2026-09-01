@@ -6,6 +6,7 @@ import {
   CircleAlert,
   DatabaseZap,
   History,
+  Info,
   MapPinCheck,
   RefreshCw,
   Route,
@@ -168,44 +169,134 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
   )
 }
 
-function StoreCoveragePanel({ coverage, onOpen }: { coverage: PowerOutageStoreCoverage; onOpen: () => void }) {
+function StoreCoveragePanel({ coverage, onOpenAnalysis, onOpenDetail }: { coverage: PowerOutageStoreCoverage; onOpenAnalysis: () => void; onOpenDetail: () => void }) {
   const percent = Math.min(100, Math.max(0, coverage.coveragePercent))
 
   return (
     <section className="activities-page__panel flex h-[360px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto">
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><Route aria-hidden size={18} /></span>
-        <span className="min-w-0 flex-1"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Databáze prodejen</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">Pokrytí adres</h2></span>
-        <ChevronRight aria-hidden size={16} className="ml-auto shrink-0 text-[var(--text-secondary)]" />
-      </button>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><Route aria-hidden size={18} /></span>
+          <span className="min-w-0 flex-1"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Databáze prodejen</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">Pokrytí adres</h2></span>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenAnalysis}
+          aria-label="Otevřít kontrolu adres prodejen"
+          title="Otevřít kontrolu adres"
+          className="inline-flex h-8 w-[76px] shrink-0 items-center justify-center gap-1 rounded-xl border border-sky-500/40 bg-sky-500/10 px-2 text-center text-[7px] font-bold leading-none tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:bg-sky-500/15 sm:w-[108px] sm:text-[7.5px] [html[data-theme=dark]_&]:text-sky-300"
+        >
+          <MapPinCheck aria-hidden size={12} className="shrink-0" />
+          <span className="sm:hidden">KONTROLA</span>
+          <span className="hidden sm:inline">KONTROLA ADRES</span>
+        </button>
+      </div>
 
-      <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+      <button type="button" onClick={onOpenDetail} aria-label="Otevřít detail pokrytí adres" className="mt-4 w-full rounded-2xl border border-sky-500/35 bg-sky-500/5 p-3.5 text-left transition hover:border-[var(--surface-border)] hover:bg-[var(--surface-muted)]">
         <div className="flex items-end justify-between gap-3">
           <span><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Ověřeno pro porovnání</small><strong className="mt-1 block text-[11px] text-[var(--text-primary)]">{coverage.readyStoreCount} z {coverage.totalStoreCount} adres</strong></span>
-          <strong className="text-3xl font-semibold leading-none tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong>
+          <span className="flex items-center gap-2"><strong className="text-3xl font-semibold leading-none tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong><ChevronRight aria-hidden size={15} className="text-[var(--text-secondary)]" /></span>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]">
           <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500" style={{ width: `${percent}%` }} />
         </div>
-      </div>
+      </button>
 
       <div className="mt-2.5 grid grid-cols-4 gap-1.5">
-        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Ke kontrole</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.pendingStoreCount}</strong></div>
-        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Nejednoznačné</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.reviewStoreCount}</strong></div>
-        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Nedohledáno</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.notFoundStoreCount}</strong></div>
-        <div className="weather-alerts__record-surface min-w-0 rounded-xl border px-2 py-2"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-[var(--text-secondary)] sm:text-[6.5px]">Chyba ověření</span><strong className="mt-0.5 block text-[13px] tabular-nums text-[var(--text-primary)]">{coverage.errorStoreCount}</strong></div>
+        <div className="min-w-0 rounded-xl border border-slate-400/30 bg-slate-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(100,116,139,0.45)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-slate-600 sm:text-[6.5px] [html[data-theme=dark]_&]:text-slate-300">Ke kontrole</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.pendingStoreCount}</strong></div>
+        <div className="min-w-0 rounded-xl border border-amber-400/35 bg-amber-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(245,158,11,0.55)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-amber-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-amber-300">K opravě</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.reviewStoreCount}</strong></div>
+        <div className="min-w-0 rounded-xl border border-orange-400/35 bg-orange-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(249,115,22,0.55)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-orange-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-orange-300">Nedohledáno</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.notFoundStoreCount}</strong></div>
+        <div className="min-w-0 rounded-xl border border-red-400/35 bg-red-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(239,68,68,0.55)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-red-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-red-300">Chyba</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.errorStoreCount}</strong></div>
       </div>
 
-      <div className="mt-2.5 grid grid-cols-2 gap-2 text-[9px] font-semibold text-[var(--text-secondary)]">
-        <span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2">ČEZ: <strong className="text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></span>
-        <span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2">EG.D: <strong className="text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
+      <div className="mt-2.5">
+        <span className="mb-1 block text-[6px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Distribuční území</span>
+        <div className="grid grid-cols-3 gap-1.5 text-center text-[7px] font-bold uppercase tracking-[0.035em]">
+          <span className="rounded-xl border border-orange-500/35 bg-orange-500/8 px-1.5 py-2 text-[10px] text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></span>
+          <span className="rounded-xl border border-red-500/35 bg-red-500/8 px-1.5 py-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
+          <span className="rounded-xl border border-slate-400/30 bg-slate-400/8 px-1.5 py-2 text-[10px] text-slate-600 [html[data-theme=dark]_&]:text-slate-300">Bez <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></span>
+        </div>
       </div>
 
-      <button type="button" onClick={onOpen} className="mt-auto flex items-center gap-2 pt-3 text-left text-[8px] leading-4 text-[var(--text-secondary)] transition hover:text-[var(--accent)]">
-        <MapPinCheck aria-hidden size={13} className="shrink-0" />
-        <span>Revize {coverage.catalogRevision} · aktualizace katalogu {formatDateTime(coverage.catalogLastChangedAt)}{coverage.unknownDistributorCount > 0 ? ` · bez distributora ${coverage.unknownDistributorCount}` : ''}</span>
-      </button>
+      <div className="mt-auto flex items-center gap-2 pt-3 text-left text-[8px] leading-4 text-[var(--text-secondary)]">
+        <Info aria-hidden size={13} className="shrink-0" />
+        <span>Revize katalogu {coverage.catalogRevision} · změněno {formatDateTime(coverage.catalogLastChangedAt)}</span>
+      </div>
     </section>
+  )
+}
+
+function catalogChangeLabel(kind: PowerOutageStoreCoverage['catalogLastChangeKind']) {
+  return ({ initial: 'Inicializace katalogu', insert: 'Přidání prodejen', update: 'Úprava prodejen', delete: 'Odstranění prodejen' } as const)[kind]
+}
+
+function CoverageDetailPopup({ coverage, sources, onClose }: { coverage: PowerOutageStoreCoverage; sources: PowerOutageSourceSummary[]; onClose: () => void }) {
+  const percent = Math.min(100, Math.max(0, coverage.coveragePercent))
+  const sourceRows = (['cez', 'egd'] as const).map((source) => ({
+    source,
+    summary: sources.find((item) => item.source === source) ?? null,
+  }))
+
+  return (
+    <PowerOutagePopupShell titleId="power-outage-store-coverage-title" eyebrow="DATABÁZE PRODEJEN" title="Detail pokrytí adres" icon={<Route aria-hidden size={21} />} onClose={onClose}>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
+        <section className="rounded-2xl border border-sky-500/25 bg-sky-500/8 p-4">
+          <div className="flex items-end justify-between gap-3">
+            <span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-sky-700 [html[data-theme=dark]_&]:text-sky-300">Připraveno pro porovnání</small><strong className="mt-1 block text-base text-[var(--text-primary)]">{coverage.readyStoreCount} z {coverage.totalStoreCount} adres</strong></span>
+            <strong className="text-3xl font-semibold tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-sky-500" style={{ width: `${percent}%` }} /></div>
+          <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Do porovnání vstupují prodejny s úspěšně nebo pravděpodobně ověřenou adresou, které nečekají na nové zpracování.</p>
+        </section>
+
+        <section className="mt-4">
+          <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Stavy ověřování adres</h3>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {[
+              ['Ke kontrole', coverage.pendingStoreCount, 'Nová nebo změněná adresa čeká ve frontě na automatickou kontrolu.', 'border-slate-400/30 bg-slate-400/8'],
+              ['K opravě', coverage.reviewStoreCount, 'Výsledek není dostatečně jistý a vyžaduje lidské rozhodnutí.', 'border-amber-400/35 bg-amber-400/8'],
+              ['Nedohledáno', coverage.notFoundStoreCount, 'Automatická kontrola nenašla odpovídající adresní bod.', 'border-orange-400/35 bg-orange-400/8'],
+              ['Chyba', coverage.errorStoreCount, 'Kontrolu adresy přerušila technická chyba; záznam bude možné zpracovat znovu.', 'border-red-400/35 bg-red-400/8'],
+            ].map(([label, value, description, className]) => <div key={String(label)} className={`rounded-2xl border p-3 ${className}`}><div className="flex items-baseline justify-between gap-3"><strong className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-primary)]">{label}</strong><strong className="text-lg tabular-nums text-[var(--text-primary)]">{value}</strong></div><p className="mt-1 text-[8px] leading-4 text-[var(--text-secondary)]">{description}</p></div>)}
+          </div>
+        </section>
+
+        <section className="mt-4">
+          <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Distribuční území</h3>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-orange-500/35 bg-orange-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></div>
+            <div className="rounded-2xl border border-red-500/35 bg-red-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></div>
+            <div className="rounded-2xl border border-slate-400/30 bg-slate-400/8 p-3 text-center"><small className="block text-[8px] font-bold text-slate-600 [html[data-theme=dark]_&]:text-slate-300">BEZ</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></div>
+          </div>
+          <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Údaj vyjadřuje přiřazené distribuční území prodejny, nikoliv počet odstávek. „Bez“ znamená, že území zatím nebylo spolehlivě přiřazeno.</p>
+        </section>
+
+        <section className="mt-4">
+          <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Pokrytí podle řetězce</h3>
+          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--surface-border)]">
+            <div className="grid grid-cols-[1fr_repeat(3,minmax(44px,auto))] gap-2 bg-[var(--surface-muted)] px-3 py-2 text-[7px] font-bold uppercase text-[var(--text-secondary)]"><span>Řetězec</span><span className="text-right">Celkem</span><span className="text-right">Ověřeno</span><span className="text-right">Neurčeno</span></div>
+            {coverage.chains.map((chain) => <div key={chain.chainName} className="grid grid-cols-[1fr_repeat(3,minmax(44px,auto))] gap-2 border-t border-[var(--surface-border)] px-3 py-2.5 text-[9px]"><strong className="truncate text-[var(--text-primary)]">{chain.chainName}</strong><span className="text-right tabular-nums text-[var(--text-secondary)]">{chain.totalStoreCount}</span><strong className="text-right tabular-nums text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">{chain.readyStoreCount}</strong><span className="text-right tabular-nums text-[var(--text-secondary)]">{chain.unknownDistributorCount}</span></div>)}
+          </div>
+        </section>
+
+        <section className="mt-4">
+          <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zpracování aktuální revize</h3>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {sourceRows.map(({ source, summary }) => {
+              const processedRevision = summary?.storeRevisionProcessed ?? 0
+              const current = processedRevision >= coverage.catalogRevision
+              return <div key={source} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-3"><strong className="text-xs text-[var(--text-primary)]">{source === 'cez' ? 'ČEZ' : 'EG.D'}</strong><span className={`rounded-lg border px-2 py-1 text-[7px] font-bold ${current ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300' : 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{current ? 'AKTUÁLNÍ' : 'ZPRACOVÁNÍ'}</span></div><p className="mt-2 text-[9px] text-[var(--text-secondary)]">Zpracovaná revize <strong className="text-[var(--text-primary)]">{processedRevision} / {coverage.catalogRevision}</strong></p></div>
+            })}
+          </div>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
+          <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Katalog prodejen</h3>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3"><PowerOutageDetailRow label="Aktuální revize" value={String(coverage.catalogRevision)} /><PowerOutageDetailRow label="Poslední změna" value={formatDateTime(coverage.catalogLastChangedAt)} /><PowerOutageDetailRow label="Druh změny" value={catalogChangeLabel(coverage.catalogLastChangeKind)} /></div>
+          <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Revize je pořadové číslo verze katalogu. Zvýší se při importu, přidání, úpravě nebo odstranění prodejny; nevyjadřuje počet změněných prodejen.</p>
+        </section>
+      </div>
+    </PowerOutagePopupShell>
   )
 }
 
@@ -316,6 +407,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
 export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[]; storeCoverage: PowerOutageStoreCoverage }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
   const [showAddressAnalysis, setShowAddressAnalysis] = useState(false)
+  const [showCoverageDetail, setShowCoverageDetail] = useState(false)
   const [diagnostic, setDiagnostic] = useState<PowerOutageSourceDiagnostic | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -368,10 +460,11 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
         <aside className="power-outages-mobile-aside-carousel activities-manual-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
           <div className="min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
           {sources.map((source) => <div key={source.source} className="min-w-0 snap-start snap-always lg:snap-none"><SourcePanel source={source} onOpen={() => void openSource(source.source)} /></div>)}
-          <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpen={() => setShowAddressAnalysis(true)} /></div>
+          <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpenAnalysis={() => setShowAddressAnalysis(true)} onOpenDetail={() => setShowCoverageDetail(true)} /></div>
         </aside>
       </div>
       {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} onClose={close} />, document.body) : null}
+      {showCoverageDetail && typeof document !== 'undefined' ? createPortal(<CoverageDetailPopup coverage={storeCoverage} sources={sources} onClose={() => setShowCoverageDetail(false)} />, document.body) : null}
       {showAddressAnalysis && typeof document !== 'undefined' ? createPortal(<StoreAddressAnalysisPopup onClose={() => setShowAddressAnalysis(false)} />, document.body) : null}
     </>
   )
