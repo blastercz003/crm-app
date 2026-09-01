@@ -72,6 +72,7 @@ function sourceHealth(
   )
 
   const metadata = state.metadata ?? {}
+  const latestRunMetadata = latestRun?.metadata ?? {}
   const cezScan = state.source === 'cez' ? objectValue(metadata.cezScan) : null
   const activeCezScan = Boolean(
     storeCatalogPending
@@ -108,10 +109,10 @@ function sourceHealth(
   else if (consecutiveFailureCount > 0 || ageHours > 8 || processingStalled) status = 'warning'
   else if (processing) status = 'processing'
   else status = 'live'
-  const changeValue = metadata.changedRecordCount
+  const changeValue = latestRunMetadata.changedRecordCount
   const coverageValue = state.source === 'cez'
-    ? metadata.coveredTownCount
-    : metadata.coveredMunicipalityCount
+    ? latestRunMetadata.coveredTownCount
+    : latestRunMetadata.coveredMunicipalityCount
 
   return {
     source: state.source,
@@ -151,7 +152,8 @@ export async function getPowerOutageHealth() {
     { data: catalog, error: catalogError },
     { data: matchRun, error: matchError },
     { data: taskStates, error: taskStateError },
-    { data: recentRuns, error: recentRunsError },
+    { data: latestCezRun, error: latestCezRunError },
+    { data: latestEgdRun, error: latestEgdRunError },
   ] = await Promise.all([
     client
       .from('power_outage_source_state')
@@ -175,21 +177,31 @@ export async function getPowerOutageHealth() {
     client
       .from('power_outage_sync_runs')
       .select('source,status,source_record_count,outage_upsert_count,metadata')
-      .neq('status', 'running')
+      .eq('source', 'cez')
+      .in('status', ['succeeded', 'no_change'])
       .order('started_at', { ascending: false })
-      .limit(30),
+      .limit(1)
+      .maybeSingle(),
+    client
+      .from('power_outage_sync_runs')
+      .select('source,status,source_record_count,outage_upsert_count,metadata')
+      .eq('source', 'egd')
+      .in('status', ['succeeded', 'no_change'])
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
   if (stateError) throw stateError
   if (catalogError) throw catalogError
   if (matchError) throw matchError
   if (taskStateError) throw taskStateError
-  if (recentRunsError) throw recentRunsError
+  if (latestCezRunError) throw latestCezRunError
+  if (latestEgdRunError) throw latestEgdRunError
 
   const now = new Date()
   const latestRuns = new Map<PowerOutageSource, LatestRun>()
-  for (const run of (recentRuns ?? []) as LatestRun[]) {
-    if (!latestRuns.has(run.source)) latestRuns.set(run.source, run)
-  }
+  if (latestCezRun) latestRuns.set('cez', latestCezRun as LatestRun)
+  if (latestEgdRun) latestRuns.set('egd', latestEgdRun as LatestRun)
   const tasks = (taskStates ?? []) as TaskState[]
   const taskByKey = new Map(tasks.map((task) => [task.task_key, task]))
   const sources = ((states ?? []) as SourceState[]).map((state) => (

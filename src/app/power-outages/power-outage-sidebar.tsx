@@ -113,6 +113,9 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const status = STATUS_PRESENTATION[source.status]
   const needsAttention = Boolean(refreshError) || source.status === 'warning' || source.status === 'error'
+  const recordsLabel = source.source === 'cez' ? 'Záznamů v dávce' : 'Záznamů ve snapshotu'
+  const changesLabel = source.source === 'cez' ? 'Změny v dávce' : 'Změny ve snapshotu'
+  const coverageLabel = source.source === 'cez' ? 'Obce v dávce' : 'Obce ve snapshotu'
 
   const refresh = async () => {
     if (refreshing) return
@@ -155,13 +158,13 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
 
       <button type="button" onClick={onOpen} className="mt-4 min-h-0 flex-1 text-left lg:mt-3">
         <div className="grid grid-cols-2 gap-2 lg:gap-1.5">
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední pokus</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastAttemptAt)}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Úspěšně načteno</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastSuccessAt)}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední dávka</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Změny v dávce</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední kontrola</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastAttemptAt)}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední úspěch</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastSuccessAt)}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{recordsLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
+          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{changesLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
         </div>
         <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5 lg:mt-2 lg:py-2">
-          <span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Pokrytí relevantních obcí</small><strong className="mt-0.5 block truncate text-[10px] text-[var(--text-primary)]">{source.municipalityCoverage}</strong></span>
+          <span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">{coverageLabel}</small><strong className="mt-0.5 block truncate text-[10px] text-[var(--text-primary)]">{source.municipalityCoverage}</strong></span>
           <ChevronRight aria-hidden size={15} className="shrink-0 text-[var(--text-secondary)]" />
         </div>
       </button>
