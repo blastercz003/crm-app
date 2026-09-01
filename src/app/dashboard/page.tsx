@@ -3,7 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
-import { Plug } from 'lucide-react'
+import { Info, Plug } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { endTaskRecurrence, updateTaskStatus } from '@/app/tasks/actions'
 import { TaskCompleteButton } from '@/app/tasks/task-complete-button'
@@ -1228,6 +1228,13 @@ export default async function DashboardPage({
     profile?.dashboard_schovat_ukoly_a_schuzky
   )
   const showDashboardMiniCalendar = Boolean(profile?.dashboard_calendar)
+  const showDashboardOffersPanel = Boolean(isAdmin || profile?.can_view_offers)
+  const showDashboardTasksAndMeetings = !hideTasksAndMeetingsOnDashboard
+  const dashboardSwipePanelCount =
+    Number(showDashboardOffersPanel) +
+    (showDashboardTasksAndMeetings ? 2 : 0)
+  const hasDashboardFirstDesktopColumn =
+    showDashboardOffersPanel || showDashboardMiniCalendar
   const canViewTechJobs = isTechnik || Boolean(profile?.can_view_tech_jobs)
   const canViewConnectionPoints =
     isTechnik || Boolean(profile?.can_view_connection_points)
@@ -1731,6 +1738,9 @@ export default async function DashboardPage({
                 canViewNordFjella={canViewNordFjella}
                 canViewProvize={canViewProvize}
                 canViewFiles={canViewFiles}
+                canViewWeatherAlerts={canViewWeatherAlerts}
+                canViewPowerOutages={canViewPowerOutages}
+                hasActiveWeatherAlert={hasActiveWeatherAlert}
                 canViewHandoverProtocolUpload={useUnifiedDavidSection ? canViewHandoverProtocolUpload : false}
                 showClients={showClientsInMainMenu}
                 isAdmin={isAdmin}
@@ -1739,12 +1749,22 @@ export default async function DashboardPage({
             </DashboardGlobalSearchHideWhenActive>
 
             <DashboardGlobalSearchBody>
-              <div className="grid gap-6 xl:grid-cols-3">
-                <div className="contents xl:block xl:space-y-6">
-                  {isAdmin || profile?.can_view_offers ? (
-                    <div className="order-1 xl:order-none">
+              <div className="grid min-w-0 gap-6 xl:grid-cols-3">
+                {dashboardSwipePanelCount > 1 ? (
+                  <p className="mb-[-14px] flex items-center justify-center gap-1.5 text-center text-[10px] text-[var(--text-secondary)] lg:hidden">
+                    <Info aria-hidden className="h-3 w-3 shrink-0" strokeWidth={2.1} />
+                    <span>Přejetím do strany zobrazíte další panel.</span>
+                  </p>
+                ) : null}
+
+                <div
+                  className="activities-manual-carousel dashboard-mobile-panels-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain p-0 snap-x snap-mandatory lg:contents"
+                  aria-label="Moje nabídky, schůzky a úkoly"
+                >
+                  {showDashboardOffersPanel ? (
+                    <div className="min-w-0 snap-start snap-always lg:order-1 lg:snap-none xl:col-start-1 xl:row-start-1">
                       <DashboardMyOffersModule
-                        className="dashboard-card dashboard-card--strong dashboard-offers-module"
+                        className="dashboard-card dashboard-card--strong dashboard-offers-module h-full"
                         offers={dashboardOfferPreviews}
                         currentUserId={user.id}
                         isAdmin={isAdmin}
@@ -1752,20 +1772,64 @@ export default async function DashboardPage({
                     </div>
                   ) : null}
 
-                  {showDashboardMiniCalendar ? (
-                    <div className="order-3 xl:order-none">
-                      <DashboardMiniCalendar
-                        jobs={monthJobs}
-                        monthOffset={dashboardCalendarMonthOffset}
-                      />
+                  {showDashboardTasksAndMeetings ? (
+                    <div
+                      className={`min-w-0 snap-start snap-always lg:order-4 lg:snap-none xl:row-start-1 ${
+                        hasDashboardFirstDesktopColumn
+                          ? 'xl:col-start-3'
+                          : 'xl:col-start-2'
+                      }`}
+                    >
+                      <section className="dashboard-card h-full rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                          <DashboardSectionHeader
+                            eyebrow="Schůzky"
+                            title="Moje schůzky"
+                            href="/meetings"
+                          />
+                        </div>
+
+                        <DashboardMyMeetingsModule
+                          todayContent={
+                            todayMeetings.length === 0 ? (
+                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                                Nemáš žádné schůzky dnes.
+                              </div>
+                            ) : (
+                              <div className="grid gap-2.5">
+                                {todayMeetings.map((meeting) => (
+                                  <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                                ))}
+                              </div>
+                            )
+                          }
+                          weekContent={
+                            weeklyMeetings.length === 0 ? (
+                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                                Nemáš žádné nadcházející schůzky.
+                              </div>
+                            ) : (
+                              <div className="grid gap-2.5">
+                                {weeklyMeetings.map((meeting) => (
+                                  <DashboardMeetingItem key={meeting.id} meeting={meeting} />
+                                ))}
+                              </div>
+                            )
+                          }
+                        />
+                      </section>
                     </div>
                   ) : null}
-                </div>
 
-                {!hideTasksAndMeetingsOnDashboard ? (
-                  <>
-                    <div className="contents xl:block xl:space-y-6">
-                      <section className="dashboard-card order-2 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
+                  {showDashboardTasksAndMeetings ? (
+                    <div
+                      className={`min-w-0 snap-start snap-always lg:order-2 lg:snap-none xl:row-start-1 ${
+                        hasDashboardFirstDesktopColumn
+                          ? 'xl:col-start-2'
+                          : 'xl:col-start-1'
+                      }`}
+                    >
+                      <section className="dashboard-card h-full rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6">
                         <div className="mb-4 flex items-start justify-between gap-4">
                           <DashboardSectionHeader
                             eyebrow="Úkoly"
@@ -1817,48 +1881,16 @@ export default async function DashboardPage({
                         />
                       </section>
                     </div>
+                  ) : null}
+                </div>
 
-                    <div className="contents xl:block xl:space-y-6">
-                      <section className="dashboard-card order-3 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] md:p-6 xl:order-none">
-                        <div className="mb-4 flex items-start justify-between gap-4">
-                          <DashboardSectionHeader
-                            eyebrow="Schůzky"
-                            title="Moje schůzky"
-                            href="/meetings"
-                          />
-                        </div>
-
-                        <DashboardMyMeetingsModule
-                          todayContent={
-                            todayMeetings.length === 0 ? (
-                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                                Nemáš žádné schůzky dnes.
-                              </div>
-                            ) : (
-                              <div className="grid gap-2.5">
-                                {todayMeetings.map((meeting) => (
-                                  <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                                ))}
-                              </div>
-                            )
-                          }
-                          weekContent={
-                            weeklyMeetings.length === 0 ? (
-                              <div className="dashboard-empty-state rounded-2xl border border-white/75 bg-[linear-gradient(155deg,rgba(255,255,255,0.9)_0%,rgba(241,245,249,0.82)_100%)] px-4 py-8 text-sm text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                                Nemáš žádné nadcházející schůzky.
-                              </div>
-                            ) : (
-                              <div className="grid gap-2.5">
-                                {weeklyMeetings.map((meeting) => (
-                                  <DashboardMeetingItem key={meeting.id} meeting={meeting} />
-                                ))}
-                              </div>
-                            )
-                          }
-                        />
-                      </section>
-                    </div>
-                  </>
+                {showDashboardMiniCalendar ? (
+                  <div className="order-3 xl:col-start-1 xl:row-start-2">
+                    <DashboardMiniCalendar
+                      jobs={monthJobs}
+                      monthOffset={dashboardCalendarMonthOffset}
+                    />
+                  </div>
                 ) : null}
 
                 <DashboardUserPanel
@@ -1873,9 +1905,6 @@ export default async function DashboardPage({
               canViewActivities={canViewActivities}
               canViewJobs={Boolean(profile?.can_view_jobs)}
               canViewOffers={isAdmin || Boolean(profile?.can_view_offers)}
-              canViewWeatherAlerts={canViewWeatherAlerts}
-              canViewPowerOutages={canViewPowerOutages}
-              hasActiveWeatherAlert={hasActiveWeatherAlert}
               canCreateJobs={isAdmin}
               isAdmin={isAdmin}
               receivedInvoicesDueCount={receivedInvoicesDueCount}

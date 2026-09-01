@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
@@ -104,53 +103,9 @@ type DashboardMobileQuickActionsProps = {
   canViewActivities: boolean
   canViewJobs: boolean
   canViewOffers: boolean
-  canViewWeatherAlerts: boolean
-  canViewPowerOutages: boolean
-  hasActiveWeatherAlert?: boolean
   canCreateJobs: boolean
   isAdmin: boolean
   receivedInvoicesDueCount?: number
-}
-
-function WeatherAlertsFloatingIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path
-        d="M8.2 21.1h14.1a5.1 5.1 0 0 0 .2-10.2 7.8 7.8 0 0 0-14.8 2.4A4 4 0 0 0 8.2 21.1Z"
-        strokeWidth="1.7"
-      />
-      <path d="m15.9 18.3-2.2 5h3l-1.1 4.2 4.2-6h-3l1.5-3.2" strokeWidth="1.9" />
-      <path d="M4.4 8.1h4.2M3.1 12h3.4" strokeWidth="1.5" />
-    </svg>
-  )
-}
-
-function PowerOutagesFloatingIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M16 4.2 8.5 27.8M16 4.2l7.5 23.6" />
-      <path d="M10.4 21.7h11.2M12.2 15.9h7.6M8.1 10.2h15.8" />
-      <path d="m11.2 10.2-4 4.1M20.8 10.2l4 4.1" />
-      <path d="M5.1 18.2h4.5M22.4 18.2h4.5" />
-    </svg>
-  )
 }
 
 type PresenceUser = {
@@ -672,9 +627,6 @@ export function DashboardMobileQuickActions({
   canViewActivities,
   canViewJobs,
   canViewOffers,
-  canViewWeatherAlerts,
-  canViewPowerOutages,
-  hasActiveWeatherAlert = false,
   canCreateJobs,
   isAdmin,
   receivedInvoicesDueCount = 0,
@@ -1444,18 +1396,6 @@ export function DashboardMobileQuickActions({
     mobileTodayJobsRight + (isTodayJobsButtonVisible ? mobileStep : 0)
   const mobileInvoicesRight =
     mobileQuickNotesRight + (isQuickNotesVisible ? mobileStep : 0)
-  const mobileWeatherAlertsRight =
-    mobileInvoicesRight + (isAdmin ? mobileStep : 0)
-  const visibleMobileButtonsBeforePowerOutages =
-    Number(isQuickCreateVisible) +
-    Number(isTodayJobsButtonVisible) +
-    Number(isQuickNotesVisible) +
-    Number(isAdmin) +
-    Number(canViewWeatherAlerts)
-  const shouldStackMobilePowerOutages = visibleMobileButtonsBeforePowerOutages >= 5
-  const mobilePowerOutagesRight = shouldStackMobilePowerOutages
-    ? mobileWeatherAlertsRight
-    : mobileWeatherAlertsRight + (canViewWeatherAlerts ? mobileStep : 0)
 
   const desktopBaseRight = 28
   const desktopStep = 76
@@ -1468,12 +1408,8 @@ export function DashboardMobileQuickActions({
     desktopQuickNotesRight + (isQuickNotesVisible ? desktopStep : 0)
   const desktopManualNotificationsRight =
     desktopInvoicesRight + (isAdmin ? desktopStep : 0)
-  const desktopWeatherAlertsRight =
-    desktopManualNotificationsRight + (isAdmin ? desktopStep : 0)
-  const desktopPowerOutagesRight =
-    desktopWeatherAlertsRight + (canViewWeatherAlerts ? desktopStep : 0)
   const desktopOnlinePanelRight =
-    desktopPowerOutagesRight + (canViewPowerOutages ? desktopStep : 0)
+    desktopManualNotificationsRight + (isAdmin ? desktopStep : 0)
   const shouldHideFloatingControls = Boolean(
     activeAction && activeAction !== 'quick_notes' && activeAction !== 'today_jobs'
   )
@@ -1563,72 +1499,6 @@ export function DashboardMobileQuickActions({
             </div>
           </div>
         </button>
-      ) : null}
-
-      {canViewWeatherAlerts ? (
-        <Link
-          href="/weather-alerts"
-          prefetch
-          aria-label="Výstrahy počasí"
-          title="Výstrahy počasí"
-          onClick={() => triggerHaptic(10)}
-          className={`fixed z-[70] flex items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
-            shouldHideFloatingControls
-              ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_24px_52px_rgba(0,0,0,0.48)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_34px_rgba(0,0,0,0.42)]'
-          } ${getFloatingBlurClass('other')}`}
-          style={{
-            right: `${mobileWeatherAlertsRight}px`,
-            bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${viewportBottomOffset}px)`,
-            width: '60px',
-            height: '60px',
-            minWidth: '60px',
-            minHeight: '60px',
-            borderRadius: '999px',
-          }}
-        >
-          <WeatherAlertsFloatingIcon className="h-8 w-8" />
-          {hasActiveWeatherAlert ? (
-            <span
-              aria-hidden="true"
-              className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-amber-500 bg-yellow-400 px-1.5 text-[13px] font-black leading-none text-amber-950 shadow-[0_4px_12px_rgba(234,179,8,0.38)]"
-            >
-              !
-            </span>
-          ) : null}
-        </Link>
-      ) : null}
-
-      {canViewPowerOutages ? (
-        <Link
-          href="/power-outages"
-          prefetch
-          aria-label="Monitoring odstávek"
-          title="Monitoring odstávek"
-          onClick={() => triggerHaptic(10)}
-          className={`fixed z-[70] flex items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.95] lg:hidden ${
-            shouldHideFloatingControls
-              ? 'pointer-events-none opacity-0 scale-[0.92]'
-              : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-3px] scale-[0.985] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_24px_52px_rgba(0,0,0,0.48)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_34px_rgba(0,0,0,0.42)]'
-          } ${getFloatingBlurClass('other')}`}
-          style={{
-            right: `${mobilePowerOutagesRight}px`,
-            bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px + ${
-              viewportBottomOffset + (shouldStackMobilePowerOutages ? mobileStep : 0)
-            }px)`,
-            width: '60px',
-            height: '60px',
-            minWidth: '60px',
-            minHeight: '60px',
-            borderRadius: '999px',
-          }}
-        >
-          <PowerOutagesFloatingIcon className="h-8 w-8" />
-        </Link>
       ) : null}
 
       {isAdmin ? (
@@ -1732,70 +1602,6 @@ export function DashboardMobileQuickActions({
             <path d="M10.2 20a2 2 0 0 0 3.6 0" />
           </svg>
         </button>
-      ) : null}
-
-      {canViewWeatherAlerts ? (
-        <Link
-          href="/weather-alerts"
-          prefetch
-          aria-label="Výstrahy počasí"
-          title="Výstrahy počasí"
-          onClick={() => triggerHaptic(10)}
-          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
-            shouldHideFloatingControls
-              ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_42px_rgba(0,0,0,0.46)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_28px_rgba(0,0,0,0.42)]'
-          } ${getFloatingBlurClass('other')}`}
-          style={{
-            right: `${desktopWeatherAlertsRight}px`,
-            bottom: '28px',
-            width: '68px',
-            height: '68px',
-            minWidth: '68px',
-            minHeight: '68px',
-            borderRadius: '999px',
-          }}
-        >
-          <WeatherAlertsFloatingIcon className="h-9 w-9" />
-          {hasActiveWeatherAlert ? (
-            <span
-              aria-hidden="true"
-              className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-amber-500 bg-yellow-400 px-1.5 text-[13px] font-black leading-none text-amber-950 shadow-[0_4px_12px_rgba(234,179,8,0.38)]"
-            >
-              !
-            </span>
-          ) : null}
-        </Link>
-      ) : null}
-
-      {canViewPowerOutages ? (
-        <Link
-          href="/power-outages"
-          prefetch
-          aria-label="Monitoring odstávek"
-          title="Monitoring odstávek"
-          onClick={() => triggerHaptic(10)}
-          className={`fixed z-[70] hidden items-center justify-center border ${FLOATING_BLUE_BUTTON_CLASS} backdrop-blur-xl transition duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[#2a2a2a] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_20px_38px_rgba(0,0,0,0.52)] lg:flex ${
-            shouldHideFloatingControls
-              ? 'pointer-events-none opacity-0 scale-[0.94]'
-              : isSheetOpen && !isQuickCreateActive
-              ? 'translate-y-[-2px] scale-[0.99] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_42px_rgba(0,0,0,0.46)]'
-              : 'translate-y-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_28px_rgba(0,0,0,0.42)]'
-          } ${getFloatingBlurClass('other')}`}
-          style={{
-            right: `${desktopPowerOutagesRight}px`,
-            bottom: '28px',
-            width: '68px',
-            height: '68px',
-            minWidth: '68px',
-            minHeight: '68px',
-            borderRadius: '999px',
-          }}
-        >
-          <PowerOutagesFloatingIcon className="h-9 w-9" />
-        </Link>
       ) : null}
 
       {isTodayJobsButtonVisible ? (
