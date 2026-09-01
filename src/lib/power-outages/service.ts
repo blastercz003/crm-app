@@ -59,6 +59,10 @@ type JobLinkRow = {
   job_number: string
 }
 
+type ViewedMatchRow = {
+  match_id: string
+}
+
 type RegistryRow = {
   distributor: 'cez' | 'egd' | 'unknown'
   verification_status: 'pending' | 'verified' | 'probable' | 'needs_review' | 'not_found' | 'error'
@@ -225,6 +229,36 @@ async function loadJobLinks(client: SupabaseClient, matchIds: string[]) {
   return rows
 }
 
+async function loadViewedMatchIds(
+  client: SupabaseClient,
+  userId: string,
+  matchIds: string[],
+) {
+  const viewedMatchIds = new Set<string>()
+  const batchSize = 75
+
+  for (let from = 0; from < matchIds.length; from += batchSize) {
+    const batch = matchIds.slice(from, from + batchSize)
+    const { data, error } = await client
+      .from('power_outage_match_views')
+      .select('match_id')
+      .eq('user_id', userId)
+      .in('match_id', batch)
+
+    // Umožní bezpečně nasadit aplikaci ještě před spuštěním databázové migrace.
+    if (error?.code === '42P01' || error?.code === 'PGRST205') return new Set<string>()
+    if (error) {
+      throw new Error(`Stav zobrazení odstávek se nepodařilo načíst: ${error.message}`)
+    }
+
+    for (const row of (data ?? []) as ViewedMatchRow[]) {
+      viewedMatchIds.add(row.match_id)
+    }
+  }
+
+  return viewedMatchIds
+}
+
 export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
   const { supabase, user } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
 
@@ -330,12 +364,15 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
   const matchIds = [...new Set([...currentRows, ...archiveRows].map((row) => row.id))]
   const informedByMatch = new Map<string, InformedRow>()
   const jobLinksByMatch = new Map<string, JobLinkRow[]>()
+  let viewedMatchIds = new Set<string>()
 
   if (matchIds.length > 0) {
-    const [informedData, jobLinkData] = await Promise.all([
+    const [informedData, jobLinkData, viewedIds] = await Promise.all([
       loadLatestInformedRows(supabase, matchIds),
       loadJobLinks(supabase, matchIds),
+      loadViewedMatchIds(supabase, user.id, matchIds),
     ])
+    viewedMatchIds = viewedIds
     for (const row of informedData) {
       if (!informedByMatch.has(row.match_id)) informedByMatch.set(row.match_id, row)
     }
@@ -370,6 +407,7 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
       sourceUpdatedAt: outage.source_updated_at,
       firstSeenAt: outage.first_seen_at,
       lastSeenAt: outage.last_seen_at,
+      isNew: !viewedMatchIds.has(row.id),
       matchStatus: row.match_status,
       confidence: Number(row.confidence),
       matchReasons: stringArray(row.match_reasons),

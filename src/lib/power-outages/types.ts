@@ -26,6 +26,7 @@ export type PowerOutageListItem = {
   sourceUpdatedAt: string | null
   firstSeenAt: string
   lastSeenAt: string
+  isNew: boolean
   matchStatus: PowerOutageMatchStatus
   confidence: number
   matchReasons: string[]

@@ -27,7 +27,10 @@ import type {
   PowerOutageSource,
   PowerOutageWorkspace,
 } from '@/lib/power-outages/types'
-import { getPowerOutageDetailAction } from './actions'
+import {
+  acknowledgePowerOutageMatchesAction,
+  getPowerOutageDetailAction,
+} from './actions'
 import { PowerOutagePopupLayer } from './power-outage-popups'
 
 type Tab = 'current' | 'archive'
@@ -122,6 +125,22 @@ function LinkedJobBadge({ item }: { item: PowerOutageListItem }) {
   )
 }
 
+function NewOutageIndicator() {
+  return (
+    <span
+      role="status"
+      aria-label="Nová odstávka"
+      title="Nová odstávka"
+      className="absolute -right-1 -top-1 z-10 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white bg-sky-500 shadow-[0_2px_7px_rgba(14,165,233,0.42)] [html[data-theme=dark]_&]:border-slate-950 [html[data-theme=dark]_&]:bg-sky-400 [html[data-theme=dark]_&]:shadow-[0_2px_8px_rgba(56,189,248,0.34)]"
+    >
+      <span className="relative inline-flex h-1.5 w-1.5 items-center justify-center">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/75 motion-reduce:animate-none" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+      </span>
+    </span>
+  )
+}
+
 function SelectControl({
   label,
   value,
@@ -150,11 +169,13 @@ function SelectControl({
 
 function MobileOutageCard({
   item,
+  isNew,
   now,
   onDetail,
   onAnnouncement,
 }: {
   item: PowerOutageListItem
+  isNew: boolean
   now: number
   onDetail: () => void
   onAnnouncement: () => void
@@ -162,8 +183,9 @@ function MobileOutageCard({
   return (
     <article className="weather-alerts__record-surface rounded-[20px] border px-3.5 py-3">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]">
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]">
           <Zap aria-hidden size={18} />
+          {isNew ? <NewOutageIndicator /> : null}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -237,9 +259,54 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
   const [detailError, setDetailError] = useState<string | null>(null)
   const detailRequestRef = useRef(0)
   const openedDeepLinkRef = useRef<string | null>(null)
+  const acknowledgedMatchIdsRef = useRef(new Set<string>())
+  const [rememberedNewMatchIds, setRememberedNewMatchIds] = useState<Set<string>>(() => new Set(
+    workspace.currentOutages
+      .filter((item) => item.isNew && item.matchStatus !== 'dismissed')
+      .map((item) => item.matchId),
+  ))
   const now = useMemo(() => new Date(workspace.generatedAt).getTime(), [workspace.generatedAt])
   const records = tab === 'current' ? workspace.currentOutages : workspace.archivedOutages
   const hasFilters = Boolean(query.trim()) || chainFilter !== 'all' || sourceFilter !== 'all' || timeFilter !== 'all' || matchFilter !== 'visible'
+  const newMatchIds = useMemo(() => {
+    const next = new Set(rememberedNewMatchIds)
+    for (const item of workspace.currentOutages) {
+      if (item.isNew && item.matchStatus !== 'dismissed') next.add(item.matchId)
+    }
+    return next
+  }, [rememberedNewMatchIds, workspace.currentOutages])
+
+  useEffect(() => {
+    const unseenMatchIds = workspace.currentOutages
+      .filter((item) => item.isNew && item.matchStatus !== 'dismissed')
+      .map((item) => item.matchId)
+
+    if (unseenMatchIds.length === 0) return
+
+    const pendingMatchIds = unseenMatchIds.filter(
+      (matchId) => !acknowledgedMatchIdsRef.current.has(matchId),
+    )
+    if (pendingMatchIds.length === 0) return
+
+    for (const matchId of pendingMatchIds) {
+      acknowledgedMatchIdsRef.current.add(matchId)
+    }
+
+    void acknowledgePowerOutageMatchesAction(pendingMatchIds).then((result) => {
+      if (result.success) {
+        setRememberedNewMatchIds((current) => {
+          const next = new Set(current)
+          for (const matchId of pendingMatchIds) next.add(matchId)
+          return next
+        })
+        return
+      }
+      for (const matchId of pendingMatchIds) {
+        acknowledgedMatchIdsRef.current.delete(matchId)
+      }
+      console.error(result.error)
+    })
+  }, [workspace.currentOutages])
 
   const filtered = useMemo(() => {
     const normalizedQuery = normalize(query)
@@ -451,7 +518,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
                     <tr key={item.matchId} className="group transition-colors hover:bg-[var(--surface-muted)]">
                       <td className="px-3 py-3 align-middle">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Store aria-hidden size={14} /></span>
+                          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Store aria-hidden size={14} />{newMatchIds.has(item.matchId) ? <NewOutageIndicator /> : null}</span>
                           <span className="min-w-0"><strong className="block truncate text-[11px] text-[var(--text-primary)]">{item.store.chainName}</strong><small className="block truncate text-[9px] font-semibold text-[var(--text-secondary)]">Prodejna č. {item.store.storeNumber}</small></span>
                         </div>
                       </td>
@@ -472,7 +539,7 @@ export function PowerOutageRecords({ workspace }: { workspace: PowerOutageWorksp
               </table>
             </div>
             <div className="grid gap-2.5 p-2.5 lg:hidden">
-              {filtered.map((item) => <MobileOutageCard key={item.matchId} item={item} now={now} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} />)}
+              {filtered.map((item) => <MobileOutageCard key={item.matchId} item={item} isNew={newMatchIds.has(item.matchId)} now={now} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} />)}
             </div>
           </div>
         ) : <EmptyState tab={tab} filtered={hasFilters} />}
