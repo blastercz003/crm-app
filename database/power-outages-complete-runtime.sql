@@ -61,7 +61,8 @@ begin
       'power_outages_complete_cez_projection_every_fifteen_minutes',
       'power_outages_complete_egd_projection_every_six_hours',
       'power_outages_complete_pre_projection_every_three_hours',
-      'power_outages_complete_pipeline_every_fifteen_minutes'
+      'power_outages_complete_pipeline_every_fifteen_minutes',
+      'power_outages_complete_pipeline_every_five_minutes'
     )
   loop
     perform cron.unschedule(existing_job.jobid);
@@ -91,8 +92,8 @@ begin
   -- Běží mezi stávajícími úlohami zdrojů. Endpoint nevolá distributory;
   -- zpracuje jen uložená data a malé dávky providerů chráněné kvótami/cache.
   perform cron.schedule(
-    'power_outages_complete_pipeline_every_fifteen_minutes',
-    '14-59/15 * * * *',
+    'power_outages_complete_pipeline_every_five_minutes',
+    '4-59/5 * * * *',
     $job$select public.request_complete_power_outage_runtime_pipeline();$job$
   );
 end
@@ -144,11 +145,11 @@ for each statement execute function public.publish_complete_power_outages_app_ch
 commit;
 
 select 'CRON' as check_type,
-  'complete pipeline every fifteen minutes' as object_name,
+  'complete pipeline every five minutes' as object_name,
   exists (
     select 1 from cron.job
-    where jobname = 'power_outages_complete_pipeline_every_fifteen_minutes'
-      and schedule = '14-59/15 * * * *'
+    where jobname = 'power_outages_complete_pipeline_every_five_minutes'
+      and schedule = '4-59/5 * * * *'
       and active
   ) as is_correct
 union all

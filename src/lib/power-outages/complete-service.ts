@@ -4,16 +4,24 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getPowerOutageRuntimeContext } from './access'
 import type {
   CompleteEvidenceProvider,
+  CompleteAddressCoverage,
+  CompleteAddressCoverageDiagnostic,
+  CompleteAddressCoverageRun,
   CompletePowerOutageAssignment,
+  CompletePowerOutageCommunicationNote,
   CompletePowerOutageDetail,
   CompletePowerOutageEvidence,
   CompletePowerOutageListItem,
   CompletePowerOutageWorkspace,
+  CompleteProviderDiagnostic,
+  CompleteProviderRun,
   CompleteProviderState,
+  CompleteSourceDiagnostic,
+  CompleteSourceRun,
   CompleteSourceState,
 } from './complete-types'
 import type { PowerOutageSource } from './types'
-import { providerConfigured } from './complete-company-providers'
+import { providerConfigured, PROVIDER_LIMITS } from './complete-company-providers'
 
 type OverviewRow = {
   candidate_id: string
@@ -108,6 +116,184 @@ function mapAssignment(row: AssignmentRow | undefined): CompletePowerOutageAssig
   }
 }
 
+function metadataText(value: unknown, key: string) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const item = (value as Record<string, unknown>)[key]
+  return typeof item === 'string' && item.trim() ? item.trim() : null
+}
+
+function mapSourceDiscovery(
+  sourceRow: Record<string, unknown>,
+  row?: Record<string, unknown> | null,
+): CompleteSourceState['discovery'] {
+  if (!row) {
+    return {
+      status: sourceRow.coverage_status === 'error' ? 'error' : sourceRow.coverage_status === 'partial' ? 'partial' : 'waiting',
+      statusMessage: sourceRow.coverage_status === 'error'
+        ? String(sourceRow.last_error_message || 'Zpracování distributora skončilo chybou.')
+        : sourceRow.coverage_status === 'partial'
+          ? String((sourceRow.metadata as Record<string, unknown> | null)?.coverageMessage || 'Zdroj neposkytl kompletní očekávané pokrytí.')
+          : 'Provozní přehled vyhledávání firem zatím není dostupný.',
+      totalTargetCount: 0,
+      completedTargetCount: 0,
+      remainingTargetCount: 0,
+      pendingTargetCount: 0,
+      errorTargetCount: 0,
+      exactTargetCount: 0,
+      streetTargetCount: 0,
+      progressPercent: 0,
+      lastProgressAt: null,
+    }
+  }
+  const totalTargetCount = Number(row?.total_target_count ?? 0)
+  const completedTargetCount = Number(row?.completed_target_count ?? 0)
+  const pendingTargetCount = Number(row?.pending_target_count ?? Math.max(0, totalTargetCount - completedTargetCount))
+  const errorTargetCount = Number(row?.error_target_count ?? 0)
+  const remainingTargetCount = Math.max(0, totalTargetCount - completedTargetCount)
+  const lastProgressAt = (row.last_progress_at as string | null | undefined) ?? null
+  const progressPercent = totalTargetCount > 0
+    ? Math.round((completedTargetCount / totalTargetCount) * 1000) / 10
+    : 100
+  const lastProgressMs = lastProgressAt ? new Date(lastProgressAt).getTime() : Number.NaN
+  const delayed = remainingTargetCount > 0
+    && (!Number.isFinite(lastProgressMs) || Date.now() - lastProgressMs > 30 * 60_000)
+  const coverageStatus = sourceRow.coverage_status
+  const status: CompleteSourceState['discovery']['status'] = coverageStatus === 'error'
+    ? 'error'
+    : coverageStatus === 'partial'
+      ? 'partial'
+      : coverageStatus === 'processing'
+        ? 'processing'
+        : coverageStatus === 'idle'
+          ? 'waiting'
+          : errorTargetCount > 0
+            ? 'error'
+            : remainingTargetCount === 0
+              ? 'current'
+              : delayed
+                ? 'delayed'
+                : completedTargetCount === 0
+                  ? 'waiting'
+                  : 'processing'
+  const statusMessage = status === 'current'
+    ? 'Zdrojová data i prioritní fronta do 30 dnů jsou zpracované.'
+    : status === 'processing'
+      ? coverageStatus === 'processing'
+        ? 'Právě se aktualizují zdrojová data distributora.'
+        : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.`
+      : status === 'delayed'
+        ? `Zbývá ${remainingTargetCount} cílů, ale fronta se déle než 30 minut neposunula.`
+        : status === 'error'
+          ? errorTargetCount > 0 ? `${errorTargetCount} cílů skončilo chybou.` : String(sourceRow.last_error_message || 'Zpracování distributora skončilo chybou.')
+          : status === 'partial'
+            ? String((sourceRow.metadata as Record<string, unknown> | null)?.coverageMessage || 'Zdroj neposkytl kompletní očekávané pokrytí.')
+            : 'Prioritní cíle čekají na první dokončený průchod.'
+  return {
+    status,
+    statusMessage,
+    totalTargetCount,
+    completedTargetCount,
+    remainingTargetCount,
+    pendingTargetCount,
+    errorTargetCount,
+    exactTargetCount: Number(row?.exact_target_count ?? 0),
+    streetTargetCount: Number(row?.street_target_count ?? 0),
+    progressPercent,
+    lastProgressAt,
+  }
+}
+
+function mapSourceState(row: Record<string, unknown>, discovery?: Record<string, unknown> | null): CompleteSourceState {
+  return {
+    source: row.source as PowerOutageSource,
+    coverageStatus: row.coverage_status as CompleteSourceState['coverageStatus'],
+    lastAttemptAt: row.last_attempt_at as string | null,
+    lastSuccessAt: row.last_success_at as string | null,
+    lastCompleteAt: row.last_complete_at as string | null,
+    lastChangeAt: row.last_change_at as string | null,
+    horizonFrom: row.horizon_from as string | null,
+    horizonTo: row.horizon_to as string | null,
+    latestSourceRef: row.latest_source_ref as string | null,
+    latestPayloadSha256: row.latest_payload_sha256 as string | null,
+    dataVersion: Number(row.data_version),
+    publishedOutageCount: Number(row.published_outage_count),
+    publishedAddressCount: Number(row.published_address_count),
+    futureOutageCount: Number(row.future_outage_count),
+    activeOutageCount: Number(row.active_outage_count),
+    coverageProcessedCount: Number(row.coverage_processed_count),
+    coverageTotalCount: Number(row.coverage_total_count),
+    lastErrorMessage: row.last_error_message as string | null,
+    coverageMessage: metadataText(row.metadata, 'coverageMessage'),
+    queryScope: metadataText(row.metadata, 'upstreamQueryScope') ?? metadataText(row.metadata, 'sourceScope'),
+    discovery: mapSourceDiscovery(row, discovery),
+  }
+}
+
+function providerStatus(input: {
+  configured: boolean
+  errorCount: number
+  task?: Record<string, unknown> | null
+}): Pick<CompleteProviderState, 'status' | 'statusMessage'> {
+  if (!input.configured) return { status: 'inactive', statusMessage: 'Poskytovatel není nakonfigurovaný.' }
+  if (input.task?.last_status === 'running') return { status: 'processing', statusMessage: 'Právě probíhá dohledávání firem.' }
+  if (input.task?.last_status === 'failed') return { status: 'error', statusMessage: String(input.task.last_error_message || 'Poslední běh selhal.') }
+  if (input.task?.last_status === 'partial' || input.errorCount > 0) return { status: 'partial', statusMessage: input.errorCount > 0 ? `${input.errorCount} dotazů čeká na opravu nebo opakování.` : 'Poslední běh byl dokončen pouze částečně.' }
+  if (input.task?.last_success_at) return { status: 'current', statusMessage: 'Automatické dohledávání pracuje správně.' }
+  return { status: 'waiting', statusMessage: 'Poskytovatel čeká na první dokončený běh.' }
+}
+
+function mapProviderState(row: Record<string, unknown>, task?: Record<string, unknown> | null): CompleteProviderState {
+  const provider = row.provider as CompleteProviderState['provider']
+  const configured = providerConfigured(provider)
+  const errorCount = Number(row.error_count)
+  return {
+    provider,
+    configured,
+    ...providerStatus({ configured, errorCount, task }),
+    readyCount: Number(row.ready_count),
+    pendingCount: Number(row.pending_count),
+    notFoundCount: Number(row.not_found_count),
+    errorCount,
+    minuteRequestCount: Number(row.minute_request_count),
+    dayRequestCount: Number(row.day_request_count),
+    lastRequestAt: row.last_request_at as string | null,
+  }
+}
+
+function mapAddressCoverage(input: {
+  totalCount: number
+  normalizedCount: number
+  exactCount: number
+  broadCount: number
+  unresolvedCount: number
+  errorCount: number
+  task?: Record<string, unknown> | null
+}): CompleteAddressCoverage {
+  const pendingCount = Math.max(0, input.totalCount - input.normalizedCount)
+  const taskStatus = input.task?.last_status
+  const status = taskStatus === 'running'
+    ? 'processing'
+    : taskStatus === 'failed'
+      ? 'error'
+      : taskStatus === 'partial' || input.errorCount > 0
+        ? 'partial'
+        : !input.task?.last_success_at
+          ? 'waiting'
+          : pendingCount > 0
+            ? 'processing'
+            : 'current'
+  const statusMessage = status === 'current'
+    ? 'Všechny adresy prošly aktuální verzí normalizátoru.'
+    : status === 'processing'
+      ? taskStatus === 'running' ? 'Právě se zpracovává další dávka adres.' : `${pendingCount} adres čeká na nejbližší dávku.`
+      : status === 'error'
+        ? String(input.task?.last_error_message || 'Poslední normalizace adres selhala.')
+        : status === 'partial'
+          ? `${input.errorCount} adres nebo poslední dávka vyžaduje kontrolu.`
+          : 'Normalizátor čeká na první úspěšný běh.'
+  return { ...input, pendingCount, status, statusMessage }
+}
+
 function mapOverview(row: OverviewRow, assignment?: AssignmentRow): CompletePowerOutageListItem {
   return {
     candidateId: row.candidate_id,
@@ -192,9 +378,11 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     totalAddressCount,
     normalizedAddressCount,
     exactAddressCount,
-    insufficientAddressCount,
+    broadAddressCount,
+    unresolvedAddressCount,
     errorAddressCount,
     sourceResult,
+    sourceDiscoveryResult,
     providerResult,
     taskResult,
   ] = await Promise.all([
@@ -205,46 +393,39 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).eq('candidate_status', 'needs_review'), 'Počet firem k ověření se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }), 'Počet adres se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2), 'Počet normalizovaných adres se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).in('address_scope', ['street', 'municipality', 'unresolved']), 'Počet nedostatečných adres se nepodařilo načíst'),
+    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
+    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).in('address_scope', ['street', 'municipality']), 'Počet adres s širším rozsahem se nepodařilo načíst'),
+    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'unresolved'), 'Počet nerozpoznaných adres se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
-    supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
+    supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
+    supabase.from('complete_power_outage_source_discovery_overview').select('source,total_target_count,completed_target_count,pending_target_count,error_target_count,exact_target_count,street_target_count,last_progress_at').order('source'),
     supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,last_request_at').order('provider'),
-    supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_message,lock_expires_at').order('task_key'),
+    supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
   ])
   if (sourceResult.error) throw new Error(`Stav zdrojů kompletních odstávek se nepodařilo načíst: ${sourceResult.error.message}`)
+  const discoveryRows = sourceDiscoveryResult.error ? [] : sourceDiscoveryResult.data ?? []
   if (providerResult.error) throw new Error(`Stav vyhledávání firem se nepodařilo načíst: ${providerResult.error.message}`)
   if (taskResult.error) throw new Error(`Provozní stav kompletních odstávek se nepodařilo načíst: ${taskResult.error.message}`)
 
-  const sources = (sourceResult.data ?? []).map((row): CompleteSourceState => ({
-    source: row.source as PowerOutageSource,
-    coverageStatus: row.coverage_status as CompleteSourceState['coverageStatus'],
-    lastAttemptAt: row.last_attempt_at,
-    lastSuccessAt: row.last_success_at,
-    lastCompleteAt: row.last_complete_at,
-    publishedOutageCount: Number(row.published_outage_count),
-    publishedAddressCount: Number(row.published_address_count),
-    futureOutageCount: Number(row.future_outage_count),
-    activeOutageCount: Number(row.active_outage_count),
-    coverageProcessedCount: Number(row.coverage_processed_count),
-    coverageTotalCount: Number(row.coverage_total_count),
-    lastErrorMessage: row.last_error_message,
-    coverageMessage: row.metadata && typeof row.metadata === 'object'
-      && typeof (row.metadata as Record<string, unknown>).coverageMessage === 'string'
-      ? String((row.metadata as Record<string, unknown>).coverageMessage)
-      : null,
-  }))
-  const providerStates = (providerResult.data ?? []).map((row): CompleteProviderState => ({
-    provider: row.provider as CompleteProviderState['provider'],
-    configured: providerConfigured(row.provider as CompleteProviderState['provider']),
-    readyCount: Number(row.ready_count),
-    pendingCount: Number(row.pending_count),
-    notFoundCount: Number(row.not_found_count),
-    errorCount: Number(row.error_count),
-    minuteRequestCount: Number(row.minute_request_count),
-    dayRequestCount: Number(row.day_request_count),
-    lastRequestAt: row.last_request_at,
-  }))
+  const sources = (sourceResult.data ?? []).map((row) => mapSourceState(
+    row,
+    discoveryRows.find((item) => item.source === row.source) ?? null,
+  ))
+  const tasks = taskResult.data ?? []
+  const providerStates = (providerResult.data ?? []).map((row) => mapProviderState(
+    row,
+    tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null,
+  ))
+  const normalizationTask = tasks.find((task) => task.task_key === 'normalize_addresses') ?? null
+  const addressCoverage = mapAddressCoverage({
+    totalCount: totalAddressCount,
+    normalizedCount: normalizedAddressCount,
+    exactCount: exactAddressCount,
+    broadCount: broadAddressCount,
+    unresolvedCount: unresolvedAddressCount,
+    errorCount: errorAddressCount,
+    task: normalizationTask,
+  })
 
   const nowMs = Date.now()
   const freshnessMs: Record<PowerOutageSource, number> = {
@@ -257,7 +438,6 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     const value = new Date(source.lastSuccessAt).getTime()
     return !Number.isFinite(value) || nowMs - value > freshnessMs[source.source]
   })
-  const tasks = taskResult.data ?? []
   const failedTasks = tasks.filter((task) => (
     task.last_status === 'failed'
     || task.last_status === 'partial'
@@ -274,6 +454,9 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     .at(-1) ?? null
   const issues = [
     ...staleSources.map((source) => `${source.source.toUpperCase()}: interní projekce nemá čerstvá data.`),
+    ...sources
+      .filter((source) => source.discovery.status === 'error' || source.discovery.status === 'delayed')
+      .map((source) => `${source.source.toUpperCase()}: ${source.discovery.statusMessage}`),
     ...failedTasks.map((task) => `${String(task.task_key)}: ${task.last_error_message || 'poslední běh selhal.'}`),
     ...expiredTasks.map((task) => `${String(task.task_key)}: běh překročil bezpečnostní čas.`),
   ]
@@ -315,13 +498,258 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
       lastActivityAt,
       issues: issues.slice(0, 8),
     },
-    addressCoverage: {
-      totalCount: totalAddressCount,
-      normalizedCount: normalizedAddressCount,
-      exactCount: exactAddressCount,
-      insufficientCount: insufficientAddressCount,
-      errorCount: errorAddressCount,
+    addressCoverage,
+  }
+}
+
+export async function getCompletePowerOutageSourceDiagnostic(
+  source: PowerOutageSource,
+): Promise<CompleteSourceDiagnostic> {
+  if (!['cez', 'egd', 'pre'].includes(source)) throw new Error('Neplatný distributor.')
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
+  const [stateResult, discoveryResult, providersResult, runsResult, taskResult] = await Promise.all([
+    supabase.from('complete_power_outage_source_state')
+      .select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata')
+      .eq('source', source).maybeSingle(),
+    supabase.from('complete_power_outage_source_discovery_overview')
+      .select('source,total_target_count,completed_target_count,pending_target_count,error_target_count,exact_target_count,street_target_count,last_progress_at')
+      .eq('source', source).maybeSingle(),
+    supabase.from('complete_power_outage_source_provider_overview')
+      .select('source,provider,total_target_count,completed_target_count,pending_target_count,found_target_count,not_found_target_count,error_target_count,last_progress_at')
+      .eq('source', source).order('provider'),
+    supabase.from('complete_power_outage_runs')
+      .select('id,status,started_at,finished_at,source_record_count,outage_upsert_count,address_upsert_count,error_count,error_code,error_message,metadata')
+      .eq('source', source).eq('run_kind', 'source_sync').order('started_at', { ascending: false }).limit(8),
+    supabase.from('complete_power_outage_task_state')
+      .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_message')
+      .eq('task_key', taskKey).maybeSingle(),
+  ])
+  if (stateResult.error) throw new Error(`Stav distributora se nepodařilo načíst: ${stateResult.error.message}`)
+  if (discoveryResult.error) throw new Error(`Postup vyhledávání firem se nepodařilo načíst: ${discoveryResult.error.message}`)
+  if (providersResult.error) throw new Error(`Postup poskytovatelů se nepodařilo načíst: ${providersResult.error.message}`)
+  if (runsResult.error) throw new Error(`Historii distributora se nepodařilo načíst: ${runsResult.error.message}`)
+  if (taskResult.error) throw new Error(`Stav plánované úlohy se nepodařilo načíst: ${taskResult.error.message}`)
+  if (!stateResult.data) throw new Error('Stav distributora není dostupný.')
+
+  const runs = (runsResult.data ?? []).map((row): CompleteSourceRun => ({
+    id: String(row.id),
+    status: row.status as CompleteSourceRun['status'],
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    sourceRecordCount: Number(row.source_record_count),
+    outageUpsertCount: Number(row.outage_upsert_count),
+    addressUpsertCount: Number(row.address_upsert_count),
+    errorCount: Number(row.error_count),
+    errorCode: row.error_code,
+    errorMessage: row.error_message,
+    removedAddressCount: Number((row.metadata as Record<string, unknown> | null)?.removedAddressCount ?? 0),
+  }))
+  const providers = (providersResult.data ?? []).map((row) => {
+    const totalTargetCount = Number(row.total_target_count)
+    const completedTargetCount = Number(row.completed_target_count)
+    return {
+      provider: row.provider as CompleteProviderState['provider'],
+      configured: providerConfigured(row.provider as CompleteProviderState['provider']),
+      totalTargetCount,
+      completedTargetCount,
+      pendingTargetCount: Number(row.pending_target_count),
+      foundTargetCount: Number(row.found_target_count),
+      notFoundTargetCount: Number(row.not_found_target_count),
+      errorTargetCount: Number(row.error_target_count),
+      progressPercent: totalTargetCount > 0 ? Math.round((completedTargetCount / totalTargetCount) * 1000) / 10 : 100,
+      lastProgressAt: row.last_progress_at as string | null,
+    }
+  })
+  return {
+    source,
+    state: mapSourceState(stateResult.data, discoveryResult.data),
+    providers,
+    runs,
+    task: taskResult.data ? {
+      status: taskResult.data.last_status === 'idle' ? null : taskResult.data.last_status as CompleteSourceDiagnostic['task'] extends infer T ? T extends { status: infer S } ? S : never : never,
+      lastStartedAt: taskResult.data.last_started_at,
+      lastFinishedAt: taskResult.data.last_finished_at,
+      lastSuccessAt: taskResult.data.last_success_at,
+      consecutiveFailureCount: Number(taskResult.data.consecutive_failure_count),
+      lastErrorMessage: taskResult.data.last_error_message,
+    } : null,
+  }
+}
+
+export async function getCompletePowerOutageProviderDiagnostic(
+  provider: CompleteProviderState['provider'],
+): Promise<CompleteProviderDiagnostic> {
+  if (!['ares', 'mapy', 'google'].includes(provider)) throw new Error('Neplatný poskytovatel.')
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const [overviewResult, taskResult, runsResult, errorsResult] = await Promise.all([
+    supabase.from('complete_power_outage_provider_overview')
+      .select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,last_request_at')
+      .eq('provider', provider).maybeSingle(),
+    supabase.from('complete_power_outage_task_state')
+      .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
+      .eq('task_key', `discover_${provider}`).maybeSingle(),
+    supabase.from('complete_power_outage_runs')
+      .select('id,status,started_at,finished_at,source_record_count,company_upsert_count,evidence_upsert_count,cache_hit_count,error_count,error_code,error_message,metadata')
+      .eq('provider', provider).eq('run_kind', 'company_discovery').order('started_at', { ascending: false }).limit(8),
+    supabase.from('complete_power_outage_target_lookups')
+      .select('id,target_id,attempt_count,last_attempt_at,next_attempt_at,last_error_code,last_error_message')
+      .eq('provider', provider).eq('lookup_status', 'error').order('last_attempt_at', { ascending: false }).limit(8),
+  ])
+  if (overviewResult.error) throw new Error(`Stav poskytovatele se nepodařilo načíst: ${overviewResult.error.message}`)
+  if (taskResult.error) throw new Error(`Stav úlohy se nepodařilo načíst: ${taskResult.error.message}`)
+  if (runsResult.error) throw new Error(`Historii vyhledávání se nepodařilo načíst: ${runsResult.error.message}`)
+  if (errorsResult.error) throw new Error(`Chybné dotazy se nepodařilo načíst: ${errorsResult.error.message}`)
+  if (!overviewResult.data) throw new Error('Stav poskytovatele není dostupný.')
+
+  const targetIds = (errorsResult.data ?? []).map((row) => String(row.target_id))
+  const targetsResult = targetIds.length > 0
+    ? await supabase.from('complete_power_outage_address_targets').select('id,query_text,target_kind').in('id', targetIds)
+    : { data: [], error: null }
+  if (targetsResult.error) throw new Error(`Adresy chybných dotazů se nepodařilo načíst: ${targetsResult.error.message}`)
+  const targets = new Map((targetsResult.data ?? []).map((row) => [String(row.id), row]))
+  const task = taskResult.data as Record<string, unknown> | null
+  const state = mapProviderState(overviewResult.data, task)
+  const runs = (runsResult.data ?? []).map((row): CompleteProviderRun => {
+    const metadata = row.metadata as Record<string, unknown> | null
+    return {
+      id: String(row.id),
+      status: row.status as CompleteProviderRun['status'],
+      startedAt: row.started_at,
+      finishedAt: row.finished_at,
+      processedCount: Number(row.source_record_count),
+      companyCount: Number(row.company_upsert_count),
+      evidenceCount: Number(row.evidence_upsert_count),
+      cacheHitCount: Number(row.cache_hit_count),
+      externalRequestCount: Number(metadata?.externalRequestCount ?? 0),
+      errorCount: Number(row.error_count),
+      quotaReached: metadata?.quotaReached === true,
+      errorCode: row.error_code,
+      errorMessage: row.error_message,
+    }
+  })
+  return {
+    provider,
+    observedAt: new Date().toISOString(),
+    state,
+    limits: PROVIDER_LIMITS[provider],
+    task: task ? {
+      status: task.last_status as CompleteProviderDiagnostic['task'] extends infer T ? T extends { status: infer S } ? S : never : never,
+      lastStartedAt: task.last_started_at as string | null,
+      lastFinishedAt: task.last_finished_at as string | null,
+      lastSuccessAt: task.last_success_at as string | null,
+      consecutiveFailureCount: Number(task.consecutive_failure_count),
+      lastErrorCode: task.last_error_code as string | null,
+      lastErrorMessage: task.last_error_message as string | null,
+    } : null,
+    runs,
+    recentErrors: (errorsResult.data ?? []).map((row) => {
+      const target = targets.get(String(row.target_id))
+      return {
+        id: String(row.id),
+        queryText: String(target?.query_text ?? 'Neuvedený dotaz'),
+        targetKind: String(target?.target_kind ?? 'unknown'),
+        attemptCount: Number(row.attempt_count),
+        lastAttemptAt: row.last_attempt_at,
+        nextAttemptAt: row.next_attempt_at,
+        errorCode: row.last_error_code,
+        errorMessage: row.last_error_message,
+      }
+    }),
+  }
+}
+
+export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise<CompleteAddressCoverageDiagnostic> {
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const count = (query: PromiseLike<{ count: number | null; error: { message: string } | null }>, label: string) => countRows(query, label)
+  const sourceCount = (source: PowerOutageSource, mode: 'total' | 'normalized' | 'exact' | 'broad' = 'total') => {
+    let query = supabase.from('complete_power_outage_addresses')
+      .select('id,complete_power_outages!inner(source)', { count: 'exact', head: true })
+      .eq('complete_power_outages.source', source)
+    if (mode !== 'total') query = query.gte('normalization_version', 2)
+    if (mode === 'exact') query = query.eq('address_scope', 'exact')
+    if (mode === 'broad') query = query.in('address_scope', ['street', 'municipality'])
+    return count(query, `Pokrytí adres ${source.toUpperCase()} se nepodařilo načíst`)
+  }
+  const sources = ['cez', 'egd', 'pre'] as const
+  const [
+    totalCount, normalizedCount, exactCount, broadCount, unresolvedCount, errorCount,
+    exactTargetCount, streetTargetCount, municipalityTargetCount, totalTargetCount,
+    taskResult, runsResult, ...sourceCounts
+  ] = await Promise.all([
+    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }), 'Počet adres se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2), 'Počet normalizovaných adres se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).in('address_scope', ['street', 'municipality']), 'Počet širších adres se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'unresolved'), 'Počet nerozpoznaných adres se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chybných adres se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }).eq('target_kind', 'exact_number'), 'Počet přesných cílů se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }).eq('target_kind', 'street'), 'Počet uličních cílů se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }).eq('target_kind', 'municipality'), 'Počet obecních cílů se nepodařilo načíst'),
+    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }), 'Počet adresních cílů se nepodařilo načíst'),
+    supabase.from('complete_power_outage_task_state')
+      .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
+      .eq('task_key', 'normalize_addresses').maybeSingle(),
+    supabase.from('complete_power_outage_runs')
+      .select('id,status,started_at,finished_at,source_record_count,address_upsert_count,error_code,error_message,metadata')
+      .eq('run_kind', 'address_normalization').order('started_at', { ascending: false }).limit(10),
+    ...sources.flatMap((source) => [
+      sourceCount(source),
+      sourceCount(source, 'normalized'),
+      sourceCount(source, 'exact'),
+      sourceCount(source, 'broad'),
+    ]),
+  ])
+  if (taskResult.error) throw new Error(`Stav normalizátoru se nepodařilo načíst: ${taskResult.error.message}`)
+  if (runsResult.error) throw new Error(`Historii normalizace se nepodařilo načíst: ${runsResult.error.message}`)
+  const task = taskResult.data as Record<string, unknown> | null
+  const coverage = mapAddressCoverage({
+    totalCount: Number(totalCount), normalizedCount: Number(normalizedCount), exactCount: Number(exactCount),
+    broadCount: Number(broadCount), unresolvedCount: Number(unresolvedCount), errorCount: Number(errorCount), task,
+  })
+  const runs = (runsResult.data ?? []).map((row): CompleteAddressCoverageRun => {
+    const metadata = row.metadata as Record<string, unknown> | null
+    return {
+      id: String(row.id),
+      status: row.status as CompleteAddressCoverageRun['status'],
+      startedAt: row.started_at,
+      finishedAt: row.finished_at,
+      processedAddressCount: Number(row.source_record_count),
+      createdTargetCount: Number(row.address_upsert_count),
+      removedTargetCount: Number(metadata?.removedTargetCount ?? 0),
+      exactTargetCount: Number(metadata?.exactTargetCount ?? 0),
+      broadTargetCount: Number(metadata?.broadTargetCount ?? 0),
+      unresolvedAddressCount: Number(metadata?.unresolvedAddressCount ?? 0),
+      remainingCount: metadata?.remainingCount == null ? null : Number(metadata.remainingCount),
+      errorCode: row.error_code,
+      errorMessage: row.error_message,
+    }
+  })
+  return {
+    observedAt: new Date().toISOString(),
+    coverage,
+    normalizerVersion: Number((runsResult.data?.[0]?.metadata as Record<string, unknown> | null)?.normalizerVersion ?? 2),
+    targets: {
+      exactCount: Number(exactTargetCount), streetCount: Number(streetTargetCount),
+      municipalityCount: Number(municipalityTargetCount), totalCount: Number(totalTargetCount),
     },
+    sources: sources.map((source, index) => ({
+      source,
+      totalCount: Number(sourceCounts[index * 4]),
+      normalizedCount: Number(sourceCounts[index * 4 + 1]),
+      exactCount: Number(sourceCounts[index * 4 + 2]),
+      broadCount: Number(sourceCounts[index * 4 + 3]),
+    })),
+    task: task ? {
+      status: task.last_status as CompleteAddressCoverageDiagnostic['task'] extends infer T ? T extends { status: infer S } ? S : never : never,
+      lastStartedAt: task.last_started_at as string | null,
+      lastFinishedAt: task.last_finished_at as string | null,
+      lastSuccessAt: task.last_success_at as string | null,
+      consecutiveFailureCount: Number(task.consecutive_failure_count),
+      lastErrorCode: task.last_error_code as string | null,
+      lastErrorMessage: task.last_error_message as string | null,
+    } : null,
+    runs,
   }
 }
 
@@ -364,4 +792,30 @@ export async function getCompletePowerOutageDetail(candidateId: string): Promise
     metadata: overview.metadata ?? {},
     evidence,
   }
+}
+
+export async function getCompletePowerOutageCommunicationNotes(
+  candidateId: string,
+): Promise<CompletePowerOutageCommunicationNote[]> {
+  const cleanId = candidateId.trim()
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(cleanId)) throw new Error('Neplatné technické ID firmy.')
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const { data, error } = await supabase
+    .from('complete_power_outage_company_notes')
+    .select('id,author_id,author_name,body,created_at')
+    .eq('candidate_id', cleanId)
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (error) {
+    if (ownershipSchemaMissing(error)) return []
+    throw new Error(`Historii komunikace se nepodařilo načíst: ${error.message}`)
+  }
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    authorId: String(row.author_id),
+    authorName: String(row.author_name),
+    body: String(row.body),
+    createdAt: String(row.created_at),
+  }))
 }

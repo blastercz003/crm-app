@@ -37,7 +37,7 @@ export const PROVIDER_LIMITS: Record<CompleteDiscoveryProvider, {
   maxPerRun: number
   cacheHours: number | null
 }> = {
-  ares: { minute: 10, day: 500, maxPerRun: 10, cacheHours: 7 * 24 },
+  ares: { minute: 60, day: 20_000, maxPerRun: 100, cacheHours: 7 * 24 },
   mapy: { minute: 5, day: 300, maxPerRun: 8, cacheHours: 7 * 24 },
   google: { minute: 3, day: 100, maxPerRun: 5, cacheHours: 24 },
 }

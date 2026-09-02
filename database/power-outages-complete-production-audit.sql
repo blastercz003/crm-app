@@ -178,14 +178,14 @@ with checks(check_type, object_name, is_correct, detail) as (
     exists (
       select 1
       from cron.job
-      where jobname = 'power_outages_complete_pipeline_every_fifteen_minutes'
-        and schedule = '14-59/15 * * * *'
+      where jobname = 'power_outages_complete_pipeline_every_five_minutes'
+        and schedule = '4-59/5 * * * *'
         and active
     ),
     coalesce((
       select concat('schedule=', schedule, ', active=', active)
       from cron.job
-      where jobname = 'power_outages_complete_pipeline_every_fifteen_minutes'
+      where jobname = 'power_outages_complete_pipeline_every_five_minutes'
     ), 'missing')
 
   union all

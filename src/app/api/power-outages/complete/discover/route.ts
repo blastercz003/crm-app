@@ -22,7 +22,7 @@ async function run(request: Request, allowAdminSession: boolean) {
     return NextResponse.json({ ok: false, error: 'Poskytovatel musí být ares, mapy nebo google.' }, { status: 400, headers: HEADERS })
   }
   const value = Number(url.searchParams.get('limit') ?? '5')
-  const limit = Number.isFinite(value) ? Math.min(10, Math.max(1, Math.trunc(value))) : 5
+  const limit = Number.isFinite(value) ? Math.min(100, Math.max(1, Math.trunc(value))) : 5
   try {
     const result = await discoverCompletePowerOutageCompanies(provider as CompleteDiscoveryProvider, limit)
     return NextResponse.json({ ok: true, ...result }, { headers: HEADERS })

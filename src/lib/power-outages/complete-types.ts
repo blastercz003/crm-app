@@ -14,6 +14,14 @@ export type CompletePowerOutageAssignment = {
   updatedAt: string
 }
 
+export type CompletePowerOutageCommunicationNote = {
+  id: string
+  authorId: string
+  authorName: string
+  body: string
+  createdAt: string
+}
+
 export type CompletePowerOutageListItem = {
   candidateId: string
   outageId: string
@@ -84,6 +92,12 @@ export type CompleteSourceState = {
   lastAttemptAt: string | null
   lastSuccessAt: string | null
   lastCompleteAt: string | null
+  lastChangeAt: string | null
+  horizonFrom: string | null
+  horizonTo: string | null
+  latestSourceRef: string | null
+  latestPayloadSha256: string | null
+  dataVersion: number
   publishedOutageCount: number
   publishedAddressCount: number
   futureOutageCount: number
@@ -92,11 +106,71 @@ export type CompleteSourceState = {
   coverageTotalCount: number
   lastErrorMessage: string | null
   coverageMessage: string | null
+  queryScope: string | null
+  discovery: CompleteSourceDiscoveryState
+}
+
+export type CompleteSourceDiscoveryState = {
+  status: 'waiting' | 'processing' | 'current' | 'delayed' | 'partial' | 'error'
+  statusMessage: string
+  totalTargetCount: number
+  completedTargetCount: number
+  remainingTargetCount: number
+  pendingTargetCount: number
+  errorTargetCount: number
+  exactTargetCount: number
+  streetTargetCount: number
+  progressPercent: number
+  lastProgressAt: string | null
+}
+
+export type CompleteSourceProviderProgress = {
+  provider: 'ares' | 'mapy' | 'google'
+  configured: boolean
+  totalTargetCount: number
+  completedTargetCount: number
+  pendingTargetCount: number
+  foundTargetCount: number
+  notFoundTargetCount: number
+  errorTargetCount: number
+  progressPercent: number
+  lastProgressAt: string | null
+}
+
+export type CompleteSourceRun = {
+  id: string
+  status: 'running' | 'succeeded' | 'no_change' | 'partial' | 'failed' | 'skipped'
+  startedAt: string
+  finishedAt: string | null
+  sourceRecordCount: number
+  outageUpsertCount: number
+  addressUpsertCount: number
+  errorCount: number
+  errorCode: string | null
+  errorMessage: string | null
+  removedAddressCount: number
+}
+
+export type CompleteSourceDiagnostic = {
+  source: PowerOutageSource
+  state: CompleteSourceState
+  providers: CompleteSourceProviderProgress[]
+  runs: CompleteSourceRun[]
+  task: {
+    status: 'pending' | 'running' | 'succeeded' | 'failed' | 'partial' | null
+    lastStartedAt: string | null
+    lastFinishedAt: string | null
+    lastSuccessAt: string | null
+    consecutiveFailureCount: number
+    lastErrorMessage: string | null
+  } | null
 }
 
 export type CompleteProviderState = {
   provider: 'ares' | 'mapy' | 'google'
   configured: boolean
+  status: 'inactive' | 'waiting' | 'processing' | 'current' | 'partial' | 'error'
+  statusMessage: string
   readyCount: number
   pendingCount: number
   notFoundCount: number
@@ -106,6 +180,49 @@ export type CompleteProviderState = {
   lastRequestAt: string | null
 }
 
+export type CompleteProviderRun = {
+  id: string
+  status: 'running' | 'succeeded' | 'no_change' | 'partial' | 'failed' | 'skipped'
+  startedAt: string
+  finishedAt: string | null
+  processedCount: number
+  companyCount: number
+  evidenceCount: number
+  cacheHitCount: number
+  externalRequestCount: number
+  errorCount: number
+  quotaReached: boolean
+  errorCode: string | null
+  errorMessage: string | null
+}
+
+export type CompleteProviderDiagnostic = {
+  provider: CompleteProviderState['provider']
+  observedAt: string
+  state: CompleteProviderState
+  limits: { minute: number; day: number; maxPerRun: number; cacheHours: number | null }
+  task: {
+    status: 'idle' | 'running' | 'succeeded' | 'partial' | 'failed' | 'skipped'
+    lastStartedAt: string | null
+    lastFinishedAt: string | null
+    lastSuccessAt: string | null
+    consecutiveFailureCount: number
+    lastErrorCode: string | null
+    lastErrorMessage: string | null
+  } | null
+  runs: CompleteProviderRun[]
+  recentErrors: Array<{
+    id: string
+    queryText: string
+    targetKind: string
+    attemptCount: number
+    lastAttemptAt: string | null
+    nextAttemptAt: string | null
+    errorCode: string | null
+    errorMessage: string | null
+  }>
+}
+
 export type CompleteRuntimeState = {
   status: 'healthy' | 'processing' | 'attention' | 'waiting'
   runningTaskCount: number
@@ -113,6 +230,58 @@ export type CompleteRuntimeState = {
   staleSourceCount: number
   lastActivityAt: string | null
   issues: string[]
+}
+
+export type CompleteAddressCoverage = {
+  status: 'waiting' | 'processing' | 'current' | 'partial' | 'error'
+  statusMessage: string
+  totalCount: number
+  normalizedCount: number
+  exactCount: number
+  broadCount: number
+  unresolvedCount: number
+  pendingCount: number
+  errorCount: number
+}
+
+export type CompleteAddressCoverageRun = {
+  id: string
+  status: 'running' | 'succeeded' | 'no_change' | 'partial' | 'failed' | 'skipped'
+  startedAt: string
+  finishedAt: string | null
+  processedAddressCount: number
+  createdTargetCount: number
+  removedTargetCount: number
+  exactTargetCount: number
+  broadTargetCount: number
+  unresolvedAddressCount: number
+  remainingCount: number | null
+  errorCode: string | null
+  errorMessage: string | null
+}
+
+export type CompleteAddressCoverageDiagnostic = {
+  observedAt: string
+  coverage: CompleteAddressCoverage
+  normalizerVersion: number
+  targets: { exactCount: number; streetCount: number; municipalityCount: number; totalCount: number }
+  sources: Array<{
+    source: PowerOutageSource
+    totalCount: number
+    normalizedCount: number
+    exactCount: number
+    broadCount: number
+  }>
+  task: {
+    status: 'idle' | 'running' | 'succeeded' | 'partial' | 'failed' | 'skipped'
+    lastStartedAt: string | null
+    lastFinishedAt: string | null
+    lastSuccessAt: string | null
+    consecutiveFailureCount: number
+    lastErrorCode: string | null
+    lastErrorMessage: string | null
+  } | null
+  runs: CompleteAddressCoverageRun[]
 }
 
 export type CompletePowerOutageWorkspace = {
@@ -138,11 +307,5 @@ export type CompletePowerOutageWorkspace = {
   sources: CompleteSourceState[]
   providers: CompleteProviderState[]
   runtime: CompleteRuntimeState
-  addressCoverage: {
-    totalCount: number
-    normalizedCount: number
-    exactCount: number
-    insufficientCount: number
-    errorCount: number
-  }
+  addressCoverage: CompleteAddressCoverage
 }

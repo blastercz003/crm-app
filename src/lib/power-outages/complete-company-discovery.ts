@@ -31,12 +31,6 @@ type TargetRow = {
   longitude: number | string | null
 }
 
-type LookupRow = {
-  target_id: string
-  lookup_status: 'pending' | 'ready' | 'not_found' | 'error' | 'skipped'
-  next_attempt_at: string | null
-}
-
 type CacheRow = {
   id: string
   lookup_status: 'ready' | 'not_found' | 'error'
@@ -65,12 +59,6 @@ type ExistingCompany = {
   last_seen_at: string
   last_verified_at: string
   metadata: Record<string, unknown> | null
-}
-
-function chunks<T>(values: T[], size: number) {
-  const result: T[][] = []
-  for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size))
-  return result
 }
 
 function finiteNumber(value: unknown) {
@@ -128,34 +116,16 @@ async function claimProviderQuota(client: ServiceClient, provider: CompleteDisco
 }
 
 async function loadTargets(client: ServiceClient, provider: CompleteDiscoveryProvider, limit: number) {
-  const scanLimit = Math.min(500, Math.max(50, limit * 20))
-  const { data, error } = await client
-    .from('complete_power_outage_address_targets')
-    .select('id,outage_address_id,target_kind,municipality,town_part,street,number_token,query_text,latitude,longitude')
-    .in('lookup_status', ['pending', 'complete', 'needs_review', 'not_found'])
-    .order('lookup_priority')
-    .order('created_at')
-    .limit(scanLimit)
+  // Databázová funkce vybere pouze skutečně nezpracované cíle a prokládá
+  // ČEZ, EG.D a PRE po jednom. Větší načtená dávka dovolí odbavit cache bez
+  // spotřeby externí kvóty; `limit` níže omezuje jen nové externí požadavky.
+  const scanLimit = Math.min(5000, Math.max(300, limit * 20))
+  const { data, error } = await client.rpc('get_complete_power_outage_discovery_targets', {
+    requested_provider: provider,
+    requested_limit: scanLimit,
+  })
   if (error) throw error
-  const targets = (data ?? []) as TargetRow[]
-  const lookups: LookupRow[] = []
-  for (const ids of chunks(targets.map((target) => target.id), 100)) {
-    const { data: rows, error: lookupError } = await client
-      .from('complete_power_outage_target_lookups')
-      .select('target_id,lookup_status,next_attempt_at')
-      .eq('provider', provider)
-      .in('target_id', ids)
-    if (lookupError) throw lookupError
-    lookups.push(...((rows ?? []) as LookupRow[]))
-  }
-  const now = Date.now()
-  const lookupByTarget = new Map(lookups.map((row) => [row.target_id, row]))
-  return targets.filter((target) => {
-    const lookup = lookupByTarget.get(target.id)
-    if (!lookup) return true
-    return lookup.lookup_status === 'error'
-      && (!lookup.next_attempt_at || new Date(lookup.next_attempt_at).getTime() <= now)
-  }).slice(0, limit)
+  return (data ?? []) as TargetRow[]
 }
 
 async function loadCache(
@@ -459,6 +429,7 @@ export async function discoverCompletePowerOutageCompanies(
         })
         continue
       }
+      if (externalRequestCount >= limit) break
       if (!await claimProviderQuota(client, provider)) {
         quotaReached = true
         break
@@ -472,7 +443,7 @@ export async function discoverCompletePowerOutageCompanies(
         const message = powerOutageErrorMessage(error, `${provider.toUpperCase()} lookup selhal.`)
         const savedCache = await saveCache({ client, provider, ...identity, candidates: [], error: message })
         await saveLookup({ client, targetId: target.id, provider, ...identity, status: 'error', cacheId: savedCache.id, error: message })
-        const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 350
+        const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 650
         await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
@@ -504,7 +475,7 @@ export async function discoverCompletePowerOutageCompanies(
           metadata: { providerRequestSucceeded: true, materializationFailed: true },
         })
       }
-      const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 350
+      const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 650
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
     const finishedAt = new Date().toISOString()

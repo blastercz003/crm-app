@@ -8,11 +8,15 @@ import {
 import { getPowerOutageDetail } from '@/lib/power-outages/service'
 import { getPowerOutageSourceDiagnostic } from '@/lib/power-outages/health'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
-import { getCompletePowerOutageDetail } from '@/lib/power-outages/complete-service'
+import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageDetail, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSourceDiagnostic } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
+  CompleteAddressCoverageDiagnostic,
   CompletePowerOutageAssignment,
+  CompletePowerOutageCommunicationNote,
   CompletePowerOutageDetail,
+  CompleteProviderDiagnostic,
+  CompleteSourceDiagnostic,
 } from '@/lib/power-outages/complete-types'
 import type { PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
 
@@ -32,8 +36,24 @@ type CompleteAssignmentActionResult =
   | { success: true; assignment: CompletePowerOutageAssignment | null; error: null }
   | { success: false; assignment: null; error: string }
 
+type CompleteCommunicationNotesActionResult =
+  | { success: true; notes: CompletePowerOutageCommunicationNote[]; error: null }
+  | { success: false; notes: []; error: string }
+
 type SourceDiagnosticActionResult =
   | { success: true; diagnostic: PowerOutageSourceDiagnostic; error: null }
+  | { success: false; diagnostic: null; error: string }
+
+type CompleteSourceDiagnosticActionResult =
+  | { success: true; diagnostic: CompleteSourceDiagnostic; error: null }
+  | { success: false; diagnostic: null; error: string }
+
+type CompleteProviderDiagnosticActionResult =
+  | { success: true; diagnostic: CompleteProviderDiagnostic; error: null }
+  | { success: false; diagnostic: null; error: string }
+
+type CompleteAddressCoverageDiagnosticActionResult =
+  | { success: true; diagnostic: CompleteAddressCoverageDiagnostic; error: null }
   | { success: false; diagnostic: null; error: string }
 
 type AcknowledgeMatchesActionResult =
@@ -84,6 +104,16 @@ export async function getCompletePowerOutageDetailAction(candidateId: string): P
     return { success: true, detail: await getCompletePowerOutageDetail(candidateId), error: null }
   } catch (error) {
     return { success: false, detail: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageCommunicationNotesAction(
+  candidateId: string,
+): Promise<CompleteCommunicationNotesActionResult> {
+  try {
+    return { success: true, notes: await getCompletePowerOutageCommunicationNotes(candidateId), error: null }
+  } catch (error) {
+    return { success: false, notes: [], error: errorMessage(error) }
   }
 }
 
@@ -149,6 +179,34 @@ export async function releaseCompletePowerOutageAssignmentAction(
 export async function getPowerOutageSourceDiagnosticAction(source: PowerOutageSource): Promise<SourceDiagnosticActionResult> {
   try {
     return { success: true, diagnostic: await getPowerOutageSourceDiagnostic(source), error: null }
+  } catch (error) {
+    return { success: false, diagnostic: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageSourceDiagnosticAction(
+  source: PowerOutageSource,
+): Promise<CompleteSourceDiagnosticActionResult> {
+  try {
+    return { success: true, diagnostic: await getCompletePowerOutageSourceDiagnostic(source), error: null }
+  } catch (error) {
+    return { success: false, diagnostic: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageProviderDiagnosticAction(
+  provider: 'ares' | 'mapy' | 'google',
+): Promise<CompleteProviderDiagnosticActionResult> {
+  try {
+    return { success: true, diagnostic: await getCompletePowerOutageProviderDiagnostic(provider), error: null }
+  } catch (error) {
+    return { success: false, diagnostic: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageAddressCoverageDiagnosticAction(): Promise<CompleteAddressCoverageDiagnosticActionResult> {
+  try {
+    return { success: true, diagnostic: await getCompletePowerOutageAddressCoverageDiagnostic(), error: null }
   } catch (error) {
     return { success: false, diagnostic: null, error: errorMessage(error) }
   }

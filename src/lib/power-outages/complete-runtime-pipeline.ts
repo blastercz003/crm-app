@@ -74,8 +74,8 @@ export async function runCompletePowerOutageRuntimePipeline() {
 
   // Zdroje běží postupně. Limity níže jsou záměrně nižší než providerové
   // stropy; skutečný minutový i denní limit navíc atomicky hlídá databáze.
-  steps.push(await runProvider('ares', 4))
-  steps.push(await runProvider('mapy', 3))
+  steps.push(await runProvider('ares', 100))
+  steps.push(await runProvider('mapy', 5))
   steps.push(await runProvider('google', 2))
 
   steps.push(await runStep(

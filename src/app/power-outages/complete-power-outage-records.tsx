@@ -22,12 +22,13 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type {
   CompleteCandidateStatus,
   CompleteCommunicationStatus,
   CompletePowerOutageAssignment,
+  CompletePowerOutageCommunicationNote,
   CompleteEntityKind,
   CompletePowerOutageDetail,
   CompletePowerOutageListItem,
@@ -36,6 +37,7 @@ import type {
 import type { PowerOutageSource } from '@/lib/power-outages/types'
 import {
   getCompletePowerOutageDetailAction,
+  getCompletePowerOutageCommunicationNotesAction,
   releaseCompletePowerOutageAssignmentAction,
   saveCompletePowerOutageAssignmentAction,
 } from './actions'
@@ -48,10 +50,33 @@ const DATE_TIME = new Intl.DateTimeFormat('cs-CZ', {
   timeZone: 'Europe/Prague', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
 })
 
+const MOBILE_DATE = new Intl.DateTimeFormat('cs-CZ', {
+  timeZone: 'Europe/Prague', day: 'numeric', month: 'numeric', year: 'numeric',
+})
+
+const MOBILE_TIME = new Intl.DateTimeFormat('cs-CZ', {
+  timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit',
+})
+
 function formatDateTime(value: string | null) {
   if (!value) return 'Neuvedeno'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? 'Neuvedeno' : DATE_TIME.format(date)
+}
+
+function formatMobilePeriod(startsAt: string, endsAt: string) {
+  const starts = new Date(startsAt)
+  const ends = new Date(endsAt)
+  if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) return 'Termín neuveden'
+
+  const startDate = MOBILE_DATE.format(starts)
+  const endDate = MOBILE_DATE.format(ends)
+  const start = `${startDate} ${MOBILE_TIME.format(starts)}`
+  const end = startDate === endDate
+    ? MOBILE_TIME.format(ends)
+    : `${endDate} ${MOBILE_TIME.format(ends)}`
+
+  return `${start} → ${end}`
 }
 
 function normalize(value: string) {
@@ -82,18 +107,12 @@ function StatusBadge({ status, assignment, desktop = false }: { status: Complete
       : 'border-slate-400/40 bg-slate-400/10 text-[var(--text-secondary)]'
   return <span className="relative inline-flex h-6 w-[88px] shrink-0 items-center justify-center whitespace-nowrap rounded-full">
     <span className={`inline-flex h-6 w-full items-center justify-center whitespace-nowrap rounded-full border px-2 font-bold uppercase ${desktop ? 'text-[8px] tracking-[0.07em]' : 'text-[7px] tracking-[0.045em]'} ${tone}`}>{statusLabel(status)}</span>
-    {assignment ? <span title={`Záznam spravuje ${assignment.ownerName}`} className="absolute -right-1.5 -top-1.5 z-[1] inline-flex h-3.5 max-w-[58px] items-center rounded-full border border-white/80 bg-sky-600 px-1.5 text-[5px] font-extrabold uppercase leading-none tracking-[0.03em] text-white shadow-sm [html[data-theme=dark]_&]:border-slate-900"><span className="truncate">{assignment.ownerName}</span></span> : null}
+    {assignment ? <span title={`Záznam spravuje ${assignment.ownerName}`} className="absolute -right-2.5 -top-2.5 z-[1] inline-flex h-5 max-w-[84px] items-center rounded-full border border-white/80 bg-sky-600 px-2.5 text-[7px] font-extrabold uppercase leading-none tracking-[0.03em] text-white shadow-sm [html[data-theme=dark]_&]:border-slate-900"><span className="truncate">{assignment.ownerName}</span></span> : null}
   </span>
 }
 
 function EntityBadge({ kind, desktop = false }: { kind: CompleteEntityKind; desktop?: boolean }) {
   return <span className={`inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-violet-400/30 bg-violet-400/8 font-bold uppercase text-violet-700 [html[data-theme=dark]_&]:text-violet-300 ${desktop ? 'px-2 text-[8px] tracking-[0.04em]' : 'min-w-[72px] px-2 text-[7px] tracking-[0.04em]'}`}>{entityLabel(kind)}</span>
-}
-
-function ProviderBadges({ providers, desktop = false }: { providers: CompletePowerOutageListItem['providers']; desktop?: boolean }) {
-  if (!desktop) return <span className="flex flex-wrap gap-1">{providers.map((provider) => <span key={provider} className="inline-flex h-5 items-center rounded-lg border border-sky-400/20 bg-sky-500/8 px-1.5 text-[6px] font-bold uppercase text-[var(--accent)]">{provider === 'mapy' ? 'MAPY' : provider.toUpperCase()}</span>)}</span>
-  const label = providers.map((provider) => provider === 'mapy' ? 'MAPY' : provider.toUpperCase()).join(' + ')
-  return <span className="inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-sky-400/20 bg-sky-500/8 px-2 text-[8px] font-bold uppercase tracking-[0.04em] text-[var(--accent)]">{label || 'BEZ ZDROJE'}</span>
 }
 
 function addressLabel(item: CompletePowerOutageListItem) {
@@ -189,9 +208,30 @@ function CompleteAssignmentPopup({
   const canEdit = !assignment || assignment.ownerId === currentUser.id
   const canRelease = Boolean(assignment && (assignment.ownerId === currentUser.id || currentUser.isAdmin))
   const [communicationStatus, setCommunicationStatus] = useState<CompleteCommunicationStatus>(assignment?.communicationStatus ?? 'not_contacted')
-  const [notes, setNotes] = useState(assignment?.notes ?? '')
+  const [notes, setNotes] = useState('')
+  const [history, setHistory] = useState<CompletePowerOutageCommunicationNote[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void getCompletePowerOutageCommunicationNotesAction(item.candidateId).then((result) => {
+      if (!active) return
+      if (result.success) {
+        const legacy = result.notes.length === 0 && assignment?.notes.trim()
+          ? [{ id: `legacy-${item.candidateId}`, authorId: assignment.ownerId, authorName: assignment.ownerName, body: assignment.notes, createdAt: assignment.updatedAt }]
+          : []
+        setHistory(result.notes.length ? result.notes : legacy)
+        setHistoryError(null)
+      } else {
+        setHistoryError(result.error)
+      }
+      setHistoryLoading(false)
+    })
+    return () => { active = false }
+  }, [assignment, item.candidateId])
 
   const save = async () => {
     setSaving(true); setError(null)
@@ -221,8 +261,14 @@ function CompleteAssignmentPopup({
       </section>
 
       {!canEdit ? <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] leading-5 text-amber-800 [html[data-theme=dark]_&]:text-amber-200">Poznámku může upravovat její vlastník. Administrátor může přiřazení uvolnit.</div> : null}
-      <label className="mt-4 block"><span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Stav komunikace</span><select disabled={!canEdit || saving} value={communicationStatus} onChange={(event) => setCommunicationStatus(event.target.value as CompleteCommunicationStatus)} className="mt-2 h-11 w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:border-[var(--accent)] disabled:opacity-60">{COMMUNICATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-      <label className="mt-4 block"><span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Poznámka ke komunikaci</span><textarea disabled={!canEdit || saving} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={10_000} rows={7} placeholder="Zapište průběh komunikace nebo důležité informace…" className="mt-2 w-full resize-y rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3 text-xs leading-5 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)] focus:border-[var(--accent)] disabled:opacity-60" /><span className="mt-1 block text-right text-[8px] tabular-nums text-[var(--text-secondary)]">{notes.length} / 10 000</span></label>
+      <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Historie komunikace</h4>
+        {historyLoading ? <div className="mt-2 flex min-h-20 items-center justify-center rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><LoaderCircle aria-label="Načítání historie" size={17} className="animate-spin text-[var(--accent)]" /></div>
+          : historyError ? <p className="mt-2 rounded-2xl border border-red-400/30 bg-red-400/10 p-3 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{historyError}</p>
+            : history.length ? <div className="mt-2 space-y-2">{history.map((entry) => <article key={entry.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-3"><strong className="truncate text-[10px] text-[var(--text-primary)]">{entry.authorName}</strong><time dateTime={entry.createdAt} className="shrink-0 text-[8px] tabular-nums text-[var(--text-secondary)]">{formatDateTime(entry.createdAt)}</time></div><p className="mt-1.5 whitespace-pre-wrap text-[11px] leading-5 text-[var(--text-primary)]">{entry.body}</p></article>)}</div>
+              : <p className="mt-2 rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] p-4 text-center text-[10px] text-[var(--text-secondary)]">Zatím nebyla zapsána žádná poznámka.</p>}
+      </section>
+      <label className="mt-4 block"><span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Stav komunikace</span><span className="relative mt-2 block h-11 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] transition focus-within:border-[var(--accent)]"><select disabled={!canEdit || saving} value={communicationStatus} onChange={(event) => setCommunicationStatus(event.target.value as CompleteCommunicationStatus)} className="h-full w-full appearance-none rounded-2xl border-0 bg-transparent py-0 pl-3 pr-10 text-xs font-medium text-[var(--text-primary)] outline-none disabled:opacity-60">{COMMUNICATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown aria-hidden size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /></span></label>
+      <label className="mt-4 block"><span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Přidat poznámku</span><textarea disabled={!canEdit || saving} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={10_000} rows={5} placeholder="Zapište průběh komunikace nebo důležité informace…" className="mt-2 w-full resize-y rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3 text-xs leading-5 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)] focus:border-[var(--accent)] disabled:opacity-60" /><span className="mt-1 block text-right text-[8px] tabular-nums text-[var(--text-secondary)]">{notes.length} / 10 000</span></label>
       {error ? <p className="mt-3 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-[10px] font-medium text-red-700 [html[data-theme=dark]_&]:text-red-300">{error}</p> : null}
     </div>
     <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--surface-border)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
@@ -233,8 +279,8 @@ function CompleteAssignmentPopup({
 }
 
 function MobileCard({ item, onDetail, onAnnouncement, onAssignment }: { item: CompletePowerOutageListItem; onDetail: () => void; onAnnouncement: () => void; onAssignment: () => void }) {
-  const actionClass = 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20'
-  return <article className="power-outages-mobile-card weather-alerts__record-surface rounded-[18px] border px-3 py-3"><div className="flex items-start justify-between gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /></span><div className="flex flex-wrap justify-end gap-1"><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} /></div></div><div className="mt-2 flex items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><div className="mt-2 flex items-center justify-between gap-2"><div className="min-w-0"><strong className="block truncate text-[10px] tabular-nums text-[var(--text-primary)]">{formatDateTime(item.startsAt)} → {formatDateTime(item.endsAt)}</strong><div className="mt-1 flex items-center gap-1.5"><EntityBadge kind={item.entityKind} /><ProviderBadges providers={item.providers} /></div></div><div className="flex shrink-0 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={13} /></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={14} /></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={13} /></button></div></div></article>
+  const actionClass = 'inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-sky-400/20 bg-sky-500/10 px-2 text-[7px] font-bold uppercase tracking-[0.035em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20'
+  return <article className="power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5"><div className="flex min-w-0 items-start justify-between gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /></span><div className="flex min-w-0 flex-nowrap justify-end gap-1"><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
 }
 
 export function CompletePowerOutageRecords({ workspace }: { workspace: CompletePowerOutageWorkspace }) {

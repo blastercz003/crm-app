@@ -1,9 +1,9 @@
 select 'CRON' as check_type,
-  'complete pipeline every fifteen minutes' as object_name,
+  'complete pipeline every five minutes' as object_name,
   exists (
     select 1 from cron.job
-    where jobname = 'power_outages_complete_pipeline_every_fifteen_minutes'
-      and schedule = '14-59/15 * * * *'
+    where jobname = 'power_outages_complete_pipeline_every_five_minutes'
+      and schedule = '4-59/5 * * * *'
       and active
   ) as is_correct
 union all

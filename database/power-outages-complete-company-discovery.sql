@@ -143,7 +143,7 @@ declare
   app_url text;
   automation_token text;
   safe_provider text := lower(btrim(coalesce(requested_provider, '')));
-  safe_limit integer := least(10, greatest(1, coalesce(requested_limit, 5)));
+  safe_limit integer := least(100, greatest(1, coalesce(requested_limit, 5)));
   request_id bigint;
 begin
   if safe_provider not in ('ares', 'mapy', 'google') then
