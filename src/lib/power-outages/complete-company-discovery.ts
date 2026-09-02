@@ -61,6 +61,9 @@ type ExistingCompany = {
   candidate_status: 'new' | 'confirmed' | 'needs_review' | 'dismissed' | 'stale'
   normalized_company_name: string
   resolved_by: string | null
+  first_seen_at: string
+  last_seen_at: string
+  last_verified_at: string
   metadata: Record<string, unknown> | null
 }
 
@@ -185,6 +188,7 @@ async function saveLookup(input: {
   cacheId?: string | null
   resultCount?: number
   error?: string | null
+  errorCode?: string | null
   metadata?: Record<string, unknown>
 }) {
   const now = new Date().toISOString()
@@ -201,7 +205,9 @@ async function saveLookup(input: {
     next_attempt_at: retryAt,
     last_attempt_at: now,
     finished_at: input.status === 'error' ? null : now,
-    last_error_code: input.status === 'error' ? 'COMPLETE_PROVIDER_LOOKUP_FAILED' : null,
+    last_error_code: input.status === 'error'
+      ? input.errorCode ?? 'COMPLETE_PROVIDER_LOOKUP_FAILED'
+      : null,
     last_error_message: input.status === 'error' ? input.error?.slice(0, 2_000) ?? null : null,
     metadata: input.metadata ?? {},
   }, { onConflict: 'target_id,provider' })
@@ -259,7 +265,7 @@ async function materializeCandidates(input: {
 }) {
   const { data, error } = await input.client
     .from('complete_power_outage_companies')
-    .select('id,candidate_key,entity_kind,company_name,ico,legal_form,nace_codes,display_address,latitude,longitude,confidence,candidate_status,normalized_company_name,resolved_by,metadata')
+    .select('id,candidate_key,entity_kind,company_name,ico,legal_form,nace_codes,display_address,latitude,longitude,confidence,candidate_status,normalized_company_name,resolved_by,first_seen_at,last_seen_at,last_verified_at,metadata')
     .eq('outage_address_id', input.target.outage_address_id)
   if (error) throw error
   const existing = (data ?? []) as ExistingCompany[]
@@ -316,6 +322,7 @@ async function materializeCandidates(input: {
       ?? (candidate.ico
         ? `ico:${candidate.ico}`
         : `name:${powerOutageSha256(normalizedName).slice(0, 40)}`)
+    const observedAt = new Date().toISOString()
     const { data: company, error: companyError } = await input.client
       .from('complete_power_outage_companies')
       .upsert({
@@ -337,8 +344,9 @@ async function materializeCandidates(input: {
         evaluation_version: 0,
         evaluation_reasons: [],
         evaluated_at: null,
-        last_seen_at: new Date().toISOString(),
-        last_verified_at: new Date().toISOString(),
+        first_seen_at: current?.first_seen_at ?? observedAt,
+        last_seen_at: observedAt,
+        last_verified_at: observedAt,
         metadata: { ...(current?.metadata ?? {}), discoveryVersion: 1 },
       }, { onConflict: 'outage_address_id,candidate_key' })
       .select('id').single<{ id: string }>()
@@ -360,6 +368,9 @@ async function materializeCandidates(input: {
         candidate_status: 'new',
         normalized_company_name: normalizedName,
         resolved_by: null,
+        first_seen_at: observedAt,
+        last_seen_at: observedAt,
+        last_verified_at: observedAt,
         metadata: { discoveryVersion: 1 },
       })
     }
@@ -452,10 +463,23 @@ export async function discoverCompletePowerOutageCompanies(
         quotaReached = true
         break
       }
+      let candidates: CompleteCompanyCandidate[]
+      externalRequestCount += 1
       try {
-        const candidates = await discoverCompanies(provider, targetInput(target))
-        externalRequestCount += 1
+        candidates = await discoverCompanies(provider, targetInput(target))
+      } catch (error) {
+        errorCount += 1
+        const message = powerOutageErrorMessage(error, `${provider.toUpperCase()} lookup selhal.`)
+        const savedCache = await saveCache({ client, provider, ...identity, candidates: [], error: message })
+        await saveLookup({ client, targetId: target.id, provider, ...identity, status: 'error', cacheId: savedCache.id, error: message })
+        const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 350
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+      let savedCacheId: string | null = null
+      try {
         const savedCache = await saveCache({ client, provider, ...identity, candidates })
+        savedCacheId = savedCache.id
         const materialized = await materializeCandidates({ client, provider, target, candidates })
         companyCount += materialized.companyCount
         evidenceCount += materialized.evidenceCount
@@ -466,11 +490,19 @@ export async function discoverCompletePowerOutageCompanies(
           metadata: { cacheHit: false },
         })
       } catch (error) {
-        externalRequestCount += 1
         errorCount += 1
-        const message = powerOutageErrorMessage(error, `${provider.toUpperCase()} lookup selhal.`)
-        const savedCache = await saveCache({ client, provider, ...identity, candidates: [], error: message })
-        await saveLookup({ client, targetId: target.id, provider, ...identity, status: 'error', cacheId: savedCache.id, error: message })
+        const message = powerOutageErrorMessage(error, `Uložení výsledku ${provider.toUpperCase()} selhalo.`)
+        await saveLookup({
+          client,
+          targetId: target.id,
+          provider,
+          ...identity,
+          status: 'error',
+          cacheId: savedCacheId,
+          error: message,
+          errorCode: 'COMPLETE_PROVIDER_MATERIALIZATION_FAILED',
+          metadata: { providerRequestSucceeded: true, materializationFailed: true },
+        })
       }
       const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 350
       await new Promise((resolve) => setTimeout(resolve, delay))

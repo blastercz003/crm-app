@@ -1,16 +1,6 @@
 -- Spusťte po dokončení jednorázového pilotního běhu runtime pipeline.
 
-with latest_pipeline_activity as (
-  select max(last_finished_at) as finished_at
-  from public.complete_power_outage_task_state
-  where task_key in (
-    'normalize_addresses',
-    'discover_ares',
-    'discover_mapy',
-    'discover_google',
-    'reconcile_companies'
-  )
-), duplicate_candidates as (
+with duplicate_candidates as (
   select count(*) as duplicate_count
   from (
     select outage_address_id, candidate_key
@@ -77,16 +67,12 @@ union all
 select 'SAFETY', 'no failed pilot tasks',
   not exists (
     select 1
-    from public.complete_power_outage_task_state, latest_pipeline_activity
+    from public.complete_power_outage_task_state
     where task_key in (
       'normalize_addresses', 'discover_ares', 'discover_mapy',
       'reconcile_companies'
     )
       and last_status in ('failed', 'partial')
-      and last_finished_at >= coalesce(
-        latest_pipeline_activity.finished_at - interval '10 minutes',
-        now() - interval '1 hour'
-      )
   )
 union all
 select 'SAFETY', 'company deduplication constraint holds',
