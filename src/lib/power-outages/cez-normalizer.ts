@@ -88,6 +88,9 @@ function normalizeCezAddresses(outage: CezOutage) {
               houseNumbers: street.house_nums ?? null,
               evidenceNumbers: street.ev_nums ?? null,
               orientationNumbers: street.street_nums ?? null,
+              // ČEZ posílá tři oddělené textové seznamy bez spolehlivé vazby
+              // mezi popisným/evidenčním a orientačním číslem.
+              numberPairing: 'unavailable',
             },
           })
         }

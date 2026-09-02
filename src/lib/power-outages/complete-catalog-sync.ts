@@ -9,6 +9,7 @@ import {
   type CompletePowerOutageTaskKey,
 } from './complete-task-lock'
 import type { PowerOutageSource } from './types'
+import { trustedBuildingNumberPairs } from './complete-address-numbering'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
@@ -78,15 +79,11 @@ function taskKey(source: PowerOutageSource): CompletePowerOutageTaskKey {
 }
 
 function addressScope(address: SourceAddressRow) {
-  const metadata = address.metadata ?? {}
-  const numbers = [
-    address.house_number,
-    address.orientation_number,
-    ...(Array.isArray(metadata.houseNumbers) ? metadata.houseNumbers : []),
-    ...(Array.isArray(metadata.orientationNumbers) ? metadata.orientationNumbers : []),
-    ...(Array.isArray(metadata.evidenceNumbers) ? metadata.evidenceNumbers : []),
-  ].filter((value) => String(value ?? '').trim())
-
+  const numbers = trustedBuildingNumberPairs({
+    houseNumber: address.house_number,
+    orientationNumber: address.orientation_number,
+    metadata: address.metadata,
+  })
   if (numbers.length > 0) return 'exact'
   if (address.normalized_street.trim()) return 'street'
   if (address.normalized_municipality.trim()) return 'municipality'

@@ -4,6 +4,11 @@ import { getServiceRoleClient } from '@/lib/supabase/service'
 import { powerOutageErrorMessage } from './error-message'
 import { normalizePowerOutageText, powerOutageSha256 } from './normalization'
 import { claimCompletePowerOutageTask, finishCompletePowerOutageTask } from './complete-task-lock'
+import {
+  displayBuildingNumber,
+  legacyNumberEvidenceCount,
+  trustedBuildingNumberPairs,
+} from './complete-address-numbering'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
@@ -24,7 +29,7 @@ type TargetState = {
   target_key: string
 }
 
-const NORMALIZER_VERSION = 1
+const NORMALIZER_VERSION = 2
 const MAX_TARGETS_PER_ADDRESS = 2000
 const MAX_TARGETS_PER_RUN = 20000
 
@@ -36,35 +41,15 @@ function chunks<T>(values: T[], size: number) {
   return result
 }
 
-function numberTokens(value: unknown) {
-  const result = new Set<string>()
-  const visit = (item: unknown) => {
-    if (Array.isArray(item)) {
-      item.forEach(visit)
-      return
-    }
-    if (typeof item !== 'string' && typeof item !== 'number') return
-    for (const match of String(item).matchAll(/\b\d+[a-z]?\b/gi)) {
-      result.add(match[0].toLocaleLowerCase('cs-CZ'))
-    }
-  }
-  visit(value)
-  return result
-}
-
-function sourceNumbers(address: AddressRow) {
-  const metadata = address.metadata ?? {}
-  const result = new Set<string>()
-  for (const value of [
-    address.house_number,
-    address.orientation_number,
-    metadata.houseNumbers,
-    metadata.orientationNumbers,
-    metadata.evidenceNumbers,
-  ]) {
-    numberTokens(value).forEach((token) => result.add(token))
-  }
-  return [...result].sort((left, right) => left.localeCompare(right, 'cs', { numeric: true }))
+function trustedNumbers(address: AddressRow) {
+  return trustedBuildingNumberPairs({
+    houseNumber: address.house_number,
+    orientationNumber: address.orientation_number,
+    metadata: address.metadata,
+  })
+    .map((pair) => ({ pair, display: displayBuildingNumber(pair) }))
+    .filter((value) => value.display)
+    .sort((left, right) => left.display.localeCompare(right.display, 'cs', { numeric: true }))
 }
 
 function queryText(parts: Array<string | null | undefined>) {
@@ -72,18 +57,21 @@ function queryText(parts: Array<string | null | undefined>) {
 }
 
 function targetsForAddress(address: AddressRow) {
-  const numbers = sourceNumbers(address)
+  const numbers = trustedNumbers(address)
   const limitedNumbers = numbers.slice(0, MAX_TARGETS_PER_ADDRESS)
+  const legacyEvidenceCount = legacyNumberEvidenceCount(address.metadata)
   const baseMetadata = {
     normalizerVersion: NORMALIZER_VERSION,
     sourceNumberCount: numbers.length,
+    legacyNumberEvidenceCount: legacyEvidenceCount,
+    legacyNumberEvidenceIgnored: legacyEvidenceCount > 0 && numbers.length === 0,
     truncated: numbers.length > MAX_TARGETS_PER_ADDRESS,
   }
 
   if (address.street.trim() && limitedNumbers.length > 0) {
-    return limitedNumbers.map((number) => {
+    return limitedNumbers.map(({ pair, display }) => {
       const query = queryText([
-        `${address.street.trim()} ${number}`,
+        `${address.street.trim()} ${display}`,
         address.town_part,
         address.municipality,
       ])
@@ -93,17 +81,22 @@ function targetsForAddress(address: AddressRow) {
           normalizePowerOutageText(address.municipality),
           normalizePowerOutageText(address.town_part),
           normalizePowerOutageText(address.street),
-          number,
+          pair.houseNumber,
+          pair.orientationNumber,
         ]),
         target_kind: 'exact_number',
         municipality: address.municipality,
         town_part: address.town_part,
         street: address.street,
-        number_token: number,
+        number_token: display,
         query_text: query,
         lookup_status: 'pending',
         lookup_priority: 10,
-        metadata: baseMetadata,
+        metadata: {
+          ...baseMetadata,
+          houseNumber: pair.houseNumber,
+          orientationNumber: pair.orientationNumber,
+        },
       }
     })
   }
@@ -150,8 +143,8 @@ function targetsForAddress(address: AddressRow) {
 }
 
 function normalizedScope(address: AddressRow) {
-  const numberCount = sourceNumbers(address).length
-  if (address.street.trim() && numberCount === 1) return 'exact'
+  const numberCount = trustedNumbers(address).length
+  if (address.street.trim() && numberCount > 0) return 'exact'
   if (address.street.trim()) return 'street'
   if (address.municipality.trim()) return 'municipality'
   return 'unresolved'

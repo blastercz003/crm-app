@@ -209,6 +209,11 @@ function buildEgdQueryDocument(): GraphQlNode {
     ]),
     gqlFragmentDefinition('StreetLocation', 'OdstavkaAdresa', [
       gqlField('stredUlice', [gqlField('sirka'), gqlField('delka')]),
+      gqlField('detail', [
+        gqlField('cisloPopisne'),
+        gqlField('cisloOrientacni'),
+        gqlField('poloha', [gqlField('sirka'), gqlField('delka')]),
+      ]),
     ]),
     gqlFragmentDefinition('BasicTermInfo', 'OdstavkaTermin', [
       gqlField('datumOd'),

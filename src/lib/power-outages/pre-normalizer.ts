@@ -12,6 +12,11 @@ import {
   powerOutageStatus,
 } from './normalization'
 import { powerOutageSourceUrl } from './public-links'
+import {
+  buildingNumberPair,
+  dedupeBuildingNumberPairs,
+  type BuildingNumberPair,
+} from './complete-address-numbering'
 
 export type NormalizedPreOutage = Omit<NormalizedPowerOutage, 'source'> & {
   source: 'pre'
@@ -56,11 +61,13 @@ function localityHeader(value: string) {
   }
 }
 
-function numberTokens(value: string) {
-  return [...new Set((value.match(/\b\d+[a-z]?(?:\s*\/\s*\d+[a-z]?)?/gi) ?? [])
-    .flatMap((token) => token.split('/'))
-    .map((token) => token.trim().toLocaleLowerCase('cs-CZ'))
-    .filter(Boolean))]
+function numberPairs(value: string) {
+  const result: BuildingNumberPair[] = []
+  for (const match of value.matchAll(/\b(\d+[a-z]?)(?:\s*\/\s*(\d+[a-z]?))?\b/gi)) {
+    const pair = buildingNumberPair(match[1], match[2])
+    if (pair) result.push(pair)
+  }
+  return dedupeBuildingNumberPairs(result)
 }
 
 function technicalLine(value: string) {
@@ -90,7 +97,7 @@ function splitStreetLine(value: string) {
     if (!/[a-zá-ž]/i.test(addressPart) || /^\d/.test(addressPart)) return null
     return {
       street: addressPart.replace(/\s+(?:č\.?\s*ev\.?)$/i, '').trim(),
-      numbers: [] as string[],
+      numberPairs: [] as BuildingNumberPair[],
       allowContinuation: technicalIndex < 0,
     }
   }
@@ -101,17 +108,17 @@ function splitStreetLine(value: string) {
     .trim()
   if (!street || technicalLine(street)) return null
 
-  const numbers: string[] = []
+  const parsedPairs: BuildingNumberPair[] = []
   const numberList = addressPart.slice(numberStart.index).trim()
   for (const segment of numberList.split(',')) {
     const token = segment.trim()
     const tokenMatch = token.match(/^(\d+[a-z]?(?:\s*\/\s*\d+[a-z]?)?)(?:\s*\([^)]*\))?$/i)
     if (!tokenMatch) break
-    numbers.push(...numberTokens(tokenMatch[1]))
+    parsedPairs.push(...numberPairs(tokenMatch[1]))
   }
   return {
     street,
-    numbers: [...new Set(numbers)],
+    numberPairs: dedupeBuildingNumberPairs(parsedPairs),
     allowContinuation: technicalIndex < 0,
   }
 }
@@ -121,13 +128,19 @@ function normalizeAddresses(row: PreOutageRow) {
   const header = localityHeader(lines[0] ?? '')
   if (!header.municipality) throw new Error(`Řádek ${row.rowNumber} PRE nemá platnou lokalitu.`)
 
-  const byStreet = new Map<string, { street: string; numbers: Set<string>; raw: string[] }>()
+  const byStreet = new Map<string, {
+    street: string
+    numberPairs: Map<string, BuildingNumberPair>
+    raw: string[]
+  }>()
   let previousKey: string | null = null
   for (const line of lines.slice(1)) {
     if (/^\d/.test(line) && previousKey && !technicalLine(line)) {
       const previous = byStreet.get(previousKey)
       if (previous) {
-        numberTokens(line).forEach((number) => previous.numbers.add(number))
+        numberPairs(line).forEach((pair) => {
+          previous.numberPairs.set(`${pair.houseNumber ?? ''}|${pair.orientationNumber ?? ''}`, pair)
+        })
         previous.raw.push(line)
       }
       continue
@@ -139,15 +152,24 @@ function normalizeAddresses(row: PreOutageRow) {
     }
     const key = normalizePowerOutageText(parsed.street)
     if (!key) continue
-    const existing = byStreet.get(key) ?? { street: parsed.street, numbers: new Set<string>(), raw: [] }
-    parsed.numbers.forEach((number) => existing.numbers.add(number))
+    const existing = byStreet.get(key) ?? {
+      street: parsed.street,
+      numberPairs: new Map<string, BuildingNumberPair>(),
+      raw: [],
+    }
+    parsed.numberPairs.forEach((pair) => {
+      existing.numberPairs.set(`${pair.houseNumber ?? ''}|${pair.orientationNumber ?? ''}`, pair)
+    })
     existing.raw.push(line)
     byStreet.set(key, existing)
     previousKey = parsed.allowContinuation ? key : null
   }
 
   const addresses = [...byStreet.values()].map((entry) => {
-    const evidenceNumbers = [...entry.numbers]
+    const buildingNumberPairs = [...entry.numberPairs.values()]
+    const evidenceNumbers = [...new Set(buildingNumberPairs.flatMap((pair) => (
+      [pair.houseNumber, pair.orientationNumber].filter((value): value is string => Boolean(value))
+    )))]
     return {
       externalAddressId: null,
       addressKey: powerOutageAddressKey([header.municipality, header.townPart, entry.street]),
@@ -163,7 +185,7 @@ function normalizeAddresses(row: PreOutageRow) {
       normalizedStreet: normalizePowerOutageText(entry.street),
       latitude: null,
       longitude: null,
-      metadata: { evidenceNumbers, sourceLines: entry.raw },
+      metadata: { buildingNumberPairs, evidenceNumbers, sourceLines: entry.raw },
     } satisfies NormalizedPowerOutageAddress
   })
   return { ...header, addresses }

@@ -13,14 +13,13 @@ import {
   powerOutageStatus,
 } from './normalization'
 import { powerOutageSourceUrl } from './public-links'
+import {
+  buildingNumberPair,
+  dedupeBuildingNumberPairs,
+} from './complete-address-numbering'
 
 export type NormalizedEgdOutage = Omit<NormalizedPowerOutage, 'source'> & {
   source: 'egd'
-}
-
-function optionalText(value: string | number | null | undefined) {
-  const text = value == null ? '' : String(value).trim()
-  return text || null
 }
 
 function normalizeEgdAddress(address: EgdAddress) {
@@ -38,11 +37,14 @@ function normalizeEgdAddress(address: EgdAddress) {
   const longitude = address.stredUlice?.delka
     ?? firstDetail?.poloha?.delka
     ?? null
-  const houseNumbers = [...new Set(details
-    .map((detail) => optionalText(detail.cisloPopisne))
+  const buildingNumberPairs = dedupeBuildingNumberPairs(details
+    .map((detail) => buildingNumberPair(detail.cisloPopisne, detail.cisloOrientacni))
+    .filter((value) => value !== null))
+  const houseNumbers = [...new Set(buildingNumberPairs
+    .map((pair) => pair.houseNumber)
     .filter((value): value is string => Boolean(value)))]
-  const orientationNumbers = [...new Set(details
-    .map((detail) => optionalText(detail.cisloOrientacni))
+  const orientationNumbers = [...new Set(buildingNumberPairs
+    .map((pair) => pair.orientationNumber)
     .filter((value): value is string => Boolean(value)))]
   const key = powerOutageAddressKey([
     municipality,
@@ -74,6 +76,9 @@ function normalizeEgdAddress(address: EgdAddress) {
       // popisného a orientačního čísla při porovnání nehraje roli.
       houseNumbers,
       orientationNumbers,
+      // Dvojice se nesmí při navazujícím dohledávání rozpadnout na nezávislá
+      // čísla. Samostatné množiny zůstávají jen kvůli stávajícímu matcheru prodejen.
+      buildingNumberPairs,
       houseNumberSample: houseNumbers.slice(0, 12),
       orientationNumberSample: orientationNumbers.slice(0, 12),
     },
