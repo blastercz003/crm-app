@@ -82,7 +82,7 @@ begin
     raise exception 'Neznámý poskytovatel: %', requested_provider;
   end if;
   if requested_minute_limit not between 1 and 100
-     or requested_day_limit not between 1 and 10000 then
+     or requested_day_limit not between 1 and 20000 then
     raise exception 'Neplatný limit požadavků.';
   end if;
 
