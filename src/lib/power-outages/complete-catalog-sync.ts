@@ -398,6 +398,8 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
             lookup_error_message: null,
             processing_token: null,
             processing_expires_at: null,
+            normalization_version: 0,
+            normalized_at: null,
           })
         }
       }
