@@ -37,6 +37,7 @@ as $$
       target.latitude,
       target.longitude,
       outage.source,
+      case when lookup.lookup_status = 'error' then 0 else 1 end as retry_priority,
       case
         when outage.starts_at >= now() + interval '7 days'
          and outage.starts_at <= now() + interval '30 days' then 0
@@ -80,6 +81,7 @@ as $$
       row_number() over (
         partition by eligible.source
         order by
+          eligible.retry_priority,
           eligible.business_priority,
           eligible.precision_priority,
           eligible.lookup_priority,

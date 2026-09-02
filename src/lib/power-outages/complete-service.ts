@@ -125,6 +125,7 @@ function metadataText(value: unknown, key: string) {
 function mapSourceDiscovery(
   sourceRow: Record<string, unknown>,
   row?: Record<string, unknown> | null,
+  taskRows: Array<Record<string, unknown>> = [],
 ): CompleteSourceState['discovery'] {
   if (!row) {
     return {
@@ -149,29 +150,42 @@ function mapSourceDiscovery(
   const completedTargetCount = Number(row?.completed_target_count ?? 0)
   const pendingTargetCount = Number(row?.pending_target_count ?? Math.max(0, totalTargetCount - completedTargetCount))
   const errorTargetCount = Number(row?.error_target_count ?? 0)
+  const exactTargetCount = Number(row?.exact_target_count ?? 0)
+  const streetTargetCount = Number(row?.street_target_count ?? 0)
   const remainingTargetCount = Math.max(0, totalTargetCount - completedTargetCount)
   const lastProgressAt = (row.last_progress_at as string | null | undefined) ?? null
   const progressPercent = totalTargetCount > 0
     ? Math.round((completedTargetCount / totalTargetCount) * 1000) / 10
     : 100
   const lastProgressMs = lastProgressAt ? new Date(lastProgressAt).getTime() : Number.NaN
-  const delayed = remainingTargetCount > 0
-    && (!Number.isFinite(lastProgressMs) || Date.now() - lastProgressMs > 30 * 60_000)
+  const delayed = pendingTargetCount > 0
+    && Number.isFinite(lastProgressMs)
+    && Date.now() - lastProgressMs > 30 * 60_000
+  const requiredTaskKeys = [
+    ...(exactTargetCount > 0 ? ['discover_ares'] : []),
+    ...(streetTargetCount > 0 ? ['discover_mapy'] : []),
+  ]
+  const failedRequiredTask = taskRows.find((task) => (
+    requiredTaskKeys.includes(String(task.task_key))
+    && task.last_status === 'failed'
+  ))
   const coverageStatus = sourceRow.coverage_status
   const status: CompleteSourceState['discovery']['status'] = coverageStatus === 'error'
     ? 'error'
+    : failedRequiredTask
+      ? 'error'
     : coverageStatus === 'partial'
       ? 'partial'
       : coverageStatus === 'processing'
         ? 'processing'
         : coverageStatus === 'idle'
           ? 'waiting'
-          : errorTargetCount > 0
-            ? 'error'
-            : remainingTargetCount === 0
+          : pendingTargetCount === 0 && errorTargetCount > 0
+              ? 'partial'
+              : remainingTargetCount === 0
               ? 'current'
               : delayed
-                ? 'delayed'
+                ? 'error'
                 : completedTargetCount === 0
                   ? 'waiting'
                   : 'processing'
@@ -180,13 +194,17 @@ function mapSourceDiscovery(
     : status === 'processing'
       ? coverageStatus === 'processing'
         ? 'Právě se aktualizují zdrojová data distributora.'
-        : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.`
-      : status === 'delayed'
-        ? `Zbývá ${remainingTargetCount} cílů, ale fronta se déle než 30 minut neposunula.`
-        : status === 'error'
-          ? errorTargetCount > 0 ? `${errorTargetCount} cílů skončilo chybou.` : String(sourceRow.last_error_message || 'Zpracování distributora skončilo chybou.')
+        : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.${errorTargetCount > 0 ? ` Dílčí chyby: ${errorTargetCount}.` : ''}`
+      : status === 'error'
+          ? failedRequiredTask
+            ? String(failedRequiredTask.last_error_message || 'Povinná úloha vyhledávání firem skončila chybou.')
+            : delayed
+              ? `Zbývá ${remainingTargetCount} cílů, ale fronta se déle než 30 minut neposunula.`
+              : String(sourceRow.last_error_message || 'Zpracování distributora skončilo chybou.')
           : status === 'partial'
-            ? String((sourceRow.metadata as Record<string, unknown> | null)?.coverageMessage || 'Zdroj neposkytl kompletní očekávané pokrytí.')
+            ? coverageStatus === 'partial'
+              ? String((sourceRow.metadata as Record<string, unknown> | null)?.coverageMessage || 'Zdroj neposkytl kompletní očekávané pokrytí.')
+              : `Zpracování skončilo částečně; ${errorTargetCount} cílů vyžaduje kontrolu.`
             : 'Prioritní cíle čekají na první dokončený průchod.'
   return {
     status,
@@ -196,14 +214,18 @@ function mapSourceDiscovery(
     remainingTargetCount,
     pendingTargetCount,
     errorTargetCount,
-    exactTargetCount: Number(row?.exact_target_count ?? 0),
-    streetTargetCount: Number(row?.street_target_count ?? 0),
+    exactTargetCount,
+    streetTargetCount,
     progressPercent,
     lastProgressAt,
   }
 }
 
-function mapSourceState(row: Record<string, unknown>, discovery?: Record<string, unknown> | null): CompleteSourceState {
+function mapSourceState(
+  row: Record<string, unknown>,
+  discovery?: Record<string, unknown> | null,
+  taskRows: Array<Record<string, unknown>> = [],
+): CompleteSourceState {
   return {
     source: row.source as PowerOutageSource,
     coverageStatus: row.coverage_status as CompleteSourceState['coverageStatus'],
@@ -225,7 +247,7 @@ function mapSourceState(row: Record<string, unknown>, discovery?: Record<string,
     lastErrorMessage: row.last_error_message as string | null,
     coverageMessage: metadataText(row.metadata, 'coverageMessage'),
     queryScope: metadataText(row.metadata, 'upstreamQueryScope') ?? metadataText(row.metadata, 'sourceScope'),
-    discovery: mapSourceDiscovery(row, discovery),
+    discovery: mapSourceDiscovery(row, discovery, taskRows),
   }
 }
 
@@ -407,11 +429,12 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   if (providerResult.error) throw new Error(`Stav vyhledávání firem se nepodařilo načíst: ${providerResult.error.message}`)
   if (taskResult.error) throw new Error(`Provozní stav kompletních odstávek se nepodařilo načíst: ${taskResult.error.message}`)
 
+  const tasks = taskResult.data ?? []
   const sources = (sourceResult.data ?? []).map((row) => mapSourceState(
     row,
     discoveryRows.find((item) => item.source === row.source) ?? null,
+    tasks as Array<Record<string, unknown>>,
   ))
-  const tasks = taskResult.data ?? []
   const providerStates = (providerResult.data ?? []).map((row) => mapProviderState(
     row,
     tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null,
