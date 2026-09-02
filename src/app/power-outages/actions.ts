@@ -8,6 +8,8 @@ import {
 import { getPowerOutageDetail } from '@/lib/power-outages/service'
 import { getPowerOutageSourceDiagnostic } from '@/lib/power-outages/health'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
+import { getCompletePowerOutageDetail } from '@/lib/power-outages/complete-service'
+import type { CompletePowerOutageDetail } from '@/lib/power-outages/complete-types'
 import type { PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
 
 type PreferencesActionResult =
@@ -16,6 +18,10 @@ type PreferencesActionResult =
 
 type DetailActionResult =
   | { success: true; detail: PowerOutageDetail; error: null }
+  | { success: false; detail: null; error: string }
+
+type CompleteDetailActionResult =
+  | { success: true; detail: CompletePowerOutageDetail; error: null }
   | { success: false; detail: null; error: string }
 
 type SourceDiagnosticActionResult =
@@ -60,6 +66,14 @@ export async function updatePowerOutageNotificationPreferencesAction(input: {
 export async function getPowerOutageDetailAction(matchId: string): Promise<DetailActionResult> {
   try {
     return { success: true, detail: await getPowerOutageDetail(matchId), error: null }
+  } catch (error) {
+    return { success: false, detail: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageDetailAction(candidateId: string): Promise<CompleteDetailActionResult> {
+  try {
+    return { success: true, detail: await getCompletePowerOutageDetail(candidateId), error: null }
   } catch (error) {
     return { success: false, detail: null, error: errorMessage(error) }
   }
