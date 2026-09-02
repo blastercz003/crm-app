@@ -64,6 +64,10 @@ type CompleteAddressState = {
   lookup_fingerprint: string | null
 }
 
+type UpstreamSourceState = {
+  metadata: Record<string, unknown> | null
+}
+
 const PAGE_SIZE = 500
 
 function chunks<T>(values: T[], size: number) {
@@ -76,6 +80,45 @@ function chunks<T>(values: T[], size: number) {
 
 function taskKey(source: PowerOutageSource): CompletePowerOutageTaskKey {
   return source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
+}
+
+function sourceCoverage(
+  source: PowerOutageSource,
+  upstreamMetadata: Record<string, unknown> | null,
+) {
+  if (source === 'cez') {
+    return {
+      status: 'partial' as const,
+      scope: 'currently-discovered-cez-municipalities',
+      message: 'Používá se současné pokrytí ČEZ; celoplošná fronta bude doplněna později.',
+    }
+  }
+  if (source === 'pre') {
+    return {
+      status: 'complete' as const,
+      scope: 'whole-distributor-feed',
+      message: null,
+    }
+  }
+
+  const queryScope = typeof upstreamMetadata?.queryScope === 'string'
+    ? upstreamMetadata.queryScope.trim()
+    : ''
+  const wholeArea = queryScope === 'whole-distribution-area'
+    || queryScope === 'edge:whole-distribution-area'
+  return wholeArea
+    ? {
+        status: 'complete' as const,
+        scope: queryScope,
+        message: null,
+      }
+    : {
+        status: 'partial' as const,
+        scope: queryScope || 'unknown',
+        message: queryScope.startsWith('city-fallback:')
+          ? 'Celoplošné načtení EG.D selhalo; použita byla pouze města z databáze Prodejen.'
+          : 'Nelze potvrdit celoplošný rozsah posledního načtení EG.D.',
+      }
 }
 
 function addressScope(address: SourceAddressRow) {
@@ -153,6 +196,7 @@ async function updateSourceState(input: {
   outages: SourceOutageRow[]
   addressCount: number
   changed: boolean
+  upstreamMetadata: Record<string, unknown> | null
 }) {
   const active = input.outages.filter((row) => (
     row.missing_since === null
@@ -169,16 +213,17 @@ async function updateSourceState(input: {
   const payloadSha256 = powerOutageSha256(
     input.outages.map((row) => `${row.external_id}:${row.payload_sha256}`).sort(),
   )
+  const coverage = sourceCoverage(input.source, input.upstreamMetadata)
 
   const { error } = await input.client
     .from('complete_power_outage_source_state')
     .update({
-      // EG.D a PRE poskytují celoplošný export. ČEZ je v této fázi pouze
-      // bezpečná projekce již objevených obcí a nesmí se tvářit jako úplné pokrytí.
-      coverage_status: input.source === 'cez' ? 'partial' : 'complete',
+      // EG.D je kompletní pouze tehdy, když zdrojový běh skutečně použil
+      // celoplošný dotaz. Městský fallback se nesmí tvářit jako plné pokrytí.
+      coverage_status: coverage.status,
       last_attempt_at: input.completedAt,
       last_success_at: input.completedAt,
-      last_complete_at: input.completedAt,
+      ...(coverage.status === 'complete' ? { last_complete_at: input.completedAt } : {}),
       ...(input.changed ? { last_change_at: input.completedAt } : {}),
       horizon_from: terms[0] ?? null,
       horizon_to: terms.at(-1) ?? null,
@@ -199,9 +244,11 @@ async function updateSourceState(input: {
       metadata: {
         projectionContract: 'market-source-catalog-projection-v1',
         externalRequestsMade: 0,
-        sourceScope: input.source === 'cez'
-          ? 'currently-discovered-cez-municipalities'
-          : 'whole-distributor-feed',
+        sourceScope: coverage.scope,
+        upstreamQueryScope: typeof input.upstreamMetadata?.queryScope === 'string'
+          ? input.upstreamMetadata.queryScope
+          : null,
+        coverageMessage: coverage.message,
       },
     })
     .eq('source', input.source)
@@ -265,7 +312,15 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
   }
 
   try {
-    const outages = await loadSourceOutages(client, source)
+    const [{ data: upstreamState, error: upstreamStateError }, outages] = await Promise.all([
+      client
+        .from('power_outage_source_state')
+        .select('metadata')
+        .eq('source', source)
+        .maybeSingle<UpstreamSourceState>(),
+      loadSourceOutages(client, source),
+    ])
+    if (upstreamStateError) throw upstreamStateError
     const sourceAddresses = await loadSourceAddresses(client, outages.map((row) => row.id))
     const sourceAddressByOutageId = new Map<string, SourceAddressRow[]>()
     for (const address of sourceAddresses) {
@@ -428,6 +483,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       outages,
       addressCount: sourceAddresses.length,
       changed,
+      upstreamMetadata: upstreamState?.metadata ?? null,
     })
     const { error: finishRunError } = await client
       .from('complete_power_outage_runs')

@@ -168,7 +168,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).in('address_scope', ['street', 'municipality', 'unresolved']), 'Počet nedostatečných adres se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
-    supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message').order('source'),
+    supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,last_request_at').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_message,lock_expires_at').order('task_key'),
   ])
@@ -189,6 +189,10 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     coverageProcessedCount: Number(row.coverage_processed_count),
     coverageTotalCount: Number(row.coverage_total_count),
     lastErrorMessage: row.last_error_message,
+    coverageMessage: row.metadata && typeof row.metadata === 'object'
+      && typeof (row.metadata as Record<string, unknown>).coverageMessage === 'string'
+      ? String((row.metadata as Record<string, unknown>).coverageMessage)
+      : null,
   }))
   const providerStates = (providerResult.data ?? []).map((row): CompleteProviderState => ({
     provider: row.provider as CompleteProviderState['provider'],

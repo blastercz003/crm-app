@@ -80,6 +80,7 @@ export type CompleteSourceState = {
   coverageProcessedCount: number
   coverageTotalCount: number
   lastErrorMessage: string | null
+  coverageMessage: string | null
 }
 
 export type CompleteProviderState = {
