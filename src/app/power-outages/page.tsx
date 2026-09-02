@@ -3,20 +3,32 @@ import Link from 'next/link'
 import { unstable_noStore as noStore } from 'next/cache'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 import { getPowerOutageWorkspace } from '@/lib/power-outages/service'
+import { CompletePowerOutagesScaffold } from './complete-power-outages-scaffold'
+import { PowerOutageModeSwitch, type PowerOutageMode } from './power-outage-mode-switch'
 import { PowerOutagesDashboard } from './power-outages-dashboard'
 import { PowerOutagesRealtimeRefresh } from './power-outages-realtime-refresh'
 
 export const metadata: Metadata = { title: 'Odstávky' }
 export const dynamic = 'force-dynamic'
 
-export default async function PowerOutagesPage() {
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+export default async function PowerOutagesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   noStore()
-  const workspace = await getPowerOutageWorkspace()
+  const params = searchParams ? await searchParams : {}
+  const mode: PowerOutageMode = firstParam(params.mode) === 'complete' ? 'complete' : 'markets'
+  const workspace = mode === 'markets' ? await getPowerOutageWorkspace() : null
 
   return (
     <main className="activities-page power-outages-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)] text-[var(--foreground)]">
       <PresenceSectionTracker section="Odstávky" route="/power-outages" />
-      <PowerOutagesRealtimeRefresh />
+      {mode === 'markets' ? <PowerOutagesRealtimeRefresh /> : null}
       <div aria-hidden className="activities-page__glow activities-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl" />
       <div aria-hidden className="activities-page__glow activities-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl" />
 
@@ -28,7 +40,11 @@ export default async function PowerOutagesPage() {
           </div>
         </header>
 
-        <PowerOutagesDashboard workspace={workspace} />
+        <PowerOutageModeSwitch mode={mode} />
+
+        {mode === 'markets' && workspace
+          ? <PowerOutagesDashboard workspace={workspace} />
+          : <CompletePowerOutagesScaffold />}
       </div>
     </main>
   )
