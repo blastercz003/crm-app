@@ -58,6 +58,7 @@ type SourceAddressRow = {
 
 type CompleteAddressState = {
   id: string
+  outage_id: string
   address_key: string
   lookup_fingerprint: string | null
 }
@@ -338,22 +339,28 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       }
     }
 
-    let changedAddressCount = 0
-    let removedAddressCount = 0
+    const existingAddressesByOutageId = new Map<string, Map<string, CompleteAddressState>>()
+    for (const outageIds of chunks([...completeIdByExternalId.values()], 100)) {
+      const { data, error } = await client
+        .from('complete_power_outage_addresses')
+        .select('id,outage_id,address_key,lookup_fingerprint')
+        .in('outage_id', outageIds)
+      if (error) throw error
+      for (const row of (data ?? []) as CompleteAddressState[]) {
+        const group = existingAddressesByOutageId.get(row.outage_id) ?? new Map()
+        group.set(row.address_key, row)
+        existingAddressesByOutageId.set(row.outage_id, group)
+      }
+    }
+
+    const changedAddressRows: Array<Record<string, unknown>> = []
+    const staleAddressIds: string[] = []
     for (const outage of outages) {
       const completeOutageId = completeIdByExternalId.get(outage.external_id)
       if (!completeOutageId) throw new Error(`Kompletní odstávka ${source}:${outage.external_id} nemá ID.`)
       const desired = sourceAddressByOutageId.get(outage.id) ?? []
-      const { data: existing, error: existingError } = await client
-        .from('complete_power_outage_addresses')
-        .select('id,address_key,lookup_fingerprint')
-        .eq('outage_id', completeOutageId)
-      if (existingError) throw existingError
-      const existingByKey = new Map(
-        ((existing ?? []) as CompleteAddressState[]).map((row) => [row.address_key, row]),
-      )
+      const existingByKey = existingAddressesByOutageId.get(completeOutageId) ?? new Map()
 
-      const changedRows: Array<Record<string, unknown>> = []
       for (const address of desired) {
         const fingerprint = addressFingerprint(address)
         const base = {
@@ -380,8 +387,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
           },
         }
         if (existingByKey.get(address.address_key)?.lookup_fingerprint !== fingerprint) {
-          changedAddressCount += 1
-          changedRows.push({
+          changedAddressRows.push({
             ...base,
             lookup_status: 'pending',
             lookup_attempt_count: 0,
@@ -395,25 +401,26 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
           })
         }
       }
-      for (const batch of chunks(changedRows, 300)) {
-        const { error } = await client
-          .from('complete_power_outage_addresses')
-          .upsert(batch, { onConflict: 'outage_id,address_key' })
-        if (error) throw error
-      }
 
       const desiredKeys = new Set(desired.map((address) => address.address_key))
-      const staleIds = [...existingByKey.values()]
+      staleAddressIds.push(...[...existingByKey.values()]
         .filter((row) => !desiredKeys.has(row.address_key))
-        .map((row) => row.id)
-      removedAddressCount += staleIds.length
-      for (const ids of chunks(staleIds, 300)) {
-        const { error } = await client.from('complete_power_outage_addresses').delete().in('id', ids)
-        if (error) throw error
-      }
+        .map((row) => row.id))
+    }
+    for (const batch of chunks(changedAddressRows, 300)) {
+      const { error } = await client
+        .from('complete_power_outage_addresses')
+        .upsert(batch, { onConflict: 'outage_id,address_key' })
+      if (error) throw error
+    }
+    for (const ids of chunks(staleAddressIds, 300)) {
+      const { error } = await client.from('complete_power_outage_addresses').delete().in('id', ids)
+      if (error) throw error
     }
 
     const completedAt = new Date().toISOString()
+    const changedAddressCount = changedAddressRows.length
+    const removedAddressCount = staleAddressIds.length
     const changed = changedOutageCount > 0 || changedAddressCount > 0 || removedAddressCount > 0
     await updateSourceState({
       client,
