@@ -3,6 +3,16 @@ import type { PowerOutageSource } from './types'
 export type CompleteCandidateStatus = 'new' | 'confirmed' | 'needs_review' | 'dismissed' | 'stale'
 export type CompleteEntityKind = 'registered_office' | 'establishment' | 'mixed'
 export type CompleteEvidenceProvider = 'ares' | 'res' | 'mapy' | 'google'
+export type CompleteCommunicationStatus = 'not_contacted' | 'contacted' | 'follow_up' | 'closed'
+
+export type CompletePowerOutageAssignment = {
+  ownerId: string
+  ownerName: string
+  communicationStatus: CompleteCommunicationStatus
+  notes: string
+  claimedAt: string
+  updatedAt: string
+}
 
 export type CompletePowerOutageListItem = {
   candidateId: string
@@ -42,6 +52,7 @@ export type CompletePowerOutageListItem = {
   evaluatedAt: string | null
   providers: CompleteEvidenceProvider[]
   evidenceCount: number
+  assignment: CompletePowerOutageAssignment | null
 }
 
 export type CompletePowerOutageEvidence = {
@@ -106,6 +117,11 @@ export type CompleteRuntimeState = {
 
 export type CompletePowerOutageWorkspace = {
   generatedAt: string
+  currentUser: {
+    id: string
+    name: string
+    isAdmin: boolean
+  }
   statistics: {
     currentOutageCount: number
     currentCompanyCount: number
@@ -115,7 +131,7 @@ export type CompletePowerOutageWorkspace = {
   currentItems: CompletePowerOutageListItem[]
   archivedItems: CompletePowerOutageListItem[]
   filters: {
-    companies: string[]
+    owners: Array<{ id: string; name: string }>
     sources: PowerOutageSource[]
     entityKinds: CompleteEntityKind[]
   }

@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getPowerOutageRuntimeContext } from './access'
 import type {
   CompleteEvidenceProvider,
+  CompletePowerOutageAssignment,
   CompletePowerOutageDetail,
   CompletePowerOutageEvidence,
   CompletePowerOutageListItem,
@@ -58,6 +59,16 @@ type OverviewRow = {
   metadata: Record<string, unknown> | null
 }
 
+type AssignmentRow = {
+  candidate_id: string
+  owner_id: string
+  owner_name: string
+  communication_status: CompletePowerOutageAssignment['communicationStatus']
+  notes: string
+  claimed_at: string
+  updated_at: string
+}
+
 function finiteNumber(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(parsed) ? parsed : null
@@ -79,7 +90,25 @@ function explanations(metadata: Record<string, unknown> | null) {
   return stringArray((evaluation as Record<string, unknown>).explanations)
 }
 
-function mapOverview(row: OverviewRow): CompletePowerOutageListItem {
+function ownershipSchemaMissing(error: { code?: string; message?: string } | null) {
+  return error?.code === 'PGRST205'
+    || error?.code === '42P01'
+    || Boolean(error?.message?.includes('complete_power_outage_company_assignments'))
+}
+
+function mapAssignment(row: AssignmentRow | undefined): CompletePowerOutageAssignment | null {
+  if (!row) return null
+  return {
+    ownerId: row.owner_id,
+    ownerName: row.owner_name,
+    communicationStatus: row.communication_status,
+    notes: row.notes,
+    claimedAt: row.claimed_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function mapOverview(row: OverviewRow, assignment?: AssignmentRow): CompletePowerOutageListItem {
   return {
     candidateId: row.candidate_id,
     outageId: row.outage_id,
@@ -118,6 +147,7 @@ function mapOverview(row: OverviewRow): CompletePowerOutageListItem {
     evaluatedAt: row.evaluated_at,
     providers: providers(row.evidence_providers),
     evidenceCount: Number(row.evidence_count) || 0,
+    assignment: mapAssignment(assignment),
   }
 }
 
@@ -131,7 +161,17 @@ async function loadOverviewItems(client: SupabaseClient, now: string, archived: 
     : query.gte('ends_at', now).in('source_status', ['scheduled', 'active']).order('starts_at', { ascending: true }).limit(500)
   const { data, error } = await query
   if (error) throw new Error(`Přehled kompletních odstávek se nepodařilo načíst: ${error.message}`)
-  return ((data ?? []) as OverviewRow[]).map(mapOverview)
+  const rows = (data ?? []) as OverviewRow[]
+  if (rows.length === 0) return []
+  const { data: assignmentData, error: assignmentError } = await client
+    .from('complete_power_outage_company_assignments')
+    .select('candidate_id,owner_id,owner_name,communication_status,notes,claimed_at,updated_at')
+    .in('candidate_id', rows.map((row) => row.candidate_id))
+  if (assignmentError && !ownershipSchemaMissing(assignmentError)) throw new Error(`Přiřazení kompletních odstávek se nepodařilo načíst: ${assignmentError.message}`)
+  const assignmentByCandidate = new Map(
+    ((assignmentError ? [] : assignmentData ?? []) as AssignmentRow[]).map((assignment) => [assignment.candidate_id, assignment]),
+  )
+  return rows.map((row) => mapOverview(row, assignmentByCandidate.get(row.candidate_id)))
 }
 
 async function countRows(query: PromiseLike<{ count: number | null; error: { message: string } | null }>, label: string) {
@@ -141,7 +181,7 @@ async function countRows(query: PromiseLike<{ count: number | null; error: { mes
 }
 
 export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOutageWorkspace> {
-  const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const now = new Date().toISOString()
   const [
     currentItems,
@@ -247,11 +287,21 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
 
   return {
     generatedAt: now,
+    currentUser: {
+      id: user.id,
+      name: profile.name?.trim() || 'Uživatel',
+      isAdmin: profile.role === 'admin',
+    },
     statistics: { currentOutageCount, currentCompanyCount, needsReviewCount: reviewCount, normalizedAddressCount },
     currentItems,
     archivedItems,
     filters: {
-      companies: [...new Set([...currentItems, ...archivedItems].map((item) => item.companyName))].sort((a, b) => a.localeCompare(b, 'cs')),
+      owners: [...new Map(
+        [...currentItems, ...archivedItems]
+          .flatMap((item) => item.assignment ? [[item.assignment.ownerId, item.assignment.ownerName] as const] : []),
+      ).entries()]
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'cs')),
       sources: [...new Set([...currentItems, ...archivedItems].map((item) => item.source))].sort(),
       entityKinds: [...new Set([...currentItems, ...archivedItems].map((item) => item.entityKind))].sort(),
     },
@@ -279,14 +329,18 @@ export async function getCompletePowerOutageDetail(candidateId: string): Promise
   const cleanId = candidateId.trim()
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(cleanId)) throw new Error('Neplatné technické ID firmy.')
   const { supabase } = await getPowerOutageRuntimeContext()
-  const [{ data: overview, error: overviewError }, { data: evidenceRows, error: evidenceError }] = await Promise.all([
+  const [{ data: overview, error: overviewError }, { data: evidenceRows, error: evidenceError }, { data: assignmentRow, error: assignmentError }] = await Promise.all([
     supabase.from('complete_power_outage_company_overview').select('*').eq('candidate_id', cleanId).maybeSingle<OverviewRow>(),
     supabase.from('complete_power_outage_company_evidence')
       .select('id,provider,provider_entity_id,evidence_kind,match_level,display_name,display_address,source_url,distance_meters,confidence,observed_at')
       .eq('company_id', cleanId).order('confidence', { ascending: false }),
+    supabase.from('complete_power_outage_company_assignments')
+      .select('candidate_id,owner_id,owner_name,communication_status,notes,claimed_at,updated_at')
+      .eq('candidate_id', cleanId).maybeSingle<AssignmentRow>(),
   ])
   if (overviewError) throw new Error(`Detail firmy se nepodařilo načíst: ${overviewError.message}`)
   if (evidenceError) throw new Error(`Důkazy firmy se nepodařilo načíst: ${evidenceError.message}`)
+  if (assignmentError && !ownershipSchemaMissing(assignmentError)) throw new Error(`Přiřazení firmy se nepodařilo načíst: ${assignmentError.message}`)
   if (!overview) throw new Error('Požadovaná firma nebyla nalezena.')
   const evidence: CompletePowerOutageEvidence[] = (evidenceRows ?? []).map((row) => ({
     id: row.id,
@@ -302,7 +356,7 @@ export async function getCompletePowerOutageDetail(candidateId: string): Promise
     observedAt: row.observed_at,
   }))
   return {
-    ...mapOverview(overview),
+    ...mapOverview(overview, assignmentError ? undefined : assignmentRow ?? undefined),
     addressLatitude: finiteNumber(overview.address_latitude),
     addressLongitude: finiteNumber(overview.address_longitude),
     companyLatitude: finiteNumber(overview.latitude),

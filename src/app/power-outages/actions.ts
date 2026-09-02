@@ -9,7 +9,11 @@ import { getPowerOutageDetail } from '@/lib/power-outages/service'
 import { getPowerOutageSourceDiagnostic } from '@/lib/power-outages/health'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
 import { getCompletePowerOutageDetail } from '@/lib/power-outages/complete-service'
-import type { CompletePowerOutageDetail } from '@/lib/power-outages/complete-types'
+import type {
+  CompleteCommunicationStatus,
+  CompletePowerOutageAssignment,
+  CompletePowerOutageDetail,
+} from '@/lib/power-outages/complete-types'
 import type { PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
 
 type PreferencesActionResult =
@@ -23,6 +27,10 @@ type DetailActionResult =
 type CompleteDetailActionResult =
   | { success: true; detail: CompletePowerOutageDetail; error: null }
   | { success: false; detail: null; error: string }
+
+type CompleteAssignmentActionResult =
+  | { success: true; assignment: CompletePowerOutageAssignment | null; error: null }
+  | { success: false; assignment: null; error: string }
 
 type SourceDiagnosticActionResult =
   | { success: true; diagnostic: PowerOutageSourceDiagnostic; error: null }
@@ -76,6 +84,65 @@ export async function getCompletePowerOutageDetailAction(candidateId: string): P
     return { success: true, detail: await getCompletePowerOutageDetail(candidateId), error: null }
   } catch (error) {
     return { success: false, detail: null, error: errorMessage(error) }
+  }
+}
+
+function validUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+export async function saveCompletePowerOutageAssignmentAction(input: {
+  candidateId: string
+  communicationStatus: CompleteCommunicationStatus
+  notes: string
+}): Promise<CompleteAssignmentActionResult> {
+  try {
+    if (!validUuid(input.candidateId)) throw new Error('Neplatné technické ID firmy.')
+    if (!['not_contacted', 'contacted', 'follow_up', 'closed'].includes(input.communicationStatus)) {
+      throw new Error('Vyberte platný stav komunikace.')
+    }
+    if (input.notes.length > 10_000) throw new Error('Poznámka může mít nejvýše 10 000 znaků.')
+    const { supabase } = await getPowerOutageRuntimeContext()
+    const { data, error } = await supabase.rpc('save_complete_power_outage_company_assignment', {
+      p_candidate_id: input.candidateId,
+      p_communication_status: input.communicationStatus,
+      p_notes: input.notes,
+    })
+    if (error) throw new Error(`Záznam se nepodařilo uložit: ${error.message}`)
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) throw new Error('Uložené přiřazení nebylo vráceno.')
+    revalidatePath('/power-outages')
+    return {
+      success: true,
+      assignment: {
+        ownerId: String(row.owner_id),
+        ownerName: String(row.owner_name),
+        communicationStatus: row.communication_status as CompleteCommunicationStatus,
+        notes: String(row.notes ?? ''),
+        claimedAt: String(row.claimed_at),
+        updatedAt: String(row.updated_at),
+      },
+      error: null,
+    }
+  } catch (error) {
+    return { success: false, assignment: null, error: errorMessage(error) }
+  }
+}
+
+export async function releaseCompletePowerOutageAssignmentAction(
+  candidateId: string,
+): Promise<CompleteAssignmentActionResult> {
+  try {
+    if (!validUuid(candidateId)) throw new Error('Neplatné technické ID firmy.')
+    const { supabase } = await getPowerOutageRuntimeContext()
+    const { error } = await supabase.rpc('release_complete_power_outage_company_assignment', {
+      p_candidate_id: candidateId,
+    })
+    if (error) throw new Error(`Přiřazení se nepodařilo zrušit: ${error.message}`)
+    revalidatePath('/power-outages')
+    return { success: true, assignment: null, error: null }
+  } catch (error) {
+    return { success: false, assignment: null, error: errorMessage(error) }
   }
 }
 
