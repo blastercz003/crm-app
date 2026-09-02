@@ -20,6 +20,17 @@ type PipelineStep = {
 async function runStep(step: string, operation: () => Promise<unknown>): Promise<PipelineStep> {
   try {
     const result = await operation()
+    const status = result && typeof result === 'object'
+      ? (result as Record<string, unknown>).status
+      : null
+    if (status === 'partial' || status === 'failed') {
+      return {
+        step,
+        ok: false,
+        result,
+        error: `Krok ${step} skončil stavem ${status}.`,
+      }
+    }
     return { step, ok: true, result }
   } catch (error) {
     return {

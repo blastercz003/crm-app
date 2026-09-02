@@ -181,10 +181,9 @@ async function discoverMapy(target: CompleteDiscoveryTarget) {
   if (!apiKey) throw new Error('Na serveru chybí MAPY_API_KEY.')
   const url = new URL('https://api.mapy.com/v1/geocode')
   url.searchParams.set('apikey', apiKey)
-  url.searchParams.set('query', target.queryText)
+  url.searchParams.set('query', `${target.queryText}, Česko`)
   url.searchParams.set('lang', 'cs')
   url.searchParams.set('limit', '10')
-  url.searchParams.set('locality', 'cz')
   url.searchParams.set('type', 'poi')
   if (target.latitude != null && target.longitude != null) {
     url.searchParams.set('preferNear', `${target.longitude},${target.latitude}`)

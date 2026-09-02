@@ -215,7 +215,9 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   })
   const tasks = taskResult.data ?? []
   const failedTasks = tasks.filter((task) => (
-    task.last_status === 'failed' || Number(task.consecutive_failure_count) > 0
+    task.last_status === 'failed'
+    || task.last_status === 'partial'
+    || Number(task.consecutive_failure_count) > 0
   ))
   const runningTasks = tasks.filter((task) => task.last_status === 'running')
   const expiredTasks = runningTasks.filter((task) => (
