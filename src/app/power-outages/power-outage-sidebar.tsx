@@ -289,14 +289,49 @@ function CoverageDetailPopup({ coverage, sources, onClose }: { coverage: PowerOu
         </section>
 
         <section className="mt-4">
-          <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zpracování aktuální revize</h3>
+          <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Návaznost na katalog prodejen</h3>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
             {sourceRows.map(({ source, summary }) => {
               const processedRevision = summary?.storeRevisionProcessed ?? 0
-              const current = processedRevision >= coverage.catalogRevision
-              return <div key={source} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-3"><strong className="text-xs text-[var(--text-primary)]">{sourceShortName(source)}</strong><span className={`rounded-lg border px-2 py-1 text-[7px] font-bold ${current ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300' : 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{current ? 'AKTUÁLNÍ' : 'ZPRACOVÁNÍ'}</span></div><p className="mt-2 text-[9px] text-[var(--text-secondary)]">Zpracovaná revize <strong className="text-[var(--text-primary)]">{processedRevision} / {coverage.catalogRevision}</strong></p></div>
+              const matchingCurrent = coverage.matchingStatus === 'succeeded'
+                && coverage.matchingRevision >= coverage.catalogRevision
+              const sourceCurrent = source === 'cez'
+                ? processedRevision >= coverage.catalogRevision
+                : matchingCurrent
+              const activeCezScan = source === 'cez'
+                && summary?.catalogScanRevision === coverage.catalogRevision
+                && summary.catalogScanProcessedStoreCount !== null
+              const processedStores = Math.min(
+                coverage.totalStoreCount,
+                summary?.catalogScanProcessedStoreCount ?? 0,
+              )
+              const scanPercent = coverage.totalStoreCount > 0
+                ? Math.min(100, Math.max(0, (processedStores / coverage.totalStoreCount) * 100))
+                : 0
+
+              return <div key={source} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-xs text-[var(--text-primary)]">{sourceShortName(source)}</strong>
+                  <span className={`rounded-lg border px-2 py-1 text-[7px] font-bold ${sourceCurrent ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300' : 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{sourceCurrent ? 'AKTUÁLNÍ' : 'ZPRACOVÁNÍ'}</span>
+                </div>
+                {source === 'cez' ? <>
+                  <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">
+                    {sourceCurrent
+                      ? <>Kontrola katalogu je dokončena pro revizi <strong className="text-[var(--text-primary)]">{coverage.catalogRevision}</strong>.</>
+                      : activeCezScan
+                        ? <>Kontrola ČEZ: <strong className="text-[var(--text-primary)]">{processedStores} z {coverage.totalStoreCount} prodejen</strong></>
+                        : <>Čeká na kontrolu katalogu revize <strong className="text-[var(--text-primary)]">{coverage.catalogRevision}</strong>.</>}
+                  </p>
+                  {!sourceCurrent && activeCezScan ? <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-strong)]"><span className="block h-full rounded-full bg-sky-500 transition-[width]" style={{ width: `${scanPercent}%` }} /></div> : null}
+                  <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Poslední dokončená revize: <strong className="text-[var(--text-primary)]">{processedRevision || 'zatím žádná'}</strong>{matchingCurrent ? ` · stávající data spárována s revizí ${coverage.matchingRevision}` : ''}</p>
+                </> : <>
+                  <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">{matchingCurrent ? <>Data jsou spárována s aktuální revizí <strong className="text-[var(--text-primary)]">{coverage.matchingRevision}</strong>.</> : <>Data čekají na spárování s revizí <strong className="text-[var(--text-primary)]">{coverage.catalogRevision}</strong>.</>}</p>
+                  <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Poslední načtení zdroje: <strong className="text-[var(--text-primary)]">{formatDateTime(summary?.lastSuccessAt ?? null)}</strong></p>
+                </>}
+              </div>
             })}
           </div>
+          <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">ČEZ prochází prodejny po dávkách. EG.D a PRE načítají celé distribuční oblasti a následně se jejich data společně párují s aktuálním katalogem.</p>
         </section>
 
         <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
@@ -465,13 +500,21 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
   return (
     <>
       <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
-        <p className="mb-2 text-[10px] text-[var(--text-secondary)] lg:hidden">
-          Přejetím do strany zobrazíte další část.
+        <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-[10px] text-[var(--text-secondary)] lg:hidden">
+          <Info aria-hidden className="h-3 w-3 shrink-0" strokeWidth={2.1} />
+          <span>Přejetím do strany zobrazíte další část.</span>
         </p>
         <aside className="power-outages-mobile-aside-carousel activities-manual-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
-          <div className="min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
-          {sources.map((source) => <div key={source.source} className="min-w-0 snap-start snap-always lg:snap-none"><SourcePanel source={source} onOpen={() => void openSource(source.source)} /></div>)}
-          <div className="min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpenAnalysis={() => setShowAddressAnalysis(true)} onOpenDetail={() => setShowCoverageDetail(true)} /></div>
+          <div className="order-5 min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
+          {sources.map((source) => (
+            <div
+              key={source.source}
+              className={`min-w-0 snap-start snap-always lg:snap-none ${source.source === 'cez' ? 'order-2' : source.source === 'egd' ? 'order-3' : 'order-4'}`}
+            >
+              <SourcePanel source={source} onOpen={() => void openSource(source.source)} />
+            </div>
+          ))}
+          <div className="order-1 min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpenAnalysis={() => setShowAddressAnalysis(true)} onOpenDetail={() => setShowCoverageDetail(true)} /></div>
         </aside>
       </div>
       {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} onClose={close} />, document.body) : null}

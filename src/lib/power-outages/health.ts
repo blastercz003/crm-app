@@ -79,9 +79,11 @@ function sourceHealth(
     && cezScan
     && finiteInteger(cezScan.storeRevision) === storeRevision,
   )
-  const processing = taskState?.last_status === 'running' || (
-    storeCatalogPending
+  const catalogProcessing = state.source === 'cez'
+    && storeCatalogPending
     && (activeCezScan || consecutiveFailureCount === 0)
+  const processing = taskState?.last_status === 'running' || (
+    catalogProcessing
   )
   const lastProgressMs = state.last_attempt_at ? Date.parse(state.last_attempt_at) : Number.NaN
   const taskStartedMs = taskState?.last_started_at ? Date.parse(taskState.last_started_at) : Number.NaN
@@ -91,9 +93,9 @@ function sourceHealth(
       ? !Number.isFinite(lastProgressMs) || nowMs - lastProgressMs > 45 * 60 * 1_000
       : taskState?.last_status === 'running'
         ? !Number.isFinite(taskStartedMs) || nowMs - taskStartedMs > 90 * 60 * 1_000
-        : Number.isFinite(catalogChangedMs) && nowMs - catalogChangedMs > (
-            state.source === 'cez' ? 45 * 60 * 1_000 : state.source === 'pre' ? 4 * 60 * 60 * 1_000 : 7 * 60 * 60 * 1_000
-          )
+        : catalogProcessing
+          && Number.isFinite(catalogChangedMs)
+          && nowMs - catalogChangedMs > 45 * 60 * 1_000
   )
 
   let status: 'pending' | 'live' | 'processing' | 'warning' | 'error'
@@ -128,6 +130,8 @@ function sourceHealth(
     dataVersion: state.data_version,
     storeCatalogPending,
     storeRevisionProcessed: state.store_revision_processed,
+    catalogScanRevision: state.source === 'cez' ? finiteInteger(cezScan?.storeRevision) : null,
+    catalogScanProcessedStoreCount: state.source === 'cez' ? finiteInteger(cezScan?.nextStoreIndex) : null,
     processedRecordCount: latestRun?.source_record_count ?? 0,
     changeCount: typeof changeValue === 'number' && Number.isFinite(changeValue)
       ? Math.max(0, Math.trunc(changeValue))

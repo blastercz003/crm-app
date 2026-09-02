@@ -127,6 +127,8 @@ export type PowerOutageSourceSummary = {
   dataVersion: number
   storeCatalogPending: boolean
   storeRevisionProcessed: number
+  catalogScanRevision: number | null
+  catalogScanProcessedStoreCount: number | null
   processedRecordCount: number
   changeCount: number | null
   municipalityCoverage: string
@@ -206,6 +208,9 @@ export type PowerOutageStoreCoverage = {
   catalogRevision: number
   catalogLastChangedAt: string
   catalogLastChangeKind: 'initial' | 'insert' | 'update' | 'delete'
+  matchingRevision: number
+  matchingFinishedAt: string | null
+  matchingStatus: 'running' | 'succeeded' | 'failed' | null
   chains: Array<{
     chainName: string
     totalStoreCount: number

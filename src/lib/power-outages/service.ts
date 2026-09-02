@@ -141,6 +141,7 @@ function filterOptions(items: PowerOutageListItem[]): PowerOutageFilterOptions {
 function storeCoverage(
   rows: RegistryRow[],
   catalog: { revision: number; last_changed_at: string; last_change_kind: 'initial' | 'insert' | 'update' | 'delete' },
+  matching: { store_revision: number; finished_at: string | null; status: 'running' | 'succeeded' | 'failed' } | null,
 ): PowerOutageStoreCoverage {
   const active = rows.filter((row) => row.is_active)
   const ready = active.filter((row) => (
@@ -184,6 +185,9 @@ function storeCoverage(
     catalogRevision: catalog.revision,
     catalogLastChangedAt: catalog.last_changed_at,
     catalogLastChangeKind: catalog.last_change_kind,
+    matchingRevision: Number(matching?.store_revision ?? 0),
+    matchingFinishedAt: matching?.finished_at ?? null,
+    matchingStatus: matching?.status ?? null,
     chains,
   }
 }
@@ -480,6 +484,7 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
     storeCoverage: storeCoverage(
       registryRows,
       catalogResult.data,
+      health.matching,
     ),
     preferences,
   }
