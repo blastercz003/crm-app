@@ -132,6 +132,14 @@ export type PowerOutageSourceSummary = {
   processedRecordCount: number
   changeCount: number | null
   municipalityCoverage: string
+  comparisonProgress: {
+    status: 'queued' | 'processing' | 'current' | 'error'
+    phase: 'source_scan' | 'source_sync' | 'matching_addresses' | 'saving_matches' | 'complete'
+    processedCount: number | null
+    totalCount: number | null
+    percent: number
+    lastProgressAt: string | null
+  }
 }
 
 export type PowerOutageSourceDiagnostic = {

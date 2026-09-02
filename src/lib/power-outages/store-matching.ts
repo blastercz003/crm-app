@@ -70,10 +70,23 @@ function storeMunicipality(value: string) {
   return canonicalMunicipality(value)
 }
 
-export function buildPowerOutageStoreMatches(
+export async function buildPowerOutageStoreMatches(
   stores: MatchableStore[],
   addresses: MatchableOutageAddress[],
+  options: {
+    batchSize?: number
+    onProgress?: (processedAddressCount: number, totalAddressCount: number) => Promise<void>
+  } = {},
 ) {
+  const batchSize = Math.max(25, Math.trunc(options.batchSize ?? 250))
+  const reportProgress = async (processedAddressCount: number) => {
+    if (
+      options.onProgress
+      && (processedAddressCount % batchSize === 0 || processedAddressCount === addresses.length)
+    ) {
+      await options.onProgress(processedAddressCount, addresses.length)
+    }
+  }
   const storesByMunicipality = new Map<string, MatchableStore[]>()
   for (const store of stores) {
     const municipality = storeMunicipality(store.city)
@@ -84,7 +97,8 @@ export function buildPowerOutageStoreMatches(
   }
 
   const bestByOutageStore = new Map<string, PowerOutageStoreMatchCandidate>()
-  for (const address of addresses) {
+  for (let addressIndex = 0; addressIndex < addresses.length; addressIndex += 1) {
+    const address = addresses[addressIndex]
     const variants = municipalityVariants(
       address.normalizedMunicipality || address.municipality,
       address.townPart,
@@ -99,7 +113,10 @@ export function buildPowerOutageStoreMatches(
     const outageStreet = normalizeStreet(address.normalizedStreet || address.street)
     // Záznam bez konkrétní ulice nesmí vytvořit shodu pro všechny prodejny
     // ve městě. Takové zdrojové záznamy zůstávají pouze v importovaném katalogu.
-    if (!outageStreet) continue
+    if (!outageStreet) {
+      await reportProgress(addressIndex + 1)
+      continue
+    }
     const outageNumbers = normalizedAddressNumbers(address.addressNumbers)
 
     for (const store of candidateStores.values()) {
@@ -154,6 +171,8 @@ export function buildPowerOutageStoreMatches(
         bestByOutageStore.set(key, candidate)
       }
     }
+
+    await reportProgress(addressIndex + 1)
   }
 
   return [...bestByOutageStore.values()]

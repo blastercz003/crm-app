@@ -11,6 +11,7 @@ type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
 type OutageRow = { id: string; source: 'cez' | 'egd' | 'pre' }
 type JsonObject = Record<string, unknown>
+type SourceVersionRow = { source: 'cez' | 'egd' | 'pre'; data_version: number }
 type ExistingMatchRow = {
   id: string
   outage_id: string
@@ -198,12 +199,24 @@ export async function reconcilePowerOutageStoreMatches(input: {
     .eq('status', 'running')
     .lt('started_at', staleBefore)
 
-  const { data: catalogState, error: catalogError } = await client
-    .from('power_outage_store_catalog_state')
-    .select('revision')
-    .eq('singleton', true)
-    .single<{ revision: number }>()
+  const [
+    { data: catalogState, error: catalogError },
+    { data: sourceVersionRows, error: sourceVersionError },
+  ] = await Promise.all([
+    client
+      .from('power_outage_store_catalog_state')
+      .select('revision')
+      .eq('singleton', true)
+      .single<{ revision: number }>(),
+    client
+      .from('power_outage_source_state')
+      .select('source,data_version'),
+  ])
   if (catalogError) throw catalogError
+  if (sourceVersionError) throw sourceVersionError
+  const sourceDataVersions = Object.fromEntries(
+    ((sourceVersionRows ?? []) as SourceVersionRow[]).map((row) => [row.source, row.data_version]),
+  )
 
   const { data: run, error: runError } = await client
     .from('power_outage_match_runs')
@@ -228,7 +241,44 @@ export async function reconcilePowerOutageStoreMatches(input: {
       loadOutageAddresses(client, outageIds),
       loadExistingMatches(client, outageIds),
     ])
-    const candidates = buildPowerOutageStoreMatches(stores, addresses)
+    const updateProgress = async (metadata: Record<string, unknown>) => {
+      const { error } = await client
+        .from('power_outage_match_runs')
+        .update({ metadata: { progressVersion: 1, sourceDataVersions, ...metadata } })
+        .eq('id', run.id)
+      if (error) throw error
+    }
+    await client
+      .from('power_outage_match_runs')
+      .update({
+        outage_count: outages.length,
+        address_count: addresses.length,
+        store_count: stores.length,
+        metadata: {
+          progressVersion: 1,
+          sourceDataVersions,
+          phase: 'matching_addresses',
+          processedCount: 0,
+          totalCount: addresses.length,
+          progressPercent: addresses.length === 0 ? 80 : 0,
+          lastProgressAt: new Date().toISOString(),
+        },
+      })
+      .eq('id', run.id)
+      .throwOnError()
+
+    const candidates = await buildPowerOutageStoreMatches(stores, addresses, {
+      batchSize: 250,
+      onProgress: async (processedCount, totalCount) => {
+        await updateProgress({
+          phase: 'matching_addresses',
+          processedCount,
+          totalCount,
+          progressPercent: totalCount > 0 ? Math.round((processedCount / totalCount) * 800) / 10 : 80,
+          lastProgressAt: new Date().toISOString(),
+        })
+      },
+    })
     const existingByKey = new Map(
       existingMatches
         .filter((match) => match.store_id)
@@ -265,13 +315,6 @@ export async function reconcilePowerOutageStoreMatches(input: {
       })
     }
 
-    for (const batch of chunks(rows, 400)) {
-      const { error } = await client
-        .from('power_outage_store_matches')
-        .upsert(batch, { onConflict: 'outage_id,store_id' })
-      if (error) throw error
-    }
-
     const staleIds = existingMatches
       .filter((match) => (
         match.match_method === 'city_street'
@@ -282,12 +325,45 @@ export async function reconcilePowerOutageStoreMatches(input: {
         )
       ))
       .map((match) => match.id)
+    const totalWriteCount = rows.length + staleIds.length
+    let processedWriteCount = 0
+    await updateProgress({
+      phase: 'saving_matches',
+      processedCount: 0,
+      totalCount: totalWriteCount,
+      progressPercent: totalWriteCount === 0 ? 100 : 80,
+      lastProgressAt: new Date().toISOString(),
+    })
+
+    for (const batch of chunks(rows, 400)) {
+      const { error } = await client
+        .from('power_outage_store_matches')
+        .upsert(batch, { onConflict: 'outage_id,store_id' })
+      if (error) throw error
+      processedWriteCount += batch.length
+      await updateProgress({
+        phase: 'saving_matches',
+        processedCount: processedWriteCount,
+        totalCount: totalWriteCount,
+        progressPercent: totalWriteCount > 0 ? Math.round((80 + (processedWriteCount / totalWriteCount) * 20) * 10) / 10 : 100,
+        lastProgressAt: new Date().toISOString(),
+      })
+    }
+
     for (const ids of chunks(staleIds, 400)) {
       const { error } = await client
         .from('power_outage_store_matches')
         .delete()
         .in('id', ids)
       if (error) throw error
+      processedWriteCount += ids.length
+      await updateProgress({
+        phase: 'saving_matches',
+        processedCount: processedWriteCount,
+        totalCount: totalWriteCount,
+        progressPercent: totalWriteCount > 0 ? Math.round((80 + (processedWriteCount / totalWriteCount) * 20) * 10) / 10 : 100,
+        lastProgressAt: new Date().toISOString(),
+      })
     }
 
     const completedAt = new Date().toISOString()
@@ -321,7 +397,16 @@ export async function reconcilePowerOutageStoreMatches(input: {
         review_count: reviewCount,
         preserved_manual_count: preservedManualCount,
         removed_stale_count: staleIds.length,
-        metadata: { sourceCount: new Set(outages.map((outage) => outage.source)).size },
+        metadata: {
+          progressVersion: 1,
+          sourceDataVersions,
+          phase: 'complete',
+          processedCount: addresses.length,
+          totalCount: addresses.length,
+          progressPercent: 100,
+          lastProgressAt: completedAt,
+          sourceCount: new Set(outages.map((outage) => outage.source)).size,
+        },
       })
       .eq('id', run.id)
     if (finishError) throw finishError

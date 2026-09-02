@@ -64,6 +64,12 @@ create trigger power_outage_matches_publish_app_change
 after insert or update or delete on public.power_outage_store_matches
 for each statement execute function public.publish_power_outages_app_change();
 
+drop trigger if exists power_outage_match_runs_publish_app_change
+  on public.power_outage_match_runs;
+create trigger power_outage_match_runs_publish_app_change
+after insert or update or delete on public.power_outage_match_runs
+for each statement execute function public.publish_power_outages_app_change();
+
 drop trigger if exists power_outage_sources_publish_app_change
   on public.power_outage_source_state;
 create trigger power_outage_sources_publish_app_change
@@ -113,6 +119,7 @@ select 'TRIGGER', expected.trigger_name,
   )
 from unnest(array[
   'power_outage_matches_publish_app_change',
+  'power_outage_match_runs_publish_app_change',
   'power_outage_sources_publish_app_change',
   'power_outage_catalog_publish_app_change',
   'power_outage_tasks_publish_app_change',

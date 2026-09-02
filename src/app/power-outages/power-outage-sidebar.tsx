@@ -111,7 +111,7 @@ function NotificationSettings({ initial }: { initial: PowerOutageNotificationPre
   )
 }
 
-function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onOpen: () => void }) {
+function SourcePanel({ source, totalStoreCount, onOpen }: { source: PowerOutageSourceSummary; totalStoreCount: number; onOpen: () => void }) {
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
@@ -119,7 +119,36 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
   const needsAttention = Boolean(refreshError) || source.status === 'warning' || source.status === 'error'
   const recordsLabel = source.source === 'cez' ? 'Záznamů v dávce' : 'Záznamů ve snapshotu'
   const changesLabel = source.source === 'cez' ? 'Změny v dávce' : 'Změny ve snapshotu'
-  const coverageLabel = source.source === 'cez' ? 'Obce v dávce' : 'Obce ve snapshotu'
+  const comparison = source.comparisonProgress
+  const comparisonProcessedCount = comparison.phase === 'source_scan'
+    ? source.catalogScanProcessedStoreCount ?? comparison.processedCount
+    : comparison.processedCount
+  const comparisonTotalCount = comparison.phase === 'source_scan'
+    ? totalStoreCount
+    : comparison.totalCount
+  const comparisonPercent = comparison.phase === 'source_scan' && totalStoreCount > 0
+    ? Math.min(100, Math.max(0, ((comparisonProcessedCount ?? 0) / totalStoreCount) * 100))
+    : comparison.percent
+  const comparisonLabel = comparison.status === 'error'
+    ? 'Chyba porovnávání'
+    : comparison.phase === 'source_scan'
+      ? 'Kontrola prodejen'
+      : comparison.phase === 'source_sync'
+        ? 'Načítání zdroje'
+        : comparison.phase === 'saving_matches'
+          ? 'Ukládání shod'
+          : comparison.status === 'current'
+            ? 'Porovnání dokončeno'
+            : comparison.status === 'queued'
+              ? 'Čeká na porovnání'
+              : 'Porovnávání adres'
+  const comparisonBar = comparison.status === 'error'
+    ? 'bg-red-500'
+    : comparison.status === 'current'
+      ? 'bg-emerald-500'
+      : comparison.status === 'queued'
+        ? 'bg-amber-500'
+        : 'bg-sky-500'
 
   const refresh = async () => {
     if (refreshing) return
@@ -167,9 +196,10 @@ function SourcePanel({ source, onOpen }: { source: PowerOutageSourceSummary; onO
           <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{recordsLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
           <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{changesLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
         </div>
-        <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5 lg:mt-2 lg:py-2">
-          <span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">{coverageLabel}</small><strong className="mt-0.5 block truncate text-[10px] text-[var(--text-primary)]">{source.municipalityCoverage}</strong></span>
-          <ChevronRight aria-hidden size={15} className="shrink-0 text-[var(--text-secondary)]" />
+        <div className="mt-2.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 lg:mt-2">
+          <div className="flex items-center justify-between gap-3"><small className="truncate text-[7px] font-bold uppercase tracking-[0.055em] text-[var(--text-secondary)]">{comparisonLabel}</small><strong className="shrink-0 text-[9px] tabular-nums text-[var(--accent)]">{(Math.round(comparisonPercent * 10) / 10).toLocaleString('cs-CZ')} %</strong></div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><span className={`block h-full rounded-full transition-[width] duration-500 ${comparisonBar}`} style={{ width: `${comparisonPercent}%` }} /></div>
+          <div className="mt-1 flex items-center justify-between gap-2 text-[7px] text-[var(--text-secondary)]"><span className="truncate">{comparisonProcessedCount !== null && comparisonTotalCount !== null ? `${comparisonProcessedCount} / ${comparisonTotalCount}` : comparison.status === 'processing' ? 'Příprava dat pro porovnání' : 'Zatím nezahájeno'}</span><ChevronRight aria-hidden size={11} className="shrink-0" /></div>
         </div>
       </button>
     </section>
@@ -511,7 +541,7 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
               key={source.source}
               className={`min-w-0 snap-start snap-always lg:snap-none ${source.source === 'cez' ? 'order-2' : source.source === 'egd' ? 'order-3' : 'order-4'}`}
             >
-              <SourcePanel source={source} onOpen={() => void openSource(source.source)} />
+              <SourcePanel source={source} totalStoreCount={storeCoverage.totalStoreCount} onOpen={() => void openSource(source.source)} />
             </div>
           ))}
           <div className="order-1 min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpenAnalysis={() => setShowAddressAnalysis(true)} onOpenDetail={() => setShowCoverageDetail(true)} /></div>

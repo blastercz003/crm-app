@@ -39,6 +39,17 @@ type TaskState = {
   last_error_message: string | null
 }
 
+type MatchRun = {
+  status: 'running' | 'succeeded' | 'failed'
+  started_at: string
+  finished_at: string | null
+  store_revision: number
+  address_count: number
+  metadata: Record<string, unknown> | null
+  error_code: string | null
+  error_message: string | null
+}
+
 function objectValue(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -58,6 +69,7 @@ function sourceHealth(
   nowMs: number,
   latestRun: LatestRun | undefined,
   taskState: TaskState | undefined,
+  matchRun: MatchRun | null,
 ) {
   const successMs = state.last_success_at
     ? new Date(state.last_success_at).getTime()
@@ -75,8 +87,7 @@ function sourceHealth(
   const latestRunMetadata = latestRun?.metadata ?? {}
   const cezScan = state.source === 'cez' ? objectValue(metadata.cezScan) : null
   const activeCezScan = Boolean(
-    storeCatalogPending
-    && cezScan
+    cezScan
     && finiteInteger(cezScan.storeRevision) === storeRevision,
   )
   const catalogProcessing = state.source === 'cez'
@@ -114,6 +125,74 @@ function sourceHealth(
   const coverageValue = state.source === 'cez'
     ? latestRunMetadata.coveredTownCount
     : latestRunMetadata.coveredMunicipalityCount
+  const matchMetadata = matchRun?.metadata ?? {}
+  const matchSourceVersions = objectValue(matchMetadata.sourceDataVersions)
+  const matchedSourceDataVersion = finiteInteger(matchSourceVersions?.[state.source])
+  const matchesCurrentSourceData = matchedSourceDataVersion !== null
+    && matchedSourceDataVersion >= state.data_version
+  const matchProgressPercent = typeof matchMetadata.progressPercent === 'number' && Number.isFinite(matchMetadata.progressPercent)
+    ? Math.min(100, Math.max(0, matchMetadata.progressPercent))
+    : 0
+  const matchProcessedCount = finiteInteger(matchMetadata.processedCount)
+  const matchTotalCount = finiteInteger(matchMetadata.totalCount)
+  const matchPhase = matchMetadata.phase === 'saving_matches' ? 'saving_matches' as const : 'matching_addresses' as const
+  const comparisonProgress = activeCezScan
+    ? {
+        status: 'processing' as const,
+        phase: 'source_scan' as const,
+        processedCount: finiteInteger(cezScan?.nextStoreIndex) ?? 0,
+        totalCount: finiteInteger(cezScan?.totalStoreCount),
+        percent: finiteInteger(cezScan?.totalStoreCount)
+          ? Math.min(100, Math.max(0, ((finiteInteger(cezScan?.nextStoreIndex) ?? 0) / (finiteInteger(cezScan?.totalStoreCount) ?? 1)) * 100))
+          : 0,
+        lastProgressAt: state.last_attempt_at,
+      }
+    : taskState?.last_status === 'running'
+      ? {
+          status: 'processing' as const,
+          phase: 'source_sync' as const,
+          processedCount: null,
+          totalCount: null,
+          percent: 0,
+          lastProgressAt: taskState.last_started_at,
+        }
+      : matchRun?.status === 'running'
+        ? {
+            status: 'processing' as const,
+            phase: matchPhase,
+            processedCount: matchProcessedCount,
+            totalCount: matchTotalCount,
+            percent: matchProgressPercent,
+            lastProgressAt: typeof matchMetadata.lastProgressAt === 'string' ? matchMetadata.lastProgressAt : matchRun.started_at,
+          }
+        : matchRun?.status === 'failed'
+          ? {
+              status: 'error' as const,
+              phase: matchPhase,
+              processedCount: matchProcessedCount,
+              totalCount: matchTotalCount,
+              percent: matchProgressPercent,
+              lastProgressAt: typeof matchMetadata.lastProgressAt === 'string' ? matchMetadata.lastProgressAt : matchRun.finished_at,
+            }
+          : matchRun?.status === 'succeeded'
+            && Number(matchRun.store_revision) >= storeRevision
+            && matchesCurrentSourceData
+            ? {
+                status: 'current' as const,
+                phase: 'complete' as const,
+                processedCount: Number(matchRun.address_count),
+                totalCount: Number(matchRun.address_count),
+                percent: 100,
+                lastProgressAt: matchRun.finished_at,
+              }
+            : {
+                status: 'queued' as const,
+                phase: 'matching_addresses' as const,
+                processedCount: 0,
+                totalCount: null,
+                percent: 0,
+                lastProgressAt: null,
+              }
 
   return {
     source: state.source,
@@ -143,6 +222,7 @@ function sourceHealth(
       : state.source === 'egd' || state.source === 'pre'
         ? 'Celá distribuční oblast'
         : 'Probíhá průběžná kontrola',
+    comparisonProgress,
   }
 }
 
@@ -170,7 +250,7 @@ export async function getPowerOutageHealth() {
       .single<{ revision: number; last_changed_at: string }>(),
     client
       .from('power_outage_match_runs')
-      .select('status,started_at,finished_at,store_revision,error_code,error_message')
+      .select('status,started_at,finished_at,store_revision,address_count,metadata,error_code,error_message')
       .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -226,6 +306,7 @@ export async function getPowerOutageHealth() {
       now.getTime(),
       latestRuns.get(state.source),
       taskByKey.get(`sync_${state.source}`),
+      matchRun as MatchRun | null,
     )
   ))
   const hasError = sources.some((source) => source.status === 'error')
