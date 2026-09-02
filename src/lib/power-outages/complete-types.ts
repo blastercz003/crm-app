@@ -84,6 +84,7 @@ export type CompleteSourceState = {
 
 export type CompleteProviderState = {
   provider: 'ares' | 'mapy' | 'google'
+  configured: boolean
   readyCount: number
   pendingCount: number
   notFoundCount: number
@@ -91,6 +92,15 @@ export type CompleteProviderState = {
   minuteRequestCount: number
   dayRequestCount: number
   lastRequestAt: string | null
+}
+
+export type CompleteRuntimeState = {
+  status: 'healthy' | 'processing' | 'attention' | 'waiting'
+  runningTaskCount: number
+  failedTaskCount: number
+  staleSourceCount: number
+  lastActivityAt: string | null
+  issues: string[]
 }
 
 export type CompletePowerOutageWorkspace = {
@@ -110,6 +120,7 @@ export type CompletePowerOutageWorkspace = {
   }
   sources: CompleteSourceState[]
   providers: CompleteProviderState[]
+  runtime: CompleteRuntimeState
   addressCoverage: {
     totalCount: number
     normalizedCount: number

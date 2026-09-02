@@ -12,6 +12,7 @@ import type {
   CompleteSourceState,
 } from './complete-types'
 import type { PowerOutageSource } from './types'
+import { providerConfigured } from './complete-company-providers'
 
 type OverviewRow = {
   candidate_id: string
@@ -155,6 +156,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     errorAddressCount,
     sourceResult,
     providerResult,
+    taskResult,
   ] = await Promise.all([
     loadOverviewItems(supabase, now, false),
     loadOverviewItems(supabase, now, true),
@@ -168,9 +170,11 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message').order('source'),
     supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,last_request_at').order('provider'),
+    supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_message,lock_expires_at').order('task_key'),
   ])
   if (sourceResult.error) throw new Error(`Stav zdrojů kompletních odstávek se nepodařilo načíst: ${sourceResult.error.message}`)
   if (providerResult.error) throw new Error(`Stav vyhledávání firem se nepodařilo načíst: ${providerResult.error.message}`)
+  if (taskResult.error) throw new Error(`Provozní stav kompletních odstávek se nepodařilo načíst: ${taskResult.error.message}`)
 
   const sources = (sourceResult.data ?? []).map((row): CompleteSourceState => ({
     source: row.source as PowerOutageSource,
@@ -188,6 +192,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   }))
   const providerStates = (providerResult.data ?? []).map((row): CompleteProviderState => ({
     provider: row.provider as CompleteProviderState['provider'],
+    configured: providerConfigured(row.provider as CompleteProviderState['provider']),
     readyCount: Number(row.ready_count),
     pendingCount: Number(row.pending_count),
     notFoundCount: Number(row.not_found_count),
@@ -196,6 +201,43 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     dayRequestCount: Number(row.day_request_count),
     lastRequestAt: row.last_request_at,
   }))
+
+  const nowMs = Date.now()
+  const freshnessMs: Record<PowerOutageSource, number> = {
+    cez: 90 * 60_000,
+    egd: 8 * 60 * 60_000,
+    pre: 5 * 60 * 60_000,
+  }
+  const staleSources = sources.filter((source) => {
+    if (!source.lastSuccessAt) return true
+    const value = new Date(source.lastSuccessAt).getTime()
+    return !Number.isFinite(value) || nowMs - value > freshnessMs[source.source]
+  })
+  const tasks = taskResult.data ?? []
+  const failedTasks = tasks.filter((task) => (
+    task.last_status === 'failed' || Number(task.consecutive_failure_count) > 0
+  ))
+  const runningTasks = tasks.filter((task) => task.last_status === 'running')
+  const expiredTasks = runningTasks.filter((task) => (
+    task.lock_expires_at && new Date(task.lock_expires_at).getTime() <= nowMs
+  ))
+  const lastActivityAt = tasks
+    .flatMap((task) => [task.last_finished_at, task.last_started_at])
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? null
+  const issues = [
+    ...staleSources.map((source) => `${source.source.toUpperCase()}: interní projekce nemá čerstvá data.`),
+    ...failedTasks.map((task) => `${String(task.task_key)}: ${task.last_error_message || 'poslední běh selhal.'}`),
+    ...expiredTasks.map((task) => `${String(task.task_key)}: běh překročil bezpečnostní čas.`),
+  ]
+  const runtimeStatus = issues.length > 0
+    ? 'attention'
+    : runningTasks.length > 0
+      ? 'processing'
+      : sources.some((source) => !source.lastSuccessAt)
+        ? 'waiting'
+        : 'healthy'
 
   return {
     generatedAt: now,
@@ -209,6 +251,14 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     },
     sources,
     providers: providerStates,
+    runtime: {
+      status: runtimeStatus,
+      runningTaskCount: runningTasks.length,
+      failedTaskCount: failedTasks.length,
+      staleSourceCount: staleSources.length,
+      lastActivityAt,
+      issues: issues.slice(0, 8),
+    },
     addressCoverage: {
       totalCount: totalAddressCount,
       normalizedCount: normalizedAddressCount,

@@ -34,7 +34,7 @@ export default async function PowerOutagesPage({
   return (
     <main className="activities-page power-outages-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)] text-[var(--foreground)]">
       <PresenceSectionTracker section="Odstávky" route="/power-outages" />
-      {mode === 'markets' ? <PowerOutagesRealtimeRefresh /> : null}
+      <PowerOutagesRealtimeRefresh scope={mode === 'complete' ? 'complete_power_outages' : 'power_outages'} />
       <div aria-hidden className="activities-page__glow activities-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl" />
       <div aria-hidden className="activities-page__glow activities-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl" />
 
