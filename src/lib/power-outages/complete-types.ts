@@ -63,6 +63,27 @@ export type CompletePowerOutageListItem = {
   assignment: CompletePowerOutageAssignment | null
 }
 
+export type CompletePowerOutagePageCursor = {
+  at: string
+  id: string
+}
+
+export type CompletePowerOutagePageFilters = {
+  mode: 'current' | 'archive'
+  query: string
+  owner: string
+  source: 'all' | PowerOutageSource
+  entityKind: 'all' | CompleteEntityKind
+  candidateStatus: 'visible' | 'confirmed' | 'needs_review' | 'dismissed'
+}
+
+export type CompletePowerOutagePage = {
+  items: CompletePowerOutageListItem[]
+  totalCount: number
+  hasMore: boolean
+  nextCursor: CompletePowerOutagePageCursor | null
+}
+
 export type CompletePowerOutageEvidence = {
   id: string
   provider: CompleteEvidenceProvider
@@ -297,8 +318,8 @@ export type CompletePowerOutageWorkspace = {
     needsReviewCount: number
     normalizedAddressCount: number
   }
-  currentItems: CompletePowerOutageListItem[]
-  archivedItems: CompletePowerOutageListItem[]
+  initialPage: CompletePowerOutagePage
+  initialPageError: string | null
   filters: {
     owners: Array<{ id: string; name: string }>
     sources: PowerOutageSource[]

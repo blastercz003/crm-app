@@ -8,13 +8,16 @@ import {
 import { getPowerOutageDetail } from '@/lib/power-outages/service'
 import { getPowerOutageSourceDiagnostic } from '@/lib/power-outages/health'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
-import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageDetail, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSourceDiagnostic } from '@/lib/power-outages/complete-service'
+import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageDetail, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSourceDiagnostic } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteAddressCoverageDiagnostic,
   CompletePowerOutageAssignment,
   CompletePowerOutageCommunicationNote,
   CompletePowerOutageDetail,
+  CompletePowerOutagePage,
+  CompletePowerOutagePageCursor,
+  CompletePowerOutagePageFilters,
   CompleteProviderDiagnostic,
   CompleteSourceDiagnostic,
 } from '@/lib/power-outages/complete-types'
@@ -31,6 +34,10 @@ type DetailActionResult =
 type CompleteDetailActionResult =
   | { success: true; detail: CompletePowerOutageDetail; error: null }
   | { success: false; detail: null; error: string }
+
+type CompletePageActionResult =
+  | { success: true; page: CompletePowerOutagePage; error: null }
+  | { success: false; page: null; error: string }
 
 type CompleteAssignmentActionResult =
   | { success: true; assignment: CompletePowerOutageAssignment | null; error: null }
@@ -104,6 +111,24 @@ export async function getCompletePowerOutageDetailAction(candidateId: string): P
     return { success: true, detail: await getCompletePowerOutageDetail(candidateId), error: null }
   } catch (error) {
     return { success: false, detail: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutagePageAction(input: {
+  filters: CompletePowerOutagePageFilters
+  cursor: CompletePowerOutagePageCursor | null
+}): Promise<CompletePageActionResult> {
+  try {
+    const { filters, cursor } = input
+    if (!['current', 'archive'].includes(filters.mode)) throw new Error('Neplatný režim výpisu.')
+    if (!['all', 'cez', 'egd', 'pre'].includes(filters.source)) throw new Error('Neplatný distributor.')
+    if (!['all', 'registered_office', 'establishment', 'mixed'].includes(filters.entityKind)) throw new Error('Neplatný typ firmy.')
+    if (!['visible', 'confirmed', 'needs_review', 'dismissed'].includes(filters.candidateStatus)) throw new Error('Neplatný stav výsledku.')
+    if (filters.query.length > 200) throw new Error('Hledaný text je příliš dlouhý.')
+    if (cursor && (!validUuid(cursor.id) || Number.isNaN(new Date(cursor.at).getTime()))) throw new Error('Neplatný kurzor stránky.')
+    return { success: true, page: await getCompletePowerOutagePage(filters, cursor, 60), error: null }
+  } catch (error) {
+    return { success: false, page: null, error: errorMessage(error) }
   }
 }
 

@@ -22,7 +22,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type {
   CompleteCandidateStatus,
@@ -32,19 +32,22 @@ import type {
   CompleteEntityKind,
   CompletePowerOutageDetail,
   CompletePowerOutageListItem,
+  CompletePowerOutagePageCursor,
+  CompletePowerOutagePageFilters,
   CompletePowerOutageWorkspace,
 } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
 import {
   getCompletePowerOutageDetailAction,
   getCompletePowerOutageCommunicationNotesAction,
+  getCompletePowerOutagePageAction,
   releaseCompletePowerOutageAssignmentAction,
   saveCompletePowerOutageAssignmentAction,
 } from './actions'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
 
 type Tab = 'current' | 'archive'
-type StatusFilter = 'visible' | CompleteCandidateStatus
+type StatusFilter = CompletePowerOutagePageFilters['candidateStatus']
 
 const DATE_TIME = new Intl.DateTimeFormat('cs-CZ', {
   timeZone: 'Europe/Prague', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -79,10 +82,6 @@ function formatMobilePeriod(startsAt: string, endsAt: string) {
   return `${start} → ${end}`
 }
 
-function normalize(value: string) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('cs-CZ').trim()
-}
-
 function sourceLabel(source: PowerOutageSource) {
   return source === 'cez' ? 'ČEZ' : source === 'egd' ? 'EG.D' : 'PRE'
 }
@@ -92,7 +91,7 @@ function entityLabel(kind: CompleteEntityKind) {
 }
 
 function statusLabel(status: CompleteCandidateStatus) {
-  return ({ new: 'NOVÉ', confirmed: 'POTVRZENO', needs_review: 'K OVĚŘENÍ', dismissed: 'ZAMÍTNUTO', stale: 'NEAKTUÁLNÍ' } as const)[status]
+  return ({ new: 'ANALÝZA', confirmed: 'POTVRZENO', needs_review: 'K OVĚŘENÍ', dismissed: 'ZAMÍTNUTO', stale: 'NEAKTUÁLNÍ' } as const)[status]
 }
 
 function SourceBadge({ source }: { source: PowerOutageSource }) {
@@ -102,7 +101,9 @@ function SourceBadge({ source }: { source: PowerOutageSource }) {
 function StatusBadge({ status, assignment, desktop = false }: { status: CompleteCandidateStatus; assignment?: CompletePowerOutageAssignment | null; desktop?: boolean }) {
   const tone = status === 'confirmed'
     ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'
-    : status === 'needs_review' || status === 'new'
+    : status === 'new'
+      ? 'border-sky-400/45 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'
+      : status === 'needs_review'
       ? 'border-amber-400/45 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
       : 'border-slate-400/40 bg-slate-400/10 text-[var(--text-secondary)]'
   return <span className="relative inline-flex h-6 w-[88px] shrink-0 items-center justify-center whitespace-nowrap rounded-full">
@@ -116,6 +117,7 @@ function EntityBadge({ kind, desktop = false }: { kind: CompleteEntityKind; desk
 }
 
 function addressLabel(item: CompletePowerOutageListItem) {
+  if (item.displayAddress?.trim()) return item.displayAddress.trim()
   const number = [item.houseNumber, item.orientationNumber].filter(Boolean).join('/')
   return [item.street && `${item.street}${number ? ` ${number}` : ''}`, item.townPart].filter(Boolean).join(', ') || item.rawAddress
 }
@@ -286,6 +288,7 @@ function MobileCard({ item, onDetail, onAnnouncement, onAssignment }: { item: Co
 export function CompletePowerOutageRecords({ workspace }: { workspace: CompletePowerOutageWorkspace }) {
   const [tab, setTab] = useState<Tab>('current')
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [owner, setOwner] = useState('all')
   const [source, setSource] = useState<'all' | PowerOutageSource>('all')
   const [entity, setEntity] = useState<'all' | CompleteEntityKind>('all')
@@ -297,25 +300,92 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
   const [detail, setDetail] = useState<CompletePowerOutageDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
-  const records = useMemo(() => (tab === 'current' ? workspace.currentItems : workspace.archivedItems).map((item) => (
+  const [pageItems, setPageItems] = useState(workspace.initialPage.items)
+  const [totalCount, setTotalCount] = useState(workspace.initialPage.totalCount)
+  const [hasMore, setHasMore] = useState(workspace.initialPage.hasMore)
+  const [pageLoading, setPageLoading] = useState(false)
+  const [pageError, setPageError] = useState<string | null>(workspace.initialPageError)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const requestSequence = useRef(0)
+  const initialized = useRef(false)
+  const loadingRef = useRef(false)
+  const nextCursorRef = useRef<CompletePowerOutagePageCursor | null>(workspace.initialPage.nextCursor)
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => window.clearTimeout(timeout)
+  }, [query])
+
+  const pageFilters = useMemo<CompletePowerOutagePageFilters>(() => ({
+    mode: tab,
+    query: debouncedQuery,
+    owner,
+    source,
+    entityKind: entity,
+    candidateStatus: status,
+  }), [debouncedQuery, entity, owner, source, status, tab])
+  const filterKey = useMemo(() => JSON.stringify(pageFilters), [pageFilters])
+
+  const loadPage = useCallback(async (reset: boolean) => {
+    if (loadingRef.current && !reset) return
+    const sequence = ++requestSequence.current
+    loadingRef.current = true
+    setPageLoading(true)
+    setPageError(null)
+    if (reset) {
+      setPageItems([])
+      setTotalCount(0)
+      nextCursorRef.current = null
+      setHasMore(false)
+      scrollContainerRef.current?.scrollTo({ top: 0 })
+    }
+    const cursor = reset ? null : nextCursorRef.current
+    const result = await getCompletePowerOutagePageAction({ filters: pageFilters, cursor })
+    if (sequence !== requestSequence.current) return
+    loadingRef.current = false
+    setPageLoading(false)
+    if (!result.success) {
+      setPageError(result.error)
+      return
+    }
+    setPageItems((current) => {
+      if (reset) return result.page.items
+      const known = new Set(current.map((item) => item.candidateId))
+      return [...current, ...result.page.items.filter((item) => !known.has(item.candidateId))]
+    })
+    setTotalCount(result.page.totalCount)
+    nextCursorRef.current = result.page.nextCursor
+    setHasMore(result.page.hasMore)
+  }, [pageFilters])
+
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true
+      if (!workspace.initialPageError) return
+    }
+    requestSequence.current += 1
+    loadingRef.current = false
+    const timeout = window.setTimeout(() => void loadPage(true), 0)
+    return () => window.clearTimeout(timeout)
+  }, [filterKey, loadPage, workspace.initialPageError])
+
+  useEffect(() => {
+    const target = loadMoreRef.current
+    const root = scrollContainerRef.current
+    if (!target || !root || !hasMore || pageLoading || pageError) return
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) void loadPage(false)
+    }, { root, rootMargin: '180px 0px' })
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [hasMore, loadPage, pageError, pageLoading])
+
+  const records = useMemo(() => pageItems.map((item) => (
     Object.hasOwn(assignmentOverrides, item.candidateId)
       ? { ...item, assignment: assignmentOverrides[item.candidateId] }
       : item
-  )), [assignmentOverrides, tab, workspace.archivedItems, workspace.currentItems])
-  const filtered = useMemo(() => records.filter((item) => {
-    if (owner === 'unassigned' && item.assignment) return false
-    if (owner === 'mine' && item.assignment?.ownerId !== workspace.currentUser.id) return false
-    if (owner.startsWith('user:') && item.assignment?.ownerId !== owner.slice(5)) return false
-    if (source !== 'all' && item.source !== source) return false
-    if (entity !== 'all' && item.entityKind !== entity) return false
-    if (status === 'visible' && ['dismissed', 'stale'].includes(item.candidateStatus)) return false
-    if (status !== 'visible' && item.candidateStatus !== status) return false
-    if (query.trim()) {
-      const haystack = normalize([item.companyName, item.ico, item.municipality, item.street, item.rawAddress].filter(Boolean).join(' '))
-      if (!haystack.includes(normalize(query))) return false
-    }
-    return true
-  }), [entity, owner, query, records, source, status, workspace.currentUser.id])
+  )), [assignmentOverrides, pageItems])
   const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'visible'].filter(Boolean).length
   const openDetail = async (item: CompletePowerOutageListItem) => {
     setSelected(item); setPopupMode('detail'); setDetail(null); setDetailError(null); setDetailLoading(true)
@@ -359,16 +429,16 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
           <SelectControl label="Vlastník" value={owner} onChange={setOwner}><option value="all">Všichni vlastníci</option><option value="mine">Moje záznamy</option><option value="unassigned">Nepřiřazené</option>{workspace.filters.owners.filter((value) => value.id !== workspace.currentUser.id).map((value) => <option key={value.id} value={`user:${value.id}`}>{value.name}</option>)}</SelectControl>
           <SelectControl label="Distributor" value={source} onChange={(value) => setSource(value as typeof source)}><option value="all">Všichni distributoři</option><option value="cez">ČEZ</option><option value="egd">EG.D</option><option value="pre">PRE</option></SelectControl>
           <SelectControl label="Typ" value={entity} onChange={(value) => setEntity(value as typeof entity)}><option value="all">Všechny typy</option><option value="registered_office">Sídla</option><option value="establishment">Provozovny</option><option value="mixed">Sídla + provozovny</option></SelectControl>
-          <SelectControl label="Stav" value={status} onChange={(value) => setStatus(value as StatusFilter)}><option value="visible">Běžné výsledky</option><option value="confirmed">Potvrzené</option><option value="needs_review">K ověření</option><option value="new">Nové</option><option value="dismissed">Zamítnuté</option></SelectControl>
+          <SelectControl label="Stav" value={status} onChange={(value) => setStatus(value as StatusFilter)}><option value="visible">Běžné výsledky</option><option value="confirmed">Potvrzené</option><option value="needs_review">K ověření</option><option value="dismissed">Zamítnuté</option></SelectControl>
         </div>
         {activeFilterCount ? <button type="button" onClick={clear} className={`${filtersOpen ? 'inline-flex' : 'hidden'} mb-1 ml-1 mt-2 h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] lg:hidden`}><X aria-hidden size={12} /> Zrušit filtry</button> : null}
       </div>
     </div>
-    <div className="power-outages-records-shell weather-alerts__record-surface mt-3 overflow-visible rounded-[22px] border lg:overflow-hidden xl:flex xl:min-h-0 xl:flex-1 xl:flex-col"><div className="hidden h-11 items-center justify-between border-b border-[var(--surface-border)] px-4 lg:flex"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{tab === 'current' ? <CalendarDays aria-hidden size={14} className="text-[var(--accent)]" /> : <Archive aria-hidden size={14} className="text-[var(--accent)]" />}{tab === 'current' ? 'Aktuální firmy v odstávkách' : 'Archiv firem v odstávkách'}</h3><span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 text-[9px] font-bold text-[var(--text-secondary)]">{filtered.length}</span></div>
-      {filtered.length ? <div className="-mx-2 max-h-[610px] overflow-y-auto px-2 py-1 lg:mx-0 lg:max-h-[500px] lg:px-0 lg:py-0 xl:min-h-0 xl:max-h-none xl:flex-1">
+    <div className="power-outages-records-shell weather-alerts__record-surface mt-3 overflow-visible rounded-[22px] border lg:overflow-hidden xl:flex xl:min-h-0 xl:flex-1 xl:flex-col"><div className="hidden h-11 items-center justify-between border-b border-[var(--surface-border)] px-4 lg:flex"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{tab === 'current' ? <CalendarDays aria-hidden size={14} className="text-[var(--accent)]" /> : <Archive aria-hidden size={14} className="text-[var(--accent)]" />}{tab === 'current' ? 'Aktuální firmy v odstávkách' : 'Archiv firem v odstávkách'}</h3><span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 text-[9px] font-bold text-[var(--text-secondary)]">{totalCount}</span></div>
+      {records.length ? <div ref={scrollContainerRef} className="-mx-2 max-h-[610px] overflow-y-auto px-2 py-1 lg:mx-0 lg:max-h-[500px] lg:px-0 lg:py-0 xl:min-h-0 xl:max-h-none xl:flex-1">
         <div className="hidden lg:block"><table className="w-full table-fixed border-collapse text-left">
           <thead className="power-outages-table__header sticky top-0 z-10 shadow-[0_1px_0_var(--surface-border)]"><tr className="text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]"><th className="w-[17%] px-3 py-2.5">Firma / subjekt</th><th className="w-[16%] px-3 py-2.5">Adresa</th><th className="w-[8%] px-3 py-2.5">Distributor</th><th className="w-[14%] px-3 py-2.5">Termín od</th><th className="w-[14%] px-3 py-2.5">Termín do</th><th className="w-[22%] px-3 py-2.5">Stav</th><th className="w-[9%] px-3 py-2.5 text-right">Akce</th></tr></thead>
-          <tbody className="divide-y divide-[var(--surface-border)]">{filtered.map((item) => <tr key={item.candidateId} className="group transition-colors hover:bg-[var(--surface-muted)]">
+          <tbody className="divide-y divide-[var(--surface-border)]">{records.map((item) => <tr key={item.candidateId} className="group transition-colors hover:bg-[var(--surface-muted)]">
             <td className="px-3 py-3 align-middle"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /></span><span className="min-w-0"><strong className="block truncate text-[11px] text-[var(--text-primary)]">{item.companyName}</strong><small className="block truncate text-[9px] font-semibold text-[var(--text-secondary)]">{item.ico ? `IČO ${item.ico}` : 'IČO neuvedeno'}</small></span></div></td>
             <td className="px-3 py-3 align-middle"><strong className="block truncate text-[10px] text-[var(--text-primary)]">{item.municipality}</strong><small className="block truncate text-[9px] text-[var(--text-secondary)]">{addressLabel(item)}</small></td>
             <td className="px-3 py-3 align-middle"><SourceBadge source={item.source} /></td>
@@ -378,8 +448,11 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
             <td className="py-3 pl-1.5 pr-3 align-middle"><div className="flex justify-end gap-1.5"><button type="button" onClick={() => void openDetail(item)} aria-label={`Otevřít detail odstávky pro firmu ${item.companyName}`} title="Detail odstávky" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Eye aria-hidden size={14} /></button><button type="button" onClick={() => openAnnouncement(item)} aria-label={`Vytvořit oznámení o odstávce pro firmu ${item.companyName}`} title="Oznámení o odstávce" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Send aria-hidden size={13} /></button></div></td>
           </tr>)}</tbody>
         </table></div>
-        <div className="grid gap-2.5 lg:hidden">{filtered.map((item) => <MobileCard key={item.candidateId} item={item} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} onAssignment={() => openAssignment(item)} />)}</div>
-      </div> : <div className="flex min-h-[300px] flex-col items-center justify-center px-5 text-center"><SearchCheck aria-hidden size={26} className="text-[var(--accent)]" /><strong className="mt-3 text-sm text-[var(--text-primary)]">{activeFilterCount ? 'Žádný výsledek neodpovídá filtrům.' : 'Zatím nebyla nalezena žádná firma.'}</strong><span className="mt-1 text-xs text-[var(--text-secondary)]">{activeFilterCount ? 'Upravte nebo zrušte aktivní filtry.' : 'Výsledky se zobrazí po dokončení vyhledávací fronty.'}</span></div>}
+        <div className="grid gap-2.5 lg:hidden">{records.map((item) => <MobileCard key={item.candidateId} item={item} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} onAssignment={() => openAssignment(item)} />)}</div>
+        <div ref={loadMoreRef} className="flex min-h-14 items-center justify-center px-4 py-3">
+          {pageLoading ? <span className="inline-flex items-center gap-2 text-[10px] font-semibold text-[var(--text-secondary)]"><LoaderCircle aria-hidden size={15} className="animate-spin text-[var(--accent)]" /> Načítám další záznamy…</span> : pageError ? <div className="flex flex-wrap items-center justify-center gap-2 text-center"><span className="text-[10px] font-medium text-red-600 [html[data-theme=dark]_&]:text-red-300">{pageError}</span><button type="button" onClick={() => void loadPage(false)} className="h-8 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase text-[var(--accent)] transition hover:-translate-y-px">Zkusit znovu</button></div> : hasMore ? <span className="text-[9px] text-[var(--text-secondary)]">Další záznamy se načtou automaticky.</span> : <span className="text-[9px] text-[var(--text-secondary)]">Zobrazeny všechny výsledky.</span>}
+        </div>
+      </div> : pageLoading ? <div className="flex min-h-[300px] items-center justify-center"><span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)]"><LoaderCircle aria-hidden size={18} className="animate-spin text-[var(--accent)]" /> Načítám výsledky…</span></div> : pageError ? <div className="flex min-h-[300px] flex-col items-center justify-center px-5 text-center"><SearchCheck aria-hidden size={26} className="text-red-500" /><strong className="mt-3 text-sm text-[var(--text-primary)]">Výsledky se nepodařilo načíst.</strong><span className="mt-1 max-w-lg text-xs text-[var(--text-secondary)]">{pageError}</span><button type="button" onClick={() => void loadPage(true)} className="mt-4 h-9 rounded-xl bg-[var(--accent)] px-4 text-[9px] font-bold uppercase text-white transition hover:-translate-y-px">Zkusit znovu</button></div> : <div className="flex min-h-[300px] flex-col items-center justify-center px-5 text-center"><SearchCheck aria-hidden size={26} className="text-[var(--accent)]" /><strong className="mt-3 text-sm text-[var(--text-primary)]">{activeFilterCount ? 'Žádný výsledek neodpovídá filtrům.' : 'Zatím nebyla nalezena žádná vyhodnocená firma.'}</strong><span className="mt-1 text-xs text-[var(--text-secondary)]">{activeFilterCount ? 'Upravte nebo zrušte aktivní filtry.' : 'Nezpracované kandidáty systém skryje; výsledky se objeví až po vyhodnocení.'}</span></div>}
     </div>
     {selected && popupMode && typeof document !== 'undefined' ? createPortal(
       popupMode === 'detail'
