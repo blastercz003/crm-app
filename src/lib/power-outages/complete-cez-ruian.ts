@@ -42,6 +42,21 @@ type RepresentativeAddress = {
   sjtskX: number | null
 }
 
+function normalizeMunicipalityName(value: string) {
+  const normalized = normalizePowerOutageText(value)
+  if (normalized) return normalized
+
+  // Sdílený normalizátor odstraňuje samostatné slovo „ulice“. Obec Úlice je
+  // proto jediný platný název RÚIAN, který by jinak skončil prázdným řetězcem.
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('cs-CZ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
 function chunks<T>(values: T[], size: number) {
   const result: T[][] = []
   for (let index = 0; index < values.length; index += size) {
@@ -151,7 +166,7 @@ export async function importCompleteCezMunicipalityCatalog() {
     .map((row): MunicipalityRow => ({
       municipality_code: row[0],
       municipality_name: row[1],
-      municipality_name_normalized: normalizePowerOutageText(row[1]),
+      municipality_name_normalized: normalizeMunicipalityName(row[1]),
       district_code: row[4] || null,
       source_valid_on: validOn,
       is_active: !(row[8] ?? '').trim(),
@@ -344,7 +359,7 @@ export async function importCompleteCezRepresentativeAddresses(requestedLimit = 
     const rows = batch.map(({ municipality, representative, source }) => ({
       municipality_code: municipality.municipality_code,
       municipality_name: municipality.municipality_name,
-      municipality_name_normalized: normalizePowerOutageText(municipality.municipality_name),
+      municipality_name_normalized: normalizeMunicipalityName(municipality.municipality_name),
       representative_address_code: representative!.addressCode,
       representative_street: representative!.street,
       representative_house_number: representative!.houseNumber,

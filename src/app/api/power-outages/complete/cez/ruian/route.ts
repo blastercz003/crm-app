@@ -10,6 +10,15 @@ export const maxDuration = 300
 
 const HEADERS = { 'Cache-Control': 'no-store, max-age=0' } as const
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim()) return message
+  }
+  return 'Import RÚIAN pro ČEZ selhal.'
+}
+
 async function run(request: Request, allowAdminSession: boolean) {
   const authorized = allowAdminSession
     ? await isPowerOutageRequestAuthorized(request, { adminOnly: true })
@@ -45,7 +54,7 @@ async function run(request: Request, allowAdminSession: boolean) {
       errorType: 'CompleteCezRuianImportError',
     })
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Import RÚIAN pro ČEZ selhal.' },
+      { ok: false, error: errorMessage(error) },
       { status: 500, headers: HEADERS },
     )
   }
