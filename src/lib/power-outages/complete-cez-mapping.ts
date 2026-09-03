@@ -96,6 +96,9 @@ function chooseMappedAddress(candidates: CezAddress[], target: MappingCandidate)
 function distribution(address: CezAddress) {
   const normalized = normalizePowerOutageText(address.dso)
   if (normalized.includes('cez')) return 'cez' as const
+  // Veřejný adresní endpoint ČEZ vrací pro přesné adresy v území EG.D/PRE
+  // prázdné dso; na adresách ČEZ používá hodnotu CEZd.
+  if (!normalized) return 'not_cez' as const
   if (
     normalized.includes('egd')
     || normalized.includes('eon')

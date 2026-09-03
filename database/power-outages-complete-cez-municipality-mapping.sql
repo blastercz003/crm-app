@@ -151,4 +151,19 @@ revoke all on function public.request_complete_power_outage_cez_mapping(integer)
 grant execute on function public.request_complete_power_outage_cez_mapping(integer)
   to service_role;
 
+-- Pilot mohl před nasazením přesnější klasifikace uložit prázdné dso jako
+-- neznámé. Přesná RÚIAN shoda zůstává platná; mění se pouze klasifikace území.
+update public.complete_power_outage_cez_municipalities
+set mapping_status = 'not_cez',
+    distribution_status = 'not_cez',
+    mapping_next_attempt_at = null,
+    mapping_error_code = null,
+    mapping_error_message = null,
+    scan_status = 'disabled'
+where mapping_status = 'needs_review'
+  and mapping_error_code = 'CEZ_DSO_UNKNOWN'
+  and coalesce(metadata #>> '{cezMapping,selectedDso}', '') = ''
+  and cez_address_id is not null
+  and cez_town_code is not null;
+
 commit;
