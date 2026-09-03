@@ -184,7 +184,7 @@ function SourcePanel({ source, totalStoreCount, onOpen }: { source: PowerOutageS
           >
             <i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
             <span className="translate-y-px">{status.label}</span>
-            {needsAttention ? <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--surface-strong)] bg-amber-400 text-[9px] font-black leading-none text-slate-950 shadow-sm">!</span> : null}
+            {needsAttention ? <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black leading-none text-slate-950 shadow-sm">!</span> : null}
           </button>
         </div>
       </div>
