@@ -139,7 +139,7 @@ export async function importCompleteCezMunicipalityCatalog() {
   )
   if (!response.ok) throw new Error(`Číselník obcí RÚIAN odpověděl HTTP ${response.status}.`)
 
-  const rows = csvRows(unzipSingleCsv(body, 'utf-8'))
+  const rows = csvRows(unzipSingleCsv(body, 'windows-1250'))
   const header = rows.shift()
   if (!header || header[0] !== 'KOD' || header[1] !== 'NAZEV') {
     throw new Error('Číselník obcí RÚIAN má neočekávanou strukturu.')
