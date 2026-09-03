@@ -200,7 +200,7 @@ export type CompleteSourceDiagnostic = {
 export type CompleteProviderState = {
   provider: 'ares' | 'mapy' | 'google'
   configured: boolean
-  status: 'inactive' | 'waiting' | 'processing' | 'current' | 'partial' | 'error'
+  status: 'inactive' | 'waiting' | 'processing' | 'current' | 'partial' | 'error' | 'exhausted'
   statusMessage: string
   readyCount: number
   pendingCount: number
@@ -208,6 +208,14 @@ export type CompleteProviderState = {
   errorCount: number
   minuteRequestCount: number
   dayRequestCount: number
+  dayRequestLimit: number
+  dayRequestRemaining: number
+  monthlyCreditCount: number
+  monthlyCreditLimit: number
+  monthlyCreditSafetyCap: number
+  monthlyCreditRemaining: number
+  completeCreditCount: number
+  marketsCreditCount: number
   lastRequestAt: string | null
 }
 

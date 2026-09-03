@@ -142,6 +142,16 @@ function distanceMeters(leftLon: number, leftLat: number, rightLon: number, righ
   return Math.round(6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
 }
 async function fetchMapy(url: URL) {
+  const client = getServiceRoleClient()
+  if (!client) throw new Error('Chybí serverové připojení pro kontrolu kreditů Mapy.com.')
+  const { data: quotaGranted, error: quotaError } = await client.rpc('claim_power_outage_mapy_credits', {
+    requested_consumer: 'markets',
+    requested_credits: 4,
+  })
+  if (quotaError) throw quotaError
+  if (quotaGranted !== true) {
+    throw new Error('Měsíční kreditní rozpočet Mapy.com je vyčerpaný.')
+  }
   const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(12_000), headers: { Accept: 'application/json' } })
   if (!response.ok) throw new Error(`Mapy.com odpověděly HTTP ${response.status}.`)
   return response.json() as Promise<MapyResponse>

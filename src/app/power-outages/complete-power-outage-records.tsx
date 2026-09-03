@@ -44,6 +44,7 @@ import {
   releaseCompletePowerOutageAssignmentAction,
   saveCompletePowerOutageAssignmentAction,
 } from './actions'
+import { copyPowerOutageAnnouncement, PowerOutageAnnouncementPreview, type PowerOutageAnnouncementData } from './power-outage-announcement'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
 
 type Tab = 'current' | 'archive'
@@ -146,30 +147,25 @@ function CompleteDetailPopup({ item, detail, loading, error, onClose }: { item: 
   </PowerOutagePopupShell>
 }
 
-function buildAnnouncement(item: CompletePowerOutageListItem) {
-  return `Oznámení o plánované odstávce elektřiny
-
-Dobrý den,
-
-dovolujeme si Vás informovat o plánované odstávce elektrické energie, která se týká níže uvedené firmy nebo provozovny.
-
-Firma / subjekt: ${item.companyName}
-${item.ico ? `IČO: ${item.ico}\n` : ''}Adresa: ${addressLabel(item)}, ${item.municipality}
-Distributor: ${sourceLabel(item.source)}
-Termín: ${formatDateTime(item.startsAt)} – ${formatDateTime(item.endsAt)}
-
-V uvedeném termínu prosím počítejte s přerušením dodávky elektrické energie.
-
-Děkujeme za součinnost.`
+function announcementData(item: CompletePowerOutageListItem): PowerOutageAnnouncementData {
+  return {
+    fields: [
+      { label: 'Firma / subjekt', value: item.companyName },
+      ...(item.ico ? [{ label: 'IČO', value: item.ico }] : []),
+      { label: 'Adresa', value: `${addressLabel(item)}, ${item.municipality}` },
+      { label: 'Distributor', value: sourceLabel(item.source) },
+    ],
+    period: `${formatDateTime(item.startsAt)} – ${formatDateTime(item.endsAt)}`,
+  }
 }
 
 function CompleteAnnouncementPopup({ item, onClose }: { item: CompletePowerOutageListItem; onClose: () => void }) {
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState<string | null>(null)
-  const announcement = buildAnnouncement(item)
+  const data = announcementData(item)
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(announcement)
+      await copyPowerOutageAnnouncement(data)
       setCopyError(null)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2_000)
@@ -181,7 +177,7 @@ function CompleteAnnouncementPopup({ item, onClose }: { item: CompletePowerOutag
   return <PowerOutagePopupShell titleId={`complete-power-outage-announcement-${item.candidateId}`} eyebrow="KOMPLETNÍ ODSTÁVKY" title="Oznámení o odstávce" icon={<FileText aria-hidden size={21} />} onClose={onClose}>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"><PowerOutageDetailRow label="Firma / subjekt" value={item.companyName} /><PowerOutageDetailRow label="IČO" value={item.ico || 'Neuvedeno'} /><PowerOutageDetailRow label="Distributor" value={sourceLabel(item.source)} /><PowerOutageDetailRow label="Adresa" value={`${addressLabel(item)}, ${item.municipality}`} /><PowerOutageDetailRow label="Termín od" value={formatDateTime(item.startsAt)} /><PowerOutageDetailRow label="Termín do" value={formatDateTime(item.endsAt)} /></div>
-      <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4 sm:p-5"><pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--text-primary)] sm:text-sm">{announcement}</pre></div>
+      <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4 sm:p-5"><PowerOutageAnnouncementPreview data={data} /></div>
       {copyError ? <p className="mt-2 text-xs font-medium text-red-600 [html[data-theme=dark]_&]:text-red-300">{copyError}</p> : null}
     </div>
     <footer className="shrink-0 border-t border-[var(--surface-border)] p-4 sm:p-5"><button type="button" onClick={copy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 text-xs font-bold uppercase text-white shadow-[0_10px_24px_var(--shadow-medium)] transition hover:-translate-y-px sm:w-auto">{copied ? <Check aria-hidden size={16} /> : <Clipboard aria-hidden size={16} />}{copied ? 'TEXT ZKOPÍROVÁN' : 'KOPÍROVAT TEXT'}</button></footer>

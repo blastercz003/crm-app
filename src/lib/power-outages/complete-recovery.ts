@@ -139,7 +139,7 @@ export async function recoverCompletePowerOutageTask(
   if (input.target === 'source_projection') {
     result = await syncCompletePowerOutageCatalogSource(input.source)
   } else if (input.target === 'provider_discovery') {
-    const safeLimit = input.provider === 'ares' ? 100 : input.provider === 'mapy' ? 5 : 2
+    const safeLimit = input.provider === 'ares' ? 100 : input.provider === 'mapy' ? 7 : 2
     result = await discoverCompletePowerOutageCompanies(input.provider, safeLimit)
   } else if (input.target === 'address_normalization') {
     result = await normalizeCompletePowerOutageAddresses(300)

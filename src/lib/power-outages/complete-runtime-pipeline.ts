@@ -72,10 +72,10 @@ export async function runCompletePowerOutageRuntimePipeline() {
     () => normalizeCompletePowerOutageAddresses(300),
   ))
 
-  // Zdroje běží postupně. Limity níže jsou záměrně nižší než providerové
-  // stropy; skutečný minutový i denní limit navíc atomicky hlídá databáze.
+  // Zdroje běží postupně. Skutečný minutový, denní a u Mapy.com také společný
+  // měsíční kreditní limit atomicky hlídá databáze.
   steps.push(await runProvider('ares', 100))
-  steps.push(await runProvider('mapy', 5))
+  steps.push(await runProvider('mapy', 7))
   steps.push(await runProvider('google', 2))
 
   steps.push(await runStep(

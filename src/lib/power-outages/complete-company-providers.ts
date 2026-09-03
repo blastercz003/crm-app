@@ -38,9 +38,13 @@ export const PROVIDER_LIMITS: Record<CompleteDiscoveryProvider, {
   cacheHours: number | null
 }> = {
   ares: { minute: 60, day: 20_000, maxPerRun: 100, cacheHours: 7 * 24 },
-  mapy: { minute: 5, day: 300, maxPerRun: 8, cacheHours: 7 * 24 },
+  mapy: { minute: 7, day: 1_900, maxPerRun: 7, cacheHours: 7 * 24 },
   google: { minute: 3, day: 100, maxPerRun: 5, cacheHours: 24 },
 }
+
+export const MAPY_MONTHLY_CREDIT_LIMIT = 250_000
+export const MAPY_MONTHLY_CREDIT_SAFETY_CAP = 245_000
+export const MAPY_CREDITS_PER_REQUEST = 4
 
 const aresResponseSchema = z.object({
   ekonomickeSubjekty: z.array(z.object({

@@ -23,7 +23,7 @@ import type {
   CompleteSourceState,
 } from './complete-types'
 import type { PowerOutageSource } from './types'
-import { providerConfigured, PROVIDER_LIMITS } from './complete-company-providers'
+import { MAPY_MONTHLY_CREDIT_LIMIT, MAPY_MONTHLY_CREDIT_SAFETY_CAP, providerConfigured, PROVIDER_LIMITS } from './complete-company-providers'
 
 type OverviewRow = {
   candidate_id: string
@@ -269,11 +269,13 @@ function mapSourceState(
 function providerStatus(input: {
   configured: boolean
   errorCount: number
+  quotaExhausted: boolean
   task?: Record<string, unknown> | null
 }): Pick<CompleteProviderState, 'status' | 'statusMessage'> {
   if (!input.configured) return { status: 'inactive', statusMessage: 'Poskytovatel není nakonfigurovaný.' }
   if (input.task?.last_status === 'running') return { status: 'processing', statusMessage: 'Právě probíhá dohledávání firem.' }
   if (input.task?.last_status === 'failed') return { status: 'error', statusMessage: String(input.task.last_error_message || 'Poslední běh selhal.') }
+  if (input.quotaExhausted) return { status: 'exhausted', statusMessage: 'Měsíční bezpečnostní rozpočet Mapy.com je vyčerpaný.' }
   if (input.task?.last_status === 'partial' || input.errorCount > 0) return { status: 'partial', statusMessage: input.errorCount > 0 ? `${input.errorCount} dotazů čeká na opravu nebo opakování.` : 'Poslední běh byl dokončen pouze částečně.' }
   if (input.task?.last_success_at) return { status: 'current', statusMessage: 'Automatické dohledávání pracuje správně.' }
   return { status: 'waiting', statusMessage: 'Poskytovatel čeká na první dokončený běh.' }
@@ -283,17 +285,34 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
   const provider = row.provider as CompleteProviderState['provider']
   const configured = providerConfigured(provider)
   const errorCount = Number(row.error_count)
+  const lastRequestAt = row.last_request_at as string | null
+  const lastRequestMs = lastRequestAt ? new Date(lastRequestAt).getTime() : Number.NaN
+  const lastRequestAge = Number.isFinite(lastRequestMs) ? Date.now() - lastRequestMs : Number.POSITIVE_INFINITY
+  const minuteRequestCount = lastRequestAge <= 60_000 ? Number(row.minute_request_count) : 0
+  const dayRequestCount = lastRequestAge <= 24 * 60 * 60_000 ? Number(row.day_request_count) : 0
+  const dayRequestLimit = PROVIDER_LIMITS[provider].day
+  const monthlyCreditLimit = provider === 'mapy' ? MAPY_MONTHLY_CREDIT_LIMIT : 0
+  const monthlyCreditSafetyCap = provider === 'mapy' ? MAPY_MONTHLY_CREDIT_SAFETY_CAP : 0
+  const monthlyCreditCount = provider === 'mapy' ? Number(row.monthly_credit_count ?? 0) : 0
   return {
     provider,
     configured,
-    ...providerStatus({ configured, errorCount, task }),
+    ...providerStatus({ configured, errorCount, quotaExhausted: monthlyCreditSafetyCap > 0 && monthlyCreditCount >= monthlyCreditSafetyCap, task }),
     readyCount: Number(row.ready_count),
     pendingCount: Number(row.pending_count),
     notFoundCount: Number(row.not_found_count),
     errorCount,
-    minuteRequestCount: Number(row.minute_request_count),
-    dayRequestCount: Number(row.day_request_count),
-    lastRequestAt: row.last_request_at as string | null,
+    minuteRequestCount,
+    dayRequestCount,
+    dayRequestLimit,
+    dayRequestRemaining: Math.max(0, dayRequestLimit - dayRequestCount),
+    monthlyCreditCount,
+    monthlyCreditLimit,
+    monthlyCreditSafetyCap,
+    monthlyCreditRemaining: Math.max(0, monthlyCreditLimit - monthlyCreditCount),
+    completeCreditCount: provider === 'mapy' ? Number(row.complete_credit_count ?? 0) : 0,
+    marketsCreditCount: provider === 'mapy' ? Number(row.markets_credit_count ?? 0) : 0,
+    lastRequestAt,
   }
 }
 
@@ -467,7 +486,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('source,total_target_count,completed_target_count,pending_target_count,error_target_count,exact_target_count,street_target_count,last_progress_at').order('source'),
-    supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,last_request_at').order('provider'),
+    supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_company_assignments').select('owner_id,owner_name').order('owner_name').limit(1_000),
   ])
@@ -678,7 +697,7 @@ export async function getCompletePowerOutageProviderDiagnostic(
   const { supabase } = await getPowerOutageRuntimeContext()
   const [overviewResult, taskResult, runsResult, errorsResult] = await Promise.all([
     supabase.from('complete_power_outage_provider_overview')
-      .select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,last_request_at')
+      .select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at')
       .eq('provider', provider).maybeSingle(),
     supabase.from('complete_power_outage_task_state')
       .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')

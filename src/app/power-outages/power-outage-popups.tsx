@@ -23,6 +23,7 @@ import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { useModalMotionClose } from '@/components/ui/modal-motion'
 import type { PowerOutageDetail, PowerOutageListItem } from '@/lib/power-outages/types'
+import { copyPowerOutageAnnouncement, PowerOutageAnnouncementPreview, type PowerOutageAnnouncementData } from './power-outage-announcement'
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
   timeZone: 'Europe/Prague',
@@ -405,32 +406,26 @@ function DetailPopup({ item, detail, loading, error, onClose, onStatusChanged }:
   )
 }
 
-function buildAnnouncement(item: PowerOutageListItem) {
-  return `Oznámení o plánované odstávce elektřiny
-
-Dobrý den,
-
-dovolujeme si Vás informovat o plánované odstávce elektrické energie, která se týká níže uvedené prodejny.
-
-Řetězec: ${item.store.chainName}
-Číslo prodejny: ${item.store.storeNumber}
-Adresa: ${item.store.address}, ${item.store.city}
-Distributor: ${sourceName(item.source)}
-Termín: ${formatDateTime(item.startsAt)} – ${formatDateTime(item.endsAt)}
-
-V uvedeném termínu prosím počítejte s přerušením dodávky elektrické energie.
-
-Děkujeme za součinnost.`
+function announcementData(item: PowerOutageListItem): PowerOutageAnnouncementData {
+  return {
+    fields: [
+      { label: 'Firma / subjekt', value: item.store.chainName },
+      { label: 'Číslo prodejny', value: item.store.storeNumber },
+      { label: 'Adresa', value: `${item.store.address}, ${item.store.city}` },
+      { label: 'Distributor', value: sourceName(item.source) },
+    ],
+    period: `${formatDateTime(item.startsAt)} – ${formatDateTime(item.endsAt)}`,
+  }
 }
 
 function AnnouncementPopup({ item, onClose }: { item: PowerOutageListItem; onClose: () => void }) {
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState<string | null>(null)
-  const text = buildAnnouncement(item)
+  const data = announcementData(item)
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text)
+      await copyPowerOutageAnnouncement(data)
       setCopyError(null)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2_000)
@@ -451,7 +446,7 @@ function AnnouncementPopup({ item, onClose }: { item: PowerOutageListItem; onClo
           <PowerOutageDetailRow label="Termín do" value={formatDateTime(item.endsAt)} />
         </div>
         <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4 sm:p-5">
-          <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--text-primary)] sm:text-sm">{text}</pre>
+          <PowerOutageAnnouncementPreview data={data} />
         </div>
         {copyError ? <p className="mt-2 text-xs font-medium text-red-600 [html[data-theme=dark]_&]:text-red-300">{copyError}</p> : null}
       </div>
