@@ -1,10 +1,10 @@
-import { Building2, Database, MapPinned, SearchCheck } from 'lucide-react'
+import { CircleCheckBig, Database, SearchCheck, TriangleAlert } from 'lucide-react'
 
 const SUMMARY = [
-  { label: 'NALEZENÉ ODSTÁVKY', icon: Database, tone: 'blue' },
-  { label: 'NALEZENÉ FIRMY', icon: Building2, tone: 'amber' },
-  { label: 'K OVĚŘENÍ', icon: SearchCheck, tone: 'violet' },
-  { label: 'ZPRACOVANÉ ADRESY', icon: MapPinned, tone: 'slate' },
+  { label: 'AKTUÁLNÍ ODSTÁVKY', icon: Database, tone: 'blue' },
+  { label: 'NALEZENÉ SHODY', icon: SearchCheck, tone: 'violet' },
+  { label: 'POTVRZENÉ SHODY', icon: CircleCheckBig, tone: 'emerald' },
+  { label: 'K OVĚŘENÍ', icon: TriangleAlert, tone: 'amber' },
 ] as const
 
 export function CompletePowerOutagesScaffold() {

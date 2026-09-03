@@ -158,15 +158,41 @@ function mapSourceDiscovery(
   const errorTargetCount = Number(row?.error_target_count ?? 0)
   const exactTargetCount = Number(row?.exact_target_count ?? 0)
   const streetTargetCount = Number(row?.street_target_count ?? 0)
+  const exactPendingTargetCount = Number(row?.exact_pending_target_count ?? 0)
+  const streetPendingTargetCount = Number(row?.street_pending_target_count ?? 0)
   const remainingTargetCount = Math.max(0, totalTargetCount - completedTargetCount)
   const lastProgressAt = (row.last_progress_at as string | null | undefined) ?? null
   const progressPercent = totalTargetCount > 0
     ? Math.round((completedTargetCount / totalTargetCount) * 1000) / 10
     : 100
-  const lastProgressMs = lastProgressAt ? new Date(lastProgressAt).getTime() : Number.NaN
-  const delayed = pendingTargetCount > 0
-    && Number.isFinite(lastProgressMs)
-    && Date.now() - lastProgressMs > 30 * 60_000
+  const progressIsStale = (lastProviderProgress: unknown, oldestPending: unknown) => {
+    const reference = typeof lastProviderProgress === 'string' && lastProviderProgress
+      ? lastProviderProgress
+      : typeof oldestPending === 'string' && oldestPending
+        ? oldestPending
+        : null
+    if (!reference) return false
+    const referenceMs = new Date(reference).getTime()
+    return Number.isFinite(referenceMs) && Date.now() - referenceMs > 30 * 60_000
+  }
+  const stalledProviders = [
+    exactPendingTargetCount > 0 && progressIsStale(row.exact_last_progress_at, row.exact_oldest_pending_at)
+      ? 'ARES'
+      : null,
+    streetPendingTargetCount > 0 && progressIsStale(row.street_last_progress_at, row.street_oldest_pending_at)
+      ? 'Mapy.com'
+      : null,
+  ].filter((provider): provider is string => Boolean(provider))
+  // Starší verze pohledu nemá rozpad podle povinného providera. Fallback
+  // zachová dosavadní diagnostiku během bezpečného nasazení SQL před aplikací.
+  const splitProgressAvailable = row.exact_pending_target_count != null
+    && row.street_pending_target_count != null
+  const fallbackLastProgressMs = lastProgressAt ? new Date(lastProgressAt).getTime() : Number.NaN
+  const delayed = splitProgressAvailable
+    ? stalledProviders.length > 0
+    : pendingTargetCount > 0
+      && Number.isFinite(fallbackLastProgressMs)
+      && Date.now() - fallbackLastProgressMs > 30 * 60_000
   const requiredTaskKeys = [
     ...(exactTargetCount > 0 ? ['discover_ares'] : []),
     ...(streetTargetCount > 0 ? ['discover_mapy'] : []),
@@ -209,7 +235,9 @@ function mapSourceDiscovery(
         ? 'Právě se aktualizují zdrojová data distributora.'
         : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.${errorTargetCount > 0 ? ` Dílčí chyby: ${errorTargetCount}.` : ''}`
       : status === 'delayed'
-        ? `Čeká na další kapacitu vyhledávání · zbývá ${remainingTargetCount} cílů.`
+        ? splitProgressAvailable && stalledProviders.length > 0
+          ? `${stalledProviders.join(' + ')}: povinný krok se déle než 30 minut neposunul · zbývá ${remainingTargetCount} cílů.`
+          : `Povinné vyhledávání se déle než 30 minut neposunulo · zbývá ${remainingTargetCount} cílů.`
         : status === 'error'
           ? failedRequiredTask
             ? String(failedRequiredTask.last_error_message || 'Povinná úloha vyhledávání firem skončila chybou.')
@@ -485,7 +513,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'unresolved'), 'Počet nerozpoznaných adres se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
-    supabase.from('complete_power_outage_source_discovery_overview').select('source,total_target_count,completed_target_count,pending_target_count,error_target_count,exact_target_count,street_target_count,last_progress_at').order('source'),
+    supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_company_assignments').select('owner_id,owner_name').order('owner_name').limit(1_000),
@@ -600,7 +628,7 @@ export async function getCompletePowerOutageSourceDiagnostic(
       .select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata')
       .eq('source', source).maybeSingle(),
     supabase.from('complete_power_outage_source_discovery_overview')
-      .select('source,total_target_count,completed_target_count,pending_target_count,error_target_count,exact_target_count,street_target_count,last_progress_at')
+      .select('*')
       .eq('source', source).maybeSingle(),
     supabase.from('complete_power_outage_source_provider_overview')
       .select('source,provider,total_target_count,completed_target_count,pending_target_count,found_target_count,not_found_target_count,error_target_count,last_progress_at')

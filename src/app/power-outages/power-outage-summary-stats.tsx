@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Archive, Database, SearchCheck, Zap } from 'lucide-react'
+import { Archive, CircleCheckBig, Database, SearchCheck, TriangleAlert, Zap } from 'lucide-react'
 
 type SummaryTone = 'blue' | 'amber' | 'violet' | 'emerald' | 'slate'
 
@@ -9,14 +9,17 @@ export type PowerOutageSummaryCard = {
   label: string
   value: number
   tone: SummaryTone
+  icon?: 'check' | 'review'
 }
 
 const ICONS = {
   blue: Database,
   amber: Zap,
   violet: SearchCheck,
-  emerald: Archive,
+  emerald: CircleCheckBig,
   slate: Archive,
+  check: CircleCheckBig,
+  review: TriangleAlert,
 } as const
 
 const COUNT_DURATION_MS = 4_500
@@ -84,7 +87,7 @@ export function PowerOutageSummaryStats({ cards }: { cards: PowerOutageSummaryCa
   return (
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Souhrn plánovaných odstávek">
       {cards.map((card, index) => {
-        const Icon = ICONS[card.tone]
+        const Icon = ICONS[card.icon ?? card.tone]
         return (
           <article
             key={card.label}
