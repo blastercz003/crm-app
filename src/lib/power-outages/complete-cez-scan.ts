@@ -193,6 +193,35 @@ async function saveStagingResult(
     if (error) throw error
   }
 
+  const replacementAddressHashes = new Map(addressRows.map((row) => [
+    `${row.outage_external_id}:${row.address_key}`,
+    row.payload_sha256,
+  ]))
+  const changedExistingAddressIds = existingAddresses
+    .filter((address) => {
+      const replacementHash = replacementAddressHashes.get(
+        `${address.outage_external_id}:${address.address_key}`,
+      )
+      return replacementHash && replacementHash !== address.payload_sha256
+    })
+    .map((address) => address.id)
+  if (changedExistingAddressIds.length > 0) {
+    const { error } = await client
+      .from('complete_power_outage_cez_staged_addresses')
+      .update({
+        normalization_version: 0,
+        normalization_status: 'pending',
+        normalized_at: null,
+        normalization_next_attempt_at: null,
+        normalization_error_code: null,
+        normalization_error_message: null,
+        normalization_lock_token: null,
+        normalization_lock_expires_at: null,
+      })
+      .in('id', changedExistingAddressIds)
+    if (error) throw error
+  }
+
   const currentAddressKeys = new Set(
     addressRows.map((address) => `${address.outage_external_id}:${address.address_key}`),
   )
