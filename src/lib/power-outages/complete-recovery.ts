@@ -45,7 +45,7 @@ function activeLock(task: TaskState) {
 function requiresManualRepair(task: TaskState) {
   const value = `${task.last_error_code ?? ''} ${task.last_error_message ?? ''}`
   if (/cpo_runs_one_running_uidx/i.test(value)) return false
-  return /(?:API_KEY|provider_not_configured|schema cache|could not find (?:the )?(?:table|column|function)|does not exist|permission denied|unauthorized|violates (?:check|foreign key) constraint)/i.test(value)
+  return /(?:API_KEY|provider_not_configured|HTTP\s+(?:401|403)|schema cache|could not find (?:the )?(?:table|column|function)|does not exist|permission denied|unauthorized|violates (?:check|foreign key) constraint)/i.test(value)
 }
 
 async function closeOrphanRuns(
@@ -100,7 +100,18 @@ export async function recoverCompletePowerOutageTask(
       message: 'Úloha už skutečně běží. Nebyla spuštěna její druhá kopie.',
     }
   }
-  if (!['failed', 'partial'].includes(data.last_status)) {
+
+  const activeProviderErrors = input.target === 'provider_discovery'
+    ? await client
+      .from('complete_power_outage_active_provider_errors')
+      .select('id', { count: 'exact', head: true })
+      .eq('provider', input.provider)
+      .in('lookup_status', ['error', 'needs_review'])
+    : { data: [], error: null, count: 0 }
+  if (activeProviderErrors.error) throw activeProviderErrors.error
+  const activeErrorCount = activeProviderErrors.count ?? 0
+
+  if (!['failed', 'partial'].includes(data.last_status) && activeErrorCount === 0) {
     return {
       status: 'not_needed',
       message: 'Úloha už není v chybovém stavu. Obnova nebyla potřeba.',
@@ -118,21 +129,10 @@ export async function recoverCompletePowerOutageTask(
   await closeOrphanRuns(client, input)
 
   if (input.target === 'provider_discovery') {
-    const now = new Date().toISOString()
-    const [{ error: lookupError }, { error: cacheError }] = await Promise.all([
-      client
-        .from('complete_power_outage_target_lookups')
-        .update({ next_attempt_at: now })
-        .eq('provider', input.provider)
-        .eq('lookup_status', 'error'),
-      client
-        .from('complete_power_outage_lookup_cache')
-        .update({ next_attempt_at: now })
-        .eq('provider', input.provider)
-        .eq('lookup_status', 'error'),
-    ])
-    if (lookupError) throw lookupError
-    if (cacheError) throw cacheError
+    const { error: resetError } = await client.rpc('reset_complete_power_outage_provider_errors', {
+      requested_provider: input.provider,
+    })
+    if (resetError) throw resetError
   }
 
   let result: unknown

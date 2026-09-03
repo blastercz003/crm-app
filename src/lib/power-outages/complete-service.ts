@@ -276,7 +276,7 @@ function providerStatus(input: {
   if (input.task?.last_status === 'running') return { status: 'processing', statusMessage: 'Právě probíhá dohledávání firem.' }
   if (input.task?.last_status === 'failed') return { status: 'error', statusMessage: String(input.task.last_error_message || 'Poslední běh selhal.') }
   if (input.quotaExhausted) return { status: 'exhausted', statusMessage: 'Měsíční bezpečnostní rozpočet Mapy.com je vyčerpaný.' }
-  if (input.task?.last_status === 'partial' || input.errorCount > 0) return { status: 'partial', statusMessage: input.errorCount > 0 ? `${input.errorCount} dotazů čeká na opravu nebo opakování.` : 'Poslední běh byl dokončen pouze částečně.' }
+  if (input.errorCount > 0) return { status: 'partial', statusMessage: `${input.errorCount} aktuálních dotazů čeká na opravu nebo opakování.` }
   if (input.task?.last_success_at) return { status: 'current', statusMessage: 'Automatické dohledávání pracuje správně.' }
   return { status: 'waiting', statusMessage: 'Poskytovatel čeká na první dokončený běh.' }
 }
@@ -705,9 +705,9 @@ export async function getCompletePowerOutageProviderDiagnostic(
     supabase.from('complete_power_outage_runs')
       .select('id,status,started_at,finished_at,source_record_count,company_upsert_count,evidence_upsert_count,cache_hit_count,error_count,error_code,error_message,metadata')
       .eq('provider', provider).eq('run_kind', 'company_discovery').order('started_at', { ascending: false }).limit(8),
-    supabase.from('complete_power_outage_target_lookups')
-      .select('id,target_id,attempt_count,last_attempt_at,next_attempt_at,last_error_code,last_error_message')
-      .eq('provider', provider).eq('lookup_status', 'error').order('last_attempt_at', { ascending: false }).limit(8),
+    supabase.from('complete_power_outage_active_provider_errors')
+      .select('id,target_id,query_text,target_kind,attempt_count,last_attempt_at,next_attempt_at,last_error_code,last_error_message')
+      .eq('provider', provider).in('lookup_status', ['error', 'needs_review']).order('last_attempt_at', { ascending: false }).limit(8),
   ])
   if (overviewResult.error) throw new Error(`Stav poskytovatele se nepodařilo načíst: ${overviewResult.error.message}`)
   if (taskResult.error) throw new Error(`Stav úlohy se nepodařilo načíst: ${taskResult.error.message}`)
@@ -715,12 +715,6 @@ export async function getCompletePowerOutageProviderDiagnostic(
   if (errorsResult.error) throw new Error(`Chybné dotazy se nepodařilo načíst: ${errorsResult.error.message}`)
   if (!overviewResult.data) throw new Error('Stav poskytovatele není dostupný.')
 
-  const targetIds = (errorsResult.data ?? []).map((row) => String(row.target_id))
-  const targetsResult = targetIds.length > 0
-    ? await supabase.from('complete_power_outage_address_targets').select('id,query_text,target_kind').in('id', targetIds)
-    : { data: [], error: null }
-  if (targetsResult.error) throw new Error(`Adresy chybných dotazů se nepodařilo načíst: ${targetsResult.error.message}`)
-  const targets = new Map((targetsResult.data ?? []).map((row) => [String(row.id), row]))
   const task = taskResult.data as Record<string, unknown> | null
   const state = mapProviderState(overviewResult.data, task)
   const runs = (runsResult.data ?? []).map((row): CompleteProviderRun => {
@@ -757,11 +751,10 @@ export async function getCompletePowerOutageProviderDiagnostic(
     } : null,
     runs,
     recentErrors: (errorsResult.data ?? []).map((row) => {
-      const target = targets.get(String(row.target_id))
       return {
         id: String(row.id),
-        queryText: String(target?.query_text ?? 'Neuvedený dotaz'),
-        targetKind: String(target?.target_kind ?? 'unknown'),
+        queryText: String(row.query_text ?? 'Neuvedený dotaz'),
+        targetKind: String(row.target_kind ?? 'unknown'),
         attemptCount: Number(row.attempt_count),
         lastAttemptAt: row.last_attempt_at,
         nextAttemptAt: row.next_attempt_at,

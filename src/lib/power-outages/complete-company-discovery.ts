@@ -30,6 +30,7 @@ type TargetRow = {
   query_text: string
   latitude: number | string | null
   longitude: number | string | null
+  lookup_status: 'error' | null
 }
 
 type CacheRow = {
@@ -155,34 +156,59 @@ async function saveLookup(input: {
   provider: CompleteDiscoveryProvider
   lookupKind: string
   lookupKey: string
-  status: 'ready' | 'not_found' | 'error' | 'skipped'
+  status: 'ready' | 'not_found' | 'error' | 'needs_review' | 'skipped'
   cacheId?: string | null
   resultCount?: number
   error?: string | null
   errorCode?: string | null
   metadata?: Record<string, unknown>
 }) {
-  const now = new Date().toISOString()
-  const retryAt = input.status === 'error' ? new Date(Date.now() + 15 * 60_000).toISOString() : null
+  const { data: previous, error: previousError } = await input.client
+    .from('complete_power_outage_target_lookups')
+    .select('attempt_count')
+    .eq('target_id', input.targetId)
+    .eq('provider', input.provider)
+    .maybeSingle<{ attempt_count: number }>()
+  if (previousError) throw previousError
+  const attemptCount = Number(previous?.attempt_count ?? 0) + 1
+  const httpStatus = input.error?.match(/HTTP\s+(\d{3})/i)?.[1]
+  const requiresReview = input.status === 'error' && httpStatus === '400' && attemptCount >= 3
+  const finalStatus = requiresReview ? 'needs_review' : input.status
+  const retryDelayMs = attemptCount <= 1
+    ? 15 * 60_000
+    : attemptCount === 2
+      ? 60 * 60_000
+      : 6 * 60 * 60_000
+  const nowDate = new Date()
+  const now = nowDate.toISOString()
+  const retryAt = finalStatus === 'error' ? new Date(nowDate.getTime() + retryDelayMs).toISOString() : null
   const { error } = await input.client.from('complete_power_outage_target_lookups').upsert({
     target_id: input.targetId,
     provider: input.provider,
     lookup_kind: input.lookupKind,
     lookup_key: input.lookupKey,
-    lookup_status: input.status,
+    lookup_status: finalStatus,
     cache_id: input.cacheId ?? null,
     result_count: input.resultCount ?? 0,
-    attempt_count: 1,
+    attempt_count: attemptCount,
     next_attempt_at: retryAt,
     last_attempt_at: now,
-    finished_at: input.status === 'error' ? null : now,
-    last_error_code: input.status === 'error'
-      ? input.errorCode ?? 'COMPLETE_PROVIDER_LOOKUP_FAILED'
+    finished_at: finalStatus === 'error' ? null : now,
+    last_error_code: finalStatus === 'error' || finalStatus === 'needs_review'
+      ? requiresReview ? 'COMPLETE_PROVIDER_REQUIRES_REVIEW' : input.errorCode ?? 'COMPLETE_PROVIDER_LOOKUP_FAILED'
       : null,
-    last_error_message: input.status === 'error' ? input.error?.slice(0, 2_000) ?? null : null,
-    metadata: input.metadata ?? {},
+    last_error_message: finalStatus === 'error' || finalStatus === 'needs_review' ? input.error?.slice(0, 2_000) ?? null : null,
+    metadata: { ...(input.metadata ?? {}), httpStatus: httpStatus ? Number(httpStatus) : null, retryDisposition: finalStatus },
   }, { onConflict: 'target_id,provider' })
   if (error) throw error
+  return { status: finalStatus, attemptCount }
+}
+
+function isGlobalProviderError(error: unknown) {
+  const message = powerOutageErrorMessage(error, '')
+  return /HTTP\s+(401|403)\b/i.test(message)
+    || /(?:API_KEY|provider_not_configured|chybí\s+(?:MAPY|GOOGLE).*API)/i.test(message)
+    || /(?:schema cache|fetch failed|permission denied|does not exist|connection|relation .* does not exist)/i.test(message)
 }
 
 async function saveCache(input: {
@@ -194,6 +220,15 @@ async function saveCache(input: {
   candidates: CompleteCompanyCandidate[]
   error?: string | null
 }) {
+  const { data: previous, error: previousError } = await input.client
+    .from('complete_power_outage_lookup_cache')
+    .select('attempt_count')
+    .eq('provider', input.provider)
+    .eq('lookup_kind', input.lookupKind)
+    .eq('lookup_key', input.lookupKey)
+    .maybeSingle<{ attempt_count: number }>()
+  if (previousError) throw previousError
+  const attemptCount = Number(previous?.attempt_count ?? 0) + 1
   const safeCandidates = cacheSafeCandidates(input.provider, input.candidates)
   const status: 'ready' | 'not_found' | 'error' = input.error
     ? 'error'
@@ -203,7 +238,12 @@ async function saveCache(input: {
   const now = new Date()
   const cacheHours = PROVIDER_LIMITS[input.provider].cacheHours
   const expiresAt = cacheHours ? new Date(now.getTime() + cacheHours * 60 * 60_000).toISOString() : null
-  const nextAttemptAt = input.error ? new Date(now.getTime() + 15 * 60_000).toISOString() : null
+  const retryDelayMs = attemptCount <= 1
+    ? 15 * 60_000
+    : attemptCount === 2
+      ? 60 * 60_000
+      : 6 * 60 * 60_000
+  const nextAttemptAt = input.error ? new Date(now.getTime() + retryDelayMs).toISOString() : null
   const { data, error } = await input.client.from('complete_power_outage_lookup_cache').upsert({
     provider: input.provider,
     lookup_kind: input.lookupKind,
@@ -213,7 +253,7 @@ async function saveCache(input: {
     response_count: safeCandidates.length,
     response_sha256: safeCandidates.length ? powerOutageSha256(safeCandidates) : null,
     normalized_results: safeCandidates,
-    attempt_count: 1,
+    attempt_count: attemptCount,
     fetched_at: now.toISOString(),
     expires_at: expiresAt,
     next_attempt_at: nextAttemptAt,
@@ -414,10 +454,16 @@ export async function discoverCompletePowerOutageCompanies(
   let evidenceCount = 0
   let errorCount = 0
   let quotaReached = false
+  let retryRequestCount = 0
+  let globalProviderError: string | null = null
   try {
     const targets = await loadTargets(client, provider, limit)
     for (const target of targets) {
       const identity = lookupIdentity(provider, target)
+      try {
+      const retryTarget = target.lookup_status === 'error'
+      const maxRetryRequests = Math.max(1, Math.floor(limit / 3))
+      if (retryTarget && retryRequestCount >= maxRetryRequests) continue
       if (!providerAcceptsTarget(provider, target.target_kind)) {
         await saveLookup({ client, targetId: target.id, provider, ...identity, status: 'skipped', metadata: { reason: 'target_too_broad' } })
         processedCount += 1
@@ -443,6 +489,7 @@ export async function discoverCompletePowerOutageCompanies(
         quotaReached = true
         break
       }
+      if (retryTarget) retryRequestCount += 1
       let candidates: CompleteCompanyCandidate[]
       externalRequestCount += 1
       try {
@@ -452,6 +499,10 @@ export async function discoverCompletePowerOutageCompanies(
         const message = powerOutageErrorMessage(error, `${provider.toUpperCase()} lookup selhal.`)
         const savedCache = await saveCache({ client, provider, ...identity, candidates: [], error: message })
         await saveLookup({ client, targetId: target.id, provider, ...identity, status: 'error', cacheId: savedCache.id, error: message })
+        if (isGlobalProviderError(error)) {
+          globalProviderError = message
+          break
+        }
         const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 650
         await new Promise((resolve) => setTimeout(resolve, delay))
         continue
@@ -486,6 +537,24 @@ export async function discoverCompletePowerOutageCompanies(
       }
       const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 650
       await new Promise((resolve) => setTimeout(resolve, delay))
+      } catch (targetError) {
+        errorCount += 1
+        const message = powerOutageErrorMessage(targetError, `Zpracování cíle ${provider.toUpperCase()} selhalo.`)
+        await saveLookup({
+          client,
+          targetId: target.id,
+          provider,
+          ...identity,
+          status: 'error',
+          error: message,
+          errorCode: 'COMPLETE_PROVIDER_TARGET_FAILED',
+          metadata: { isolatedTargetFailure: true },
+        }).catch(() => null)
+        if (isGlobalProviderError(targetError)) {
+          globalProviderError = message
+          break
+        }
+      }
     }
     const finishedAt = new Date().toISOString()
     const status = errorCount > 0 ? 'partial' : processedCount === 0 ? 'no_change' : 'succeeded'
@@ -493,12 +562,16 @@ export async function discoverCompletePowerOutageCompanies(
       status, finished_at: finishedAt, source_record_count: processedCount,
       company_upsert_count: companyCount, evidence_upsert_count: evidenceCount,
       cache_hit_count: cacheHitCount, error_count: errorCount,
-      metadata: { externalRequestCount, quotaReached, requestedLimit: limit },
+      error_code: globalProviderError ? 'COMPLETE_PROVIDER_GLOBAL_FAILURE' : null,
+      error_message: globalProviderError?.slice(0, 2_000) ?? null,
+      metadata: { externalRequestCount, quotaReached, requestedLimit: limit, retryRequestCount },
     }).eq('id', run.id)
     if (finishError) throw finishError
     await finishCompletePowerOutageTask({
       taskKey: taskKey(provider), lockToken,
       status: errorCount > 0 ? 'partial' : 'succeeded', processedCount,
+      errorCode: globalProviderError ? 'COMPLETE_PROVIDER_GLOBAL_FAILURE' : undefined,
+      errorMessage: globalProviderError ?? undefined,
       cursor: { finishedAt, externalRequestCount, quotaReached },
     })
     return {
