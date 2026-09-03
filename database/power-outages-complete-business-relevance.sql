@@ -1,5 +1,18 @@
 begin;
 
+-- Jednorázově uvolní osiřelé vyhodnocení, které jinak blokuje unikátní
+-- pojistku proti souběžným běhům. Aktivní běhy mladší 30 minut se nemění.
+update public.complete_power_outage_runs
+set
+  status = 'failed',
+  finished_at = now(),
+  error_count = greatest(error_count, 1),
+  error_code = 'COMPLETE_COMPANY_RECONCILIATION_STALE',
+  error_message = 'Osiřelé vyhodnocení firem bylo bezpečně ukončeno při nasazení samoopravy.'
+where run_kind = 'company_reconciliation'
+  and status = 'running'
+  and started_at < now() - interval '30 minutes';
+
 alter table public.complete_power_outage_companies
   add column if not exists business_relevance_status text not null default 'pending',
   add column if not exists business_relevance_version integer not null default 0,

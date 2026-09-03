@@ -175,6 +175,19 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
   let runId: string | null = null
 
   try {
+    const staleBefore = new Date(Date.now() - 30 * 60_000).toISOString()
+    const { error: staleRunError } = await client.from('complete_power_outage_runs').update({
+      status: 'failed',
+      finished_at: startedAt,
+      error_count: 1,
+      error_code: 'COMPLETE_COMPANY_RECONCILIATION_STALE',
+      error_message: 'Předchozí vyhodnocení firem překročilo bezpečnostní limit 30 minut a bylo automaticky ukončeno.',
+    })
+      .eq('run_kind', 'company_reconciliation')
+      .eq('status', 'running')
+      .lt('started_at', staleBefore)
+    if (staleRunError) throw staleRunError
+
     const { data: run, error: runError } = await client.from('complete_power_outage_runs').insert({
       run_kind: 'company_reconciliation', trigger_kind: 'manual', status: 'running',
     }).select('id').single<{ id: string }>()
