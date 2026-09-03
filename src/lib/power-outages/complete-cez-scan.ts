@@ -19,6 +19,7 @@ type ScanCandidate = {
 type ExistingOutage = {
   external_id: string
   payload_sha256: string
+  first_seen_at: string
 }
 
 type ExistingAddress = {
@@ -100,7 +101,7 @@ async function saveStagingResult(
   if (externalIds.length > 0) {
     const { data: outageRows, error: outageError } = await client
       .from('complete_power_outage_cez_staged_outages')
-      .select('external_id,payload_sha256')
+      .select('external_id,payload_sha256,first_seen_at')
       .in('external_id', externalIds)
     if (outageError) throw outageError
     existingOutages = (outageRows ?? []) as ExistingOutage[]
@@ -115,6 +116,9 @@ async function saveStagingResult(
 
   const oldOutageHashes = new Map(
     existingOutages.map((outage) => [outage.external_id, outage.payload_sha256]),
+  )
+  const firstSeenByOutage = new Map(
+    existingOutages.map((outage) => [outage.external_id, outage.first_seen_at]),
   )
   const oldAddressHashes = new Map(
     existingAddresses.map((address) => [
@@ -139,6 +143,7 @@ async function saveStagingResult(
     announcement_url: outage.announcementUrl,
     payload_sha256: outage.payloadSha256,
     source_updated_at: outage.sourceUpdatedAt,
+    first_seen_at: firstSeenByOutage.get(outage.externalId) ?? now,
     last_seen_at: now,
     last_seen_cycle_id: candidate.cycle_id,
     missing_since: null,
