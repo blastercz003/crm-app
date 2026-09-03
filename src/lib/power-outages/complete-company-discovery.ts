@@ -4,6 +4,7 @@ import { getServiceRoleClient } from '@/lib/supabase/service'
 import { powerOutageErrorMessage } from './error-message'
 import { normalizePowerOutageText, powerOutageSha256 } from './normalization'
 import { claimCompletePowerOutageTask, finishCompletePowerOutageTask } from './complete-task-lock'
+import { isCompleteNaturalPersonLegalForm } from './complete-company-evaluation'
 import {
   cacheSafeCandidates,
   discoverCompanies,
@@ -255,6 +256,14 @@ async function materializeCandidates(input: {
   let companyCount = 0
   let evidenceCount = 0
   for (const candidate of input.candidates) {
+    // Výsledek ARES zůstává v providerové cache pro audit, ale samotné sídlo
+    // podnikající fyzické osoby už nevytváří kandidáta navázaného na odstávku.
+    // Mapy.com a Google mohou na stejné adrese nezávisle potvrdit provozovnu.
+    if (
+      input.provider === 'ares'
+      && candidate.entityKind === 'registered_office'
+      && isCompleteNaturalPersonLegalForm(candidate.legalForm)
+    ) continue
     const normalizedName = normalizePowerOutageText(candidate.displayName)
     if (!normalizedName) continue
     const current = existing.find((company) => (

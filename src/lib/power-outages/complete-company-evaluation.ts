@@ -2,8 +2,29 @@ import 'server-only'
 
 import { normalizePowerOutageText } from './normalization'
 
-export const COMPLETE_COMPANY_EVALUATION_VERSION = 1
+export const COMPLETE_COMPANY_EVALUATION_VERSION = 2
 export const MASS_REGISTERED_OFFICE_THRESHOLD = 20
+
+export type CompleteBusinessRelevanceStatus =
+  | 'eligible'
+  | 'excluded_natural_person'
+  | 'needs_review'
+
+export type CompleteBusinessRelevance = {
+  status: CompleteBusinessRelevanceStatus
+  reasonCodes: string[]
+  explanation: string
+}
+
+// Číselník ČSÚ FORMA (56): současné i historické varianty podnikajících
+// fyzických osob. ARES vrací statistickou právní formu v poli pravniForma.
+const NATURAL_PERSON_LEGAL_FORMS = new Set([
+  '100', '101', '102', '103', '104', '105', '106', '107', '108', '424', '425',
+])
+
+export function isCompleteNaturalPersonLegalForm(value: string | null) {
+  return NATURAL_PERSON_LEGAL_FORMS.has(value?.trim() ?? '')
+}
 
 export type CompleteCompanyEvaluationEvidence = {
   provider: 'ares' | 'res' | 'mapy' | 'google'
@@ -64,6 +85,61 @@ export function shouldMergeCompleteCompanyCandidates(left: {
 
 function finiteConfidence(value: number) {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0
+}
+
+export function evaluateCompleteBusinessRelevance(input: {
+  legalForm: string | null
+  evidence: CompleteCompanyEvaluationEvidence[]
+}): CompleteBusinessRelevance {
+  const legalForm = input.legalForm?.trim() ?? ''
+  const naturalPerson = isCompleteNaturalPersonLegalForm(legalForm)
+  const hasRegisteredOffice = input.evidence.some((item) => (
+    (item.provider === 'ares' || item.provider === 'res')
+    && item.evidenceKind === 'registered_office'
+  ))
+  const hasExactPublicEstablishment = input.evidence.some((item) => (
+    (item.provider === 'mapy' || item.provider === 'google')
+    && item.evidenceKind === 'establishment'
+    && (item.matchLevel === 'exact_address' || item.matchLevel === 'same_building')
+  ))
+  const hasPublicEstablishment = input.evidence.some((item) => (
+    (item.provider === 'mapy' || item.provider === 'google')
+    && item.evidenceKind === 'establishment'
+  ))
+
+  if (hasExactPublicEstablishment) {
+    return {
+      status: 'eligible',
+      reasonCodes: ['public_establishment_exact'],
+      explanation: 'Veřejný katalog potvrzuje skutečnou provozovnu na dotčené adrese.',
+    }
+  }
+  if (naturalPerson && hasRegisteredOffice) {
+    return {
+      status: 'excluded_natural_person',
+      reasonCodes: ['ares_natural_person_registered_office_only'],
+      explanation: 'ARES eviduje pouze sídlo podnikající fyzické osoby bez potvrzené provozovny.',
+    }
+  }
+  if (legalForm && legalForm !== '000' && !naturalPerson) {
+    return {
+      status: 'eligible',
+      reasonCodes: ['ares_legal_entity'],
+      explanation: 'ARES eviduje subjekt s právní formou odlišnou od podnikající fyzické osoby.',
+    }
+  }
+  if (hasPublicEstablishment) {
+    return {
+      status: 'eligible',
+      reasonCodes: ['public_establishment'],
+      explanation: 'Veřejný katalog eviduje provozovnu v dotčené lokalitě.',
+    }
+  }
+  return {
+    status: 'needs_review',
+    reasonCodes: ['business_relevance_uncertain'],
+    explanation: 'Dostupná data nestačí k bezpečnému určení obchodní relevance subjektu.',
+  }
 }
 
 export function evaluateCompleteCompanyCandidate(input: {

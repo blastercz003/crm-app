@@ -53,7 +53,11 @@ select
   ), '{}'::text[]) as evidence_providers,
   (select count(*)::integer
    from public.complete_power_outage_company_evidence evidence
-   where evidence.company_id = company.id) as evidence_count
+   where evidence.company_id = company.id) as evidence_count,
+  company.business_relevance_status,
+  company.business_relevance_version,
+  company.business_relevance_reasons,
+  company.business_relevance_evaluated_at
 from public.complete_power_outage_companies company
 join public.complete_power_outage_addresses address
   on address.id = company.outage_address_id

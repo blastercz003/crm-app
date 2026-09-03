@@ -47,6 +47,7 @@ begin
       on assignment.candidate_id = company.id
     where
       company.candidate_status in ('confirmed', 'needs_review', 'dismissed')
+      and company.business_relevance_status = 'eligible'
       and (
         (p_mode = 'current' and outage.ends_at >= now() and outage.source_status in ('scheduled', 'active'))
         or (p_mode = 'archive' and outage.ends_at < now())
@@ -133,7 +134,7 @@ end;
 $$;
 
 comment on function public.get_complete_power_outage_company_page(text, integer, timestamptz, uuid, text, text, text, text, text) is
-  'Stránkovaný a serverově filtrovaný výpis vyhodnocených firem režimu KOMPLETNÍ včetně vlastníka; nezpracované kandidáty new do UI nevrací.';
+  'Stránkovaný a serverově filtrovaný výpis vyhodnocených obchodně relevantních firem režimu KOMPLETNÍ včetně vlastníka.';
 
 revoke all on function public.get_complete_power_outage_company_page(text, integer, timestamptz, uuid, text, text, text, text, text)
   from public, anon;

@@ -296,13 +296,22 @@ function DiscoveryPanel({ workspace }: { workspace: CompletePowerOutageWorkspace
     : runtime.status === 'processing'
       ? LoaderCircle
       : CircleAlert
+  const attentionSource = ['error', 'delayed', 'partial']
+    .map((status) => workspace.sources.find((source) => source.discovery.status === status))
+    .find(Boolean)
+  const attentionProvider = workspace.providers.find((provider) => ['error', 'partial'].includes(provider.status))
+  const conciseAttention = attentionSource
+    ? `${sourceLabel(attentionSource.source)}: ${attentionSource.discovery.remainingTargetCount} cílů čeká`
+    : attentionProvider
+      ? `${providerLabel(attentionProvider.provider)}: ${attentionProvider.errorCount} chyb`
+      : 'provozní chyba'
   const runtimeText = runtime.status === 'healthy'
     ? 'Automatické zpracování je v pořádku'
     : runtime.status === 'processing'
       ? `Právě běží ${runtime.runningTaskCount} úloh`
       : runtime.status === 'waiting'
         ? 'Čeká na první automatický běh'
-        : `Vyžaduje kontrolu · ${runtime.issues[0] ?? 'provozní chyba'}`
+        : `Kontrola · ${conciseAttention}`
   return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 [html[data-theme=dark]_&]:text-violet-300"><SearchCheck aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">ARES · Mapy.com · Google</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Vyhledávání firem</h3></span></div><div className="mt-4 space-y-2">{workspace.providers.map((provider) => {
     const presentation = providerStatusPresentation(provider.status)
     return <div key={provider.provider} className={`weather-alerts__record-surface h-[83px] rounded-xl border px-2.5 py-2 ${provider.configured ? '' : 'opacity-65'}`}><div className="flex items-center justify-between gap-2"><strong className="text-[12px] uppercase text-[var(--text-primary)]">{providerLabel(provider.provider)}</strong><button type="button" onClick={() => openProvider(provider.provider)} className={`relative inline-flex h-7 w-[88px] items-center justify-center gap-1 rounded-xl border px-1.5 text-center text-[7px] font-bold uppercase leading-none tracking-[0.06em] transition hover:-translate-y-px ${presentation.badge}`} aria-label={`${providerLabel(provider.provider)}: ${providerStatusLabel(provider.status)}. Zobrazit provozní detail.`} title="Zobrazit provozní detail"><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} /><span className="translate-y-px">{providerStatusLabel(provider.status)}</span>{presentation.attention ? <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white bg-amber-400 text-[8px] font-black leading-none text-amber-950 shadow-sm [html[data-theme=dark]_&]:border-slate-900">!</span> : null}</button></div><div className="mt-1 grid grid-cols-4 gap-1 text-center"><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><small className="text-[7px] font-bold uppercase leading-[8px]">Nalezeno</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.readyCount}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-[var(--text-secondary)]"><small className="text-[7px] font-bold uppercase leading-[8px]">Čeká</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.pendingCount}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Bez nálezu</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.notFoundCount}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-red-700 [html[data-theme=dark]_&]:text-red-300"><small className="text-[7px] font-bold uppercase leading-[8px]">Chyby</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.errorCount}</strong></span></div></div>

@@ -5,6 +5,7 @@ import { powerOutageErrorMessage } from './error-message'
 import { claimCompletePowerOutageTask, finishCompletePowerOutageTask } from './complete-task-lock'
 import {
   COMPLETE_COMPANY_EVALUATION_VERSION,
+  evaluateCompleteBusinessRelevance,
   evaluateCompleteCompanyCandidate,
   shouldMergeCompleteCompanyCandidates,
   type CompleteCompanyEvaluationEvidence,
@@ -18,6 +19,8 @@ type CompanyRow = {
   company_name: string
   normalized_company_name: string
   ico: string | null
+  legal_form: string | null
+  business_relevance_override: boolean
   candidate_status: 'new' | 'confirmed' | 'needs_review' | 'dismissed' | 'stale'
   confidence: number | string
   resolved_at: string | null
@@ -73,7 +76,7 @@ async function loadAddressBundle(client: ServiceClient, addressIds: string[]) {
     const [{ data: addressRows, error: addressError }, { data: companyRows, error: companyError }] = await Promise.all([
       client.from('complete_power_outage_addresses').select('id,address_scope').in('id', ids),
       client.from('complete_power_outage_companies')
-        .select('id,outage_address_id,company_name,normalized_company_name,ico,candidate_status,confidence,resolved_at,resolved_by,metadata,created_at')
+        .select('id,outage_address_id,company_name,normalized_company_name,ico,legal_form,business_relevance_override,candidate_status,confidence,resolved_at,resolved_by,metadata,created_at')
         .in('outage_address_id', ids),
     ])
     if (addressError) throw addressError
@@ -224,6 +227,10 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
           evidence: companyEvidence.map(evidenceInput),
           registeredOfficeCountAtAddress: registeredOfficeCount,
         })
+        const businessRelevance = evaluateCompleteBusinessRelevance({
+          legalForm: company.legal_form,
+          evidence: companyEvidence.map(evidenceInput),
+        })
         const manuallyResolved = Boolean(company.resolved_by)
         const metadata = {
           ...(company.metadata ?? {}),
@@ -235,6 +242,14 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
             massRegisteredOffice: evaluation.massRegisteredOffice,
             nameConflict: evaluation.nameConflict,
           },
+          ...(!company.business_relevance_override ? {
+            businessRelevance: {
+              version: COMPLETE_COMPANY_EVALUATION_VERSION,
+              status: businessRelevance.status,
+              reasons: businessRelevance.reasonCodes,
+              explanation: businessRelevance.explanation,
+            },
+          } : {}),
         }
         const evidenceRuianAddressId = ruianAddressId(companyEvidence)
         const update: Record<string, unknown> = {
@@ -244,6 +259,12 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
           evaluation_reasons: evaluation.reasonCodes,
           evaluated_at: new Date().toISOString(),
           metadata,
+        }
+        if (!company.business_relevance_override) {
+          update.business_relevance_status = businessRelevance.status
+          update.business_relevance_version = COMPLETE_COMPANY_EVALUATION_VERSION
+          update.business_relevance_reasons = businessRelevance.reasonCodes
+          update.business_relevance_evaluated_at = new Date().toISOString()
         }
         if (evidenceRuianAddressId !== null) update.ruian_address_id = evidenceRuianAddressId
         if (!manuallyResolved) {

@@ -313,6 +313,11 @@ create table if not exists public.complete_power_outage_companies (
   longitude double precision,
   confidence numeric(5,4) not null default 0,
   candidate_status text not null default 'new',
+  business_relevance_status text not null default 'pending',
+  business_relevance_version integer not null default 0,
+  business_relevance_reasons text[] not null default '{}'::text[],
+  business_relevance_evaluated_at timestamptz,
+  business_relevance_override boolean not null default false,
   source_count integer not null default 1,
   first_seen_at timestamptz not null default now(),
   last_seen_at timestamptz not null default now(),
@@ -341,6 +346,12 @@ create table if not exists public.complete_power_outage_companies (
   constraint cpo_companies_status_check check (
     candidate_status in ('new', 'confirmed', 'needs_review', 'dismissed', 'stale')
   ),
+  constraint cpo_companies_business_relevance_check check (
+    business_relevance_status in ('pending', 'eligible', 'excluded_natural_person', 'needs_review')
+  ),
+  constraint cpo_companies_business_relevance_version_check check (
+    business_relevance_version >= 0
+  ),
   constraint cpo_companies_counts_check
     check (source_count >= 1),
   constraint cpo_companies_seen_check
@@ -359,6 +370,9 @@ create index if not exists cpo_companies_status_idx
 
 create index if not exists cpo_companies_address_idx
   on public.complete_power_outage_companies (outage_address_id, candidate_status);
+
+create index if not exists cpo_companies_business_relevance_idx
+  on public.complete_power_outage_companies (business_relevance_status, candidate_status, last_seen_at desc);
 
 create index if not exists cpo_companies_ico_idx
   on public.complete_power_outage_companies (ico, last_seen_at desc)

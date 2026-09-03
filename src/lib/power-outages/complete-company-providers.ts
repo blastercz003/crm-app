@@ -150,7 +150,7 @@ async function discoverAres(target: CompleteDiscoveryTarget) {
       displayName: name,
       displayAddress: address,
       ico,
-      legalForm: cleanText(item.pravniForma) || null,
+      legalForm: String(item.pravniForma ?? '').trim() || null,
       naceCodes: (item.czNace ?? []).map(String).map((value) => value.trim()).filter(Boolean),
       latitude: null,
       longitude: null,

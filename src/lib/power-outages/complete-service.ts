@@ -191,7 +191,7 @@ function mapSourceDiscovery(
               : remainingTargetCount === 0
               ? 'current'
               : delayed
-                ? 'error'
+                ? 'delayed'
                 : completedTargetCount === 0
                   ? 'waiting'
                   : 'processing'
@@ -201,12 +201,12 @@ function mapSourceDiscovery(
       ? coverageStatus === 'processing'
         ? 'Právě se aktualizují zdrojová data distributora.'
         : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.${errorTargetCount > 0 ? ` Dílčí chyby: ${errorTargetCount}.` : ''}`
-      : status === 'error'
+      : status === 'delayed'
+        ? `Čeká na další kapacitu vyhledávání · zbývá ${remainingTargetCount} cílů.`
+        : status === 'error'
           ? failedRequiredTask
             ? String(failedRequiredTask.last_error_message || 'Povinná úloha vyhledávání firem skončila chybou.')
-            : delayed
-              ? `Zbývá ${remainingTargetCount} cílů, ale fronta se déle než 30 minut neposunula.`
-              : String(sourceRow.last_error_message || 'Zpracování distributora skončilo chybou.')
+            : String(sourceRow.last_error_message || 'Zpracování distributora skončilo chybou.')
           : status === 'partial'
             ? coverageStatus === 'partial'
               ? String((sourceRow.metadata as Record<string, unknown> | null)?.coverageMessage || 'Zdroj neposkytl kompletní očekávané pokrytí.')
@@ -448,8 +448,8 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
         error: error instanceof Error ? error.message : 'Přehled kompletních odstávek se nepodařilo načíst.',
       })),
     countRows(supabase.from('complete_power_outages').select('id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']), 'Počet aktuálních odstávek se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).in('candidate_status', ['confirmed', 'needs_review']), 'Počet nalezených firem se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).eq('candidate_status', 'needs_review'), 'Počet firem k ověření se nepodařilo načíst'),
+    countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).in('candidate_status', ['confirmed', 'needs_review']).eq('business_relevance_status', 'eligible'), 'Počet nalezených firem se nepodařilo načíst'),
+    countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).eq('candidate_status', 'needs_review').eq('business_relevance_status', 'eligible'), 'Počet firem k ověření se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }), 'Počet adres se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2), 'Počet normalizovaných adres se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
