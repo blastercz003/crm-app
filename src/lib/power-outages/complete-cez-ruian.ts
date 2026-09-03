@@ -267,7 +267,7 @@ async function loadRepresentativeCandidates(client: ServiceClient, limit: number
 }
 
 async function representativeQueueCounts(client: ServiceClient) {
-  const [queueResult, reviewResult] = await Promise.all([
+  const [queueResult, reviewResult, noAddressResult] = await Promise.all([
     client
       .from('complete_power_outage_cez_municipalities')
       .select('municipality_code', { count: 'exact', head: true })
@@ -278,12 +278,19 @@ async function representativeQueueCounts(client: ServiceClient) {
       .select('municipality_code', { count: 'exact', head: true })
       .eq('is_active', true)
       .eq('representative_status', 'needs_review'),
+    client
+      .from('complete_power_outage_cez_municipalities')
+      .select('municipality_code', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('representative_status', 'no_address'),
   ])
   if (queueResult.error) throw queueResult.error
   if (reviewResult.error) throw reviewResult.error
+  if (noAddressResult.error) throw noAddressResult.error
   return {
     queueRemainingCount: queueResult.count ?? 0,
     reviewRemainingCount: reviewResult.count ?? 0,
+    noAddressCount: noAddressResult.count ?? 0,
     remainingCount: (queueResult.count ?? 0) + (reviewResult.count ?? 0),
   }
 }
@@ -395,7 +402,7 @@ export async function importCompleteCezRepresentativeAddresses(requestedLimit = 
     const { error } = await client
       .from('complete_power_outage_cez_municipalities')
       .update({
-        representative_status: result.retryable ? 'error' : 'needs_review',
+        representative_status: result.retryable ? 'error' : 'no_address',
         representative_attempt_count: result.municipality.representative_attempt_count + 1,
         representative_last_attempt_at: now,
         representative_next_attempt_at: result.retryable
@@ -422,7 +429,8 @@ export async function importCompleteCezRepresentativeAddresses(requestedLimit = 
     processedCount: results.length,
     resolvedCount: resolved.length,
     errorCount: results.filter((result) => result.error && result.retryable).length,
-    reviewCount: results.filter((result) => result.error && !result.retryable).length,
+    reviewCount: 0,
+    skippedNoAddressCount: results.filter((result) => result.error && !result.retryable).length,
     ...counts,
   }
 }

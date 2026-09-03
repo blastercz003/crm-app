@@ -37,7 +37,14 @@ alter table public.complete_power_outage_cez_municipalities
 
 alter table public.complete_power_outage_cez_municipalities
   add constraint cpo_cez_municipalities_representative_status_check
-  check (representative_status in ('pending', 'resolved', 'error', 'needs_review'));
+  check (representative_status in ('pending', 'resolved', 'error', 'needs_review', 'no_address'));
+
+update public.complete_power_outage_cez_municipalities
+set representative_status = 'no_address',
+    representative_next_attempt_at = null,
+    updated_at = now()
+where representative_status = 'needs_review'
+  and representative_error_message = 'Obec nemá použitelné adresní místo.';
 
 alter table public.complete_power_outage_cez_municipalities
   drop constraint if exists cpo_cez_municipalities_representative_attempts_check;
