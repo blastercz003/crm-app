@@ -295,7 +295,9 @@ begin
       claimed.cez_address_id,
       claimed.cez_town_code
     from claimed
-    returning municipality_code, attempt_number
+    returning
+      complete_power_outage_cez_scan_attempts.municipality_code,
+      complete_power_outage_cez_scan_attempts.attempt_number
   )
   select
     active_cycle.id,
