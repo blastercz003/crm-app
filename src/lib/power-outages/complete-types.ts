@@ -185,6 +185,16 @@ export type CompleteSourceDiagnostic = {
     consecutiveFailureCount: number
     lastErrorMessage: string | null
   } | null
+  evaluationTask: {
+    status: 'pending' | 'running' | 'succeeded' | 'failed' | 'partial' | null
+    lastStartedAt: string | null
+    lastFinishedAt: string | null
+    lastSuccessAt: string | null
+    consecutiveFailureCount: number
+    lastErrorCode: string | null
+    lastErrorMessage: string | null
+    pendingCandidateCount: number
+  } | null
 }
 
 export type CompleteProviderState = {

@@ -175,10 +175,17 @@ function mapSourceDiscovery(
     requiredTaskKeys.includes(String(task.task_key))
     && task.last_status === 'failed'
   ))
+  const failedEvaluationTask = taskRows.find((task) => (
+    task.task_key === 'reconcile_companies'
+    && task.last_status === 'failed'
+    && Number(task.consecutive_failure_count ?? 0) > 0
+  ))
   const coverageStatus = sourceRow.coverage_status
   const status: CompleteSourceState['discovery']['status'] = coverageStatus === 'error'
     ? 'error'
     : failedRequiredTask
+      ? 'error'
+    : failedEvaluationTask
       ? 'error'
     : coverageStatus === 'partial'
       ? 'partial'
@@ -206,6 +213,8 @@ function mapSourceDiscovery(
         : status === 'error'
           ? failedRequiredTask
             ? String(failedRequiredTask.last_error_message || 'Povinná úloha vyhledávání firem skončila chybou.')
+            : failedEvaluationTask
+              ? 'Vyhodnocení nalezených firem je zablokované. Otevřete detail.'
             : String(sourceRow.last_error_message || 'Zpracování distributora skončilo chybou.')
           : status === 'partial'
             ? coverageStatus === 'partial'
@@ -567,7 +576,7 @@ export async function getCompletePowerOutageSourceDiagnostic(
   if (!['cez', 'egd', 'pre'].includes(source)) throw new Error('Neplatný distributor.')
   const { supabase } = await getPowerOutageRuntimeContext()
   const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
-  const [stateResult, discoveryResult, providersResult, runsResult, taskResult] = await Promise.all([
+  const [stateResult, discoveryResult, providersResult, runsResult, taskResult, evaluationTaskResult, pendingEvaluationResult] = await Promise.all([
     supabase.from('complete_power_outage_source_state')
       .select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata')
       .eq('source', source).maybeSingle(),
@@ -581,14 +590,25 @@ export async function getCompletePowerOutageSourceDiagnostic(
       .select('id,status,started_at,finished_at,source_record_count,outage_upsert_count,address_upsert_count,error_count,error_code,error_message,metadata')
       .eq('source', source).eq('run_kind', 'source_sync').order('started_at', { ascending: false }).limit(8),
     supabase.from('complete_power_outage_task_state')
-      .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_message')
+      .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
       .eq('task_key', taskKey).maybeSingle(),
+    supabase.from('complete_power_outage_task_state')
+      .select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
+      .eq('task_key', 'reconcile_companies').maybeSingle(),
+    supabase.from('complete_power_outage_company_overview')
+      .select('candidate_id', { count: 'exact', head: true })
+      .eq('source', source)
+      .eq('candidate_status', 'new')
+      .gte('ends_at', new Date().toISOString())
+      .in('source_status', ['scheduled', 'active']),
   ])
   if (stateResult.error) throw new Error(`Stav distributora se nepodařilo načíst: ${stateResult.error.message}`)
   if (discoveryResult.error) throw new Error(`Postup vyhledávání firem se nepodařilo načíst: ${discoveryResult.error.message}`)
   if (providersResult.error) throw new Error(`Postup poskytovatelů se nepodařilo načíst: ${providersResult.error.message}`)
   if (runsResult.error) throw new Error(`Historii distributora se nepodařilo načíst: ${runsResult.error.message}`)
   if (taskResult.error) throw new Error(`Stav plánované úlohy se nepodařilo načíst: ${taskResult.error.message}`)
+  if (evaluationTaskResult.error) throw new Error(`Stav vyhodnocování firem se nepodařilo načíst: ${evaluationTaskResult.error.message}`)
+  if (pendingEvaluationResult.error) throw new Error(`Počet firem čekajících na vyhodnocení se nepodařilo načíst: ${pendingEvaluationResult.error.message}`)
   if (!stateResult.data) throw new Error('Stav distributora není dostupný.')
 
   const runs = (runsResult.data ?? []).map((row): CompleteSourceRun => ({
@@ -622,7 +642,10 @@ export async function getCompletePowerOutageSourceDiagnostic(
   })
   return {
     source,
-    state: mapSourceState(stateResult.data, discoveryResult.data),
+    state: mapSourceState(stateResult.data, discoveryResult.data, [
+      ...(taskResult.data ? [{ ...taskResult.data, task_key: taskKey }] : []),
+      ...(evaluationTaskResult.data ? [evaluationTaskResult.data] : []),
+    ]),
     providers,
     runs,
     task: taskResult.data ? {
@@ -632,6 +655,18 @@ export async function getCompletePowerOutageSourceDiagnostic(
       lastSuccessAt: taskResult.data.last_success_at,
       consecutiveFailureCount: Number(taskResult.data.consecutive_failure_count),
       lastErrorMessage: taskResult.data.last_error_message,
+    } : null,
+    evaluationTask: evaluationTaskResult.data ? {
+      status: evaluationTaskResult.data.last_status === 'idle'
+        ? null
+        : evaluationTaskResult.data.last_status as CompleteSourceDiagnostic['evaluationTask'] extends infer T ? T extends { status: infer S } ? S : never : never,
+      lastStartedAt: evaluationTaskResult.data.last_started_at,
+      lastFinishedAt: evaluationTaskResult.data.last_finished_at,
+      lastSuccessAt: evaluationTaskResult.data.last_success_at,
+      consecutiveFailureCount: Number(evaluationTaskResult.data.consecutive_failure_count),
+      lastErrorCode: evaluationTaskResult.data.last_error_code,
+      lastErrorMessage: evaluationTaskResult.data.last_error_message,
+      pendingCandidateCount: pendingEvaluationResult.count ?? 0,
     } : null,
   }
 }
