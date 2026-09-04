@@ -408,4 +408,10 @@ export type CompletePowerOutageWorkspace = {
 export type CompletePowerOutageSidebarWorkspace = Pick<
   CompletePowerOutageWorkspace,
   'currentUser' | 'sources' | 'cezNew' | 'providers' | 'runtime' | 'addressCoverage'
->
+> & {
+  loadErrors: {
+    sources: string | null
+    providers: string | null
+    addressCoverage: string | null
+  }
+}

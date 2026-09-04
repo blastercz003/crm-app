@@ -94,7 +94,7 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
     <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />
     <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
       <CompletePowerOutageRecords currentUser={currentUser} owners={owners} />
-      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
+      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
     </div>
   </>
 }

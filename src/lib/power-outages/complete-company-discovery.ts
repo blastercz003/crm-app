@@ -574,6 +574,12 @@ export async function discoverCompletePowerOutageCompanies(
       errorMessage: globalProviderError ?? undefined,
       cursor: { finishedAt, externalRequestCount, quotaReached },
     })
+    // Monitoring is deliberately best-effort. A failed snapshot refresh must
+    // never turn an otherwise successful provider batch into a failed batch;
+    // the minute cron will retry it independently.
+    await Promise.resolve(
+      client.rpc('refresh_complete_power_outage_provider_overview_snapshot'),
+    ).catch(() => null)
     return {
       status, provider, processedCount, externalRequestCount, cacheHitCount,
       companyCount, evidenceCount, errorCount, quotaReached, startedAt, finishedAt,
