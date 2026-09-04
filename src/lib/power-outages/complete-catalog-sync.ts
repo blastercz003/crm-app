@@ -608,10 +608,46 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       if (error) throw error
     }
 
+    // Teprve po úspěšném načtení nového ČEZ snapshotu označíme původní
+    // budoucí záznamy, které v úplném novém katalogu nejsou. Nová data jsou
+    // v tuto chvíli již uložená, takže při přepnutí nevznikne prázdné okno.
+    let removedOutageCount = 0
+    if (useCezShadow) {
+      const desiredExternalIds = new Set(outages.map((outage) => outage.external_id))
+      const existingCurrent: Array<{ id: string; external_id: string; source_status: string }> = []
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await client
+          .from('complete_power_outages')
+          .select('id,external_id,source_status')
+          .eq('source', 'cez')
+          .order('id')
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        existingCurrent.push(...(data ?? []))
+        if ((data?.length ?? 0) < PAGE_SIZE) break
+      }
+      const staleOutageIds = existingCurrent
+        .filter((outage) => (
+          ['scheduled', 'active'].includes(outage.source_status)
+          && !desiredExternalIds.has(outage.external_id)
+        ))
+        .map((outage) => outage.id)
+      const missingAt = new Date().toISOString()
+      for (const ids of chunks(staleOutageIds, 300)) {
+        const { error } = await client.from('complete_power_outages').update({
+          source_status: 'cancelled',
+          missing_since: missingAt,
+        }).in('id', ids)
+        if (error) throw error
+      }
+      removedOutageCount = staleOutageIds.length
+    }
+
     const completedAt = new Date().toISOString()
     const changedAddressCount = changedAddressRows.length
     const removedAddressCount = staleAddressIds.length
-    const changed = changedOutageCount > 0 || changedAddressCount > 0 || removedAddressCount > 0
+    const changed = changedOutageCount > 0 || changedAddressCount > 0
+      || removedAddressCount > 0 || removedOutageCount > 0
     await updateSourceState({
       client,
       source,
@@ -632,7 +668,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         source_record_count: outages.length,
         outage_upsert_count: changedOutageCount,
         address_upsert_count: changedAddressCount,
-        metadata: { externalRequestsMade: 0, removedAddressCount },
+        metadata: { externalRequestsMade: 0, removedAddressCount, removedOutageCount },
       })
       .eq('id', run.id)
     if (finishRunError) throw finishRunError
@@ -651,6 +687,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       changedOutageCount,
       changedAddressCount,
       removedAddressCount,
+      removedOutageCount,
       externalRequestsMade: 0,
       startedAt,
       finishedAt: completedAt,

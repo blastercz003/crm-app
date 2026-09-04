@@ -13,6 +13,7 @@ export type CompleteRecoveryRequest =
   | { target: 'address_normalization' }
   | { target: 'provider_discovery'; provider: CompleteDiscoveryProvider }
   | { target: 'company_reconciliation' }
+  | { target: 'cez_new_pipeline'; stage: 'ruian' | 'mapping' | 'scan' | 'normalization' | 'projection' }
 
 export type CompleteRecoveryResult = {
   status: 'started' | 'already_running' | 'not_needed' | 'manual_required'
@@ -30,6 +31,7 @@ type TaskState = {
 }
 
 function taskKey(input: CompleteRecoveryRequest) {
+  if (input.target === 'cez_new_pipeline') return null
   if (input.target === 'source_projection') return `sync_${input.source}` as const
   if (input.target === 'provider_discovery') return `discover_${input.provider}` as const
   if (input.target === 'address_normalization') return 'normalize_addresses' as const
@@ -84,6 +86,28 @@ export async function recoverCompletePowerOutageTask(
 ): Promise<CompleteRecoveryResult> {
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení pro obnovu zpracování.')
+
+  if (input.target === 'cez_new_pipeline') {
+    const { data, error } = await client.rpc('recover_complete_power_outage_cez_new_stage', {
+      requested_stage: input.stage,
+    })
+    if (error) throw error
+    const payload = data && typeof data === 'object' && !Array.isArray(data)
+      ? data as Record<string, unknown>
+      : {}
+    const status = String(payload.status ?? 'started') as CompleteRecoveryResult['status']
+    return {
+      status: ['started', 'already_running', 'not_needed', 'manual_required'].includes(status)
+        ? status
+        : 'started',
+      message: typeof payload.message === 'string'
+        ? payload.message
+        : status === 'already_running'
+          ? 'Tato fáze už skutečně běží. Druhá kopie nebyla spuštěna.'
+          : 'Obnova konkrétní fáze nového ČEZ byla bezpečně zahájena.',
+      result: payload,
+    }
+  }
 
   const requestedTaskKey = taskKey(input)
   const { data, error } = await client

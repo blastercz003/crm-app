@@ -49,7 +49,7 @@ with municipality as (
   select count(*)::bigint as completed_count
   from public.complete_power_outage_cez_scan_cycles
   where not is_pilot and snapshot_contract_version = 2
-    and status = 'succeeded' and snapshot_status = 'complete' and snapshot_publishable
+    and status in ('succeeded', 'no_change') and snapshot_status = 'complete' and snapshot_publishable
 ), staged as (
   select
     count(address.id)::bigint as address_total,

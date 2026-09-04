@@ -135,6 +135,7 @@ type RecoveryRequest =
   | { target: 'address_normalization' }
   | { target: 'provider_discovery'; provider: CompleteProviderState['provider'] }
   | { target: 'company_reconciliation' }
+  | { target: 'cez_new_pipeline'; stage: 'ruian' | 'mapping' | 'scan' | 'normalization' | 'projection' }
 
 function RecoveryButton({ label, request, onRecovered }: {
   label: string
@@ -275,7 +276,7 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
   )
 }
 
-function CompleteCezNewDiagnosticPopup({ state, onClose }: { state: CompleteCezNewState; onClose: () => void }) {
+function CompleteCezNewDiagnosticPopup({ state, isAdmin, onClose }: { state: CompleteCezNewState; isAdmin: boolean; onClose: () => void }) {
   const presentation = cezNewStatusPresentation(state.status)
   const phases = [
     { label: 'Katalog RÚIAN', done: state.representativeDone, total: state.catalogTotal, error: state.representativeError, detail: `${state.representativeRemaining.toLocaleString('cs-CZ')} obcí zbývá` },
@@ -293,11 +294,11 @@ function CompleteCezNewDiagnosticPopup({ state, onClose }: { state: CompleteCezN
 
       <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Průběh jednotlivých fází</h3><div className="mt-2 grid gap-2 sm:grid-cols-2">{phases.map((phase) => { const percent = phase.total > 0 ? Math.min(100, Math.round((phase.done / phase.total) * 1000) / 10) : 0; return <div key={phase.label} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-2"><strong className="text-[10px] text-[var(--text-primary)]">{phase.label}</strong><strong className="text-xs tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-strong)]"><span className="block h-full rounded-full bg-sky-500" style={{ width: `${percent}%` }} /></div><p className="mt-2 text-[8px] text-[var(--text-secondary)]">{phase.done.toLocaleString('cs-CZ')} / {phase.total.toLocaleString('cs-CZ')} · {phase.detail}</p>{phase.error > 0 ? <p className="mt-1 text-[8px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{phase.error.toLocaleString('cs-CZ')} položek vyžaduje kontrolu</p> : null}</div> })}</div></section>
 
-      <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Stínová projekce</h3><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><PowerOutageDetailRow label="Odstávky" value={state.projectedOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Aktuální odstávky" value={state.projectedCurrentOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Adresy" value={state.projectedAddressCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Čeká na normalizaci" value={state.projectionPendingCount.toLocaleString('cs-CZ')} /></div><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Poslední projekce {formatDate(state.lastProjectionAt)} · kompletní bezpečné cykly {state.publishableCycleCount} / 2.</p></section>
+      <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Stínová projekce</h3><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><PowerOutageDetailRow label="Odstávky" value={state.projectedOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Aktuální odstávky" value={state.projectedCurrentOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Adresy" value={state.projectedAddressCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Čeká na normalizaci" value={state.projectionPendingCount.toLocaleString('cs-CZ')} /></div><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Poslední projekce {formatDate(state.lastProjectionAt)} · poslední bezpečné cykly {state.safeRecentCycleCount} / 2 · projekce odpovídá poslednímu cyklu: {state.latestProjectionMatches ? 'ano' : 'ne'}.</p></section>
 
       <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5"><div className="flex items-start gap-2.5">{state.activeSource === 'shadow' ? <CircleCheck aria-hidden size={17} className="mt-0.5 shrink-0 text-emerald-500" /> : <Info aria-hidden size={17} className="mt-0.5 shrink-0 text-sky-500" />}<span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Aktivní zdroj pro uživatele</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{state.activeSource === 'shadow' ? 'Nový celoplošný ČEZ' : 'Původní ČEZ katalog'}</strong><p className="mt-1 text-[9px] leading-4 text-[var(--text-secondary)]">{state.activeSource === 'shadow' ? 'Tab KOMPLETNÍ používá nový celoplošný zdroj. Návrat na původní zdroj zůstává možný.' : 'Nový sběr zatím běží odděleně ve stínovém režimu a nemění data zobrazená uživatelům.'}</p></span></div></section>
 
-      {state.lastErrorMessage ? <section className="mt-4"><h3 className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.12em] text-red-700 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><p className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5 text-xs leading-5 text-[var(--text-primary)]">{state.lastErrorMessage}</p></section> : null}
+      {state.lastErrorMessage || state.errorStage ? <section className="mt-4"><h3 className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.12em] text-red-700 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><p className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5 text-xs leading-5 text-[var(--text-primary)]">{state.errorCode ? `${state.errorCode}: ` : ''}{state.lastErrorMessage ?? 'Tato fáze obsahuje položky, které vyžadují kontrolu.'}</p>{state.errorStage ? <RecoveryControl isAdmin={isAdmin} blocked={false} label={`Obnovit · ${cezNewStageLabel(state.errorStage)}`} request={{ target: 'cez_new_pipeline', stage: state.errorStage }} onRecovered={() => undefined} /> : null}</section> : null}
     </div>
   </PowerOutagePopupShell>
 }
@@ -375,7 +376,7 @@ function SourcesPanel({ workspace }: { workspace: CompletePowerOutageWorkspace }
       </div>})}
     </div>
     {selectedSource && typeof document !== 'undefined' ? createPortal(<CompleteSourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} isAdmin={workspace.currentUser.isAdmin} onReload={() => loadDiagnostic(selectedSource, false)} onClose={() => { setSelectedSource(null); setDiagnostic(null); setError(null) }} />, document.body) : null}
-    {showCezNew && cezNew && typeof document !== 'undefined' ? createPortal(<CompleteCezNewDiagnosticPopup state={cezNew} onClose={() => setShowCezNew(false)} />, document.body) : null}
+    {showCezNew && cezNew && typeof document !== 'undefined' ? createPortal(<CompleteCezNewDiagnosticPopup state={cezNew} isAdmin={workspace.currentUser.isAdmin} onClose={() => setShowCezNew(false)} />, document.body) : null}
   </PanelShell>
 }
 

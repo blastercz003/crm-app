@@ -17,6 +17,7 @@ function validRequest(value: unknown): value is CompleteRecoveryRequest {
   if (input.target === 'address_normalization' || input.target === 'company_reconciliation') return true
   if (input.target === 'source_projection') return ['cez', 'egd', 'pre'].includes(String(input.source))
   if (input.target === 'provider_discovery') return ['ares', 'mapy', 'google'].includes(String(input.provider))
+  if (input.target === 'cez_new_pipeline') return ['ruian', 'mapping', 'scan', 'normalization', 'projection'].includes(String(input.stage))
   return false
 }
 
@@ -24,6 +25,7 @@ function actionLabel(input: CompleteRecoveryRequest) {
   if (input.target === 'source_projection') return `obnova projekce ${input.source.toUpperCase()}`
   if (input.target === 'provider_discovery') return `obnova poskytovatele ${input.provider.toUpperCase()}`
   if (input.target === 'address_normalization') return 'obnova normalizace adres'
+  if (input.target === 'cez_new_pipeline') return `obnova nového ČEZ · ${input.stage}`
   return 'obnova vyhodnocení firem'
 }
 

@@ -206,7 +206,7 @@ begin
   select cycle.* into selected_cycle
   from public.complete_power_outage_cez_scan_cycles cycle
   where not cycle.is_pilot and cycle.snapshot_contract_version = 2
-    and cycle.status in ('running', 'succeeded')
+    and cycle.status in ('running', 'succeeded', 'no_change')
     and exists (select 1 from public.complete_power_outage_cez_cycle_outages member
       where member.cycle_id = cycle.id)
   order by cycle.started_at desc, cycle.id desc limit 1;
@@ -339,7 +339,7 @@ begin
     where last_seen_cycle_id = selected_cycle.id;
 
     -- Jen kompletní snapshot smí označit dřívější budoucí data jako chybějící.
-    if selected_cycle.status = 'succeeded' and selected_cycle.snapshot_status = 'complete'
+    if selected_cycle.status in ('succeeded', 'no_change') and selected_cycle.snapshot_status = 'complete'
       and selected_cycle.snapshot_publishable then
       update public.complete_power_outage_cez_projection_outages outage
       set missing_since = coalesce(outage.missing_since, now()),

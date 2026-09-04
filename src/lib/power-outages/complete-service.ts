@@ -117,6 +117,16 @@ function cezNewMonitoringSchemaMissing(error: { code?: string; message?: string 
     || Boolean(error?.message?.includes('complete_power_outage_cez_new_status'))
 }
 
+async function loadCezNewMonitoringState(
+  supabase: Awaited<ReturnType<typeof getPowerOutageRuntimeContext>>['supabase'],
+) {
+  const current = await supabase.from('complete_power_outage_cez_new_status_v2').select('*').maybeSingle()
+  if (!current.error) return current
+  if (!cezNewMonitoringSchemaMissing(current.error)
+    && !current.error.message?.includes('complete_power_outage_cez_new_status_v2')) return current
+  return supabase.from('complete_power_outage_cez_new_status').select('*').maybeSingle()
+}
+
 function mapAssignment(row: AssignmentRow | undefined): CompletePowerOutageAssignment | null {
   if (!row) return null
   return {
@@ -303,7 +313,7 @@ function mapSourceState(
 
 function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
   const stage = row.current_stage as CompleteCezNewState['stage']
-  const status = row.overall_status as CompleteCezNewState['status']
+  const status = (row.readiness_status ?? row.overall_status) as CompleteCezNewState['status']
   const done = Number(row.progress_done ?? 0)
   const total = Number(row.progress_total ?? 0)
   const stageLabel = ({
@@ -319,7 +329,7 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     status,
     stage,
     statusMessage: status === 'error'
-      ? String(row.last_error_message || 'Nový ČEZ proces vyžaduje kontrolu.')
+      ? String(row.readiness_error_message || row.last_error_message || 'Nový ČEZ proces vyžaduje kontrolu.')
       : stageLabel,
     progressDone: done,
     progressTotal: total,
@@ -350,7 +360,13 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     projectionPendingCount: Number(row.projection_pending_count ?? 0),
     lastProjectionAt: row.last_projection_at as string | null,
     publishableCycleCount: Number(row.publishable_cycle_count ?? 0),
-    lastErrorMessage: row.last_error_message as string | null,
+    recentCycleCount: Number(row.recent_cycle_count ?? 0),
+    safeRecentCycleCount: Number(row.safe_recent_cycle_count ?? 0),
+    latestTwoCyclesSafe: row.latest_two_cycles_safe === true,
+    latestProjectionMatches: row.latest_projection_matches === true,
+    errorStage: (row.readiness_error_stage ?? null) as CompleteCezNewState['errorStage'],
+    errorCode: (row.readiness_error_code ?? null) as string | null,
+    lastErrorMessage: (row.readiness_error_message ?? row.last_error_message ?? null) as string | null,
   }
 }
 
@@ -575,7 +591,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
-    supabase.from('complete_power_outage_cez_new_status').select('*').maybeSingle(),
+    loadCezNewMonitoringState(supabase),
     supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_company_assignments').select('owner_id,owner_name').order('owner_name').limit(1_000),

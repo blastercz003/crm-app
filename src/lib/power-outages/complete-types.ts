@@ -305,6 +305,12 @@ export type CompleteCezNewState = {
   projectionPendingCount: number
   lastProjectionAt: string | null
   publishableCycleCount: number
+  recentCycleCount: number
+  safeRecentCycleCount: number
+  latestTwoCyclesSafe: boolean
+  latestProjectionMatches: boolean
+  errorStage: 'ruian' | 'mapping' | 'scan' | 'normalization' | 'projection' | null
+  errorCode: string | null
   lastErrorMessage: string | null
 }
 
