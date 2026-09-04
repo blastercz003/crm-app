@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Archive, CircleCheckBig, Database, SearchCheck, TriangleAlert, Zap } from 'lucide-react'
+import { Archive, CircleCheckBig, Database, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert, Zap } from 'lucide-react'
 
 type SummaryTone = 'blue' | 'amber' | 'violet' | 'emerald' | 'slate'
 
 export type PowerOutageSummaryCard = {
   label: string
-  value: number
+  value: number | null
   tone: SummaryTone
   icon?: 'check' | 'review'
 }
@@ -83,7 +83,11 @@ function AnimatedNumber({ value, index }: { value: number; index: number }) {
   )
 }
 
-export function PowerOutageSummaryStats({ cards }: { cards: PowerOutageSummaryCard[] }) {
+export function PowerOutageSummaryStats({ cards, error, onRetry }: {
+  cards: PowerOutageSummaryCard[]
+  error?: string | null
+  onRetry?: () => void
+}) {
   return (
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Souhrn plánovaných odstávek">
       {cards.map((card, index) => {
@@ -99,8 +103,12 @@ export function PowerOutageSummaryStats({ cards }: { cards: PowerOutageSummaryCa
                 <span className="block min-h-6 text-[9px] font-semibold uppercase leading-3 tracking-[0.045em] text-[var(--text-secondary)] sm:min-h-0 sm:text-[10px] sm:tracking-[0.08em]">
                   {card.label}
                 </span>
-                <strong className="mt-1.5 block whitespace-nowrap text-[26px] font-semibold leading-none tracking-tight text-[var(--text-primary)] tabular-nums sm:text-[28px]">
-                  <AnimatedNumber value={card.value} index={index} />
+                <strong className="mt-1.5 flex h-7 items-center whitespace-nowrap text-[26px] font-semibold leading-none tracking-tight text-[var(--text-primary)] tabular-nums sm:text-[28px]">
+                  {card.value !== null
+                    ? <AnimatedNumber value={card.value} index={index} />
+                    : error
+                      ? <button type="button" onClick={onRetry} title={error} className="inline-flex h-7 items-center gap-1.5 rounded-lg text-[9px] font-bold uppercase tracking-[0.04em] text-red-600 transition hover:text-red-700 [html[data-theme=dark]_&]:text-red-300"><RefreshCw aria-hidden size={13} /> Znovu</button>
+                      : <LoaderCircle aria-label="Načítám statistiku" size={18} className="animate-spin text-[var(--accent)]" />}
                 </strong>
               </div>
               <span

@@ -8,16 +8,13 @@ import { CompletePowerOutageRecords } from './complete-power-outage-records'
 import { CompletePowerOutageSidebar } from './complete-power-outage-sidebar'
 import { PowerOutageSummaryStats, type PowerOutageSummaryCard } from './power-outage-summary-stats'
 
-function DeferredError({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return <div className="flex min-h-36 flex-col items-center justify-center rounded-[24px] border border-red-400/25 bg-red-500/5 px-5 text-center"><CircleAlert aria-hidden size={22} className="text-red-500" /><strong className="mt-2 text-xs text-[var(--text-primary)]">Tuto část se nepodařilo načíst</strong><span className="mt-1 max-w-lg text-[10px] leading-4 text-[var(--text-secondary)]">{message}</span><button type="button" onClick={onRetry} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase text-[var(--accent)] transition hover:-translate-y-px"><RefreshCw aria-hidden size={12} /> Zkusit znovu</button></div>
-}
-
-function SummarySkeleton() {
-  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-[92px] animate-pulse rounded-[24px] border border-[var(--surface-border)] bg-[var(--surface-muted)]" />)}</div>
-}
-
-function SidebarSkeleton() {
-  return <div className="min-h-[300px] animate-pulse rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-muted)] xl:h-full"><div className="flex h-full min-h-[300px] items-center justify-center"><span className="inline-flex items-center gap-2 text-[10px] font-semibold text-[var(--text-secondary)]"><LoaderCircle aria-hidden size={16} className="animate-spin text-[var(--accent)]" /> Načítám provozní panely…</span></div></div>
+function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: () => void }) {
+  const panels = [
+    ['KOMPLETNÍ SBĚR', 'Stav distributorů', 4],
+    ['ARES · MAPY.COM · GOOGLE', 'Vyhledávání firem', 3],
+    ['DATABÁZE ADRES', 'Pokrytí adres', 2],
+  ] as const
+  return <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full"><p className="mb-2 flex items-center justify-center text-center text-[10px] text-[var(--text-secondary)] lg:hidden">{error ? 'Provozní data vyžadují opakované načtení.' : 'Načítám provozní panely…'}</p><aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none">{panels.map(([eyebrow, title, rows]) => <div key={title} className="min-w-0 snap-start snap-always lg:snap-none"><section className="activities-page__panel flex h-[380px] min-w-0 flex-col rounded-[24px] border border-white/70 p-4 sm:p-5 lg:h-auto lg:min-h-[210px] lg:p-4"><div className="flex items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 ${error ? 'text-red-500' : 'animate-pulse'}`}>{error ? <CircleAlert aria-hidden size={18} /> : null}</span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{eyebrow}</small><h3 className="text-base font-semibold text-[var(--text-primary)]">{title}</h3></span></div><div className="mt-4 flex min-h-0 flex-1 flex-col gap-2">{Array.from({ length: rows }, (_, index) => <div key={index} className={`h-10 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] lg:flex-1 ${error ? '' : 'animate-pulse'}`} />)}</div>{error ? <button type="button" onClick={onRetry} title={error} className="mt-3 inline-flex h-7 items-center justify-center gap-1.5 self-center rounded-xl px-3 text-[8px] font-bold uppercase text-red-600 transition hover:-translate-y-px [html[data-theme=dark]_&]:text-red-300"><RefreshCw aria-hidden size={12} /> Zkusit znovu</button> : <span className="mt-3 inline-flex items-center justify-center gap-2 text-[9px] text-[var(--text-secondary)]"><LoaderCircle aria-hidden size={13} className="animate-spin text-[var(--accent)]" /> Načítám data…</span>}</section></div>)}</aside></div>
 }
 
 export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: CompletePowerOutageCurrentUser }) {
@@ -75,17 +72,17 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   }, [loadSidebar, loadStatistics, recordsReady])
 
   const confirmedMatchCount = statistics ? Math.max(0, statistics.currentCompanyCount - statistics.needsReviewCount) : 0
-  const cards: PowerOutageSummaryCard[] = statistics ? [
-    { label: 'AKTUÁLNÍ ODSTÁVKY', value: statistics.currentOutageCount, tone: 'blue' },
-    { label: 'NALEZENÉ SHODY', value: statistics.currentCompanyCount, tone: 'violet' },
-    { label: 'POTVRZENÉ SHODY', value: confirmedMatchCount, tone: 'emerald', icon: 'check' },
-    { label: 'K OVĚŘENÍ', value: statistics.needsReviewCount, tone: 'amber', icon: 'review' },
-  ] : []
+  const cards: PowerOutageSummaryCard[] = [
+    { label: 'AKTUÁLNÍ ODSTÁVKY', value: statistics?.currentOutageCount ?? null, tone: 'blue' },
+    { label: 'NALEZENÉ SHODY', value: statistics?.currentCompanyCount ?? null, tone: 'violet' },
+    { label: 'POTVRZENÉ SHODY', value: statistics ? confirmedMatchCount : null, tone: 'emerald', icon: 'check' },
+    { label: 'K OVĚŘENÍ', value: statistics?.needsReviewCount ?? null, tone: 'amber', icon: 'review' },
+  ]
   return <>
-    {statistics ? <PowerOutageSummaryStats cards={cards} /> : statisticsError ? <DeferredError message={statisticsError} onRetry={() => void loadStatistics()} /> : <SummarySkeleton />}
+    <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />
     <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
       <CompletePowerOutageRecords currentUser={currentUser} owners={owners} onInitialLoad={handleRecordsReady} />
-      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} /> : sidebarError ? <DeferredError message={sidebarError} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton />}
+      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
     </div>
   </>
 }
