@@ -68,6 +68,31 @@ type UpstreamSourceState = {
   metadata: Record<string, unknown> | null
 }
 
+type CezProjectionState = {
+  active_source: 'legacy' | 'shadow'
+  latest_complete_cycle_id: string | null
+}
+
+type ProjectedCezAddressRow = {
+  id: string
+  outage_external_id: string
+  address_key: string
+  address_scope: 'exact' | 'street' | 'municipality'
+  validation_status: 'verified' | 'fallback' | 'needs_review'
+  ruian_address_id: number | null
+  municipality: string
+  municipality_code: string | null
+  town_part: string | null
+  street: string
+  house_number: string | null
+  orientation_number: string | null
+  postal_code: string | null
+  raw_address: string
+  normalized_municipality: string
+  normalized_street: string
+  metadata: Record<string, unknown> | null
+}
+
 const PAGE_SIZE = 500
 
 function chunks<T>(values: T[], size: number) {
@@ -87,6 +112,13 @@ function sourceCoverage(
   upstreamMetadata: Record<string, unknown> | null,
 ) {
   if (source === 'cez') {
+    if (upstreamMetadata?.completeCezProjection === 'shadow') {
+      return {
+        status: 'complete' as const,
+        scope: 'whole-cez-distribution-area',
+        message: null,
+      }
+    }
     return {
       status: 'partial' as const,
       scope: 'currently-discovered-cez-municipalities',
@@ -119,6 +151,26 @@ function sourceCoverage(
           ? 'Celoplošné načtení EG.D selhalo; použita byla pouze města z databáze Prodejen.'
           : 'Nelze potvrdit celoplošný rozsah posledního načtení EG.D.',
       }
+}
+
+function missingProjectionState(error: { code?: string; message?: string }) {
+  return error.code === '42P01'
+    || error.code === 'PGRST205'
+    || error.message?.includes('complete_power_outage_cez_projection_state') === true
+}
+
+async function loadCezProjectionState(client: ServiceClient): Promise<CezProjectionState> {
+  const { data, error } = await client
+    .from('complete_power_outage_cez_projection_state')
+    .select('active_source,latest_complete_cycle_id')
+    .eq('singleton', true)
+    .maybeSingle<CezProjectionState>()
+  // Umožní bezpečný push aplikace před spuštěním databázové migrace.
+  if (error && missingProjectionState(error)) {
+    return { active_source: 'legacy', latest_complete_cycle_id: null }
+  }
+  if (error) throw error
+  return data ?? { active_source: 'legacy', latest_complete_cycle_id: null }
 }
 
 function addressScope(address: SourceAddressRow) {
@@ -189,6 +241,77 @@ async function loadSourceAddresses(client: ServiceClient, outageIds: string[]) {
   return rows
 }
 
+async function loadProjectedCezOutages(client: ServiceClient) {
+  const rows: SourceOutageRow[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await client
+      .from('complete_power_outage_cez_shadow_outages')
+      .select(`
+        external_id,source_status,title,description,starts_at,ends_at,archive_at,
+        municipality,municipality_code,district,region,source_url,announcement_url,
+        payload_sha256,source_updated_at,first_seen_at,last_seen_at,missing_since,metadata
+      `)
+      .order('external_id')
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    rows.push(...(data ?? []).map((row) => ({
+      ...(row as Omit<SourceOutageRow, 'id' | 'source'>),
+      id: String(row.external_id),
+      source: 'cez' as const,
+    })))
+    if ((data?.length ?? 0) < PAGE_SIZE) break
+  }
+  return rows
+}
+
+async function loadProjectedCezAddresses(client: ServiceClient, externalIds: string[]) {
+  const rows: SourceAddressRow[] = []
+  for (const ids of chunks(externalIds, 100)) {
+    const { data, error } = await client
+      .from('complete_power_outage_cez_shadow_addresses')
+      .select(`
+        id,outage_external_id,address_key,address_scope,validation_status,
+        ruian_address_id,municipality,municipality_code,town_part,street,
+        house_number,orientation_number,postal_code,raw_address,
+        normalized_municipality,normalized_street,metadata
+      `)
+      .in('outage_external_id', ids)
+    if (error) throw error
+    for (const value of data ?? []) {
+      const row = value as ProjectedCezAddressRow
+      rows.push({
+        id: row.id,
+        outage_id: row.outage_external_id,
+        external_address_id: row.ruian_address_id ? String(row.ruian_address_id) : null,
+        address_key: row.address_key,
+        municipality: row.municipality,
+        municipality_code: row.municipality_code,
+        town_part: row.town_part,
+        street: row.street,
+        house_number: row.house_number,
+        orientation_number: row.orientation_number,
+        postal_code: row.postal_code,
+        raw_address: row.raw_address,
+        normalized_municipality: row.normalized_municipality,
+        normalized_street: row.normalized_street,
+        latitude: null,
+        longitude: null,
+        metadata: {
+          ...(row.metadata ?? {}),
+          completeCezProjection: true,
+          ruianAddressId: row.ruian_address_id,
+          validationStatus: row.validation_status,
+          buildingNumberPairs: row.address_scope === 'exact' ? [{
+            houseNumber: row.house_number,
+            orientationNumber: row.orientation_number,
+          }] : [],
+        },
+      })
+    }
+  }
+  return rows
+}
+
 async function updateSourceState(input: {
   client: ServiceClient
   source: PowerOutageSource
@@ -227,7 +350,9 @@ async function updateSourceState(input: {
       ...(input.changed ? { last_change_at: input.completedAt } : {}),
       horizon_from: terms[0] ?? null,
       horizon_to: terms.at(-1) ?? null,
-      latest_source_ref: 'market-source-catalog-projection-v1',
+      latest_source_ref: input.upstreamMetadata?.completeCezProjection === 'shadow'
+        ? 'complete-cez-nationwide-projection-v1'
+        : 'market-source-catalog-projection-v1',
       latest_payload_sha256: payloadSha256,
       published_outage_count: input.outages.length,
       published_address_count: input.addressCount,
@@ -260,6 +385,15 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
   if (!client) throw new Error('Chybí serverové připojení pro katalog kompletních odstávek.')
 
   const startedAt = new Date().toISOString()
+  const cezProjectionState = source === 'cez'
+    ? await loadCezProjectionState(client)
+    : { active_source: 'legacy' as const, latest_complete_cycle_id: null }
+  if (source === 'cez'
+    && cezProjectionState.active_source === 'shadow'
+    && !cezProjectionState.latest_complete_cycle_id) {
+    return { source, status: 'skipped' as const, reason: 'shadow_not_ready' as const }
+  }
+  const useCezShadow = source === 'cez' && cezProjectionState.active_source === 'shadow'
   const lockTaskKey = taskKey(source)
   const lockToken = await claimCompletePowerOutageTask(lockTaskKey, 30 * 60)
   if (!lockToken) return { source, status: 'skipped' as const, reason: 'already_running' as const }
@@ -318,10 +452,12 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         .select('metadata')
         .eq('source', source)
         .maybeSingle<UpstreamSourceState>(),
-      loadSourceOutages(client, source),
+      useCezShadow ? loadProjectedCezOutages(client) : loadSourceOutages(client, source),
     ])
     if (upstreamStateError) throw upstreamStateError
-    const sourceAddresses = await loadSourceAddresses(client, outages.map((row) => row.id))
+    const sourceAddresses = useCezShadow
+      ? await loadProjectedCezAddresses(client, outages.map((row) => row.external_id))
+      : await loadSourceAddresses(client, outages.map((row) => row.id))
     const sourceAddressByOutageId = new Map<string, SourceAddressRow[]>()
     for (const address of sourceAddresses) {
       const group = sourceAddressByOutageId.get(address.outage_id) ?? []
@@ -483,7 +619,10 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       outages,
       addressCount: sourceAddresses.length,
       changed,
-      upstreamMetadata: upstreamState?.metadata ?? null,
+      upstreamMetadata: useCezShadow ? {
+        completeCezProjection: 'shadow',
+        completeCezCycleId: cezProjectionState.latest_complete_cycle_id,
+      } : upstreamState?.metadata ?? null,
     })
     const { error: finishRunError } = await client
       .from('complete_power_outage_runs')
