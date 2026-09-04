@@ -386,6 +386,9 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
 
 function providerStatus(input: {
   configured: boolean
+  pendingCount: number
+  retryableErrorCount: number
+  reviewErrorCount: number
   errorCount: number
   quotaExhausted: boolean
   task?: Record<string, unknown> | null
@@ -394,6 +397,13 @@ function providerStatus(input: {
   if (input.task?.last_status === 'running') return { status: 'processing', statusMessage: 'Právě probíhá dohledávání firem.' }
   if (input.task?.last_status === 'failed') return { status: 'error', statusMessage: String(input.task.last_error_message || 'Poslední běh selhal.') }
   if (input.quotaExhausted) return { status: 'exhausted', statusMessage: 'Měsíční bezpečnostní rozpočet Mapy.com je vyčerpaný.' }
+  if (input.reviewErrorCount > 0) return { status: 'partial', statusMessage: `${input.reviewErrorCount} aktuálních dotazů vyžaduje kontrolu.` }
+  if (input.pendingCount > 0 || input.retryableErrorCount > 0) return {
+    status: 'processing',
+    statusMessage: input.retryableErrorCount > 0
+      ? `Fronta pokračuje; ${input.retryableErrorCount} dočasných chyb čeká na automatické nebo ruční opakování.`
+      : `${input.pendingCount} aktuálních dotazů ještě čeká na zpracování.`,
+  }
   if (input.errorCount > 0) return { status: 'partial', statusMessage: `${input.errorCount} aktuálních dotazů čeká na opravu nebo opakování.` }
   if (input.task?.last_success_at) return { status: 'current', statusMessage: 'Automatické dohledávání pracuje správně.' }
   return { status: 'waiting', statusMessage: 'Poskytovatel čeká na první dokončený běh.' }
@@ -403,6 +413,9 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
   const provider = row.provider as CompleteProviderState['provider']
   const configured = providerConfigured(provider)
   const errorCount = Number(row.error_count)
+  const retryableErrorCount = Number(row.retryable_error_count ?? errorCount)
+  const reviewErrorCount = Number(row.review_error_count ?? 0)
+  const pendingCount = Number(row.pending_count)
   const lastRequestAt = row.last_request_at as string | null
   const lastRequestMs = lastRequestAt ? new Date(lastRequestAt).getTime() : Number.NaN
   const lastRequestAge = Number.isFinite(lastRequestMs) ? Date.now() - lastRequestMs : Number.POSITIVE_INFINITY
@@ -415,11 +428,13 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
   return {
     provider,
     configured,
-    ...providerStatus({ configured, errorCount, quotaExhausted: monthlyCreditSafetyCap > 0 && monthlyCreditCount >= monthlyCreditSafetyCap, task }),
+    ...providerStatus({ configured, pendingCount, retryableErrorCount, reviewErrorCount, errorCount, quotaExhausted: monthlyCreditSafetyCap > 0 && monthlyCreditCount >= monthlyCreditSafetyCap, task }),
     readyCount: Number(row.ready_count),
-    pendingCount: Number(row.pending_count),
+    pendingCount,
     notFoundCount: Number(row.not_found_count),
     errorCount,
+    retryableErrorCount,
+    reviewErrorCount,
     minuteRequestCount,
     dayRequestCount,
     dayRequestLimit,
@@ -633,7 +648,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
-    supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at').order('provider'),
+    supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
   ])
   if (sourceResult.error) throw new Error(`Stav zdrojů kompletních odstávek se nepodařilo načíst: ${sourceResult.error.message}`)
@@ -726,7 +741,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
-    supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at').order('provider'),
+    supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_company_assignments').select('owner_id,owner_name').order('owner_name').limit(1_000),
   ])
@@ -939,7 +954,7 @@ export async function getCompletePowerOutageProviderDiagnostic(
   const { supabase } = await getPowerOutageRuntimeContext()
   const [overviewResult, taskResult, runsResult, errorsResult] = await Promise.all([
     supabase.from('complete_power_outage_provider_overview')
-      .select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at')
+      .select('*')
       .eq('provider', provider).maybeSingle(),
     supabase.from('complete_power_outage_task_state')
       .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')

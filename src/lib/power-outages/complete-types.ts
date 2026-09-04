@@ -219,6 +219,8 @@ export type CompleteProviderState = {
   pendingCount: number
   notFoundCount: number
   errorCount: number
+  retryableErrorCount: number
+  reviewErrorCount: number
   minuteRequestCount: number
   dayRequestCount: number
   dayRequestLimit: number
