@@ -5,7 +5,7 @@ import { PowerOutageRecords } from './power-outage-records'
 import { PowerOutageSidebar } from './power-outage-sidebar'
 import { PowerOutageSummaryStats, type PowerOutageSummaryCard } from './power-outage-summary-stats'
 
-export function PowerOutagesDashboard({ workspace }: { workspace: PowerOutageWorkspace }) {
+export function PowerOutagesDashboard({ workspace, isAdmin }: { workspace: PowerOutageWorkspace; isAdmin: boolean }) {
   const summaryCards: PowerOutageSummaryCard[] = [
     { label: 'ANALYZOVÁNO', value: workspace.statistics.analyzedOutageCount, tone: 'blue' },
     { label: 'NALEZENÉ ODSTÁVKY', value: workspace.statistics.currentMatchCount, tone: 'amber' },
@@ -24,6 +24,7 @@ export function PowerOutagesDashboard({ workspace }: { workspace: PowerOutageWor
           preferences={workspace.preferences}
           sources={workspace.sources}
           storeCoverage={workspace.storeCoverage}
+          isAdmin={isAdmin}
         />
       </div>
     </>

@@ -241,6 +241,25 @@ export async function reconcilePowerOutageStoreMatches(input: {
       loadOutageAddresses(client, outageIds),
       loadExistingMatches(client, outageIds),
     ])
+    const sourceByOutageId = new Map(outages.map((outage) => [outage.id, outage.source]))
+    const addressSources = addresses.map((address) => sourceByOutageId.get(address.outageId) ?? null)
+    const sourceAddressTotals: Record<OutageRow['source'], number> = { cez: 0, egd: 0, pre: 0 }
+    for (const source of addressSources) {
+      if (source) sourceAddressTotals[source] += 1
+    }
+    const sourceProgress = (processedCount: number) => {
+      const processed: Record<OutageRow['source'], number> = { cez: 0, egd: 0, pre: 0 }
+      const processedLimit = Math.min(addressSources.length, Math.max(0, processedCount))
+      for (let index = 0; index < processedLimit; index += 1) {
+        const source = addressSources[index]
+        if (source) processed[source] += 1
+      }
+      return {
+        cez: { processedCount: processed.cez, totalCount: sourceAddressTotals.cez },
+        egd: { processedCount: processed.egd, totalCount: sourceAddressTotals.egd },
+        pre: { processedCount: processed.pre, totalCount: sourceAddressTotals.pre },
+      }
+    }
     const updateProgress = async (metadata: Record<string, unknown>) => {
       const { error } = await client
         .from('power_outage_match_runs')
@@ -261,6 +280,7 @@ export async function reconcilePowerOutageStoreMatches(input: {
           processedCount: 0,
           totalCount: addresses.length,
           progressPercent: addresses.length === 0 ? 80 : 0,
+          sourceProgress: sourceProgress(0),
           lastProgressAt: new Date().toISOString(),
         },
       })
@@ -275,6 +295,7 @@ export async function reconcilePowerOutageStoreMatches(input: {
           processedCount,
           totalCount,
           progressPercent: totalCount > 0 ? Math.round((processedCount / totalCount) * 800) / 10 : 80,
+          sourceProgress: sourceProgress(processedCount),
           lastProgressAt: new Date().toISOString(),
         })
       },
@@ -332,6 +353,7 @@ export async function reconcilePowerOutageStoreMatches(input: {
       processedCount: 0,
       totalCount: totalWriteCount,
       progressPercent: totalWriteCount === 0 ? 100 : 80,
+      sourceProgress: sourceProgress(addresses.length),
       lastProgressAt: new Date().toISOString(),
     })
 
@@ -346,6 +368,7 @@ export async function reconcilePowerOutageStoreMatches(input: {
         processedCount: processedWriteCount,
         totalCount: totalWriteCount,
         progressPercent: totalWriteCount > 0 ? Math.round((80 + (processedWriteCount / totalWriteCount) * 20) * 10) / 10 : 100,
+        sourceProgress: sourceProgress(addresses.length),
         lastProgressAt: new Date().toISOString(),
       })
     }
@@ -362,6 +385,7 @@ export async function reconcilePowerOutageStoreMatches(input: {
         processedCount: processedWriteCount,
         totalCount: totalWriteCount,
         progressPercent: totalWriteCount > 0 ? Math.round((80 + (processedWriteCount / totalWriteCount) * 20) * 10) / 10 : 100,
+        sourceProgress: sourceProgress(addresses.length),
         lastProgressAt: new Date().toISOString(),
       })
     }
@@ -404,6 +428,7 @@ export async function reconcilePowerOutageStoreMatches(input: {
           processedCount: addresses.length,
           totalCount: addresses.length,
           progressPercent: 100,
+          sourceProgress: sourceProgress(addresses.length),
           lastProgressAt: completedAt,
           sourceCount: new Set(outages.map((outage) => outage.source)).size,
         },

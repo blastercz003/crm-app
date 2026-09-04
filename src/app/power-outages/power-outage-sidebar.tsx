@@ -111,12 +111,12 @@ function NotificationSettings({ initial }: { initial: PowerOutageNotificationPre
   )
 }
 
-function SourcePanel({ source, totalStoreCount, onOpen }: { source: PowerOutageSourceSummary; totalStoreCount: number; onOpen: () => void }) {
+function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: PowerOutageSourceSummary; totalStoreCount: number; isAdmin: boolean; onOpen: () => void }) {
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const status = STATUS_PRESENTATION[source.status]
-  const needsAttention = Boolean(refreshError) || source.status === 'warning' || source.status === 'error'
+  const needsAttention = Boolean(refreshError) || Boolean(source.attention) || source.status === 'warning' || source.status === 'error'
   const recordsLabel = source.source === 'cez' ? 'Záznamů v dávce' : 'Záznamů ve snapshotu'
   const changesLabel = source.source === 'cez' ? 'Změny v dávce' : 'Změny ve snapshotu'
   const comparison = source.comparisonProgress
@@ -174,7 +174,7 @@ function SourcePanel({ source, totalStoreCount, onOpen }: { source: PowerOutageS
           <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdroj dat</span><strong className="block truncate text-base font-semibold text-[var(--text-primary)]">{sourceName(source.source)}</strong></span>
         </button>
         <div className="flex shrink-0 items-center gap-1.5">
-          <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Ručně obnovit data ${sourceName(source.source)}`} title="Ručně obnovit data" className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button>
+          {isAdmin ? <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Ručně obnovit data ${sourceName(source.source)}`} title="Ručně obnovit data" className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button> : null}
           <button
             type="button"
             onClick={onOpen}
@@ -240,24 +240,24 @@ function StoreCoveragePanel({ coverage, onOpenAnalysis, onOpenDetail }: { covera
       </button>
 
       <div className="mt-2.5 grid grid-cols-4 gap-1.5">
-        <div className="min-w-0 rounded-xl border border-slate-400/30 bg-slate-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(100,116,139,0.45)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-slate-600 sm:text-[6.5px] [html[data-theme=dark]_&]:text-slate-300">Ke kontrole</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.pendingStoreCount}</strong></div>
-        <div className="min-w-0 rounded-xl border border-amber-400/35 bg-amber-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(245,158,11,0.55)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-amber-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-amber-300">K opravě</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.reviewStoreCount}</strong></div>
-        <div className="min-w-0 rounded-xl border border-orange-400/35 bg-orange-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(249,115,22,0.55)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-orange-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-orange-300">Nedohledáno</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.notFoundStoreCount}</strong></div>
-        <div className="min-w-0 rounded-xl border border-red-400/35 bg-red-400/8 px-2 py-2 text-center shadow-[inset_0_-2px_0_rgba(239,68,68,0.55)]"><span className="block min-h-5 text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-red-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-red-300">Chyba</span><strong className="mt-0.5 block text-[14px] tabular-nums text-[var(--text-primary)]">{coverage.errorStoreCount}</strong></div>
+        <div className="flex min-w-0 flex-col items-center justify-center rounded-xl border border-slate-400/30 bg-slate-400/8 px-2 py-1.5 text-center shadow-[inset_0_-2px_0_rgba(100,116,139,0.45)]"><span className="block text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-slate-600 sm:text-[6.5px] [html[data-theme=dark]_&]:text-slate-300">Ke kontrole</span><strong className="block text-[14px] leading-5 tabular-nums text-[var(--text-primary)]">{coverage.pendingStoreCount}</strong></div>
+        <div className="flex min-w-0 flex-col items-center justify-center rounded-xl border border-amber-400/35 bg-amber-400/8 px-2 py-1.5 text-center shadow-[inset_0_-2px_0_rgba(245,158,11,0.55)]"><span className="block text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-amber-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-amber-300">K opravě</span><strong className="block text-[14px] leading-5 tabular-nums text-[var(--text-primary)]">{coverage.reviewStoreCount}</strong></div>
+        <div className="flex min-w-0 flex-col items-center justify-center rounded-xl border border-orange-400/35 bg-orange-400/8 px-2 py-1.5 text-center shadow-[inset_0_-2px_0_rgba(249,115,22,0.55)]"><span className="block text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-orange-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-orange-300">Nedohledáno</span><strong className="block text-[14px] leading-5 tabular-nums text-[var(--text-primary)]">{coverage.notFoundStoreCount}</strong></div>
+        <div className="flex min-w-0 flex-col items-center justify-center rounded-xl border border-red-400/35 bg-red-400/8 px-2 py-1.5 text-center shadow-[inset_0_-2px_0_rgba(239,68,68,0.55)]"><span className="block text-[6px] font-bold uppercase leading-[10px] tracking-[0.035em] text-red-700 sm:text-[6.5px] [html[data-theme=dark]_&]:text-red-300">Chyba</span><strong className="block text-[14px] leading-5 tabular-nums text-[var(--text-primary)]">{coverage.errorStoreCount}</strong></div>
       </div>
 
       <div className="mt-2.5">
-        <span className="mb-1 block text-[6px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Distribuční území</span>
+        <span className="mb-1 block text-center text-[6px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Distribuční území</span>
         <div className="grid grid-cols-4 gap-1 text-center text-[7px] font-bold uppercase tracking-[0.02em]">
-          <span className="rounded-xl border border-orange-500/35 bg-orange-500/8 px-1.5 py-2 text-[10px] text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></span>
-          <span className="rounded-xl border border-red-500/35 bg-red-500/8 px-1.5 py-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
-          <span className="rounded-xl border border-violet-500/35 bg-violet-500/8 px-1 py-2 text-[10px] text-violet-700 [html[data-theme=dark]_&]:text-violet-300">PRE <strong className="ml-0.5 text-[10px] text-[var(--text-primary)]">{coverage.preStoreCount}</strong></span>
-          <span className="rounded-xl border border-slate-400/30 bg-slate-400/8 px-1 py-2 text-[8px] text-slate-600 sm:text-[9px] [html[data-theme=dark]_&]:text-slate-300">Neurčeno <strong className="ml-0.5 text-[10px] text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></span>
+          <span className="flex min-h-[46px] flex-col items-center justify-center rounded-xl border border-orange-500/35 bg-orange-500/8 px-1.5 py-1.5 text-[10px] leading-none text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ<strong className="mt-1 block text-[10px] leading-none text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></span>
+          <span className="flex min-h-[46px] flex-col items-center justify-center rounded-xl border border-red-500/35 bg-red-500/8 px-1.5 py-1.5 text-[10px] leading-none text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D<strong className="mt-1 block text-[10px] leading-none text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
+          <span className="flex min-h-[46px] flex-col items-center justify-center rounded-xl border border-violet-500/35 bg-violet-500/8 px-1 py-1.5 text-[10px] leading-none text-violet-700 [html[data-theme=dark]_&]:text-violet-300">PRE<strong className="mt-1 block text-[10px] leading-none text-[var(--text-primary)]">{coverage.preStoreCount}</strong></span>
+          <span className="flex min-h-[46px] flex-col items-center justify-center rounded-xl border border-slate-400/30 bg-slate-400/8 px-1 py-1.5 text-[8px] leading-none text-slate-600 sm:text-[9px] [html[data-theme=dark]_&]:text-slate-300">Neurčeno<strong className="mt-1 block text-[10px] leading-none text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></span>
         </div>
         {coverage.unknownReadyStoreCount > 0 ? <p className="mt-1.5 truncate text-[7px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{coverage.unknownReadyStoreCount} ověřených adres nemá určené území</p> : null}
       </div>
 
-      <div className="mt-auto flex items-center gap-2 pt-3 text-left text-[8px] leading-4 text-[var(--text-secondary)]">
+      <div className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]">
         <Info aria-hidden size={13} className="shrink-0" />
         <span>Revize katalogu {coverage.catalogRevision} · změněno {formatDateTime(coverage.catalogLastChangedAt)}</span>
       </div>
@@ -393,8 +393,8 @@ function sourceStatusDescription(diagnostic: PowerOutageSourceDiagnostic) {
   if (diagnostic.status === 'error') return 'Zdroj opakovaně selhal nebo jsou jeho data příliš stará. Níže je uvedena poslední známá chyba a poslední úspěšné načtení.'
   if (diagnostic.status === 'warning') return 'Kontrola se neposouvá v očekávaném intervalu nebo poslední běh selhal. Dříve načtená data zůstávají dostupná.'
   if (diagnostic.status === 'processing') return diagnostic.progress?.phase === 'queued'
-    ? 'Nová revize databáze prodejen čeká na nejbližší automatické zpracování.'
-    : 'Systém právě zpracovává novou revizi databáze prodejen a průběžně ukládá dokončené výsledky.'
+    ? 'Aktuální data čekají na nejbližší automatické zpracování nebo porovnání.'
+    : 'Systém právě načítá data nebo je porovnává s databází prodejen.'
   if (diagnostic.status === 'live') return 'Zdroj se načítá správně a porovnání používá aktuální revizi databáze prodejen.'
   return 'Zdroj čeká na první úspěšné načtení dat.'
 }
@@ -433,13 +433,38 @@ function SourceProgress({ diagnostic }: { diagnostic: PowerOutageSourceDiagnosti
   )
 }
 
-function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: { source: PowerOutageSource; diagnostic: PowerOutageSourceDiagnostic | null; loading: boolean; error: string | null; onClose: () => void }) {
+function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, onReload, onClose }: { source: PowerOutageSource; diagnostic: PowerOutageSourceDiagnostic | null; loading: boolean; error: string | null; isAdmin: boolean; onReload: () => Promise<void>; onClose: () => void }) {
+  const router = useRouter()
+  const [recovering, setRecovering] = useState(false)
+  const [recoveryError, setRecoveryError] = useState<string | null>(null)
   const schedule = source === 'cez'
     ? 'Hlavní kontrola každých 6 hodin; rozpracované dávky pokračují každých 15 minut.'
     : source === 'egd'
       ? 'Kontrola celé distribuční oblasti každých 6 hodin s časovým posunem vůči ČEZ.'
       : 'Stažení oficiálního exportu celé distribuční oblasti každé 3 hodiny; jeden malý požadavek za běh.'
   const status = diagnostic ? STATUS_PRESENTATION[diagnostic.status] : STATUS_PRESENTATION.pending
+  const recover = async () => {
+    if (!diagnostic?.attention || recovering) return
+    setRecovering(true)
+    setRecoveryError(null)
+    try {
+      const response = diagnostic.attention.recoveryAction === 'matching'
+        ? await fetch('/api/power-outages/recover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: 'matching' }),
+          })
+        : await fetch(`/api/power-outages/sync?source=${source}`, { method: 'POST' })
+      const payload = await response.json().catch(() => null) as { error?: string } | null
+      if (!response.ok) throw new Error(payload?.error || `Oprava skončila HTTP ${response.status}.`)
+      await onReload()
+      router.refresh()
+    } catch (recoverError) {
+      setRecoveryError(recoverError instanceof Error ? recoverError.message : 'Opravu se nepodařilo spustit.')
+    } finally {
+      setRecovering(false)
+    }
+  }
 
   return (
     <PowerOutagePopupShell titleId={`power-outage-source-${source}`} eyebrow="ODSTÁVKY · PROVOZNÍ DETAIL" title={sourceName(source)} icon={<DatabaseZap aria-hidden size={21} />} onClose={onClose}>
@@ -470,7 +495,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
             </div>
           </section>
 
-          {(['warning', 'error'] as PowerOutageSourceStatus[]).includes(diagnostic.status) && (diagnostic.sourceState.lastErrorMessage || diagnostic.task?.lastErrorMessage) ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-red-600 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Poslední chyba</h3><div className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5"><strong className="text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{diagnostic.sourceState.lastErrorCode ?? diagnostic.task?.lastErrorCode ?? 'CHYBA ZDROJE'}</strong><p className="mt-1 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.sourceState.lastErrorMessage ?? diagnostic.task?.lastErrorMessage}</p></div></section> : null}
+          {diagnostic.attention ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-red-600 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><div className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5"><strong className="text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{diagnostic.attention.code}</strong><p className="mt-1 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.attention.message}</p></div>{isAdmin ? <button type="button" onClick={() => void recover()} disabled={recovering} className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/10 px-4 text-[9px] font-bold uppercase tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:bg-sky-500/15 disabled:cursor-wait disabled:opacity-55 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={13} className={recovering ? 'animate-spin' : ''} />{diagnostic.attention.recoveryAction === 'matching' ? 'Opakovat porovnání' : source === 'cez' ? 'Pokračovat v kontrole ČEZ' : 'Opakovat načtení zdroje'}</button> : <p className="mt-2 text-[9px] font-semibold text-[var(--text-secondary)]">Opravu může spustit administrátor.</p>}{recoveryError ? <p className="mt-2 text-[9px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{recoveryError}</p> : null}</section> : null}
 
           <section className="mt-5">
             <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Poslední synchronizační běhy</h3>
@@ -487,7 +512,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, onClose }: 
   )
 }
 
-export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[]; storeCoverage: PowerOutageStoreCoverage }) {
+export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmin }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[]; storeCoverage: PowerOutageStoreCoverage; isAdmin: boolean }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
   const [showAddressAnalysis, setShowAddressAnalysis] = useState(false)
   const [showCoverageDetail, setShowCoverageDetail] = useState(false)
@@ -511,6 +536,16 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
     setDiagnostic(null)
     setError(null)
     setLoading(false)
+  }
+
+  const reloadDiagnostic = async (source: PowerOutageSource) => {
+    const result = await getPowerOutageSourceDiagnosticAction(source)
+    if (result.success) {
+      setDiagnostic(result.diagnostic)
+      setError(null)
+    } else {
+      setError(result.error)
+    }
   }
 
   useEffect(() => {
@@ -548,13 +583,13 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage }: { pr
               key={source.source}
               className={`min-w-0 snap-start snap-always lg:snap-none ${source.source === 'cez' ? 'order-2' : source.source === 'egd' ? 'order-3' : 'order-4'}`}
             >
-              <SourcePanel source={source} totalStoreCount={storeCoverage.totalStoreCount} onOpen={() => void openSource(source.source)} />
+              <SourcePanel source={source} totalStoreCount={storeCoverage.totalStoreCount} isAdmin={isAdmin} onOpen={() => void openSource(source.source)} />
             </div>
           ))}
           <div className="order-1 min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpenAnalysis={() => setShowAddressAnalysis(true)} onOpenDetail={() => setShowCoverageDetail(true)} /></div>
         </aside>
       </div>
-      {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} onClose={close} />, document.body) : null}
+      {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} isAdmin={isAdmin} onReload={() => reloadDiagnostic(selectedSource)} onClose={close} />, document.body) : null}
       {showCoverageDetail && typeof document !== 'undefined' ? createPortal(<CoverageDetailPopup coverage={storeCoverage} sources={sources} onClose={() => setShowCoverageDetail(false)} />, document.body) : null}
       {showAddressAnalysis && typeof document !== 'undefined' ? createPortal(<StoreAddressAnalysisPopup onClose={() => setShowAddressAnalysis(false)} />, document.body) : null}
     </>

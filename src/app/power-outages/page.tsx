@@ -50,7 +50,7 @@ export default async function PowerOutagesPage({
         {completeEnabled ? <PowerOutageModeSwitch mode={mode} /> : null}
 
         {mode === 'markets' && marketWorkspace
-          ? <PowerOutagesDashboard workspace={marketWorkspace} />
+          ? <PowerOutagesDashboard workspace={marketWorkspace} isAdmin={profile.role === 'admin'} />
           : <CompletePowerOutagesDashboard currentUser={{ id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' }} />}
       </div>
     </main>

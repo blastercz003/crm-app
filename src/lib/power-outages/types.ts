@@ -140,12 +140,18 @@ export type PowerOutageSourceSummary = {
     percent: number
     lastProgressAt: string | null
   }
+  attention: {
+    code: string
+    message: string
+    recoveryAction: 'source_sync' | 'matching'
+  } | null
 }
 
 export type PowerOutageSourceDiagnostic = {
   generatedAt: string
   source: PowerOutageSource
   status: PowerOutageSourceStatus
+  attention: PowerOutageSourceSummary['attention']
   sourceState: {
     lastAttemptAt: string | null
     lastSuccessAt: string | null

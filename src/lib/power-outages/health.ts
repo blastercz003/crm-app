@@ -130,11 +130,24 @@ function sourceHealth(
   const matchedSourceDataVersion = finiteInteger(matchSourceVersions?.[state.source])
   const matchesCurrentSourceData = matchedSourceDataVersion !== null
     && matchedSourceDataVersion >= state.data_version
-  const matchProgressPercent = typeof matchMetadata.progressPercent === 'number' && Number.isFinite(matchMetadata.progressPercent)
-    ? Math.min(100, Math.max(0, matchMetadata.progressPercent))
-    : 0
-  const matchProcessedCount = finiteInteger(matchMetadata.processedCount)
-  const matchTotalCount = finiteInteger(matchMetadata.totalCount)
+  const matchSourceProgress = objectValue(matchMetadata.sourceProgress)
+  const currentSourceProgress = state.source === 'cez'
+    ? null
+    : objectValue(matchSourceProgress?.[state.source])
+  const matchProcessedCount = finiteInteger(currentSourceProgress?.processedCount)
+    ?? finiteInteger(matchMetadata.processedCount)
+  const matchTotalCount = finiteInteger(currentSourceProgress?.totalCount)
+    ?? finiteInteger(matchMetadata.totalCount)
+  const sourceProgressPercent = currentSourceProgress && matchTotalCount !== null
+    ? matchTotalCount > 0
+      ? ((matchProcessedCount ?? 0) / matchTotalCount) * 100
+      : 100
+    : null
+  const matchProgressPercent = sourceProgressPercent !== null
+    ? Math.min(100, Math.max(0, sourceProgressPercent))
+    : typeof matchMetadata.progressPercent === 'number' && Number.isFinite(matchMetadata.progressPercent)
+      ? Math.min(100, Math.max(0, matchMetadata.progressPercent))
+      : 0
   const matchPhase = matchMetadata.phase === 'saving_matches' ? 'saving_matches' as const : 'matching_addresses' as const
   const comparisonProgress = activeCezScan
     ? {
@@ -180,8 +193,8 @@ function sourceHealth(
             ? {
                 status: 'current' as const,
                 phase: 'complete' as const,
-                processedCount: Number(matchRun.address_count),
-                totalCount: Number(matchRun.address_count),
+                processedCount: matchProcessedCount ?? Number(matchRun.address_count),
+                totalCount: matchTotalCount ?? Number(matchRun.address_count),
                 percent: 100,
                 lastProgressAt: matchRun.finished_at,
               }
@@ -193,6 +206,75 @@ function sourceHealth(
                 percent: 0,
                 lastProgressAt: null,
               }
+
+  type Attention = {
+    code: string
+    message: string
+    recoveryAction: 'source_sync' | 'matching'
+  }
+  let attention: Attention | null = null
+  const sourceStatus = status
+  if (sourceStatus === 'warning' || sourceStatus === 'error') {
+    attention = {
+      code: state.last_error_code ?? taskState?.last_error_code ?? (processingStalled ? 'SOURCE_SYNC_STALLED' : 'SOURCE_DATA_STALE'),
+      message: state.last_error_message
+        ?? taskState?.last_error_message
+        ?? (processingStalled
+          ? `${state.source.toUpperCase()} se během probíhající kontroly neposouvá v očekávaném intervalu.`
+          : `Poslední úspěšné načtení ${state.source.toUpperCase()} je starší než očekávaný interval.`),
+      recoveryAction: 'source_sync',
+    }
+  }
+
+  const comparisonProgressMs = comparisonProgress.lastProgressAt
+    ? Date.parse(comparisonProgress.lastProgressAt)
+    : Number.NaN
+  const comparisonAgeMinutes = Number.isFinite(comparisonProgressMs)
+    ? Math.max(0, (nowMs - comparisonProgressMs) / 60_000)
+    : null
+  const queueReferenceMs = Math.max(
+    Number.isFinite(Date.parse(state.last_change_at ?? '')) ? Date.parse(state.last_change_at!) : 0,
+    Number.isFinite(catalogChangedMs) ? catalogChangedMs : 0,
+  )
+  const queuedMinutes = queueReferenceMs > 0 ? Math.max(0, (nowMs - queueReferenceMs) / 60_000) : null
+  let comparisonIssue: { status: 'warning' | 'error'; attention: Attention } | null = null
+  if (ageHours !== null && matchRun?.status === 'failed') {
+    comparisonIssue = {
+      status: 'error',
+      attention: {
+        code: matchRun.error_code ?? 'STORE_MATCH_FAILED',
+        message: matchRun.error_message ?? 'Porovnání odstávek s katalogem prodejen selhalo.',
+        recoveryAction: 'matching',
+      },
+    }
+  } else if (ageHours !== null && matchRun?.status === 'running' && comparisonAgeMinutes !== null && comparisonAgeMinutes > 20) {
+    comparisonIssue = {
+      status: comparisonAgeMinutes > 45 ? 'error' : 'warning',
+      attention: {
+        code: 'STORE_MATCH_STALLED',
+        message: `Porovnání odstávek s katalogem prodejen se neposunulo ${Math.round(comparisonAgeMinutes)} minut.`,
+        recoveryAction: 'matching',
+      },
+    }
+  } else if (ageHours !== null && comparisonProgress.status === 'queued' && queuedMinutes !== null && queuedMinutes > 30) {
+    comparisonIssue = {
+      status: queuedMinutes > 90 ? 'error' : 'warning',
+      attention: {
+        code: 'STORE_MATCH_QUEUED_TOO_LONG',
+        message: `Aktuální data ${state.source.toUpperCase()} čekají na porovnání s katalogem prodejen déle než ${Math.round(queuedMinutes)} minut.`,
+        recoveryAction: 'matching',
+      },
+    }
+  }
+  if (comparisonIssue && (
+    (sourceStatus !== 'warning' && sourceStatus !== 'error')
+    || (sourceStatus === 'warning' && comparisonIssue.status === 'error')
+  )) {
+    status = comparisonIssue.status
+    attention = comparisonIssue.attention
+  } else if (!attention && status === 'live' && (comparisonProgress.status === 'processing' || comparisonProgress.status === 'queued')) {
+    status = 'processing'
+  }
 
   return {
     source: state.source,
@@ -223,6 +305,7 @@ function sourceHealth(
         ? 'Celá distribuční oblast'
         : 'Probíhá průběžná kontrola',
     comparisonProgress,
+    attention,
   }
 }
 
@@ -423,6 +506,7 @@ export async function getPowerOutageSourceDiagnostic(
     generatedAt: new Date().toISOString(),
     source,
     status,
+    attention: summary?.attention ?? null,
     sourceState: {
       lastAttemptAt: state.last_attempt_at,
       lastSuccessAt: state.last_success_at,
