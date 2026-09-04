@@ -23,6 +23,7 @@ type RegistryRow = {
   store_city: string
   store_address: string
   address_fingerprint: string
+  distributor: 'cez' | 'egd' | 'pre' | 'unknown'
 }
 
 export class StoreRegistryRunAlreadyRunningError extends Error {
@@ -85,6 +86,33 @@ function distributor(value: string | null | undefined) {
   if (compact.includes('egd') || compact.includes('eon')) return 'egd' as const
   if (compact.includes('predistribuce') || compact === 'pre') return 'pre' as const
   return 'unknown' as const
+}
+
+function resolvedDistributor(input: {
+  dso: string | null | undefined
+  municipalityCode: number | null | undefined
+  selectedAddress: boolean
+  previous: RegistryRow['distributor']
+}) {
+  const explicit = distributor(input.dso)
+  if (explicit !== 'unknown') {
+    return { value: explicit, method: 'address-api-dso', confidence: 'verified' } as const
+  }
+  // Prázdné DSO z adresního API nesmí zrušit dříve spolehlivě určené území.
+  if (input.previous !== 'unknown') {
+    return { value: input.previous, method: 'preserved', confidence: 'verified' } as const
+  }
+  if (!input.selectedAddress) {
+    return { value: 'unknown', method: 'unresolved-address', confidence: 'unknown' } as const
+  }
+  // Rozhraní ČEZ označí vlastní území explicitně. Pro adresy ostatních dvou
+  // velkých distributorů vrací prázdné DSO. PRE proto oddělíme podle RÚIAN
+  // kódu jeho zásobovacího území; zbývající ověřená adresa patří v modelu
+  // tří celostátně sledovaných distributorů do území EG.D.
+  if (input.municipalityCode === 554782 || input.municipalityCode === 539627) {
+    return { value: 'pre', method: 'ruian-major-dso-territory-v1', confidence: 'probable' } as const
+  }
+  return { value: 'egd', method: 'non-cez-major-dso-territory-v1', confidence: 'probable' } as const
 }
 
 function registrySnapshot(store: StoreRow) {
@@ -151,7 +179,7 @@ export async function auditPowerOutageStoreRegistry(
       loadAllStores(client),
       client
         .from('power_outage_store_registry')
-        .select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint')
+        .select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint,distributor')
         .not('store_id', 'is', null),
     ])
     if (registryResult.error) throw registryResult.error
@@ -235,7 +263,7 @@ export async function processPowerOutageStoreRegistryQueue(limit = 40) {
   const safeLimit = Math.min(100, Math.max(1, Math.trunc(limit)))
   const { data, error } = await client
     .from('power_outage_store_registry')
-    .select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint')
+    .select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint,distributor')
     .eq('is_active', true)
     .eq('needs_refresh', true)
     .order('updated_at')
@@ -282,6 +310,12 @@ export async function processPowerOutageStoreRegistryQueue(limit = 40) {
             : 'not_found'
       if (status === 'verified' || status === 'probable') verifiedCount += 1
       else reviewCount += 1
+      const distribution = resolvedDistributor({
+        dso: selected?.dso,
+        municipalityCode: selected?.townCode,
+        selectedAddress: Boolean(selected),
+        previous: row.distributor,
+      })
 
       const { error: updateError } = await client
         .from('power_outage_store_registry')
@@ -292,7 +326,7 @@ export async function processPowerOutageStoreRegistryQueue(limit = 40) {
           orientation_number: numbers.orientationNumber,
           ruian_address_id: selected?.id ?? null,
           municipality_code: selected?.townCode == null ? null : String(selected.townCode),
-          distributor: distributor(selected?.dso),
+          distributor: distribution.value,
           verification_status: status,
           needs_refresh: false,
           last_attempt_at: attemptedAt,
@@ -306,6 +340,9 @@ export async function processPowerOutageStoreRegistryQueue(limit = 40) {
             selectedTownPart: selected?.townPart ?? null,
             selectedDistrict: selected?.district ?? null,
             selectedRegion: selected?.region ?? null,
+            distributorClassificationVersion: 3,
+            distributorClassificationMethod: distribution.method,
+            distributorClassificationConfidence: distribution.confidence,
             cityMatches,
             streetMatches,
             numberMatches,

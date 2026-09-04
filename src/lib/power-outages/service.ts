@@ -144,16 +144,20 @@ function storeCoverage(
   matching: { store_revision: number; finished_at: string | null; status: 'running' | 'succeeded' | 'failed' } | null,
 ): PowerOutageStoreCoverage {
   const active = rows.filter((row) => row.is_active)
+  const bucket = (row: RegistryRow) => {
+    if (row.verification_status === 'error') return 'error' as const
+    if (row.needs_refresh || row.verification_status === 'pending') return 'pending' as const
+    if (row.verification_status === 'needs_review') return 'review' as const
+    if (row.verification_status === 'not_found') return 'not_found' as const
+    return 'ready' as const
+  }
   const ready = active.filter((row) => (
-    !row.needs_refresh
-    && (row.verification_status === 'verified' || row.verification_status === 'probable')
+    bucket(row) === 'ready'
   )).length
-  const pending = active.filter((row) => (
-    row.needs_refresh || row.verification_status === 'pending'
-  )).length
-  const review = active.filter((row) => row.verification_status === 'needs_review').length
-  const notFound = active.filter((row) => row.verification_status === 'not_found').length
-  const error = active.filter((row) => row.verification_status === 'error').length
+  const pending = active.filter((row) => bucket(row) === 'pending').length
+  const review = active.filter((row) => bucket(row) === 'review').length
+  const notFound = active.filter((row) => bucket(row) === 'not_found').length
+  const error = active.filter((row) => bucket(row) === 'error').length
   const chains = [...new Set(active.map((row) => row.store_chain_name))]
     .sort((left, right) => left.localeCompare(right, 'cs'))
     .map((chainName) => {
@@ -161,11 +165,11 @@ function storeCoverage(
       return {
         chainName,
         totalStoreCount: rows.length,
-        readyStoreCount: rows.filter((row) => !row.needs_refresh && (row.verification_status === 'verified' || row.verification_status === 'probable')).length,
-        pendingStoreCount: rows.filter((row) => row.needs_refresh || row.verification_status === 'pending').length,
-        reviewStoreCount: rows.filter((row) => row.verification_status === 'needs_review').length,
-        notFoundStoreCount: rows.filter((row) => row.verification_status === 'not_found').length,
-        errorStoreCount: rows.filter((row) => row.verification_status === 'error').length,
+        readyStoreCount: rows.filter((row) => bucket(row) === 'ready').length,
+        pendingStoreCount: rows.filter((row) => bucket(row) === 'pending').length,
+        reviewStoreCount: rows.filter((row) => bucket(row) === 'review').length,
+        notFoundStoreCount: rows.filter((row) => bucket(row) === 'not_found').length,
+        errorStoreCount: rows.filter((row) => bucket(row) === 'error').length,
         unknownDistributorCount: rows.filter((row) => row.distributor === 'unknown').length,
       }
     })
@@ -182,6 +186,7 @@ function storeCoverage(
     egdStoreCount: active.filter((row) => row.distributor === 'egd').length,
     preStoreCount: active.filter((row) => row.distributor === 'pre').length,
     unknownDistributorCount: active.filter((row) => row.distributor === 'unknown').length,
+    unknownReadyStoreCount: active.filter((row) => row.distributor === 'unknown' && bucket(row) === 'ready').length,
     catalogRevision: catalog.revision,
     catalogLastChangedAt: catalog.last_changed_at,
     catalogLastChangeKind: catalog.last_change_kind,

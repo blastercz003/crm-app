@@ -213,6 +213,7 @@ export type PowerOutageStoreCoverage = {
   egdStoreCount: number
   preStoreCount: number
   unknownDistributorCount: number
+  unknownReadyStoreCount: number
   catalogRevision: number
   catalogLastChangedAt: string
   catalogLastChangeKind: 'initial' | 'insert' | 'update' | 'delete'

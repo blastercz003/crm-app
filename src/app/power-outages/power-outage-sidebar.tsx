@@ -252,8 +252,9 @@ function StoreCoveragePanel({ coverage, onOpenAnalysis, onOpenDetail }: { covera
           <span className="rounded-xl border border-orange-500/35 bg-orange-500/8 px-1.5 py-2 text-[10px] text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></span>
           <span className="rounded-xl border border-red-500/35 bg-red-500/8 px-1.5 py-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></span>
           <span className="rounded-xl border border-violet-500/35 bg-violet-500/8 px-1 py-2 text-[10px] text-violet-700 [html[data-theme=dark]_&]:text-violet-300">PRE <strong className="ml-0.5 text-[10px] text-[var(--text-primary)]">{coverage.preStoreCount}</strong></span>
-          <span className="rounded-xl border border-slate-400/30 bg-slate-400/8 px-1.5 py-2 text-[10px] text-slate-600 [html[data-theme=dark]_&]:text-slate-300">Bez <strong className="ml-1 text-[10px] text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></span>
+          <span className="rounded-xl border border-slate-400/30 bg-slate-400/8 px-1 py-2 text-[8px] text-slate-600 sm:text-[9px] [html[data-theme=dark]_&]:text-slate-300">Neurčeno <strong className="ml-0.5 text-[10px] text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></span>
         </div>
+        {coverage.unknownReadyStoreCount > 0 ? <p className="mt-1.5 truncate text-[7px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{coverage.unknownReadyStoreCount} ověřených adres nemá určené území</p> : null}
       </div>
 
       <div className="mt-auto flex items-center gap-2 pt-3 text-left text-[8px] leading-4 text-[var(--text-secondary)]">
@@ -270,6 +271,10 @@ function catalogChangeLabel(kind: PowerOutageStoreCoverage['catalogLastChangeKin
 
 function CoverageDetailPopup({ coverage, sources, onClose }: { coverage: PowerOutageStoreCoverage; sources: PowerOutageSourceSummary[]; onClose: () => void }) {
   const percent = Math.min(100, Math.max(0, coverage.coveragePercent))
+  const classifiedDistributorCount = Math.max(0, coverage.totalStoreCount - coverage.unknownDistributorCount)
+  const distributorPercent = coverage.totalStoreCount > 0
+    ? Math.round((classifiedDistributorCount / coverage.totalStoreCount) * 1_000) / 10
+    : 0
   const sourceRows = (['cez', 'egd', 'pre'] as const).map((source) => ({
     source,
     summary: sources.find((item) => item.source === source) ?? null,
@@ -305,9 +310,11 @@ function CoverageDetailPopup({ coverage, sources, onClose }: { coverage: PowerOu
             <div className="rounded-2xl border border-orange-500/35 bg-orange-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-orange-700 [html[data-theme=dark]_&]:text-orange-300">ČEZ</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.cezStoreCount}</strong></div>
             <div className="rounded-2xl border border-red-500/35 bg-red-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-red-700 [html[data-theme=dark]_&]:text-red-300">EG.D</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.egdStoreCount}</strong></div>
             <div className="rounded-2xl border border-violet-500/35 bg-violet-500/8 p-3 text-center"><small className="block text-[8px] font-bold text-violet-700 [html[data-theme=dark]_&]:text-violet-300">PRE</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.preStoreCount}</strong></div>
-            <div className="rounded-2xl border border-slate-400/30 bg-slate-400/8 p-3 text-center"><small className="block text-[8px] font-bold text-slate-600 [html[data-theme=dark]_&]:text-slate-300">BEZ</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></div>
+            <div className="rounded-2xl border border-slate-400/30 bg-slate-400/8 p-3 text-center"><small className="block text-[8px] font-bold text-slate-600 [html[data-theme=dark]_&]:text-slate-300">NEURČENO</small><strong className="mt-1 block text-xl tabular-nums text-[var(--text-primary)]">{coverage.unknownDistributorCount}</strong></div>
           </div>
-          <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Údaj vyjadřuje přiřazené distribuční území prodejny, nikoliv počet odstávek. „Bez“ znamená, že území zatím nebylo spolehlivě přiřazeno.</p>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2"><span className="text-[8px] font-semibold text-[var(--text-secondary)]">Území určeno u {classifiedDistributorCount} z {coverage.totalStoreCount} adres</span><strong className="text-[11px] tabular-nums text-[var(--accent)]">{distributorPercent.toLocaleString('cs-CZ')} %</strong></div>
+          {coverage.unknownReadyStoreCount > 0 ? <p className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/8 px-3 py-2 text-[8px] leading-4 text-amber-800 [html[data-theme=dark]_&]:text-amber-200">{coverage.unknownReadyStoreCount} ověřených adres stále nemá určené distribuční území a vyžaduje kontrolu klasifikace.</p> : null}
+          <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Údaj vyjadřuje přiřazené distribuční území prodejny, nikoliv počet odstávek. „Neurčeno“ znamená, že adresa nebyla dostatečně ověřena nebo území zatím nebylo spolehlivě přiřazeno.</p>
         </section>
 
         <section className="mt-4">
