@@ -6,6 +6,7 @@ import type {
   CompleteAddressCoverage,
   CompleteAddressCoverageDiagnostic,
   CompleteAddressCoverageRun,
+  CompleteCezNewState,
   CompletePowerOutageAssignment,
   CompletePowerOutageCommunicationNote,
   CompletePowerOutageDetail,
@@ -108,6 +109,12 @@ function ownershipSchemaMissing(error: { code?: string; message?: string } | nul
   return error?.code === 'PGRST205'
     || error?.code === '42P01'
     || Boolean(error?.message?.includes('complete_power_outage_company_assignments'))
+}
+
+function cezNewMonitoringSchemaMissing(error: { code?: string; message?: string } | null) {
+  return error?.code === 'PGRST205'
+    || error?.code === '42P01'
+    || Boolean(error?.message?.includes('complete_power_outage_cez_new_status'))
 }
 
 function mapAssignment(row: AssignmentRow | undefined): CompletePowerOutageAssignment | null {
@@ -291,6 +298,59 @@ function mapSourceState(
     coverageMessage: metadataText(row.metadata, 'coverageMessage'),
     queryScope: metadataText(row.metadata, 'upstreamQueryScope') ?? metadataText(row.metadata, 'sourceScope'),
     discovery: mapSourceDiscovery(row, discovery, taskRows),
+  }
+}
+
+function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
+  const stage = row.current_stage as CompleteCezNewState['stage']
+  const status = row.overall_status as CompleteCezNewState['status']
+  const done = Number(row.progress_done ?? 0)
+  const total = Number(row.progress_total ?? 0)
+  const stageLabel = ({
+    ruian: 'Načítá se katalog a reprezentativní adresy RÚIAN.',
+    mapping: 'Obce se přiřazují k distribučnímu území ČEZ.',
+    scan: 'Probíhá celoplošná kontrola odstávek ČEZ.',
+    normalization: 'Nalezené adresy se ověřují proti RÚIAN.',
+    projection: 'Ověřená data se promítají do stínového katalogu.',
+    ready: 'Nový celoplošný ČEZ katalog je připravený.',
+  } as const)[stage] ?? 'Stav nového ČEZ procesu není dostupný.'
+  return {
+    activeSource: row.active_source === 'shadow' ? 'shadow' : 'legacy',
+    status,
+    stage,
+    statusMessage: status === 'error'
+      ? String(row.last_error_message || 'Nový ČEZ proces vyžaduje kontrolu.')
+      : stageLabel,
+    progressDone: done,
+    progressTotal: total,
+    progressPercent: total > 0 ? Math.round((done / total) * 1000) / 10 : 0,
+    catalogTotal: Number(row.catalog_total ?? 0),
+    representativeDone: Number(row.representative_done ?? 0),
+    representativeRemaining: Number(row.representative_remaining ?? 0),
+    representativeError: Number(row.representative_error ?? 0),
+    mappingDone: Number(row.mapping_done ?? 0),
+    mappingRemaining: Number(row.mapping_remaining ?? 0),
+    mappingError: Number(row.mapping_error ?? 0),
+    cezMapped: Number(row.cez_mapped ?? 0),
+    scanTotal: Number(row.scan_total ?? 0),
+    scanProcessed: Number(row.scan_processed ?? 0),
+    scanError: Number(row.scan_error ?? 0),
+    scanOutageCount: Number(row.scan_outage_count ?? 0),
+    scanAddressCount: Number(row.scan_address_count ?? 0),
+    scanStartedAt: row.scan_started_at as string | null,
+    scanFinishedAt: row.scan_finished_at as string | null,
+    normalizationTotal: Number(row.normalization_total ?? 0),
+    normalizationDone: Number(row.normalization_done ?? 0),
+    normalizationRemaining: Number(row.normalization_remaining ?? 0),
+    normalizationError: Number(row.normalization_error ?? 0),
+    projectedOutageCount: Number(row.projected_outage_count ?? 0),
+    projectedCurrentOutageCount: Number(row.projected_current_outage_count ?? 0),
+    projectedAddressCount: Number(row.projected_address_count ?? 0),
+    projectionStatus: String(row.projection_status ?? 'waiting'),
+    projectionPendingCount: Number(row.projection_pending_count ?? 0),
+    lastProjectionAt: row.last_projection_at as string | null,
+    publishableCycleCount: Number(row.publishable_cycle_count ?? 0),
+    lastErrorMessage: row.last_error_message as string | null,
   }
 }
 
@@ -493,6 +553,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     errorAddressCount,
     sourceResult,
     sourceDiscoveryResult,
+    cezNewResult,
     providerResult,
     taskResult,
     ownerResult,
@@ -514,12 +575,14 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
+    supabase.from('complete_power_outage_cez_new_status').select('*').maybeSingle(),
     supabase.from('complete_power_outage_provider_overview').select('provider,ready_count,pending_count,not_found_count,error_count,minute_request_count,day_request_count,monthly_credit_count,complete_credit_count,markets_credit_count,last_request_at').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_company_assignments').select('owner_id,owner_name').order('owner_name').limit(1_000),
   ])
   if (sourceResult.error) throw new Error(`Stav zdrojů kompletních odstávek se nepodařilo načíst: ${sourceResult.error.message}`)
   const discoveryRows = sourceDiscoveryResult.error ? [] : sourceDiscoveryResult.data ?? []
+  if (cezNewResult.error && !cezNewMonitoringSchemaMissing(cezNewResult.error)) throw new Error(`Stav nového sběru ČEZ se nepodařilo načíst: ${cezNewResult.error.message}`)
   if (providerResult.error) throw new Error(`Stav vyhledávání firem se nepodařilo načíst: ${providerResult.error.message}`)
   if (taskResult.error) throw new Error(`Provozní stav kompletních odstávek se nepodařilo načíst: ${taskResult.error.message}`)
   if (ownerResult.error && !ownershipSchemaMissing(ownerResult.error)) throw new Error(`Seznam vlastníků se nepodařilo načíst: ${ownerResult.error.message}`)
@@ -604,6 +667,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
       entityKinds: ['registered_office', 'establishment', 'mixed'],
     },
     sources,
+    cezNew: cezNewResult.data ? mapCezNewState(cezNewResult.data) : null,
     providers: providerStates,
     runtime: {
       status: runtimeStatus,

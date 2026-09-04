@@ -3,7 +3,7 @@
 import { CircleAlert, CircleCheck, DatabaseZap, History, Info, LoaderCircle, MapPinned, RefreshCw, Route, SearchCheck, TimerReset } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompletePowerOutageWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
+import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompletePowerOutageWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
 import { getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction } from './actions'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
@@ -57,6 +57,22 @@ function discoveryStatusPresentation(status: CompleteSourceState['discovery']['s
   if (status === 'delayed') return { badge: 'border-amber-400/35 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'animate-pulse bg-amber-500 motion-reduce:animate-none', attention: true }
   if (status === 'error') return { badge: 'border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500', attention: true }
   return { badge: 'border-slate-400/35 bg-slate-400/10 text-slate-600 [html[data-theme=dark]_&]:text-slate-300', dot: 'bg-slate-400' }
+}
+
+function cezNewStatusLabel(status: CompleteCezNewState['status']) {
+  return ({ waiting: 'ČEKÁ', processing: 'ZPRACOVÁNÍ', ready: 'PŘIPRAVENO', partial: 'ČÁSTEČNĚ', error: 'CHYBA' } as const)[status]
+}
+
+function cezNewStatusPresentation(status: CompleteCezNewState['status']) {
+  if (status === 'ready') return { badge: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', dot: 'bg-emerald-500' }
+  if (status === 'processing') return { badge: 'border-sky-400/35 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300', dot: 'animate-pulse bg-sky-500 motion-reduce:animate-none' }
+  if (status === 'partial') return { badge: 'border-amber-400/35 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'bg-amber-500', attention: true }
+  if (status === 'error') return { badge: 'border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500', attention: true }
+  return { badge: 'border-slate-400/35 bg-slate-400/10 text-slate-600 [html[data-theme=dark]_&]:text-slate-300', dot: 'bg-slate-400' }
+}
+
+function cezNewStageLabel(stage: CompleteCezNewState['stage']) {
+  return ({ ruian: 'Katalog RÚIAN', mapping: 'Mapování území ČEZ', scan: 'Sběr odstávek', normalization: 'Ověření adres', projection: 'Stínová projekce', ready: 'Připraveno k přepnutí' } as const)[stage]
 }
 
 function runStatusLabel(status: CompleteSourceDiagnostic['runs'][number]['status']) {
@@ -259,8 +275,36 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
   )
 }
 
+function CompleteCezNewDiagnosticPopup({ state, onClose }: { state: CompleteCezNewState; onClose: () => void }) {
+  const presentation = cezNewStatusPresentation(state.status)
+  const phases = [
+    { label: 'Katalog RÚIAN', done: state.representativeDone, total: state.catalogTotal, error: state.representativeError, detail: `${state.representativeRemaining.toLocaleString('cs-CZ')} obcí zbývá` },
+    { label: 'Mapování ČEZ', done: state.mappingDone, total: state.catalogTotal, error: state.mappingError, detail: `${state.cezMapped.toLocaleString('cs-CZ')} obcí v území ČEZ` },
+    { label: 'Celoplošný sken', done: state.scanProcessed, total: state.scanTotal, error: state.scanError, detail: `${state.scanOutageCount.toLocaleString('cs-CZ')} odstávek · ${state.scanAddressCount.toLocaleString('cs-CZ')} adres` },
+    { label: 'Ověření adres', done: state.normalizationDone, total: state.normalizationTotal, error: state.normalizationError, detail: `${state.normalizationRemaining.toLocaleString('cs-CZ')} adres zbývá` },
+  ]
+  return <PowerOutagePopupShell titleId="complete-cez-new-status" eyebrow="KOMPLETNÍ SBĚR · NOVÝ CELOPLOŠNÝ ZDROJ" title={state.activeSource === 'shadow' ? 'ČEZ' : 'ČEZ – NEW'} icon={<DatabaseZap aria-hidden size={21} />} onClose={onClose}>
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
+      <section className="rounded-2xl border border-sky-400/25 bg-sky-500/8 p-4">
+        <div className="flex items-start justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Právě probíhá</small><strong className="mt-1 block text-base text-[var(--text-primary)]">{cezNewStageLabel(state.stage)}</strong><p className="mt-1 max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{state.statusMessage}</p></span><span className={`relative inline-flex h-8 w-[108px] shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold uppercase leading-none tracking-[0.06em] ${presentation.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} />{cezNewStatusLabel(state.status)}{presentation.attention ? <i className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black not-italic text-amber-950">!</i> : null}</span></div>
+        <div className="mt-4 flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, state.progressPercent)}%` }} /></div><strong className="w-12 text-right text-[10px] tabular-nums text-[var(--accent)]">{state.progressPercent.toLocaleString('cs-CZ')} %</strong></div>
+        <p className="mt-2 text-[9px] text-[var(--text-secondary)]">{state.progressDone.toLocaleString('cs-CZ')} z {state.progressTotal.toLocaleString('cs-CZ')} položek aktuální fáze</p>
+      </section>
+
+      <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Průběh jednotlivých fází</h3><div className="mt-2 grid gap-2 sm:grid-cols-2">{phases.map((phase) => { const percent = phase.total > 0 ? Math.min(100, Math.round((phase.done / phase.total) * 1000) / 10) : 0; return <div key={phase.label} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-2"><strong className="text-[10px] text-[var(--text-primary)]">{phase.label}</strong><strong className="text-xs tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-strong)]"><span className="block h-full rounded-full bg-sky-500" style={{ width: `${percent}%` }} /></div><p className="mt-2 text-[8px] text-[var(--text-secondary)]">{phase.done.toLocaleString('cs-CZ')} / {phase.total.toLocaleString('cs-CZ')} · {phase.detail}</p>{phase.error > 0 ? <p className="mt-1 text-[8px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{phase.error.toLocaleString('cs-CZ')} položek vyžaduje kontrolu</p> : null}</div> })}</div></section>
+
+      <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Stínová projekce</h3><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><PowerOutageDetailRow label="Odstávky" value={state.projectedOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Aktuální odstávky" value={state.projectedCurrentOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Adresy" value={state.projectedAddressCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Čeká na normalizaci" value={state.projectionPendingCount.toLocaleString('cs-CZ')} /></div><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Poslední projekce {formatDate(state.lastProjectionAt)} · kompletní bezpečné cykly {state.publishableCycleCount} / 2.</p></section>
+
+      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5"><div className="flex items-start gap-2.5">{state.activeSource === 'shadow' ? <CircleCheck aria-hidden size={17} className="mt-0.5 shrink-0 text-emerald-500" /> : <Info aria-hidden size={17} className="mt-0.5 shrink-0 text-sky-500" />}<span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Aktivní zdroj pro uživatele</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{state.activeSource === 'shadow' ? 'Nový celoplošný ČEZ' : 'Původní ČEZ katalog'}</strong><p className="mt-1 text-[9px] leading-4 text-[var(--text-secondary)]">{state.activeSource === 'shadow' ? 'Tab KOMPLETNÍ používá nový celoplošný zdroj. Návrat na původní zdroj zůstává možný.' : 'Nový sběr zatím běží odděleně ve stínovém režimu a nemění data zobrazená uživatelům.'}</p></span></div></section>
+
+      {state.lastErrorMessage ? <section className="mt-4"><h3 className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.12em] text-red-700 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><p className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5 text-xs leading-5 text-[var(--text-primary)]">{state.lastErrorMessage}</p></section> : null}
+    </div>
+  </PowerOutagePopupShell>
+}
+
 function SourcesPanel({ workspace }: { workspace: CompletePowerOutageWorkspace }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
+  const [showCezNew, setShowCezNew] = useState(false)
   const [diagnostic, setDiagnostic] = useState<CompleteSourceDiagnostic | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -287,28 +331,51 @@ function SourcesPanel({ workspace }: { workspace: CompletePowerOutageWorkspace }
     return () => window.clearInterval(interval)
   }, [selectedSource, discoveryPollingStatus])
 
+  const cezNew = workspace.cezNew
+  const shadowActive = cezNew?.activeSource === 'shadow'
+  const visibleSources = shadowActive ? workspace.sources.filter((source) => source.source !== 'cez') : workspace.sources
+  const compact = Boolean(cezNew && !shadowActive)
+  const sourceCards: Array<{ kind: 'legacy'; source: CompleteSourceState } | { kind: 'cez-new'; state: CompleteCezNewState }> = []
+  for (const source of visibleSources) {
+    sourceCards.push({ kind: 'legacy', source })
+    if (source.source === 'cez' && cezNew && !shadowActive) sourceCards.push({ kind: 'cez-new', state: cezNew })
+  }
+  if (cezNew && (shadowActive || !visibleSources.some((source) => source.source === 'cez'))) sourceCards.unshift({ kind: 'cez-new', state: cezNew })
+
   return <PanelShell>
     <div className="flex items-center gap-3">
       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><DatabaseZap aria-hidden size={18} /></span>
       <span><small className="block text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Kompletní sběr</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Stav distributorů</h3></span>
     </div>
     <div className="mt-3 flex min-h-0 flex-1 flex-col justify-between lg:mt-4 lg:block lg:space-y-2">
-      {workspace.sources.map((source) => {
+      {sourceCards.map((card) => {
+        if (card.kind === 'cez-new') {
+          const state = card.state
+          const presentation = cezNewStatusPresentation(state.status)
+          const remaining = Math.max(0, state.progressTotal - state.progressDone)
+          return <div key="cez-new" className={`weather-alerts__record-surface rounded-xl border px-2.5 py-1 lg:px-3 lg:py-2 ${compact ? 'h-[62px] lg:h-[78px]' : 'h-[70px] lg:h-[94px]'}`}>
+            <div className="flex items-center justify-between gap-2"><strong className="text-[13px] text-[var(--text-primary)]">{shadowActive ? 'ČEZ' : 'ČEZ – NEW'}</strong><button type="button" onClick={() => setShowCezNew(true)} className={`relative inline-flex h-6 w-[98px] items-center justify-center gap-1 rounded-lg border px-1.5 text-center text-[7px] font-bold uppercase leading-none tracking-[0.055em] transition hover:-translate-y-px lg:h-8 lg:w-[104px] lg:gap-1.5 lg:rounded-xl lg:px-2 lg:text-[8px] lg:tracking-[0.065em] ${presentation.badge}`} title={state.statusMessage} aria-label={`${shadowActive ? 'ČEZ' : 'ČEZ – NEW'}: ${cezNewStatusLabel(state.status)}. ${state.statusMessage} Zobrazit detail.`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} /><span>{cezNewStatusLabel(state.status)}</span>{presentation.attention ? <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-[8px] font-black leading-none text-amber-950 shadow-sm lg:-right-1.5 lg:-top-1.5 lg:h-4 lg:w-4 lg:text-[9px]">!</span> : null}</button></div>
+            <div className={`${compact ? 'mt-0' : 'mt-0.5'} grid grid-cols-2 gap-1.5 lg:mt-1 lg:gap-2`}><span className="weather-alerts__record-surface flex h-5 items-center justify-between rounded-lg border px-2 lg:h-6 lg:px-2.5"><small className="text-[6px] font-bold uppercase leading-[8px] tracking-[0.035em] text-[var(--text-secondary)]">Hotovo</small><strong className="text-[10px] tabular-nums text-[var(--text-primary)]">{state.progressDone}/{state.progressTotal}</strong></span><span className="weather-alerts__record-surface flex h-5 items-center justify-between rounded-lg border px-2 lg:h-6 lg:px-2.5"><small className="text-[6px] font-bold uppercase leading-[8px] tracking-[0.035em] text-[var(--text-secondary)]">Zbývá</small><strong className="text-[10px] tabular-nums text-[var(--text-primary)]">{remaining}</strong></span></div>
+            <div className={`${compact ? 'mt-0.5 lg:mt-1' : 'mt-1 lg:mt-1.5'} flex items-center gap-1.5 lg:gap-2`}><span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, state.progressPercent)}%` }} /></span><strong className="w-8 text-right text-[7px] tabular-nums text-[var(--accent)]">{state.progressPercent.toLocaleString('cs-CZ')}%</strong><small className="w-[72px] truncate text-right text-[6px] text-[var(--text-secondary)]">{cezNewStageLabel(state.stage)}</small></div>
+          </div>
+        }
+        const source = card.source
         const discovery = source.discovery
         const presentation = discoveryStatusPresentation(discovery.status)
-        return <div key={source.source} className="weather-alerts__record-surface h-[70px] rounded-xl border px-2.5 py-1 lg:h-[94px] lg:px-3 lg:py-2">
+        return <div key={source.source} className={`weather-alerts__record-surface rounded-xl border px-2.5 py-1 lg:px-3 lg:py-2 ${compact ? 'h-[62px] lg:h-[78px]' : 'h-[70px] lg:h-[94px]'}`}>
         <div className="flex items-center justify-between gap-2">
           <strong className="text-[13px] text-[var(--text-primary)]">{sourceLabel(source.source)}</strong>
           <button type="button" onClick={() => openSource(source.source)} className={`relative inline-flex h-6 w-[98px] items-center justify-center gap-1 rounded-lg border px-1.5 text-center text-[7px] font-bold uppercase leading-none tracking-[0.055em] transition hover:-translate-y-px lg:h-8 lg:w-[104px] lg:gap-1.5 lg:rounded-xl lg:px-2 lg:text-[8px] lg:tracking-[0.065em] ${presentation.badge}`} title={discovery.statusMessage} aria-label={`${sourceLabel(source.source)}: ${discoveryStatusLabel(discovery.status)}. ${discovery.statusMessage} Zobrazit provozní detail.`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} /><span className="translate-y-px">{discoveryStatusLabel(discovery.status)}</span>{presentation.attention || discovery.errorTargetCount > 0 ? <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-[8px] font-black leading-none text-amber-950 shadow-sm lg:-right-1.5 lg:-top-1.5 lg:h-4 lg:w-4 lg:text-[9px]">!</span> : null}</button>
         </div>
-        <div className="mt-0.5 grid grid-cols-2 gap-1.5 lg:mt-1 lg:gap-2">
+        <div className={`${compact ? 'mt-0' : 'mt-0.5'} grid grid-cols-2 gap-1.5 lg:mt-1 lg:gap-2`}>
           <span className="weather-alerts__record-surface flex h-5 items-center justify-between rounded-lg border px-2 lg:h-6 lg:px-2.5"><small className="text-[6px] font-bold uppercase leading-[8px] tracking-[0.035em] text-[var(--text-secondary)]">Prověřeno</small><strong className="text-[10px] tabular-nums text-[var(--text-primary)]">{discovery.completedTargetCount}/{discovery.totalTargetCount}</strong></span>
           <span className="weather-alerts__record-surface flex h-5 items-center justify-between rounded-lg border px-2 lg:h-6 lg:px-2.5"><small className="text-[6px] font-bold uppercase leading-[8px] tracking-[0.035em] text-[var(--text-secondary)]">Zbývá</small><strong className="text-[10px] tabular-nums text-[var(--text-primary)]">{discovery.remainingTargetCount}</strong></span>
         </div>
-        <div className="mt-1 flex items-center gap-1.5 lg:mt-1.5 lg:gap-2"><span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, discovery.progressPercent)}%` }} /></span><strong className="w-7 text-right text-[7px] tabular-nums text-[var(--accent)]">{discovery.progressPercent.toLocaleString('cs-CZ')}%</strong><small className="w-[72px] truncate text-right text-[6px] text-[var(--text-secondary)]">{formatRelativeDate(discovery.lastProgressAt)}</small></div>
+        <div className={`${compact ? 'mt-0.5 lg:mt-1' : 'mt-1 lg:mt-1.5'} flex items-center gap-1.5 lg:gap-2`}><span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, discovery.progressPercent)}%` }} /></span><strong className="w-7 text-right text-[7px] tabular-nums text-[var(--accent)]">{discovery.progressPercent.toLocaleString('cs-CZ')}%</strong><small className="w-[72px] truncate text-right text-[6px] text-[var(--text-secondary)]">{formatRelativeDate(discovery.lastProgressAt)}</small></div>
       </div>})}
     </div>
     {selectedSource && typeof document !== 'undefined' ? createPortal(<CompleteSourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} isAdmin={workspace.currentUser.isAdmin} onReload={() => loadDiagnostic(selectedSource, false)} onClose={() => { setSelectedSource(null); setDiagnostic(null); setError(null) }} />, document.body) : null}
+    {showCezNew && cezNew && typeof document !== 'undefined' ? createPortal(<CompleteCezNewDiagnosticPopup state={cezNew} onClose={() => setShowCezNew(false)} />, document.body) : null}
   </PanelShell>
 }
 

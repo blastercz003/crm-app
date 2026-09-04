@@ -271,6 +271,43 @@ export type CompleteRuntimeState = {
   issues: string[]
 }
 
+export type CompleteCezNewState = {
+  activeSource: 'legacy' | 'shadow'
+  status: 'waiting' | 'processing' | 'ready' | 'partial' | 'error'
+  stage: 'ruian' | 'mapping' | 'scan' | 'normalization' | 'projection' | 'ready'
+  statusMessage: string
+  progressDone: number
+  progressTotal: number
+  progressPercent: number
+  catalogTotal: number
+  representativeDone: number
+  representativeRemaining: number
+  representativeError: number
+  mappingDone: number
+  mappingRemaining: number
+  mappingError: number
+  cezMapped: number
+  scanTotal: number
+  scanProcessed: number
+  scanError: number
+  scanOutageCount: number
+  scanAddressCount: number
+  scanStartedAt: string | null
+  scanFinishedAt: string | null
+  normalizationTotal: number
+  normalizationDone: number
+  normalizationRemaining: number
+  normalizationError: number
+  projectedOutageCount: number
+  projectedCurrentOutageCount: number
+  projectedAddressCount: number
+  projectionStatus: string
+  projectionPendingCount: number
+  lastProjectionAt: string | null
+  publishableCycleCount: number
+  lastErrorMessage: string | null
+}
+
 export type CompleteAddressCoverage = {
   status: 'waiting' | 'processing' | 'current' | 'partial' | 'error'
   statusMessage: string
@@ -344,6 +381,7 @@ export type CompletePowerOutageWorkspace = {
     entityKinds: CompleteEntityKind[]
   }
   sources: CompleteSourceState[]
+  cezNew: CompleteCezNewState | null
   providers: CompleteProviderState[]
   runtime: CompleteRuntimeState
   addressCoverage: CompleteAddressCoverage
