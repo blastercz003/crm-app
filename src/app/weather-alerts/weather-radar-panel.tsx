@@ -144,7 +144,7 @@ export function WeatherRadarPanel({ radar }: { radar: RadarWorkspace }) {
     : null
 
   return (
-    <section className="activities-page__panel h-full min-w-0 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
+    <section className="activities-page__panel weather-alerts__fixed-map-panel flex min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
@@ -183,10 +183,10 @@ export function WeatherRadarPanel({ radar }: { radar: RadarWorkspace }) {
         ) : null}
       </div>
 
-      <div className="weather-alerts__record-surface mt-4 flex h-[274px] items-center justify-center overflow-hidden rounded-[22px] border sm:h-[362px] lg:h-[422px]">
+      <div className="weather-alerts__record-surface mt-4 flex h-[274px] items-center justify-center overflow-hidden rounded-[22px] border sm:h-[362px] lg:h-[422px] xl:min-h-0 xl:flex-1">
         {currentFrame && imageGeometry ? (
           <>
-            <div className="relative mx-auto flex h-[250px] w-full max-w-[1080px] items-center justify-center overflow-hidden sm:h-[330px] lg:h-[390px]">
+            <div className="relative mx-auto flex h-[250px] w-full max-w-[1080px] items-center justify-center overflow-hidden sm:h-[330px] lg:h-[390px] xl:h-full">
               <svg
                 viewBox={orpMap.viewBox.join(' ')}
                 role="img"

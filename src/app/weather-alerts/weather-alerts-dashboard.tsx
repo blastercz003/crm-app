@@ -868,7 +868,7 @@ export function WeatherAlertsDashboard({
       <WeatherSummaryStats cards={summary} />
 
       <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
-        <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:h-full">
+        <section className="activities-page__panel weather-alerts__overview-map-panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 shrink-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">
@@ -989,7 +989,7 @@ export function WeatherAlertsDashboard({
                 </div>
 
                 {filteredEvents.length > 0 ? (
-                  <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain pb-2 pr-1 pt-1">
+                  <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-1.5 pb-2 [scrollbar-gutter:stable]">
                     {filteredEvents.map((event) => (
                       <EventCard
                         key={event.id}
@@ -1076,7 +1076,7 @@ export function WeatherAlertsDashboard({
         </aside>
       </div>
 
-      <div className="grid items-stretch gap-5 xl:grid-cols-4 xl:gap-3">
+      <div className="grid items-start gap-5 xl:grid-cols-4 xl:gap-3">
         <div className="min-w-0 xl:col-span-3">
           <WeatherRadarPanel radar={insights.radar} />
         </div>

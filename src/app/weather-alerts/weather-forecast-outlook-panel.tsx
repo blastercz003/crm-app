@@ -167,7 +167,7 @@ function ForecastPeriodCard({
       type="button"
       onClick={(event) => onOpen(event.currentTarget)}
       aria-label={`Otevřít detail výhledu pro období ${formatValidity(period.validFrom, period.validTo)}`}
-      className="weather-alerts__record-surface block w-full min-w-0 rounded-[20px] border p-3 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      className="weather-alerts__forecast-card weather-alerts__record-surface block w-full min-w-0 rounded-[20px] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
     >
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <strong className="min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[var(--text-primary)] sm:text-xs">
@@ -498,7 +498,7 @@ export function WeatherForecastOutlookPanel({
     : null
 
   return (
-    <section id="weather-outlook" className={`activities-page__panel h-full min-w-0 scroll-mt-6 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 ${compact ? 'xl:flex xl:min-h-0 xl:flex-col' : ''}`}>
+    <section id="weather-outlook" className={`activities-page__panel min-w-0 scroll-mt-6 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 ${compact ? 'weather-alerts__fixed-map-panel xl:flex xl:min-h-0 xl:flex-col' : ''}`}>
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--accent)]">
@@ -516,7 +516,7 @@ export function WeatherForecastOutlookPanel({
       </div>
 
       {periods.length > 0 ? (
-        <div className={`mt-4 overflow-y-auto overscroll-contain pb-1 pr-1 pt-1 ${compact ? 'max-h-[520px] xl:min-h-0 xl:max-h-none xl:flex-1' : 'max-h-[520px]'}`}>
+        <div className={`mt-4 overflow-y-auto overscroll-contain pb-1 pr-1 pt-1 [scrollbar-gutter:stable] xl:p-1.5 ${compact ? 'max-h-[520px] xl:min-h-0 xl:max-h-none xl:flex-1' : 'max-h-[520px]'}`}>
           <div className={`grid min-w-0 gap-2.5 ${compact ? '' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
             {periods.map((period) => (
               <ForecastPeriodCard
