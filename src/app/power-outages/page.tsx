@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { unstable_noStore as noStore } from 'next/cache'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
-import { getCompletePowerOutageWorkspace } from '@/lib/power-outages/complete-service'
 import { getPowerOutageWorkspace } from '@/lib/power-outages/service'
 import { CompletePowerOutagesDashboard } from './complete-power-outages-dashboard'
 import { PowerOutageModeSwitch, type PowerOutageMode } from './power-outage-mode-switch'
@@ -24,12 +23,11 @@ export default async function PowerOutagesPage({
 }) {
   noStore()
   const params = searchParams ? await searchParams : {}
-  const { profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  const { profile, user } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const completeEnabled = profile.role === 'admin' || process.env.COMPLETE_POWER_OUTAGES_ENABLED === 'true'
   const requestedMode: PowerOutageMode = firstParam(params.mode) === 'complete' ? 'complete' : 'markets'
   const mode: PowerOutageMode = requestedMode === 'complete' && completeEnabled ? 'complete' : 'markets'
   const marketWorkspace = mode === 'markets' ? await getPowerOutageWorkspace() : null
-  const completeWorkspace = mode === 'complete' ? await getCompletePowerOutageWorkspace() : null
 
   return (
     <main className="activities-page power-outages-page relative min-h-screen overflow-hidden bg-[linear-gradient(160deg,#f8fafc_0%,#eef3f8_50%,#e9f0f7_100%)] text-[var(--foreground)]">
@@ -53,9 +51,7 @@ export default async function PowerOutagesPage({
 
         {mode === 'markets' && marketWorkspace
           ? <PowerOutagesDashboard workspace={marketWorkspace} />
-          : completeWorkspace
-            ? <CompletePowerOutagesDashboard workspace={completeWorkspace} />
-            : null}
+          : <CompletePowerOutagesDashboard currentUser={{ id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' }} />}
       </div>
     </main>
   )

@@ -34,12 +34,13 @@ import type {
   CompletePowerOutageListItem,
   CompletePowerOutagePageCursor,
   CompletePowerOutagePageFilters,
-  CompletePowerOutageWorkspace,
+  CompletePowerOutageCurrentUser,
 } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
 import {
   getCompletePowerOutageDetailAction,
   getCompletePowerOutageCommunicationNotesAction,
+  getCompletePowerOutageCountAction,
   getCompletePowerOutagePageAction,
   releaseCompletePowerOutageAssignmentAction,
   saveCompletePowerOutageAssignmentAction,
@@ -201,7 +202,7 @@ function CompleteAssignmentPopup({
   onChanged,
 }: {
   item: CompletePowerOutageListItem
-  currentUser: CompletePowerOutageWorkspace['currentUser']
+  currentUser: CompletePowerOutageCurrentUser
   onClose: () => void
   onChanged: (assignment: CompletePowerOutageAssignment | null) => void
 }) {
@@ -284,7 +285,11 @@ function MobileCard({ item, onDetail, onAnnouncement, onAssignment }: { item: Co
   return <article className="power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5"><div className="flex min-w-0 items-start justify-between gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /></span><div className="flex min-w-0 flex-nowrap justify-end gap-1"><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
 }
 
-export function CompletePowerOutageRecords({ workspace }: { workspace: CompletePowerOutageWorkspace }) {
+export function CompletePowerOutageRecords({ currentUser, owners, onInitialLoad }: {
+  currentUser: CompletePowerOutageCurrentUser
+  owners: Array<{ id: string; name: string }>
+  onInitialLoad?: () => void
+}) {
   const [tab, setTab] = useState<Tab>('current')
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -299,17 +304,17 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
   const [detail, setDetail] = useState<CompletePowerOutageDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
-  const [pageItems, setPageItems] = useState(workspace.initialPage.items)
-  const [totalCount, setTotalCount] = useState(workspace.initialPage.totalCount)
-  const [hasMore, setHasMore] = useState(workspace.initialPage.hasMore)
-  const [pageLoading, setPageLoading] = useState(false)
-  const [pageError, setPageError] = useState<string | null>(workspace.initialPageError)
+  const [pageItems, setPageItems] = useState<CompletePowerOutageListItem[]>([])
+  const [totalCount, setTotalCount] = useState<number | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
+  const [pageError, setPageError] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const requestSequence = useRef(0)
-  const initialized = useRef(false)
+  const initialLoadReported = useRef(false)
   const loadingRef = useRef(false)
-  const nextCursorRef = useRef<CompletePowerOutagePageCursor | null>(workspace.initialPage.nextCursor)
+  const nextCursorRef = useRef<CompletePowerOutagePageCursor | null>(null)
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedQuery(query.trim()), 300)
@@ -334,7 +339,7 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
     setPageError(null)
     if (reset) {
       setPageItems([])
-      setTotalCount(0)
+      setTotalCount(null)
       nextCursorRef.current = null
       setHasMore(false)
       scrollContainerRef.current?.scrollTo({ top: 0 })
@@ -346,6 +351,10 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
     setPageLoading(false)
     if (!result.success) {
       setPageError(result.error)
+      if (!initialLoadReported.current) {
+        initialLoadReported.current = true
+        onInitialLoad?.()
+      }
       return
     }
     setPageItems((current) => {
@@ -353,21 +362,26 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
       const known = new Set(current.map((item) => item.candidateId))
       return [...current, ...result.page.items.filter((item) => !known.has(item.candidateId))]
     })
-    setTotalCount(result.page.totalCount)
+    if (result.page.totalCount !== null) setTotalCount(result.page.totalCount)
     nextCursorRef.current = result.page.nextCursor
     setHasMore(result.page.hasMore)
-  }, [pageFilters])
+    if (!initialLoadReported.current) {
+      initialLoadReported.current = true
+      onInitialLoad?.()
+    }
+    if (reset) {
+      void getCompletePowerOutageCountAction(pageFilters).then((countResult) => {
+        if (sequence === requestSequence.current && countResult.success) setTotalCount(countResult.count)
+      })
+    }
+  }, [onInitialLoad, pageFilters])
 
   useEffect(() => {
-    if (!initialized.current) {
-      initialized.current = true
-      if (!workspace.initialPageError) return
-    }
     requestSequence.current += 1
     loadingRef.current = false
     const timeout = window.setTimeout(() => void loadPage(true), 0)
     return () => window.clearTimeout(timeout)
-  }, [filterKey, loadPage, workspace.initialPageError])
+  }, [filterKey, loadPage])
 
   useEffect(() => {
     const target = loadMoreRef.current
@@ -425,7 +439,7 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
         <button type="button" onClick={() => setFiltersOpen((value) => !value)} aria-expanded={filtersOpen} aria-controls="complete-power-outage-mobile-filters" className="flex h-8 w-full items-center gap-2 rounded-xl px-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)] lg:hidden"><SlidersHorizontal aria-hidden size={14} className="shrink-0 text-[var(--accent)]" /><span className="flex-1">Filtry</span>{activeFilterCount ? <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1.5 text-[8px] text-white">{activeFilterCount}</span> : null}<ChevronDown aria-hidden size={14} className={`shrink-0 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} /></button>
         <div id="complete-power-outage-mobile-filters" className={`${filtersOpen ? 'grid' : 'hidden'} mt-1.5 gap-2 p-1 sm:grid-cols-2 lg:mt-0 lg:grid lg:p-0 xl:grid-cols-[minmax(120px,1.35fr)_repeat(4,minmax(82px,1fr))] xl:gap-1.5`}>
           <label className="relative min-w-0 sm:col-span-2 xl:col-span-1"><span className="sr-only">Vyhledat odstávku</span><Search aria-hidden size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Firma, IČO, město nebo ulice…" className="h-10 w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] pl-9 pr-8 text-[11px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)] focus:border-[var(--accent)]" />{query ? <button type="button" onClick={() => setQuery('')} aria-label="Vymazat hledání" className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"><X aria-hidden size={13} /></button> : null}</label>
-          <SelectControl label="Vlastník" value={owner} onChange={setOwner}><option value="all">Všichni vlastníci</option><option value="mine">Moje záznamy</option><option value="unassigned">Nepřiřazené</option>{workspace.filters.owners.filter((value) => value.id !== workspace.currentUser.id).map((value) => <option key={value.id} value={`user:${value.id}`}>{value.name}</option>)}</SelectControl>
+          <SelectControl label="Vlastník" value={owner} onChange={setOwner}><option value="all">Všichni vlastníci</option><option value="mine">Moje záznamy</option><option value="unassigned">Nepřiřazené</option>{owners.filter((value) => value.id !== currentUser.id).map((value) => <option key={value.id} value={`user:${value.id}`}>{value.name}</option>)}</SelectControl>
           <SelectControl label="Distributor" value={source} onChange={(value) => setSource(value as typeof source)}><option value="all">Všichni distributoři</option><option value="cez">ČEZ</option><option value="egd">EG.D</option><option value="pre">PRE</option></SelectControl>
           <SelectControl label="Typ" value={entity} onChange={(value) => setEntity(value as typeof entity)}><option value="all">Všechny typy</option><option value="registered_office">Sídla</option><option value="establishment">Provozovny</option><option value="mixed">Sídla + provozovny</option></SelectControl>
           <SelectControl label="Stav" value={status} onChange={(value) => setStatus(value as StatusFilter)}><option value="visible">Běžné výsledky</option><option value="confirmed">Potvrzené</option><option value="needs_review">K ověření</option><option value="dismissed">Zamítnuté</option></SelectControl>
@@ -433,7 +447,7 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
         {activeFilterCount ? <button type="button" onClick={clear} className={`${filtersOpen ? 'inline-flex' : 'hidden'} mb-1 ml-1 mt-2 h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] lg:hidden`}><X aria-hidden size={12} /> Zrušit filtry</button> : null}
       </div>
     </div>
-    <div className="power-outages-records-shell weather-alerts__record-surface mt-3 overflow-visible rounded-[22px] border lg:overflow-hidden xl:flex xl:min-h-0 xl:flex-1 xl:flex-col"><div className="hidden h-11 items-center justify-between border-b border-[var(--surface-border)] px-4 lg:flex"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{tab === 'current' ? <CalendarDays aria-hidden size={14} className="text-[var(--accent)]" /> : <Archive aria-hidden size={14} className="text-[var(--accent)]" />}{tab === 'current' ? 'Aktuální firmy v odstávkách' : 'Archiv firem v odstávkách'}</h3><span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 text-[9px] font-bold text-[var(--text-secondary)]">{totalCount}</span></div>
+    <div className="power-outages-records-shell weather-alerts__record-surface mt-3 overflow-visible rounded-[22px] border lg:overflow-hidden xl:flex xl:min-h-0 xl:flex-1 xl:flex-col"><div className="hidden h-11 items-center justify-between border-b border-[var(--surface-border)] px-4 lg:flex"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{tab === 'current' ? <CalendarDays aria-hidden size={14} className="text-[var(--accent)]" /> : <Archive aria-hidden size={14} className="text-[var(--accent)]" />}{tab === 'current' ? 'Aktuální firmy v odstávkách' : 'Archiv firem v odstávkách'}</h3><span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 text-[9px] font-bold text-[var(--text-secondary)]">{totalCount ?? '…'}</span></div>
       {records.length ? <div ref={scrollContainerRef} className="-mx-2 max-h-[610px] overflow-y-auto px-2 py-1 lg:mx-0 lg:max-h-[500px] lg:px-0 lg:py-0 xl:min-h-0 xl:max-h-none xl:flex-1">
         <div className="hidden lg:block"><table className="w-full table-fixed border-collapse text-left">
           <thead className="power-outages-table__header sticky top-0 z-10 shadow-[0_1px_0_var(--surface-border)]"><tr className="text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]"><th className="w-[17%] px-3 py-2.5">Firma / subjekt</th><th className="w-[16%] px-3 py-2.5">Adresa</th><th className="w-[8%] px-3 py-2.5">Distributor</th><th className="w-[14%] px-3 py-2.5">Termín od</th><th className="w-[14%] px-3 py-2.5">Termín do</th><th className="w-[22%] px-3 py-2.5">Stav</th><th className="w-[9%] px-3 py-2.5 text-right">Akce</th></tr></thead>
@@ -458,7 +472,7 @@ export function CompletePowerOutageRecords({ workspace }: { workspace: CompleteP
         ? <CompleteDetailPopup item={selected} detail={detail} loading={detailLoading} error={detailError} archived={tab === 'archive'} onClose={closePopup} />
         : popupMode === 'announcement'
           ? <CompleteAnnouncementPopup item={selected} onClose={closePopup} />
-          : <CompleteAssignmentPopup item={selected} currentUser={workspace.currentUser} onClose={closePopup} onChanged={(assignment) => updateAssignment(selected.candidateId, assignment)} />,
+          : <CompleteAssignmentPopup item={selected} currentUser={currentUser} onClose={closePopup} onChanged={(assignment) => updateAssignment(selected.candidateId, assignment)} />,
       document.body,
     ) : null}
   </section>

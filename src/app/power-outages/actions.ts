@@ -8,7 +8,7 @@ import {
 import { getPowerOutageDetail } from '@/lib/power-outages/service'
 import { getPowerOutageSourceDiagnostic } from '@/lib/power-outages/health'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
-import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageDetail, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSourceDiagnostic } from '@/lib/power-outages/complete-service'
+import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteAddressCoverageDiagnostic,
@@ -18,6 +18,8 @@ import type {
   CompletePowerOutagePage,
   CompletePowerOutagePageCursor,
   CompletePowerOutagePageFilters,
+  CompletePowerOutageSidebarWorkspace,
+  CompletePowerOutageStatistics,
   CompleteProviderDiagnostic,
   CompleteSourceDiagnostic,
 } from '@/lib/power-outages/complete-types'
@@ -38,6 +40,22 @@ type CompleteDetailActionResult =
 type CompletePageActionResult =
   | { success: true; page: CompletePowerOutagePage; error: null }
   | { success: false; page: null; error: string }
+
+type CompleteCountActionResult =
+  | { success: true; count: number; error: null }
+  | { success: false; count: null; error: string }
+
+type CompleteOwnersActionResult =
+  | { success: true; owners: Array<{ id: string; name: string }>; error: null }
+  | { success: false; owners: []; error: string }
+
+type CompleteStatisticsActionResult =
+  | { success: true; statistics: CompletePowerOutageStatistics; error: null }
+  | { success: false; statistics: null; error: string }
+
+type CompleteSidebarActionResult =
+  | { success: true; workspace: CompletePowerOutageSidebarWorkspace; error: null }
+  | { success: false; workspace: null; error: string }
 
 type CompleteAssignmentActionResult =
   | { success: true; assignment: CompletePowerOutageAssignment | null; error: null }
@@ -129,6 +147,40 @@ export async function getCompletePowerOutagePageAction(input: {
     return { success: true, page: await getCompletePowerOutagePage(filters, cursor, 60), error: null }
   } catch (error) {
     return { success: false, page: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageCountAction(
+  filters: CompletePowerOutagePageFilters,
+): Promise<CompleteCountActionResult> {
+  try {
+    return { success: true, count: await getCompletePowerOutageCount(filters), error: null }
+  } catch (error) {
+    return { success: false, count: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageOwnersAction(): Promise<CompleteOwnersActionResult> {
+  try {
+    return { success: true, owners: await getCompletePowerOutageOwners(), error: null }
+  } catch (error) {
+    return { success: false, owners: [], error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageStatisticsAction(): Promise<CompleteStatisticsActionResult> {
+  try {
+    return { success: true, statistics: await getCompletePowerOutageStatistics(), error: null }
+  } catch (error) {
+    return { success: false, statistics: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageSidebarAction(): Promise<CompleteSidebarActionResult> {
+  try {
+    return { success: true, workspace: await getCompletePowerOutageSidebarWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
   }
 }
 

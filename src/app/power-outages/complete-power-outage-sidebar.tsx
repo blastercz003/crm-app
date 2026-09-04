@@ -3,7 +3,7 @@
 import { CircleAlert, CircleCheck, DatabaseZap, History, Info, LoaderCircle, MapPinned, RefreshCw, Route, SearchCheck, TimerReset } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompletePowerOutageWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
+import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
 import { getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction } from './actions'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
@@ -34,7 +34,7 @@ function sourceLabel(source: PowerOutageSource) {
   return source === 'cez' ? 'ČEZ' : source === 'egd' ? 'EG.D' : 'PRE'
 }
 
-function coverageLabel(status: CompletePowerOutageWorkspace['sources'][number]['coverageStatus']) {
+function coverageLabel(status: CompletePowerOutageSidebarWorkspace['sources'][number]['coverageStatus']) {
   return ({ idle: 'ČEKÁ', processing: 'ZPRACOVÁNÍ', complete: 'AKTUÁLNÍ', partial: 'ČÁSTEČNĚ', error: 'CHYBA' } as const)[status]
 }
 
@@ -303,7 +303,7 @@ function CompleteCezNewDiagnosticPopup({ state, isAdmin, onClose }: { state: Com
   </PowerOutagePopupShell>
 }
 
-function SourcesPanel({ workspace }: { workspace: CompletePowerOutageWorkspace }) {
+function SourcesPanel({ workspace }: { workspace: CompletePowerOutageSidebarWorkspace }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
   const [showCezNew, setShowCezNew] = useState(false)
   const [diagnostic, setDiagnostic] = useState<CompleteSourceDiagnostic | null>(null)
@@ -417,7 +417,7 @@ function CompleteProviderDiagnosticPopup({ provider, diagnostic, loading, error,
   </PowerOutagePopupShell>
 }
 
-function DiscoveryPanel({ workspace }: { workspace: CompletePowerOutageWorkspace }) {
+function DiscoveryPanel({ workspace }: { workspace: CompletePowerOutageSidebarWorkspace }) {
   const runtime = workspace.runtime
   const [selectedProvider, setSelectedProvider] = useState<CompleteProviderState['provider'] | null>(null)
   const [diagnostic, setDiagnostic] = useState<CompleteProviderDiagnostic | null>(null)
@@ -516,7 +516,7 @@ function AddressCoverageDiagnosticPopup({ diagnostic, loading, error, isAdmin, o
   </PowerOutagePopupShell>
 }
 
-function CoveragePanel({ workspace }: { workspace: CompletePowerOutageWorkspace }) {
+function CoveragePanel({ workspace }: { workspace: CompletePowerOutageSidebarWorkspace }) {
   const coverage = workspace.addressCoverage
   const [showDetail, setShowDetail] = useState(false)
   const [diagnostic, setDiagnostic] = useState<CompleteAddressCoverageDiagnostic | null>(null)
@@ -542,6 +542,6 @@ function CoveragePanel({ workspace }: { workspace: CompletePowerOutageWorkspace 
   return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300"><MapPinned aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Databáze adres</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Pokrytí adres</h3></span></div><button type="button" onClick={openDetail} className="mt-4 rounded-2xl border border-sky-400/25 bg-sky-500/8 p-3.5 text-left transition hover:-translate-y-px hover:border-sky-400/45 hover:bg-sky-500/10" aria-label="Otevřít detail pokrytí adres"><div className="flex items-end justify-between gap-3"><span><small className="flex items-center gap-1.5 text-[7px] font-bold uppercase text-[var(--text-secondary)]"><i className={`h-1.5 w-1.5 rounded-full ${presentation.dot}`} />Normalizováno</small><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{coverage.normalizedCount} z {coverage.totalCount}</strong></span><span className="flex items-end gap-2">{coverage.status === 'error' ? <small className={`relative mb-0.5 inline-flex h-6 items-center justify-center rounded-lg border px-2 text-[6px] font-bold tracking-[0.05em] ${presentation.badge}`}>CHYBA<i className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-400 text-[8px] font-black not-italic text-red-950">!</i></small> : null}<strong className="text-2xl tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong></span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><div className="h-full rounded-full bg-sky-500" style={{ width: `${Math.min(100, percent)}%` }} /></div></button><div className="mt-3 grid grid-cols-3 gap-1.5 text-center"><span className="rounded-xl border border-emerald-400/25 bg-emerald-400/8 p-2 text-[6px] font-bold uppercase text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">Přesné<strong className="mt-1 block text-sm text-[var(--text-primary)]">{coverage.exactCount}</strong></span><span className="rounded-xl border border-amber-400/25 bg-amber-400/8 p-2 text-[6px] font-bold uppercase text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Širší rozsah<strong className="mt-1 block text-sm text-[var(--text-primary)]">{coverage.broadCount}</strong></span><span className="rounded-xl border border-slate-400/25 bg-slate-400/8 p-2 text-[6px] font-bold uppercase text-slate-600 [html[data-theme=dark]_&]:text-slate-300">Čeká<strong className="mt-1 block text-sm text-[var(--text-primary)]">{coverage.pendingCount}</strong></span></div>{showDetail && typeof document !== 'undefined' ? createPortal(<AddressCoverageDiagnosticPopup diagnostic={diagnostic} loading={loading} error={error} isAdmin={workspace.currentUser.isAdmin} onReload={() => loadDiagnostic(false)} onClose={() => { setShowDetail(false); setDiagnostic(null); setError(null) }} />, document.body) : null}</PanelShell>
 }
 
-export function CompletePowerOutageSidebar({ workspace }: { workspace: CompletePowerOutageWorkspace }) {
+export function CompletePowerOutageSidebar({ workspace }: { workspace: CompletePowerOutageSidebarWorkspace }) {
   return <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full"><p className="mb-2 flex items-center justify-center gap-1.5 text-center text-[10px] text-[var(--text-secondary)] lg:hidden"><Info aria-hidden size={12} /><span>Přejetím do strany zobrazíte další část.</span></p><aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Stav kompletního sběru a vyhledávání firem"><div className="min-w-0 snap-start snap-always lg:snap-none"><SourcesPanel workspace={workspace} /></div><div className="min-w-0 snap-start snap-always lg:snap-none"><DiscoveryPanel workspace={workspace} /></div><div className="min-w-0 snap-start snap-always lg:snap-none"><CoveragePanel workspace={workspace} /></div></aside></div>
 }

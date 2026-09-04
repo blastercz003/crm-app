@@ -79,9 +79,22 @@ export type CompletePowerOutagePageFilters = {
 
 export type CompletePowerOutagePage = {
   items: CompletePowerOutageListItem[]
-  totalCount: number
+  totalCount: number | null
   hasMore: boolean
   nextCursor: CompletePowerOutagePageCursor | null
+}
+
+export type CompletePowerOutageCurrentUser = {
+  id: string
+  name: string
+  isAdmin: boolean
+}
+
+export type CompletePowerOutageStatistics = {
+  currentOutageCount: number
+  currentCompanyCount: number
+  needsReviewCount: number
+  normalizedAddressCount: number
 }
 
 export type CompletePowerOutageEvidence = {
@@ -368,17 +381,8 @@ export type CompleteAddressCoverageDiagnostic = {
 
 export type CompletePowerOutageWorkspace = {
   generatedAt: string
-  currentUser: {
-    id: string
-    name: string
-    isAdmin: boolean
-  }
-  statistics: {
-    currentOutageCount: number
-    currentCompanyCount: number
-    needsReviewCount: number
-    normalizedAddressCount: number
-  }
+  currentUser: CompletePowerOutageCurrentUser
+  statistics: CompletePowerOutageStatistics
   initialPage: CompletePowerOutagePage
   initialPageError: string | null
   filters: {
@@ -392,3 +396,8 @@ export type CompletePowerOutageWorkspace = {
   runtime: CompleteRuntimeState
   addressCoverage: CompleteAddressCoverage
 }
+
+export type CompletePowerOutageSidebarWorkspace = Pick<
+  CompletePowerOutageWorkspace,
+  'currentUser' | 'sources' | 'cezNew' | 'providers' | 'runtime' | 'addressCoverage'
+>
