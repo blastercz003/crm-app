@@ -1,6 +1,6 @@
 'use client'
 
-import { CircleAlert, RefreshCw } from 'lucide-react'
+import { CircleAlert, LoaderCircle, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CompletePowerOutageCurrentUser, CompletePowerOutageSidebarWorkspace, CompletePowerOutageStatistics } from '@/lib/power-outages/complete-types'
 import { getCompletePowerOutageOwnersAction, getCompletePowerOutageSidebarAction, getCompletePowerOutageStatisticsAction } from './actions'
@@ -10,7 +10,7 @@ import { PowerOutageSummaryStats, type PowerOutageSummaryCard } from './power-ou
 
 function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: () => void }) {
   const panelClass = 'activities-page__panel flex h-[380px] min-w-0 flex-col rounded-[24px] border border-white/70 p-4 sm:p-5 lg:h-auto lg:min-h-[210px] lg:p-4'
-  const header = (eyebrow: string, title: string) => <div className="flex items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 ${error ? 'text-red-500' : 'animate-pulse'}`}>{error ? <CircleAlert aria-hidden size={18} /> : null}</span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{eyebrow}</small><h3 className="text-base font-semibold text-[var(--text-primary)]">{title}</h3></span></div>
+  const header = (eyebrow: string, title: string) => <div className="flex items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 ${error ? 'text-red-500' : 'text-[var(--accent)]'}`}>{error ? <CircleAlert aria-hidden size={18} /> : <LoaderCircle aria-label={`Načítám panel ${title}`} size={19} className="animate-spin" />}</span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{eyebrow}</small><h3 className="text-base font-semibold text-[var(--text-primary)]">{title}</h3></span></div>
   const loadingClass = error ? '' : 'animate-pulse'
   return <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
     <p className="mb-2 flex items-center justify-center text-center text-[10px] text-[var(--text-secondary)] lg:hidden">{error ? 'Provozní data vyžadují opakované načtení.' : 'Načítám provozní panely…'}</p>
