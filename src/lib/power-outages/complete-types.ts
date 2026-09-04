@@ -303,6 +303,9 @@ export type CompleteCezNewState = {
   scanTotal: number
   scanProcessed: number
   scanError: number
+  scanRetryableErrorCount: number
+  scanReviewErrorCount: number
+  scanNextRetryAt: string | null
   scanOutageCount: number
   scanAddressCount: number
   scanStartedAt: string | null
@@ -322,6 +325,9 @@ export type CompleteCezNewState = {
   safeRecentCycleCount: number
   latestTwoCyclesSafe: boolean
   latestProjectionMatches: boolean
+  warningStage: 'scan' | null
+  warningCode: string | null
+  warningMessage: string | null
   errorStage: 'ruian' | 'mapping' | 'scan' | 'normalization' | 'projection' | null
   errorCode: string | null
   lastErrorMessage: string | null

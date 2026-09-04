@@ -88,9 +88,11 @@ export async function recoverCompletePowerOutageTask(
   if (!client) throw new Error('Chybí serverové připojení pro obnovu zpracování.')
 
   if (input.target === 'cez_new_pipeline') {
-    const { data, error } = await client.rpc('recover_complete_power_outage_cez_new_stage', {
-      requested_stage: input.stage,
-    })
+    const { data, error } = input.stage === 'scan'
+      ? await client.rpc('recover_complete_power_outage_cez_scan_errors')
+      : await client.rpc('recover_complete_power_outage_cez_new_stage', {
+        requested_stage: input.stage,
+      })
     if (error) throw error
     const payload = data && typeof data === 'object' && !Array.isArray(data)
       ? data as Record<string, unknown>

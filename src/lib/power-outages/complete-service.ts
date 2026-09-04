@@ -122,6 +122,10 @@ function cezNewMonitoringSchemaMissing(error: { code?: string; message?: string 
 async function loadCezNewMonitoringState(
   supabase: Awaited<ReturnType<typeof getPowerOutageRuntimeContext>>['supabase'],
 ) {
+  const enhanced = await supabase.from('complete_power_outage_cez_new_status_v3').select('*').maybeSingle()
+  if (!enhanced.error) return enhanced
+  if (!cezNewMonitoringSchemaMissing(enhanced.error)
+    && !enhanced.error.message?.includes('complete_power_outage_cez_new_status_v3')) return enhanced
   const current = await supabase.from('complete_power_outage_cez_new_status_v2').select('*').maybeSingle()
   if (!current.error) return current
   if (!cezNewMonitoringSchemaMissing(current.error)
@@ -315,7 +319,7 @@ function mapSourceState(
 
 function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
   const stage = row.current_stage as CompleteCezNewState['stage']
-  const status = (row.readiness_status ?? row.overall_status) as CompleteCezNewState['status']
+  const status = (row.effective_readiness_status ?? row.readiness_status ?? row.overall_status) as CompleteCezNewState['status']
   const done = Number(row.progress_done ?? 0)
   const total = Number(row.progress_total ?? 0)
   const stageLabel = ({
@@ -332,6 +336,8 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     stage,
     statusMessage: status === 'error'
       ? String(row.readiness_error_message || row.last_error_message || 'Nový ČEZ proces vyžaduje kontrolu.')
+      : Number(row.scan_retryable_error_count ?? 0) > 0
+        ? String(row.warning_message || 'Některé obce čekají na automatické opakování po dokončení aktuálního snapshotu.')
       : stageLabel,
     progressDone: done,
     progressTotal: total,
@@ -347,6 +353,9 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     scanTotal: Number(row.scan_total ?? 0),
     scanProcessed: Number(row.scan_processed ?? 0),
     scanError: Number(row.scan_error ?? 0),
+    scanRetryableErrorCount: Number(row.scan_retryable_error_count ?? 0),
+    scanReviewErrorCount: Number(row.scan_review_error_count ?? 0),
+    scanNextRetryAt: (row.scan_next_retry_at ?? null) as string | null,
     scanOutageCount: Number(row.scan_outage_count ?? 0),
     scanAddressCount: Number(row.scan_address_count ?? 0),
     scanStartedAt: row.scan_started_at as string | null,
@@ -366,9 +375,12 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     safeRecentCycleCount: Number(row.safe_recent_cycle_count ?? 0),
     latestTwoCyclesSafe: row.latest_two_cycles_safe === true,
     latestProjectionMatches: row.latest_projection_matches === true,
-    errorStage: (row.readiness_error_stage ?? null) as CompleteCezNewState['errorStage'],
-    errorCode: (row.readiness_error_code ?? null) as string | null,
-    lastErrorMessage: (row.readiness_error_message ?? row.last_error_message ?? null) as string | null,
+    warningStage: (row.warning_stage ?? null) as CompleteCezNewState['warningStage'],
+    warningCode: (row.warning_code ?? null) as string | null,
+    warningMessage: (row.warning_message ?? null) as string | null,
+    errorStage: (row.effective_error_stage ?? row.readiness_error_stage ?? null) as CompleteCezNewState['errorStage'],
+    errorCode: (row.effective_error_code ?? row.readiness_error_code ?? null) as string | null,
+    lastErrorMessage: (row.effective_error_message ?? row.readiness_error_message ?? row.last_error_message ?? null) as string | null,
   }
 }
 
