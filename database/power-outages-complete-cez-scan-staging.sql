@@ -11,6 +11,15 @@ begin
 end
 $$;
 
+alter table public.complete_power_outage_cez_municipalities
+  add column if not exists scan_consecutive_error_count integer not null default 0;
+
+alter table public.complete_power_outage_cez_municipalities
+  drop constraint if exists cpo_cez_municipalities_scan_consecutive_errors_check;
+alter table public.complete_power_outage_cez_municipalities
+  add constraint cpo_cez_municipalities_scan_consecutive_errors_check
+  check (scan_consecutive_error_count >= 0);
+
 create table if not exists public.complete_power_outage_cez_staged_outages (
   external_id text primary key,
   source_status text not null,
@@ -142,7 +151,8 @@ grant select on table public.complete_power_outage_cez_staged_addresses to authe
 grant all on table public.complete_power_outage_cez_staged_outages to service_role;
 grant all on table public.complete_power_outage_cez_staged_addresses to service_role;
 
-create or replace function public.claim_complete_power_outage_cez_scan_batch(
+drop function if exists public.claim_complete_power_outage_cez_scan_batch(integer, boolean);
+create function public.claim_complete_power_outage_cez_scan_batch(
   requested_limit integer default 3,
   requested_pilot boolean default true
 )
@@ -153,6 +163,7 @@ returns table (
   cez_address_id bigint,
   cez_town_code bigint,
   scan_attempt_count integer,
+  scan_consecutive_error_count integer,
   scan_lock_token uuid,
   attempt_number integer
 )
@@ -256,6 +267,12 @@ begin
       and municipality.cez_town_code is not null
       and municipality.scan_status in ('pending', 'succeeded', 'no_change', 'partial', 'error')
       and (municipality.scan_next_attempt_at is null or municipality.scan_next_attempt_at <= now())
+      and not exists (
+        select 1
+        from public.complete_power_outage_cez_scan_attempts previous_attempt
+        where previous_attempt.cycle_id = active_cycle.id
+          and previous_attempt.municipality_code = municipality.municipality_code
+      )
     order by
       case municipality.scan_status when 'pending' then 0 when 'error' then 1 else 2 end,
       municipality.scan_priority,
@@ -306,6 +323,7 @@ begin
     claimed.cez_address_id,
     claimed.cez_town_code,
     claimed.scan_attempt_count,
+    claimed.scan_consecutive_error_count,
     claimed.scan_lock_token,
     attempts.attempt_number
   from claimed

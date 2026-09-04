@@ -36,15 +36,9 @@ async function run(request: Request, allowAdminSession: boolean) {
     ? Math.min(20, Math.max(1, Math.trunc(rawLimit)))
     : 3
   const pilot = url.searchParams.get('pilot') !== 'false'
-  if (!pilot) {
-    return NextResponse.json(
-      { ok: false, error: 'Plný celoplošný sken ČEZ v tomto kroku ještě není aktivován.' },
-      { status: 409, headers: HEADERS },
-    )
-  }
 
   try {
-    const result = await scanCompleteCezMunicipalities(limit, true)
+    const result = await scanCompleteCezMunicipalities(limit, pilot)
     return NextResponse.json({ ok: true, ...result }, { headers: HEADERS })
   } catch (error) {
     await reportRouteError({

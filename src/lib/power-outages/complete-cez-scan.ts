@@ -12,6 +12,7 @@ type ScanCandidate = {
   cez_address_id: number
   cez_town_code: number
   scan_attempt_count: number
+  scan_consecutive_error_count: number
   scan_lock_token: string
   attempt_number: number
 }
@@ -27,6 +28,14 @@ type ExistingAddress = {
   outage_external_id: string
   address_key: string
   payload_sha256: string
+}
+
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = []
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size))
+  }
+  return result
 }
 
 function errorMessage(error: unknown) {
@@ -96,7 +105,7 @@ async function saveStagingResult(
   const now = new Date().toISOString()
   const externalIds = normalized.map((outage) => outage.externalId)
   let existingOutages: ExistingOutage[] = []
-  let existingAddresses: ExistingAddress[] = []
+  const existingAddresses: ExistingAddress[] = []
 
   if (externalIds.length > 0) {
     const { data: outageRows, error: outageError } = await client
@@ -106,12 +115,18 @@ async function saveStagingResult(
     if (outageError) throw outageError
     existingOutages = (outageRows ?? []) as ExistingOutage[]
 
-    const { data: addressRows, error: addressError } = await client
-      .from('complete_power_outage_cez_staged_addresses')
-      .select('id,outage_external_id,address_key,payload_sha256')
-      .in('outage_external_id', externalIds)
-    if (addressError) throw addressError
-    existingAddresses = (addressRows ?? []) as ExistingAddress[]
+    for (let offset = 0; ; offset += 1_000) {
+      const { data: addressRows, error: addressError } = await client
+        .from('complete_power_outage_cez_staged_addresses')
+        .select('id,outage_external_id,address_key,payload_sha256')
+        .in('outage_external_id', externalIds)
+        .order('id')
+        .range(offset, offset + 999)
+      if (addressError) throw addressError
+      const page = (addressRows ?? []) as ExistingAddress[]
+      existingAddresses.push(...page)
+      if (page.length < 1_000) break
+    }
   }
 
   const oldOutageHashes = new Map(
@@ -160,10 +175,12 @@ async function saveStagingResult(
   }))
 
   if (outageRows.length > 0) {
-    const { error } = await client
-      .from('complete_power_outage_cez_staged_outages')
-      .upsert(outageRows, { onConflict: 'external_id' })
-    if (error) throw error
+    for (const batch of chunks(outageRows, 200)) {
+      const { error } = await client
+        .from('complete_power_outage_cez_staged_outages')
+        .upsert(batch, { onConflict: 'external_id' })
+      if (error) throw error
+    }
   }
 
   const addressRows = normalized.flatMap((outage) => outage.addresses.map((address) => ({
@@ -187,10 +204,12 @@ async function saveStagingResult(
   })))
 
   if (addressRows.length > 0) {
-    const { error } = await client
-      .from('complete_power_outage_cez_staged_addresses')
-      .upsert(addressRows, { onConflict: 'outage_external_id,address_key' })
-    if (error) throw error
+    for (const batch of chunks(addressRows, 400)) {
+      const { error } = await client
+        .from('complete_power_outage_cez_staged_addresses')
+        .upsert(batch, { onConflict: 'outage_external_id,address_key' })
+      if (error) throw error
+    }
   }
 
   const replacementAddressHashes = new Map(addressRows.map((row) => [
@@ -206,20 +225,23 @@ async function saveStagingResult(
     })
     .map((address) => address.id)
   if (changedExistingAddressIds.length > 0) {
-    const { error } = await client
-      .from('complete_power_outage_cez_staged_addresses')
-      .update({
-        normalization_version: 0,
-        normalization_status: 'pending',
-        normalized_at: null,
-        normalization_next_attempt_at: null,
-        normalization_error_code: null,
-        normalization_error_message: null,
-        normalization_lock_token: null,
-        normalization_lock_expires_at: null,
-      })
-      .in('id', changedExistingAddressIds)
-    if (error) throw error
+    for (const ids of chunks(changedExistingAddressIds, 400)) {
+      const { error } = await client
+        .from('complete_power_outage_cez_staged_addresses')
+        .update({
+          normalization_version: 0,
+          normalization_status: 'pending',
+          normalization_attempt_count: 0,
+          normalized_at: null,
+          normalization_next_attempt_at: null,
+          normalization_error_code: null,
+          normalization_error_message: null,
+          normalization_lock_token: null,
+          normalization_lock_expires_at: null,
+        })
+        .in('id', ids)
+      if (error) throw error
+    }
   }
 
   const currentAddressKeys = new Set(
@@ -229,11 +251,13 @@ async function saveStagingResult(
     .filter((address) => !currentAddressKeys.has(`${address.outage_external_id}:${address.address_key}`))
     .map((address) => address.id)
   if (staleAddressIds.length > 0) {
-    const { error } = await client
-      .from('complete_power_outage_cez_staged_addresses')
-      .delete()
-      .in('id', staleAddressIds)
-    if (error) throw error
+    for (const ids of chunks(staleAddressIds, 400)) {
+      const { error } = await client
+        .from('complete_power_outage_cez_staged_addresses')
+        .delete()
+        .in('id', ids)
+      if (error) throw error
+    }
   }
 
   const changedOutageCount = normalized.filter(
@@ -251,22 +275,38 @@ export async function scanCompleteCezMunicipalities(
   requestedLimit = 3,
   pilot = true,
 ) {
-  if (!pilot) {
-    throw new Error('Plný celoplošný sken ČEZ zatím není aktivován; povolen je pouze pilot.')
-  }
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení pro celoplošný sken ČEZ.')
   const limit = Math.min(20, Math.max(1, Math.trunc(requestedLimit)))
   const { data, error } = await client.rpc('claim_complete_power_outage_cez_scan_batch', {
     requested_limit: limit,
-    requested_pilot: true,
+    requested_pilot: pilot,
   })
   if (error) throw error
   const claimed = (data ?? []) as ScanCandidate[]
   if (claimed.length === 0) {
+    const { data: runningCycle, error: runningCycleError } = await client
+      .from('complete_power_outage_cez_scan_cycles')
+      .select('id')
+      .eq('status', 'running')
+      .eq('is_pilot', pilot)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>()
+    if (runningCycleError) throw runningCycleError
+    let cycleStatus: unknown = 'no_change'
+    if (runningCycle) {
+      const { data: finishedStatus, error: finishError } = await client.rpc(
+        'finish_complete_power_outage_cez_scan_cycle',
+        { requested_cycle_id: runningCycle.id },
+      )
+      if (finishError) throw finishError
+      cycleStatus = finishedStatus
+    }
     return {
-      status: 'no_change' as const,
-      pilot: true,
+      status: String(cycleStatus ?? 'no_change'),
+      cycleId: runningCycle?.id,
+      pilot,
       processedCount: 0,
       succeededCount: 0,
       noChangeCount: 0,
@@ -332,10 +372,11 @@ export async function scanCompleteCezMunicipalities(
       })
       await updateMunicipality(candidate, {
         scan_status: changed ? 'succeeded' : 'no_change',
+        scan_consecutive_error_count: 0,
         scan_last_attempt_at: attemptedAt,
         scan_last_success_at: new Date().toISOString(),
         scan_last_change_at: changed ? new Date().toISOString() : undefined,
-        scan_next_attempt_at: new Date(Date.now() + 6 * 60 * 60_000).toISOString(),
+        scan_next_attempt_at: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
         scan_error_code: null,
         scan_error_message: null,
         latest_payload_sha256: payloadSha256,
@@ -344,7 +385,8 @@ export async function scanCompleteCezMunicipalities(
       })
     } catch (scanError) {
       errorCount += 1
-      const terminal = candidate.scan_attempt_count >= 3
+      const consecutiveErrorCount = candidate.scan_consecutive_error_count + 1
+      const terminal = consecutiveErrorCount >= 3
       const message = errorMessage(scanError).slice(0, 2_000)
       try {
         await updateAttempt(candidate, {
@@ -356,10 +398,11 @@ export async function scanCompleteCezMunicipalities(
         })
         await updateMunicipality(candidate, {
           scan_status: terminal ? 'needs_review' : 'error',
+          scan_consecutive_error_count: consecutiveErrorCount,
           scan_last_attempt_at: attemptedAt,
           scan_next_attempt_at: terminal
             ? null
-            : new Date(Date.now() + retryDelay(candidate.scan_attempt_count)).toISOString(),
+            : new Date(Date.now() + retryDelay(consecutiveErrorCount)).toISOString(),
           scan_error_code: terminal ? 'CEZ_SCAN_RETRIES_EXHAUSTED' : 'CEZ_SCAN_FAILED',
           scan_error_message: message,
         })
@@ -380,7 +423,7 @@ export async function scanCompleteCezMunicipalities(
   return {
     status: String(finalStatus ?? (errorCount > 0 ? 'partial' : 'succeeded')),
     cycleId,
-    pilot: true,
+    pilot,
     processedCount: claimed.length,
     succeededCount,
     noChangeCount,
