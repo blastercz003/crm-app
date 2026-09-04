@@ -227,7 +227,7 @@ export async function runCompleteCezTownPilot(
     await new Promise((resolve) => setTimeout(resolve, 1_000))
   }
 
-  let runId = claimed[0]?.run_id ?? null
+  let runId: string | null = claimed[0]?.run_id ?? null
   if (!runId) {
     const { data: activeRun, error: activeRunError } = await client
       .from('complete_power_outage_cez_town_pilot_runs')
