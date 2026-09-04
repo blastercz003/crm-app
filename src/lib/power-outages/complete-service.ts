@@ -910,12 +910,22 @@ export async function getCompletePowerOutageSourceDiagnostic(
   ])
   if (stateResult.error) throw new Error(`Stav distributora se nepodařilo načíst: ${stateResult.error.message}`)
   if (discoveryResult.error) throw new Error(`Postup vyhledávání firem se nepodařilo načíst: ${discoveryResult.error.message}`)
-  if (providersResult.error) throw new Error(`Postup poskytovatelů se nepodařilo načíst: ${providersResult.error.message}`)
-  if (runsResult.error) throw new Error(`Historii distributora se nepodařilo načíst: ${runsResult.error.message}`)
-  if (taskResult.error) throw new Error(`Stav plánované úlohy se nepodařilo načíst: ${taskResult.error.message}`)
-  if (evaluationTaskResult.error) throw new Error(`Stav vyhodnocování firem se nepodařilo načíst: ${evaluationTaskResult.error.message}`)
-  if (pendingEvaluationResult.error) throw new Error(`Počet firem čekajících na vyhodnocení se nepodařilo načíst: ${pendingEvaluationResult.error.message}`)
   if (!stateResult.data) throw new Error('Stav distributora není dostupný.')
+
+  const providerLoadError = providersResult.error
+    ? `Postup poskytovatelů se nepodařilo načíst: ${providersResult.error.message}`
+    : null
+  const runsLoadError = runsResult.error
+    ? `Historii distributora se nepodařilo načíst: ${runsResult.error.message}`
+    : null
+  const taskLoadError = taskResult.error
+    ? `Stav plánované úlohy se nepodařilo načíst: ${taskResult.error.message}`
+    : null
+  const evaluationLoadError = evaluationTaskResult.error
+    ? `Stav vyhodnocování firem se nepodařilo načíst: ${evaluationTaskResult.error.message}`
+    : pendingEvaluationResult.error
+      ? `Počet firem čekajících na vyhodnocení se nepodařilo načíst: ${pendingEvaluationResult.error.message}`
+      : null
 
   const runs = (runsResult.data ?? []).map((row): CompleteSourceRun => ({
     id: String(row.id),
@@ -954,6 +964,12 @@ export async function getCompletePowerOutageSourceDiagnostic(
     ]),
     providers,
     runs,
+    loadErrors: {
+      providers: providerLoadError,
+      runs: runsLoadError,
+      task: taskLoadError,
+      evaluation: evaluationLoadError,
+    },
     task: taskResult.data ? {
       status: taskResult.data.last_status === 'idle' ? null : taskResult.data.last_status as CompleteSourceDiagnostic['task'] extends infer T ? T extends { status: infer S } ? S : never : never,
       lastStartedAt: taskResult.data.last_started_at,

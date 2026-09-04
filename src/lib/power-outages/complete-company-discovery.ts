@@ -578,6 +578,9 @@ export async function discoverCompletePowerOutageCompanies(
     // never turn an otherwise successful provider batch into a failed batch;
     // the minute cron will retry it independently.
     await Promise.resolve(
+      client.rpc('refresh_complete_power_outage_source_provider_overview_snapshot'),
+    ).catch(() => null)
+    await Promise.resolve(
       client.rpc('refresh_complete_power_outage_provider_overview_snapshot'),
     ).catch(() => null)
     return {

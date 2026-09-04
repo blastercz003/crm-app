@@ -190,6 +190,12 @@ export type CompleteSourceDiagnostic = {
   state: CompleteSourceState
   providers: CompleteSourceProviderProgress[]
   runs: CompleteSourceRun[]
+  loadErrors: {
+    providers: string | null
+    runs: string | null
+    task: string | null
+    evaluation: string | null
+  }
   task: {
     status: 'pending' | 'running' | 'succeeded' | 'failed' | 'partial' | null
     lastStartedAt: string | null
