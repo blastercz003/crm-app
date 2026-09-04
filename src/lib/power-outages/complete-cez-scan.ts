@@ -268,6 +268,37 @@ async function saveStagingResult(
       !== address.payload_sha256,
   ).length + staleAddressIds.length
 
+  const addressesByOutage = new Map<string, typeof addressRows>()
+  for (const address of addressRows) {
+    const rows = addressesByOutage.get(address.outage_external_id) ?? []
+    rows.push(address)
+    addressesByOutage.set(address.outage_external_id, rows)
+  }
+
+  const snapshotRows = outageRows.map((outage) => ({
+    externalId: outage.external_id,
+    sourceStatus: outage.source_status,
+    startsAt: outage.starts_at,
+    endsAt: outage.ends_at,
+    payloadSha256: outage.payload_sha256,
+    outagePayload: outage,
+    addressesPayload: (addressesByOutage.get(outage.external_id) ?? [])
+      .sort((left, right) => left.address_key.localeCompare(right.address_key, 'cs-CZ')),
+  }))
+
+  // Snapshotový zápis je součástí úspěchu obce. Pokud selže nebo ČEZ vrátí
+  // v témže cyklu konfliktní podobu stejné odstávky, obec/cyklus se označí jako
+  // chybný a neúplný snapshot nikdy nemůže označit stará data za chybějící.
+  const { error: snapshotError } = await client.rpc(
+    'record_complete_power_outage_cez_cycle_outages',
+    {
+      requested_cycle_id: candidate.cycle_id,
+      requested_municipality_code: candidate.municipality_code,
+      requested_outages: snapshotRows,
+    },
+  )
+  if (snapshotError) throw snapshotError
+
   return { addressCount: addressRows.length, changedOutageCount, changedAddressCount }
 }
 
@@ -368,6 +399,7 @@ export async function scanCompleteCezMunicipalities(
           contract: 'complete-cez-municipality-scan-v1',
           changedOutageCount: saved.changedOutageCount,
           changedAddressCount: saved.changedAddressCount,
+          snapshotRecorded: true,
         },
       })
       await updateMunicipality(candidate, {
