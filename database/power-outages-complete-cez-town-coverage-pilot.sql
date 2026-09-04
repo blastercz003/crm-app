@@ -91,8 +91,16 @@ create table if not exists public.complete_power_outage_cez_town_pilot_cases (
 
   primary_outage_count integer not null default 0,
   secondary_outage_count integer not null default 0,
+  primary_exact_outage_count integer not null default 0,
+  primary_town_outage_count integer not null default 0,
+  secondary_exact_outage_count integer not null default 0,
+  secondary_town_outage_count integer not null default 0,
   primary_outage_ids jsonb not null default '[]'::jsonb,
   secondary_outage_ids jsonb not null default '[]'::jsonb,
+  primary_exact_outage_ids jsonb not null default '[]'::jsonb,
+  primary_town_outage_ids jsonb not null default '[]'::jsonb,
+  secondary_exact_outage_ids jsonb not null default '[]'::jsonb,
+  secondary_town_outage_ids jsonb not null default '[]'::jsonb,
   primary_payload_sha256 text,
   secondary_payload_sha256 text,
   outage_ids_match boolean,
@@ -137,11 +145,23 @@ create table if not exists public.complete_power_outage_cez_town_pilot_cases (
       and (secondary_address_code is null or secondary_address_code ~ '^[0-9]+$')
     ),
   constraint cpo_cez_town_pilot_cases_counts_check
-    check (attempt_count >= 0 and primary_outage_count >= 0 and secondary_outage_count >= 0),
+    check (
+      attempt_count >= 0
+      and primary_outage_count >= 0
+      and secondary_outage_count >= 0
+      and primary_exact_outage_count >= 0
+      and primary_town_outage_count >= 0
+      and secondary_exact_outage_count >= 0
+      and secondary_town_outage_count >= 0
+    ),
   constraint cpo_cez_town_pilot_cases_payload_check
     check (
       jsonb_typeof(primary_outage_ids) = 'array'
       and jsonb_typeof(secondary_outage_ids) = 'array'
+      and jsonb_typeof(primary_exact_outage_ids) = 'array'
+      and jsonb_typeof(primary_town_outage_ids) = 'array'
+      and jsonb_typeof(secondary_exact_outage_ids) = 'array'
+      and jsonb_typeof(secondary_town_outage_ids) = 'array'
       and jsonb_typeof(announcement_urls) = 'array'
       and jsonb_typeof(metadata) = 'object'
       and (primary_payload_sha256 is null or primary_payload_sha256 ~ '^[a-f0-9]{64}$')

@@ -75,7 +75,7 @@ function chooseSecondaryAddress(
     })[0] ?? null
 }
 
-function uniqueTownOutages(outages: CezOutage[] | null | undefined) {
+function uniqueOutages(outages: CezOutage[] | null | undefined) {
   return [...new Map((outages ?? []).map((outage) => [String(outage.id), outage])).values()]
     .sort((left, right) => String(left.id).localeCompare(String(right.id)))
 }
@@ -162,8 +162,21 @@ export async function runCompleteCezTownPilot(
       await new Promise((resolve) => setTimeout(resolve, 900))
       externalRequestCount += 1
       const secondaryInspection = await inspectCezAddress(Number(secondary.addressCode))
-      const primaryOutages = uniqueTownOutages(primaryInspection.outages_in_town)
-      const secondaryOutages = uniqueTownOutages(secondaryInspection.outages_in_town)
+      const primaryExactOutages = uniqueOutages(primaryInspection.outages)
+      const primaryTownOutages = uniqueOutages(primaryInspection.outages_in_town)
+      const secondaryExactOutages = uniqueOutages(secondaryInspection.outages)
+      const secondaryTownOutages = uniqueOutages(secondaryInspection.outages_in_town)
+      // ČEZ může odstávku dotýkající se kontrolované adresy vrátit v `outages`
+      // a u jiné adresy téže obce v `outages_in_town`. Úplnost obce proto lze
+      // porovnat jen nad sjednocením obou polí.
+      const primaryOutages = uniqueOutages([
+        ...primaryExactOutages,
+        ...primaryTownOutages,
+      ])
+      const secondaryOutages = uniqueOutages([
+        ...secondaryExactOutages,
+        ...secondaryTownOutages,
+      ])
       const primaryIds = outageIds(primaryOutages)
       const secondaryIds = outageIds(secondaryOutages)
       const idsMatch = sameStrings(primaryIds, secondaryIds)
@@ -190,8 +203,16 @@ export async function runCompleteCezTownPilot(
         secondary_orientation_number: secondary.orientationNumber,
         primary_outage_count: primaryOutages.length,
         secondary_outage_count: secondaryOutages.length,
+        primary_exact_outage_count: primaryExactOutages.length,
+        primary_town_outage_count: primaryTownOutages.length,
+        secondary_exact_outage_count: secondaryExactOutages.length,
+        secondary_town_outage_count: secondaryTownOutages.length,
         primary_outage_ids: primaryIds,
         secondary_outage_ids: secondaryIds,
+        primary_exact_outage_ids: outageIds(primaryExactOutages),
+        primary_town_outage_ids: outageIds(primaryTownOutages),
+        secondary_exact_outage_ids: outageIds(secondaryExactOutages),
+        secondary_town_outage_ids: outageIds(secondaryTownOutages),
         primary_payload_sha256: primaryHash,
         secondary_payload_sha256: secondaryHash,
         outage_ids_match: idsMatch,
@@ -202,7 +223,7 @@ export async function runCompleteCezTownPilot(
         error_code: null,
         error_message: null,
         metadata: {
-          contract: 'complete-cez-town-pilot-v1',
+          contract: 'complete-cez-town-pilot-v2',
           secondarySelection: {
             differentTownPart: normalized(secondary.townPart)
               !== normalized(candidate.primary_town_part),
