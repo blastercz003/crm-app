@@ -21,6 +21,7 @@ import type {
   CompletePowerOutageSidebarWorkspace,
   CompletePowerOutageStatistics,
   CompleteProviderDiagnostic,
+  CompleteProviderState,
   CompleteSourceDiagnostic,
 } from '@/lib/power-outages/complete-types'
 import type { PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
@@ -273,9 +274,10 @@ export async function getCompletePowerOutageSourceDiagnosticAction(
 
 export async function getCompletePowerOutageProviderDiagnosticAction(
   provider: 'ares' | 'mapy' | 'google',
+  currentState?: CompleteProviderState,
 ): Promise<CompleteProviderDiagnosticActionResult> {
   try {
-    return { success: true, diagnostic: await getCompletePowerOutageProviderDiagnostic(provider), error: null }
+    return { success: true, diagnostic: await getCompletePowerOutageProviderDiagnostic(provider, currentState), error: null }
   } catch (error) {
     return { success: false, diagnostic: null, error: errorMessage(error) }
   }

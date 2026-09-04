@@ -442,7 +442,7 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
     monthlyCreditCount,
     monthlyCreditLimit,
     monthlyCreditSafetyCap,
-    monthlyCreditRemaining: Math.max(0, monthlyCreditLimit - monthlyCreditCount),
+    monthlyCreditRemaining: Math.max(0, monthlyCreditSafetyCap - monthlyCreditCount),
     completeCreditCount: provider === 'mapy' ? Number(row.complete_credit_count ?? 0) : 0,
     marketsCreditCount: provider === 'mapy' ? Number(row.markets_credit_count ?? 0) : 0,
     lastRequestAt,
@@ -949,13 +949,17 @@ export async function getCompletePowerOutageSourceDiagnostic(
 
 export async function getCompletePowerOutageProviderDiagnostic(
   provider: CompleteProviderState['provider'],
+  currentState?: CompleteProviderState,
 ): Promise<CompleteProviderDiagnostic> {
   if (!['ares', 'mapy', 'google'].includes(provider)) throw new Error('Neplatný poskytovatel.')
+  if (currentState && currentState.provider !== provider) throw new Error('Stav poskytovatele neodpovídá požadovanému detailu.')
   const { supabase } = await getPowerOutageRuntimeContext()
   const [overviewResult, taskResult, runsResult, errorsResult] = await Promise.all([
-    supabase.from('complete_power_outage_provider_overview')
-      .select('*')
-      .eq('provider', provider).maybeSingle(),
+    currentState
+      ? Promise.resolve({ data: null, error: null })
+      : supabase.from('complete_power_outage_provider_overview')
+        .select('*')
+        .eq('provider', provider).maybeSingle(),
     supabase.from('complete_power_outage_task_state')
       .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
       .eq('task_key', `discover_${provider}`).maybeSingle(),
@@ -970,10 +974,10 @@ export async function getCompletePowerOutageProviderDiagnostic(
   if (taskResult.error) throw new Error(`Stav úlohy se nepodařilo načíst: ${taskResult.error.message}`)
   if (runsResult.error) throw new Error(`Historii vyhledávání se nepodařilo načíst: ${runsResult.error.message}`)
   if (errorsResult.error) throw new Error(`Chybné dotazy se nepodařilo načíst: ${errorsResult.error.message}`)
-  if (!overviewResult.data) throw new Error('Stav poskytovatele není dostupný.')
+  if (!currentState && !overviewResult.data) throw new Error('Stav poskytovatele není dostupný.')
 
   const task = taskResult.data as Record<string, unknown> | null
-  const state = mapProviderState(overviewResult.data, task)
+  const state = currentState ?? mapProviderState(overviewResult.data as Record<string, unknown>, task)
   const runs = (runsResult.data ?? []).map((row): CompleteProviderRun => {
     const metadata = row.metadata as Record<string, unknown> | null
     return {
