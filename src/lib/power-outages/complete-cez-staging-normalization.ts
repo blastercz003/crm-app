@@ -23,8 +23,9 @@ type ExistingTarget = {
   target_key: string
 }
 
-const NORMALIZATION_VERSION = 1
+const NORMALIZATION_VERSION = 2
 const MAX_TARGETS_PER_ADDRESS = 2_000
+const MAX_EXPANDED_RANGE_SIZE = 500
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message
@@ -50,6 +51,15 @@ function strictNumberTokens(value: unknown) {
     }
     if (typeof item !== 'string' && typeof item !== 'number') return
     for (const token of String(item).split(/[,;\n]+/)) {
+      const range = token.trim().match(/^0*(\d+)\s*[-–—]\s*0*(\d+)$/)
+      if (range) {
+        const start = Number.parseInt(range[1], 10)
+        const end = Number.parseInt(range[2], 10)
+        if (start > 0 && end >= start && end - start + 1 <= MAX_EXPANDED_RANGE_SIZE) {
+          for (let number = start; number <= end; number += 1) result.push(String(number))
+        }
+        continue
+      }
       const normalized = normalizeBuildingNumber(token)
       if (normalized) result.push(normalized)
     }
@@ -74,9 +84,9 @@ function queryText(parts: Array<string | null | undefined>) {
 }
 
 function targetsForAddress(address: StagedAddress) {
-  const numbers = new Map<string, Set<'house' | 'evidence'>>()
-  const add = (value: string, kind: 'house' | 'evidence') => {
-    const kinds = numbers.get(value) ?? new Set<'house' | 'evidence'>()
+  const numbers = new Map<string, Set<'house' | 'evidence' | 'orientation'>>()
+  const add = (value: string, kind: 'house' | 'evidence' | 'orientation') => {
+    const kinds = numbers.get(value) ?? new Set<'house' | 'evidence' | 'orientation'>()
     kinds.add(kind)
     numbers.set(value, kinds)
   }
@@ -89,6 +99,9 @@ function targetsForAddress(address: StagedAddress) {
     address.orientation_number,
     address.metadata?.orientationNumbers,
   ])
+  if (address.street.trim()) {
+    for (const number of orientationNumbers) add(number, 'orientation')
+  }
   const sortedNumbers = [...numbers.entries()]
     .sort(([left], [right]) => left.localeCompare(right, 'cs', { numeric: true }))
     .slice(0, MAX_TARGETS_PER_ADDRESS)
@@ -96,7 +109,7 @@ function targetsForAddress(address: StagedAddress) {
     normalizerVersion: NORMALIZATION_VERSION,
     source: 'complete_cez_staging',
     sourceNumberCount: numbers.size,
-    ignoredUnpairedOrientationNumberCount: orientationNumbers.length,
+    ignoredUnpairedOrientationNumberCount: address.street.trim() ? 0 : orientationNumbers.length,
     truncated: numbers.size > MAX_TARGETS_PER_ADDRESS,
   }
 
@@ -119,7 +132,12 @@ function targetsForAddress(address: StagedAddress) {
         address.town_part,
         address.municipality,
       ]),
-      metadata: { ...baseMetadata, numberTypes: [...kinds].sort() },
+      metadata: {
+        ...baseMetadata,
+        numberTypes: [...kinds].sort(),
+        houseNumber: kinds.has('house') || kinds.has('evidence') ? number : null,
+        orientationNumber: kinds.has('orientation') ? number : null,
+      },
     }))
   }
 

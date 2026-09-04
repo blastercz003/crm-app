@@ -40,14 +40,28 @@ alter table public.complete_power_outage_cez_staged_addresses
     or (normalization_lock_token is not null and normalization_lock_expires_at is not null)
   );
 
-create index if not exists cpo_cez_staged_addresses_normalization_queue_idx
+drop index if exists public.cpo_cez_staged_addresses_normalization_queue_idx;
+create index cpo_cez_staged_addresses_normalization_queue_idx
   on public.complete_power_outage_cez_staged_addresses (
     normalization_status,
     normalization_next_attempt_at,
     id
   )
-  where normalization_version < 1
+  where normalization_version < 2
     and normalization_status in ('pending', 'error');
+
+-- Verze 2 bezpečně rozbaluje číselné rozsahy a umí použít samostatné
+-- orientační číslo, pouze pokud je současně známá konkrétní ulice.
+update public.complete_power_outage_cez_staged_addresses
+set normalization_status = 'pending',
+    normalization_attempt_count = 0,
+    normalization_next_attempt_at = null,
+    normalization_error_code = null,
+    normalization_error_message = null,
+    normalization_lock_token = null,
+    normalization_lock_expires_at = null
+where normalization_version < 2
+  and normalization_status in ('succeeded', 'error', 'needs_review');
 
 create table if not exists public.complete_power_outage_cez_staged_address_targets (
   id uuid primary key default gen_random_uuid(),
@@ -145,7 +159,7 @@ begin
   with candidates as (
     select address.id
     from public.complete_power_outage_cez_staged_addresses address
-    where address.normalization_version < 1
+    where address.normalization_version < 2
       and address.normalization_status in ('pending', 'error')
       and (
         address.normalization_next_attempt_at is null
