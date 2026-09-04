@@ -42,6 +42,25 @@ type RepresentativeAddress = {
   sjtskX: number | null
 }
 
+export type CompleteCezRuianAddressPoint = {
+  addressCode: string
+  municipalityCode: string
+  municipalityName: string
+  townPart: string | null
+  street: string | null
+  buildingType: string | null
+  houseNumber: string
+  orientationNumber: string | null
+  postalCode: string | null
+  sjtskY: number | null
+  sjtskX: number | null
+}
+
+let addressIndexCache: {
+  expiresAt: number
+  links: Map<string, { url: string; sourceValidOn: string }>
+} | null = null
+
 function normalizeMunicipalityName(value: string) {
   const normalized = normalizePowerOutageText(value)
   if (normalized) return normalized
@@ -210,6 +229,74 @@ function addressLinksFromIndex(html: string) {
 function nullableNumber(value: string | undefined) {
   const number = Number(value)
   return value && Number.isFinite(number) ? number : null
+}
+
+function addressPointFromRow(row: string[]): CompleteCezRuianAddressPoint | null {
+  if (!/^\d+$/.test(row[0] ?? '') || !/^\d{6}$/.test(row[1] ?? '')) return null
+  if (!/^\d+$/.test(row[12] ?? '')) return null
+  const orientationNumber = row[13]
+    ? `${row[13]}${row[14] ?? ''}`
+    : null
+  return {
+    addressCode: row[0],
+    municipalityCode: row[1],
+    municipalityName: row[2],
+    townPart: row[8] || null,
+    street: row[10] || null,
+    buildingType: row[11] || null,
+    houseNumber: row[12],
+    orientationNumber,
+    postalCode: row[15] || null,
+    sjtskY: nullableNumber(row[16]),
+    sjtskX: nullableNumber(row[17]),
+  }
+}
+
+async function completeCezRuianAddressLinks() {
+  if (addressIndexCache && addressIndexCache.expiresAt > Date.now()) {
+    return addressIndexCache.links
+  }
+  const { response, text } = await fetchPowerOutageSource(
+    RUIAN_ADDRESS_INDEX_URL,
+    { headers: { Accept: 'text/html' } },
+    { timeoutMs: 60_000, maxBytes: 2 * 1024 * 1024, retryCount: 3 },
+  )
+  if (!response.ok) throw new Error(`Index adres RÚIAN odpověděl HTTP ${response.status}.`)
+  const links = addressLinksFromIndex(text)
+  addressIndexCache = { expiresAt: Date.now() + 30 * 60_000, links }
+  return links
+}
+
+export async function loadCompleteCezRuianMunicipalityAddressPoints(
+  municipalityCode: string,
+) {
+  if (!/^\d{6}$/.test(municipalityCode)) {
+    throw new Error(`Neplatný kód obce RÚIAN: ${municipalityCode}.`)
+  }
+  const links = await completeCezRuianAddressLinks()
+  const source = links.get(municipalityCode)
+  if (!source) throw new Error(`Adresní soubor obce ${municipalityCode} není v indexu RÚIAN.`)
+
+  const { response, body } = await fetchPowerOutageSource(
+    source.url,
+    { headers: { Accept: 'application/zip' } },
+    { timeoutMs: 90_000, maxBytes: 64 * 1024 * 1024, retryCount: 3, decodeText: false },
+  )
+  if (!response.ok) throw new Error(`RÚIAN odpověděl HTTP ${response.status}.`)
+  const rows = csvRows(unzipSingleCsv(body, 'windows-1250'))
+  const header = rows.shift()
+  if (!header || header.length < 19) {
+    throw new Error(`Adresní soubor obce ${municipalityCode} má neočekávanou strukturu.`)
+  }
+  const points = rows
+    .map(addressPointFromRow)
+    .filter((point): point is CompleteCezRuianAddressPoint => (
+      point !== null && point.municipalityCode === municipalityCode
+    ))
+  if (points.length === 0) {
+    throw new Error(`Adresní soubor obce ${municipalityCode} neobsahuje adresní místa.`)
+  }
+  return { sourceUrl: source.url, sourceValidOn: source.sourceValidOn, points }
 }
 
 function chooseRepresentativeAddress(csv: string, municipality: MunicipalityCandidate) {

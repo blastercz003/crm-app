@@ -209,7 +209,7 @@ select
   outage.starts_at,
   outage.ends_at,
   outage.payload_sha256,
-  encode(digest(coalesce(addresses.payload, '[]'::jsonb)::text, 'sha256'), 'hex'),
+  encode(extensions.digest(coalesce(addresses.payload, '[]'::jsonb)::text, 'sha256'), 'hex'),
   coalesce(addresses.address_count, 0),
   jsonb_build_object(
     'external_id', outage.external_id,
@@ -443,7 +443,7 @@ begin
   for item in select value from jsonb_array_elements(requested_outages)
   loop
     item_addresses_hash := encode(
-      digest(coalesce(item->'addressesPayload', '[]'::jsonb)::text, 'sha256'),
+      extensions.digest(coalesce(item->'addressesPayload', '[]'::jsonb)::text, 'sha256'),
       'hex'
     );
 
@@ -777,11 +777,11 @@ begin
       snapshot_finalized_at = now(), snapshot_publishable = safe_complete,
       snapshot_missing_count = missing_count,
       payload_sha256 = case when member_count > 0 then (
-        select encode(digest(string_agg(member.outage_external_id || ':' || member.payload_sha256
+        select encode(extensions.digest(string_agg(member.outage_external_id || ':' || member.payload_sha256
           || ':' || member.addresses_sha256, '|' order by member.outage_external_id), 'sha256'), 'hex')
         from public.complete_power_outage_cez_cycle_outages member
         where member.cycle_id = requested_cycle_id
-      ) else encode(digest('', 'sha256'), 'hex') end,
+      ) else encode(extensions.digest('', 'sha256'), 'hex') end,
       error_code = case
         when error_count > 0 then 'CEZ_SCAN_MUNICIPALITY_ERRORS'
         when not safe_complete and not is_pilot then 'CEZ_SNAPSHOT_SCOPE_INCOMPLETE'
