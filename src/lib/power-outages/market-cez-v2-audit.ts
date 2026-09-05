@@ -2,6 +2,7 @@ import 'server-only'
 
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { inspectCezAddress, type CezOutage } from './cez-source'
+import { normalizeCezOutage } from './cez-normalizer'
 
 type AuditCandidate = {
   run_id: string
@@ -37,6 +38,45 @@ function stringArray(value: unknown) {
     : []
 }
 
+function missingOutageDetails(input: {
+  exactOutages: CezOutage[]
+  townOutages: CezOutage[]
+  missingIds: string[]
+}) {
+  const missing = new Set(input.missingIds)
+  const exact = new Set(outageIds(input.exactOutages))
+  const town = new Set(outageIds(input.townOutages))
+  const unique = new Map<string, CezOutage>()
+  for (const outage of [...input.exactOutages, ...input.townOutages]) {
+    const id = String(outage.id)
+    if (missing.has(id)) unique.set(id, outage)
+  }
+  return [...unique.entries()].map(([externalId, outage]) => {
+    const normalized = normalizeCezOutage(outage)
+    return {
+      externalId,
+      returnedForExactAddress: exact.has(externalId),
+      returnedForTown: town.has(externalId),
+      startsAt: normalized.startsAt,
+      endsAt: normalized.endsAt,
+      municipality: normalized.municipality,
+      municipalityCode: normalized.municipalityCode,
+      announcementUrl: normalized.announcementUrl,
+      sourceUrl: normalized.sourceUrl,
+      addresses: normalized.addresses.map((address) => ({
+        municipality: address.municipality,
+        municipalityCode: address.municipalityCode,
+        townPart: address.townPart,
+        street: address.street,
+        rawAddress: address.rawAddress,
+        houseNumbers: address.metadata.houseNumbers ?? null,
+        evidenceNumbers: address.metadata.evidenceNumbers ?? null,
+        orientationNumbers: address.metadata.orientationNumbers ?? null,
+      })),
+    }
+  })
+}
+
 async function finishCase(
   candidate: AuditCandidate,
   values: Record<string, unknown>,
@@ -67,7 +107,7 @@ export async function runMarketCezV2Audit(
 ) {
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení pro audit ČEZ v2.')
-  const sampleCount = Math.min(500, Math.max(20, Math.trunc(requestedSampleCount)))
+  const sampleCount = Math.min(2_000, Math.max(20, Math.trunc(requestedSampleCount)))
   const limit = Math.min(5, Math.max(1, Math.trunc(requestedLimit)))
   const { data, error } = requestedRunId
     ? await client.rpc('claim_power_outage_cez_market_v2_audit_continuation', {
@@ -110,6 +150,11 @@ export async function runMarketCezV2Audit(
       const productionLoadedIds = unionIds.filter((id) => productionByExternalId.has(id))
       const missingLoadedIds = unionIds.filter((id) => !productionByExternalId.has(id))
       const missingExactIds = exactIds.filter((id) => !productionByExternalId.has(id))
+      const missingDetails = missingOutageDetails({
+        exactOutages: inspection.outages ?? [],
+        townOutages: inspection.outages_in_town ?? [],
+        missingIds: missingLoadedIds,
+      })
 
       const exactProductionOutageIds = exactIds
         .map((id) => productionByExternalId.get(id))
@@ -151,13 +196,14 @@ export async function runMarketCezV2Audit(
         production_loaded_outage_ids: productionLoadedIds,
         missing_loaded_outage_ids: missingLoadedIds,
         missing_exact_outage_ids: missingExactIds,
+        missing_outage_details: missingDetails,
         production_match_pairs: productionMatchPairs,
         missing_store_match_pairs: missingStoreMatchPairs,
         risk_detected: riskDetected,
         error_code: null,
         error_message: null,
         metadata: {
-          contract: 'cez-market-v2-read-only-audit-v1',
+          contract: 'cez-market-v2-read-only-full-audit-v2',
           productionWritesMade: false,
           directExactOutageCount: exactIds.length,
           directTownOutageCount: townIds.length,

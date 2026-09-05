@@ -32,7 +32,7 @@ async function run(request: Request, allowAdminSession: boolean) {
   }
   const runId = requestedRunId || null
   const sample = Number.isFinite(requestedSample)
-    ? Math.min(500, Math.max(20, Math.trunc(requestedSample)))
+    ? Math.min(2_000, Math.max(20, Math.trunc(requestedSample)))
     : 120
   const limit = Number.isFinite(requestedLimit)
     ? Math.min(5, Math.max(1, Math.trunc(requestedLimit)))
