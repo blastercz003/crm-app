@@ -23,6 +23,28 @@ type SourceState = {
 type CatalogState = { revision: number }
 
 const CEZ_SCAN_STATE_VERSION = 2
+const CEZ_MARKET_COLLECTOR_V1 = 'v1' as const
+
+async function activeCezMarketCollectorVersion(client: ServiceClient) {
+  const { data, error } = await client
+    .from('power_outage_cez_market_collector_state')
+    .select('active_version')
+    .eq('singleton', true)
+    .maybeSingle<{ active_version: string }>()
+
+  // Bezpečné pořadí nasazení: starší databáze bez verzovací tabulky dál používá
+  // dosavadní sběr v1. Po aplikaci migrace už je zdrojem pravdy databázový přepínač.
+  if (error?.code === '42P01' || error?.code === 'PGRST205') {
+    return CEZ_MARKET_COLLECTOR_V1
+  }
+  if (error) throw error
+
+  const version = data?.active_version ?? CEZ_MARKET_COLLECTOR_V1
+  if (version !== CEZ_MARKET_COLLECTOR_V1) {
+    throw new Error(`Sběrač ČEZ pro MARKETY ${version} zatím není v této verzi aplikace dostupný.`)
+  }
+  return version
+}
 
 export class CezSyncAlreadyRunningError extends Error {
   constructor() {
@@ -202,6 +224,7 @@ export async function importCezOutagesForStores(input: {
 }) {
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení Supabase pro import ČEZ.')
+  const collectorVersion = await activeCezMarketCollectorVersion(client)
 
   const startedAt = new Date().toISOString()
   const staleBefore = new Date(Date.now() - 15 * 60 * 1_000).toISOString()
@@ -313,6 +336,7 @@ export async function importCezOutagesForStores(input: {
       recordCount: loaded.outages.length,
       observedAt: completedAt,
       metadata: {
+        collectorVersion,
         searchedStoreCount: loaded.searchedStoreCount,
         coveredTownCount: loaded.coveredTownCount,
         completeCatalogScan: Boolean(input.completeCatalogScan),
@@ -367,6 +391,7 @@ export async function importCezOutagesForStores(input: {
           ? { store_revision_processed: catalogState.revision }
           : {}),
         metadata: {
+          collectorVersion,
           sourceOutageCount: loaded.outages.length,
           changedRecordCount,
           searchedStoreCount: loaded.searchedStoreCount,
@@ -401,6 +426,7 @@ export async function importCezOutagesForStores(input: {
         address_upsert_count: saved.addressCount,
         payload_sha256: batchPayloadSha256,
         metadata: {
+          collectorVersion,
           changedRecordCount,
           searchedStoreCount: loaded.searchedStoreCount,
           coveredTownCount: loaded.coveredTownCount,
@@ -427,6 +453,7 @@ export async function importCezOutagesForStores(input: {
       savedAddressCount: saved.addressCount,
       missingCount,
       payloadSha256,
+      collectorVersion,
       batchPayloadSha256,
       scanComplete,
       nextStoreIndex: scanComplete ? null : nextIndex,

@@ -47,7 +47,17 @@ function formatDateTime(value: string | null) {
 }
 
 function sourceName(source: PowerOutageSource) {
-  return source === 'cez' ? 'ČEZ Distribuce' : source === 'egd' ? 'EG.D' : 'PREdistribuce'
+  return source === 'cez' ? 'ČEZ v1' : source === 'egd' ? 'EG.D' : 'PREdistribuce'
+}
+
+function SourcePanelName({ source }: { source: PowerOutageSource }) {
+  if (source !== 'cez') return sourceName(source)
+  return (
+    <>
+      ČEZ
+      <span className="ml-1.5 text-[0.68em] font-medium tracking-normal text-[var(--text-secondary)]">v1</span>
+    </>
+  )
 }
 
 function sourceShortName(source: PowerOutageSource) {
@@ -171,7 +181,7 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
       <div className="flex items-start justify-between gap-2">
         <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><DatabaseZap aria-hidden size={18} /></span>
-          <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdroj dat</span><strong className="block truncate text-base font-semibold text-[var(--text-primary)]">{sourceName(source.source)}</strong></span>
+          <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdroj dat</span><strong className="block truncate text-base font-semibold text-[var(--text-primary)]"><SourcePanelName source={source.source} /></strong></span>
         </button>
         <div className="flex shrink-0 items-center gap-1.5">
           {isAdmin ? <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Ručně obnovit data ${sourceName(source.source)}`} title="Ručně obnovit data" className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button> : null}
