@@ -3,6 +3,8 @@ import 'server-only'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { normalizeCompletePowerOutageAddresses } from './complete-address-normalization'
 import { syncCompletePowerOutageCatalogSource } from './complete-catalog-sync'
+import { importEgdOutages } from './egd-sync'
+import { importPreOutages } from './pre-sync'
 import { discoverCompletePowerOutageCompanies } from './complete-company-discovery'
 import { reconcileCompletePowerOutageCompanies } from './complete-company-reconciliation'
 import type { CompleteDiscoveryProvider } from './complete-company-providers'
@@ -10,6 +12,7 @@ import type { PowerOutageSource } from './types'
 
 export type CompleteRecoveryRequest =
   | { target: 'source_projection'; source: PowerOutageSource }
+  | { target: 'source_refresh'; source: 'egd' | 'pre' }
   | { target: 'address_normalization' }
   | { target: 'provider_discovery'; provider: CompleteDiscoveryProvider }
   | { target: 'provider_review_skip'; provider: Extract<CompleteDiscoveryProvider, 'ares' | 'mapy'> }
@@ -32,7 +35,7 @@ type TaskState = {
 }
 
 function taskKey(input: CompleteRecoveryRequest) {
-  if (input.target === 'cez_new_pipeline' || input.target === 'provider_review_skip') return null
+  if (input.target === 'cez_new_pipeline' || input.target === 'provider_review_skip' || input.target === 'source_refresh') return null
   if (input.target === 'source_projection') return `sync_${input.source}` as const
   if (input.target === 'provider_discovery') return `discover_${input.provider}` as const
   if (input.target === 'address_normalization') return 'normalize_addresses' as const
@@ -145,6 +148,22 @@ export async function recoverCompletePowerOutageTask(
           ? 'Tato fáze už skutečně běží. Druhá kopie nebyla spuštěna.'
           : 'Obnova konkrétní fáze nového ČEZ byla bezpečně zahájena.',
       result: payload,
+    }
+  }
+
+  if (input.target === 'source_refresh') {
+    // EG.D se při ruční obnově dotazuje výhradně celoplošně. Pokud tento
+    // dotaz selže, nepoužijeme městský fallback a existující data nezmizí.
+    const upstream = input.source === 'egd'
+      ? await importEgdOutages({ daysAhead: 90, fallbackCities: [], triggerKind: 'retry' })
+      : await importPreOutages({ triggerKind: 'retry' })
+    const projection = await syncCompletePowerOutageCatalogSource(input.source)
+    return {
+      status: projection.status === 'skipped' ? 'already_running' : 'started',
+      message: projection.status === 'skipped'
+        ? 'Zdroj byl načten, projekci však mezitím zpracovává automatický plán.'
+        : 'Aktuální data distributora byla načtena a bezpečně promítnuta do katalogu KOMPLETNÍ.',
+      result: { upstream, projection },
     }
   }
 

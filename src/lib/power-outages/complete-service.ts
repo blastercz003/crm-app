@@ -189,6 +189,59 @@ function metadataText(value: unknown, key: string) {
   return typeof item === 'string' && item.trim() ? item.trim() : null
 }
 
+function metadataNumber(value: unknown, key: string) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return 0
+  const item = Number((value as Record<string, unknown>)[key] ?? 0)
+  return Number.isFinite(item) ? item : 0
+}
+
+function sourceUpstreamHealth(sourceRow: Record<string, unknown>) {
+  const source = sourceRow.source as PowerOutageSource
+  if (source === 'cez') return {
+    status: sourceRow.coverage_status === 'error' ? 'error' as const
+      : sourceRow.coverage_status === 'partial' ? 'partial' as const
+        : sourceRow.coverage_status === 'processing' ? 'processing' as const
+          : sourceRow.last_success_at ? 'current' as const : 'waiting' as const,
+    message: String(sourceRow.last_error_message || 'Stav zdrojového katalogu ČEZ odpovídá poslední projekci.'),
+    failed: false,
+    stale: false,
+    projectionBehind: false,
+  }
+  const upstreamLastSuccessAt = metadataText(sourceRow.metadata, 'upstreamLastSuccessAt')
+    ?? (sourceRow.last_success_at as string | null)
+  const upstreamLastErrorAt = metadataText(sourceRow.metadata, 'upstreamLastErrorAt')
+  const upstreamFailureCount = metadataNumber(sourceRow.metadata, 'upstreamConsecutiveFailureCount')
+  const upstreamSuccessMs = upstreamLastSuccessAt ? Date.parse(upstreamLastSuccessAt) : Number.NaN
+  const upstreamErrorMs = upstreamLastErrorAt ? Date.parse(upstreamLastErrorAt) : Number.NaN
+  const projectionSuccessMs = sourceRow.last_success_at ? Date.parse(String(sourceRow.last_success_at)) : Number.NaN
+  const freshnessMs = source === 'egd' ? 8 * 60 * 60_000 : 5 * 60 * 60_000
+  const failed = upstreamFailureCount > 0 && Number.isFinite(upstreamErrorMs)
+    && (!Number.isFinite(upstreamSuccessMs) || upstreamErrorMs >= upstreamSuccessMs)
+  const stale = !Number.isFinite(upstreamSuccessMs) || Date.now() - upstreamSuccessMs > freshnessMs
+  const projectionBehind = Number.isFinite(upstreamSuccessMs)
+    && (!Number.isFinite(projectionSuccessMs) || upstreamSuccessMs > projectionSuccessMs + 1_000)
+  if (failed) return {
+    status: 'error' as const,
+    message: metadataText(sourceRow.metadata, 'upstreamLastErrorMessage') || 'Poslední načtení dat distributora skončilo chybou.',
+    failed, stale, projectionBehind,
+  }
+  if (stale) return {
+    status: 'delayed' as const,
+    message: 'Skutečné načtení dat distributora je po očekávaném intervalu. Uložená data zůstávají zachovaná.',
+    failed, stale, projectionBehind,
+  }
+  if (projectionBehind) return {
+    status: 'processing' as const,
+    message: 'Novější data distributora čekají na promítnutí do katalogu KOMPLETNÍ.',
+    failed, stale, projectionBehind,
+  }
+  return {
+    status: 'current' as const,
+    message: 'Skutečné načtení distributora i jeho projekce do režimu KOMPLETNÍ jsou aktuální.',
+    failed, stale, projectionBehind,
+  }
+}
+
 function mapSourceDiscovery(
   sourceRow: Record<string, unknown>,
   row?: Record<string, unknown> | null,
@@ -209,6 +262,10 @@ function mapSourceDiscovery(
       errorTargetCount: 0,
       exactTargetCount: 0,
       streetTargetCount: 0,
+      exactPendingTargetCount: 0,
+      streetPendingTargetCount: 0,
+      exactErrorTargetCount: 0,
+      streetErrorTargetCount: 0,
       progressPercent: 0,
       lastProgressAt: null,
     }
@@ -221,6 +278,8 @@ function mapSourceDiscovery(
   const streetTargetCount = Number(row?.street_target_count ?? 0)
   const exactPendingTargetCount = Number(row?.exact_pending_target_count ?? 0)
   const streetPendingTargetCount = Number(row?.street_pending_target_count ?? 0)
+  const exactErrorTargetCount = Number(row?.exact_error_target_count ?? 0)
+  const streetErrorTargetCount = Number(row?.street_error_target_count ?? 0)
   const remainingTargetCount = Math.max(0, totalTargetCount - completedTargetCount)
   const lastProgressAt = (row.last_progress_at as string | null | undefined) ?? null
   const progressPercent = totalTargetCount > 0
@@ -268,8 +327,15 @@ function mapSourceDiscovery(
     && Number(task.consecutive_failure_count ?? 0) > 0
   ))
   const coverageStatus = sourceRow.coverage_status
+  const upstream = sourceUpstreamHealth(sourceRow)
   const status: CompleteSourceState['discovery']['status'] = coverageStatus === 'error'
     ? 'error'
+    : upstream.failed
+      ? 'error'
+    : upstream.stale
+      ? 'delayed'
+    : upstream.projectionBehind
+      ? 'processing'
     : failedRequiredTask
       ? 'error'
     : failedEvaluationTask
@@ -290,17 +356,23 @@ function mapSourceDiscovery(
                   ? 'waiting'
                   : 'processing'
   const statusMessage = status === 'current'
-    ? 'Zdrojová data i prioritní fronta do 30 dnů jsou zpracované.'
+    ? 'Aktuální data distributora, interní projekce i prioritní fronta do 30 dnů jsou zpracované.'
     : status === 'processing'
-      ? coverageStatus === 'processing'
+      ? upstream.projectionBehind
+        ? 'Novější data distributora čekají na promítnutí do katalogu KOMPLETNÍ.'
+      : coverageStatus === 'processing'
         ? 'Právě se aktualizují zdrojová data distributora.'
         : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.${errorTargetCount > 0 ? ` Dílčí chyby: ${errorTargetCount}.` : ''}`
       : status === 'delayed'
-        ? splitProgressAvailable && stalledProviders.length > 0
+        ? upstream.stale
+          ? upstream.message
+        : splitProgressAvailable && stalledProviders.length > 0
           ? `${stalledProviders.join(' + ')}: povinný krok se déle než 30 minut neposunul · zbývá ${remainingTargetCount} cílů.`
           : `Povinné vyhledávání se déle než 30 minut neposunulo · zbývá ${remainingTargetCount} cílů.`
         : status === 'error'
-          ? failedRequiredTask
+          ? upstream.failed
+            ? upstream.message
+          : failedRequiredTask
             ? String(failedRequiredTask.last_error_message || 'Povinná úloha vyhledávání firem skončila chybou.')
             : failedEvaluationTask
               ? 'Vyhodnocení nalezených firem je zablokované. Otevřete detail.'
@@ -320,6 +392,10 @@ function mapSourceDiscovery(
     errorTargetCount,
     exactTargetCount,
     streetTargetCount,
+    exactPendingTargetCount,
+    streetPendingTargetCount,
+    exactErrorTargetCount,
+    streetErrorTargetCount,
     progressPercent,
     lastProgressAt,
   }
@@ -330,11 +406,24 @@ function mapSourceState(
   discovery?: Record<string, unknown> | null,
   taskRows: Array<Record<string, unknown>> = [],
 ): CompleteSourceState {
+  const upstreamLastAttemptAt = metadataText(row.metadata, 'upstreamLastAttemptAt')
+    ?? (row.last_attempt_at as string | null)
+  const upstreamLastSuccessAt = metadataText(row.metadata, 'upstreamLastSuccessAt')
+    ?? (row.last_success_at as string | null)
+  const upstream = sourceUpstreamHealth(row)
   return {
     source: row.source as PowerOutageSource,
     coverageStatus: row.coverage_status as CompleteSourceState['coverageStatus'],
     lastAttemptAt: row.last_attempt_at as string | null,
     lastSuccessAt: row.last_success_at as string | null,
+    upstreamLastAttemptAt,
+    upstreamLastSuccessAt,
+    upstreamLastErrorAt: metadataText(row.metadata, 'upstreamLastErrorAt'),
+    upstreamLastErrorCode: metadataText(row.metadata, 'upstreamLastErrorCode'),
+    upstreamLastErrorMessage: metadataText(row.metadata, 'upstreamLastErrorMessage'),
+    upstreamConsecutiveFailureCount: metadataNumber(row.metadata, 'upstreamConsecutiveFailureCount'),
+    upstreamStatus: upstream.status,
+    upstreamStatusMessage: upstream.message,
     lastCompleteAt: row.last_complete_at as string | null,
     lastChangeAt: row.last_change_at as string | null,
     horizonFrom: row.horizon_from as string | null,
@@ -740,7 +829,10 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const nowMs = Date.now()
   const freshnessMs: Record<PowerOutageSource, number> = { cez: 90 * 60_000, egd: 8 * 60 * 60_000, pre: 5 * 60 * 60_000 }
   const staleSources = sources.filter((source) => {
-    const value = source.lastSuccessAt ? new Date(source.lastSuccessAt).getTime() : Number.NaN
+    const freshnessAt = source.source === 'cez'
+      ? source.lastSuccessAt
+      : source.upstreamLastSuccessAt
+    const value = freshnessAt ? new Date(freshnessAt).getTime() : Number.NaN
     return !Number.isFinite(value) || nowMs - value > freshnessMs[source.source]
   })
   const failedTasks = tasks.filter((task) => task.last_status === 'failed' || task.last_status === 'partial' || Number(task.consecutive_failure_count) > 0)
@@ -750,7 +842,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     .filter((value): value is string => Boolean(value)).sort().at(-1) ?? null
   const issues = [
     ...[sourceLoadError, providerLoadError, coverageLoadError].filter((value): value is string => Boolean(value)),
-    ...staleSources.map((source) => `${source.source.toUpperCase()}: interní projekce nemá čerstvá data.`),
+    ...staleSources.map((source) => `${source.source.toUpperCase()}: skutečné načtení distributora nemá čerstvá data.`),
     ...sources.filter((source) => source.discovery.status === 'error' || source.discovery.status === 'delayed').map((source) => `${source.source.toUpperCase()}: ${source.discovery.statusMessage}`),
     ...failedTasks.map((task) => `${String(task.task_key)}: ${task.last_error_message || 'poslední běh selhal.'}`),
     ...expiredTasks.map((task) => `${String(task.task_key)}: běh překročil bezpečnostní čas.`),
@@ -841,8 +933,11 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     pre: 5 * 60 * 60_000,
   }
   const staleSources = sources.filter((source) => {
-    if (!source.lastSuccessAt) return true
-    const value = new Date(source.lastSuccessAt).getTime()
+    const freshnessAt = source.source === 'cez'
+      ? source.lastSuccessAt
+      : source.upstreamLastSuccessAt
+    if (!freshnessAt) return true
+    const value = new Date(freshnessAt).getTime()
     return !Number.isFinite(value) || nowMs - value > freshnessMs[source.source]
   })
   const failedTasks = tasks.filter((task) => (
@@ -860,7 +955,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     .sort()
     .at(-1) ?? null
   const issues = [
-    ...staleSources.map((source) => `${source.source.toUpperCase()}: interní projekce nemá čerstvá data.`),
+    ...staleSources.map((source) => `${source.source.toUpperCase()}: skutečné načtení distributora nemá čerstvá data.`),
     ...sources
       .filter((source) => source.discovery.status === 'error' || source.discovery.status === 'delayed')
       .map((source) => `${source.source.toUpperCase()}: ${source.discovery.statusMessage}`),
@@ -976,23 +1071,55 @@ export async function getCompletePowerOutageSourceDiagnostic(
     errorMessage: row.error_message,
     removedAddressCount: Number((row.metadata as Record<string, unknown> | null)?.removedAddressCount ?? 0),
   }))
+  const discoveryRow = (discoveryResult.data ?? {}) as Record<string, unknown>
   const providers = (providersResult.data ?? []).map((row) => {
-    const totalTargetCount = Number(row.total_target_count)
-    const completedTargetCount = Number(row.completed_target_count)
-    const pendingTargetCount = Number(row.pending_target_count)
+    const provider = row.provider as CompleteProviderState['provider']
+    const rawTotalTargetCount = Number(row.total_target_count)
+    const rawProcessedTargetCount = Math.max(0, rawTotalTargetCount - Number(row.pending_target_count))
+    const requiredTotalTargetCount = provider === 'ares'
+      ? Number(discoveryRow.exact_target_count ?? 0)
+      : provider === 'mapy'
+        ? Number(discoveryRow.street_target_count ?? 0)
+        : rawTotalTargetCount
+    const pendingTargetCount = provider === 'ares'
+      ? Number(discoveryRow.exact_pending_target_count ?? 0)
+      : provider === 'mapy'
+        ? Number(discoveryRow.street_pending_target_count ?? 0)
+        : Number(row.pending_target_count)
+    const errorTargetCount = provider === 'ares'
+      ? Number(discoveryRow.exact_error_target_count ?? row.error_target_count ?? 0)
+      : provider === 'mapy'
+        ? Number(discoveryRow.street_error_target_count ?? row.error_target_count ?? 0)
+        : Number(row.error_target_count)
+    const totalTargetCount = requiredTotalTargetCount
+    const completedTargetCount = Math.max(0, totalTargetCount - pendingTargetCount - errorTargetCount)
     const processedTargetCount = Math.max(0, totalTargetCount - pendingTargetCount)
+    const supplementalTargetCount = provider === 'google'
+      ? rawTotalTargetCount
+      : Math.max(0, rawTotalTargetCount - totalTargetCount)
+    const supplementalProcessedTargetCount = provider === 'google'
+      ? rawProcessedTargetCount
+      : Math.max(0, rawProcessedTargetCount - processedTargetCount)
     return {
-      provider: row.provider as CompleteProviderState['provider'],
-      configured: providerConfigured(row.provider as CompleteProviderState['provider']),
+      provider,
+      role: provider === 'ares' ? 'required_exact' as const : provider === 'mapy' ? 'required_street' as const : 'supplemental' as const,
+      roleLabel: provider === 'ares' ? 'Povinné · přesné adresy' : provider === 'mapy' ? 'Povinné · uliční cíle' : 'Doplňkové hledání',
+      configured: providerConfigured(provider),
       totalTargetCount,
       completedTargetCount,
       processedTargetCount,
       pendingTargetCount,
-      foundTargetCount: Number(row.found_target_count),
-      notFoundTargetCount: Number(row.not_found_target_count),
-      errorTargetCount: Number(row.error_target_count),
+      foundTargetCount: provider === 'google' ? Number(row.found_target_count) : 0,
+      notFoundTargetCount: provider === 'google' ? Number(row.not_found_target_count) : 0,
+      errorTargetCount,
       progressPercent: totalTargetCount > 0 ? Math.round((processedTargetCount / totalTargetCount) * 1000) / 10 : 100,
-      lastProgressAt: row.last_progress_at as string | null,
+      lastProgressAt: (provider === 'ares'
+        ? discoveryRow.exact_last_progress_at
+        : provider === 'mapy'
+          ? discoveryRow.street_last_progress_at
+          : row.last_progress_at) as string | null,
+      supplementalTargetCount,
+      supplementalProcessedTargetCount,
     }
   })
   return {

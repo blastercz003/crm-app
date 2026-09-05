@@ -125,6 +125,14 @@ export type CompleteSourceState = {
   coverageStatus: 'idle' | 'processing' | 'complete' | 'partial' | 'error'
   lastAttemptAt: string | null
   lastSuccessAt: string | null
+  upstreamLastAttemptAt: string | null
+  upstreamLastSuccessAt: string | null
+  upstreamLastErrorAt: string | null
+  upstreamLastErrorCode: string | null
+  upstreamLastErrorMessage: string | null
+  upstreamConsecutiveFailureCount: number
+  upstreamStatus: 'waiting' | 'processing' | 'current' | 'delayed' | 'partial' | 'error'
+  upstreamStatusMessage: string
   lastCompleteAt: string | null
   lastChangeAt: string | null
   horizonFrom: string | null
@@ -154,12 +162,18 @@ export type CompleteSourceDiscoveryState = {
   errorTargetCount: number
   exactTargetCount: number
   streetTargetCount: number
+  exactPendingTargetCount: number
+  streetPendingTargetCount: number
+  exactErrorTargetCount: number
+  streetErrorTargetCount: number
   progressPercent: number
   lastProgressAt: string | null
 }
 
 export type CompleteSourceProviderProgress = {
   provider: 'ares' | 'mapy' | 'google'
+  role: 'required_exact' | 'required_street' | 'supplemental'
+  roleLabel: string
   configured: boolean
   totalTargetCount: number
   completedTargetCount: number
@@ -170,6 +184,8 @@ export type CompleteSourceProviderProgress = {
   errorTargetCount: number
   progressPercent: number
   lastProgressAt: string | null
+  supplementalTargetCount: number
+  supplementalProcessedTargetCount: number
 }
 
 export type CompleteSourceRun = {

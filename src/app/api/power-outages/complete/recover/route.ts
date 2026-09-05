@@ -16,6 +16,7 @@ function validRequest(value: unknown): value is CompleteRecoveryRequest {
   const input = value as Record<string, unknown>
   if (input.target === 'address_normalization' || input.target === 'company_reconciliation') return true
   if (input.target === 'source_projection') return ['cez', 'egd', 'pre'].includes(String(input.source))
+  if (input.target === 'source_refresh') return ['egd', 'pre'].includes(String(input.source))
   if (input.target === 'provider_discovery') return ['ares', 'mapy', 'google'].includes(String(input.provider))
   if (input.target === 'provider_review_skip') return ['ares', 'mapy'].includes(String(input.provider))
   if (input.target === 'cez_new_pipeline') return ['ruian', 'mapping', 'scan', 'normalization', 'projection'].includes(String(input.stage))
@@ -24,6 +25,7 @@ function validRequest(value: unknown): value is CompleteRecoveryRequest {
 
 function actionLabel(input: CompleteRecoveryRequest) {
   if (input.target === 'source_projection') return `obnova projekce ${input.source.toUpperCase()}`
+  if (input.target === 'source_refresh') return `obnova zdroje a projekce ${input.source.toUpperCase()}`
   if (input.target === 'provider_discovery') return `obnova poskytovatele ${input.provider.toUpperCase()}`
   if (input.target === 'provider_review_skip') return `přeskočení chybných dotazů ${input.provider.toUpperCase()}`
   if (input.target === 'address_normalization') return 'obnova normalizace adres'

@@ -14,6 +14,12 @@ type SourceState = {
   data_version: number | null
   latest_payload_sha256: string | null
 }
+type ExistingEgdRow = {
+  id: string
+  external_id: string
+  missing_since: string | null
+  metadata: Record<string, unknown> | null
+}
 
 export class EgdSyncAlreadyRunningError extends Error {
   constructor() {
@@ -154,21 +160,34 @@ async function markMissingEgdOutages(
 ) {
   const { data, error } = await client
     .from('power_outages')
-    .select('id,external_id,missing_since')
+    .select('id,external_id,missing_since,metadata')
     .eq('source', 'egd')
+    .is('archived_at', null)
   if (error) throw error
 
-  const missingIds = (data ?? [])
-    .filter((row) => !externalIds.has(String(row.external_id)) && !row.missing_since)
-    .map((row) => String(row.id))
-  for (const ids of chunks(missingIds, 400)) {
+  let candidateCount = 0
+  let missingCount = 0
+  for (const row of (data ?? []) as ExistingEgdRow[]) {
+    if (externalIds.has(row.external_id) || row.missing_since) continue
+    const metadata = row.metadata ?? {}
+    const previousObservations = Number(metadata.egdMissingObservations ?? 0)
+    const update = previousObservations >= 1
+      ? {
+          missing_since: missingAt,
+          metadata: { ...metadata, egdMissingObservations: previousObservations + 1 },
+        }
+      : {
+          metadata: { ...metadata, egdMissingObservations: 1, egdMissingCandidateAt: missingAt },
+        }
     const { error: updateError } = await client
       .from('power_outages')
-      .update({ missing_since: missingAt })
-      .in('id', ids)
+      .update(update)
+      .eq('id', row.id)
     if (updateError) throw updateError
+    if (previousObservations >= 1) missingCount += 1
+    else candidateCount += 1
   }
-  return missingIds.length
+  return { candidateCount, missingCount }
 }
 
 async function countEgdOutages(client: ServiceClient, now: string) {
@@ -286,13 +305,17 @@ export async function importEgdOutages(input: {
       normalized.flatMap((outage) => outage.addresses.map((address) => address.municipality).filter(Boolean)),
     ).size
     const saved = await upsertEgdOutages(client, normalized, completedAt)
-    const missingCount = await markMissingEgdOutages(
-      client,
-      saved.externalIds,
-      completedAt,
-    )
+    const wholeAreaSnapshot = loaded.queryScope === 'whole-distribution-area'
+      || loaded.queryScope === 'edge:whole-distribution-area'
+    // Městský fallback je jen částečný výřez. Nesmí proto označit odstávky
+    // z ostatních měst jako chybějící. I úplný snapshot musí výpadek potvrdit
+    // ve dvou po sobě jdoucích pozorováních.
+    const missing = wholeAreaSnapshot
+      ? await markMissingEgdOutages(client, saved.externalIds, completedAt)
+      : { candidateCount: 0, missingCount: 0 }
     const counts = await countEgdOutages(client, completedAt)
-    const changed = changedRecordCount > 0 || sourceState?.latest_payload_sha256 !== payloadSha256
+    const changed = changedRecordCount > 0 || missing.missingCount > 0
+      || sourceState?.latest_payload_sha256 !== payloadSha256
 
     const { error: sourceUpdateError } = await client
       .from('power_outage_source_state')
@@ -318,7 +341,9 @@ export async function importEgdOutages(input: {
           changedRecordCount,
           coveredMunicipalityCount,
           normalizedTermCount: normalized.length,
-          missingCount,
+          missingCandidateCount: missing.candidateCount,
+          missingCount: missing.missingCount,
+          missingReconciliationSkipped: !wholeAreaSnapshot,
           fallbackReason: loaded.fallbackReason ?? null,
         },
       })
@@ -341,7 +366,9 @@ export async function importEgdOutages(input: {
           normalizedTermCount: normalized.length,
           changedRecordCount,
           coveredMunicipalityCount,
-          missingCount,
+          missingCandidateCount: missing.candidateCount,
+          missingCount: missing.missingCount,
+          missingReconciliationSkipped: !wholeAreaSnapshot,
           fallbackReason: loaded.fallbackReason ?? null,
         },
       })
@@ -354,7 +381,8 @@ export async function importEgdOutages(input: {
       sourceOutageCount: loaded.outages.length,
       savedOutageCount: saved.outageCount,
       savedAddressCount: saved.addressCount,
-      missingCount,
+      missingCandidateCount: missing.candidateCount,
+      missingCount: missing.missingCount,
       payloadSha256,
       dateFrom: loaded.dateFrom,
       dateTo: loaded.dateTo,

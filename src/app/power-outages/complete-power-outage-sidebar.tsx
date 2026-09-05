@@ -35,18 +35,6 @@ function sourceLabel(source: PowerOutageSource) {
   return source === 'cez' ? 'ČEZ' : source === 'egd' ? 'EG.D' : 'PRE'
 }
 
-function coverageLabel(status: CompletePowerOutageSidebarWorkspace['sources'][number]['coverageStatus']) {
-  return ({ idle: 'ČEKÁ', processing: 'ZPRACOVÁNÍ', complete: 'AKTUÁLNÍ', partial: 'ČÁSTEČNĚ', error: 'CHYBA' } as const)[status]
-}
-
-function statusPresentation(status: CompleteSourceState['coverageStatus']) {
-  if (status === 'complete') return { badge: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', dot: 'bg-emerald-500' }
-  if (status === 'error') return { badge: 'border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500', attention: true }
-  if (status === 'processing') return { badge: 'border-sky-400/35 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300', dot: 'animate-pulse bg-sky-500 motion-reduce:animate-none' }
-  if (status === 'partial') return { badge: 'border-amber-400/35 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'bg-amber-500', attention: true }
-  return { badge: 'border-slate-400/35 bg-slate-400/10 text-slate-600 [html[data-theme=dark]_&]:text-slate-300', dot: 'bg-slate-400' }
-}
-
 function discoveryStatusLabel(status: CompleteSourceState['discovery']['status']) {
   return ({ waiting: 'ČEKÁ', processing: 'ZPRACOVÁNÍ', current: 'AKTUÁLNÍ', delayed: 'ZPOŽDĚNÍ', partial: 'ČÁSTEČNĚ', error: 'CHYBA' } as const)[status]
 }
@@ -90,14 +78,6 @@ function providerTaskStatusLabel(status: 'idle' | 'running' | 'succeeded' | 'par
   return ({ running: 'Probíhá', succeeded: 'Dokončeno', partial: 'Částečně', failed: 'Selhalo', skipped: 'Přeskočeno' } as const)[status]
 }
 
-function sourceStatusDescription(state: CompleteSourceState) {
-  if (state.coverageStatus === 'complete') return 'Zdrojový katalog i jeho projekce do režimu KOMPLETNÍ jsou aktuální.'
-  if (state.coverageStatus === 'processing') return 'Právě probíhá projekce zdrojových dat do režimu KOMPLETNÍ.'
-  if (state.coverageStatus === 'partial') return state.coverageMessage ?? 'Zdroj poskytl jen část očekávaného celoplošného pokrytí.'
-  if (state.coverageStatus === 'error') return state.lastErrorMessage ?? 'Poslední zpracování skončilo chybou.'
-  return 'Zdroj čeká na první dokončené zpracování.'
-}
-
 function providerLabel(provider: CompleteProviderState['provider']) {
   return provider === 'mapy' ? 'Mapy.com' : provider === 'ares' ? 'ARES' : 'Google'
 }
@@ -137,6 +117,7 @@ function PanelLoadError({ message, onRetry }: { message: string; onRetry?: () =>
 
 type RecoveryRequest =
   | { target: 'source_projection'; source: PowerOutageSource }
+  | { target: 'source_refresh'; source: 'egd' | 'pre' }
   | { target: 'address_normalization' }
   | { target: 'provider_discovery'; provider: CompleteProviderState['provider'] }
   | { target: 'provider_review_skip'; provider: 'ares' | 'mapy' }
@@ -244,7 +225,7 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
     : source === 'egd'
       ? 'Celoplošný snapshot EG.D se promítá do režimu KOMPLETNÍ každých 6 hodin.'
       : 'Oficiální celoplošný export PRE se promítá do režimu KOMPLETNÍ každé 3 hodiny.'
-  const sourcePresentation = diagnostic ? statusPresentation(diagnostic.state.coverageStatus) : statusPresentation('idle')
+  const sourcePresentation = diagnostic ? discoveryStatusPresentation(diagnostic.state.upstreamStatus) : discoveryStatusPresentation('waiting')
   const discoveryPresentation = diagnostic ? discoveryStatusPresentation(diagnostic.state.discovery.status) : discoveryStatusPresentation('waiting')
   const projectionProgress = diagnostic && diagnostic.state.coverageTotalCount > 0
     ? Math.min(100, Math.round((diagnostic.state.coverageProcessedCount / diagnostic.state.coverageTotalCount) * 1000) / 10)
@@ -256,8 +237,12 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
     diagnostic?.evaluationTask?.lastErrorMessage,
   )
   const sourceRecoveryBlocked = recoveryNeedsManualRepair(
-    null,
-    diagnostic?.task?.lastErrorMessage ?? diagnostic?.state.lastErrorMessage,
+    diagnostic?.state.upstreamLastErrorCode,
+    diagnostic?.state.upstreamLastErrorMessage ?? diagnostic?.task?.lastErrorMessage ?? diagnostic?.state.lastErrorMessage,
+  )
+  const upstreamNeedsRecovery = diagnostic && source !== 'cez' && (
+    diagnostic.state.upstreamConsecutiveFailureCount > 0
+    || diagnostic.state.discovery.status === 'delayed'
   )
 
   return (
@@ -281,13 +266,13 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
             <RecoveryControl isAdmin={isAdmin} blocked={evaluationRecoveryBlocked} label="Obnovit vyhodnocení" request={{ target: 'company_reconciliation' }} onRecovered={onReload} />
           </section> : null}
 
-          <section className="mt-3"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zpracování podle poskytovatele</h3>{diagnostic.loadErrors.providers ? <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5"><span className="flex min-w-0 items-start gap-2"><CircleAlert aria-hidden size={15} className="mt-0.5 shrink-0 text-amber-500" /><span><strong className="block text-[10px] text-[var(--text-primary)]">Tato část detailu je dočasně nedostupná</strong><small className="mt-1 block text-[8px] leading-4 text-[var(--text-secondary)]">{diagnostic.loadErrors.providers}</small></span></span><button type="button" onClick={() => void onReload()} className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase text-amber-700 transition hover:-translate-y-px [html[data-theme=dark]_&]:text-amber-300"><RefreshCw aria-hidden size={12} /> Zkusit znovu</button></div> : <div className="mt-2 grid gap-2 sm:grid-cols-3">{diagnostic.providers.map((provider) => <div key={provider.provider} className={`rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 ${provider.configured ? '' : 'opacity-60'}`}><div className="flex items-center justify-between"><strong className="text-xs text-[var(--text-primary)]">{providerLabel(provider.provider)}</strong><strong className="text-sm tabular-nums text-[var(--accent)]">{provider.progressPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-strong)]"><span className="block h-full rounded-full bg-sky-500" style={{ width: `${Math.min(100, provider.progressPercent)}%` }} /></div><div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-[8px] text-[var(--text-secondary)]"><span>Prověřeno <strong className="text-[var(--text-primary)]">{provider.processedTargetCount}/{provider.totalTargetCount}</strong></span><span>Zbývá <strong className="text-[var(--text-primary)]">{provider.pendingTargetCount}</strong></span><span>S výsledkem <strong className="text-[var(--text-primary)]">{provider.foundTargetCount}</strong></span><span>Problémy <strong className="text-[var(--text-primary)]">{provider.errorTargetCount}</strong></span></div><p className="mt-1.5 truncate text-[7px] text-[var(--text-secondary)]">Posun {formatRelativeDate(provider.lastProgressAt)}</p></div>)}</div>}</section>
+          <section className="mt-3"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zpracování podle poskytovatele</h3>{diagnostic.loadErrors.providers ? <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5"><span className="flex min-w-0 items-start gap-2"><CircleAlert aria-hidden size={15} className="mt-0.5 shrink-0 text-amber-500" /><span><strong className="block text-[10px] text-[var(--text-primary)]">Tato část detailu je dočasně nedostupná</strong><small className="mt-1 block text-[8px] leading-4 text-[var(--text-secondary)]">{diagnostic.loadErrors.providers}</small></span></span><button type="button" onClick={() => void onReload()} className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase text-amber-700 transition hover:-translate-y-px [html[data-theme=dark]_&]:text-amber-300"><RefreshCw aria-hidden size={12} /> Zkusit znovu</button></div> : <div className="mt-2 grid gap-2 sm:grid-cols-3">{diagnostic.providers.map((provider) => <div key={provider.provider} className={`rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 ${provider.configured ? '' : 'opacity-60'}`}><div className="flex items-start justify-between gap-2"><span><strong className="block text-xs text-[var(--text-primary)]">{providerLabel(provider.provider)}</strong><small className="mt-0.5 block text-[7px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">{provider.roleLabel}</small></span><strong className="text-sm tabular-nums text-[var(--accent)]">{provider.progressPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-strong)]"><span className="block h-full rounded-full bg-sky-500" style={{ width: `${Math.min(100, provider.progressPercent)}%` }} /></div><div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-[8px] text-[var(--text-secondary)]"><span>Prověřeno <strong className="text-[var(--text-primary)]">{provider.processedTargetCount}/{provider.totalTargetCount}</strong></span><span>Zbývá <strong className="text-[var(--text-primary)]">{provider.pendingTargetCount}</strong></span><span>Problémy <strong className="text-[var(--text-primary)]">{provider.errorTargetCount}</strong></span><span>Posun <strong className="text-[var(--text-primary)]">{formatRelativeDate(provider.lastProgressAt)}</strong></span></div>{provider.supplementalTargetCount > 0 && provider.role !== 'supplemental' ? <p className="mt-1.5 text-[7px] leading-3 text-[var(--text-secondary)]">Doplňkově {provider.supplementalProcessedTargetCount}/{provider.supplementalTargetCount} cílů; neovlivňuje povinný průběh.</p> : null}</div>)}</div>}</section>
 
           {diagnostic.loadErrors.task || diagnostic.loadErrors.evaluation ? <section className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5"><div className="flex items-start gap-2"><CircleAlert aria-hidden size={15} className="mt-0.5 shrink-0 text-amber-500" /><span><strong className="block text-[10px] text-[var(--text-primary)]">Některé doplňkové údaje nejsou dostupné</strong><small className="mt-1 block text-[8px] leading-4 text-[var(--text-secondary)]">{[diagnostic.loadErrors.task, diagnostic.loadErrors.evaluation].filter(Boolean).join(' ')}</small></span></div></section> : null}
 
           <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5">
-            <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Zdrojová data distributora</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{coverageLabel(diagnostic.state.coverageStatus)}</strong><span className="mt-1 block max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{sourceStatusDescription(diagnostic.state)}</span></span>
-            <span className={`relative inline-flex h-8 w-[92px] shrink-0 items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] ${sourcePresentation.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${sourcePresentation.dot}`} /><span className="translate-y-px">{coverageLabel(diagnostic.state.coverageStatus)}</span></span>
+            <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Zdrojová data distributora</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{discoveryStatusLabel(diagnostic.state.upstreamStatus)}</strong><span className="mt-1 block max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{diagnostic.state.upstreamStatusMessage}</span></span>
+            <span className={`relative inline-flex h-8 w-[92px] shrink-0 items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] ${sourcePresentation.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${sourcePresentation.dot}`} /><span className="translate-y-px">{discoveryStatusLabel(diagnostic.state.upstreamStatus)}</span></span>
           </div>
 
           {diagnostic.state.coverageStatus === 'processing' ? <section className="mt-3 rounded-2xl border border-sky-400/25 bg-sky-500/8 p-3.5"><div className="flex items-end justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Živý průběh projekce</small><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{diagnostic.state.coverageProcessedCount} / {diagnostic.state.coverageTotalCount} záznamů</strong></span><strong className="text-xl tabular-nums text-sky-600 [html[data-theme=dark]_&]:text-sky-300">{projectionProgress == null ? '…' : `${projectionProgress.toLocaleString('cs-CZ')} %`}</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${projectionProgress ?? 40}%` }} /></div><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Stav se obnovuje z databáze každých 20 sekund a nevytváří další dotaz na distributora.</p></section> : null}
@@ -297,8 +282,9 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
             <PowerOutageDetailRow label="Uložené adresy" value={String(diagnostic.state.publishedAddressCount)} />
             <PowerOutageDetailRow label="Aktivní odstávky" value={String(diagnostic.state.activeOutageCount)} />
             <PowerOutageDetailRow label="Budoucí odstávky" value={String(diagnostic.state.futureOutageCount)} />
-            <PowerOutageDetailRow label="Poslední pokus" value={formatDate(diagnostic.state.lastAttemptAt)} />
-            <PowerOutageDetailRow label="Poslední úspěch" value={formatDate(diagnostic.state.lastSuccessAt)} />
+            <PowerOutageDetailRow label="Poslední pokus distributora" value={formatDate(diagnostic.state.upstreamLastAttemptAt)} />
+            <PowerOutageDetailRow label="Načtení distributora" value={formatDate(diagnostic.state.upstreamLastSuccessAt ?? diagnostic.state.lastSuccessAt)} />
+            <PowerOutageDetailRow label="Poslední projekce" value={formatDate(diagnostic.state.lastSuccessAt)} />
             <PowerOutageDetailRow label="Poslední úplná data" value={formatDate(diagnostic.state.lastCompleteAt)} />
             <PowerOutageDetailRow label="Poslední změna" value={formatDate(diagnostic.state.lastChangeAt)} />
             <PowerOutageDetailRow label="Data od" value={formatDate(diagnostic.state.horizonFrom)} />
@@ -309,7 +295,7 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
 
           <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><Route aria-hidden size={14} /> Tok dat</h3><p className="mt-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5 text-xs leading-5 text-[var(--text-primary)]">{schedule}</p><div className="mt-2 grid gap-2 sm:grid-cols-3">{['Zdrojová data distributora', 'Projekce do odděleného katalogu KOMPLETNÍ', 'Normalizace adres a hledání firem'].map((step, index) => <div key={step} className="flex items-center gap-2.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[9px] font-bold text-[var(--accent)]">{index + 1}</span><span className="text-[10px] font-semibold text-[var(--text-primary)]">{step}</span></div>)}</div></section>
 
-          {(diagnostic.state.coverageStatus === 'partial' || diagnostic.state.coverageStatus === 'error') ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><p className="mt-2 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.state.lastErrorMessage ?? diagnostic.task?.lastErrorMessage ?? diagnostic.state.coverageMessage ?? 'Zdroj neposkytl kompletní očekávané pokrytí.'}</p>{diagnostic.state.coverageStatus === 'error' && diagnostic.task?.status === 'failed' ? <RecoveryControl isAdmin={isAdmin} blocked={sourceRecoveryBlocked} label="Obnovit projekci" request={{ target: 'source_projection', source }} onRecovered={onReload} /> : null}</section> : null}
+          {(diagnostic.state.coverageStatus === 'partial' || diagnostic.state.coverageStatus === 'error' || upstreamNeedsRecovery) ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><p className="mt-2 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.state.upstreamLastErrorMessage ?? diagnostic.state.lastErrorMessage ?? diagnostic.task?.lastErrorMessage ?? diagnostic.state.coverageMessage ?? diagnostic.state.discovery.statusMessage}</p>{upstreamNeedsRecovery ? <RecoveryControl isAdmin={isAdmin} blocked={sourceRecoveryBlocked} label="Obnovit zdroj a projekci" request={{ target: 'source_refresh', source }} onRecovered={onReload} /> : diagnostic.state.coverageStatus === 'error' && diagnostic.task?.status === 'failed' ? <RecoveryControl isAdmin={isAdmin} blocked={sourceRecoveryBlocked} label="Obnovit projekci" request={{ target: 'source_projection', source }} onRecovered={onReload} /> : null}</section> : null}
 
           <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Poslední projekce</h3>{diagnostic.loadErrors.runs ? <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5"><span className="text-[9px] leading-4 text-[var(--text-secondary)]">{diagnostic.loadErrors.runs}</span><button type="button" onClick={() => void onReload()} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-amber-400/30 bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><RefreshCw aria-hidden size={12} /> Zkusit znovu</button></div> : <div className="mt-2 space-y-2">{diagnostic.runs.map((run) => <div key={run.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 py-3"><div className="flex items-start justify-between gap-3"><span><strong className="block text-[11px] text-[var(--text-primary)]">{runStatusLabel(run.status)} · {run.sourceRecordCount} záznamů</strong><small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">Změněno {run.outageUpsertCount} odstávek a {run.addressUpsertCount} adres · odstraněno {run.removedAddressCount}</small></span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDate(run.startedAt)}</time></div>{run.errorMessage ? <p className="mt-2 text-[9px] leading-4 text-red-600 [html[data-theme=dark]_&]:text-red-300">{run.errorCode}: {run.errorMessage}</p> : null}</div>)}{diagnostic.runs.length === 0 ? <p className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--text-secondary)]">Historie projekcí zatím není dostupná.</p> : null}</div>}</section>
 

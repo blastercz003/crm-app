@@ -65,6 +65,14 @@ type CompleteAddressState = {
 }
 
 type UpstreamSourceState = {
+  last_attempt_at: string | null
+  last_success_at: string | null
+  last_change_at: string | null
+  latest_payload_sha256: string | null
+  consecutive_failure_count: number | null
+  last_error_at: string | null
+  last_error_code: string | null
+  last_error_message: string | null
   metadata: Record<string, unknown> | null
 }
 
@@ -319,6 +327,7 @@ async function updateSourceState(input: {
   outages: SourceOutageRow[]
   addressCount: number
   changed: boolean
+  upstreamState: UpstreamSourceState | null
   upstreamMetadata: Record<string, unknown> | null
 }) {
   const active = input.outages.filter((row) => (
@@ -374,6 +383,14 @@ async function updateSourceState(input: {
           ? input.upstreamMetadata.queryScope
           : null,
         coverageMessage: coverage.message,
+        upstreamLastAttemptAt: input.upstreamState?.last_attempt_at ?? null,
+        upstreamLastSuccessAt: input.upstreamState?.last_success_at ?? null,
+        upstreamLastChangeAt: input.upstreamState?.last_change_at ?? null,
+        upstreamPayloadSha256: input.upstreamState?.latest_payload_sha256 ?? null,
+        upstreamConsecutiveFailureCount: input.upstreamState?.consecutive_failure_count ?? 0,
+        upstreamLastErrorAt: input.upstreamState?.last_error_at ?? null,
+        upstreamLastErrorCode: input.upstreamState?.last_error_code ?? null,
+        upstreamLastErrorMessage: input.upstreamState?.last_error_message ?? null,
       },
     })
     .eq('source', input.source)
@@ -449,7 +466,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
     const [{ data: upstreamState, error: upstreamStateError }, outages] = await Promise.all([
       client
         .from('power_outage_source_state')
-        .select('metadata')
+        .select('last_attempt_at,last_success_at,last_change_at,latest_payload_sha256,consecutive_failure_count,last_error_at,last_error_code,last_error_message,metadata')
         .eq('source', source)
         .maybeSingle<UpstreamSourceState>(),
       useCezShadow ? loadProjectedCezOutages(client) : loadSourceOutages(client, source),
@@ -655,6 +672,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       outages,
       addressCount: sourceAddresses.length,
       changed,
+      upstreamState: useCezShadow ? null : upstreamState ?? null,
       upstreamMetadata: useCezShadow ? {
         completeCezProjection: 'shadow',
         completeCezCycleId: cezProjectionState.latest_complete_cycle_id,
