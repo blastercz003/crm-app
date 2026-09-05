@@ -8,6 +8,8 @@ import {
 import { getPowerOutageDetail } from '@/lib/power-outages/service'
 import { getPowerOutageSourceDiagnostic } from '@/lib/power-outages/health'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
+import { getMarketClientEmailAdminWorkspace } from '@/lib/power-outages/client-email-admin'
+import { planMarketClientEmailCandidates } from '@/lib/power-outages/client-email-candidates'
 import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
@@ -24,7 +26,7 @@ import type {
   CompleteProviderState,
   CompleteSourceDiagnostic,
 } from '@/lib/power-outages/complete-types'
-import type { PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
+import type { MarketClientEmailAdminWorkspace, MarketClientEmailMode, MarketClientEmailRecipientKind, PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
 
 type PreferencesActionResult =
   | { success: true; preferences: PowerOutageNotificationPreferences; error: null }
@@ -85,6 +87,14 @@ type CompleteAddressCoverageDiagnosticActionResult =
 type AcknowledgeMatchesActionResult =
   | { success: true; error: null }
   | { success: false; error: string }
+
+type MarketClientEmailWorkspaceActionResult =
+  | { success: true; workspace: MarketClientEmailAdminWorkspace; error: null }
+  | { success: false; workspace: null; error: string }
+
+type MarketClientEmailMutationActionResult =
+  | { success: true; workspace: MarketClientEmailAdminWorkspace; error: null }
+  | { success: false; workspace: null; error: string }
 
 function errorMessage(error: unknown) {
   return error instanceof Error
@@ -322,5 +332,137 @@ export async function acknowledgePowerOutageMatchesAction(
     return { success: true, error: null }
   } catch (error) {
     return { success: false, error: errorMessage(error) }
+  }
+}
+
+export async function getMarketClientEmailAdminWorkspaceAction(): Promise<MarketClientEmailWorkspaceActionResult> {
+  try {
+    return {
+      success: true,
+      workspace: await getMarketClientEmailAdminWorkspace(),
+      error: null,
+    }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function saveMarketClientEmailConfigurationAction(input: {
+  clientId: string
+  mode: MarketClientEmailMode
+  fromName: string
+  fromEmail: string
+  replyToEmail: string
+  recipients: Array<{
+    kind: MarketClientEmailRecipientKind
+    name: string
+    email: string
+    isActive: boolean
+  }>
+}): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    if (!validUuid(input.clientId)) throw new Error('Neplatné technické ID klienta.')
+    if (!['disabled', 'shadow'].includes(input.mode)) {
+      throw new Error('Režimy TEST a AKTIVNÍ budou dostupné až po zapojení e-mailového poskytovatele.')
+    }
+    if (input.fromName.length > 160 || input.fromEmail.length > 320 || input.replyToEmail.length > 320) {
+      throw new Error('Údaj odesílatele je příliš dlouhý.')
+    }
+    if (input.recipients.length > 25) throw new Error('Lze uložit nejvýše 25 příjemců.')
+    for (const recipient of input.recipients) {
+      if (!['to', 'cc'].includes(recipient.kind)) throw new Error('Neplatný typ příjemce.')
+      if (recipient.name.length > 160 || recipient.email.length > 320) {
+        throw new Error('Údaj příjemce je příliš dlouhý.')
+      }
+    }
+
+    const { supabase, profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') {
+      throw new Error('Administrace klientských e-mailů je dostupná pouze administrátorům.')
+    }
+    const { error } = await supabase.rpc('save_power_outage_client_email_admin_configuration', {
+      p_client_id: input.clientId,
+      p_mode: input.mode,
+      p_from_name: input.fromName,
+      p_from_email: input.fromEmail,
+      p_reply_to_email: input.replyToEmail,
+      p_recipients: input.recipients,
+    })
+    if (error) throw new Error(`Konfiguraci se nepodařilo uložit: ${error.message}`)
+    revalidatePath('/power-outages')
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function retryMarketClientEmailDeliveryAction(
+  deliveryId: string,
+): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    if (!validUuid(deliveryId)) throw new Error('Neplatné technické ID zprávy.')
+    const { supabase, profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
+    const { error } = await supabase.rpc('retry_power_outage_client_email_delivery', {
+      p_delivery_id: deliveryId,
+    })
+    if (error) throw new Error(`Opakování zprávy se nepodařilo připravit: ${error.message}`)
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function skipMarketClientEmailDeliveryAction(
+  deliveryId: string,
+): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    if (!validUuid(deliveryId)) throw new Error('Neplatné technické ID zprávy.')
+    const { supabase, profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
+    const { error } = await supabase.rpc('skip_power_outage_client_email_delivery', {
+      p_delivery_id: deliveryId,
+    })
+    if (error) throw new Error(`Přeskočení zprávy se nepodařilo uložit: ${error.message}`)
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function setMarketClientEmailShadowRuleAction(input: {
+  clientId: string
+  eventKind: 'new_outage' | 'schedule_changed' | 'cancelled'
+  enabled: boolean
+}): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    if (!validUuid(input.clientId)) throw new Error('Neplatné technické ID klienta.')
+    if (!['new_outage', 'schedule_changed', 'cancelled'].includes(input.eventKind)) {
+      throw new Error('Tento typ události zatím nelze aktivovat.')
+    }
+    const { supabase, profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
+    const { error } = await supabase.rpc('set_power_outage_client_email_shadow_rule', {
+      p_client_id: input.clientId,
+      p_event_kind: input.eventKind,
+      p_enabled: input.enabled,
+    })
+    if (error) throw new Error(`Stínové pravidlo se nepodařilo změnit: ${error.message}`)
+    if (input.enabled) await planMarketClientEmailCandidates(200)
+    revalidatePath('/power-outages')
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function refreshMarketClientEmailShadowAction(): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    const { profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
+    await planMarketClientEmailCandidates(200)
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
   }
 }

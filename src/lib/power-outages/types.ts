@@ -8,6 +8,86 @@ export type PowerOutageNotificationPreferences = {
   updatedAt: string | null
 }
 
+export type MarketClientEmailMode = 'disabled' | 'shadow' | 'test' | 'live'
+export type MarketClientEmailRecipientKind = 'to' | 'cc'
+
+export type MarketClientEmailRecipient = {
+  id: string
+  kind: MarketClientEmailRecipientKind
+  name: string
+  email: string
+  isActive: boolean
+}
+
+export type MarketClientEmailRule = {
+  id: string
+  name: string
+  eventKind: 'new_outage' | 'schedule_changed' | 'cancelled' | 'reminder_24h'
+  enabled: boolean
+  version: number
+  activatedAt: string | null
+}
+
+export type MarketClientEmailDelivery = {
+  id: string
+  eventKind: MarketClientEmailRule['eventKind']
+  status: 'planned' | 'queued' | 'sending' | 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed' | 'skipped' | 'cancelled'
+  subject: string | null
+  text: string | null
+  recipients: string[]
+  stores: Array<{
+    chainName: string
+    storeNumber: string
+    city: string
+    address: string
+  }>
+  source: PowerOutageSource | null
+  startsAt: string | null
+  endsAt: string | null
+  announcementUrl: string | null
+  attemptCount: number
+  maxAttemptCount: number
+  providerMessageId: string | null
+  lastErrorCode: string | null
+  lastErrorMessage: string | null
+  createdAt: string
+  sentAt: string | null
+  deliveredAt: string | null
+}
+
+export type MarketClientEmailConfiguration = {
+  clientId: string
+  chainName: string
+  clientName: string
+  mode: MarketClientEmailMode
+  fromName: string
+  fromEmail: string
+  replyToEmail: string
+  updatedAt: string
+  recipients: MarketClientEmailRecipient[]
+  rules: MarketClientEmailRule[]
+  deliveries: MarketClientEmailDelivery[]
+}
+
+export type MarketClientEmailAdminWorkspace = {
+  runtimeMode: MarketClientEmailMode
+  dispatchEnabled: boolean
+  provider: 'resend'
+  lastPlannedAt: string | null
+  lastErrorCode: string | null
+  lastErrorMessage: string | null
+  resend: {
+    apiKeyConfigured: boolean
+    sendingDomain: string | null
+    domainVerified: boolean
+    webhookSecretConfigured: boolean
+    providerReady: boolean
+    webhookReady: boolean
+    issues: string[]
+  }
+  clients: MarketClientEmailConfiguration[]
+}
+
 export type PowerOutageListItem = {
   matchId: string
   outageId: string

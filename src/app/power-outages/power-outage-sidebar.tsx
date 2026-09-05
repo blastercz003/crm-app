@@ -30,6 +30,7 @@ import {
 } from './actions'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
 import { StoreAddressAnalysisPopup } from './store-address-analysis-popup'
+import { MarketClientEmailAdminPanel } from './market-client-email-admin'
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
   timeZone: 'Europe/Prague',
@@ -588,6 +589,7 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmi
         </p>
         <aside className="power-outages-mobile-aside-carousel activities-manual-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
           <div className="order-5 min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
+          {isAdmin ? <div className="order-6 min-w-0 snap-start snap-always lg:snap-none"><MarketClientEmailAdminPanel /></div> : null}
           {sources.map((source) => (
             <div
               key={source.source}
