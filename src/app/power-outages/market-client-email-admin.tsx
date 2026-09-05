@@ -34,6 +34,7 @@ import {
   retryMarketClientEmailDeliveryAction,
   saveMarketClientEmailConfigurationAction,
   sendMarketClientEmailTestAction,
+  setMarketClientEmailLivePilotAction,
   setMarketClientEmailShadowRuleAction,
   setMarketClientEmailTestModeAction,
   skipMarketClientEmailDeliveryAction,
@@ -147,15 +148,8 @@ function ClientEditor({
   const [recipients, setRecipients] = useState(client.recipients)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [liveConfirmed, setLiveConfirmed] = useState(false)
   const [pending, startTransition] = useTransition()
-
-  useEffect(() => {
-    setMode(client.mode)
-    setFromName(client.fromName)
-    setFromEmail(client.fromEmail)
-    setReplyToEmail(client.replyToEmail)
-    setRecipients(client.recipients)
-  }, [client])
 
   const updateRecipient = (id: string, patch: Partial<MarketClientEmailRecipient>) => {
     setRecipients((current) => current.map((recipient) => recipient.id === id ? { ...recipient, ...patch } : recipient))
@@ -276,7 +270,30 @@ function ClientEditor({
     })
   }
 
+  const toggleLivePilot = () => {
+    setMessage(null)
+    setError(null)
+    startTransition(async () => {
+      const enabling = client.mode !== 'live'
+      const result = await setMarketClientEmailLivePilotAction({
+        clientId: client.clientId,
+        enabled: enabling,
+        confirmation: enabling ? 'SEND_TO_REAL_RECIPIENTS' : undefined,
+      })
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      onWorkspaceChange(result.workspace)
+      setLiveConfirmed(false)
+      setMessage(enabling
+        ? 'Ostrý pilot byl spuštěn pouze pro nové potvrzené odstávky tohoto klienta. Skuteční příjemci nyní mohou dostat e-mail.'
+        : 'Ostrý pilot byl ukončen. Neodeslané ostré položky byly zrušeny a klient pokračuje stínově.')
+    })
+  }
+
   const failedDeliveries = client.deliveries.filter((delivery) => delivery.status === 'failed')
+  const hasDeliveredTest = client.hasDeliveredTest
 
   return (
     <div className="space-y-4">
@@ -284,7 +301,7 @@ function ClientEditor({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Automatická upozornění</span>
-            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{mode === 'disabled' ? 'Vypnutá' : mode === 'test' ? 'Bezpečný test na interní adresu' : 'Připravují se ve stínovém režimu'}</strong>
+            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{mode === 'disabled' ? 'Vypnutá' : mode === 'test' ? 'Bezpečný test na interní adresu' : mode === 'live' ? 'Ostrý pilot pro skutečné příjemce' : 'Připravují se ve stínovém režimu'}</strong>
           </div>
           <Toggle checked={mode !== 'disabled'} disabled={pending || !['disabled', 'shadow'].includes(mode)} label="Automatická e-mailová upozornění" onChange={() => setMode((current) => current === 'disabled' ? 'shadow' : 'disabled')} />
         </div>
@@ -307,6 +324,20 @@ function ClientEditor({
         </div>
         <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">V TESTU se původní TO ani CC nikdy nepoužijí k doručení. Vše dostane pouze {workspace.resend.testRecipientMasked ?? 'serverová adresa RESEND_TEST_RECIPIENT'}. Současně lze testovat jen jednoho klienta.</p>
         {client.mode !== 'test' && client.mode !== 'shadow' ? <p className="mt-2 text-[8px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Nejprve vyplňte konfiguraci, uložte klienta ve STÍNOVÉM režimu a spusťte pravidlo.</p> : null}
+      </section>
+
+      <section className="rounded-2xl border border-emerald-500/25 bg-emerald-500/8 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <span>
+            <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Ostrý pilot · pouze nové odstávky</span>
+            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{client.mode === 'live' ? 'Pilot je AKTIVNÍ' : 'Pilot není aktivní'}</strong>
+          </span>
+          <button type="button" onClick={toggleLivePilot} disabled={pending || (client.mode !== 'live' && (client.mode !== 'shadow' || !workspace.resend.liveReady || !hasDeliveredTest || !liveConfirmed))} className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-45 ${client.mode === 'live' ? 'border-red-400/30 bg-red-500/8 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'}`}>{pending ? <LoaderCircle aria-hidden size={13} className="animate-spin" /> : client.mode === 'live' ? <Ban aria-hidden size={13} /> : <Send aria-hidden size={13} />}{client.mode === 'live' ? 'Ukončit pilot' : 'Spustit ostrý pilot'}</button>
+        </div>
+        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Pilot odešle skutečným TO/CC pouze novou potvrzenou odstávku vzniklou po aktivaci. Jedna odstávka se sloučí do jednoho e-mailu a před odesláním má pětiminutové seskupovací okno.</p>
+        {client.mode !== 'live' ? <label className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-[var(--surface-strong)] px-3 py-2.5 text-[8px] font-semibold leading-4 text-[var(--text-primary)]"><input type="checkbox" checked={liveConfirmed} onChange={(event) => setLiveConfirmed(event.target.checked)} disabled={pending || client.mode !== 'shadow' || !hasDeliveredTest} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span>Potvrzuji, že uvedené adresy TO/CC jsou skuteční příjemci a po spuštění jim mohou být doručeny ostré e-maily.</span></label> : null}
+        {!hasDeliveredTest ? <p className="mt-2 text-[8px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Ostrý pilot vyžaduje úspěšně doručený TEST stejného klienta.</p> : null}
+        {client.mode === 'live' ? <p className="mt-2 flex items-start gap-2 text-[8px] font-semibold leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300"><AlertTriangle aria-hidden size={13} className="mt-0.5 shrink-0" /> Skutečné odesílání je aktivní. Bounce nebo complaint pilot automaticky zastaví.</p> : null}
       </section>
 
       <section>
@@ -347,7 +378,7 @@ function ClientEditor({
 
       <section>
         <div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Historie zpráv</h3><span className="text-[8px] text-[var(--text-secondary)]">{client.deliveries.length} záznamů</span></div>
-        {client.deliveries.length === 0 ? <div className="mt-2 rounded-2xl border border-dashed border-[var(--surface-border)] p-4 text-center text-[9px] text-[var(--text-secondary)]">Zatím nevznikla žádná e-mailová zpráva. Po spuštění pravidla se vytvoří pouze pro nové události.</div> : <div className="mt-2 space-y-2">{client.deliveries.slice(0, 20).map((delivery) => <div key={delivery.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex flex-wrap items-start justify-between gap-2"><span><strong className="block text-[10px] text-[var(--text-primary)]">{delivery.subject || EVENT_LABELS[delivery.eventKind]}</strong><small className="mt-1 block text-[8px] text-[var(--text-secondary)]">{formatDateTime(delivery.deliveredAt ?? delivery.sentAt ?? delivery.createdAt)} · {delivery.recipients.join(', ') || 'bez příjemce'} · {delivery.stores.length} prodejen</small></span><span className={`rounded-lg px-2 py-1 text-[7px] font-bold uppercase ${delivery.status === 'failed' || delivery.status === 'bounced' || delivery.status === 'complained' ? 'bg-red-500/10 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'bg-slate-400/10 text-[var(--text-secondary)]'}`}>{DELIVERY_LABELS[delivery.status]}</span></div>{delivery.text ? <details className="mt-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2"><summary className="cursor-pointer text-[8px] font-bold uppercase text-sky-700 [html[data-theme=dark]_&]:text-sky-300">Zobrazit finální náhled</summary><pre className="mt-2 whitespace-pre-wrap font-sans text-[8px] leading-4 text-[var(--text-secondary)]">{delivery.text}</pre>{delivery.announcementUrl ? <a href={delivery.announcementUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[8px] font-semibold text-sky-700 underline [html[data-theme=dark]_&]:text-sky-300">PDF oznámení</a> : null}</details> : null}{delivery.lastErrorMessage ? <p className="mt-2 rounded-xl border border-red-400/25 bg-red-500/8 px-2.5 py-2 text-[8px] leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300">{delivery.lastErrorCode ? `${delivery.lastErrorCode}: ` : ''}{delivery.lastErrorMessage}</p> : null}{delivery.status === 'failed' ? <div className="mt-2 flex flex-wrap gap-2"><button type="button" disabled={pending || delivery.attemptCount >= delivery.maxAttemptCount} onClick={() => mutateDelivery(delivery.id, 'retry')} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-sky-400/35 bg-sky-500/10 px-3 text-[8px] font-bold uppercase text-sky-700 disabled:opacity-50 [html[data-theme=dark]_&]:text-sky-300"><RotateCcw aria-hidden size={12} /> Opakovat</button><button type="button" disabled={pending} onClick={() => mutateDelivery(delivery.id, 'skip')} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-red-400/25 bg-red-500/8 px-3 text-[8px] font-bold uppercase text-red-700 disabled:opacity-50 [html[data-theme=dark]_&]:text-red-300"><Ban aria-hidden size={12} /> Přeskočit zprávu</button></div> : null}</div>)}</div>}
+        {client.deliveries.length === 0 ? <div className="mt-2 rounded-2xl border border-dashed border-[var(--surface-border)] p-4 text-center text-[9px] text-[var(--text-secondary)]">Zatím nevznikla žádná e-mailová zpráva. Po spuštění pravidla se vytvoří pouze pro nové události.</div> : <div className="mt-2 space-y-2">{client.deliveries.slice(0, 20).map((delivery) => <div key={delivery.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex flex-wrap items-start justify-between gap-2"><span><span className="mb-1 inline-flex"><ModeBadge mode={delivery.mode} /></span><strong className="block text-[10px] text-[var(--text-primary)]">{delivery.subject || EVENT_LABELS[delivery.eventKind]}</strong><small className="mt-1 block text-[8px] text-[var(--text-secondary)]">{formatDateTime(delivery.deliveredAt ?? delivery.sentAt ?? delivery.createdAt)} · {delivery.recipients.join(', ') || 'bez příjemce'} · {delivery.stores.length} prodejen</small></span><span className={`rounded-lg px-2 py-1 text-[7px] font-bold uppercase ${delivery.status === 'failed' || delivery.status === 'bounced' || delivery.status === 'complained' ? 'bg-red-500/10 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'bg-slate-400/10 text-[var(--text-secondary)]'}`}>{DELIVERY_LABELS[delivery.status]}</span></div>{delivery.text ? <details className="mt-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2"><summary className="cursor-pointer text-[8px] font-bold uppercase text-sky-700 [html[data-theme=dark]_&]:text-sky-300">Zobrazit finální náhled</summary><pre className="mt-2 whitespace-pre-wrap font-sans text-[8px] leading-4 text-[var(--text-secondary)]">{delivery.text}</pre>{delivery.announcementUrl ? <a href={delivery.announcementUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[8px] font-semibold text-sky-700 underline [html[data-theme=dark]_&]:text-sky-300">PDF oznámení</a> : null}</details> : null}{delivery.lastErrorMessage ? <p className="mt-2 rounded-xl border border-red-400/25 bg-red-500/8 px-2.5 py-2 text-[8px] leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300">{delivery.lastErrorCode ? `${delivery.lastErrorCode}: ` : ''}{delivery.lastErrorMessage}</p> : null}{delivery.status === 'failed' ? <div className="mt-2 flex flex-wrap gap-2"><button type="button" disabled={pending || delivery.attemptCount >= delivery.maxAttemptCount} onClick={() => mutateDelivery(delivery.id, 'retry')} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-sky-400/35 bg-sky-500/10 px-3 text-[8px] font-bold uppercase text-sky-700 disabled:opacity-50 [html[data-theme=dark]_&]:text-sky-300"><RotateCcw aria-hidden size={12} /> Opakovat</button><button type="button" disabled={pending} onClick={() => mutateDelivery(delivery.id, 'skip')} className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-red-400/25 bg-red-500/8 px-3 text-[8px] font-bold uppercase text-red-700 disabled:opacity-50 [html[data-theme=dark]_&]:text-red-300"><Ban aria-hidden size={12} /> Přeskočit zprávu</button></div> : null}</div>)}</div>}
         {failedDeliveries.length > 0 ? <p className="mt-2 flex items-center gap-2 text-[8px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300"><AlertTriangle aria-hidden size={13} /> {failedDeliveries.length} zpráv vyžaduje pozornost.</p> : null}
       </section>
 
@@ -356,11 +387,11 @@ function ClientEditor({
 
       <div className="flex flex-col-reverse gap-2 border-t border-[var(--surface-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
         <button type="button" onClick={sendTestEmail} disabled={pending || client.mode !== 'test' || !workspace.resend.testReady} title={client.mode === 'test' ? 'Odeslat kontrolní zprávu pouze na interní testovací adresu' : 'Nejprve spusťte bezpečný TEST režim'} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 px-4 text-[9px] font-bold uppercase text-violet-700 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-45 [html[data-theme=dark]_&]:text-violet-300"><Send aria-hidden size={14} /> Odeslat testovací e-mail {client.mode !== 'test' ? <LockKeyhole aria-hidden size={11} /> : null}</button>
-        <button type="button" onClick={save} disabled={pending || client.mode === 'test'} title={client.mode === 'test' ? 'Nejprve ukončete TEST režim.' : undefined} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-600 bg-sky-600 px-5 text-[9px] font-bold uppercase text-white shadow-[0_9px_20px_rgba(2,132,199,0.2)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60">{pending ? <LoaderCircle aria-hidden size={14} className="animate-spin" /> : <Save aria-hidden size={14} />} Uložit nastavení</button>
+        <button type="button" onClick={save} disabled={pending || ['test', 'live'].includes(client.mode)} title={['test', 'live'].includes(client.mode) ? 'Nejprve ukončete TEST nebo ostrý pilot.' : undefined} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-600 bg-sky-600 px-5 text-[9px] font-bold uppercase text-white shadow-[0_9px_20px_rgba(2,132,199,0.2)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60">{pending ? <LoaderCircle aria-hidden size={14} className="animate-spin" /> : <Save aria-hidden size={14} />} Uložit nastavení</button>
       </div>
 
       {workspace.lastErrorMessage ? <p className="flex items-start gap-2 rounded-xl border border-red-400/25 bg-red-500/8 px-3 py-2 text-[8px] leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300"><AlertTriangle aria-hidden size={13} className="mt-0.5 shrink-0" /> {workspace.lastErrorCode ? `${workspace.lastErrorCode}: ` : ''}{workspace.lastErrorMessage}</p> : null}
-      <p className="flex items-center gap-2 text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Poslední plánování: {formatDateTime(workspace.lastPlannedAt)} · globální odesílání: {workspace.dispatchEnabled ? 'povoleno' : 'vypnuto'}. Poskytovatel: {workspace.provider === 'resend' ? 'Resend (zatím nenapojen)' : workspace.provider}.</p>
+      <p className="flex items-center gap-2 text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Poslední plánování: {formatDateTime(workspace.lastPlannedAt)} · globální odesílání: {workspace.dispatchEnabled ? 'povoleno' : 'vypnuto'}. Poskytovatel: {workspace.provider === 'resend' ? 'Resend' : workspace.provider}.</p>
     </div>
   )
 }
@@ -423,7 +454,7 @@ export function MarketClientEmailAdminPanel() {
           <ChevronRight aria-hidden size={17} className="mt-3 shrink-0 text-[var(--text-secondary)]" />
         </button>
         {loading && !workspace ? <LoadingBlock label="Načítám nastavení…" /> : error && !workspace ? <button type="button" onClick={() => { setOpen(true); void load() }} className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/8 p-4 text-center"><AlertTriangle aria-hidden size={20} className="text-red-500" /><strong className="mt-2 text-[10px] text-[var(--text-primary)]">Nastavení se nepodařilo načíst</strong><span className="mt-1 text-[8px] text-[var(--text-secondary)]">Otevřít detail a opakovat</span></button> : workspace ? <button type="button" onClick={() => setOpen(true)} className="mt-4 min-h-0 flex-1 text-left"><div className="grid grid-cols-2 gap-2">{workspace.clients.map((client) => <div key={client.clientId} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2.5"><div className="flex items-center justify-between gap-2"><strong className="truncate text-[10px] text-[var(--text-primary)]">{client.chainName}</strong><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${MODE_PRESENTATION[client.mode].dot}`} /></div><small className="mt-1 block text-[7px] font-bold uppercase text-[var(--text-secondary)]">{MODE_PRESENTATION[client.mode].label}</small></div>)}</div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nastaveno</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{activeCount}/4</strong></span><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Příjemci</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{recipientCount}</strong></span><span className={`rounded-xl border p-2 ${errorCount > 0 ? 'border-red-400/30 bg-red-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Chyby</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{errorCount}</strong></span></div></button> : null}
-        <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · {workspace?.runtimeMode === 'test' && workspace.dispatchEnabled ? 'bezpečný TEST aktivní' : 'odesílání vypnuto'}</p>
+        <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · {workspace?.runtimeMode === 'test' && workspace.dispatchEnabled ? 'bezpečný TEST aktivní' : workspace?.runtimeMode === 'live' && workspace.dispatchEnabled ? 'ostrý pilot aktivní' : 'odesílání vypnuto'}</p>
       </section>
       {open && typeof document !== 'undefined' ? createPortal(<AdminPopup workspace={workspace} loading={loading} error={error} selectedClientId={selectedClientId} onSelectClient={setSelectedClientId} onReload={() => void load()} onWorkspaceChange={(next) => { setWorkspace(next); setError(null) }} onClose={() => setOpen(false)} />, document.body) : null}
     </>

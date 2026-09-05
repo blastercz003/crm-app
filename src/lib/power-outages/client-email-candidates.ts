@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { getServiceRoleClient } from '@/lib/supabase/service'
+import { renderMarketClientEmailLiveDeliveries } from './client-email-live-renderer'
 
 export type MarketClientEmailCandidatePlanResult = {
   ok: boolean
@@ -71,6 +72,10 @@ export async function planMarketClientEmailCandidates(limit = 200) {
       throw new Error(testRendered.errorMessage || 'Příprava testovacích e-mailů selhala.')
     }
     renderedCount += testRendered.renderedCount ?? 0
+  }
+  if (result.status === 'live') {
+    const liveRendered = await renderMarketClientEmailLiveDeliveries(limit)
+    renderedCount += liveRendered.renderedCount
   }
 
   return {

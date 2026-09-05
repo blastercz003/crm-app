@@ -57,7 +57,7 @@ as $$
 declare
   runtime_record record;
   candidate record;
-  delivery_id uuid;
+  created_delivery_id uuid;
   recipient_snapshot jsonb;
   store_snapshot jsonb;
   planned_count integer := 0;
@@ -319,9 +319,9 @@ begin
       )
     )
     on conflict (dedupe_key) do nothing
-    returning id into delivery_id;
+    returning id into created_delivery_id;
 
-    if delivery_id is null then
+    if created_delivery_id is null then
       continue;
     end if;
 
@@ -335,7 +335,7 @@ begin
       store_address
     )
     select
-      delivery_id,
+      created_delivery_id,
       match.id,
       match.store_id,
       match.store_chain_name,
@@ -351,7 +351,7 @@ begin
     on conflict (delivery_id, match_id) where match_id is not null do nothing;
 
     planned_count := planned_count + 1;
-    delivery_id := null;
+    created_delivery_id := null;
   end loop;
 
   -- Dokud je kandidát pouze naplánovaný, držíme jeho příjemce a společný seznam

@@ -52,6 +52,7 @@ type RuleRow = {
 type DeliveryRow = {
   id: string
   client_id: string
+  mode_at_plan: MarketClientEmailDelivery['mode']
   event_kind: MarketClientEmailDelivery['eventKind']
   delivery_status: MarketClientEmailDelivery['status']
   subject_snapshot: string | null
@@ -116,7 +117,7 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
     throw new Error('Administrace klientských e-mailů je dostupná pouze administrátorům.')
   }
 
-  const [stateResult, settingsResult, recipientsResult, rulesResult, deliveriesResult] = await Promise.all([
+  const [stateResult, settingsResult, recipientsResult, rulesResult, deliveriesResult, deliveredTestsResult] = await Promise.all([
     supabase
       .from('power_outage_client_email_state')
       .select('runtime_mode,dispatch_enabled,provider,last_planned_at,last_error_code,last_error_message')
@@ -138,9 +139,14 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
       .order('version', { ascending: false }),
     supabase
       .from('power_outage_client_email_deliveries')
-      .select('id,client_id,event_kind,delivery_status,subject_snapshot,text_snapshot,recipient_snapshot,store_snapshot,metadata,attempt_count,max_attempt_count,provider_message_id,last_error_code,last_error_message,created_at,sent_at,delivered_at')
+      .select('id,client_id,mode_at_plan,event_kind,delivery_status,subject_snapshot,text_snapshot,recipient_snapshot,store_snapshot,metadata,attempt_count,max_attempt_count,provider_message_id,last_error_code,last_error_message,created_at,sent_at,delivered_at')
       .order('created_at', { ascending: false })
       .limit(100),
+    supabase
+      .from('power_outage_client_email_deliveries')
+      .select('client_id')
+      .eq('mode_at_plan', 'test')
+      .eq('delivery_status', 'delivered'),
   ])
 
   const firstError = [
@@ -149,6 +155,7 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
     recipientsResult.error,
     rulesResult.error,
     deliveriesResult.error,
+    deliveredTestsResult.error,
   ].find(Boolean)
   if (firstError) {
     throw new Error(`Administraci e-mailových upozornění se nepodařilo načíst: ${firstError.message}`)
@@ -159,6 +166,9 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
   const recipients = (recipientsResult.data ?? []) as RecipientRow[]
   const rules = (rulesResult.data ?? []) as RuleRow[]
   const deliveries = (deliveriesResult.data ?? []) as DeliveryRow[]
+  const clientsWithDeliveredTest = new Set(
+    ((deliveredTestsResult.data ?? []) as Array<{ client_id: string }>).map((delivery) => delivery.client_id),
+  )
 
   return {
     runtimeMode: state.runtime_mode,
@@ -177,6 +187,7 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
       fromEmail: settings.from_email ?? '',
       replyToEmail: settings.reply_to_email ?? '',
       updatedAt: settings.updated_at,
+      hasDeliveredTest: clientsWithDeliveredTest.has(settings.client_id),
       recipients: recipients
         .filter((recipient) => recipient.client_id === settings.client_id && recipient.recipient_kind !== 'bcc')
         .map((recipient): MarketClientEmailRecipient => ({
@@ -200,6 +211,7 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
         .filter((delivery) => delivery.client_id === settings.client_id)
         .map((delivery): MarketClientEmailDelivery => ({
           id: delivery.id,
+          mode: delivery.mode_at_plan,
           eventKind: delivery.event_kind,
           status: delivery.delivery_status,
           subject: delivery.subject_snapshot,

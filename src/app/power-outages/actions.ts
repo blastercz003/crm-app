@@ -470,6 +470,53 @@ export async function sendMarketClientEmailTestAction(
   }
 }
 
+export async function setMarketClientEmailLivePilotAction(input: {
+  clientId: string
+  enabled: boolean
+  confirmation?: string
+}): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    if (!validUuid(input.clientId)) throw new Error('Neplatné technické ID klienta.')
+    const { profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
+
+    if (input.enabled) {
+      if (input.confirmation !== 'SEND_TO_REAL_RECIPIENTS') {
+        throw new Error('Chybí výslovné potvrzení ostrého odesílání skutečným příjemcům.')
+      }
+      const configuration = getResendConfigurationStatus()
+      if (!configuration.liveReady) {
+        throw new Error(`Ostrý pilot nelze spustit: ${configuration.issues.join(' ')}`)
+      }
+    }
+
+    const service = getServiceRoleClient()
+    if (!service) throw new Error('Chybí zabezpečené serverové připojení pro ostrý pilot.')
+    const { error } = await service.rpc('set_power_outage_client_email_live_pilot', {
+      p_client_id: input.clientId,
+      p_enabled: input.enabled,
+    })
+    if (error) throw new Error(`Ostrý pilot se nepodařilo změnit: ${error.message}`)
+
+    if (input.enabled) {
+      try {
+        await planMarketClientEmailCandidates(200)
+      } catch (planningError) {
+        await service.rpc('set_power_outage_client_email_live_pilot', {
+          p_client_id: input.clientId,
+          p_enabled: false,
+        })
+        throw planningError
+      }
+    }
+
+    revalidatePath('/power-outages')
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
 export async function retryMarketClientEmailDeliveryAction(
   deliveryId: string,
 ): Promise<MarketClientEmailMutationActionResult> {

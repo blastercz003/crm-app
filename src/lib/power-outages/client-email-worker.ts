@@ -119,7 +119,7 @@ export async function dispatchMarketClientEmails(limit = 10): Promise<MarketClie
   const configuration = getResendConfigurationStatus()
   const configurationReady = state.runtime_mode === 'test'
     ? configuration.testReady
-    : configuration.providerReady
+    : configuration.liveReady
   if (!configurationReady) {
     throw new Error(`Resend není připraven: ${configuration.issues.join(' ')}`)
   }
@@ -127,7 +127,7 @@ export async function dispatchMarketClientEmails(limit = 10): Promise<MarketClie
   if (!apiKey || !configuration.sendingDomain) throw new Error('Chybí bezpečná konfigurace Resendu.')
 
   const { data, error } = await client.rpc('claim_power_outage_client_email_delivery_batch', {
-    p_limit: limit,
+    p_limit: state.runtime_mode === 'live' ? 1 : limit,
   })
   if (error) throw new Error(`E-mailovou dávku se nepodařilo převzít: ${error.message}`)
   if (!data || typeof data !== 'object' || Array.isArray(data)) {

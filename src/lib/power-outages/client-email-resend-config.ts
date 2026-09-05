@@ -10,6 +10,7 @@ export type ResendConfigurationStatus = {
   providerReady: boolean
   webhookReady: boolean
   testReady: boolean
+  liveReady: boolean
   issues: string[]
 }
 
@@ -56,6 +57,8 @@ export function getResendConfigurationStatus(): ResendConfigurationStatus {
     webhookReady: webhookSecretConfigured,
     testReady: apiKeyConfigured && Boolean(domain) && domainVerified
       && webhookSecretConfigured && testRecipientConfigured,
+    liveReady: apiKeyConfigured && Boolean(domain) && domainVerified
+      && webhookSecretConfigured,
     issues,
   }
 }

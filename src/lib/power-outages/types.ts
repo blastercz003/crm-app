@@ -30,6 +30,7 @@ export type MarketClientEmailRule = {
 
 export type MarketClientEmailDelivery = {
   id: string
+  mode: 'shadow' | 'test' | 'live'
   eventKind: MarketClientEmailRule['eventKind']
   status: 'planned' | 'queued' | 'sending' | 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed' | 'skipped' | 'cancelled'
   subject: string | null
@@ -64,6 +65,7 @@ export type MarketClientEmailConfiguration = {
   fromEmail: string
   replyToEmail: string
   updatedAt: string
+  hasDeliveredTest: boolean
   recipients: MarketClientEmailRecipient[]
   rules: MarketClientEmailRule[]
   deliveries: MarketClientEmailDelivery[]
@@ -86,6 +88,7 @@ export type MarketClientEmailAdminWorkspace = {
     providerReady: boolean
     webhookReady: boolean
     testReady: boolean
+    liveReady: boolean
     issues: string[]
   }
   clients: MarketClientEmailConfiguration[]

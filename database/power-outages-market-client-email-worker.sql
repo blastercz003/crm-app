@@ -79,7 +79,7 @@ begin
       last_error_message = 'Předchozí odesílací worker nedokončil položku v časovém limitu.',
       updated_at = now()
   where delivery_status = 'sending'
-    and mode_at_plan in ('test', 'live')
+    and mode_at_plan = runtime_record.runtime_mode
     and processing_expires_at <= now();
 
   update public.power_outage_client_email_state
@@ -94,7 +94,10 @@ begin
   with claimable as (
     select delivery.id
     from public.power_outage_client_email_deliveries as delivery
-    where delivery.mode_at_plan in ('test', 'live')
+    join public.power_outage_client_email_settings as settings
+      on settings.client_id = delivery.client_id
+     and settings.mode = delivery.mode_at_plan
+    where delivery.mode_at_plan = runtime_record.runtime_mode
       and delivery.delivery_status in ('planned', 'queued', 'failed')
       and delivery.attempt_count < delivery.max_attempt_count
       and (delivery.next_attempt_at is null or delivery.next_attempt_at <= now())
@@ -495,7 +498,10 @@ union all
 select 'SAFETY', 'shadow deliveries can never be claimed',
   pg_get_functiondef(
     'public.claim_power_outage_client_email_delivery_batch(integer)'::regprocedure
-  ) like '%mode_at_plan in (''test'', ''live'')%'
+  ) like '%delivery.mode_at_plan = runtime_record.runtime_mode%'
+  and pg_get_functiondef(
+    'public.claim_power_outage_client_email_delivery_batch(integer)'::regprocedure
+  ) like '%settings.mode = delivery.mode_at_plan%'
 union all
 select 'SAFETY', 'no email was sent by migration',
   not exists (
