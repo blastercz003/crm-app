@@ -116,11 +116,20 @@ export async function recoverCompletePowerOutageTask(
   }
 
   if (input.target === 'cez_new_pipeline') {
-    const { data, error } = input.stage === 'scan'
+    const primaryRecovery = input.stage === 'scan'
       ? await client.rpc('recover_complete_power_outage_cez_scan_errors')
-      : await client.rpc('recover_complete_power_outage_cez_new_stage', {
-        requested_stage: input.stage,
-      })
+      : input.stage === 'normalization'
+        ? await client.rpc('recover_complete_power_outage_cez_staged_normalization_transient_errors')
+        : await client.rpc('recover_complete_power_outage_cez_new_stage', {
+          requested_stage: input.stage,
+        })
+    const fallbackRecovery = input.stage === 'normalization'
+      && (primaryRecovery.error?.code === 'PGRST202' || primaryRecovery.error?.code === '42883')
+      ? await client.rpc('recover_complete_power_outage_cez_new_stage', {
+          requested_stage: input.stage,
+        })
+      : primaryRecovery
+    const { data, error } = fallbackRecovery
     if (error) throw error
     const payload = data && typeof data === 'object' && !Array.isArray(data)
       ? data as Record<string, unknown>

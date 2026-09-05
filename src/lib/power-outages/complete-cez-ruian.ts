@@ -58,8 +58,12 @@ export type CompleteCezRuianAddressPoint = {
 
 let addressIndexCache: {
   expiresAt: number
+  staleUntil: number
   links: Map<string, { url: string; sourceValidOn: string }>
 } | null = null
+
+const ADDRESS_INDEX_FRESH_MS = 30 * 60_000
+const ADDRESS_INDEX_STALE_FALLBACK_MS = 24 * 60 * 60_000
 
 function normalizeMunicipalityName(value: string) {
   const normalized = normalizePowerOutageText(value)
@@ -256,15 +260,33 @@ async function completeCezRuianAddressLinks() {
   if (addressIndexCache && addressIndexCache.expiresAt > Date.now()) {
     return addressIndexCache.links
   }
-  const { response, text } = await fetchPowerOutageSource(
-    RUIAN_ADDRESS_INDEX_URL,
-    { headers: { Accept: 'text/html' } },
-    { timeoutMs: 60_000, maxBytes: 2 * 1024 * 1024, retryCount: 3 },
-  )
-  if (!response.ok) throw new Error(`Index adres RÚIAN odpověděl HTTP ${response.status}.`)
-  const links = addressLinksFromIndex(text)
-  addressIndexCache = { expiresAt: Date.now() + 30 * 60_000, links }
-  return links
+  try {
+    const { response, text } = await fetchPowerOutageSource(
+      RUIAN_ADDRESS_INDEX_URL,
+      { headers: { Accept: 'text/html' } },
+      { timeoutMs: 60_000, maxBytes: 2 * 1024 * 1024, retryCount: 3 },
+    )
+    if (!response.ok) throw new Error(`Index adres RÚIAN odpověděl HTTP ${response.status}.`)
+    const links = addressLinksFromIndex(text)
+    const now = Date.now()
+    addressIndexCache = {
+      expiresAt: now + ADDRESS_INDEX_FRESH_MS,
+      staleUntil: now + ADDRESS_INDEX_STALE_FALLBACK_MS,
+      links,
+    }
+    return links
+  } catch (error) {
+    // Krátkodobý výpadek indexu nesmí znehodnotit konkrétní adresy. V rámci
+    // stejné serverové instance lze bezpečně použít poslední ověřený index.
+    if (addressIndexCache && addressIndexCache.staleUntil > Date.now()) {
+      return addressIndexCache.links
+    }
+    throw error
+  }
+}
+
+export async function prepareCompleteCezRuianAddressIndex() {
+  await completeCezRuianAddressLinks()
 }
 
 export async function loadCompleteCezRuianMunicipalityAddressPoints(

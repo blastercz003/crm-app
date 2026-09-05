@@ -297,7 +297,10 @@ begin
     ), sampled as (
       select *
       from eligible
-      order by municipality_store_count desc, store_count desc, md5(address_id::text)
+      order by
+        eligible.municipality_store_count desc,
+        eligible.store_count desc,
+        md5(eligible.address_id::text)
       limit safe_sample
     )
     select

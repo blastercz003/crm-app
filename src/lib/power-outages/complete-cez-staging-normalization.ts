@@ -3,6 +3,7 @@ import 'server-only'
 import { displayBuildingNumber, normalizeBuildingNumber } from './complete-address-numbering'
 import {
   loadCompleteCezRuianMunicipalityAddressPoints,
+  prepareCompleteCezRuianAddressIndex,
   type CompleteCezRuianAddressPoint,
 } from './complete-cez-ruian'
 import { normalizePowerOutageText, powerOutageSha256 } from './normalization'
@@ -403,6 +404,9 @@ export async function normalizeCompleteCezStagedAddresses(requestedLimit = 100) 
     MAX_VALIDATION_BATCH_SIZE,
     Math.max(1, Math.trunc(requestedLimit)),
   )
+  // Společný index ověříme ještě před převzetím konkrétních adres. Jeho
+  // dočasný výpadek proto nezvyšuje jejich počty pokusů ani nevytváří review.
+  await prepareCompleteCezRuianAddressIndex()
   const { data, error } = await client.rpc(
     'claim_complete_power_outage_cez_staged_address_batch',
     { requested_limit: limit },

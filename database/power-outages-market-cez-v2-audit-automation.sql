@@ -122,6 +122,7 @@ begin
       from public.power_outage_cez_market_v2_audit_cases audit_case
       where audit_case.run_id = audit_run.id
         and audit_case.status = 'running'
+        and audit_case.lock_expires_at >= now()
     )
   order by audit_run.started_at desc
   limit 1;
