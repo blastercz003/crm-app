@@ -163,6 +163,7 @@ export type CompleteSourceProviderProgress = {
   configured: boolean
   totalTargetCount: number
   completedTargetCount: number
+  processedTargetCount: number
   pendingTargetCount: number
   foundTargetCount: number
   notFoundTargetCount: number
@@ -221,6 +222,9 @@ export type CompleteProviderState = {
   configured: boolean
   status: 'inactive' | 'waiting' | 'processing' | 'current' | 'partial' | 'error' | 'exhausted'
   statusMessage: string
+  totalTargetCount: number
+  processedTargetCount: number
+  remainingTargetCount: number
   readyCount: number
   pendingCount: number
   notFoundCount: number
@@ -351,6 +355,9 @@ export type CompleteAddressCoverage = {
   unresolvedCount: number
   pendingCount: number
   errorCount: number
+  reviewCount: number
+  attentionCount: number
+  refreshedAt: string | null
 }
 
 export type CompleteAddressCoverageRun = {
@@ -380,6 +387,8 @@ export type CompleteAddressCoverageDiagnostic = {
     normalizedCount: number
     exactCount: number
     broadCount: number
+    pendingCount: number
+    attentionCount: number
   }>
   task: {
     status: 'idle' | 'running' | 'succeeded' | 'partial' | 'failed' | 'skipped'
@@ -389,6 +398,7 @@ export type CompleteAddressCoverageDiagnostic = {
     consecutiveFailureCount: number
     lastErrorCode: string | null
     lastErrorMessage: string | null
+    lockExpiresAt: string | null
   } | null
   runs: CompleteAddressCoverageRun[]
 }

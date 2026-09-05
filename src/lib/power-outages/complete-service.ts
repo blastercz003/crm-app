@@ -86,6 +86,44 @@ type PagedOverviewRow = OverviewRow & Partial<Omit<AssignmentRow, 'candidate_id'
   assignment_updated_at?: string | null
 }
 
+type AddressCoverageSnapshotRow = {
+  source: PowerOutageSource
+  total_count: number | string
+  normalized_count: number | string
+  exact_count: number | string
+  broad_count: number | string
+  unresolved_count: number | string
+  pending_count: number | string
+  error_count: number | string
+  review_count: number | string
+  attention_count: number | string
+  target_count: number | string
+  exact_target_count: number | string
+  street_target_count: number | string
+  municipality_target_count: number | string
+  refreshed_at: string
+}
+
+function summarizeAddressCoverage(rows: AddressCoverageSnapshotRow[]) {
+  const sum = (key: keyof AddressCoverageSnapshotRow) => rows.reduce((total, row) => total + Number(row[key] ?? 0), 0)
+  return {
+    totalCount: sum('total_count'),
+    normalizedCount: sum('normalized_count'),
+    exactCount: sum('exact_count'),
+    broadCount: sum('broad_count'),
+    unresolvedCount: sum('unresolved_count'),
+    pendingCount: sum('pending_count'),
+    errorCount: sum('error_count'),
+    reviewCount: sum('review_count'),
+    attentionCount: sum('attention_count'),
+    targetCount: sum('target_count'),
+    exactTargetCount: sum('exact_target_count'),
+    streetTargetCount: sum('street_target_count'),
+    municipalityTargetCount: sum('municipality_target_count'),
+    refreshedAt: rows.map((row) => row.refreshed_at).filter(Boolean).sort().at(0) ?? null,
+  }
+}
+
 function finiteNumber(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(parsed) ? parsed : null
@@ -416,6 +454,11 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
   const retryableErrorCount = Number(row.retryable_error_count ?? errorCount)
   const reviewErrorCount = Number(row.review_error_count ?? 0)
   const pendingCount = Number(row.pending_count)
+  const totalTargetCount = Number(row.total_target_count ?? (
+    Number(row.ready_count) + pendingCount + Number(row.not_found_count) + errorCount
+  ))
+  const remainingTargetCount = Number(row.remaining_target_count ?? pendingCount)
+  const processedTargetCount = Number(row.processed_target_count ?? Math.max(0, totalTargetCount - remainingTargetCount))
   const lastRequestAt = row.last_request_at as string | null
   const lastRequestMs = lastRequestAt ? new Date(lastRequestAt).getTime() : Number.NaN
   const lastRequestAge = Number.isFinite(lastRequestMs) ? Date.now() - lastRequestMs : Number.POSITIVE_INFINITY
@@ -429,6 +472,9 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
     provider,
     configured,
     ...providerStatus({ configured, pendingCount, retryableErrorCount, reviewErrorCount, errorCount, quotaExhausted: monthlyCreditSafetyCap > 0 && monthlyCreditCount >= monthlyCreditSafetyCap, task }),
+    totalTargetCount,
+    processedTargetCount,
+    remainingTargetCount,
     readyCount: Number(row.ready_count),
     pendingCount,
     notFoundCount: Number(row.not_found_count),
@@ -455,16 +501,25 @@ function mapAddressCoverage(input: {
   exactCount: number
   broadCount: number
   unresolvedCount: number
+  pendingCount: number
   errorCount: number
+  reviewCount: number
+  attentionCount: number
+  refreshedAt: string | null
   task?: Record<string, unknown> | null
 }): CompleteAddressCoverage {
-  const pendingCount = Math.max(0, input.totalCount - input.normalizedCount)
+  const pendingCount = Math.max(0, input.pendingCount ?? input.totalCount - input.normalizedCount)
   const taskStatus = input.task?.last_status
-  const status = taskStatus === 'running'
+  const lockExpiresAt = typeof input.task?.lock_expires_at === 'string' ? input.task.lock_expires_at : null
+  const stalled = taskStatus === 'running' && Boolean(lockExpiresAt)
+    && new Date(lockExpiresAt!).getTime() <= Date.now()
+  const status = stalled
+    ? 'error'
+    : taskStatus === 'running'
     ? 'processing'
     : taskStatus === 'failed'
       ? 'error'
-      : taskStatus === 'partial' || input.errorCount > 0
+      : taskStatus === 'partial' || input.attentionCount > 0
         ? 'partial'
         : !input.task?.last_success_at
           ? 'waiting'
@@ -475,10 +530,12 @@ function mapAddressCoverage(input: {
     ? 'Všechny adresy prošly aktuální verzí normalizátoru.'
     : status === 'processing'
       ? taskStatus === 'running' ? 'Právě se zpracovává další dávka adres.' : `${pendingCount} adres čeká na nejbližší dávku.`
-      : status === 'error'
-        ? String(input.task?.last_error_message || 'Poslední normalizace adres selhala.')
+    : status === 'error'
+        ? stalled
+          ? 'Normalizace překročila bezpečnostní čas a lze ji obnovit.'
+          : String(input.task?.last_error_message || 'Poslední normalizace adres selhala.')
         : status === 'partial'
-          ? `${input.errorCount} adres nebo poslední dávka vyžaduje kontrolu.`
+          ? `${input.attentionCount} aktuálních adres vyžaduje pozornost.`
           : 'Normalizátor čeká na první úspěšný běh.'
   return { ...input, pendingCount, status, statusMessage }
 }
@@ -634,27 +691,11 @@ export async function getCompletePowerOutageStatistics(): Promise<CompletePowerO
 
 export async function getCompletePowerOutageSidebarWorkspace(): Promise<CompletePowerOutageSidebarWorkspace> {
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const captureCount = async (
-    query: PromiseLike<{ count: number | null; error: { message: string } | null }>,
-    label: string,
-  ) => {
-    try {
-      return { value: await countRows(query, label), error: null as string | null }
-    } catch (error) {
-      return { value: 0, error: error instanceof Error ? error.message : label }
-    }
-  }
   const [
-    totalAddressCount, normalizedAddressCount, exactAddressCount, broadAddressCount,
-    unresolvedAddressCount, errorAddressCount, sourceResult, sourceDiscoveryResult,
+    coverageResult, sourceResult, sourceDiscoveryResult,
     cezNewResult, providerResult, taskResult,
   ] = await Promise.all([
-    captureCount(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }), 'Počet adres se nepodařilo načíst'),
-    captureCount(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2), 'Počet normalizovaných adres se nepodařilo načíst'),
-    captureCount(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
-    captureCount(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).in('address_scope', ['street', 'municipality']), 'Počet adres s širším rozsahem se nepodařilo načíst'),
-    captureCount(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'unresolved'), 'Počet nerozpoznaných adres se nepodařilo načíst'),
-    captureCount(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
+    supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
@@ -671,10 +712,11 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const providers = (providerResult.data ?? []).map((row) => mapProviderState(
     row, tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null,
   ))
+  const coverageSummary = summarizeAddressCoverage(
+    (coverageResult.data ?? []) as AddressCoverageSnapshotRow[],
+  )
   const addressCoverage = mapAddressCoverage({
-    totalCount: totalAddressCount.value, normalizedCount: normalizedAddressCount.value,
-    exactCount: exactAddressCount.value, broadCount: broadAddressCount.value,
-    unresolvedCount: unresolvedAddressCount.value, errorCount: errorAddressCount.value,
+    ...coverageSummary,
     task: tasks.find((task) => task.task_key === 'normalize_addresses') ?? null,
   })
   const taskLoadError = taskResult.error
@@ -690,11 +732,11 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const providerLoadError = providerResult.error
     ? `Stav vyhledávání firem se nepodařilo načíst: ${providerResult.error.message}`
     : taskLoadError
-  const coverageLoadError = [
-    totalAddressCount.error, normalizedAddressCount.error, exactAddressCount.error,
-    broadAddressCount.error, unresolvedAddressCount.error, errorAddressCount.error,
-    taskLoadError,
-  ].find(Boolean) ?? null
+  const coverageLoadError = coverageResult.error
+    ? `Pokrytí aktuálních adres se nepodařilo načíst: ${coverageResult.error.message}`
+    : (coverageResult.data?.length ?? 0) !== 3
+      ? 'Snapshot pokrytí adres není kompletní.'
+      : taskLoadError
   const nowMs = Date.now()
   const freshnessMs: Record<PowerOutageSource, number> = { cez: 90 * 60_000, egd: 8 * 60 * 60_000, pre: 5 * 60 * 60_000 }
   const staleSources = sources.filter((source) => {
@@ -740,12 +782,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     currentOutageCount,
     currentCompanyCount,
     reviewCount,
-    totalAddressCount,
-    normalizedAddressCount,
-    exactAddressCount,
-    broadAddressCount,
-    unresolvedAddressCount,
-    errorAddressCount,
+    coverageResult,
     sourceResult,
     sourceDiscoveryResult,
     cezNewResult,
@@ -762,12 +799,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outages').select('id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']), 'Počet aktuálních odstávek se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).in('candidate_status', ['confirmed', 'needs_review']).eq('business_relevance_status', 'eligible'), 'Počet nalezených firem se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).eq('candidate_status', 'needs_review').eq('business_relevance_status', 'eligible'), 'Počet firem k ověření se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }), 'Počet adres se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2), 'Počet normalizovaných adres se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).in('address_scope', ['street', 'municipality']), 'Počet adres s širším rozsahem se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'unresolved'), 'Počet nerozpoznaných adres se nepodařilo načíst'),
-    countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chyb adres se nepodařilo načíst'),
+    supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
@@ -780,6 +812,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   if (cezNewResult.error && !cezNewMonitoringSchemaMissing(cezNewResult.error)) throw new Error(`Stav nového sběru ČEZ se nepodařilo načíst: ${cezNewResult.error.message}`)
   if (providerResult.error) throw new Error(`Stav vyhledávání firem se nepodařilo načíst: ${providerResult.error.message}`)
   if (taskResult.error) throw new Error(`Provozní stav kompletních odstávek se nepodařilo načíst: ${taskResult.error.message}`)
+  if (coverageResult.error) throw new Error(`Pokrytí aktuálních adres se nepodařilo načíst: ${coverageResult.error.message}`)
   if (ownerResult.error && !ownershipSchemaMissing(ownerResult.error)) throw new Error(`Seznam vlastníků se nepodařilo načíst: ${ownerResult.error.message}`)
 
   const tasks = taskResult.data ?? []
@@ -793,13 +826,11 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null,
   ))
   const normalizationTask = tasks.find((task) => task.task_key === 'normalize_addresses') ?? null
+  const coverageSummary = summarizeAddressCoverage(
+    (coverageResult.data ?? []) as AddressCoverageSnapshotRow[],
+  )
   const addressCoverage = mapAddressCoverage({
-    totalCount: totalAddressCount,
-    normalizedCount: normalizedAddressCount,
-    exactCount: exactAddressCount,
-    broadCount: broadAddressCount,
-    unresolvedCount: unresolvedAddressCount,
-    errorCount: errorAddressCount,
+    ...coverageSummary,
     task: normalizationTask,
   })
 
@@ -851,7 +882,12 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
       name: profile.name?.trim() || 'Uživatel',
       isAdmin: profile.role === 'admin',
     },
-    statistics: { currentOutageCount, currentCompanyCount, needsReviewCount: reviewCount, normalizedAddressCount },
+    statistics: {
+      currentOutageCount,
+      currentCompanyCount,
+      needsReviewCount: reviewCount,
+      normalizedAddressCount: coverageSummary.normalizedCount,
+    },
     initialPage: initialPageResult.page,
     initialPageError: initialPageResult.error,
     filters: {
@@ -943,16 +979,19 @@ export async function getCompletePowerOutageSourceDiagnostic(
   const providers = (providersResult.data ?? []).map((row) => {
     const totalTargetCount = Number(row.total_target_count)
     const completedTargetCount = Number(row.completed_target_count)
+    const pendingTargetCount = Number(row.pending_target_count)
+    const processedTargetCount = Math.max(0, totalTargetCount - pendingTargetCount)
     return {
       provider: row.provider as CompleteProviderState['provider'],
       configured: providerConfigured(row.provider as CompleteProviderState['provider']),
       totalTargetCount,
       completedTargetCount,
-      pendingTargetCount: Number(row.pending_target_count),
+      processedTargetCount,
+      pendingTargetCount,
       foundTargetCount: Number(row.found_target_count),
       notFoundTargetCount: Number(row.not_found_target_count),
       errorTargetCount: Number(row.error_target_count),
-      progressPercent: totalTargetCount > 0 ? Math.round((completedTargetCount / totalTargetCount) * 1000) / 10 : 100,
+      progressPercent: totalTargetCount > 0 ? Math.round((processedTargetCount / totalTargetCount) * 1000) / 10 : 100,
       lastProgressAt: row.last_progress_at as string | null,
     }
   })
@@ -1074,51 +1113,25 @@ export async function getCompletePowerOutageProviderDiagnostic(
 
 export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise<CompleteAddressCoverageDiagnostic> {
   const { supabase } = await getPowerOutageRuntimeContext()
-  const count = (query: PromiseLike<{ count: number | null; error: { message: string } | null }>, label: string) => countRows(query, label)
-  const sourceCount = (source: PowerOutageSource, mode: 'total' | 'normalized' | 'exact' | 'broad' = 'total') => {
-    let query = supabase.from('complete_power_outage_addresses')
-      .select('id,complete_power_outages!inner(source)', { count: 'exact', head: true })
-      .eq('complete_power_outages.source', source)
-    if (mode !== 'total') query = query.gte('normalization_version', 2)
-    if (mode === 'exact') query = query.eq('address_scope', 'exact')
-    if (mode === 'broad') query = query.in('address_scope', ['street', 'municipality'])
-    return count(query, `Pokrytí adres ${source.toUpperCase()} se nepodařilo načíst`)
-  }
   const sources = ['cez', 'egd', 'pre'] as const
-  const [
-    totalCount, normalizedCount, exactCount, broadCount, unresolvedCount, errorCount,
-    exactTargetCount, streetTargetCount, municipalityTargetCount, totalTargetCount,
-    taskResult, runsResult, ...sourceCounts
-  ] = await Promise.all([
-    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }), 'Počet adres se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2), 'Počet normalizovaných adres se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'exact'), 'Počet přesných adres se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).in('address_scope', ['street', 'municipality']), 'Počet širších adres se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2).eq('address_scope', 'unresolved'), 'Počet nerozpoznaných adres se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).eq('lookup_status', 'error'), 'Počet chybných adres se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }).eq('target_kind', 'exact_number'), 'Počet přesných cílů se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }).eq('target_kind', 'street'), 'Počet uličních cílů se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }).eq('target_kind', 'municipality'), 'Počet obecních cílů se nepodařilo načíst'),
-    count(supabase.from('complete_power_outage_address_targets').select('id', { count: 'exact', head: true }), 'Počet adresních cílů se nepodařilo načíst'),
+  const [coverageResult, taskResult, runsResult] = await Promise.all([
+    supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_task_state')
-      .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
+      .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at')
       .eq('task_key', 'normalize_addresses').maybeSingle(),
     supabase.from('complete_power_outage_runs')
       .select('id,status,started_at,finished_at,source_record_count,address_upsert_count,error_code,error_message,metadata')
       .eq('run_kind', 'address_normalization').order('started_at', { ascending: false }).limit(10),
-    ...sources.flatMap((source) => [
-      sourceCount(source),
-      sourceCount(source, 'normalized'),
-      sourceCount(source, 'exact'),
-      sourceCount(source, 'broad'),
-    ]),
   ])
+  if (coverageResult.error) throw new Error(`Pokrytí aktuálních adres se nepodařilo načíst: ${coverageResult.error.message}`)
   if (taskResult.error) throw new Error(`Stav normalizátoru se nepodařilo načíst: ${taskResult.error.message}`)
   if (runsResult.error) throw new Error(`Historii normalizace se nepodařilo načíst: ${runsResult.error.message}`)
   const task = taskResult.data as Record<string, unknown> | null
+  const coverageRows = (coverageResult.data ?? []) as AddressCoverageSnapshotRow[]
+  const coverageSummary = summarizeAddressCoverage(coverageRows)
   const coverage = mapAddressCoverage({
-    totalCount: Number(totalCount), normalizedCount: Number(normalizedCount), exactCount: Number(exactCount),
-    broadCount: Number(broadCount), unresolvedCount: Number(unresolvedCount), errorCount: Number(errorCount), task,
+    ...coverageSummary,
+    task,
   })
   const runs = (runsResult.data ?? []).map((row): CompleteAddressCoverageRun => {
     const metadata = row.metadata as Record<string, unknown> | null
@@ -1143,16 +1156,23 @@ export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise
     coverage,
     normalizerVersion: Number((runsResult.data?.[0]?.metadata as Record<string, unknown> | null)?.normalizerVersion ?? 2),
     targets: {
-      exactCount: Number(exactTargetCount), streetCount: Number(streetTargetCount),
-      municipalityCount: Number(municipalityTargetCount), totalCount: Number(totalTargetCount),
+      exactCount: coverageSummary.exactTargetCount,
+      streetCount: coverageSummary.streetTargetCount,
+      municipalityCount: coverageSummary.municipalityTargetCount,
+      totalCount: coverageSummary.targetCount,
     },
-    sources: sources.map((source, index) => ({
-      source,
-      totalCount: Number(sourceCounts[index * 4]),
-      normalizedCount: Number(sourceCounts[index * 4 + 1]),
-      exactCount: Number(sourceCounts[index * 4 + 2]),
-      broadCount: Number(sourceCounts[index * 4 + 3]),
-    })),
+    sources: sources.map((source) => {
+      const row = coverageRows.find((item) => item.source === source)
+      return {
+        source,
+        totalCount: Number(row?.total_count ?? 0),
+        normalizedCount: Number(row?.normalized_count ?? 0),
+        exactCount: Number(row?.exact_count ?? 0),
+        broadCount: Number(row?.broad_count ?? 0),
+        pendingCount: Number(row?.pending_count ?? 0),
+        attentionCount: Number(row?.attention_count ?? 0),
+      }
+    }),
     task: task ? {
       status: task.last_status as CompleteAddressCoverageDiagnostic['task'] extends infer T ? T extends { status: infer S } ? S : never : never,
       lastStartedAt: task.last_started_at as string | null,
@@ -1161,6 +1181,7 @@ export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise
       consecutiveFailureCount: Number(task.consecutive_failure_count),
       lastErrorCode: task.last_error_code as string | null,
       lastErrorMessage: task.last_error_message as string | null,
+      lockExpiresAt: task.lock_expires_at as string | null,
     } : null,
     runs,
   }

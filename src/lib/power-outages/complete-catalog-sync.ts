@@ -679,6 +679,9 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       processedCount: outages.length,
       cursor: { completedAt, lastExternalId: outages.at(-1)?.external_id ?? null },
     })
+    await Promise.resolve(
+      client.rpc('refresh_complete_power_outage_address_coverage_snapshot'),
+    ).catch(() => null)
     return {
       source,
       status: changed ? 'succeeded' as const : 'no_change' as const,

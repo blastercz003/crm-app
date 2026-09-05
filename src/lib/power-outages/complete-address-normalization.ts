@@ -153,8 +153,10 @@ function normalizedScope(address: AddressRow) {
 async function loadAddresses(client: ServiceClient, limit: number) {
   const { data, error } = await client
     .from('complete_power_outage_addresses')
-    .select('id,address_scope,municipality,town_part,street,house_number,orientation_number,metadata')
+    .select('id,address_scope,municipality,town_part,street,house_number,orientation_number,metadata,complete_power_outages!inner(source_status,ends_at)')
     .lt('normalization_version', NORMALIZER_VERSION)
+    .in('complete_power_outages.source_status', ['scheduled', 'active'])
+    .gte('complete_power_outages.ends_at', new Date().toISOString())
     .order('id')
     .limit(limit)
   if (error) throw error
@@ -284,8 +286,10 @@ export async function normalizeCompletePowerOutageAddresses(requestedLimit = 150
 
     const { count: totalAddressCount, error: totalError } = await client
       .from('complete_power_outage_addresses')
-      .select('id', { count: 'exact', head: true })
+      .select('id,complete_power_outages!inner(source_status,ends_at)', { count: 'exact', head: true })
       .lt('normalization_version', NORMALIZER_VERSION)
+      .in('complete_power_outages.source_status', ['scheduled', 'active'])
+      .gte('complete_power_outages.ends_at', new Date().toISOString())
     if (totalError) throw totalError
     const completedAt = new Date().toISOString()
     const remainingCount = totalAddressCount ?? 0
@@ -315,6 +319,17 @@ export async function normalizeCompletePowerOutageAddresses(requestedLimit = 150
       processedCount: addresses.length,
       cursor: { completedAt, normalizerVersion: NORMALIZER_VERSION },
     })
+    // Nové cíle ČEZ, EG.D i PRE se mají v providerových progress barech
+    // projevit hned po dávce, nikoli až při dalším minutovém snapshotu.
+    await Promise.resolve(
+      client.rpc('refresh_complete_power_outage_source_provider_overview_snapshot'),
+    ).catch(() => null)
+    await Promise.resolve(
+      client.rpc('refresh_complete_power_outage_provider_overview_snapshot'),
+    ).catch(() => null)
+    await Promise.resolve(
+      client.rpc('refresh_complete_power_outage_address_coverage_snapshot'),
+    ).catch(() => null)
     return {
       status: 'succeeded' as const,
       processedAddressCount: addresses.length,

@@ -12,6 +12,7 @@ export type CompleteRecoveryRequest =
   | { target: 'source_projection'; source: PowerOutageSource }
   | { target: 'address_normalization' }
   | { target: 'provider_discovery'; provider: CompleteDiscoveryProvider }
+  | { target: 'provider_review_skip'; provider: Extract<CompleteDiscoveryProvider, 'ares' | 'mapy'> }
   | { target: 'company_reconciliation' }
   | { target: 'cez_new_pipeline'; stage: 'ruian' | 'mapping' | 'scan' | 'normalization' | 'projection' }
 
@@ -31,7 +32,7 @@ type TaskState = {
 }
 
 function taskKey(input: CompleteRecoveryRequest) {
-  if (input.target === 'cez_new_pipeline') return null
+  if (input.target === 'cez_new_pipeline' || input.target === 'provider_review_skip') return null
   if (input.target === 'source_projection') return `sync_${input.source}` as const
   if (input.target === 'provider_discovery') return `discover_${input.provider}` as const
   if (input.target === 'address_normalization') return 'normalize_addresses' as const
@@ -87,6 +88,33 @@ export async function recoverCompletePowerOutageTask(
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení pro obnovu zpracování.')
 
+  if (input.target === 'provider_review_skip') {
+    const { data, error } = await client.rpc('skip_complete_power_outage_provider_review_errors', {
+      requested_provider: input.provider,
+    })
+    if (error) throw error
+    const affectedCount = Number(data ?? 0)
+
+    // Stavové snapshoty obnovíme hned, aby minibadge a průběh po potvrzení
+    // nezůstaly až do dalšího minutového CRONu zastaralé.
+    await Promise.allSettled([
+      client.rpc('refresh_complete_power_outage_source_provider_overview_snapshot'),
+      client.rpc('refresh_complete_power_outage_provider_overview_snapshot'),
+    ])
+
+    return affectedCount > 0
+      ? {
+          status: 'started',
+          message: `${affectedCount} ${affectedCount === 1 ? 'chybný dotaz byl přeskočen' : affectedCount < 5 ? 'chybné dotazy byly přeskočeny' : 'chybných dotazů bylo přeskočeno'}. Auditní údaje zůstaly zachované.`,
+          result: { affectedCount },
+        }
+      : {
+          status: 'not_needed',
+          message: 'Žádný aktuální dotaz vyžadující kontrolu už nebylo potřeba přeskočit.',
+          result: { affectedCount },
+        }
+  }
+
   if (input.target === 'cez_new_pipeline') {
     const { data, error } = input.stage === 'scan'
       ? await client.rpc('recover_complete_power_outage_cez_scan_errors')
@@ -126,6 +154,9 @@ export async function recoverCompletePowerOutageTask(
       message: 'Úloha už skutečně běží. Nebyla spuštěna její druhá kopie.',
     }
   }
+  const expiredTask = data.last_status === 'running'
+    && Boolean(data.lock_expires_at)
+    && !activeLock(data)
 
   const activeProviderErrors = input.target === 'provider_discovery'
     ? await client
@@ -137,7 +168,7 @@ export async function recoverCompletePowerOutageTask(
   if (activeProviderErrors.error) throw activeProviderErrors.error
   const activeErrorCount = activeProviderErrors.count ?? 0
 
-  if (!['failed', 'partial'].includes(data.last_status) && activeErrorCount === 0) {
+  if (!['failed', 'partial'].includes(data.last_status) && activeErrorCount === 0 && !expiredTask) {
     return {
       status: 'not_needed',
       message: 'Úloha už není v chybovém stavu. Obnova nebyla potřeba.',
