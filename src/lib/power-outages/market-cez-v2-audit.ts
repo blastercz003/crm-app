@@ -63,15 +63,21 @@ async function finishCase(
 export async function runMarketCezV2Audit(
   requestedSampleCount = 120,
   requestedLimit = 3,
+  requestedRunId: string | null = null,
 ) {
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení pro audit ČEZ v2.')
   const sampleCount = Math.min(500, Math.max(20, Math.trunc(requestedSampleCount)))
   const limit = Math.min(5, Math.max(1, Math.trunc(requestedLimit)))
-  const { data, error } = await client.rpc('claim_power_outage_cez_market_v2_audit_batch', {
-    requested_sample_count: sampleCount,
-    requested_limit: limit,
-  })
+  const { data, error } = requestedRunId
+    ? await client.rpc('claim_power_outage_cez_market_v2_audit_continuation', {
+        requested_run_id: requestedRunId,
+        requested_limit: limit,
+      })
+    : await client.rpc('claim_power_outage_cez_market_v2_audit_batch', {
+        requested_sample_count: sampleCount,
+        requested_limit: limit,
+      })
   if (error) throw error
   const claimed = (data ?? []) as AuditCandidate[]
 
@@ -174,7 +180,7 @@ export async function runMarketCezV2Audit(
     await new Promise((resolve) => setTimeout(resolve, 1_000))
   }
 
-  let runId: string | null = claimed[0]?.run_id ?? null
+  let runId: string | null = claimed[0]?.run_id ?? requestedRunId
   if (!runId) {
     const { data: activeRun, error: activeRunError } = await client
       .from('power_outage_cez_market_v2_audit_runs')

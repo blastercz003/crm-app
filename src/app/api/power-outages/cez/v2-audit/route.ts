@@ -21,6 +21,16 @@ async function run(request: Request, allowAdminSession: boolean) {
   const url = new URL(request.url)
   const requestedSample = Number(url.searchParams.get('sample') ?? 120)
   const requestedLimit = Number(url.searchParams.get('limit') ?? 3)
+  const requestedRunId = url.searchParams.get('runId')
+  const validRunId = !requestedRunId
+    || /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedRunId)
+  if (!validRunId) {
+    return NextResponse.json(
+      { ok: false, error: 'Neplatné ID pokračovacího auditu.' },
+      { status: 400, headers: HEADERS },
+    )
+  }
+  const runId = requestedRunId || null
   const sample = Number.isFinite(requestedSample)
     ? Math.min(500, Math.max(20, Math.trunc(requestedSample)))
     : 120
@@ -29,7 +39,7 @@ async function run(request: Request, allowAdminSession: boolean) {
     : 3
 
   try {
-    const result = await runMarketCezV2Audit(sample, limit)
+    const result = await runMarketCezV2Audit(sample, limit, runId)
     return NextResponse.json({ ok: true, ...result }, { headers: HEADERS })
   } catch (error) {
     await reportRouteError({
