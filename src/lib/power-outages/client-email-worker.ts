@@ -117,7 +117,10 @@ export async function dispatchMarketClientEmails(limit = 10): Promise<MarketClie
   }
 
   const configuration = getResendConfigurationStatus()
-  if (!configuration.providerReady) {
+  const configurationReady = state.runtime_mode === 'test'
+    ? configuration.testReady
+    : configuration.providerReady
+  if (!configurationReady) {
     throw new Error(`Resend není připraven: ${configuration.issues.join(' ')}`)
   }
   const apiKey = process.env.RESEND_API_KEY?.trim()
@@ -160,7 +163,10 @@ export async function dispatchMarketClientEmails(limit = 10): Promise<MarketClie
           if (!validEmail(testRecipient)) {
             throw new Error('Testovací režim nemá nastavenou RESEND_TEST_RECIPIENT.')
           }
-          subject = `[TEST · původně ${[...to, ...cc, ...bcc].join(', ')}] ${subject}`
+          if (!delivery.html.includes('TESTOVACÍ REŽIM') || !delivery.text?.includes('Původní příjemci:')) {
+            throw new Error('Testovací zpráva neobsahuje povinné bezpečnostní označení a původní příjemce.')
+          }
+          subject = `[TEST] ${subject}`
           to = [testRecipient]
           cc = []
           bcc = []

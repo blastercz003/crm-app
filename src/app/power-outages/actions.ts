@@ -10,6 +10,9 @@ import { getPowerOutageSourceDiagnostic } from '@/lib/power-outages/health'
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
 import { getMarketClientEmailAdminWorkspace } from '@/lib/power-outages/client-email-admin'
 import { planMarketClientEmailCandidates } from '@/lib/power-outages/client-email-candidates'
+import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-resend-config'
+import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
+import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
@@ -389,6 +392,77 @@ export async function saveMarketClientEmailConfigurationAction(input: {
       p_recipients: input.recipients,
     })
     if (error) throw new Error(`Konfiguraci se nepodařilo uložit: ${error.message}`)
+    revalidatePath('/power-outages')
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function setMarketClientEmailTestModeAction(input: {
+  clientId: string
+  enabled: boolean
+}): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    if (!validUuid(input.clientId)) throw new Error('Neplatné technické ID klienta.')
+    const { profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
+
+    if (input.enabled) {
+      const configuration = getResendConfigurationStatus()
+      if (!configuration.testReady) {
+        throw new Error(`TEST nelze spustit: ${configuration.issues.join(' ')}`)
+      }
+    }
+
+    const service = getServiceRoleClient()
+    if (!service) throw new Error('Chybí zabezpečené serverové připojení pro TEST režim.')
+    const { error } = await service.rpc('set_power_outage_client_email_test_mode', {
+      p_client_id: input.clientId,
+      p_enabled: input.enabled,
+    })
+    if (error) throw new Error(`TEST režim se nepodařilo změnit: ${error.message}`)
+
+    if (input.enabled) {
+      try {
+        await planMarketClientEmailCandidates(200)
+      } catch (planningError) {
+        await service.rpc('set_power_outage_client_email_test_mode', {
+          p_client_id: input.clientId,
+          p_enabled: false,
+        })
+        throw planningError
+      }
+    }
+
+    revalidatePath('/power-outages')
+    return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function sendMarketClientEmailTestAction(
+  clientId: string,
+): Promise<MarketClientEmailMutationActionResult> {
+  try {
+    if (!validUuid(clientId)) throw new Error('Neplatné technické ID klienta.')
+    const { profile } = await getPowerOutageRuntimeContext()
+    if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
+
+    const configuration = getResendConfigurationStatus()
+    if (!configuration.testReady) {
+      throw new Error(`Kontrolní e-mail nelze odeslat: ${configuration.issues.join(' ')}`)
+    }
+
+    const service = getServiceRoleClient()
+    if (!service) throw new Error('Chybí zabezpečené serverové připojení pro kontrolní e-mail.')
+    const { error } = await service.rpc('queue_power_outage_client_email_manual_test', {
+      p_client_id: clientId,
+    })
+    if (error) throw new Error(`Kontrolní e-mail se nepodařilo zařadit: ${error.message}`)
+
+    await dispatchMarketClientEmails(10)
     revalidatePath('/power-outages')
     return { success: true, workspace: await getMarketClientEmailAdminWorkspace(), error: null }
   } catch (error) {

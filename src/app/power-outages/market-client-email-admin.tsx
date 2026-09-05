@@ -33,7 +33,9 @@ import {
   refreshMarketClientEmailShadowAction,
   retryMarketClientEmailDeliveryAction,
   saveMarketClientEmailConfigurationAction,
+  sendMarketClientEmailTestAction,
   setMarketClientEmailShadowRuleAction,
+  setMarketClientEmailTestModeAction,
   skipMarketClientEmailDeliveryAction,
 } from './actions'
 import { PowerOutagePopupShell } from './power-outage-popups'
@@ -104,10 +106,11 @@ function LoadingBlock({ label }: { label: string }) {
 
 function ResendSetupStatus({ workspace }: { workspace: MarketClientEmailAdminWorkspace }) {
   const items = [
-    { label: 'Omezený API klíč', ready: workspace.resend.apiKeyConfigured, waiting: false },
-    { label: workspace.resend.sendingDomain ?? 'Odesílací doména', ready: Boolean(workspace.resend.sendingDomain), waiting: false },
-    { label: 'SPF a DKIM ověřeno', ready: workspace.resend.domainVerified, waiting: false },
-    { label: 'Webhookový podpis', ready: workspace.resend.webhookSecretConfigured, waiting: !workspace.resend.webhookSecretConfigured },
+    { label: 'Omezený API klíč', ready: workspace.resend.apiKeyConfigured, waiting: false, step: null },
+    { label: workspace.resend.sendingDomain ?? 'Odesílací doména', ready: Boolean(workspace.resend.sendingDomain), waiting: false, step: null },
+    { label: 'SPF a DKIM ověřeno', ready: workspace.resend.domainVerified, waiting: false, step: null },
+    { label: 'Webhookový podpis', ready: workspace.resend.webhookSecretConfigured, waiting: !workspace.resend.webhookSecretConfigured, step: 'krok 6' },
+    { label: workspace.resend.testRecipientMasked ? `Test: ${workspace.resend.testRecipientMasked}` : 'Testovací příjemce', ready: workspace.resend.testRecipientConfigured, waiting: !workspace.resend.testRecipientConfigured, step: 'krok 7' },
   ]
 
   return (
@@ -120,7 +123,7 @@ function ResendSetupStatus({ workspace }: { workspace: MarketClientEmailAdminWor
         <span className={`rounded-xl border px-3 py-1.5 text-[8px] font-bold uppercase ${workspace.resend.providerReady ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300' : 'border-amber-400/35 bg-amber-500/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'}`}>{workspace.resend.providerReady ? 'Doména připravena' : 'Vyžaduje nastavení'}</span>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        {items.map((item) => <div key={item.label} className="flex min-h-9 items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2">{item.ready ? <CheckCircle2 aria-hidden size={14} className="shrink-0 text-emerald-500" /> : item.waiting ? <LockKeyhole aria-hidden size={14} className="shrink-0 text-[var(--text-secondary)]" /> : <XCircle aria-hidden size={14} className="shrink-0 text-amber-500" />}<span className="text-[8px] font-semibold text-[var(--text-primary)]">{item.label}</span>{item.waiting ? <small className="ml-auto text-[7px] text-[var(--text-secondary)]">krok 6</small> : null}</div>)}
+        {items.map((item) => <div key={item.label} className="flex min-h-9 items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2">{item.ready ? <CheckCircle2 aria-hidden size={14} className="shrink-0 text-emerald-500" /> : item.waiting ? <LockKeyhole aria-hidden size={14} className="shrink-0 text-[var(--text-secondary)]" /> : <XCircle aria-hidden size={14} className="shrink-0 text-amber-500" />}<span className="text-[8px] font-semibold text-[var(--text-primary)]">{item.label}</span>{item.waiting && item.step ? <small className="ml-auto text-[7px] text-[var(--text-secondary)]">{item.step}</small> : null}</div>)}
       </div>
       {workspace.resend.issues.length > 0 ? <div className="mt-3 space-y-1">{workspace.resend.issues.map((issue) => <p key={issue} className="text-[8px] leading-4 text-[var(--text-secondary)]">• {issue}</p>)}</div> : null}
       <p className="mt-3 flex items-start gap-2 text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="mt-0.5 shrink-0 text-emerald-500" /> Tajné hodnoty zůstávají pouze v serverových proměnných Vercelu. Administrace zobrazuje jen jejich platnost.</p>
@@ -145,6 +148,14 @@ function ClientEditor({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setMode(client.mode)
+    setFromName(client.fromName)
+    setFromEmail(client.fromEmail)
+    setReplyToEmail(client.replyToEmail)
+    setRecipients(client.recipients)
+  }, [client])
 
   const updateRecipient = (id: string, patch: Partial<MarketClientEmailRecipient>) => {
     setRecipients((current) => current.map((recipient) => recipient.id === id ? { ...recipient, ...patch } : recipient))
@@ -231,6 +242,40 @@ function ClientEditor({
     })
   }
 
+  const toggleTestMode = () => {
+    setMessage(null)
+    setError(null)
+    startTransition(async () => {
+      const enabling = client.mode !== 'test'
+      const result = await setMarketClientEmailTestModeAction({
+        clientId: client.clientId,
+        enabled: enabling,
+      })
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      onWorkspaceChange(result.workspace)
+      setMessage(enabling
+        ? `TEST je aktivní. Veškeré zprávy dostane pouze ${result.workspace.resend.testRecipientMasked ?? 'interní testovací adresa'}.`
+        : 'TEST byl ukončen. Neodeslané testovací položky byly zrušeny a odesílání je vypnuté.')
+    })
+  }
+
+  const sendTestEmail = () => {
+    setMessage(null)
+    setError(null)
+    startTransition(async () => {
+      const result = await sendMarketClientEmailTestAction(client.clientId)
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      onWorkspaceChange(result.workspace)
+      setMessage(`Kontrolní e-mail byl bezpečně zařazen pro ${result.workspace.resend.testRecipientMasked ?? 'interní testovací adresu'}. Stav odeslání a doručení se doplní z Resendu.`)
+    })
+  }
+
   const failedDeliveries = client.deliveries.filter((delivery) => delivery.status === 'failed')
 
   return (
@@ -239,7 +284,7 @@ function ClientEditor({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Automatická upozornění</span>
-            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{mode === 'disabled' ? 'Vypnutá' : 'Připravují se ve stínovém režimu'}</strong>
+            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{mode === 'disabled' ? 'Vypnutá' : mode === 'test' ? 'Bezpečný test na interní adresu' : 'Připravují se ve stínovém režimu'}</strong>
           </div>
           <Toggle checked={mode !== 'disabled'} disabled={pending || !['disabled', 'shadow'].includes(mode)} label="Automatická e-mailová upozornění" onChange={() => setMode((current) => current === 'disabled' ? 'shadow' : 'disabled')} />
         </div>
@@ -249,7 +294,19 @@ function ClientEditor({
             return <button key={option} type="button" disabled={locked || pending} onClick={() => setMode(option)} className={`relative flex h-10 items-center justify-center gap-1.5 rounded-xl border text-[8px] font-bold tracking-[0.05em] transition ${mode === option ? MODE_PRESENTATION[option].className : 'border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]'} disabled:cursor-not-allowed disabled:opacity-55`}><i aria-hidden className={`h-1.5 w-1.5 rounded-full ${MODE_PRESENTATION[option].dot}`} />{MODE_PRESENTATION[option].label}{locked ? <LockKeyhole aria-hidden size={10} /> : null}</button>
           })}
         </div>
-        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">TEST a AKTIVNÍ odemkneme až po nastavení Resendu, testovacího přesměrování a doručovacího workeru.</p>
+        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">TEST se aktivuje samostatným bezpečnostním krokem níže. Režim AKTIVNÍ zůstává uzamčený do ostrého pilotu.</p>
+      </section>
+
+      <section className="rounded-2xl border border-violet-500/25 bg-violet-500/8 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span>
+            <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Bezpečný testovací režim</span>
+            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{client.mode === 'test' ? 'TEST je aktivní' : 'TEST není aktivní'}</strong>
+          </span>
+          <button type="button" onClick={toggleTestMode} disabled={pending || (!workspace.resend.testReady && client.mode !== 'test') || !['shadow', 'test'].includes(client.mode)} className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-50 ${client.mode === 'test' ? 'border-red-400/30 bg-red-500/8 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'border-violet-500/35 bg-violet-500/10 text-violet-700 [html[data-theme=dark]_&]:text-violet-300'}`}>{pending ? <LoaderCircle aria-hidden size={13} className="animate-spin" /> : client.mode === 'test' ? <Ban aria-hidden size={13} /> : <ShieldCheck aria-hidden size={13} />}{client.mode === 'test' ? 'Ukončit TEST' : 'Spustit TEST'}</button>
+        </div>
+        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">V TESTU se původní TO ani CC nikdy nepoužijí k doručení. Vše dostane pouze {workspace.resend.testRecipientMasked ?? 'serverová adresa RESEND_TEST_RECIPIENT'}. Současně lze testovat jen jednoho klienta.</p>
+        {client.mode !== 'test' && client.mode !== 'shadow' ? <p className="mt-2 text-[8px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Nejprve vyplňte konfiguraci, uložte klienta ve STÍNOVÉM režimu a spusťte pravidlo.</p> : null}
       </section>
 
       <section>
@@ -298,8 +355,8 @@ function ClientEditor({
       {message ? <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/8 px-3 py-2 text-[9px] font-semibold text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">{message}</p> : null}
 
       <div className="flex flex-col-reverse gap-2 border-t border-[var(--surface-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <button type="button" disabled title="Bude dostupné po zapojení Resendu v kroku 5/6." className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 text-[9px] font-bold uppercase text-[var(--text-secondary)] opacity-55"><Send aria-hidden size={14} /> Odeslat testovací e-mail <LockKeyhole aria-hidden size={11} /></button>
-        <button type="button" onClick={save} disabled={pending} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-600 bg-sky-600 px-5 text-[9px] font-bold uppercase text-white shadow-[0_9px_20px_rgba(2,132,199,0.2)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60">{pending ? <LoaderCircle aria-hidden size={14} className="animate-spin" /> : <Save aria-hidden size={14} />} Uložit nastavení</button>
+        <button type="button" onClick={sendTestEmail} disabled={pending || client.mode !== 'test' || !workspace.resend.testReady} title={client.mode === 'test' ? 'Odeslat kontrolní zprávu pouze na interní testovací adresu' : 'Nejprve spusťte bezpečný TEST režim'} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 px-4 text-[9px] font-bold uppercase text-violet-700 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-45 [html[data-theme=dark]_&]:text-violet-300"><Send aria-hidden size={14} /> Odeslat testovací e-mail {client.mode !== 'test' ? <LockKeyhole aria-hidden size={11} /> : null}</button>
+        <button type="button" onClick={save} disabled={pending || client.mode === 'test'} title={client.mode === 'test' ? 'Nejprve ukončete TEST režim.' : undefined} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-600 bg-sky-600 px-5 text-[9px] font-bold uppercase text-white shadow-[0_9px_20px_rgba(2,132,199,0.2)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60">{pending ? <LoaderCircle aria-hidden size={14} className="animate-spin" /> : <Save aria-hidden size={14} />} Uložit nastavení</button>
       </div>
 
       {workspace.lastErrorMessage ? <p className="flex items-start gap-2 rounded-xl border border-red-400/25 bg-red-500/8 px-3 py-2 text-[8px] leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300"><AlertTriangle aria-hidden size={13} className="mt-0.5 shrink-0" /> {workspace.lastErrorCode ? `${workspace.lastErrorCode}: ` : ''}{workspace.lastErrorMessage}</p> : null}
@@ -366,7 +423,7 @@ export function MarketClientEmailAdminPanel() {
           <ChevronRight aria-hidden size={17} className="mt-3 shrink-0 text-[var(--text-secondary)]" />
         </button>
         {loading && !workspace ? <LoadingBlock label="Načítám nastavení…" /> : error && !workspace ? <button type="button" onClick={() => { setOpen(true); void load() }} className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/8 p-4 text-center"><AlertTriangle aria-hidden size={20} className="text-red-500" /><strong className="mt-2 text-[10px] text-[var(--text-primary)]">Nastavení se nepodařilo načíst</strong><span className="mt-1 text-[8px] text-[var(--text-secondary)]">Otevřít detail a opakovat</span></button> : workspace ? <button type="button" onClick={() => setOpen(true)} className="mt-4 min-h-0 flex-1 text-left"><div className="grid grid-cols-2 gap-2">{workspace.clients.map((client) => <div key={client.clientId} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2.5"><div className="flex items-center justify-between gap-2"><strong className="truncate text-[10px] text-[var(--text-primary)]">{client.chainName}</strong><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${MODE_PRESENTATION[client.mode].dot}`} /></div><small className="mt-1 block text-[7px] font-bold uppercase text-[var(--text-secondary)]">{MODE_PRESENTATION[client.mode].label}</small></div>)}</div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nastaveno</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{activeCount}/4</strong></span><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Příjemci</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{recipientCount}</strong></span><span className={`rounded-xl border p-2 ${errorCount > 0 ? 'border-red-400/30 bg-red-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Chyby</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{errorCount}</strong></span></div></button> : null}
-        <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · odesílání vypnuto</p>
+        <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · {workspace?.runtimeMode === 'test' && workspace.dispatchEnabled ? 'bezpečný TEST aktivní' : 'odesílání vypnuto'}</p>
       </section>
       {open && typeof document !== 'undefined' ? createPortal(<AdminPopup workspace={workspace} loading={loading} error={error} selectedClientId={selectedClientId} onSelectClient={setSelectedClientId} onReload={() => void load()} onWorkspaceChange={(next) => { setWorkspace(next); setError(null) }} onClose={() => setOpen(false)} />, document.body) : null}
     </>

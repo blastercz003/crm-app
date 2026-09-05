@@ -5,8 +5,11 @@ export type ResendConfigurationStatus = {
   sendingDomain: string | null
   domainVerified: boolean
   webhookSecretConfigured: boolean
+  testRecipientConfigured: boolean
+  testRecipientMasked: string | null
   providerReady: boolean
   webhookReady: boolean
+  testReady: boolean
   issues: string[]
 }
 
@@ -20,9 +23,14 @@ export function getResendConfigurationStatus(): ResendConfigurationStatus {
   const domain = DOMAIN_PATTERN.test(rawDomain) ? rawDomain : null
   const domainVerified = process.env.RESEND_DOMAIN_VERIFIED?.trim().toLowerCase() === 'true'
   const webhookSecret = process.env.RESEND_WEBHOOK_SECRET?.trim() ?? ''
+  const testRecipient = process.env.RESEND_TEST_RECIPIENT?.trim().toLowerCase() ?? ''
 
   const apiKeyConfigured = API_KEY_PATTERN.test(apiKey)
   const webhookSecretConfigured = WEBHOOK_SECRET_PATTERN.test(webhookSecret)
+  const testRecipientConfigured = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testRecipient)
+  const testRecipientMasked = testRecipientConfigured
+    ? testRecipient.replace(/^(.)([^@]*)(@.*)$/, (_match, first: string, middle: string, domain: string) => `${first}${middle ? '•••' : ''}${domain}`)
+    : null
   const issues: string[] = []
 
   if (!apiKeyConfigured) issues.push('Ve Vercelu chybí platný RESEND_API_KEY.')
@@ -33,14 +41,21 @@ export function getResendConfigurationStatus(): ResendConfigurationStatus {
   if (!webhookSecretConfigured) {
     issues.push('RESEND_WEBHOOK_SECRET bude doplněn po vytvoření webhooku v kroku 6.')
   }
+  if (!testRecipientConfigured) {
+    issues.push('Pro testovací režim chybí RESEND_TEST_RECIPIENT.')
+  }
 
   return {
     apiKeyConfigured,
     sendingDomain: domain,
     domainVerified: Boolean(domain && domainVerified),
     webhookSecretConfigured,
+    testRecipientConfigured,
+    testRecipientMasked,
     providerReady: apiKeyConfigured && Boolean(domain) && domainVerified,
     webhookReady: webhookSecretConfigured,
+    testReady: apiKeyConfigured && Boolean(domain) && domainVerified
+      && webhookSecretConfigured && testRecipientConfigured,
     issues,
   }
 }

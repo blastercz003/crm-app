@@ -39,24 +39,43 @@ export async function planMarketClientEmailCandidates(limit = 200) {
 
   if (result.status === 'disabled') return result
 
-  const { data: renderedData, error: renderedError } = await client.rpc(
+  const { data: shadowData, error: shadowError } = await client.rpc(
     'render_power_outage_client_email_shadow_deliveries',
     { p_limit: limit },
   )
-  if (renderedError) {
-    throw new Error(`Stínové náhledy klientských e-mailů se nepodařilo připravit: ${renderedError.message}`)
+  if (shadowError) {
+    throw new Error(`Stínové náhledy klientských e-mailů se nepodařilo připravit: ${shadowError.message}`)
   }
-  if (!renderedData || typeof renderedData !== 'object' || Array.isArray(renderedData)) {
+  if (!shadowData || typeof shadowData !== 'object' || Array.isArray(shadowData)) {
     throw new Error('Příprava stínových náhledů nevrátila platný výsledek.')
   }
-  const rendered = renderedData as MarketClientEmailCandidatePlanResult
-  if (!rendered.ok) {
-    throw new Error(rendered.errorMessage || 'Příprava stínových náhledů selhala.')
+  const shadowRendered = shadowData as MarketClientEmailCandidatePlanResult
+  if (!shadowRendered.ok) {
+    throw new Error(shadowRendered.errorMessage || 'Příprava stínových náhledů selhala.')
+  }
+
+  let renderedCount = shadowRendered.renderedCount ?? 0
+  if (result.status === 'test') {
+    const { data: testData, error: testError } = await client.rpc(
+      'render_power_outage_client_email_test_deliveries',
+      { p_limit: limit },
+    )
+    if (testError) {
+      throw new Error(`Testovací e-maily se nepodařilo připravit: ${testError.message}`)
+    }
+    if (!testData || typeof testData !== 'object' || Array.isArray(testData)) {
+      throw new Error('Příprava testovacích e-mailů nevrátila platný výsledek.')
+    }
+    const testRendered = testData as MarketClientEmailCandidatePlanResult
+    if (!testRendered.ok) {
+      throw new Error(testRendered.errorMessage || 'Příprava testovacích e-mailů selhala.')
+    }
+    renderedCount += testRendered.renderedCount ?? 0
   }
 
   return {
     ...result,
-    renderedCount: rendered.renderedCount ?? 0,
+    renderedCount,
     sendingAttempted: false as const,
   }
 }

@@ -81,8 +81,11 @@ export type MarketClientEmailAdminWorkspace = {
     sendingDomain: string | null
     domainVerified: boolean
     webhookSecretConfigured: boolean
+    testRecipientConfigured: boolean
+    testRecipientMasked: string | null
     providerReady: boolean
     webhookReady: boolean
+    testReady: boolean
     issues: string[]
   }
   clients: MarketClientEmailConfiguration[]
