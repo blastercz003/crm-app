@@ -208,6 +208,7 @@ export async function upsertCezOutagesAdditively(
             outage_id: outageId,
             outage_address_id: String(row.id),
             address_key: String(row.address_key),
+            first_seen_at: observedAt,
             last_seen_at: observedAt,
             last_cycle_id: observation.cycleId ?? null,
             missing_since: null,

@@ -282,6 +282,46 @@ export type PowerOutageSourceDiagnostic = {
     startedAt: string | null
     lastProgressAt: string | null
   } | null
+  cezCollectors: {
+    operatingMode: 'v1_only' | 'dual' | 'v2_only'
+    primaryVersion: 'v1' | 'v2'
+    secondaryVersion: 'v1' | 'v2' | null
+    activationReady: boolean
+    switchedAt: string
+    calculatedAt: string
+    v1OutageCount: number
+    v2OutageCount: number
+    sharedOutageCount: number
+    v1OnlyOutageCount: number
+    v2OnlyOutageCount: number
+    uniqueOutageCount: number
+    versions: Array<{
+      version: 'v1' | 'v2'
+      displayName: string
+      isEnabled: boolean
+      isPrimary: boolean
+      cadenceSeconds: number
+      healthStatus: 'inactive' | 'waiting' | 'processing' | 'current' | 'delayed' | 'error'
+      lastAttemptAt: string | null
+      lastSuccessAt: string | null
+      lastCompleteAt: string | null
+      consecutiveFailureCount: number
+      lastErrorCode: string | null
+      lastErrorMessage: string | null
+      latestCycleStatus: 'pending' | 'running' | 'succeeded' | 'partial' | 'failed' | 'cancelled' | null
+      targetCount: number
+      processedCount: number
+      successCount: number
+      errorCount: number
+      observedOutageCount: number
+      exactOutageCount: number
+      townOutageCount: number
+      cycleStartedAt: string | null
+      cycleFinishedAt: string | null
+      cycleErrorCode: string | null
+      cycleErrorMessage: string | null
+    }>
+  } | null
   runs: Array<{
     id: string
     triggerKind: 'scheduled' | 'manual' | 'store_change' | 'retry'

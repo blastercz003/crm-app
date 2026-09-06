@@ -48,7 +48,7 @@ function formatDateTime(value: string | null) {
 }
 
 function sourceName(source: PowerOutageSource) {
-  return source === 'cez' ? 'ČEZ v1' : source === 'egd' ? 'EG.D' : 'PREdistribuce'
+  return source === 'cez' ? 'ČEZ v1 + v2' : source === 'egd' ? 'EG.D' : 'PREdistribuce'
 }
 
 function SourcePanelName({ source }: { source: PowerOutageSource }) {
@@ -56,7 +56,7 @@ function SourcePanelName({ source }: { source: PowerOutageSource }) {
   return (
     <>
       ČEZ
-      <span className="ml-1.5 text-[0.68em] font-medium tracking-normal text-[var(--text-secondary)]">v1</span>
+      <span className="ml-1.5 text-[0.68em] font-medium tracking-normal text-[var(--text-secondary)]">v1 + v2</span>
     </>
   )
 }
@@ -185,7 +185,7 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
           <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdroj dat</span><strong className="block truncate text-base font-semibold text-[var(--text-primary)]"><SourcePanelName source={source.source} /></strong></span>
         </button>
         <div className="flex shrink-0 items-center gap-1.5">
-          {isAdmin ? <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Ručně obnovit data ${sourceName(source.source)}`} title="Ručně obnovit data" className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button> : null}
+          {isAdmin ? <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Ručně obnovit data ${source.source === 'cez' ? 'ČEZ v1' : sourceName(source.source)}`} title={source.source === 'cez' ? 'Ručně obnovit ČEZ v1' : 'Ručně obnovit data'} className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button> : null}
           <button
             type="button"
             onClick={onOpen}
@@ -444,12 +444,87 @@ function SourceProgress({ diagnostic }: { diagnostic: PowerOutageSourceDiagnosti
   )
 }
 
+const CEZ_COLLECTOR_STATUS = {
+  inactive: { label: 'NEAKTIVNÍ', badge: 'border-slate-400/35 bg-slate-400/10 text-[var(--text-secondary)]', dot: 'bg-slate-400' },
+  waiting: { label: 'ČEKÁ', badge: 'border-amber-500/35 bg-amber-500/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'bg-amber-500' },
+  processing: { label: 'ZPRACOVÁNÍ', badge: 'border-sky-500/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300', dot: 'bg-sky-500 animate-pulse motion-reduce:animate-none' },
+  current: { label: 'AKTUÁLNÍ', badge: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', dot: 'bg-emerald-500' },
+  delayed: { label: 'ZPOŽDĚNÍ', badge: 'border-amber-500/35 bg-amber-500/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300', dot: 'bg-amber-500' },
+  error: { label: 'CHYBA', badge: 'border-red-500/35 bg-red-500/10 text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500' },
+} as const
+
+function cezModeLabel(mode: NonNullable<PowerOutageSourceDiagnostic['cezCollectors']>['operatingMode']) {
+  return mode === 'dual' ? 'v1 + v2' : mode === 'v2_only' ? 'Pouze v2' : 'Pouze v1'
+}
+
+function CezCollectorOverview({ overview }: { overview: NonNullable<PowerOutageSourceDiagnostic['cezCollectors']> }) {
+  return (
+    <section className="mt-4">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <span>
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]">Sběrače ČEZ</h3>
+          <p className="mt-1 text-[9px] leading-4 text-[var(--text-secondary)]">Každá verze má vlastní stopu nálezu; do tabulky se stejná odstávka uloží pouze jednou.</p>
+        </span>
+        <span className="rounded-xl border border-sky-500/30 bg-sky-500/8 px-3 py-2 text-[8px] font-bold uppercase tracking-[0.08em] text-sky-700 [html[data-theme=dark]_&]:text-sky-300">Režim {cezModeLabel(overview.operatingMode)}</span>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {overview.versions.map((version) => {
+          const presentation = CEZ_COLLECTOR_STATUS[version.healthStatus]
+          const percent = version.targetCount > 0
+            ? Math.min(100, Math.max(0, (version.processedCount / version.targetCount) * 100))
+            : null
+          return (
+            <article key={version.version} className={`rounded-2xl border p-3.5 ${version.isEnabled ? 'border-sky-500/25 bg-sky-500/5' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <span>
+                  <strong className="block text-sm text-[var(--text-primary)]">{version.displayName}</strong>
+                  <small className="mt-1 block text-[8px] leading-4 text-[var(--text-secondary)]">
+                    {version.version === 'v1' ? 'Kontrola podle měst' : 'Přesná kontrola každé ověřené adresy'} · interval {Math.round(version.cadenceSeconds / 3600)} h
+                  </small>
+                </span>
+                <span className={`inline-flex h-7 min-w-[86px] items-center justify-center gap-1 rounded-xl border px-2 text-[7px] font-bold leading-none tracking-[0.06em] ${presentation.badge}`}><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} /><span>{presentation.label}</span></span>
+              </div>
+
+              {version.version === 'v2' && !version.isEnabled ? <p className="mt-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2 text-[9px] leading-4 text-[var(--text-secondary)]">v2 je připravena pro řízenou aktivaci, ale zatím neběží a nemění produkční data.</p> : null}
+              {percent == null ? null : <div className="mt-3"><div className="flex items-center justify-between gap-3 text-[8px]"><span className="font-semibold text-[var(--text-secondary)]">Poslední cyklus</span><strong className="tabular-nums text-[var(--accent)]">{version.processedCount} / {version.targetCount} · {(Math.round(percent * 10) / 10).toLocaleString('cs-CZ')} %</strong></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><div className="h-full rounded-full bg-sky-500" style={{ width: `${percent}%` }} /></div></div>}
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <PowerOutageDetailRow label="Nalezené odstávky" value={String(version.observedOutageCount)} />
+                <PowerOutageDetailRow label="Poslední kompletní běh" value={formatDateTime(version.lastCompleteAt)} />
+                <PowerOutageDetailRow label="Přesný nález" value={String(version.exactOutageCount)} />
+                <PowerOutageDetailRow label="Nález podle města" value={String(version.townOutageCount)} />
+              </div>
+              {version.cycleErrorMessage || version.lastErrorMessage ? <p className="mt-3 rounded-xl border border-red-400/30 bg-red-500/8 px-3 py-2 text-[8px] leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300">{version.cycleErrorCode ?? version.lastErrorCode}: {version.cycleErrorMessage ?? version.lastErrorMessage}</p> : null}
+            </article>
+          )
+        })}
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {[
+          ['Nalezeno v1', overview.v1OutageCount],
+          ['Nalezeno v2', overview.v2OutageCount],
+          ['Obě verze', overview.sharedOutageCount],
+          ['Pouze v1', overview.v1OnlyOutageCount],
+          ['Pouze v2', overview.v2OnlyOutageCount],
+          ['Unikátní celkem', overview.uniqueOutageCount],
+        ].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-2 text-center"><small className="block text-[7px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)]">{label}</small><strong className="mt-1 block text-base tabular-nums text-[var(--text-primary)]">{value}</strong></div>)}
+      </div>
+    </section>
+  )
+}
+
 function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, onReload, onClose }: { source: PowerOutageSource; diagnostic: PowerOutageSourceDiagnostic | null; loading: boolean; error: string | null; isAdmin: boolean; onReload: () => Promise<void>; onClose: () => void }) {
   const router = useRouter()
   const [recovering, setRecovering] = useState(false)
   const [recoveryError, setRecoveryError] = useState<string | null>(null)
   const schedule = source === 'cez'
-    ? 'Hlavní kontrola každých 6 hodin; rozpracované dávky pokračují každých 15 minut.'
+    ? diagnostic?.cezCollectors?.operatingMode === 'dual'
+      ? 'ČEZ v2 kontroluje každou ověřenou adresu v šestihodinových cyklech. ČEZ v1 zůstává nezávislou kontrolou každých 24 hodin.'
+      : diagnostic?.cezCollectors?.operatingMode === 'v2_only'
+        ? 'ČEZ v2 kontroluje každou ověřenou adresu v šestihodinových cyklech.'
+        : 'Aktivní zůstává původní ČEZ v1. Přesná adresní kontrola v2 je připravena, ale ještě není spuštěna.'
     : source === 'egd'
       ? 'Kontrola celé distribuční oblasti každých 6 hodin s časovým posunem vůči ČEZ.'
       : 'Stažení oficiálního exportu celé distribuční oblasti každé 3 hodiny; jeden malý požadavek za běh.'
@@ -485,6 +560,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, on
             <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Aktuální stav zdroje</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{status.label}</strong><span className="mt-1 block max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{sourceStatusDescription(diagnostic)}</span></span>
             <span className={`relative inline-flex h-8 w-[92px] items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] ${status.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} /><span className="translate-y-px">{status.label}</span></span>
           </div>
+          {diagnostic.cezCollectors ? <CezCollectorOverview overview={diagnostic.cezCollectors} /> : null}
           <SourceProgress diagnostic={diagnostic} />
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <PowerOutageDetailRow label="Poslední pokus" value={formatDateTime(diagnostic.sourceState.lastAttemptAt)} />
@@ -502,14 +578,14 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, on
             <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><Route aria-hidden size={14} /> Proces načítání</h3>
             <p className="mt-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5 text-xs leading-5 text-[var(--text-primary)]">{schedule}</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {['Stažení veřejných dat distributora', 'Normalizace a kontrola termínů', 'Uložení změn a historie verzí', 'Párování podle města, ulice a čísel domu; neúplné adresy k ověření'].map((step, index) => <div key={step} className="flex items-center gap-2.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[9px] font-bold text-[var(--accent)]">{index + 1}</span><span className="text-[10px] font-semibold text-[var(--text-primary)]">{step}</span></div>)}
+              {(source === 'cez' ? ['Načtení veřejných dat ČEZ', 'Oddělené zaznamenání nálezu v1 nebo v2', 'Deduplikované uložení odstávky', 'Párování přesné adresy s prodejnou'] : ['Stažení veřejných dat distributora', 'Normalizace a kontrola termínů', 'Uložení změn a historie verzí', 'Párování podle města, ulice a čísel domu; neúplné adresy k ověření']).map((step, index) => <div key={step} className="flex items-center gap-2.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[9px] font-bold text-[var(--accent)]">{index + 1}</span><span className="text-[10px] font-semibold text-[var(--text-primary)]">{step}</span></div>)}
             </div>
           </section>
 
           {diagnostic.attention ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-red-600 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><div className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5"><strong className="text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{diagnostic.attention.code}</strong><p className="mt-1 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.attention.message}</p></div>{isAdmin ? <button type="button" onClick={() => void recover()} disabled={recovering} className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/10 px-4 text-[9px] font-bold uppercase tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:bg-sky-500/15 disabled:cursor-wait disabled:opacity-55 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={13} className={recovering ? 'animate-spin' : ''} />{diagnostic.attention.recoveryAction === 'matching' ? 'Opakovat porovnání' : source === 'cez' ? 'Pokračovat v kontrole ČEZ' : 'Opakovat načtení zdroje'}</button> : <p className="mt-2 text-[9px] font-semibold text-[var(--text-secondary)]">Opravu může spustit administrátor.</p>}{recoveryError ? <p className="mt-2 text-[9px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{recoveryError}</p> : null}</section> : null}
 
           <section className="mt-5">
-            <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Poslední synchronizační běhy</h3>
+            <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Poslední synchronizační běhy{source === 'cez' ? ' v1' : ''}</h3>
             <div className="mt-2 space-y-2">
               {diagnostic.runs.map((run) => <div key={run.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3.5 py-3"><div className="flex items-start justify-between gap-3"><span><strong className="block text-[11px] text-[var(--text-primary)]">{runStatusLabel(run.status)} · {run.sourceRecordCount} záznamů ve dávce</strong><small className="mt-0.5 block text-[9px] leading-4 text-[var(--text-secondary)]">Revize {run.storeRevision} · uloženo {run.outageUpsertCount} odstávek a {run.addressUpsertCount} adres</small></span><time className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatDateTime(run.startedAt)}</time></div>{run.errorMessage ? <p className="mt-2 text-[9px] leading-4 text-red-600 [html[data-theme=dark]_&]:text-red-300">{run.errorCode}: {run.errorMessage}</p> : null}</div>)}
               {diagnostic.runs.length === 0 ? <p className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--text-secondary)]">Historie běhů zatím není dostupná.</p> : null}

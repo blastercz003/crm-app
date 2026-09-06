@@ -50,6 +50,77 @@ type MatchRun = {
   error_message: string | null
 }
 
+type CezVersionOverviewRow = {
+  collector_version: 'v1' | 'v2'
+  display_name: string
+  operating_mode: 'v1_only' | 'dual' | 'v2_only'
+  primary_version: 'v1' | 'v2'
+  secondary_version: 'v1' | 'v2' | null
+  activation_ready: boolean
+  switched_at: string
+  is_enabled: boolean
+  is_primary: boolean
+  cadence_seconds: number
+  last_attempt_at: string | null
+  last_success_at: string | null
+  last_complete_at: string | null
+  consecutive_failure_count: number
+  last_error_code: string | null
+  last_error_message: string | null
+  latest_cycle_status: 'pending' | 'running' | 'succeeded' | 'partial' | 'failed' | 'cancelled' | null
+  target_count: number | null
+  processed_count: number | null
+  success_count: number | null
+  error_count: number | null
+  observed_outage_count: number
+  exact_outage_count: number
+  town_outage_count: number
+  cycle_started_at: string | null
+  cycle_finished_at: string | null
+  cycle_error_code: string | null
+  cycle_error_message: string | null
+  health_status: 'inactive' | 'waiting' | 'processing' | 'current' | 'delayed' | 'error'
+}
+
+type CezUnionOverviewRow = {
+  operating_mode: 'v1_only' | 'dual' | 'v2_only'
+  primary_version: 'v1' | 'v2'
+  secondary_version: 'v1' | 'v2' | null
+  activation_ready: boolean
+  switched_at: string
+  v1_outage_count: number
+  v2_outage_count: number
+  shared_outage_count: number
+  v1_only_outage_count: number
+  v2_only_outage_count: number
+  unique_outage_count: number
+  calculated_at: string
+}
+
+async function getCezCollectorOverview(
+  supabase: Awaited<ReturnType<typeof getPowerOutageRuntimeContext>>['supabase'],
+  source: PowerOutageSource,
+) {
+  if (source !== 'cez') return { versions: null, union: null, error: null }
+
+  const [versionsResult, unionResult] = await Promise.all([
+    supabase
+      .from('power_outage_cez_market_version_overview')
+      .select('collector_version,display_name,operating_mode,primary_version,secondary_version,activation_ready,switched_at,is_enabled,is_primary,cadence_seconds,last_attempt_at,last_success_at,last_complete_at,consecutive_failure_count,last_error_code,last_error_message,latest_cycle_status,target_count,processed_count,success_count,error_count,observed_outage_count,exact_outage_count,town_outage_count,cycle_started_at,cycle_finished_at,cycle_error_code,cycle_error_message,health_status')
+      .order('collector_version'),
+    supabase
+      .from('power_outage_cez_market_union_overview')
+      .select('operating_mode,primary_version,secondary_version,activation_ready,switched_at,v1_outage_count,v2_outage_count,shared_outage_count,v1_only_outage_count,v2_only_outage_count,unique_outage_count,calculated_at')
+      .maybeSingle(),
+  ])
+
+  return {
+    versions: versionsResult.data as CezVersionOverviewRow[] | null,
+    union: unionResult.data as CezUnionOverviewRow | null,
+    error: versionsResult.error ?? unionResult.error,
+  }
+}
+
 function objectValue(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -427,7 +498,7 @@ export async function getPowerOutageSourceDiagnostic(
   const { supabase } = await getPowerOutageRuntimeContext()
   const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
 
-  const [stateResult, taskResult, catalogResult, storeCountResult, runsResult, health] = await Promise.all([
+  const [stateResult, taskResult, catalogResult, storeCountResult, runsResult, health, cezOverview] = await Promise.all([
     supabase
       .from('power_outage_source_state')
       .select('source,last_attempt_at,last_success_at,last_change_at,last_error_at,latest_source_ref,latest_payload_sha256,active_outage_count,future_outage_count,consecutive_failure_count,last_error_code,last_error_message,data_version,store_revision_processed,lock_expires_at,metadata')
@@ -453,9 +524,10 @@ export async function getPowerOutageSourceDiagnostic(
       .order('started_at', { ascending: false })
       .limit(12),
     getPowerOutageHealth(),
+    getCezCollectorOverview(supabase, source),
   ])
 
-  const error = [stateResult.error, taskResult.error, catalogResult.error, storeCountResult.error, runsResult.error].find(Boolean)
+  const error = [stateResult.error, taskResult.error, catalogResult.error, storeCountResult.error, runsResult.error, cezOverview.error].find(Boolean)
   if (error) throw new Error(`Provozní detail ${source.toUpperCase()} se nepodařilo načíst: ${error.message}`)
   if (!stateResult.data || !catalogResult.data) throw new Error(`Provozní stav ${source.toUpperCase()} není dostupný.`)
 
@@ -535,6 +607,48 @@ export async function getPowerOutageSourceDiagnostic(
     } : null,
     catalogRevision,
     progress,
+    cezCollectors: source === 'cez' && cezOverview.union && cezOverview.versions
+      ? {
+          operatingMode: cezOverview.union.operating_mode,
+          primaryVersion: cezOverview.union.primary_version,
+          secondaryVersion: cezOverview.union.secondary_version,
+          activationReady: cezOverview.union.activation_ready,
+          switchedAt: cezOverview.union.switched_at,
+          calculatedAt: cezOverview.union.calculated_at,
+          v1OutageCount: Number(cezOverview.union.v1_outage_count),
+          v2OutageCount: Number(cezOverview.union.v2_outage_count),
+          sharedOutageCount: Number(cezOverview.union.shared_outage_count),
+          v1OnlyOutageCount: Number(cezOverview.union.v1_only_outage_count),
+          v2OnlyOutageCount: Number(cezOverview.union.v2_only_outage_count),
+          uniqueOutageCount: Number(cezOverview.union.unique_outage_count),
+          versions: cezOverview.versions.map((version) => ({
+            version: version.collector_version,
+            displayName: version.display_name,
+            isEnabled: version.is_enabled,
+            isPrimary: version.is_primary,
+            cadenceSeconds: Number(version.cadence_seconds),
+            healthStatus: version.health_status,
+            lastAttemptAt: version.last_attempt_at,
+            lastSuccessAt: version.last_success_at,
+            lastCompleteAt: version.last_complete_at,
+            consecutiveFailureCount: Number(version.consecutive_failure_count),
+            lastErrorCode: version.last_error_code,
+            lastErrorMessage: version.last_error_message,
+            latestCycleStatus: version.latest_cycle_status,
+            targetCount: Number(version.target_count ?? 0),
+            processedCount: Number(version.processed_count ?? 0),
+            successCount: Number(version.success_count ?? 0),
+            errorCount: Number(version.error_count ?? 0),
+            observedOutageCount: Number(version.observed_outage_count),
+            exactOutageCount: Number(version.exact_outage_count),
+            townOutageCount: Number(version.town_outage_count),
+            cycleStartedAt: version.cycle_started_at,
+            cycleFinishedAt: version.cycle_finished_at,
+            cycleErrorCode: version.cycle_error_code,
+            cycleErrorMessage: version.cycle_error_message,
+          })),
+        }
+      : null,
     runs: (runsResult.data ?? []).map((run) => ({
       id: run.id,
       triggerKind: run.trigger_kind,
