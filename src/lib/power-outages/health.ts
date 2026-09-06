@@ -160,8 +160,12 @@ function buildCezCollectorOverview(
       // The legacy v1 worker records batch failures in the shared source state.
       // Fold that state into the v1 card so the per-version UI cannot look healthy
       // while the main ČEZ badge correctly reports an error.
-      const v1SourceErrorCode = isV1 ? sourceState?.last_error_code ?? null : null
-      const v1SourceErrorMessage = isV1 ? sourceState?.last_error_message ?? null : null
+      // SOURCE_STALE belongs to the pre-versioned 8-hour watchdog. It is not a
+      // real v1 failure now that v1 has its own 24-hour cadence; delayed state is
+      // derived below from the cadence-aware version overview instead.
+      const legacySourceErrorIsApplicable = sourceState?.last_error_code !== 'SOURCE_STALE'
+      const v1SourceErrorCode = isV1 && legacySourceErrorIsApplicable ? sourceState?.last_error_code ?? null : null
+      const v1SourceErrorMessage = isV1 && legacySourceErrorIsApplicable ? sourceState?.last_error_message ?? null : null
       const targetCount = isV1
         ? v1Running
           ? v1ScanTarget ?? Number(version.last_target_count ?? 0)
@@ -632,7 +636,11 @@ export async function getPowerOutageHealth() {
 
     // Keep genuine legacy v1 failures or stalled runs. Only the generic stale
     // warning is superseded by the cadence-aware version health above.
-    if (source.attention && source.attention.code !== 'SOURCE_DATA_STALE') {
+    if (
+      source.attention
+      && source.attention.code !== 'SOURCE_DATA_STALE'
+      && source.attention.code !== 'SOURCE_STALE'
+    ) {
       promote(source.status, source.attention)
     }
 
