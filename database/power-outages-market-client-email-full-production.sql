@@ -392,7 +392,7 @@ begin
       left join lateral (select id from public.power_outage_versions v where v.outage_id=outage.id order by version_number desc limit 1) latest_version on true
       where settings.mode <> 'disabled'
       group by settings.client_id, settings.mode, rule.id, rule.activated_at, outage.id, latest_version.id
-      having min(coalesce(match.resolved_at, match.first_matched_at)) >= rule.activated_at
+      having outage.created_at >= rule.activated_at
     ), changed_candidates as (
       select settings.client_id, settings.mode as mode_at_plan, rule.id as rule_id,
         outage.id as outage_id, version.id as outage_version_id, rule.event_kind,
@@ -415,7 +415,7 @@ begin
         or (rule.event_kind='schedule_changed' and version.change_reasons @> array['schedule_changed']::text[] and not version.change_reasons @> array['cancelled']::text[])
       )
       group by settings.client_id, settings.mode, rule.id, rule.event_kind, outage.id, version.id, previous_version.snapshot
-      having min(coalesce(match.resolved_at, match.first_matched_at)) >= rule.activated_at
+      having outage.created_at >= rule.activated_at
     ), reminder_candidates as (
       select settings.client_id, settings.mode as mode_at_plan, rule.id as rule_id,
         outage.id as outage_id, latest_version.id as outage_version_id,
@@ -433,7 +433,7 @@ begin
       left join lateral (select id from public.power_outage_versions v where v.outage_id=outage.id order by version_number desc limit 1) latest_version on true
       where settings.mode <> 'disabled'
       group by settings.client_id,settings.mode,rule.id,rule.activated_at,outage.id,latest_version.id
-      having min(coalesce(match.resolved_at,match.first_matched_at)) >= rule.activated_at
+      having outage.created_at >= rule.activated_at
     ), missing_job_candidates as (
       select settings.client_id, settings.mode as mode_at_plan, rule.id as rule_id,
         outage.id as outage_id, latest_version.id as outage_version_id,
@@ -452,7 +452,7 @@ begin
       left join lateral (select id from public.power_outage_versions v where v.outage_id=outage.id order by version_number desc limit 1) latest_version on true
       where settings.mode <> 'disabled'
       group by settings.client_id,settings.mode,rule.id,rule.activated_at,outage.id,latest_version.id
-      having min(coalesce(match.resolved_at,match.first_matched_at)) >= rule.activated_at
+      having outage.created_at >= rule.activated_at
     ), candidates as (
       select * from new_candidates union all select * from changed_candidates
       union all select * from reminder_candidates union all select * from missing_job_candidates
@@ -611,7 +611,7 @@ select 'SAFETY','migration did not activate live sending',not exists(
 )
 union all
 select 'SAFETY','old events are excluded by activation timestamp',
-  pg_get_functiondef('public.plan_power_outage_client_email_candidates(integer)'::regprocedure) like '%>= rule.activated_at%'
+  pg_get_functiondef('public.plan_power_outage_client_email_candidates(integer)'::regprocedure) like '%outage.created_at >= rule.activated_at%'
 union all
 select 'GRANT','authenticated cannot activate production',
   not has_function_privilege('authenticated','public.set_power_outage_client_email_live(uuid,boolean,text[])','execute')

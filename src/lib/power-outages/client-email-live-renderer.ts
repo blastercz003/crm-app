@@ -6,6 +6,7 @@ import type { MarketClientEmailEventKind } from './types'
 type DeliveryRow = {
   id: string
   client_id: string
+  rule_id: string | null
   outage_id: string | null
   outage_version_id: string | null
   event_kind: MarketClientEmailEventKind
@@ -37,6 +38,12 @@ type OutageRow = {
   announcement_url: string | null
   source_status: string
   archived_at: string | null
+  created_at: string
+}
+
+type RuleRow = {
+  id: string
+  activated_at: string | null
 }
 
 type MatchRow = {
@@ -191,7 +198,7 @@ async function prepareDelivery(deliveryId: string, expectedStatus: 'planned' | '
 
   let deliveryQuery = client
     .from('power_outage_client_email_deliveries')
-    .select('id,client_id,outage_id,outage_version_id,event_kind,metadata,created_at,next_attempt_at,delivery_status')
+    .select('id,client_id,rule_id,outage_id,outage_version_id,event_kind,metadata,created_at,next_attempt_at,delivery_status')
     .eq('id', deliveryId)
     .eq('mode_at_plan', 'live')
     .eq('delivery_status', expectedStatus)
@@ -201,16 +208,20 @@ async function prepareDelivery(deliveryId: string, expectedStatus: 'planned' | '
   if (!deliveryData?.outage_id) return null
   const delivery = deliveryData
 
-  const [settingsResult, outageResult, recipientsResult, matchesResult] = await Promise.all([
+  const [settingsResult, outageResult, recipientsResult, matchesResult, ruleResult] = await Promise.all([
     client.from('power_outage_client_email_settings').select('client_id,client_name_snapshot,chain_name,mode,from_name,from_email,reply_to_email').eq('client_id', delivery.client_id).maybeSingle<SettingsRow>(),
-    client.from('power_outages').select('id,source,external_id,title,starts_at,ends_at,municipality,source_url,announcement_url,source_status,archived_at').eq('id', delivery.outage_id).maybeSingle<OutageRow>(),
+    client.from('power_outages').select('id,source,external_id,title,starts_at,ends_at,municipality,source_url,announcement_url,source_status,archived_at,created_at').eq('id', delivery.outage_id).maybeSingle<OutageRow>(),
     client.from('power_outage_client_email_recipients').select('recipient_kind,name,email').eq('client_id', delivery.client_id).eq('is_active', true),
     client.from('power_outage_store_matches').select('id,store_id,store_chain_name,store_number,store_city,store_address').eq('outage_id', delivery.outage_id).eq('match_status', 'confirmed'),
+    delivery.rule_id
+      ? client.from('power_outage_client_email_rules').select('id,activated_at').eq('id', delivery.rule_id).maybeSingle<RuleRow>()
+      : Promise.resolve({ data: null, error: null }),
   ])
-  const firstError = [settingsResult.error, outageResult.error, recipientsResult.error, matchesResult.error].find(Boolean)
+  const firstError = [settingsResult.error, outageResult.error, recipientsResult.error, matchesResult.error, ruleResult.error].find(Boolean)
   if (firstError) throw new Error(`Podklady ostrého e-mailu se nepodařilo načíst: ${firstError.message}`)
   const settings = settingsResult.data
   const outage = outageResult.data
+  const rule = ruleResult.data
   if (!settings || settings.mode !== 'live' || !outage) return null
   if (!settings.from_name || !settings.from_email) throw new Error(`Klient ${settings.client_name_snapshot} nemá platného odesílatele.`)
 
@@ -225,16 +236,20 @@ async function prepareDelivery(deliveryId: string, expectedStatus: 'planned' | '
     matches = matches.filter((match) => !linkedMatchIds.has(match.id))
   }
 
-  const eventStillEligible = delivery.event_kind === 'cancelled'
+  const activationTime = rule?.activated_at ? new Date(rule.activated_at).getTime() : Number.NaN
+  const outageCreatedTime = new Date(outage.created_at).getTime()
+  const belongsToPostActivationCohort = Number.isFinite(activationTime)
+    && Number.isFinite(outageCreatedTime)
+    && outageCreatedTime >= activationTime
+  const eventStillEligible = belongsToPostActivationCohort && (delivery.event_kind === 'cancelled'
     ? true
     : delivery.event_kind === 'schedule_changed'
       ? !outage.archived_at && outage.source_status !== 'cancelled'
-      : isFuturePublishableOutage(outage)
+      : isFuturePublishableOutage(outage))
   const recipients = (recipientsResult.data ?? []) as RecipientRow[]
   const hasTo = recipients.some((recipient) => recipient.recipient_kind === 'to')
   if (!eventStillEligible || matches.length === 0 || !hasTo) {
-    if (expectedStatus === 'sending' && batchToken) {
-      await client.from('power_outage_client_email_deliveries').update({
+    let cancellationQuery = client.from('power_outage_client_email_deliveries').update({
         delivery_status: 'cancelled',
         processing_token: null,
         processing_expires_at: null,
@@ -242,8 +257,10 @@ async function prepareDelivery(deliveryId: string, expectedStatus: 'planned' | '
         last_error_code: 'CLIENT_EMAIL_NO_LONGER_ELIGIBLE',
         last_error_message: 'Před odesláním již nebyla splněna podmínka pravidla.',
         updated_at: new Date().toISOString(),
-      }).eq('id', delivery.id).eq('delivery_status', 'sending').eq('processing_token', batchToken)
-    }
+      }).eq('id', delivery.id).eq('delivery_status', expectedStatus)
+    if (batchToken) cancellationQuery = cancellationQuery.eq('processing_token', batchToken)
+    const { error: cancellationError } = await cancellationQuery
+    if (cancellationError) throw new Error(`Neplatnou ostrou zprávu se nepodařilo bezpečně zrušit: ${cancellationError.message}`)
     return null
   }
 

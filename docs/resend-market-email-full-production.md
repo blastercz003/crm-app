@@ -14,10 +14,11 @@ nelze je zapnout současně s jiným pravidlem.
 ## Bezpečnost aktivace
 
 Každá nově aktivovaná verze pravidla dostane vlastní `activated_at`. Do ostrého
-sledování vstoupí jen odstávky, které byly k prodejně poprvé potvrzeně spárovány
-od tohoto okamžiku. Dříve známá odstávka se proto zpětně neodešle ani pozdější
-změnou, zrušením nebo dosažením 24hodinového či 72hodinového kontrolního
-okamžiku. U nové odstávky se její další události sledují normálně.
+sledování vstoupí jen odstávky, které byly do produkční databáze poprvé uložené
+od tohoto okamžiku. Dříve známá odstávka se proto zpětně neodešle ani po novém
+spárování s prodejnou, změně, zrušení nebo dosažení 24hodinového či
+72hodinového kontrolního okamžiku. U nové odstávky se její další události
+sledují normálně.
 
 Aktivace klienta vyžaduje:
 
