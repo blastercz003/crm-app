@@ -15,6 +15,14 @@ type StateRow = {
   dispatch_enabled: boolean
   provider: 'resend'
   last_planned_at: string | null
+  last_dispatch_completed_at: string | null
+  worker_expires_at: string | null
+  last_plan_cron_at: string | null
+  last_plan_cron_status_code: number | null
+  last_plan_cron_error: string | null
+  last_dispatch_cron_at: string | null
+  last_dispatch_cron_status_code: number | null
+  last_dispatch_cron_error: string | null
   last_error_code: string | null
   last_error_message: string | null
 }
@@ -111,6 +119,96 @@ function metadataUrl(metadata: unknown, key: string) {
   }
 }
 
+type AutomationStatus = MarketClientEmailAdminWorkspace['automationHealth']['overallStatus']
+
+const AUTOMATION_STATUS_PRIORITY: Record<AutomationStatus, number> = {
+  inactive: 0,
+  healthy: 1,
+  warning: 2,
+  error: 3,
+}
+
+function isRecent(value: string | null, maximumAgeMinutes: number) {
+  if (!value) return false
+  const time = Date.parse(value)
+  return Number.isFinite(time) && Date.now() - time <= maximumAgeMinutes * 60_000
+}
+
+function buildAutomationHealth(state: StateRow): MarketClientEmailAdminWorkspace['automationHealth'] {
+  if (state.runtime_mode === 'disabled') {
+    const inactive = (label: string) => ({
+      status: 'inactive' as const,
+      label,
+      lastActivityAt: null,
+      message: 'Automatizace je vypnutá.',
+    })
+    return {
+      overallStatus: 'inactive',
+      planner: inactive('Plánovač'),
+      worker: inactive('Odesílací worker'),
+      cron: inactive('Plánované úlohy'),
+    }
+  }
+
+  const plannerError = state.last_error_code === 'CLIENT_EMAIL_CANDIDATE_PLAN_FAILED'
+    ? state.last_error_message ?? state.last_error_code
+    : null
+  const plannerRecent = isRecent(state.last_planned_at, 12)
+  const planner = {
+    status: plannerError ? 'error' as const : plannerRecent ? 'healthy' as const : 'error' as const,
+    label: 'Plánovač',
+    lastActivityAt: state.last_planned_at,
+    message: plannerError ?? (plannerRecent
+      ? 'Pravidelně vyhodnocuje nové e-mailové události.'
+      : 'Plánovač se neozval v očekávaném intervalu.'),
+  }
+
+  const workerLeaseActive = isRecent(state.worker_expires_at, 2)
+    && Date.parse(state.worker_expires_at ?? '') > Date.now()
+  const workerRecent = isRecent(state.last_dispatch_completed_at, 8)
+  const worker = {
+    status: workerRecent || workerLeaseActive ? 'healthy' as const : 'error' as const,
+    label: 'Odesílací worker',
+    lastActivityAt: state.last_dispatch_completed_at,
+    message: workerRecent
+      ? 'Pravidelně kontroluje a odesílá bezpečnou frontu.'
+      : workerLeaseActive
+        ? 'Worker právě zpracovává e-mailovou frontu.'
+        : 'Worker se neozval v očekávaném intervalu.',
+  }
+
+  const planCronRecent = isRecent(state.last_plan_cron_at, 12)
+  const dispatchCronRecent = isRecent(state.last_dispatch_cron_at, 8)
+  const cronError = state.last_plan_cron_error
+    ?? state.last_dispatch_cron_error
+    ?? (state.last_plan_cron_status_code !== null && (state.last_plan_cron_status_code < 200 || state.last_plan_cron_status_code >= 300)
+      ? `Cron plánovače odpověděl HTTP ${state.last_plan_cron_status_code}.`
+      : null)
+    ?? (state.last_dispatch_cron_status_code !== null && (state.last_dispatch_cron_status_code < 200 || state.last_dispatch_cron_status_code >= 300)
+      ? `Cron workeru odpověděl HTTP ${state.last_dispatch_cron_status_code}.`
+      : null)
+  const cronRecent = planCronRecent && dispatchCronRecent
+  const cronLastActivityAt = [state.last_plan_cron_at, state.last_dispatch_cron_at]
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? null
+  const cron = {
+    status: cronError ? 'error' as const : cronRecent ? 'healthy' as const : 'error' as const,
+    label: 'Plánované úlohy',
+    lastActivityAt: cronLastActivityAt,
+    message: cronError ?? (cronRecent
+      ? 'Oba databázové crony spouštějí své endpointy podle plánu.'
+      : 'Alespoň jeden e-mailový cron se neozval v očekávaném intervalu.'),
+  }
+
+  const overallStatus = [planner.status, worker.status, cron.status]
+    .reduce<AutomationStatus>((worst, status) => (
+      AUTOMATION_STATUS_PRIORITY[status] > AUTOMATION_STATUS_PRIORITY[worst] ? status : worst
+    ), 'healthy')
+
+  return { overallStatus, planner, worker, cron }
+}
+
 export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClientEmailAdminWorkspace> {
   const { supabase, profile } = await getPowerOutageRuntimeContext()
   if (profile.role !== 'admin') {
@@ -120,7 +218,7 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
   const [stateResult, settingsResult, recipientsResult, rulesResult, deliveriesResult, deliveredTestsResult] = await Promise.all([
     supabase
       .from('power_outage_client_email_state')
-      .select('runtime_mode,dispatch_enabled,provider,last_planned_at,last_error_code,last_error_message')
+      .select('runtime_mode,dispatch_enabled,provider,last_planned_at,last_dispatch_completed_at,worker_expires_at,last_plan_cron_at,last_plan_cron_status_code,last_plan_cron_error,last_dispatch_cron_at,last_dispatch_cron_status_code,last_dispatch_cron_error,last_error_code,last_error_message')
       .eq('singleton', true)
       .single<StateRow>(),
     supabase
@@ -177,6 +275,7 @@ export async function getMarketClientEmailAdminWorkspace(): Promise<MarketClient
     lastPlannedAt: state.last_planned_at,
     lastErrorCode: state.last_error_code,
     lastErrorMessage: state.last_error_message,
+    automationHealth: buildAutomationHealth(state),
     resend: getResendConfigurationStatus(),
     clients: ((settingsResult.data ?? []) as SettingsRow[]).map((settings) => ({
       clientId: settings.client_id,

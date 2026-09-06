@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { reportRouteError } from '@/lib/errors/reportRouteError'
+import { planMarketClientEmailCandidates } from '@/lib/power-outages/client-email-candidates'
 import { resolvePowerOutageStoreMatch } from '@/lib/power-outages/match-resolution'
 import { isPowerOutageRequestAuthorized } from '@/lib/power-outages/request-access'
 import { createClient } from '@/lib/supabase/server'
@@ -39,14 +40,24 @@ export async function POST(
       note: payload.note,
     })
     let notificationPlanning = null
+    let clientEmailPlanning = null
     if (result.changed && payload.status === 'confirmed') {
-      try {
-        notificationPlanning = await planPowerOutageNotifications()
-      } catch (planningError) {
-        console.error('Potvrzená shoda byla uložena, ale plán upozornění se nepodařilo obnovit.', planningError)
+      const [notificationResult, clientEmailResult] = await Promise.allSettled([
+        planPowerOutageNotifications(),
+        planMarketClientEmailCandidates(200),
+      ])
+      if (notificationResult.status === 'fulfilled') {
+        notificationPlanning = notificationResult.value
+      } else {
+        console.error('Potvrzená shoda byla uložena, ale plán upozornění se nepodařilo obnovit.', notificationResult.reason)
+      }
+      if (clientEmailResult.status === 'fulfilled') {
+        clientEmailPlanning = clientEmailResult.value
+      } else {
+        console.error('Potvrzená shoda byla uložena, ale plán klientských e-mailů se nepodařilo obnovit.', clientEmailResult.reason)
       }
     }
-    return NextResponse.json({ ok: true, ...result, notificationPlanning })
+    return NextResponse.json({ ok: true, ...result, notificationPlanning, clientEmailPlanning })
   } catch (error) {
     await reportRouteError({
       error,

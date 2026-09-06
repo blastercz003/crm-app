@@ -149,7 +149,9 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
         : comparison.phase === 'saving_matches'
           ? 'Ukládání shod'
           : comparison.status === 'current'
-            ? 'Porovnání dokončeno'
+            ? source.source === 'cez'
+              ? 'Párování s prodejnami dokončeno'
+              : 'Porovnání dokončeno'
             : comparison.status === 'queued'
               ? 'Čeká na porovnání'
               : 'Porovnávání adres'
@@ -202,11 +204,19 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
 
       <button type="button" onClick={onOpen} className="mt-4 min-h-0 flex-1 text-left lg:mt-3">
         <div className="grid grid-cols-2 gap-2 lg:gap-1.5">
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední kontrola</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastAttemptAt)}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední úspěch</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastSuccessAt)}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{recordsLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
-          <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{changesLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
+          {source.source === 'cez' && source.cezCollectors ? <>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">Nalezeno v1</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.cezCollectors.v1OutageCount}</strong></div>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">Nalezeno v2</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.cezCollectors.v2OutageCount}</strong></div>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">Obě verze</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.cezCollectors.sharedOutageCount}</strong></div>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">Unikátní celkem</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.cezCollectors.uniqueOutageCount}</strong></div>
+          </> : <>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední kontrola</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastAttemptAt)}</strong></div>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Poslední úspěch</span><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{formatDateTime(source.lastSuccessAt)}</strong></div>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{recordsLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.processedRecordCount}</strong></div>
+            <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">{changesLabel}</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.changeCount ?? '—'}</strong></div>
+          </>}
         </div>
+        {source.source === 'cez' && source.cezCollectors ? <CezPanelCollectorProgress overview={source.cezCollectors} /> : null}
         <div className="mt-2.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 lg:mt-2">
           <div className="flex items-center justify-between gap-3"><small className="truncate text-[7px] font-bold uppercase tracking-[0.055em] text-[var(--text-secondary)]">{comparisonLabel}</small><strong className="shrink-0 text-[9px] tabular-nums text-[var(--accent)]">{(Math.round(comparisonPercent * 10) / 10).toLocaleString('cs-CZ')} %</strong></div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><span className={`block h-full rounded-full transition-[width] duration-500 ${comparisonBar}`} style={{ width: `${comparisonPercent}%` }} /></div>
@@ -453,11 +463,45 @@ const CEZ_COLLECTOR_STATUS = {
   error: { label: 'CHYBA', badge: 'border-red-500/35 bg-red-500/10 text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500' },
 } as const
 
+function CezPanelCollectorProgress({ overview }: { overview: NonNullable<PowerOutageSourceSummary['cezCollectors']> }) {
+  return (
+    <div className="mt-2 space-y-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2">
+      {overview.versions.map((version) => {
+        const percent = version.targetCount > 0
+          ? Math.min(100, Math.max(0, (version.processedCount / version.targetCount) * 100))
+          : null
+        const presentation = CEZ_COLLECTOR_STATUS[version.healthStatus]
+        const barClass = version.healthStatus === 'error'
+          ? 'bg-red-500'
+          : version.healthStatus === 'delayed' || version.healthStatus === 'waiting'
+            ? 'bg-amber-500'
+            : version.healthStatus === 'current'
+              ? 'bg-emerald-500'
+              : 'bg-sky-500'
+        return (
+          <div key={version.version} className={version.isEnabled ? '' : 'opacity-55'}>
+            <div className="flex items-center justify-between gap-2 text-[7px] font-semibold">
+              <span className="flex min-w-0 items-center gap-1.5 text-[var(--text-secondary)]"><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} /><strong className="text-[var(--text-primary)]">{version.displayName}</strong><span className="truncate">{version.processedCount} / {version.targetCount}</span></span>
+              <strong className="shrink-0 tabular-nums text-[var(--accent)]">{percent == null ? '—' : `${(Math.round(percent * 10) / 10).toLocaleString('cs-CZ')} %`}</strong>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className={`block h-full rounded-full transition-[width] duration-500 ${barClass}`} style={{ width: `${percent ?? 0}%` }} /></div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function cezModeLabel(mode: NonNullable<PowerOutageSourceDiagnostic['cezCollectors']>['operatingMode']) {
   return mode === 'dual' ? 'v1 + v2' : mode === 'v2_only' ? 'Pouze v2' : 'Pouze v1'
 }
 
-function CezCollectorOverview({ overview }: { overview: NonNullable<PowerOutageSourceDiagnostic['cezCollectors']> }) {
+function CezCollectorOverview({ overview, isAdmin, recoveringVersion, onRecover }: {
+  overview: NonNullable<PowerOutageSourceDiagnostic['cezCollectors']>
+  isAdmin: boolean
+  recoveringVersion: 'v1' | 'v2' | null
+  onRecover: (version: 'v1' | 'v2') => Promise<void>
+}) {
   return (
     <section className="mt-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -496,6 +540,7 @@ function CezCollectorOverview({ overview }: { overview: NonNullable<PowerOutageS
                 <PowerOutageDetailRow label="Nález podle města" value={String(version.townOutageCount)} />
               </div>
               {version.cycleErrorMessage || version.lastErrorMessage ? <p className="mt-3 rounded-xl border border-red-400/30 bg-red-500/8 px-3 py-2 text-[8px] leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300">{version.cycleErrorCode ?? version.lastErrorCode}: {version.cycleErrorMessage ?? version.lastErrorMessage}</p> : null}
+              {isAdmin && (version.healthStatus === 'error' || version.healthStatus === 'delayed') ? <button type="button" onClick={() => void onRecover(version.version)} disabled={recoveringVersion !== null} className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/10 px-3 text-[8px] font-bold uppercase tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:bg-sky-500/15 disabled:cursor-wait disabled:opacity-55 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={12} className={recoveringVersion === version.version ? 'animate-spin' : ''} /> Obnovit {version.displayName}</button> : null}
             </article>
           )
         })}
@@ -518,6 +563,7 @@ function CezCollectorOverview({ overview }: { overview: NonNullable<PowerOutageS
 function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, onReload, onClose }: { source: PowerOutageSource; diagnostic: PowerOutageSourceDiagnostic | null; loading: boolean; error: string | null; isAdmin: boolean; onReload: () => Promise<void>; onClose: () => void }) {
   const router = useRouter()
   const [recovering, setRecovering] = useState(false)
+  const [recoveringVersion, setRecoveringVersion] = useState<'v1' | 'v2' | null>(null)
   const [recoveryError, setRecoveryError] = useState<string | null>(null)
   const schedule = source === 'cez'
     ? diagnostic?.cezCollectors?.operatingMode === 'dual'
@@ -529,18 +575,21 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, on
       ? 'Kontrola celé distribuční oblasti každých 6 hodin s časovým posunem vůči ČEZ.'
       : 'Stažení oficiálního exportu celé distribuční oblasti každé 3 hodiny; jeden malý požadavek za běh.'
   const status = diagnostic ? STATUS_PRESENTATION[diagnostic.status] : STATUS_PRESENTATION.pending
-  const recover = async () => {
-    if (!diagnostic?.attention || recovering) return
+  const recover = async (requestedAction = diagnostic?.attention?.recoveryAction) => {
+    if (!requestedAction || recovering) return
     setRecovering(true)
+    setRecoveringVersion(requestedAction === 'cez_v1' ? 'v1' : requestedAction === 'cez_v2' ? 'v2' : null)
     setRecoveryError(null)
     try {
-      const response = diagnostic.attention.recoveryAction === 'matching'
+      const response = requestedAction === 'matching'
         ? await fetch('/api/power-outages/recover', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ target: 'matching' }),
           })
-        : await fetch(`/api/power-outages/sync?source=${source}`, { method: 'POST' })
+        : requestedAction === 'cez_v2'
+          ? await fetch('/api/power-outages/cez/v2', { method: 'POST' })
+          : await fetch(`/api/power-outages/sync?source=${source}`, { method: 'POST' })
       const payload = await response.json().catch(() => null) as { error?: string } | null
       if (!response.ok) throw new Error(payload?.error || `Oprava skončila HTTP ${response.status}.`)
       await onReload()
@@ -549,6 +598,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, on
       setRecoveryError(recoverError instanceof Error ? recoverError.message : 'Opravu se nepodařilo spustit.')
     } finally {
       setRecovering(false)
+      setRecoveringVersion(null)
     }
   }
 
@@ -560,8 +610,8 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, on
             <span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Aktuální stav zdroje</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{status.label}</strong><span className="mt-1 block max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{sourceStatusDescription(diagnostic)}</span></span>
             <span className={`relative inline-flex h-8 w-[92px] items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] ${status.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} /><span className="translate-y-px">{status.label}</span></span>
           </div>
-          {diagnostic.cezCollectors ? <CezCollectorOverview overview={diagnostic.cezCollectors} /> : null}
-          <SourceProgress diagnostic={diagnostic} />
+          {diagnostic.cezCollectors ? <CezCollectorOverview overview={diagnostic.cezCollectors} isAdmin={isAdmin} recoveringVersion={recoveringVersion} onRecover={(version) => recover(version === 'v1' ? 'cez_v1' : 'cez_v2')} /> : null}
+          {diagnostic.cezCollectors ? null : <SourceProgress diagnostic={diagnostic} />}
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <PowerOutageDetailRow label="Poslední pokus" value={formatDateTime(diagnostic.sourceState.lastAttemptAt)} />
             <PowerOutageDetailRow label="Poslední úspěch" value={formatDateTime(diagnostic.sourceState.lastSuccessAt)} />
@@ -582,7 +632,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, on
             </div>
           </section>
 
-          {diagnostic.attention ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-red-600 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><div className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5"><strong className="text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{diagnostic.attention.code}</strong><p className="mt-1 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.attention.message}</p></div>{isAdmin ? <button type="button" onClick={() => void recover()} disabled={recovering} className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/10 px-4 text-[9px] font-bold uppercase tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:bg-sky-500/15 disabled:cursor-wait disabled:opacity-55 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={13} className={recovering ? 'animate-spin' : ''} />{diagnostic.attention.recoveryAction === 'matching' ? 'Opakovat porovnání' : source === 'cez' ? 'Pokračovat v kontrole ČEZ' : 'Opakovat načtení zdroje'}</button> : <p className="mt-2 text-[9px] font-semibold text-[var(--text-secondary)]">Opravu může spustit administrátor.</p>}{recoveryError ? <p className="mt-2 text-[9px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{recoveryError}</p> : null}</section> : null}
+          {diagnostic.attention ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-red-600 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><div className="mt-2 rounded-2xl border border-red-400/30 bg-red-500/8 p-3.5"><strong className="text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{diagnostic.attention.code}</strong><p className="mt-1 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.attention.message}</p></div>{isAdmin ? <button type="button" onClick={() => void recover()} disabled={recovering} className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-500/35 bg-sky-500/10 px-4 text-[9px] font-bold uppercase tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:bg-sky-500/15 disabled:cursor-wait disabled:opacity-55 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={13} className={recovering ? 'animate-spin' : ''} />{diagnostic.attention.recoveryAction === 'matching' ? 'Opakovat porovnání' : diagnostic.attention.recoveryAction === 'cez_v2' ? 'Obnovit ČEZ v2' : diagnostic.attention.recoveryAction === 'cez_v1' ? 'Obnovit ČEZ v1' : source === 'cez' ? 'Pokračovat v kontrole ČEZ' : 'Opakovat načtení zdroje'}</button> : <p className="mt-2 text-[9px] font-semibold text-[var(--text-secondary)]">Opravu může spustit administrátor.</p>}{recoveryError ? <p className="mt-2 text-[9px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{recoveryError}</p> : null}</section> : null}
 
           <section className="mt-5">
             <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><History aria-hidden size={14} /> Poslední synchronizační běhy{source === 'cez' ? ' v1' : ''}</h3>

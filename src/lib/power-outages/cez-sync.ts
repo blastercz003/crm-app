@@ -491,6 +491,7 @@ export async function importCezOutagesForStores(input: {
           cezScan: scanComplete ? null : {
             version: CEZ_SCAN_STATE_VERSION,
             storeRevision: catalogState.revision,
+            totalStoreCount: sortedStores.length,
             nextStoreIndex: nextIndex,
             externalIds: scanExternalIds,
             batchHashes: scanBatchHashes,

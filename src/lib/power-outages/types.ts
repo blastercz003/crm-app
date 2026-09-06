@@ -84,6 +84,12 @@ export type MarketClientEmailAdminWorkspace = {
   lastPlannedAt: string | null
   lastErrorCode: string | null
   lastErrorMessage: string | null
+  automationHealth: {
+    overallStatus: 'healthy' | 'warning' | 'error' | 'inactive'
+    planner: MarketClientEmailAutomationHealthItem
+    worker: MarketClientEmailAutomationHealthItem
+    cron: MarketClientEmailAutomationHealthItem
+  }
   resend: {
     apiKeyConfigured: boolean
     sendingDomain: string | null
@@ -98,6 +104,13 @@ export type MarketClientEmailAdminWorkspace = {
     issues: string[]
   }
   clients: MarketClientEmailConfiguration[]
+}
+
+export type MarketClientEmailAutomationHealthItem = {
+  status: 'healthy' | 'warning' | 'error' | 'inactive'
+  label: string
+  lastActivityAt: string | null
+  message: string
 }
 
 export type PowerOutageListItem = {
@@ -232,11 +245,55 @@ export type PowerOutageSourceSummary = {
     percent: number
     lastProgressAt: string | null
   }
+  cezCollectors: PowerOutageCezCollectorOverview | null
   attention: {
     code: string
     message: string
-    recoveryAction: 'source_sync' | 'matching'
+    recoveryAction: 'source_sync' | 'matching' | 'cez_v1' | 'cez_v2'
   } | null
+}
+
+export type PowerOutageCezCollectorVersion = {
+  version: 'v1' | 'v2'
+  displayName: string
+  isEnabled: boolean
+  isPrimary: boolean
+  cadenceSeconds: number
+  healthStatus: 'inactive' | 'waiting' | 'processing' | 'current' | 'delayed' | 'error'
+  lastAttemptAt: string | null
+  lastSuccessAt: string | null
+  lastCompleteAt: string | null
+  consecutiveFailureCount: number
+  lastErrorCode: string | null
+  lastErrorMessage: string | null
+  latestCycleStatus: 'pending' | 'running' | 'succeeded' | 'partial' | 'failed' | 'cancelled' | null
+  targetCount: number
+  processedCount: number
+  successCount: number
+  errorCount: number
+  observedOutageCount: number
+  exactOutageCount: number
+  townOutageCount: number
+  cycleStartedAt: string | null
+  cycleFinishedAt: string | null
+  cycleErrorCode: string | null
+  cycleErrorMessage: string | null
+}
+
+export type PowerOutageCezCollectorOverview = {
+  operatingMode: 'v1_only' | 'dual' | 'v2_only'
+  primaryVersion: 'v1' | 'v2'
+  secondaryVersion: 'v1' | 'v2' | null
+  activationReady: boolean
+  switchedAt: string
+  calculatedAt: string
+  v1OutageCount: number
+  v2OutageCount: number
+  sharedOutageCount: number
+  v1OnlyOutageCount: number
+  v2OnlyOutageCount: number
+  uniqueOutageCount: number
+  versions: PowerOutageCezCollectorVersion[]
 }
 
 export type PowerOutageSourceDiagnostic = {
@@ -282,46 +339,7 @@ export type PowerOutageSourceDiagnostic = {
     startedAt: string | null
     lastProgressAt: string | null
   } | null
-  cezCollectors: {
-    operatingMode: 'v1_only' | 'dual' | 'v2_only'
-    primaryVersion: 'v1' | 'v2'
-    secondaryVersion: 'v1' | 'v2' | null
-    activationReady: boolean
-    switchedAt: string
-    calculatedAt: string
-    v1OutageCount: number
-    v2OutageCount: number
-    sharedOutageCount: number
-    v1OnlyOutageCount: number
-    v2OnlyOutageCount: number
-    uniqueOutageCount: number
-    versions: Array<{
-      version: 'v1' | 'v2'
-      displayName: string
-      isEnabled: boolean
-      isPrimary: boolean
-      cadenceSeconds: number
-      healthStatus: 'inactive' | 'waiting' | 'processing' | 'current' | 'delayed' | 'error'
-      lastAttemptAt: string | null
-      lastSuccessAt: string | null
-      lastCompleteAt: string | null
-      consecutiveFailureCount: number
-      lastErrorCode: string | null
-      lastErrorMessage: string | null
-      latestCycleStatus: 'pending' | 'running' | 'succeeded' | 'partial' | 'failed' | 'cancelled' | null
-      targetCount: number
-      processedCount: number
-      successCount: number
-      errorCount: number
-      observedOutageCount: number
-      exactOutageCount: number
-      townOutageCount: number
-      cycleStartedAt: string | null
-      cycleFinishedAt: string | null
-      cycleErrorCode: string | null
-      cycleErrorMessage: string | null
-    }>
-  } | null
+  cezCollectors: PowerOutageCezCollectorOverview | null
   runs: Array<{
     id: string
     triggerKind: 'scheduled' | 'manual' | 'store_change' | 'retry'

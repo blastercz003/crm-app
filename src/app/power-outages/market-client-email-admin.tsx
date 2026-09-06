@@ -142,6 +142,48 @@ function ResendSetupStatus({ workspace }: { workspace: MarketClientEmailAdminWor
   )
 }
 
+const AUTOMATION_STATUS = {
+  healthy: { label: 'FUNGUJE', className: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', icon: CheckCircle2 },
+  warning: { label: 'POZOR', className: 'border-amber-400/35 bg-amber-500/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300', icon: AlertTriangle },
+  error: { label: 'CHYBA', className: 'border-red-400/30 bg-red-500/10 text-red-700 [html[data-theme=dark]_&]:text-red-300', icon: XCircle },
+  inactive: { label: 'VYPNUTO', className: 'border-slate-400/30 bg-slate-400/10 text-[var(--text-secondary)]', icon: LockKeyhole },
+} as const
+
+function AutomationHealthStatus({ workspace }: { workspace: MarketClientEmailAdminWorkspace }) {
+  const overall = AUTOMATION_STATUS[workspace.automationHealth.overallStatus]
+  const OverallIcon = overall.icon
+  const items = [workspace.automationHealth.planner, workspace.automationHealth.worker, workspace.automationHealth.cron]
+
+  return (
+    <section className={`mb-4 rounded-2xl border p-4 ${workspace.automationHealth.overallStatus === 'error' ? 'border-red-400/30 bg-red-500/8' : 'border-emerald-400/25 bg-emerald-500/8'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <span>
+          <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Provoz e-mailových automatizací</span>
+          <strong className="mt-1 block text-sm text-[var(--text-primary)]">Plánovač, worker a cron</strong>
+        </span>
+        <span className={`inline-flex h-7 items-center gap-1.5 rounded-xl border px-3 text-[8px] font-bold uppercase ${overall.className}`}><OverallIcon aria-hidden size={13} />{overall.label}</span>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {items.map((item) => {
+          const presentation = AUTOMATION_STATUS[item.status]
+          const Icon = presentation.icon
+          return (
+            <article key={item.label} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <strong className="text-[9px] text-[var(--text-primary)]">{item.label}</strong>
+                <span className={`inline-flex h-6 items-center gap-1 rounded-lg border px-2 text-[7px] font-bold uppercase ${presentation.className}`}><Icon aria-hidden size={11} />{presentation.label}</span>
+              </div>
+              <small className="mt-2 block text-[7px] font-semibold text-[var(--text-secondary)]">Poslední aktivita: {formatDateTime(item.lastActivityAt)}</small>
+              <p className="mt-1 text-[8px] leading-4 text-[var(--text-secondary)]">{item.message}</p>
+            </article>
+          )
+        })}
+      </div>
+      <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Stav vychází ze skutečných dokončených běhů a heartbeatů cronů, nikoliv pouze z existence naplánovaných úloh.</p>
+    </section>
+  )
+}
+
 function ClientEditor({
   client,
   workspace,
@@ -416,7 +458,7 @@ function AdminPopup({ workspace, loading, error, selectedClientId, onSelectClien
   return (
     <PowerOutagePopupShell titleId="market-client-email-admin-title" eyebrow="MARKETY · POUZE PRO ADMINISTRÁTORY" title="E-mailová upozornění" icon={<MailCheck aria-hidden size={21} />} onClose={onClose}>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
-        {loading && !workspace ? <LoadingBlock label="Načítám administraci e-mailů…" /> : error && !workspace ? <div className="flex min-h-[260px] flex-col items-center justify-center text-center"><AlertTriangle aria-hidden size={28} className="text-red-500" /><strong className="mt-3 text-sm text-[var(--text-primary)]">Administraci se nepodařilo načíst</strong><p className="mt-2 max-w-md text-[9px] leading-4 text-[var(--text-secondary)]">{error}</p><button type="button" onClick={onReload} className="mt-4 inline-flex h-9 items-center gap-2 rounded-xl border border-sky-400/35 bg-sky-500/10 px-4 text-[9px] font-bold uppercase text-sky-700 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={13} /> Zkusit znovu</button></div> : workspace && client ? <><ResendSetupStatus workspace={workspace} /><div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">{workspace.clients.map((item) => <button key={item.clientId} type="button" onClick={() => onSelectClient(item.clientId)} className={`rounded-2xl border p-3 text-left transition hover:-translate-y-px ${item.clientId === client.clientId ? 'border-sky-400/45 bg-sky-500/10' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><strong className="block truncate text-[11px] text-[var(--text-primary)]">{item.chainName}</strong><span className="mt-2 inline-flex"><ModeBadge mode={item.mode} /></span><small className="mt-2 block text-[7px] text-[var(--text-secondary)]">{item.recipients.filter((recipient) => recipient.isActive).length} aktivních adres</small></button>)}</div><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><span><span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Nastavení klienta</span><h3 className="mt-1 text-base font-semibold text-[var(--text-primary)]">{client.clientName}</h3></span><ModeBadge mode={client.mode} /></div><ClientEditor key={`${client.clientId}-${client.updatedAt}`} client={client} workspace={workspace} onWorkspaceChange={onWorkspaceChange} /></> : null}
+        {loading && !workspace ? <LoadingBlock label="Načítám administraci e-mailů…" /> : error && !workspace ? <div className="flex min-h-[260px] flex-col items-center justify-center text-center"><AlertTriangle aria-hidden size={28} className="text-red-500" /><strong className="mt-3 text-sm text-[var(--text-primary)]">Administraci se nepodařilo načíst</strong><p className="mt-2 max-w-md text-[9px] leading-4 text-[var(--text-secondary)]">{error}</p><button type="button" onClick={onReload} className="mt-4 inline-flex h-9 items-center gap-2 rounded-xl border border-sky-400/35 bg-sky-500/10 px-4 text-[9px] font-bold uppercase text-sky-700 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={13} /> Zkusit znovu</button></div> : workspace && client ? <><ResendSetupStatus workspace={workspace} /><AutomationHealthStatus workspace={workspace} /><div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">{workspace.clients.map((item) => <button key={item.clientId} type="button" onClick={() => onSelectClient(item.clientId)} className={`rounded-2xl border p-3 text-left transition hover:-translate-y-px ${item.clientId === client.clientId ? 'border-sky-400/45 bg-sky-500/10' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><strong className="block truncate text-[11px] text-[var(--text-primary)]">{item.chainName}</strong><span className="mt-2 inline-flex"><ModeBadge mode={item.mode} /></span><small className="mt-2 block text-[7px] text-[var(--text-secondary)]">{item.recipients.filter((recipient) => recipient.isActive).length} aktivních adres</small></button>)}</div><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><span><span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Nastavení klienta</span><h3 className="mt-1 text-base font-semibold text-[var(--text-primary)]">{client.clientName}</h3></span><ModeBadge mode={client.mode} /></div><ClientEditor key={`${client.clientId}-${client.updatedAt}`} client={client} workspace={workspace} onWorkspaceChange={onWorkspaceChange} /></> : null}
       </div>
     </PowerOutagePopupShell>
   )
@@ -442,6 +484,11 @@ export function MarketClientEmailAdminPanel() {
     setLoading(false)
   }
 
+  const openPopup = () => {
+    setOpen(true)
+    void load()
+  }
+
   useEffect(() => {
     let cancelled = false
     void getMarketClientEmailAdminWorkspaceAction().then((result) => {
@@ -464,11 +511,11 @@ export function MarketClientEmailAdminPanel() {
   return (
     <>
       <section className="activities-page__panel flex h-[360px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto">
-        <button type="button" onClick={() => setOpen(true)} className="flex items-start justify-between gap-3 text-left">
+        <button type="button" onClick={openPopup} className="flex items-start justify-between gap-3 text-left">
           <span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 [html[data-theme=dark]_&]:text-violet-300"><MailCheck aria-hidden size={18} /></span><span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Klientské notifikace</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">E-mailová upozornění</h2></span></span>
           <ChevronRight aria-hidden size={17} className="mt-3 shrink-0 text-[var(--text-secondary)]" />
         </button>
-        {loading && !workspace ? <LoadingBlock label="Načítám nastavení…" /> : error && !workspace ? <button type="button" onClick={() => { setOpen(true); void load() }} className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/8 p-4 text-center"><AlertTriangle aria-hidden size={20} className="text-red-500" /><strong className="mt-2 text-[10px] text-[var(--text-primary)]">Nastavení se nepodařilo načíst</strong><span className="mt-1 text-[8px] text-[var(--text-secondary)]">Otevřít detail a opakovat</span></button> : workspace ? <button type="button" onClick={() => setOpen(true)} className="mt-4 min-h-0 flex-1 text-left"><div className="grid grid-cols-2 gap-2">{workspace.clients.map((client) => <div key={client.clientId} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2.5"><div className="flex items-center justify-between gap-2"><strong className="truncate text-[10px] text-[var(--text-primary)]">{client.chainName}</strong><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${MODE_PRESENTATION[client.mode].dot}`} /></div><small className="mt-1 block text-[7px] font-bold uppercase text-[var(--text-secondary)]">{MODE_PRESENTATION[client.mode].label}</small></div>)}</div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nastaveno</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{activeCount}/4</strong></span><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Příjemci</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{recipientCount}</strong></span><span className={`rounded-xl border p-2 ${errorCount > 0 ? 'border-red-400/30 bg-red-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Chyby</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{errorCount}</strong></span></div></button> : null}
+        {loading && !workspace ? <LoadingBlock label="Načítám nastavení…" /> : error && !workspace ? <button type="button" onClick={openPopup} className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/8 p-4 text-center"><AlertTriangle aria-hidden size={20} className="text-red-500" /><strong className="mt-2 text-[10px] text-[var(--text-primary)]">Nastavení se nepodařilo načíst</strong><span className="mt-1 text-[8px] text-[var(--text-secondary)]">Otevřít detail a opakovat</span></button> : workspace ? <button type="button" onClick={openPopup} className="mt-4 min-h-0 flex-1 text-left"><div className="grid grid-cols-2 gap-2">{workspace.clients.map((client) => <div key={client.clientId} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2.5"><div className="flex items-center justify-between gap-2"><strong className="truncate text-[10px] text-[var(--text-primary)]">{client.chainName}</strong><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${MODE_PRESENTATION[client.mode].dot}`} /></div><small className="mt-1 block text-[7px] font-bold uppercase text-[var(--text-secondary)]">{MODE_PRESENTATION[client.mode].label}</small></div>)}</div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nastaveno</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{activeCount}/4</strong></span><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Příjemci</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{recipientCount}</strong></span><span className={`rounded-xl border p-2 ${errorCount > 0 ? 'border-red-400/30 bg-red-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Chyby</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{errorCount}</strong></span></div></button> : null}
         <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · {workspace?.runtimeMode === 'test' && workspace.dispatchEnabled ? 'bezpečný TEST aktivní' : workspace?.runtimeMode === 'live' && workspace.dispatchEnabled ? 'ostrý provoz aktivní' : 'odesílání vypnuto'}</p>
       </section>
       {open && typeof document !== 'undefined' ? createPortal(<AdminPopup workspace={workspace} loading={loading} error={error} selectedClientId={selectedClientId} onSelectClient={setSelectedClientId} onReload={() => void load()} onWorkspaceChange={(next) => { setWorkspace(next); setError(null) }} onClose={() => setOpen(false)} />, document.body) : null}

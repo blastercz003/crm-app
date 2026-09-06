@@ -2,7 +2,12 @@ import 'server-only'
 
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getPowerOutageRuntimeContext } from './access'
-import type { PowerOutageSource, PowerOutageSourceDiagnostic } from './types'
+import type {
+  PowerOutageCezCollectorOverview,
+  PowerOutageSource,
+  PowerOutageSourceDiagnostic,
+  PowerOutageSourceStatus,
+} from './types'
 
 type SourceState = {
   source: 'cez' | 'egd' | 'pre'
@@ -64,6 +69,8 @@ type CezVersionOverviewRow = {
   last_attempt_at: string | null
   last_success_at: string | null
   last_complete_at: string | null
+  last_target_count: number
+  last_outage_count: number
   consecutive_failure_count: number
   last_error_code: string | null
   last_error_message: string | null
@@ -106,7 +113,7 @@ async function getCezCollectorOverview(
   const [versionsResult, unionResult] = await Promise.all([
     supabase
       .from('power_outage_cez_market_version_overview')
-      .select('collector_version,display_name,operating_mode,primary_version,secondary_version,activation_ready,switched_at,is_enabled,is_primary,cadence_seconds,last_attempt_at,last_success_at,last_complete_at,consecutive_failure_count,last_error_code,last_error_message,latest_cycle_status,target_count,processed_count,success_count,error_count,observed_outage_count,exact_outage_count,town_outage_count,cycle_started_at,cycle_finished_at,cycle_error_code,cycle_error_message,health_status')
+      .select('collector_version,display_name,operating_mode,primary_version,secondary_version,activation_ready,switched_at,is_enabled,is_primary,cadence_seconds,last_attempt_at,last_success_at,last_complete_at,last_target_count,last_outage_count,consecutive_failure_count,last_error_code,last_error_message,latest_cycle_status,target_count,processed_count,success_count,error_count,observed_outage_count,exact_outage_count,town_outage_count,cycle_started_at,cycle_finished_at,cycle_error_code,cycle_error_message,health_status')
       .order('collector_version'),
     supabase
       .from('power_outage_cez_market_union_overview')
@@ -119,6 +126,120 @@ async function getCezCollectorOverview(
     union: unionResult.data as CezUnionOverviewRow | null,
     error: versionsResult.error ?? unionResult.error,
   }
+}
+
+function buildCezCollectorOverview(
+  versions: CezVersionOverviewRow[] | null,
+  union: CezUnionOverviewRow | null,
+  sourceState: SourceState | null,
+): PowerOutageCezCollectorOverview | null {
+  if (!versions || !union) return null
+
+  const sourceMetadata = objectValue(sourceState?.metadata) ?? {}
+  const v1Scan = objectValue(sourceMetadata.cezScan)
+  const v1ScanTarget = finiteInteger(v1Scan?.totalStoreCount)
+  const v1ScanProcessed = finiteInteger(v1Scan?.nextStoreIndex)
+  const v1ScanStartedAt = typeof v1Scan?.startedAt === 'string' ? v1Scan.startedAt : null
+
+  return {
+    operatingMode: union.operating_mode,
+    primaryVersion: union.primary_version,
+    secondaryVersion: union.secondary_version,
+    activationReady: union.activation_ready,
+    switchedAt: union.switched_at,
+    calculatedAt: union.calculated_at,
+    v1OutageCount: Number(union.v1_outage_count),
+    v2OutageCount: Number(union.v2_outage_count),
+    sharedOutageCount: Number(union.shared_outage_count),
+    v1OnlyOutageCount: Number(union.v1_only_outage_count),
+    v2OnlyOutageCount: Number(union.v2_only_outage_count),
+    uniqueOutageCount: Number(union.unique_outage_count),
+    versions: versions.map((version) => {
+      const isV1 = version.collector_version === 'v1'
+      const v1Running = isV1 && v1Scan !== null
+      // The legacy v1 worker records batch failures in the shared source state.
+      // Fold that state into the v1 card so the per-version UI cannot look healthy
+      // while the main ČEZ badge correctly reports an error.
+      const v1SourceErrorCode = isV1 ? sourceState?.last_error_code ?? null : null
+      const v1SourceErrorMessage = isV1 ? sourceState?.last_error_message ?? null : null
+      const targetCount = isV1
+        ? v1Running
+          ? v1ScanTarget ?? Number(version.last_target_count ?? 0)
+          : Number(version.last_target_count ?? 0)
+        : Number(version.target_count ?? version.last_target_count ?? 0)
+      const processedCount = isV1
+        ? v1Running
+          ? Math.min(targetCount, v1ScanProcessed ?? 0)
+          : version.last_complete_at
+            ? targetCount
+            : 0
+        : Number(version.processed_count ?? 0)
+      const lastErrorCode = version.cycle_error_code ?? version.last_error_code ?? v1SourceErrorCode
+      const lastErrorMessage = version.cycle_error_message ?? version.last_error_message ?? v1SourceErrorMessage
+      const latestCycleStatus = isV1
+        ? lastErrorCode
+          ? 'failed' as const
+          : v1Running
+            ? 'running' as const
+            : version.last_complete_at
+              ? 'succeeded' as const
+              : 'pending' as const
+        : version.latest_cycle_status
+      const healthStatus = isV1 && lastErrorCode
+        ? 'error' as const
+        : v1Running
+          ? 'processing' as const
+          : version.health_status
+
+      return {
+        version: version.collector_version,
+        displayName: version.display_name,
+        isEnabled: version.is_enabled,
+        isPrimary: version.is_primary,
+        cadenceSeconds: Number(version.cadence_seconds),
+        healthStatus,
+        lastAttemptAt: isV1 ? sourceState?.last_attempt_at ?? version.last_attempt_at : version.last_attempt_at,
+        lastSuccessAt: version.last_success_at,
+        lastCompleteAt: version.last_complete_at,
+        consecutiveFailureCount: isV1
+          ? Math.max(Number(version.consecutive_failure_count), Number(sourceState?.consecutive_failure_count ?? 0))
+          : Number(version.consecutive_failure_count),
+        lastErrorCode,
+        lastErrorMessage,
+        latestCycleStatus,
+        targetCount,
+        processedCount,
+        successCount: isV1 ? (lastErrorCode ? 0 : processedCount) : Number(version.success_count ?? 0),
+        errorCount: isV1 ? (lastErrorCode ? 1 : 0) : Number(version.error_count ?? 0),
+        observedOutageCount: Number(version.observed_outage_count),
+        exactOutageCount: Number(version.exact_outage_count),
+        townOutageCount: Number(version.town_outage_count),
+        cycleStartedAt: isV1 ? v1ScanStartedAt : version.cycle_started_at,
+        cycleFinishedAt: isV1 ? version.last_complete_at : version.cycle_finished_at,
+        cycleErrorCode: isV1 ? lastErrorCode : version.cycle_error_code,
+        cycleErrorMessage: isV1 ? lastErrorMessage : version.cycle_error_message,
+      }
+    }),
+  }
+}
+
+const SOURCE_STATUS_PRIORITY: Record<PowerOutageSourceStatus, number> = {
+  live: 0,
+  processing: 1,
+  pending: 2,
+  warning: 3,
+  error: 4,
+}
+
+function collectorHealthToSourceStatus(
+  status: PowerOutageCezCollectorOverview['versions'][number]['healthStatus'],
+): PowerOutageSourceStatus | null {
+  if (status === 'inactive') return null
+  if (status === 'error') return 'error'
+  if (status === 'delayed') return 'warning'
+  if (status === 'waiting') return 'pending'
+  if (status === 'processing') return 'processing'
+  return 'live'
 }
 
 function objectValue(value: unknown): Record<string, unknown> | null {
@@ -281,7 +402,7 @@ function sourceHealth(
   type Attention = {
     code: string
     message: string
-    recoveryAction: 'source_sync' | 'matching'
+    recoveryAction: 'source_sync' | 'matching' | 'cez_v1' | 'cez_v2'
   }
   let attention: Attention | null = null
   const sourceStatus = status
@@ -293,7 +414,7 @@ function sourceHealth(
         ?? (processingStalled
           ? `${state.source.toUpperCase()} se během probíhající kontroly neposouvá v očekávaném intervalu.`
           : `Poslední úspěšné načtení ${state.source.toUpperCase()} je starší než očekávaný interval.`),
-      recoveryAction: 'source_sync',
+      recoveryAction: state.source === 'cez' ? 'cez_v1' : 'source_sync',
     }
   }
 
@@ -376,6 +497,7 @@ function sourceHealth(
         ? 'Celá distribuční oblast'
         : 'Probíhá průběžná kontrola',
     comparisonProgress,
+    cezCollectors: null,
     attention,
   }
 }
@@ -392,6 +514,7 @@ export async function getPowerOutageHealth() {
     { data: latestCezRun, error: latestCezRunError },
     { data: latestEgdRun, error: latestEgdRunError },
     { data: latestPreRun, error: latestPreRunError },
+    cezOverview,
   ] = await Promise.all([
     client
       .from('power_outage_source_state')
@@ -436,6 +559,7 @@ export async function getPowerOutageHealth() {
       .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    getCezCollectorOverview(client, 'cez'),
   ])
   if (stateError) throw stateError
   if (catalogError) throw catalogError
@@ -444,6 +568,7 @@ export async function getPowerOutageHealth() {
   if (latestCezRunError) throw latestCezRunError
   if (latestEgdRunError) throw latestEgdRunError
   if (latestPreRunError) throw latestPreRunError
+  if (cezOverview.error) throw cezOverview.error
 
   const now = new Date()
   const latestRuns = new Map<PowerOutageSource, LatestRun>()
@@ -452,7 +577,8 @@ export async function getPowerOutageHealth() {
   if (latestPreRun) latestRuns.set('pre', latestPreRun as LatestRun)
   const tasks = (taskStates ?? []) as TaskState[]
   const taskByKey = new Map(tasks.map((task) => [task.task_key, task]))
-  const sources = ((states ?? []) as SourceState[]).map((state) => (
+  const typedStates = (states ?? []) as SourceState[]
+  const baseSources = typedStates.map((state) => (
     sourceHealth(
       state,
       catalog.revision,
@@ -463,6 +589,30 @@ export async function getPowerOutageHealth() {
       matchRun as MatchRun | null,
     )
   ))
+  const cezState = typedStates.find((state) => state.source === 'cez') ?? null
+  const cezCollectors = buildCezCollectorOverview(cezOverview.versions, cezOverview.union, cezState)
+  const sources = baseSources.map((source) => {
+    if (source.source !== 'cez' || !cezCollectors) return source
+
+    let status = source.status
+    let attention = source.attention
+    for (const version of cezCollectors.versions.filter((item) => item.isEnabled)) {
+      const versionStatus = collectorHealthToSourceStatus(version.healthStatus)
+      if (!versionStatus || SOURCE_STATUS_PRIORITY[versionStatus] <= SOURCE_STATUS_PRIORITY[status]) continue
+      status = versionStatus
+      attention = versionStatus === 'error' || versionStatus === 'warning'
+        ? {
+            code: version.cycleErrorCode ?? version.lastErrorCode ?? `CEZ_MARKET_${version.version.toUpperCase()}_${versionStatus.toUpperCase()}`,
+            message: version.cycleErrorMessage
+              ?? version.lastErrorMessage
+              ?? `${version.displayName} neproběhla v očekávaném intervalu.`,
+            recoveryAction: version.version === 'v2' ? 'cez_v2' as const : 'cez_v1' as const,
+          }
+        : null
+    }
+
+    return { ...source, status, attention, cezCollectors }
+  })
   const hasError = sources.some((source) => source.status === 'error')
   const hasPending = sources.some((source) => source.status === 'pending')
   const hasProcessing = sources.some((source) => source.status === 'processing')
@@ -546,6 +696,13 @@ export async function getPowerOutageSourceDiagnostic(
   const activeCezScan = source === 'cez'
     && isStoreRevisionPending
     && scanRevision === catalogRevision
+  const diagnosticCezCollectors = source === 'cez'
+    ? buildCezCollectorOverview(
+        cezOverview.versions,
+        cezOverview.union,
+        state as SourceState,
+      )
+    : null
   const progress = status === 'processing'
     ? source === 'cez'
       ? {
@@ -607,48 +764,7 @@ export async function getPowerOutageSourceDiagnostic(
     } : null,
     catalogRevision,
     progress,
-    cezCollectors: source === 'cez' && cezOverview.union && cezOverview.versions
-      ? {
-          operatingMode: cezOverview.union.operating_mode,
-          primaryVersion: cezOverview.union.primary_version,
-          secondaryVersion: cezOverview.union.secondary_version,
-          activationReady: cezOverview.union.activation_ready,
-          switchedAt: cezOverview.union.switched_at,
-          calculatedAt: cezOverview.union.calculated_at,
-          v1OutageCount: Number(cezOverview.union.v1_outage_count),
-          v2OutageCount: Number(cezOverview.union.v2_outage_count),
-          sharedOutageCount: Number(cezOverview.union.shared_outage_count),
-          v1OnlyOutageCount: Number(cezOverview.union.v1_only_outage_count),
-          v2OnlyOutageCount: Number(cezOverview.union.v2_only_outage_count),
-          uniqueOutageCount: Number(cezOverview.union.unique_outage_count),
-          versions: cezOverview.versions.map((version) => ({
-            version: version.collector_version,
-            displayName: version.display_name,
-            isEnabled: version.is_enabled,
-            isPrimary: version.is_primary,
-            cadenceSeconds: Number(version.cadence_seconds),
-            healthStatus: version.health_status,
-            lastAttemptAt: version.last_attempt_at,
-            lastSuccessAt: version.last_success_at,
-            lastCompleteAt: version.last_complete_at,
-            consecutiveFailureCount: Number(version.consecutive_failure_count),
-            lastErrorCode: version.last_error_code,
-            lastErrorMessage: version.last_error_message,
-            latestCycleStatus: version.latest_cycle_status,
-            targetCount: Number(version.target_count ?? 0),
-            processedCount: Number(version.processed_count ?? 0),
-            successCount: Number(version.success_count ?? 0),
-            errorCount: Number(version.error_count ?? 0),
-            observedOutageCount: Number(version.observed_outage_count),
-            exactOutageCount: Number(version.exact_outage_count),
-            townOutageCount: Number(version.town_outage_count),
-            cycleStartedAt: version.cycle_started_at,
-            cycleFinishedAt: version.cycle_finished_at,
-            cycleErrorCode: version.cycle_error_code,
-            cycleErrorMessage: version.cycle_error_message,
-          })),
-        }
-      : null,
+    cezCollectors: diagnosticCezCollectors,
     runs: (runsResult.data ?? []).map((run) => ({
       id: run.id,
       triggerKind: run.trigger_kind,
