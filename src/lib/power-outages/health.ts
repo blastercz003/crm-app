@@ -594,13 +594,22 @@ export async function getPowerOutageHealth() {
   const sources = baseSources.map((source) => {
     if (source.source !== 'cez' || !cezCollectors) return source
 
-    let status = source.status
-    let attention = source.attention
+    // Once the versioned CEZ collectors are available, their individual cadence
+    // is authoritative. The legacy aggregate source state uses a generic 8-hour
+    // warning threshold, which is incompatible with the 24-hour v1 cadence and
+    // can otherwise report SOURCE_DATA_STALE while both v1 and v2 are current.
+    let status: PowerOutageSourceStatus = 'live'
+    let attention: typeof source.attention = null
+    const promote = (candidateStatus: PowerOutageSourceStatus, candidateAttention: typeof source.attention) => {
+      if (SOURCE_STATUS_PRIORITY[candidateStatus] <= SOURCE_STATUS_PRIORITY[status]) return
+      status = candidateStatus
+      attention = candidateAttention
+    }
+
     for (const version of cezCollectors.versions.filter((item) => item.isEnabled)) {
       const versionStatus = collectorHealthToSourceStatus(version.healthStatus)
-      if (!versionStatus || SOURCE_STATUS_PRIORITY[versionStatus] <= SOURCE_STATUS_PRIORITY[status]) continue
-      status = versionStatus
-      attention = versionStatus === 'error' || versionStatus === 'warning'
+      if (!versionStatus) continue
+      promote(versionStatus, versionStatus === 'error' || versionStatus === 'warning'
         ? {
             code: version.cycleErrorCode ?? version.lastErrorCode ?? `CEZ_MARKET_${version.version.toUpperCase()}_${versionStatus.toUpperCase()}`,
             message: version.cycleErrorMessage
@@ -608,7 +617,23 @@ export async function getPowerOutageHealth() {
               ?? `${version.displayName} neproběhla v očekávaném intervalu.`,
             recoveryAction: version.version === 'v2' ? 'cez_v2' as const : 'cez_v1' as const,
           }
-        : null
+        : null)
+    }
+
+    if (source.comparisonProgress.status === 'error') {
+      promote('error', source.attention ?? {
+        code: 'STORE_MATCH_FAILED',
+        message: 'Porovnání odstávek ČEZ s katalogem prodejen selhalo.',
+        recoveryAction: 'matching' as const,
+      })
+    } else if (source.comparisonProgress.status === 'processing' || source.comparisonProgress.status === 'queued') {
+      promote('processing', null)
+    }
+
+    // Keep genuine legacy v1 failures or stalled runs. Only the generic stale
+    // warning is superseded by the cadence-aware version health above.
+    if (source.attention && source.attention.code !== 'SOURCE_DATA_STALE') {
+      promote(source.status, source.attention)
     }
 
     return { ...source, status, attention, cezCollectors }
