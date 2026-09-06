@@ -45,7 +45,9 @@ async function run(request: Request, allowAdminSession: boolean) {
 
     let result: Awaited<ReturnType<typeof syncPowerOutages>>
     try {
-      result = await syncPowerOutages(sourceValue as PowerOutageSyncSource)
+      result = await syncPowerOutages(sourceValue as PowerOutageSyncSource, {
+        triggerKind: allowAdminSession ? 'manual' : 'scheduled',
+      })
       if (taskKey && lockToken) {
         await finishPowerOutageTask({
           taskKey,

@@ -11,6 +11,7 @@ import {
 import { powerOutageErrorMessage } from './error-message'
 
 export type PowerOutageSyncSource = 'all' | 'cez' | 'egd' | 'pre'
+export type PowerOutageSyncTrigger = 'scheduled' | 'manual' | 'store_change' | 'retry'
 
 type StoreRow = {
   id: string
@@ -70,8 +71,12 @@ async function loadStoreCatalog() {
   })
 }
 
-export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
+export async function syncPowerOutages(
+  source: PowerOutageSyncSource = 'all',
+  options: { triggerKind?: PowerOutageSyncTrigger } = {},
+) {
   const startedAt = new Date().toISOString()
+  const triggerKind = options.triggerKind ?? 'scheduled'
   const stores = await loadStoreCatalog()
   const sourceResults: Array<{
     source: 'cez' | 'egd' | 'pre'
@@ -87,7 +92,7 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
     try {
       const result = await importCezOutagesForStores({
         stores,
-        triggerKind: 'scheduled',
+        triggerKind,
         completeCatalogScan: true,
         batchSize: 80,
         minimumFullScanIntervalMs: 6 * 60 * 60 * 1_000,
@@ -116,7 +121,7 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
       const result = await importEgdOutages({
         daysAhead: 90,
         fallbackCities: [...new Set(stores.map((store) => store.city).filter(Boolean))],
-        triggerKind: 'scheduled',
+        triggerKind,
       })
       sourceResults.push({ source: 'egd', ok: true, result })
     } catch (error) {
@@ -134,7 +139,7 @@ export async function syncPowerOutages(source: PowerOutageSyncSource = 'all') {
 
   if (source === 'all' || source === 'pre') {
     try {
-      const result = await importPreOutages({ triggerKind: 'scheduled' })
+      const result = await importPreOutages({ triggerKind })
       sourceResults.push({ source: 'pre', ok: true, result })
     } catch (error) {
       if (error instanceof PreSyncAlreadyRunningError) {

@@ -126,6 +126,7 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null)
   const status = STATUS_PRESENTATION[source.status]
   const needsAttention = Boolean(refreshError) || Boolean(source.attention) || source.status === 'warning' || source.status === 'error'
   const recordsLabel = source.source === 'cez' ? 'Záznamů v dávce' : 'Záznamů ve snapshotu'
@@ -167,10 +168,93 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
     if (refreshing) return
     setRefreshing(true)
     setRefreshError(null)
+    setRefreshNotice(null)
     try {
-      const response = await fetch(`/api/power-outages/sync?source=${source.source}`, { method: 'POST' })
-      const payload = await response.json().catch(() => null) as { error?: string } | null
-      if (!response.ok) throw new Error(payload?.error || `Obnovení skončilo HTTP ${response.status}.`)
+      const request = async (url: string) => {
+        const response = await fetch(url, { method: 'POST' })
+        const payload = await response.json().catch(() => null) as Record<string, unknown> | null
+        if (!response.ok || payload?.ok === false) {
+          const sourceErrors = Array.isArray(payload?.sourceResults)
+            ? payload.sourceResults.flatMap((item) => (
+                item && typeof item === 'object' && typeof (item as { error?: unknown }).error === 'string'
+                  ? [(item as { error: string }).error]
+                  : []
+              ))
+            : []
+          throw new Error(
+            typeof payload?.error === 'string'
+              ? payload.error
+              : typeof payload?.matchingError === 'string'
+                ? `Načtení dat proběhlo, ale párování selhalo: ${payload.matchingError}`
+                : sourceErrors.length > 0
+                  ? sourceErrors.join(' · ')
+              : `Obnovení skončilo HTTP ${response.status}.`,
+          )
+        }
+        return payload ?? {}
+      }
+
+      if (source.source === 'cez') {
+        const settle = async (url: string): Promise<PromiseSettledResult<Record<string, unknown>>> => {
+          try {
+            return { status: 'fulfilled', value: await request(url) }
+          } catch (reason) {
+            return { status: 'rejected', reason }
+          }
+        }
+        // Obě verze používají veřejné rozhraní ČEZ. Dávky proto spouštíme
+        // postupně, aby ruční kontrola nevytvářela zbytečný souběžný tlak.
+        const v2Result = await settle('/api/power-outages/cez/v2?limit=8')
+        const v1Result = await settle('/api/power-outages/sync?source=cez')
+        const messages: string[] = []
+        const failures: string[] = []
+
+        if (v1Result.status === 'rejected') {
+          failures.push(`ČEZ v1: ${v1Result.reason instanceof Error ? v1Result.reason.message : 'obnovení selhalo'}`)
+        } else {
+          const sourceResult = Array.isArray(v1Result.value.sourceResults)
+            ? v1Result.value.sourceResults.find((item) => (
+                item && typeof item === 'object' && (item as { source?: unknown }).source === 'cez'
+              )) as { skipped?: boolean; result?: { reason?: string; nextEligibleAt?: string } } | undefined
+            : undefined
+          const skipped = v1Result.value.skipped === true || sourceResult?.skipped === true
+          const reason = typeof v1Result.value.reason === 'string'
+            ? v1Result.value.reason
+            : sourceResult?.result?.reason
+          messages.push(skipped
+            ? reason === 'full_scan_interval'
+              ? 'ČEZ v1 čeká na další 24hodinový cyklus'
+              : 'ČEZ v1 již probíhá nebo nyní nemá další práci'
+            : 'ČEZ v1 zpracoval další dávku')
+        }
+
+        if (v2Result.status === 'rejected') {
+          failures.push(`ČEZ v2: ${v2Result.reason instanceof Error ? v2Result.reason.message : 'obnovení selhalo'}`)
+        } else {
+          const status = typeof v2Result.value.status === 'string' ? v2Result.value.status : null
+          messages.push(status === 'cooldown'
+            ? 'ČEZ v2 čeká na další 6hodinový cyklus'
+            : status === 'inactive_or_empty'
+              ? 'ČEZ v2 nyní nemá čekající dávku'
+              : 'ČEZ v2 zpracoval další dávku')
+          if (status === 'partial') failures.push('ČEZ v2 zpracoval dávku s dílčími chybami')
+        }
+
+        setRefreshNotice(messages.join(' · '))
+        if (failures.length > 0) setRefreshError(failures.join(' · '))
+      } else {
+        const payload = await request(`/api/power-outages/sync?source=${source.source}`)
+        const sourceResult = Array.isArray(payload.sourceResults)
+          ? payload.sourceResults.find((item) => (
+              item && typeof item === 'object' && (item as { source?: unknown }).source === source.source
+            )) as { skipped?: boolean } | undefined
+          : undefined
+        if (payload.skipped === true || sourceResult?.skipped === true) {
+          setRefreshNotice(typeof payload.reason === 'string' ? payload.reason : 'Kontrola již probíhá nebo nyní nemá další práci.')
+        } else {
+          setRefreshNotice(`Mimořádná kontrola ${sourceName(source.source)} byla dokončena.`)
+        }
+      }
       router.refresh()
     } catch (error) {
       setRefreshError(error instanceof Error ? error.message : 'Ruční obnovení selhalo.')
@@ -187,7 +271,7 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
           <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdroj dat</span><strong className="block truncate text-base font-semibold text-[var(--text-primary)]"><SourcePanelName source={source.source} /></strong></span>
         </button>
         <div className="flex shrink-0 items-center gap-1.5">
-          {isAdmin ? <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Ručně obnovit data ${source.source === 'cez' ? 'ČEZ v1' : sourceName(source.source)}`} title={source.source === 'cez' ? 'Ručně obnovit ČEZ v1' : 'Ručně obnovit data'} className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button> : null}
+          {isAdmin ? <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Spustit mimořádnou kontrolu ${sourceName(source.source)}`} title={`Spustit mimořádnou kontrolu ${sourceName(source.source)}`} className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button> : null}
           <button
             type="button"
             onClick={onOpen}
@@ -202,7 +286,12 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
         </div>
       </div>
 
-      <button type="button" onClick={onOpen} className="mt-4 min-h-0 flex-1 text-left lg:mt-3">
+      {refreshNotice || refreshError ? <div aria-live="polite" className="mt-2 space-y-1">
+        {refreshNotice ? <p className="rounded-lg border border-sky-500/25 bg-sky-500/8 px-2 py-1 text-[7px] leading-3 text-sky-700 [html[data-theme=dark]_&]:text-sky-300">{refreshNotice}</p> : null}
+        {refreshError ? <p role="alert" className="rounded-lg border border-red-500/25 bg-red-500/8 px-2 py-1 text-[7px] leading-3 text-red-700 [html[data-theme=dark]_&]:text-red-300">{refreshError}</p> : null}
+      </div> : null}
+
+      <button type="button" onClick={onOpen} className={`${refreshNotice || refreshError ? 'mt-2' : 'mt-4 lg:mt-3'} min-h-0 flex-1 text-left`}>
         <div className="grid grid-cols-2 gap-2 lg:gap-1.5">
           {source.source === 'cez' && source.cezCollectors ? <>
             <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">Nalezeno v1</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.cezCollectors.v1OutageCount}</strong></div>
