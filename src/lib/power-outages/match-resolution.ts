@@ -25,7 +25,7 @@ export async function resolvePowerOutageStoreMatch(input: {
     : { resolved_at: new Date().toISOString(), resolved_by: input.actorUserId }
   const { error: updateError } = await client
     .from('power_outage_store_matches')
-    .update({ match_status: input.status, ...resolved })
+    .update({ match_status: input.status, match_method: 'manual', ...resolved })
     .eq('id', input.matchId)
   if (updateError) throw updateError
 

@@ -21,14 +21,6 @@ type V2Target = {
   lock_token: string
 }
 
-type StoreRow = {
-  id: string
-  chain_name: string
-  store_number: string
-  city: string
-  address: string
-}
-
 function stringArray(value: unknown) {
   return Array.isArray(value)
     ? [...new Set(value.filter((item): item is string => (
@@ -49,72 +41,30 @@ async function createMissingExactStoreMatches(input: {
   observedAt: string
 }) {
   const storeIds = stringArray(input.target.store_ids)
-  const outageIds = input.exactExternalIds
-    .map((externalId) => input.outageIdByExternal.get(externalId))
-    .filter((outageId): outageId is string => Boolean(outageId))
-  if (storeIds.length === 0 || outageIds.length === 0) return 0
+  if (storeIds.length === 0 || input.exactExternalIds.length === 0) return 0
 
-  const [
-    { data: stores, error: storesError },
-    { data: catalogState, error: catalogError },
-    { data: existingMatches, error: existingError },
-  ] = await Promise.all([
-    input.client
-      .from('stores')
-      .select('id,chain_name,store_number,city,address')
-      .in('id', storeIds),
-    input.client
-      .from('power_outage_store_catalog_state')
-      .select('revision')
-      .eq('singleton', true)
-      .single<{ revision: number }>(),
-    input.client
-      .from('power_outage_store_matches')
-      .select('outage_id,store_id')
-      .in('outage_id', outageIds)
-      .in('store_id', storeIds),
-  ])
-  if (storesError) throw storesError
-  if (catalogError) throw catalogError
-  if (existingError) throw existingError
-
-  const existingKeys = new Set(
-    (existingMatches ?? []).map((match) => `${match.outage_id}:${match.store_id}`),
-  )
-  let insertedCount = 0
-  for (const store of (stores ?? []) as StoreRow[]) {
-    for (const outageId of outageIds) {
-      if (existingKeys.has(`${outageId}:${store.id}`)) continue
-      const { error } = await input.client
-        .from('power_outage_store_matches')
-        .insert({
-          outage_id: outageId,
-          outage_address_id: null,
-          store_id: store.id,
-          match_status: 'confirmed',
-          match_method: 'city_street',
-          confidence: 1,
-          match_reasons: [{
-            code: 'cez_v2_exact_ruian_address',
-            ruianAddressId: input.target.address_id,
-            collectorVersion: 'v2',
-          }],
-          store_chain_name: store.chain_name,
-          store_number: store.store_number,
-          store_city: store.city,
-          store_address: store.address,
-          store_revision: catalogState.revision,
-          last_verified_at: input.observedAt,
-          resolved_at: null,
-          resolved_by: null,
-        })
-      // Paralelní bezpečný běh mohl stejnou dvojici vložit o okamžik dříve.
-      if (error?.code === '23505') continue
+  let changedCount = 0
+  for (const storeId of storeIds) {
+    for (const externalId of input.exactExternalIds) {
+      const outageId = input.outageIdByExternal.get(externalId)
+      if (!outageId) continue
+      const { data, error } = await input.client.rpc(
+        'record_power_outage_cez_market_exact_store_match',
+        {
+          requested_target_id: input.target.target_id,
+          requested_external_id: externalId,
+          requested_outage_id: outageId,
+          requested_store_id: storeId,
+          requested_observed_at: input.observedAt,
+        },
+      )
       if (error) throw error
-      insertedCount += 1
+      if (data && typeof data === 'object' && !Array.isArray(data) && data.changed === true) {
+        changedCount += 1
+      }
     }
   }
-  return insertedCount
+  return changedCount
 }
 
 async function finishTarget(input: {

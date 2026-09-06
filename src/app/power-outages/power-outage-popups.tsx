@@ -89,6 +89,7 @@ function outageAddressLabel(address: PowerOutageDetail['addresses'][number] | un
 
 function matchMethodLabel(detail: PowerOutageDetail) {
   if (detail.matchMethod === 'manual') return 'Ruční přiřazení'
+  if (detail.matchMethod === 'cez_v2_exact') return 'Přesná adresa RÚIAN · ČEZ v2'
   if (detail.matchReasons.includes('address_numbers_exact')) return 'Město + ulice + číslo domu'
   if (detail.matchReasons.includes('address_numbers_partial')) return 'Město + ulice + částečná shoda čísla'
   return 'Město + ulice, číslo vyžaduje ověření'

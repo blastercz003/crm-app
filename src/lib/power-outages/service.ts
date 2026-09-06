@@ -501,7 +501,7 @@ type DetailMatchRow = {
   outage_address_id: string | null
   store_id: string | null
   match_status: PowerOutageMatchStatus
-  match_method: 'city_street' | 'manual'
+  match_method: 'city_street' | 'cez_v2_exact' | 'manual'
   confidence: number | string
   match_reasons: unknown
   store_chain_name: string

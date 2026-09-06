@@ -176,7 +176,7 @@ export type PowerOutageDetail = {
   firstSeenAt: string
   lastSeenAt: string
   matchStatus: PowerOutageMatchStatus
-  matchMethod: 'city_street' | 'manual'
+  matchMethod: 'city_street' | 'cez_v2_exact' | 'manual'
   confidence: number
   matchReasons: string[]
   storeRevision: number

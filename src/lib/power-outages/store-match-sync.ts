@@ -16,7 +16,7 @@ type ExistingMatchRow = {
   id: string
   outage_id: string
   store_id: string | null
-  match_method: 'city_street' | 'manual'
+  match_method: 'city_street' | 'cez_v2_exact' | 'manual'
   match_status: 'confirmed' | 'needs_review' | 'dismissed'
   resolved_at: string | null
 }
@@ -313,6 +313,9 @@ export async function reconcilePowerOutageStoreMatches(input: {
       const key = `${candidate.outageId}:${candidate.store.id}`
       desiredKeys.add(key)
       const existing = existingByKey.get(key)
+      if (existing?.match_method === 'cez_v2_exact') {
+        continue
+      }
       if (existing?.resolved_at || existing?.match_method === 'manual') {
         preservedManualCount += 1
         continue
@@ -400,6 +403,11 @@ export async function reconcilePowerOutageStoreMatches(input: {
     for (const candidate of candidates) {
       const key = `${candidate.outageId}:${candidate.store.id}`
       const existing = existingByKey.get(key)
+      if (existing?.match_method === 'cez_v2_exact') {
+        if (existing.match_status === 'confirmed') confirmedKeys.add(key)
+        else if (existing.match_status === 'needs_review') reviewKeys.add(key)
+        continue
+      }
       if (existing?.resolved_at || existing?.match_method === 'manual') {
         if (existing.match_status === 'needs_review') reviewKeys.add(key)
         continue
