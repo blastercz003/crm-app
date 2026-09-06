@@ -10,6 +10,12 @@ export type PowerOutageNotificationPreferences = {
 
 export type MarketClientEmailMode = 'disabled' | 'shadow' | 'test' | 'live'
 export type MarketClientEmailRecipientKind = 'to' | 'cc'
+export type MarketClientEmailEventKind =
+  | 'new_outage'
+  | 'schedule_changed'
+  | 'cancelled'
+  | 'reminder_24h'
+  | 'missing_job_72h'
 
 export type MarketClientEmailRecipient = {
   id: string
@@ -22,7 +28,7 @@ export type MarketClientEmailRecipient = {
 export type MarketClientEmailRule = {
   id: string
   name: string
-  eventKind: 'new_outage' | 'schedule_changed' | 'cancelled' | 'reminder_24h'
+  eventKind: MarketClientEmailEventKind
   enabled: boolean
   version: number
   activatedAt: string | null

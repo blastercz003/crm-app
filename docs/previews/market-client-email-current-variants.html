@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Aktuální varianty e-mailů B-ENERGY</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #eef2f6; font-family: Arial, Helvetica, sans-serif; color: #18212f; }
+      .page { max-width: 760px; margin: 0 auto; padding: 28px 16px 56px; }
+      .intro { margin: 0 0 18px; padding: 0 4px; color: #526176; font-size: 13px; line-height: 1.55; }
+      .nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+      .nav a { padding: 9px 12px; border: 1px solid #d7e0e9; border-radius: 999px; background: #fff; color: #075985; font-size: 12px; font-weight: 700; text-decoration: none; }
+      .preview { margin: 0 0 34px; }
+      .preview-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 4px 10px; }
+      .preview-title strong { font-size: 13px; }
+      .state { color: #64748b; font-size: 11px; }
+      .email { width: 100%; border: 1px solid #e4e9ef; border-radius: 18px; overflow: hidden; background: #fff; }
+      .email-head { padding: 26px 30px 22px; }
+      .head-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+      .logo { display: block; width: 136px; height: auto; }
+      .badge { display: inline-block; padding: 7px 11px; border: 1px solid #bae6fd; border-radius: 999px; background: #f0f9ff; color: #0369a1; font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+      .line { height: 1px; margin: 0 30px; background: #e8edf2; }
+      .email-body { padding: 30px; }
+      .kicker { margin-bottom: 10px; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+      h1 { margin: 0; color: #111827; font-size: 27px; line-height: 1.28; letter-spacing: -.02em; }
+      .subject { margin: 17px 0 0; padding: 12px 14px; border-radius: 10px; background: #f7f9fb; color: #64748b; font-size: 12px; line-height: 1.55; }
+      .subject strong { color: #334155; }
+      .details { width: 100%; margin-top: 24px; border-collapse: collapse; border-top: 1px solid #e8edf2; }
+      .details td { padding: 14px 0; border-bottom: 1px solid #e8edf2; font-size: 13px; }
+      .details td:first-child { color: #64748b; }
+      .details td:last-child { text-align: right; font-weight: 700; }
+      h2 { margin: 24px 0 9px; font-size: 14px; }
+      .stores { margin: 0; padding-left: 18px; color: #475569; font-size: 13px; line-height: 1.65; }
+      .button { display: block; margin-top: 24px; padding: 13px 18px; border-radius: 10px; background: #0788c1; color: #fff; text-align: center; text-decoration: none; font-size: 13px; font-weight: 700; }
+      .source { display: block; margin-top: 12px; color: #64748b; text-align: center; font-size: 12px; }
+      .sign { margin: 22px 0 0; font-size: 13px; line-height: 1.6; }
+      .foot { padding: 18px 30px; border-top: 1px solid #e8edf2; background: #fafbfc; color: #7c8798; font-size: 10px; line-height: 1.6; }
+      .note { margin: 10px 4px 0; color: #7c8798; font-size: 11px; line-height: 1.55; }
+      @media (max-width: 560px) {
+        .page { padding: 18px 10px 42px; }
+        .email-head, .email-body { padding-left: 22px; padding-right: 22px; }
+        .line { margin-left: 22px; margin-right: 22px; }
+        .foot { padding-left: 22px; padding-right: 22px; }
+        .logo { width: 118px; }
+        h1 { font-size: 23px; }
+        .details td { display: block; padding: 8px 0 3px; border: 0; }
+        .details td:last-child { padding: 0 0 10px; border-bottom: 1px solid #e8edf2; text-align: left; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="intro">Náhledy používají schválený nový vzhled, ale obsah odpovídá údajům, které dnes připravuje ostrý renderer. Jde o vzorová data.</p>
+      <nav class="nav">
+        <a href="?variant=new_outage">Nová odstávka</a>
+        <a href="?variant=schedule_changed">Změna termínu</a>
+        <a href="?variant=cancelled">Zrušení</a>
+        <a href="?variant=reminder_24h">Připomenutí</a>
+        <a href="market-client-email-current-variants.html">Zobrazit vše</a>
+      </nav>
+      <div id="previews"></div>
+    </main>
+    <script>
+      const variants = [
+        {
+          key: 'new_outage', title: 'Nová potvrzená odstávka', badge: 'NOVÁ ODSTÁVKA',
+          subject: 'PENNY Market, s.r.o.: Nová potvrzená odstávka · Rumburk (CEZ)',
+          note: 'Tato varianta je dnes podporovaná plánovačem i rendererem.'
+        },
+        {
+          key: 'schedule_changed', title: 'Změna termínu odstávky', badge: 'ZMĚNA TERMÍNU',
+          subject: 'PENNY Market, s.r.o.: Změna termínu odstávky · Rumburk (CEZ)',
+          note: 'Současný obsah zobrazuje pouze aktuální termín; původní termín zatím do e-mailu nepředává.'
+        },
+        {
+          key: 'cancelled', title: 'Zrušení plánované odstávky', badge: 'ZRUŠENO',
+          subject: 'PENNY Market, s.r.o.: Zrušení plánované odstávky · Rumburk (CEZ)',
+          note: 'Tato varianta je dnes podporovaná plánovačem i rendererem.'
+        },
+        {
+          key: 'reminder_24h', title: 'Připomenutí plánované odstávky', badge: '24 HODIN PŘEDEM',
+          subject: 'PENNY Market, s.r.o.: Připomenutí plánované odstávky · Rumburk (CEZ)',
+          note: 'Renderer tuto podobu zná, ale automatické časové vytvoření připomenutí dnes ještě není zapojené.'
+        }
+      ];
+      const selected = new URLSearchParams(location.search).get('variant');
+      const visible = selected ? variants.filter((item) => item.key === selected) : variants;
+      document.getElementById('previews').innerHTML = visible.map((item) => `
+        <section class="preview" id="${item.key}">
+          <div class="preview-title"><strong>${item.title}</strong><span class="state">aktuální obsah</span></div>
+          <article class="email">
+            <header class="email-head"><div class="head-row"><img class="logo" src="file:///Users/jirihavlicek/meeting-crm/public/logo2.png" alt="B-ENERGY"><span class="badge">${item.badge}</span></div></header>
+            <div class="line"></div>
+            <div class="email-body">
+              <div class="kicker">Plánovaná odstávka elektřiny</div>
+              <h1>${item.title}</h1>
+              <p class="subject"><strong>Předmět:</strong> ${item.subject}</p>
+              <table class="details" role="presentation">
+                <tr><td>Klient</td><td>PENNY Market, s.r.o.</td></tr>
+                <tr><td>Zdroj</td><td>CEZ</td></tr>
+                <tr><td>Odstávka</td><td>Plánovaná odstávka elektřiny</td></tr>
+                <tr><td>Termín</td><td>23. 9. 2026&nbsp;&nbsp;07:30–15:30</td></tr>
+                <tr><td>Obec</td><td>Rumburk</td></tr>
+                <tr><td>Dotčené prodejny</td><td>1</td></tr>
+              </table>
+              <h2>Prodejny</h2>
+              <ul class="stores"><li><strong>PENNY Market 123</strong> · Pražská 396/23a, Rumburk</li></ul>
+              <a class="button" href="#">Otevřít PDF oznámení</a>
+              <span class="source">Otevřít zdroj odstávky</span>
+              <p class="sign">S pozdravem<br><strong>B-ENERGY</strong></p>
+            </div>
+            <footer class="foot">Toto je automatické upozornění na odstávku elektřiny.</footer>
+          </article>
+          <p class="note">${item.note}</p>
+        </section>`).join('');
+    </script>
+  </body>
+</html>

@@ -25,6 +25,7 @@ import type {
   MarketClientEmailAdminWorkspace,
   MarketClientEmailConfiguration,
   MarketClientEmailDelivery,
+  MarketClientEmailEventKind,
   MarketClientEmailMode,
   MarketClientEmailRecipient,
 } from '@/lib/power-outages/types'
@@ -34,7 +35,7 @@ import {
   retryMarketClientEmailDeliveryAction,
   saveMarketClientEmailConfigurationAction,
   sendMarketClientEmailTestAction,
-  setMarketClientEmailLivePilotAction,
+  setMarketClientEmailLiveAction,
   setMarketClientEmailShadowRuleAction,
   setMarketClientEmailTestModeAction,
   skipMarketClientEmailDeliveryAction,
@@ -58,11 +59,20 @@ const MODE_PRESENTATION: Record<MarketClientEmailMode, { label: string; classNam
 }
 
 const EVENT_LABELS = {
-  new_outage: 'Nová potvrzená odstávka',
-  schedule_changed: 'Změna termínu',
-  cancelled: 'Zrušení odstávky',
-  reminder_24h: 'Připomenutí před začátkem',
+  new_outage: 'Nová plánovaná odstávka',
+  schedule_changed: 'Změna termínu plánované odstávky',
+  cancelled: 'Zrušení plánované odstávky',
+  reminder_24h: 'Připomenutí 24 hodin předem',
+  missing_job_72h: 'Bez objednávky – 3 dny předem',
 } as const
+
+const EVENT_DESCRIPTIONS: Record<MarketClientEmailEventKind, string> = {
+  new_outage: 'Upozorní na nově nalezenou a potvrzenou odstávku.',
+  schedule_changed: 'Uvede původní i nový termín odstávky.',
+  cancelled: 'Upozorní, že distributor plánovanou odstávku zrušil.',
+  reminder_24h: 'Připomene odstávku přibližně 24 hodin před začátkem.',
+  missing_job_72h: 'Za 3 dny upozorní pouze na prodejny bez přiřazené objednávky. Toto pravidlo je výhradní.',
+}
 
 const DELIVERY_LABELS: Record<MarketClientEmailDelivery['status'], string> = {
   planned: 'Připraveno',
@@ -200,7 +210,7 @@ function ClientEditor({
   }
 
   const toggleShadowRule = (
-    eventKind: 'new_outage' | 'schedule_changed' | 'cancelled',
+    eventKind: MarketClientEmailEventKind,
     enabled: boolean,
   ) => {
     setMessage(null)
@@ -270,14 +280,18 @@ function ClientEditor({
     })
   }
 
-  const toggleLivePilot = () => {
+  const toggleLive = () => {
     setMessage(null)
     setError(null)
     startTransition(async () => {
       const enabling = client.mode !== 'live'
-      const result = await setMarketClientEmailLivePilotAction({
+      const eventKinds = client.rules
+        .filter((rule) => rule.enabled)
+        .map((rule) => rule.eventKind)
+      const result = await setMarketClientEmailLiveAction({
         clientId: client.clientId,
         enabled: enabling,
+        eventKinds,
         confirmation: enabling ? 'SEND_TO_REAL_RECIPIENTS' : undefined,
       })
       if (!result.success) {
@@ -287,8 +301,8 @@ function ClientEditor({
       onWorkspaceChange(result.workspace)
       setLiveConfirmed(false)
       setMessage(enabling
-        ? 'Ostrý pilot byl spuštěn pouze pro nové potvrzené odstávky tohoto klienta. Skuteční příjemci nyní mohou dostat e-mail.'
-        : 'Ostrý pilot byl ukončen. Neodeslané ostré položky byly zrušeny a klient pokračuje stínově.')
+        ? 'Ostrý režim byl spuštěn pro vybraná pravidla. Události před okamžikem aktivace se nikdy neodešlou.'
+        : 'Ostrý režim byl ukončen. Neodeslané položky byly zrušeny a klient pokračuje stínově.')
     })
   }
 
@@ -301,7 +315,7 @@ function ClientEditor({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Automatická upozornění</span>
-            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{mode === 'disabled' ? 'Vypnutá' : mode === 'test' ? 'Bezpečný test na interní adresu' : mode === 'live' ? 'Ostrý pilot pro skutečné příjemce' : 'Připravují se ve stínovém režimu'}</strong>
+            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{mode === 'disabled' ? 'Vypnutá' : mode === 'test' ? 'Bezpečný test na interní adresu' : mode === 'live' ? 'Ostré odesílání vybraným příjemcům' : 'Připravují se ve stínovém režimu'}</strong>
           </div>
           <Toggle checked={mode !== 'disabled'} disabled={pending || !['disabled', 'shadow'].includes(mode)} label="Automatická e-mailová upozornění" onChange={() => setMode((current) => current === 'disabled' ? 'shadow' : 'disabled')} />
         </div>
@@ -311,7 +325,7 @@ function ClientEditor({
             return <button key={option} type="button" disabled={locked || pending} onClick={() => setMode(option)} className={`relative flex h-10 items-center justify-center gap-1.5 rounded-xl border text-[8px] font-bold tracking-[0.05em] transition ${mode === option ? MODE_PRESENTATION[option].className : 'border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]'} disabled:cursor-not-allowed disabled:opacity-55`}><i aria-hidden className={`h-1.5 w-1.5 rounded-full ${MODE_PRESENTATION[option].dot}`} />{MODE_PRESENTATION[option].label}{locked ? <LockKeyhole aria-hidden size={10} /> : null}</button>
           })}
         </div>
-        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">TEST se aktivuje samostatným bezpečnostním krokem níže. Režim AKTIVNÍ zůstává uzamčený do ostrého pilotu.</p>
+        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">TEST a ostrý režim se aktivují samostatnými bezpečnostními kroky níže.</p>
       </section>
 
       <section className="rounded-2xl border border-violet-500/25 bg-violet-500/8 p-4">
@@ -329,15 +343,15 @@ function ClientEditor({
       <section className="rounded-2xl border border-emerald-500/25 bg-emerald-500/8 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <span>
-            <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Ostrý pilot · pouze nové odstávky</span>
-            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{client.mode === 'live' ? 'Pilot je AKTIVNÍ' : 'Pilot není aktivní'}</strong>
+            <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Plný produkční režim</span>
+            <strong className="mt-1 block text-sm text-[var(--text-primary)]">{client.mode === 'live' ? 'Odesílání je AKTIVNÍ' : 'Odesílání není aktivní'}</strong>
           </span>
-          <button type="button" onClick={toggleLivePilot} disabled={pending || (client.mode !== 'live' && (client.mode !== 'shadow' || !workspace.resend.liveReady || !hasDeliveredTest || !liveConfirmed))} className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-45 ${client.mode === 'live' ? 'border-red-400/30 bg-red-500/8 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'}`}>{pending ? <LoaderCircle aria-hidden size={13} className="animate-spin" /> : client.mode === 'live' ? <Ban aria-hidden size={13} /> : <Send aria-hidden size={13} />}{client.mode === 'live' ? 'Ukončit pilot' : 'Spustit ostrý pilot'}</button>
+          <button type="button" onClick={toggleLive} disabled={pending || (client.mode !== 'live' && (client.mode !== 'shadow' || !workspace.resend.liveReady || !hasDeliveredTest || !liveConfirmed || !client.rules.some((rule) => rule.enabled)))} className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-45 ${client.mode === 'live' ? 'border-red-400/30 bg-red-500/8 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'}`}>{pending ? <LoaderCircle aria-hidden size={13} className="animate-spin" /> : client.mode === 'live' ? <Ban aria-hidden size={13} /> : <Send aria-hidden size={13} />}{client.mode === 'live' ? 'Vypnout ostrý režim' : 'Zapnout ostrý režim'}</button>
         </div>
-        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Pilot odešle skutečným TO/CC pouze novou potvrzenou odstávku vzniklou po aktivaci. Jedna odstávka se sloučí do jednoho e-mailu a před odesláním má pětiminutové seskupovací okno.</p>
+        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Odesílají se pouze události a kontrolní okamžiky vzniklé po aktivaci jednotlivých pravidel. Staré odstávky se nikdy zpětně neodešlou.</p>
         {client.mode !== 'live' ? <label className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-[var(--surface-strong)] px-3 py-2.5 text-[8px] font-semibold leading-4 text-[var(--text-primary)]"><input type="checkbox" checked={liveConfirmed} onChange={(event) => setLiveConfirmed(event.target.checked)} disabled={pending || client.mode !== 'shadow' || !hasDeliveredTest} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span>Potvrzuji, že uvedené adresy TO/CC jsou skuteční příjemci a po spuštění jim mohou být doručeny ostré e-maily.</span></label> : null}
-        {!hasDeliveredTest ? <p className="mt-2 text-[8px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Ostrý pilot vyžaduje úspěšně doručený TEST stejného klienta.</p> : null}
-        {client.mode === 'live' ? <p className="mt-2 flex items-start gap-2 text-[8px] font-semibold leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300"><AlertTriangle aria-hidden size={13} className="mt-0.5 shrink-0" /> Skutečné odesílání je aktivní. Bounce nebo complaint pilot automaticky zastaví.</p> : null}
+        {!hasDeliveredTest ? <p className="mt-2 text-[8px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Ostrý režim vyžaduje úspěšně doručený TEST stejného klienta.</p> : null}
+        {client.mode === 'live' ? <p className="mt-2 flex items-start gap-2 text-[8px] font-semibold leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300"><AlertTriangle aria-hidden size={13} className="mt-0.5 shrink-0" /> Skutečné odesílání je aktivní. Bounce nebo complaint automaticky zastaví pouze tohoto klienta.</p> : null}
       </section>
 
       <section>
@@ -370,8 +384,9 @@ function ClientEditor({
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {(Object.keys(EVENT_LABELS) as Array<keyof typeof EVENT_LABELS>).map((eventKind) => {
             const rule = client.rules.find((item) => item.eventKind === eventKind)
-            const supported = eventKind !== 'reminder_24h'
-            return <div key={eventKind} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-start justify-between gap-2"><span><strong className="text-[10px] text-[var(--text-primary)]">{EVENT_LABELS[eventKind]}</strong><small className="mt-1 block text-[7px] text-[var(--text-secondary)]">{rule?.enabled ? `Sleduje se od ${formatDateTime(rule.activatedAt)}` : supported ? 'Zatím se nesleduje' : 'Čas připomínky nastavíme později'}</small></span><button type="button" disabled={pending || !supported || client.mode !== 'shadow'} onClick={() => supported && toggleShadowRule(eventKind, !(rule?.enabled ?? false))} className={`shrink-0 rounded-lg border px-2 py-1 text-[7px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-50 ${rule?.enabled ? 'border-red-400/25 bg-red-500/8 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'border-sky-400/30 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{rule?.enabled ? 'Zastavit' : supported ? 'Spustit stínově' : 'Později'}</button></div></div>
+            const exclusiveRuleEnabled = client.rules.some((item) => item.eventKind === 'missing_job_72h' && item.enabled)
+            const blockedByExclusiveRule = eventKind !== 'missing_job_72h' && exclusiveRuleEnabled && !rule?.enabled
+            return <div key={eventKind} className={`rounded-2xl border p-3 ${eventKind === 'missing_job_72h' ? 'border-amber-400/30 bg-amber-500/8 sm:col-span-2' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><div className="flex items-start justify-between gap-2"><span><strong className="text-[10px] text-[var(--text-primary)]">{EVENT_LABELS[eventKind]}</strong><small className="mt-1 block text-[7px] leading-3 text-[var(--text-secondary)]">{EVENT_DESCRIPTIONS[eventKind]}</small><small className="mt-1 block text-[7px] font-semibold text-[var(--text-secondary)]">{rule?.enabled ? `Sleduje se od ${formatDateTime(rule.activatedAt)}` : blockedByExclusiveRule ? 'Nejprve vypněte výhradní pravidlo' : 'Zatím se nesleduje'}</small></span><button type="button" disabled={pending || client.mode !== 'shadow' || blockedByExclusiveRule} onClick={() => toggleShadowRule(eventKind, !(rule?.enabled ?? false))} className={`shrink-0 rounded-lg border px-2 py-1 text-[7px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-50 ${rule?.enabled ? 'border-red-400/25 bg-red-500/8 text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'border-sky-400/30 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{rule?.enabled ? 'Zastavit' : 'Spustit stínově'}</button></div></div>
           })}
         </div>
       </section>
@@ -387,7 +402,7 @@ function ClientEditor({
 
       <div className="flex flex-col-reverse gap-2 border-t border-[var(--surface-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
         <button type="button" onClick={sendTestEmail} disabled={pending || client.mode !== 'test' || !workspace.resend.testReady} title={client.mode === 'test' ? 'Odeslat kontrolní zprávu pouze na interní testovací adresu' : 'Nejprve spusťte bezpečný TEST režim'} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 px-4 text-[9px] font-bold uppercase text-violet-700 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-45 [html[data-theme=dark]_&]:text-violet-300"><Send aria-hidden size={14} /> Odeslat testovací e-mail {client.mode !== 'test' ? <LockKeyhole aria-hidden size={11} /> : null}</button>
-        <button type="button" onClick={save} disabled={pending || ['test', 'live'].includes(client.mode)} title={['test', 'live'].includes(client.mode) ? 'Nejprve ukončete TEST nebo ostrý pilot.' : undefined} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-600 bg-sky-600 px-5 text-[9px] font-bold uppercase text-white shadow-[0_9px_20px_rgba(2,132,199,0.2)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60">{pending ? <LoaderCircle aria-hidden size={14} className="animate-spin" /> : <Save aria-hidden size={14} />} Uložit nastavení</button>
+        <button type="button" onClick={save} disabled={pending || ['test', 'live'].includes(client.mode)} title={['test', 'live'].includes(client.mode) ? 'Nejprve ukončete TEST nebo ostrý režim.' : undefined} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-600 bg-sky-600 px-5 text-[9px] font-bold uppercase text-white shadow-[0_9px_20px_rgba(2,132,199,0.2)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60">{pending ? <LoaderCircle aria-hidden size={14} className="animate-spin" /> : <Save aria-hidden size={14} />} Uložit nastavení</button>
       </div>
 
       {workspace.lastErrorMessage ? <p className="flex items-start gap-2 rounded-xl border border-red-400/25 bg-red-500/8 px-3 py-2 text-[8px] leading-4 text-red-700 [html[data-theme=dark]_&]:text-red-300"><AlertTriangle aria-hidden size={13} className="mt-0.5 shrink-0" /> {workspace.lastErrorCode ? `${workspace.lastErrorCode}: ` : ''}{workspace.lastErrorMessage}</p> : null}
@@ -454,7 +469,7 @@ export function MarketClientEmailAdminPanel() {
           <ChevronRight aria-hidden size={17} className="mt-3 shrink-0 text-[var(--text-secondary)]" />
         </button>
         {loading && !workspace ? <LoadingBlock label="Načítám nastavení…" /> : error && !workspace ? <button type="button" onClick={() => { setOpen(true); void load() }} className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/8 p-4 text-center"><AlertTriangle aria-hidden size={20} className="text-red-500" /><strong className="mt-2 text-[10px] text-[var(--text-primary)]">Nastavení se nepodařilo načíst</strong><span className="mt-1 text-[8px] text-[var(--text-secondary)]">Otevřít detail a opakovat</span></button> : workspace ? <button type="button" onClick={() => setOpen(true)} className="mt-4 min-h-0 flex-1 text-left"><div className="grid grid-cols-2 gap-2">{workspace.clients.map((client) => <div key={client.clientId} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2.5"><div className="flex items-center justify-between gap-2"><strong className="truncate text-[10px] text-[var(--text-primary)]">{client.chainName}</strong><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${MODE_PRESENTATION[client.mode].dot}`} /></div><small className="mt-1 block text-[7px] font-bold uppercase text-[var(--text-secondary)]">{MODE_PRESENTATION[client.mode].label}</small></div>)}</div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nastaveno</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{activeCount}/4</strong></span><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Příjemci</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{recipientCount}</strong></span><span className={`rounded-xl border p-2 ${errorCount > 0 ? 'border-red-400/30 bg-red-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Chyby</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{errorCount}</strong></span></div></button> : null}
-        <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · {workspace?.runtimeMode === 'test' && workspace.dispatchEnabled ? 'bezpečný TEST aktivní' : workspace?.runtimeMode === 'live' && workspace.dispatchEnabled ? 'ostrý pilot aktivní' : 'odesílání vypnuto'}</p>
+        <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · {workspace?.runtimeMode === 'test' && workspace.dispatchEnabled ? 'bezpečný TEST aktivní' : workspace?.runtimeMode === 'live' && workspace.dispatchEnabled ? 'ostrý provoz aktivní' : 'odesílání vypnuto'}</p>
       </section>
       {open && typeof document !== 'undefined' ? createPortal(<AdminPopup workspace={workspace} loading={loading} error={error} selectedClientId={selectedClientId} onSelectClient={setSelectedClientId} onReload={() => void load()} onWorkspaceChange={(next) => { setWorkspace(next); setError(null) }} onClose={() => setOpen(false)} />, document.body) : null}
     </>

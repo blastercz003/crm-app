@@ -1,8 +1,11 @@
 import 'server-only'
 
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { Resend, type ErrorResponse } from 'resend'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getResendConfigurationStatus } from './client-email-resend-config'
+import { prepareMarketClientEmailLiveDeliveryForSend } from './client-email-live-renderer'
 
 type ClaimedRecipient = {
   kind: 'to' | 'cc' | 'bcc'
@@ -49,6 +52,13 @@ const RETRYABLE_ERROR_NAMES = new Set([
   'application_error',
   'concurrent_idempotent_requests',
 ])
+const B_ENERGY_LOGO_CONTENT_ID = 'b-energy-logo'
+let bEnergyLogoPromise: Promise<Buffer> | null = null
+
+function getBEnergyLogo() {
+  bEnergyLogoPromise ??= readFile(path.join(process.cwd(), 'public', 'logo2.png'))
+  return bEnergyLogoPromise
+}
 
 class DeliveryStatePersistenceError extends Error {
   constructor(message: string) {
@@ -127,7 +137,7 @@ export async function dispatchMarketClientEmails(limit = 10): Promise<MarketClie
   if (!apiKey || !configuration.sendingDomain) throw new Error('Chybí bezpečná konfigurace Resendu.')
 
   const { data, error } = await client.rpc('claim_power_outage_client_email_delivery_batch', {
-    p_limit: state.runtime_mode === 'live' ? 1 : limit,
+    p_limit: limit,
   })
   if (error) throw new Error(`E-mailovou dávku se nepodařilo převzít: ${error.message}`)
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -146,24 +156,32 @@ export async function dispatchMarketClientEmails(limit = 10): Promise<MarketClie
   try {
     for (const delivery of claim.deliveries) {
       try {
-        if (!validEmail(delivery.fromEmail)) throw new Error('Zpráva nemá platnou adresu odesílatele.')
-        const senderDomain = delivery.fromEmail.trim().toLowerCase().split('@')[1]
+        const preparedLiveDelivery = delivery.mode === 'live'
+          ? await prepareMarketClientEmailLiveDeliveryForSend(delivery.id, claim.batchToken)
+          : null
+        if (delivery.mode === 'live' && !preparedLiveDelivery) continue
+        const preparedDelivery = preparedLiveDelivery
+          ? { ...delivery, ...preparedLiveDelivery }
+          : delivery
+
+        if (!validEmail(preparedDelivery.fromEmail)) throw new Error('Zpráva nemá platnou adresu odesílatele.')
+        const senderDomain = preparedDelivery.fromEmail.trim().toLowerCase().split('@')[1]
         if (senderDomain !== configuration.sendingDomain) {
           throw new Error('Doména odesílatele neodpovídá ověřené doméně Resendu.')
         }
 
-        const recipients = recipientGroups(delivery.recipients)
+        const recipients = recipientGroups(preparedDelivery.recipients)
         let to = recipients.to
         let cc = recipients.cc
         let bcc = recipients.bcc
-        let subject = delivery.subject
+        let subject = preparedDelivery.subject
 
         if (delivery.mode === 'test') {
           const testRecipient = process.env.RESEND_TEST_RECIPIENT?.trim().toLowerCase()
           if (!validEmail(testRecipient)) {
             throw new Error('Testovací režim nemá nastavenou RESEND_TEST_RECIPIENT.')
           }
-          if (!delivery.html.includes('TESTOVACÍ REŽIM') || !delivery.text?.includes('Původní příjemci:')) {
+          if (!preparedDelivery.html.includes('TESTOVACÍ REŽIM') || !preparedDelivery.text?.includes('Původní příjemci:')) {
             throw new Error('Testovací zpráva neobsahuje povinné bezpečnostní označení a původní příjemce.')
           }
           subject = `[TEST] ${subject}`
@@ -173,15 +191,21 @@ export async function dispatchMarketClientEmails(limit = 10): Promise<MarketClie
         }
 
         if (to.length === 0) throw new Error('Zpráva nemá žádného příjemce TO.')
+        const embedsLogo = preparedDelivery.html.includes(`cid:${B_ENERGY_LOGO_CONTENT_ID}`)
         const response = await resend.emails.send({
-          from: `${cleanHeaderText(delivery.fromName)} <${delivery.fromEmail.trim().toLowerCase()}>`,
+          from: `${cleanHeaderText(preparedDelivery.fromName)} <${preparedDelivery.fromEmail.trim().toLowerCase()}>`,
           to,
           cc: cc.length > 0 ? cc : undefined,
           bcc: bcc.length > 0 ? bcc : undefined,
-          replyTo: validEmail(delivery.replyToEmail) ? delivery.replyToEmail.trim().toLowerCase() : undefined,
+          replyTo: validEmail(preparedDelivery.replyToEmail) ? preparedDelivery.replyToEmail.trim().toLowerCase() : undefined,
           subject,
-          html: delivery.html,
-          text: delivery.text ?? undefined,
+          html: preparedDelivery.html,
+          text: preparedDelivery.text ?? undefined,
+          attachments: embedsLogo ? [{
+            filename: 'b-energy-logo.png',
+            content: await getBEnergyLogo(),
+            contentId: B_ENERGY_LOGO_CONTENT_ID,
+          }] : undefined,
           tags: [
             { name: 'category', value: 'market_outage' },
             { name: 'delivery_id', value: delivery.id },

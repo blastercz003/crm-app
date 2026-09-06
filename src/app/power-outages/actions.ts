@@ -29,7 +29,7 @@ import type {
   CompleteProviderState,
   CompleteSourceDiagnostic,
 } from '@/lib/power-outages/complete-types'
-import type { MarketClientEmailAdminWorkspace, MarketClientEmailMode, MarketClientEmailRecipientKind, PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
+import type { MarketClientEmailAdminWorkspace, MarketClientEmailEventKind, MarketClientEmailMode, MarketClientEmailRecipientKind, PowerOutageDetail, PowerOutageNotificationPreferences, PowerOutageSource, PowerOutageSourceDiagnostic } from '@/lib/power-outages/types'
 
 type PreferencesActionResult =
   | { success: true; preferences: PowerOutageNotificationPreferences; error: null }
@@ -366,7 +366,7 @@ export async function saveMarketClientEmailConfigurationAction(input: {
   try {
     if (!validUuid(input.clientId)) throw new Error('Neplatné technické ID klienta.')
     if (!['disabled', 'shadow'].includes(input.mode)) {
-      throw new Error('Režimy TEST a AKTIVNÍ budou dostupné až po zapojení e-mailového poskytovatele.')
+      throw new Error('Režimy TEST a AKTIVNÍ se mění pouze samostatným bezpečnostním krokem.')
     }
     if (input.fromName.length > 160 || input.fromEmail.length > 320 || input.replyToEmail.length > 320) {
       throw new Error('Údaj odesílatele je příliš dlouhý.')
@@ -470,9 +470,10 @@ export async function sendMarketClientEmailTestAction(
   }
 }
 
-export async function setMarketClientEmailLivePilotAction(input: {
+export async function setMarketClientEmailLiveAction(input: {
   clientId: string
   enabled: boolean
+  eventKinds: MarketClientEmailEventKind[]
   confirmation?: string
 }): Promise<MarketClientEmailMutationActionResult> {
   try {
@@ -486,25 +487,35 @@ export async function setMarketClientEmailLivePilotAction(input: {
       }
       const configuration = getResendConfigurationStatus()
       if (!configuration.liveReady) {
-        throw new Error(`Ostrý pilot nelze spustit: ${configuration.issues.join(' ')}`)
+        throw new Error(`Ostrý režim nelze spustit: ${configuration.issues.join(' ')}`)
+      }
+      if (input.eventKinds.length === 0) throw new Error('Vyberte alespoň jedno pravidlo.')
+      const allowedEventKinds: MarketClientEmailEventKind[] = ['new_outage', 'schedule_changed', 'cancelled', 'reminder_24h', 'missing_job_72h']
+      if (input.eventKinds.some((eventKind) => !allowedEventKinds.includes(eventKind))) {
+        throw new Error('Výběr obsahuje neplatné pravidlo.')
+      }
+      if (input.eventKinds.includes('missing_job_72h') && input.eventKinds.length !== 1) {
+        throw new Error('Pravidlo Bez objednávky – 3 dny předem musí být aktivní samostatně.')
       }
     }
 
     const service = getServiceRoleClient()
-    if (!service) throw new Error('Chybí zabezpečené serverové připojení pro ostrý pilot.')
-    const { error } = await service.rpc('set_power_outage_client_email_live_pilot', {
+    if (!service) throw new Error('Chybí zabezpečené serverové připojení pro ostrý režim.')
+    const { error } = await service.rpc('set_power_outage_client_email_live', {
       p_client_id: input.clientId,
       p_enabled: input.enabled,
+      p_event_kinds: input.enabled ? input.eventKinds : [],
     })
-    if (error) throw new Error(`Ostrý pilot se nepodařilo změnit: ${error.message}`)
+    if (error) throw new Error(`Ostrý režim se nepodařilo změnit: ${error.message}`)
 
     if (input.enabled) {
       try {
         await planMarketClientEmailCandidates(200)
       } catch (planningError) {
-        await service.rpc('set_power_outage_client_email_live_pilot', {
+        await service.rpc('set_power_outage_client_email_live', {
           p_client_id: input.clientId,
           p_enabled: false,
+          p_event_kinds: [],
         })
         throw planningError
       }
@@ -553,13 +564,14 @@ export async function skipMarketClientEmailDeliveryAction(
 
 export async function setMarketClientEmailShadowRuleAction(input: {
   clientId: string
-  eventKind: 'new_outage' | 'schedule_changed' | 'cancelled'
+  eventKind: MarketClientEmailEventKind
   enabled: boolean
 }): Promise<MarketClientEmailMutationActionResult> {
   try {
     if (!validUuid(input.clientId)) throw new Error('Neplatné technické ID klienta.')
-    if (!['new_outage', 'schedule_changed', 'cancelled'].includes(input.eventKind)) {
-      throw new Error('Tento typ události zatím nelze aktivovat.')
+    const allowedEventKinds: MarketClientEmailEventKind[] = ['new_outage', 'schedule_changed', 'cancelled', 'reminder_24h', 'missing_job_72h']
+    if (!allowedEventKinds.includes(input.eventKind)) {
+      throw new Error('Neplatný typ e-mailového pravidla.')
     }
     const { supabase, profile } = await getPowerOutageRuntimeContext()
     if (profile.role !== 'admin') throw new Error('Tuto operaci může provést pouze administrátor.')
