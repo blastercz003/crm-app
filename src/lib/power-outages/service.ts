@@ -3,6 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getPowerOutageHealth } from './health'
 import { getPowerOutageRuntimeContext } from './access'
+import { getPowerOutageNotificationScope } from './notification-access'
 import { cezAnnouncementUrl, powerOutageSourceUrl } from './public-links'
 import type {
   PowerOutageFilterOptions,
@@ -289,7 +290,8 @@ async function loadViewedMatchIds(
 }
 
 export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
-  const { supabase, user } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  const notificationScope = await getPowerOutageNotificationScope(supabase, profile)
 
   const [
     currentResult,
@@ -492,6 +494,7 @@ export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
       health.matching,
     ),
     preferences,
+    notificationScope,
   }
 }
 

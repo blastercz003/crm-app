@@ -8,6 +8,8 @@ export type PowerOutageNotificationPreferences = {
   updatedAt: string | null
 }
 
+export type PowerOutageNotificationScope = 'all' | 'albert'
+
 export type MarketClientEmailMode = 'disabled' | 'shadow' | 'test' | 'live'
 export type MarketClientEmailRecipientKind = 'to' | 'cc'
 export type MarketClientEmailEventKind =
@@ -444,4 +446,5 @@ export type PowerOutageWorkspace = {
   sourceHealth: PowerOutageSourceStatus
   storeCoverage: PowerOutageStoreCoverage
   preferences: PowerOutageNotificationPreferences
+  notificationScope: PowerOutageNotificationScope | null
 }

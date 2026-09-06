@@ -25,6 +25,7 @@ export function PowerOutagesDashboard({ workspace, isAdmin }: { workspace: Power
           sources={workspace.sources}
           storeCoverage={workspace.storeCoverage}
           isAdmin={isAdmin}
+          notificationScope={workspace.notificationScope}
         />
       </div>
     </>

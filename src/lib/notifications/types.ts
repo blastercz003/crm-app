@@ -6,6 +6,7 @@ export type NotificationCategory =
   | 'jobs'
   | 'activities'
   | 'weather'
+  | 'power_outages'
   | 'system'
 
 export type NotificationPriority = 'low' | 'normal' | 'high'

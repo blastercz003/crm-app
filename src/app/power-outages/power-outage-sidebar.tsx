@@ -18,6 +18,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import type {
   PowerOutageNotificationPreferences,
+  PowerOutageNotificationScope,
   PowerOutageSource,
   PowerOutageSourceDiagnostic,
   PowerOutageSourceStatus,
@@ -81,7 +82,7 @@ function Switch({ checked, disabled = false, label, onChange }: { checked: boole
   )
 }
 
-function NotificationSettings({ initial }: { initial: PowerOutageNotificationPreferences }) {
+function NotificationSettings({ initial, scope }: { initial: PowerOutageNotificationPreferences; scope: PowerOutageNotificationScope }) {
   const [preferences, setPreferences] = useState(initial)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -110,12 +111,12 @@ function NotificationSettings({ initial }: { initial: PowerOutageNotificationPre
       </div>
       <div className="mt-4">
         <div className="weather-alerts__record-surface flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border px-3.5 py-3">
-          <span className="min-w-0"><strong className="block text-xs text-[var(--text-primary)]">Nově nalezené odstávky</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">Běžná notifikace aplikace a PWA.</small></span>
+          <span className="min-w-0"><strong className="block text-xs text-[var(--text-primary)]">Nově nalezené odstávky</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">ČEZ, EG.D a PRE · {scope === 'all' ? 'všichni klienti' : 'pouze ALBERT'}.</small></span>
           <Switch checked={preferences.notificationsEnabled} disabled={pending} label="Upozornění na nové odstávky" onChange={(checked) => save({ ...preferences, notificationsEnabled: checked, reminder24hEnabled: false })} />
         </div>
       </div>
       <div className="mt-auto pt-3">
-        <p className="flex items-center gap-2 text-[9px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Upozornění se vztahují pouze na nalezené prodejny.</p>
+        <p className="flex items-center justify-center gap-2 text-center text-[9px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Upozornění se vztahují pouze na nalezené prodejny.</p>
         {error ? <p className="mt-2 text-[9px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{error}</p> : null}
       </div>
     </section>
@@ -738,7 +739,7 @@ function SourceDiagnosticPopup({ source, diagnostic, loading, error, isAdmin, on
   )
 }
 
-export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmin }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[]; storeCoverage: PowerOutageStoreCoverage; isAdmin: boolean }) {
+export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmin, notificationScope }: { preferences: PowerOutageNotificationPreferences; sources: PowerOutageSourceSummary[]; storeCoverage: PowerOutageStoreCoverage; isAdmin: boolean; notificationScope: PowerOutageNotificationScope | null }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
   const [showAddressAnalysis, setShowAddressAnalysis] = useState(false)
   const [showCoverageDetail, setShowCoverageDetail] = useState(false)
@@ -803,7 +804,7 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmi
           <span>Přejetím do strany zobrazíte další část.</span>
         </p>
         <aside className="power-outages-mobile-aside-carousel activities-manual-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
-          <div className="order-5 min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} /></div>
+          {notificationScope ? <div className="order-5 min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} scope={notificationScope} /></div> : null}
           {isAdmin ? <div className="order-6 min-w-0 snap-start snap-always lg:snap-none"><MarketClientEmailAdminPanel /></div> : null}
           {sources.map((source) => (
             <div

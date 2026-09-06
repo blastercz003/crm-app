@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { getPowerOutageRuntimeContext } from './access'
+import { getPowerOutageNotificationScope } from './notification-access'
 import type { PowerOutageNotificationPreferences } from './types'
 
 type PreferenceRow = {
@@ -32,7 +33,11 @@ export async function updatePowerOutageNotificationPreferences(input: {
   notificationsEnabled: boolean
   reminder24hEnabled: boolean
 }): Promise<PowerOutageNotificationPreferences> {
-  const { supabase, user } = await getPowerOutageRuntimeContext()
+  const { supabase, user, profile } = await getPowerOutageRuntimeContext()
+  const notificationScope = await getPowerOutageNotificationScope(supabase, profile)
+  if (input.notificationsEnabled && !notificationScope) {
+    throw new Error('Upozornění na odstávky může zapnout pouze administrátor nebo pověřený uživatel.')
+  }
   const now = new Date().toISOString()
   const values = {
     notifications_enabled: Boolean(input.notificationsEnabled),

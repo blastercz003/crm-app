@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { createNotification } from '@/lib/notifications/createNotification'
+import { sendPushNotificationToUser, type PushNotificationDeliveryResult } from '@/lib/notifications/sendPushNotification'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
@@ -8,6 +10,17 @@ type EventKind = 'new_outage' | 'schedule_changed' | 'cancelled'
 type PreferenceRow = {
   user_id: string
   updated_at: string
+}
+
+type ProfileRow = {
+  id: string
+  role: string | null
+  can_view_power_outages: boolean | null
+}
+
+type RecipientScopeRow = {
+  user_id: string
+  scope_kind: 'all' | 'albert'
 }
 
 type OutageRow = {
@@ -52,9 +65,13 @@ type PlannedCandidate = {
 }
 
 export type PowerOutageNotificationPlanResult = {
-  dryRun: true
+  dryRun: false
   candidateCount: number
   plannedCount: number
+  createdCount: number
+  deduplicatedDeliveryCount: number
+  failedCount: number
+  retriedPushCount: number
   deduplicatedCount: number
   skippedCount: number
   samples: Array<{
@@ -63,6 +80,22 @@ export type PowerOutageNotificationPlanResult = {
     message: string
   }>
 }
+
+type DeliveryRow = {
+  id: string
+  user_id: string
+  match_id: string | null
+  event_kind: EventKind
+  dedupe_key: string
+  delivery_status: 'planned' | 'created' | 'deduplicated' | 'failed' | 'skipped'
+  notification_id: string | null
+  push_delivery: Record<string, unknown>
+  attempt_count: number
+  next_attempt_at: string | null
+}
+
+const LIVE_EVENT_KINDS = new Set<EventKind>(['new_outage'])
+const MAX_DELIVERY_ATTEMPTS = 5
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague'
 function relationOne<T>(value: T | T[]) {
@@ -148,7 +181,9 @@ function buildCandidate(input: {
   const outage = relationOne(input.match.outage)
   if (!outage) return null
   const label = storeLabel(input.match)
-  const versionSuffix = input.version?.id ?? outage.starts_at
+  const versionSuffix = input.eventKind === 'new_outage'
+    ? 'confirmed'
+    : input.version?.id ?? outage.starts_at
   const dedupeKey = [
     'power-outage',
     input.preference.user_id,
@@ -217,6 +252,151 @@ function buildCandidate(input: {
   return null
 }
 
+function deliveryPayload(delivery: DeliveryRow) {
+  const title = typeof delivery.push_delivery.title === 'string'
+    ? delivery.push_delivery.title.trim()
+    : ''
+  const message = typeof delivery.push_delivery.message === 'string'
+    ? delivery.push_delivery.message
+    : ''
+  const href = typeof delivery.push_delivery.href === 'string'
+    ? delivery.push_delivery.href
+    : '/power-outages?mode=markets'
+  if (!title) throw new Error('Připravené upozornění nemá nadpis.')
+  return { title, message, href }
+}
+
+function retryAt(attemptCount: number) {
+  const delays = [15, 60, 360, 1_440]
+  const delayMinutes = delays[Math.min(Math.max(0, attemptCount - 1), delays.length - 1)]
+  return new Date(Date.now() + delayMinutes * 60_000).toISOString()
+}
+
+function shouldRetryPush(result: PushNotificationDeliveryResult) {
+  if (result.success || result.sentCount > 0) return false
+  return result.failedCount > 0 || result.reason === 'missing-push-config'
+}
+
+async function saveDeliveryFailure(
+  client: ServiceClient,
+  delivery: DeliveryRow,
+  error: unknown,
+) {
+  const attemptCount = delivery.attempt_count + 1
+  const terminal = attemptCount >= MAX_DELIVERY_ATTEMPTS
+  const { error: updateError } = await client
+    .from('power_outage_notification_deliveries')
+    .update({
+      delivery_status: 'failed',
+      attempt_count: attemptCount,
+      last_attempt_at: new Date().toISOString(),
+      next_attempt_at: terminal ? null : retryAt(attemptCount),
+      error_message: error instanceof Error ? error.message.slice(0, 2_000) : 'Doručení upozornění selhalo.',
+    })
+    .eq('id', delivery.id)
+  if (updateError) throw updateError
+}
+
+async function dispatchPlannedNotifications(client: ServiceClient) {
+  const now = new Date().toISOString()
+  const { data, error } = await client
+    .from('power_outage_notification_deliveries')
+    .select('id,user_id,match_id,event_kind,dedupe_key,delivery_status,notification_id,push_delivery,attempt_count,next_attempt_at')
+    .in('delivery_status', ['planned', 'failed'])
+    .eq('event_kind', 'new_outage')
+    .lt('attempt_count', MAX_DELIVERY_ATTEMPTS)
+    .or(`next_attempt_at.is.null,next_attempt_at.lte.${now}`)
+    .order('created_at', { ascending: true })
+    .limit(100)
+  if (error) throw error
+
+  let createdCount = 0
+  let deduplicatedDeliveryCount = 0
+  let failedCount = 0
+  let retriedPushCount = 0
+
+  for (const delivery of (data ?? []) as DeliveryRow[]) {
+    try {
+      const payload = deliveryPayload(delivery)
+      const attemptedAt = new Date().toISOString()
+      const attemptCount = delivery.attempt_count + 1
+
+      if (delivery.notification_id) {
+        const pushDelivery = await sendPushNotificationToUser({
+          recipientUserId: delivery.user_id,
+          title: payload.title,
+          message: payload.message,
+          href: payload.href,
+        })
+        retriedPushCount += 1
+        if (shouldRetryPush(pushDelivery)) {
+          await saveDeliveryFailure(client, delivery, new Error(pushDelivery.reason ?? 'PWA push se nepodařilo doručit.'))
+          failedCount += 1
+          continue
+        }
+        const { error: updateError } = await client
+          .from('power_outage_notification_deliveries')
+          .update({
+            delivery_status: 'created',
+            push_delivery: pushDelivery,
+            attempt_count: attemptCount,
+            last_attempt_at: attemptedAt,
+            next_attempt_at: null,
+            error_message: pushDelivery.success ? null : pushDelivery.reason ?? null,
+          })
+          .eq('id', delivery.id)
+        if (updateError) throw updateError
+        createdCount += 1
+        continue
+      }
+
+      const notification = await createNotification({
+        supabase: client,
+        recipientUserId: delivery.user_id,
+        category: 'power_outages',
+        type: `power_outage_${delivery.event_kind}`,
+        title: payload.title,
+        message: payload.message,
+        entityType: 'power_outage_store_match',
+        entityId: delivery.match_id,
+        href: payload.href,
+        priority: 'high',
+        dedupeKey: delivery.dedupe_key,
+        skipSelfNotification: false,
+        returnExistingOnDuplicate: true,
+      })
+      if (!notification) throw new Error('Interní upozornění se nepodařilo vytvořit.')
+      const pushDelivery = notification.deduplicated ? null : notification.pushDelivery
+      const retryPush = pushDelivery ? shouldRetryPush(pushDelivery) : false
+      const { error: updateError } = await client
+        .from('power_outage_notification_deliveries')
+        .update({
+          delivery_status: retryPush
+            ? 'failed'
+            : notification.deduplicated ? 'deduplicated' : 'created',
+          notification_id: notification.id,
+          push_delivery: pushDelivery ?? { deduplicated: true },
+          attempt_count: attemptCount,
+          last_attempt_at: attemptedAt,
+          next_attempt_at: retryPush && attemptCount < MAX_DELIVERY_ATTEMPTS
+            ? retryAt(attemptCount)
+            : null,
+          error_message: retryPush ? pushDelivery?.reason ?? 'PWA push se nepodařilo doručit.' : null,
+        })
+        .eq('id', delivery.id)
+      if (updateError) throw updateError
+      if (retryPush) failedCount += 1
+      else if (notification.deduplicated) deduplicatedDeliveryCount += 1
+      else createdCount += 1
+    } catch (dispatchError) {
+      await saveDeliveryFailure(client, delivery, dispatchError)
+      failedCount += 1
+    }
+  }
+
+  return { createdCount, deduplicatedDeliveryCount, failedCount, retriedPushCount }
+}
+
 async function loadVersions(client: ServiceClient, outageIds: string[]) {
   const rows: VersionRow[] = []
   for (const ids of chunks(outageIds, 80)) {
@@ -255,17 +435,35 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
   if (preferenceError) throw preferenceError
   const preferences = (preferenceData ?? []) as PreferenceRow[]
   if (preferences.length === 0) {
-    return { dryRun: true, candidateCount: 0, plannedCount: 0, deduplicatedCount: 0, skippedCount: 0, samples: [] }
+    return {
+      dryRun: false,
+      candidateCount: 0,
+      plannedCount: 0,
+      createdCount: 0,
+      deduplicatedDeliveryCount: 0,
+      failedCount: 0,
+      retriedPushCount: 0,
+      deduplicatedCount: 0,
+      skippedCount: 0,
+      samples: [],
+    }
   }
 
-  const { data: profileData, error: profileError } = await client
+  const [{ data: profileData, error: profileError }, { data: scopeData, error: scopeError }] = await Promise.all([
+    client
     .from('profiles')
     .select('id,role,can_view_power_outages')
-    .in('id', preferences.map((preference) => preference.user_id))
+    .in('id', preferences.map((preference) => preference.user_id)),
+    client
+      .from('power_outage_notification_recipient_scopes')
+      .select('user_id,scope_kind')
+      .eq('is_active', true),
+  ])
   if (profileError) throw profileError
-  const allowedUsers = new Set((profileData ?? [])
-    .filter((profile) => profile.role === 'admin' || profile.can_view_power_outages === true)
-    .map((profile) => String(profile.id)))
+  if (scopeError) throw scopeError
+  const profiles = new Map(((profileData ?? []) as ProfileRow[]).map((profile) => [profile.id, profile]))
+  const configuredScopes = new Map(((scopeData ?? []) as RecipientScopeRow[])
+    .map((scope) => [scope.user_id, scope.scope_kind]))
 
   const { data: matchData, error: matchError } = await client
     .from('power_outage_store_matches')
@@ -289,7 +487,13 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
   const candidates: PlannedCandidate[] = []
   let skippedCount = 0
   for (const preference of preferences) {
-    if (!allowedUsers.has(preference.user_id)) {
+    const profile = profiles.get(preference.user_id)
+    const notificationScope = profile?.role === 'admin'
+      ? 'all'
+      : profile?.can_view_power_outages === true
+        ? configuredScopes.get(preference.user_id) ?? null
+        : null
+    if (!notificationScope) {
       skippedCount += matches.length
       continue
     }
@@ -300,9 +504,7 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
         skippedCount += 1
         continue
       }
-      // PRE je zavedené bez notifikací. Aktivace bude samostatný, výslovný krok
-      // až po ověření stability syntetických identifikátorů zdroje.
-      if (outage.source === 'pre') {
+      if (notificationScope === 'albert' && match.store_chain_name.trim().toUpperCase() !== 'ALBERT') {
         skippedCount += 1
         continue
       }
@@ -333,7 +535,7 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
           : reasons.has('schedule_changed')
             ? 'schedule_changed'
             : null
-        if (!eventKind) return
+        if (!eventKind || !LIVE_EVENT_KINDS.has(eventKind)) return
         const candidate = buildCandidate({
           preference,
           match,
@@ -364,7 +566,7 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
         delivery_status: 'planned',
         notification_id: null,
         push_delivery: {
-          dryRun: true,
+          live: true,
           title: candidate.title,
           message: candidate.message,
           href: candidate.href,
@@ -376,10 +578,13 @@ export async function planPowerOutageNotifications(): Promise<PowerOutageNotific
     plannedCount += data?.length ?? 0
   }
 
+  const dispatched = await dispatchPlannedNotifications(client)
+
   return {
-    dryRun: true,
+    dryRun: false,
     candidateCount: uniqueCandidates.length,
     plannedCount,
+    ...dispatched,
     deduplicatedCount: uniqueCandidates.length - plannedCount,
     skippedCount,
     samples: uniqueCandidates.slice(0, 8).map((candidate) => ({
