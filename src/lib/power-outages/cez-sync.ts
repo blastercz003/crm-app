@@ -445,6 +445,17 @@ export async function importCezOutagesForStores(input: {
           completedAt,
         )
       : 0
+    if (input.completeCatalogScan && scanComplete) {
+      const { error: versionSnapshotError } = await client.rpc(
+        'finish_power_outage_cez_market_v1_snapshot',
+        {
+          requested_external_ids: scanExternalIds,
+          requested_observed_at: completedAt,
+          requested_target_count: sortedStores.length,
+        },
+      )
+      if (versionSnapshotError) throw versionSnapshotError
+    }
     const counts = await countCezOutages(client, completedAt)
 
     const { error: sourceUpdateError } = await client

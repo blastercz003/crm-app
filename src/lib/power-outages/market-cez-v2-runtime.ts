@@ -151,6 +151,28 @@ export async function runMarketCezV2CollectorBatch(requestedLimit = 6) {
   if (!client) throw new Error('Chybí serverové připojení pro sběrač ČEZ MARKETY v2.')
 
   const limit = Math.min(8, Math.max(1, Math.trunc(requestedLimit)))
+  const { data: versionState, error: versionStateError } = await client
+    .from('power_outage_cez_market_version_state')
+    .select('last_complete_at')
+    .eq('collector_version', 'v2')
+    .maybeSingle<{ last_complete_at: string | null }>()
+  if (versionStateError) throw versionStateError
+  const lastCompleteTime = versionState?.last_complete_at
+    ? Date.parse(versionState.last_complete_at)
+    : Number.NaN
+  if (Number.isFinite(lastCompleteTime)
+    && Date.now() - lastCompleteTime < 6 * 60 * 60 * 1_000) {
+    return {
+      status: 'cooldown' as const,
+      processedCount: 0,
+      successCount: 0,
+      errorCount: 0,
+      savedOutageCount: 0,
+      savedAddressCount: 0,
+      insertedStoreMatchCount: 0,
+      nextEligibleAt: new Date(lastCompleteTime + 6 * 60 * 60 * 1_000).toISOString(),
+    }
+  }
   const { data, error } = await client.rpc(
     'claim_power_outage_cez_market_v2_batch',
     { requested_limit: limit },
