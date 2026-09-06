@@ -48,6 +48,69 @@ function formatDateTime(value: string | null) {
   return Number.isNaN(date.getTime()) ? 'Neuvedeno' : DATE_TIME_FORMATTER.format(date)
 }
 
+function latestActivityAt(values: Array<string | null | undefined>) {
+  return values.reduce<string | null>((latest, value) => {
+    if (!value) return latest
+    const timestamp = new Date(value).getTime()
+    if (!Number.isFinite(timestamp)) return latest
+    if (!latest || timestamp > new Date(latest).getTime()) return value
+    return latest
+  }, null)
+}
+
+function relativeActivityText(value: string | null, now: number | null) {
+  if (!value) return 'Zatím bez aktivity'
+  if (now === null) return `Aktivita ${formatDateTime(value)}`
+  const elapsed = now - new Date(value).getTime()
+  if (!Number.isFinite(elapsed) || elapsed < 0) return `Aktivita ${formatDateTime(value)}`
+  const minutes = Math.floor(elapsed / 60_000)
+  if (minutes < 1) return 'Aktivita právě teď'
+  if (minutes < 60) return `Aktivita před ${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `Aktivita před ${hours} h`
+  return `Aktivita ${formatDateTime(value)}`
+}
+
+function sourceActivity(source: PowerOutageSourceSummary, refreshing: boolean, now: number | null) {
+  const comparison = source.comparisonProgress
+  const collectorActivity = source.cezCollectors?.versions.flatMap((version) => [
+    version.lastAttemptAt,
+    version.lastSuccessAt,
+    version.lastCompleteAt,
+    version.cycleStartedAt,
+    version.cycleFinishedAt,
+  ]) ?? []
+  const lastActivityAt = latestActivityAt([
+    source.lastAttemptAt,
+    source.lastSuccessAt,
+    ...collectorActivity,
+  ])
+
+  if (refreshing) return { text: 'Právě: ruční kontrola', at: lastActivityAt }
+
+  if (source.source === 'cez' && source.cezCollectors) {
+    const runningVersions = source.cezCollectors.versions
+      .filter((version) => version.healthStatus === 'processing' || version.latestCycleStatus === 'running')
+      .map((version) => version.version)
+    if (runningVersions.length === 2) return { text: 'Právě: kontrola v1 + v2', at: lastActivityAt }
+    if (runningVersions[0]) return { text: `Právě: kontrola ČEZ ${runningVersions[0]}`, at: lastActivityAt }
+  }
+
+  if (comparison.status === 'processing') {
+    const text = comparison.phase === 'source_scan'
+      ? 'Právě: kontrola prodejen'
+      : comparison.phase === 'source_sync'
+        ? 'Právě: načítání dat'
+        : comparison.phase === 'saving_matches'
+          ? 'Právě: ukládání shod'
+          : 'Právě: párování prodejen'
+    return { text, at: lastActivityAt }
+  }
+
+  if (source.status === 'processing') return { text: 'Právě: načítání dat', at: lastActivityAt }
+  return { text: relativeActivityText(lastActivityAt, now), at: lastActivityAt }
+}
+
 function sourceName(source: PowerOutageSource) {
   return source === 'cez' ? 'ČEZ v1 + v2' : source === 'egd' ? 'EG.D' : 'PREdistribuce'
 }
@@ -128,7 +191,9 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null)
+  const [activityNow, setActivityNow] = useState<number | null>(null)
   const status = STATUS_PRESENTATION[source.status]
+  const activity = sourceActivity(source, refreshing, activityNow)
   const needsAttention = Boolean(refreshError) || Boolean(source.attention) || source.status === 'warning' || source.status === 'error'
   const recordsLabel = source.source === 'cez' ? 'Záznamů v dávce' : 'Záznamů ve snapshotu'
   const changesLabel = source.source === 'cez' ? 'Změny v dávce' : 'Změny ve snapshotu'
@@ -164,6 +229,12 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
       : comparison.status === 'queued'
         ? 'bg-amber-500'
         : 'bg-sky-500'
+
+  useEffect(() => {
+    setActivityNow(Date.now())
+    const intervalId = window.setInterval(() => setActivityNow(Date.now()), 60_000)
+    return () => window.clearInterval(intervalId)
+  }, [])
 
   const refresh = async () => {
     if (refreshing) return
@@ -271,19 +342,22 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><DatabaseZap aria-hidden size={18} /></span>
           <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdroj dat</span><strong className="block truncate text-base font-semibold text-[var(--text-primary)]"><SourcePanelName source={source.source} /></strong></span>
         </button>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-start gap-1.5">
           {isAdmin ? <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={`Spustit mimořádnou kontrolu ${sourceName(source.source)}`} title={`Spustit mimořádnou kontrolu ${sourceName(source.source)}`} className="flex h-8 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--accent)] disabled:opacity-55"><RefreshCw aria-hidden size={13} className={refreshing ? 'animate-spin' : ''} /></button> : null}
-          <button
-            type="button"
-            onClick={onOpen}
-            aria-label={`${status.label} – otevřít provozní detail ${sourceName(source.source)}`}
-            title="Otevřít provozní detail"
-            className={`relative inline-flex h-8 w-[92px] items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] transition hover:-translate-y-px ${status.badge}`}
-          >
-            <i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
-            <span className="translate-y-px">{status.label}</span>
-            {needsAttention ? <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black leading-none text-slate-950 shadow-sm">!</span> : null}
-          </button>
+          <div className="flex w-[92px] shrink-0 flex-col items-center">
+            <button
+              type="button"
+              onClick={onOpen}
+              aria-label={`${status.label} – otevřít provozní detail ${sourceName(source.source)}`}
+              title="Otevřít provozní detail"
+              className={`relative inline-flex h-8 w-full items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] transition hover:-translate-y-px ${status.badge}`}
+            >
+              <i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
+              <span className="translate-y-px">{status.label}</span>
+              {needsAttention ? <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black leading-none text-slate-950 shadow-sm">!</span> : null}
+            </button>
+            <span title={activity.at ? `Poslední aktivita: ${formatDateTime(activity.at)}` : activity.text} className="mt-1 block max-w-full truncate whitespace-nowrap text-center text-[7px] leading-3 text-[var(--text-secondary)]">{activity.text}</span>
+          </div>
         </div>
       </div>
 
