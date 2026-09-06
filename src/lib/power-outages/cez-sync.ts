@@ -10,7 +10,7 @@ import { powerOutageSha256 } from './normalization'
 import { storePowerOutageSourceSnapshot } from './source-snapshots'
 import { powerOutageErrorMessage } from './error-message'
 
-type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
+export type CezServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
 type SourceState = {
   consecutive_failure_count: number | null
@@ -25,25 +25,37 @@ type CatalogState = { revision: number }
 const CEZ_SCAN_STATE_VERSION = 2
 const CEZ_MARKET_COLLECTOR_V1 = 'v1' as const
 
-async function activeCezMarketCollectorVersion(client: ServiceClient) {
+async function activeCezMarketCollectorVersion(client: CezServiceClient) {
   const { data, error } = await client
     .from('power_outage_cez_market_collector_state')
-    .select('active_version')
+    .select('active_version,operating_mode,primary_version,secondary_version')
     .eq('singleton', true)
-    .maybeSingle<{ active_version: string }>()
+    .maybeSingle<{
+      active_version: string
+      operating_mode: 'v1_only' | 'dual' | 'v2_only'
+      primary_version: string
+      secondary_version: string | null
+    }>()
 
   // Bezpečné pořadí nasazení: starší databáze bez verzovací tabulky dál používá
   // dosavadní sběr v1. Po aplikaci migrace už je zdrojem pravdy databázový přepínač.
   if (error?.code === '42P01' || error?.code === 'PGRST205') {
-    return CEZ_MARKET_COLLECTOR_V1
+    return { mode: 'v1_only' as const, runV1: true }
   }
   if (error) throw error
 
   const version = data?.active_version ?? CEZ_MARKET_COLLECTOR_V1
-  if (version !== CEZ_MARKET_COLLECTOR_V1) {
-    throw new Error(`Sběrač ČEZ pro MARKETY ${version} zatím není v této verzi aplikace dostupný.`)
+  const mode = data?.operating_mode ?? 'v1_only'
+  const valid = (mode === 'v1_only' && version === 'v1')
+    || (mode === 'dual'
+      && version === 'v2'
+      && data?.primary_version === 'v2'
+      && data?.secondary_version === 'v1')
+    || (mode === 'v2_only' && version === 'v2')
+  if (!valid) {
+    throw new Error('Konfigurace sběračů ČEZ MARKETY není v bezpečném konzistentním stavu.')
   }
-  return version
+  return { mode, runV1: mode !== 'v2_only' }
 }
 
 export class CezSyncAlreadyRunningError extends Error {
@@ -92,12 +104,24 @@ function outageRow(outage: NormalizedPowerOutage, observedAt: string) {
   }
 }
 
-async function upsertCezOutages(
-  client: ServiceClient,
+export async function upsertCezOutagesAdditively(
+  client: CezServiceClient,
   outages: NormalizedPowerOutage[],
   observedAt: string,
+  observation: {
+    collectorVersion: 'v1' | 'v2'
+    cycleId?: string | null
+    exactExternalIds?: Set<string>
+    townExternalIds?: Set<string>
+  },
 ) {
-  if (outages.length === 0) return { outageCount: 0, addressCount: 0 }
+  if (outages.length === 0) {
+    return {
+      outageCount: 0,
+      addressCount: 0,
+      outageIdByExternal: new Map<string, string>(),
+    }
+  }
 
   const outageIdByExternal = new Map<string, string>()
   for (const batch of chunks(outages, 50)) {
@@ -147,30 +171,64 @@ async function upsertCezOutages(
       if (error) throw error
     }
 
-    const currentKeys = new Set(addressRows.map((row) => row.address_key))
-    const { data: existingAddresses, error: existingAddressError } = await client
-      .from('power_outage_addresses')
-      .select('id,address_key')
-      .eq('outage_id', outageId)
-    if (existingAddressError) throw existingAddressError
-    const staleAddressIds = (existingAddresses ?? [])
-      .filter((row) => !currentKeys.has(String(row.address_key)))
-      .map((row) => String(row.id))
-    for (const staleBatch of chunks(staleAddressIds, 300)) {
-      const { error: staleError } = await client
+    const exact = observation.exactExternalIds?.has(outage.externalId) ?? false
+    const town = observation.townExternalIds?.has(outage.externalId) ?? false
+    const { error: observationError } = await client.rpc(
+      'record_power_outage_cez_market_observation',
+      {
+        requested_collector_version: observation.collectorVersion,
+        requested_external_id: outage.externalId,
+        requested_outage_id: outageId,
+        requested_cycle_id: observation.cycleId ?? null,
+        requested_exact: exact,
+        requested_town: town,
+        requested_observed_at: observedAt,
+        requested_metadata: {
+          contract: 'cez-market-version-observation-v1',
+          collectorVersion: observation.collectorVersion,
+        },
+      },
+    )
+    if (observationError) throw observationError
+
+    if (addressRows.length > 0) {
+      const { data: savedAddresses, error: savedAddressError } = await client
         .from('power_outage_addresses')
-        .delete()
-        .in('id', staleBatch)
-      if (staleError) throw staleError
+        .select('id,address_key')
+        .eq('outage_id', outageId)
+        .in('address_key', addressRows.map((row) => row.address_key))
+      if (savedAddressError) throw savedAddressError
+
+      const { error: addressObservationError } = await client
+        .from('power_outage_cez_market_address_observations')
+        .upsert(
+          (savedAddresses ?? []).map((row) => ({
+            collector_version: observation.collectorVersion,
+            external_id: outage.externalId,
+            outage_id: outageId,
+            outage_address_id: String(row.id),
+            address_key: String(row.address_key),
+            last_seen_at: observedAt,
+            last_cycle_id: observation.cycleId ?? null,
+            missing_since: null,
+            metadata: {
+              contract: 'cez-market-address-observation-v1',
+              returnedForExactAddress: exact,
+              returnedForTown: town,
+            },
+          })),
+          { onConflict: 'collector_version,external_id,address_key' },
+        )
+      if (addressObservationError) throw addressObservationError
     }
 
     addressCount += addressRows.length
   }
 
-  return { outageCount: outages.length, addressCount }
+  return { outageCount: outages.length, addressCount, outageIdByExternal }
 }
 
-async function countCezOutages(client: ServiceClient, now: string) {
+async function countCezOutages(client: CezServiceClient, now: string) {
   const [{ count: active, error: activeError }, { count: future, error: futureError }] = await Promise.all([
     client
       .from('power_outages')
@@ -192,7 +250,7 @@ async function countCezOutages(client: ServiceClient, now: string) {
 }
 
 async function markMissingCezOutages(
-  client: ServiceClient,
+  client: CezServiceClient,
   externalIds: Set<string>,
   missingAt: string,
 ) {
@@ -224,7 +282,16 @@ export async function importCezOutagesForStores(input: {
 }) {
   const client = getServiceRoleClient()
   if (!client) throw new Error('Chybí serverové připojení Supabase pro import ČEZ.')
-  const collectorVersion = await activeCezMarketCollectorVersion(client)
+  const collectorState = await activeCezMarketCollectorVersion(client)
+  const collectorVersion = CEZ_MARKET_COLLECTOR_V1
+  if (!collectorState.runV1) {
+    return {
+      status: 'skipped' as const,
+      reason: 'collector_mode' as const,
+      collectorVersion,
+      operatingMode: collectorState.mode,
+    }
+  }
 
   const startedAt = new Date().toISOString()
   const staleBefore = new Date(Date.now() - 15 * 60 * 1_000).toISOString()
@@ -269,7 +336,10 @@ export async function importCezOutagesForStores(input: {
     ? sourceState.metadata.lastFullScanAt
     : null
   const lastFullScanTime = lastFullScanAt ? Date.parse(lastFullScanAt) : Number.NaN
-  const minimumFullScanIntervalMs = Math.max(0, input.minimumFullScanIntervalMs ?? 0)
+  const minimumFullScanIntervalMs = Math.max(
+    collectorState.mode === 'dual' ? 24 * 60 * 60 * 1_000 : 0,
+    input.minimumFullScanIntervalMs ?? 0,
+  )
   const catalogAlreadyProcessed = (sourceState?.store_revision_processed ?? 0) >= catalogState.revision
   const waitForNextFullScan = Boolean(input.completeCatalogScan)
     && !hasActiveScan
@@ -362,8 +432,13 @@ export async function importCezOutagesForStores(input: {
       existingPayloadByExternalId.get(outage.externalId) !== outage.payloadSha256
     )).length
     const changed = changedRecordCount > 0
-    const saved = await upsertCezOutages(client, normalized, completedAt)
-    const missingCount = input.completeCatalogScan && scanComplete
+    const saved = await upsertCezOutagesAdditively(client, normalized, completedAt, {
+      collectorVersion,
+      townExternalIds: new Set(normalized.map((outage) => outage.externalId)),
+    })
+    const missingCount = collectorState.mode === 'v1_only'
+      && input.completeCatalogScan
+      && scanComplete
       ? await markMissingCezOutages(
           client,
           new Set(scanExternalIds),
