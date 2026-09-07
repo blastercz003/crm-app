@@ -61,6 +61,47 @@ function cezNewStatusPresentation(status: CompleteCezNewState['status']) {
   return { badge: 'border-slate-400/35 bg-slate-400/10 text-slate-600 [html[data-theme=dark]_&]:text-slate-300', dot: 'bg-slate-400' }
 }
 
+function cezAllPipelineDelayed(state: CompleteCezNewState) {
+  const reference = state.stage === 'ready' ? state.lastProjectionAt : state.scanStartedAt
+  if (!reference) return false
+  const referenceMs = new Date(reference).getTime()
+  if (!Number.isFinite(referenceMs)) return false
+  const thresholdMs = state.stage === 'ready' ? 36 * 60 * 60_000 : 24 * 60 * 60_000
+  return Date.now() - referenceMs > thresholdMs
+}
+
+function cezAllStatus(state: CompleteCezNewState, source: CompleteSourceState | null) {
+  const discovery = source?.discovery
+  const pipelineDelayed = state.activeSource === 'shadow' && cezAllPipelineDelayed(state)
+  const status: CompleteSourceState['discovery']['status'] = state.status === 'error' || discovery?.status === 'error'
+    ? 'error'
+    : pipelineDelayed || discovery?.status === 'delayed'
+      ? 'delayed'
+      : state.status === 'partial' || discovery?.status === 'partial'
+        ? 'partial'
+        : state.status === 'processing' || discovery?.status === 'processing'
+          ? 'processing'
+          : state.status === 'waiting' || discovery?.status === 'waiting'
+            ? 'waiting'
+            : 'current'
+  const message = status === 'error'
+    ? state.status === 'error'
+      ? state.statusMessage
+      : discovery?.statusMessage ?? 'Navazující zpracování firem skončilo chybou.'
+    : status === 'delayed'
+      ? pipelineDelayed
+        ? 'Celoplošný sběr nebo jeho produkční publikace se neposunuly v očekávaném intervalu.'
+        : discovery?.statusMessage ?? 'Povinné vyhledávání firem se neposouvá v očekávaném intervalu.'
+      : status === 'partial'
+        ? state.status === 'partial' ? state.statusMessage : discovery?.statusMessage ?? state.statusMessage
+        : status === 'processing'
+          ? state.status === 'processing' ? state.statusMessage : discovery?.statusMessage ?? state.statusMessage
+          : status === 'current'
+            ? 'Sběr ČEZ, produkční katalog i povinné vyhledávání firem jsou aktuální.'
+            : 'ČEZ ALL v1 čeká na zahájení nebo první dokončený průchod.'
+  return { status, message, pipelineDelayed }
+}
+
 function cezNewStageLabel(stage: CompleteCezNewState['stage'], active = false) {
   if (active && stage === 'ready') return 'ČEZ ALL v1 je aktivní'
   return ({ ruian: 'Katalog RÚIAN', mapping: 'Mapování území ČEZ', scan: 'Sběr odstávek', normalization: 'Ověření adres', projection: 'Stínová projekce', ready: 'Připraveno k přepnutí' } as const)[stage]
@@ -315,9 +356,12 @@ function CompleteSourceDiagnosticPopup({ source, diagnostic, loading, error, isA
   )
 }
 
-function CompleteCezNewDiagnosticPopup({ state, isAdmin, onClose }: { state: CompleteCezNewState; isAdmin: boolean; onClose: () => void }) {
+function CompleteCezNewDiagnosticPopup({ state, source, isAdmin, onReload, onClose }: { state: CompleteCezNewState; source: CompleteSourceState | null; isAdmin: boolean; onReload: () => void | Promise<void>; onClose: () => void }) {
   const presentation = cezNewStatusPresentation(state.status)
   const hasWarning = state.scanRetryableErrorCount > 0 || Boolean(state.warningStage)
+  const discovery = source?.discovery ?? null
+  const aggregate = cezAllStatus(state, source)
+  const discoveryPresentation = discoveryStatusPresentation(discovery?.status ?? 'waiting')
   const phases = [
     { label: 'Katalog RÚIAN', done: state.representativeDone, total: state.catalogTotal, error: state.representativeError, detail: `${state.representativeRemaining.toLocaleString('cs-CZ')} obcí zbývá` },
     { label: 'Mapování ČEZ', done: state.mappingDone, total: state.catalogTotal, error: state.mappingError, detail: `${state.cezMapped.toLocaleString('cs-CZ')} obcí v území ČEZ` },
@@ -328,18 +372,27 @@ function CompleteCezNewDiagnosticPopup({ state, isAdmin, onClose }: { state: Com
   return <PowerOutagePopupShell titleId="complete-cez-new-status" eyebrow={`KOMPLETNÍ SBĚR · ${shadowActive ? 'CELOPLOŠNÝ ZDROJ' : 'NOVÝ CELOPLOŠNÝ ZDROJ'}`} title={shadowActive ? <CezAllV1Label /> : 'ČEZ – NEW'} icon={<DatabaseZap aria-hidden size={21} />} onClose={onClose}>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
       <section className="rounded-2xl border border-sky-400/25 bg-sky-500/8 p-4">
-        <div className="flex items-start justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">{shadowActive ? 'Aktuální stav' : 'Právě probíhá'}</small><strong className="mt-1 block text-base text-[var(--text-primary)]">{cezNewStageLabel(state.stage, shadowActive)}</strong><p className="mt-1 max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{state.statusMessage}</p></span><span className={`relative inline-flex h-8 w-[108px] shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold uppercase leading-none tracking-[0.06em] ${presentation.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} />{cezNewStatusLabel(state.status, shadowActive)}{presentation.attention || hasWarning ? <i className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black not-italic text-amber-950">!</i> : null}</span></div>
+        <div className="flex items-start justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Sběr a příprava katalogu ČEZ</small><strong className="mt-1 block text-base text-[var(--text-primary)]">{cezNewStageLabel(state.stage, shadowActive)}</strong><p className="mt-1 max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{state.statusMessage}</p></span><span className={`relative inline-flex h-8 w-[108px] shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold uppercase leading-none tracking-[0.06em] ${presentation.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} />{cezNewStatusLabel(state.status, shadowActive)}{presentation.attention || hasWarning ? <i className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black not-italic text-amber-950">!</i> : null}</span></div>
         <div className="mt-4 flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, state.progressPercent)}%` }} /></div><strong className="w-12 text-right text-[10px] tabular-nums text-[var(--accent)]">{state.progressPercent.toLocaleString('cs-CZ')} %</strong></div>
         <p className="mt-2 text-[9px] text-[var(--text-secondary)]">{state.progressDone.toLocaleString('cs-CZ')} z {state.progressTotal.toLocaleString('cs-CZ')} položek aktuální fáze</p>
       </section>
 
       <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Průběh jednotlivých fází</h3><div className="mt-2 grid gap-2 sm:grid-cols-2">{phases.map((phase) => { const percent = phase.total > 0 ? Math.min(100, Math.round((phase.done / phase.total) * 1000) / 10) : 0; const warningCount = 'warning' in phase ? phase.warning ?? 0 : 0; return <div key={phase.label} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-2"><strong className="text-[10px] text-[var(--text-primary)]">{phase.label}</strong><strong className="text-xs tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-strong)]"><span className="block h-full rounded-full bg-sky-500" style={{ width: `${percent}%` }} /></div><p className="mt-2 text-[8px] text-[var(--text-secondary)]">{phase.done.toLocaleString('cs-CZ')} / {phase.total.toLocaleString('cs-CZ')} · {phase.detail}</p>{warningCount > 0 ? <p className="mt-1 text-[8px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{warningCount.toLocaleString('cs-CZ')} položek čeká na automatické opakování</p> : null}{phase.error > 0 ? <p className="mt-1 text-[8px] font-semibold text-red-600 [html[data-theme=dark]_&]:text-red-300">{phase.error.toLocaleString('cs-CZ')} položek vyžaduje ruční kontrolu</p> : null}</div> })}</div></section>
 
+      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
+        <div className="flex items-start justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Vyhledávání firem · horizont 30 dnů</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{discovery ? `${discovery.completedTargetCount.toLocaleString('cs-CZ')} / ${discovery.totalTargetCount.toLocaleString('cs-CZ')} cílů prověřeno` : 'Průběh zatím není dostupný'}</strong><p className="mt-1 max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{discovery?.statusMessage ?? 'Čekám na provozní snapshot navazujících firemních front.'}</p></span><span className={`relative inline-flex h-8 w-[108px] shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[8px] font-bold uppercase leading-none tracking-[0.06em] ${discoveryPresentation.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${discoveryPresentation.dot}`} />{discoveryStatusLabel(discovery?.status ?? 'waiting')}{discovery && (discovery.errorTargetCount > 0 || ['delayed', 'partial', 'error'].includes(discovery.status)) ? <i className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black not-italic text-amber-950">!</i> : null}</span></div>
+        <div className="mt-3 flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-strong)]"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, discovery?.progressPercent ?? 0)}%` }} /></div><strong className="w-12 text-right text-[10px] tabular-nums text-[var(--accent)]">{(discovery?.progressPercent ?? 0).toLocaleString('cs-CZ')} %</strong></div>
+        {discovery ? <div className="mt-3 grid gap-2 sm:grid-cols-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3"><div className="flex items-center justify-between gap-2"><span><strong className="block text-[10px] text-[var(--text-primary)]">ARES</strong><small className="text-[7px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Povinné · přesná čísla</small></span><strong className="text-xs tabular-nums text-[var(--accent)]">{Math.max(0, discovery.exactTargetCount - discovery.exactPendingTargetCount - discovery.exactErrorTargetCount)} / {discovery.exactTargetCount}</strong></div><p className="mt-2 text-[8px] text-[var(--text-secondary)]">Zbývá {discovery.exactPendingTargetCount} · problémy {discovery.exactErrorTargetCount}</p>{discovery.exactErrorTargetCount > 0 || (discovery.status === 'delayed' && discovery.exactPendingTargetCount > 0) ? <RecoveryControl isAdmin={isAdmin} blocked={false} label="Obnovit ARES" request={{ target: 'provider_discovery', provider: 'ares' }} onRecovered={onReload} /> : null}</div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3"><div className="flex items-center justify-between gap-2"><span><strong className="block text-[10px] text-[var(--text-primary)]">Mapy.com</strong><small className="text-[7px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Povinné · uliční cíle</small></span><strong className="text-xs tabular-nums text-[var(--accent)]">{Math.max(0, discovery.streetTargetCount - discovery.streetPendingTargetCount - discovery.streetErrorTargetCount)} / {discovery.streetTargetCount}</strong></div><p className="mt-2 text-[8px] text-[var(--text-secondary)]">Zbývá {discovery.streetPendingTargetCount} · problémy {discovery.streetErrorTargetCount}</p>{discovery.streetErrorTargetCount > 0 || (discovery.status === 'delayed' && discovery.streetPendingTargetCount > 0) ? <RecoveryControl isAdmin={isAdmin} blocked={false} label="Obnovit Mapy.com" request={{ target: 'provider_discovery', provider: 'mapy' }} onRecovered={onReload} /> : null}</div></div> : null}
+        {discovery?.status === 'error' && discovery.exactErrorTargetCount === 0 && discovery.streetErrorTargetCount === 0 ? <RecoveryControl isAdmin={isAdmin} blocked={false} label="Obnovit vyhodnocení firem" request={{ target: 'company_reconciliation' }} onRecovered={onReload} /> : null}
+      </section>
+
       <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{state.activeSource === 'shadow' ? 'Produkční projekce' : 'Stínová projekce'}</h3><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><PowerOutageDetailRow label="Odstávky" value={state.projectedOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Aktuální odstávky" value={state.projectedCurrentOutageCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Adresy" value={state.projectedAddressCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Čeká na normalizaci" value={state.projectionPendingCount.toLocaleString('cs-CZ')} /></div><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Poslední projekce {formatDate(state.lastProjectionAt)} · bezpečný cyklus {Math.min(1, state.safeRecentCycleCount)} / 1 · projekce odpovídá poslednímu cyklu: {state.latestProjectionMatches ? 'ano' : 'ne'}.</p></section>
 
       <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5"><div className="flex items-start gap-2.5">{state.activeSource === 'shadow' ? <CircleCheck aria-hidden size={17} className="mt-0.5 shrink-0 text-emerald-500" /> : <Info aria-hidden size={17} className="mt-0.5 shrink-0 text-sky-500" />}<span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Aktivní zdroj pro uživatele</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{state.activeSource === 'shadow' ? 'Nový celoplošný ČEZ' : 'Původní ČEZ katalog'}</strong><p className="mt-1 text-[9px] leading-4 text-[var(--text-secondary)]">{state.activeSource === 'shadow' ? 'Tab KOMPLETNÍ používá nový celoplošný zdroj. Návrat na původní zdroj zůstává možný.' : 'Nový sběr zatím běží odděleně ve stínovém režimu a nemění data zobrazená uživatelům.'}</p></span></div></section>
 
-      {state.lastErrorMessage || state.errorStage || hasWarning ? <section className="mt-4"><h3 className={`flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.12em] ${state.errorStage ? 'text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'text-amber-700 [html[data-theme=dark]_&]:text-amber-300'}`}><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><p className={`mt-2 rounded-2xl border p-3.5 text-xs leading-5 text-[var(--text-primary)] ${state.errorStage ? 'border-red-400/30 bg-red-500/8' : 'border-amber-400/30 bg-amber-500/8'}`}>{state.errorStage ? (state.errorCode ? `${state.errorCode}: ` : '') : (state.warningCode ? `${state.warningCode}: ` : '')}{state.errorStage ? (state.lastErrorMessage ?? 'Tato fáze vyžaduje opravu.') : (state.warningMessage ?? `${state.scanRetryableErrorCount} obcí se automaticky zopakuje po dokončení aktuálního snapshotu.`)}</p>{state.scanNextRetryAt ? <p className="mt-2 text-[9px] text-[var(--text-secondary)]">Nejbližší naplánované opakování: {formatDate(state.scanNextRetryAt)}</p> : null}{state.errorStage || state.warningStage ? <RecoveryControl isAdmin={isAdmin} blocked={false} label={state.warningStage === 'scan' && !state.errorStage ? 'Zařadit chybné obce k opakování' : `Obnovit · ${cezNewStageLabel(state.errorStage ?? state.warningStage!)}`} request={{ target: 'cez_new_pipeline', stage: state.errorStage ?? state.warningStage! }} onRecovered={() => undefined} /> : null}</section> : null}
+      {aggregate.pipelineDelayed ? <section className="mt-4"><h3 className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.12em] text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><CircleAlert aria-hidden size={14} /> Zpoždění celoplošného sběru</h3><p className="mt-2 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5 text-xs leading-5 text-[var(--text-primary)]">{aggregate.message}</p><RecoveryControl isAdmin={isAdmin} blocked={false} label={`Obnovit · ${cezNewStageLabel(state.stage)}`} request={{ target: 'cez_new_pipeline', stage: state.stage === 'ready' ? 'projection' : state.stage }} onRecovered={onReload} /></section> : null}
+
+      {state.lastErrorMessage || state.errorStage || hasWarning ? <section className="mt-4"><h3 className={`flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.12em] ${state.errorStage ? 'text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'text-amber-700 [html[data-theme=dark]_&]:text-amber-300'}`}><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3><p className={`mt-2 rounded-2xl border p-3.5 text-xs leading-5 text-[var(--text-primary)] ${state.errorStage ? 'border-red-400/30 bg-red-500/8' : 'border-amber-400/30 bg-amber-500/8'}`}>{state.errorStage ? (state.errorCode ? `${state.errorCode}: ` : '') : (state.warningCode ? `${state.warningCode}: ` : '')}{state.errorStage ? (state.lastErrorMessage ?? 'Tato fáze vyžaduje opravu.') : (state.warningMessage ?? `${state.scanRetryableErrorCount} obcí se automaticky zopakuje po dokončení aktuálního snapshotu.`)}</p>{state.scanNextRetryAt ? <p className="mt-2 text-[9px] text-[var(--text-secondary)]">Nejbližší naplánované opakování: {formatDate(state.scanNextRetryAt)}</p> : null}{state.errorStage || state.warningStage ? <RecoveryControl isAdmin={isAdmin} blocked={false} label={state.warningStage === 'scan' && !state.errorStage ? 'Zařadit chybné obce k opakování' : `Obnovit · ${cezNewStageLabel(state.errorStage ?? state.warningStage!)}`} request={{ target: 'cez_new_pipeline', stage: state.errorStage ?? state.warningStage! }} onRecovered={onReload} /> : null}</section> : null}
     </div>
   </PowerOutagePopupShell>
 }
@@ -375,6 +428,9 @@ function SourcesPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSi
 
   const cezNew = workspace.cezNew
   const shadowActive = cezNew?.activeSource === 'shadow'
+  const activeCezSource = shadowActive
+    ? workspace.sources.find((source) => source.source === 'cez') ?? null
+    : null
   const visibleSources = shadowActive ? workspace.sources.filter((source) => source.source !== 'cez') : workspace.sources
   const compact = Boolean(cezNew && !shadowActive)
   const sourceCards: Array<{ kind: 'legacy'; source: CompleteSourceState } | { kind: 'cez-new'; state: CompleteCezNewState }> = []
@@ -395,13 +451,24 @@ function SourcesPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSi
       {sourceCards.map((card) => {
         if (card.kind === 'cez-new') {
           const state = card.state
-          const presentation = cezNewStatusPresentation(state.status)
+          const aggregate = shadowActive ? cezAllStatus(state, activeCezSource) : null
+          const progress = shadowActive && activeCezSource ? activeCezSource.discovery : null
+          const presentation = aggregate
+            ? discoveryStatusPresentation(aggregate.status)
+            : cezNewStatusPresentation(state.status)
           const hasWarning = state.scanRetryableErrorCount > 0 || Boolean(state.warningStage)
-          const remaining = Math.max(0, state.progressTotal - state.progressDone)
+            || Boolean(progress && (progress.errorTargetCount > 0 || ['delayed', 'partial', 'error'].includes(progress.status)))
+            || Boolean(aggregate?.pipelineDelayed)
+          const progressDone = progress?.completedTargetCount ?? state.progressDone
+          const progressTotal = progress?.totalTargetCount ?? state.progressTotal
+          const progressPercent = progress?.progressPercent ?? state.progressPercent
+          const remaining = progress?.remainingTargetCount ?? Math.max(0, state.progressTotal - state.progressDone)
+          const badgeLabel = aggregate ? discoveryStatusLabel(aggregate.status) : cezNewStatusLabel(state.status, shadowActive)
+          const badgeMessage = aggregate?.message ?? state.statusMessage
           return <div key="cez-new" className={`weather-alerts__record-surface relative h-full rounded-xl border px-2.5 py-1 lg:px-3 lg:py-2 ${compact ? 'lg:h-[90px]' : 'lg:h-[94px]'}`}>
-            <div className="flex items-center justify-between gap-2"><strong className="text-[13px] text-[var(--text-primary)]">{shadowActive ? <CezAllV1Label compact /> : 'ČEZ – NEW'}</strong><CompletePanelStatusBadge label={cezNewStatusLabel(state.status, shadowActive)} badgeClassName={presentation.badge} dotClassName={presentation.dot} attention={presentation.attention || hasWarning} title={state.statusMessage} ariaLabel={`${shadowActive ? 'ČEZ ALL v1' : 'ČEZ – NEW'}: ${cezNewStatusLabel(state.status, shadowActive)}. ${state.statusMessage} Zobrazit detail.`} onClick={() => setShowCezNew(true)} /></div>
-            <div className={`${compact ? 'mt-0.5' : 'mt-1'} grid grid-cols-2 gap-2`}><span className="weather-alerts__record-surface flex h-6 items-center justify-between rounded-lg border px-2.5"><small className="text-[7px] font-bold uppercase leading-none tracking-[0.035em] text-[var(--text-secondary)]">Hotovo</small><strong className="text-[11px] leading-none tabular-nums text-[var(--text-primary)]">{state.progressDone}/{state.progressTotal}</strong></span><span className="weather-alerts__record-surface flex h-6 items-center justify-between rounded-lg border px-2.5"><small className="text-[7px] font-bold uppercase leading-none tracking-[0.035em] text-[var(--text-secondary)]">Zbývá</small><strong className="text-[11px] leading-none tabular-nums text-[var(--text-primary)]">{remaining}</strong></span></div>
-            <div className="absolute bottom-1 left-2.5 right-2.5 flex items-center gap-1.5 lg:static lg:mt-1.5 lg:gap-2"><span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, state.progressPercent)}%` }} /></span><strong className="w-8 text-right text-[7px] tabular-nums text-[var(--accent)]">{state.progressPercent.toLocaleString('cs-CZ')}%</strong><small className="w-[72px] truncate text-right text-[6px] text-[var(--text-secondary)]">{cezNewStageLabel(state.stage, shadowActive)}</small></div>
+            <div className="flex items-center justify-between gap-2"><strong className="text-[13px] text-[var(--text-primary)]">{shadowActive ? <CezAllV1Label compact /> : 'ČEZ – NEW'}</strong><CompletePanelStatusBadge label={badgeLabel} badgeClassName={presentation.badge} dotClassName={presentation.dot} attention={presentation.attention || hasWarning} title={badgeMessage} ariaLabel={`${shadowActive ? 'ČEZ ALL v1' : 'ČEZ – NEW'}: ${badgeLabel}. ${badgeMessage} Zobrazit detail.`} onClick={() => setShowCezNew(true)} /></div>
+            <div className={`${compact ? 'mt-0.5' : 'mt-1'} grid grid-cols-2 gap-2`}><span className="weather-alerts__record-surface flex h-6 items-center justify-between rounded-lg border px-2.5"><small className="text-[7px] font-bold uppercase leading-none tracking-[0.035em] text-[var(--text-secondary)]">{shadowActive ? 'Prověřeno' : 'Hotovo'}</small><strong className="text-[11px] leading-none tabular-nums text-[var(--text-primary)]">{progressDone}/{progressTotal}</strong></span><span className="weather-alerts__record-surface flex h-6 items-center justify-between rounded-lg border px-2.5"><small className="text-[7px] font-bold uppercase leading-none tracking-[0.035em] text-[var(--text-secondary)]">Zbývá</small><strong className="text-[11px] leading-none tabular-nums text-[var(--text-primary)]">{remaining}</strong></span></div>
+            <div className="absolute bottom-1 left-2.5 right-2.5 flex items-center gap-1.5 lg:static lg:mt-1.5 lg:gap-2"><span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, progressPercent)}%` }} /></span><strong className="w-8 text-right text-[7px] tabular-nums text-[var(--accent)]">{progressPercent.toLocaleString('cs-CZ')}%</strong><small className="w-[72px] truncate text-right text-[6px] text-[var(--text-secondary)]">{progress ? formatRelativeDate(progress.lastProgressAt) : cezNewStageLabel(state.stage, shadowActive)}</small></div>
           </div>
         }
         const source = card.source
@@ -420,7 +487,7 @@ function SourcesPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSi
       </div>})}
     </div>
     {selectedSource && typeof document !== 'undefined' ? createPortal(<CompleteSourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} isAdmin={workspace.currentUser.isAdmin} onReload={() => loadDiagnostic(selectedSource, false)} onClose={() => { setSelectedSource(null); setDiagnostic(null); setError(null) }} />, document.body) : null}
-    {showCezNew && cezNew && typeof document !== 'undefined' ? createPortal(<CompleteCezNewDiagnosticPopup state={cezNew} isAdmin={workspace.currentUser.isAdmin} onClose={() => setShowCezNew(false)} />, document.body) : null}
+    {showCezNew && cezNew && typeof document !== 'undefined' ? createPortal(<CompleteCezNewDiagnosticPopup state={cezNew} source={activeCezSource} isAdmin={workspace.currentUser.isAdmin} onReload={() => onRetry?.()} onClose={() => setShowCezNew(false)} />, document.body) : null}
   </PanelShell>
 }
 
