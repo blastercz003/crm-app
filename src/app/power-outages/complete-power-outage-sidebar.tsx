@@ -577,7 +577,7 @@ function DiscoveryPanel({ workspace, onRetry }: { workspace: CompletePowerOutage
     ? `${sourceLabel(attentionSource.source)}: ${attentionSource.discovery.remainingTargetCount} cílů čeká`
     : attentionProvider
       ? `${providerLabel(attentionProvider.provider)}: ${attentionProvider.errorCount} chyb`
-      : 'provozní chyba'
+      : runtime.issues[0] ?? 'provozní chyba'
   const runtimeText = runtime.status === 'healthy'
     ? 'Automatické zpracování je v pořádku'
     : runtime.status === 'processing'

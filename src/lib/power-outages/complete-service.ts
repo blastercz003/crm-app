@@ -309,13 +309,15 @@ function mapSourceDiscovery(
     ? Math.round((completedTargetCount / totalTargetCount) * 1000) / 10
     : 100
   const progressIsStale = (lastProviderProgress: unknown, oldestPending: unknown) => {
-    const reference = typeof lastProviderProgress === 'string' && lastProviderProgress
-      ? lastProviderProgress
-      : typeof oldestPending === 'string' && oldestPending
-        ? oldestPending
-        : null
-    if (!reference) return false
-    const referenceMs = new Date(reference).getTime()
+    // Nově přidaný cíl nesmí zdědit několik hodin starý čas posledního
+    // dokončeného cíle a okamžitě se tvářit jako zpožděný. Fronta stojí teprve
+    // tehdy, když se déle než 30 minut neposunula od pozdějšího z okamžiků:
+    // poslední postup providera / vznik nejstaršího stále čekajícího cíle.
+    const referenceMs = [lastProviderProgress, oldestPending]
+      .filter((value): value is string => typeof value === 'string' && Boolean(value))
+      .map((value) => Date.parse(value))
+      .filter(Number.isFinite)
+      .reduce((latest, value) => Math.max(latest, value), Number.NEGATIVE_INFINITY)
     return Number.isFinite(referenceMs) && Date.now() - referenceMs > 30 * 60_000
   }
   const stalledProviders = [
@@ -535,6 +537,37 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     errorCode: (row.effective_error_code ?? row.readiness_error_code ?? null) as string | null,
     lastErrorMessage: (row.effective_error_message ?? row.readiness_error_message ?? row.last_error_message ?? null) as string | null,
   }
+}
+
+function completeSourceIsStale(
+  source: CompleteSourceState,
+  cezNew: CompleteCezNewState | null,
+  nowMs: number,
+) {
+  if (source.source === 'cez' && cezNew?.activeSource === 'shadow') {
+    // CEZ ALL v1 kontroluje každou obec po 24 hodinách. Publikace do katalogu
+    // se při nezměněném kompletním cyklu záměrně přeskočí, takže čas poslední
+    // projekce nesmí být posuzován původním 90minutovým limitem legacy zdroje.
+    // Běžící další cyklus je čerstvá aktivita; po dokončení ponecháváme šest
+    // hodin rezervu na celoplošný průchod a navazující publikaci.
+    if (cezNew.status === 'processing') return false
+    const completedAt = cezNew.scanFinishedAt ?? cezNew.lastProjectionAt
+    if (!completedAt) return true
+    const completedMs = Date.parse(completedAt)
+    return !Number.isFinite(completedMs) || nowMs - completedMs > 30 * 60 * 60_000
+  }
+
+  const freshnessAt = source.source === 'cez'
+    ? source.lastSuccessAt
+    : source.upstreamLastSuccessAt
+  const freshnessMs: Record<PowerOutageSource, number> = {
+    cez: 90 * 60_000,
+    egd: 8 * 60 * 60_000,
+    pre: 5 * 60 * 60_000,
+  }
+  if (!freshnessAt) return true
+  const value = Date.parse(freshnessAt)
+  return !Number.isFinite(value) || nowMs - value > freshnessMs[source.source]
 }
 
 function providerStatus(input: {
@@ -840,6 +873,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     ...coverageSummary,
     task: tasks.find((task) => task.task_key === 'normalize_addresses') ?? null,
   })
+  const cezNew = cezNewResult.data ? mapCezNewState(cezNewResult.data) : null
   const taskLoadError = taskResult.error
     ? `Provozní stav se nepodařilo načíst: ${taskResult.error.message}`
     : null
@@ -859,14 +893,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       ? 'Snapshot pokrytí adres není kompletní.'
       : taskLoadError
   const nowMs = Date.now()
-  const freshnessMs: Record<PowerOutageSource, number> = { cez: 90 * 60_000, egd: 8 * 60 * 60_000, pre: 5 * 60 * 60_000 }
-  const staleSources = sources.filter((source) => {
-    const freshnessAt = source.source === 'cez'
-      ? source.lastSuccessAt
-      : source.upstreamLastSuccessAt
-    const value = freshnessAt ? new Date(freshnessAt).getTime() : Number.NaN
-    return !Number.isFinite(value) || nowMs - value > freshnessMs[source.source]
-  })
+  const staleSources = sources.filter((source) => completeSourceIsStale(source, cezNew, nowMs))
   const failedTasks = tasks.filter((task) => task.last_status === 'failed' || task.last_status === 'partial' || Number(task.consecutive_failure_count) > 0)
   const runningTasks = tasks.filter((task) => task.last_status === 'running')
   const expiredTasks = runningTasks.filter((task) => task.lock_expires_at && new Date(task.lock_expires_at).getTime() <= nowMs)
@@ -874,6 +901,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     .filter((value): value is string => Boolean(value)).sort().at(-1) ?? null
   const issues = [
     ...[sourceLoadError, providerLoadError, coverageLoadError].filter((value): value is string => Boolean(value)),
+    ...(cezNew?.activeSource === 'shadow' && cezNew.status === 'error'
+      ? [`CEZ ALL v1: ${cezNew.lastErrorMessage || cezNew.statusMessage}`]
+      : []),
     ...staleSources.map((source) => `${source.source.toUpperCase()}: skutečné načtení distributora nemá čerstvá data.`),
     ...sources.filter((source) => source.discovery.status === 'error' || source.discovery.status === 'delayed').map((source) => `${source.source.toUpperCase()}: ${source.discovery.statusMessage}`),
     ...failedTasks.map((task) => `${String(task.task_key)}: ${task.last_error_message || 'poslední běh selhal.'}`),
@@ -882,7 +912,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   return {
     currentUser: { id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' },
     sources,
-    cezNew: cezNewResult.data ? mapCezNewState(cezNewResult.data) : null,
+    cezNew,
     providers,
     runtime: {
       status: issues.length > 0 ? 'attention' : runningTasks.length > 0 ? 'processing' : sources.some((source) => !source.lastSuccessAt) ? 'waiting' : 'healthy',
@@ -957,21 +987,10 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     ...coverageSummary,
     task: normalizationTask,
   })
+  const cezNew = cezNewResult.data ? mapCezNewState(cezNewResult.data) : null
 
   const nowMs = Date.now()
-  const freshnessMs: Record<PowerOutageSource, number> = {
-    cez: 90 * 60_000,
-    egd: 8 * 60 * 60_000,
-    pre: 5 * 60 * 60_000,
-  }
-  const staleSources = sources.filter((source) => {
-    const freshnessAt = source.source === 'cez'
-      ? source.lastSuccessAt
-      : source.upstreamLastSuccessAt
-    if (!freshnessAt) return true
-    const value = new Date(freshnessAt).getTime()
-    return !Number.isFinite(value) || nowMs - value > freshnessMs[source.source]
-  })
+  const staleSources = sources.filter((source) => completeSourceIsStale(source, cezNew, nowMs))
   const failedTasks = tasks.filter((task) => (
     task.last_status === 'failed'
     || task.last_status === 'partial'
@@ -987,6 +1006,9 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     .sort()
     .at(-1) ?? null
   const issues = [
+    ...(cezNew?.activeSource === 'shadow' && cezNew.status === 'error'
+      ? [`CEZ ALL v1: ${cezNew.lastErrorMessage || cezNew.statusMessage}`]
+      : []),
     ...staleSources.map((source) => `${source.source.toUpperCase()}: skutečné načtení distributora nemá čerstvá data.`),
     ...sources
       .filter((source) => source.discovery.status === 'error' || source.discovery.status === 'delayed')
@@ -1025,7 +1047,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
       entityKinds: ['registered_office', 'establishment', 'mixed'],
     },
     sources,
-    cezNew: cezNewResult.data ? mapCezNewState(cezNewResult.data) : null,
+    cezNew,
     providers: providerStates,
     runtime: {
       status: runtimeStatus,
