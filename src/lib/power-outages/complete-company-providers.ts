@@ -100,11 +100,14 @@ function normalizedIco(value: unknown) {
   return digits.length > 0 && digits.length <= 8 ? digits.padStart(8, '0') : null
 }
 
-function addressNumbers(value: string) {
+function addressNumberTokens(value: string) {
   return new Set(
-    [...value.matchAll(/\b0*(\d+)[a-z]?\b/gi)]
-      .map((match) => String(Number.parseInt(match[1], 10)))
-      .filter((number) => number !== '0'),
+    [...value.toLocaleLowerCase('cs-CZ').matchAll(/(?:^|[^\p{L}\d])0*(\d+)([a-z]?)(?=$|[^\p{L}\d])/giu)]
+      .map((match) => {
+        const number = String(Number.parseInt(match[1], 10))
+        return number === '0' ? '' : `${number}${match[2] ?? ''}`
+      })
+      .filter(Boolean),
   )
 }
 
@@ -115,9 +118,16 @@ function addressMatchesTarget(address: string, target: CompleteDiscoveryTarget) 
   if (!normalizedAddress || !municipality || !normalizedAddress.includes(municipality)) return false
   if (street && !normalizedAddress.includes(street)) return false
   if (target.targetKind !== 'exact_number') return true
-  const expectedNumbers = addressNumbers(target.numberToken ?? '')
-  const actualNumbers = addressNumbers(address)
+  const expectedNumbers = addressNumberTokens(target.numberToken ?? '')
+  const actualNumbers = addressNumberTokens(address)
   return expectedNumbers.size > 0 && [...expectedNumbers].every((number) => actualNumbers.has(number))
+}
+
+export function candidateMatchesDiscoveryTarget(
+  candidate: CompleteCompanyCandidate,
+  target: CompleteDiscoveryTarget,
+) {
+  return Boolean(candidate.displayAddress && addressMatchesTarget(candidate.displayAddress, target))
 }
 
 async function responseJson(response: Response, provider: string) {

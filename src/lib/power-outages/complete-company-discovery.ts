@@ -7,6 +7,7 @@ import { claimCompletePowerOutageTask, finishCompletePowerOutageTask } from './c
 import { isCompleteNaturalPersonLegalForm } from './complete-company-evaluation'
 import {
   cacheSafeCandidates,
+  candidateMatchesDiscoveryTarget,
   discoverCompanies,
   providerAcceptsTarget,
   providerConfigured,
@@ -480,7 +481,11 @@ export async function discoverCompletePowerOutageCompanies(
       }
       const cache = await loadCache(client, provider, identity.lookupKind, identity.lookupKey)
       if (cache) {
-        const candidates = cachedCandidates(cache.normalized_results)
+        // Cache Mapy.com mohla vzniknout před zpřísněním kontroly písmene
+        // orientačního čísla. Validaci proto vždy zopakujeme i při cache hitu.
+        const candidates = cachedCandidates(cache.normalized_results).filter((candidate) => (
+          provider !== 'mapy' || candidateMatchesDiscoveryTarget(candidate, targetInput(target))
+        ))
         const materialized = await materializeCandidates({ client, provider, target, candidates })
         companyCount += materialized.companyCount
         evidenceCount += materialized.evidenceCount

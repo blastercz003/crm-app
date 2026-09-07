@@ -92,6 +92,8 @@ type AddressCoverageSnapshotRow = {
   normalized_count: number | string
   exact_count: number | string
   broad_count: number | string
+  street_count?: number | string
+  municipality_count?: number | string
   unresolved_count: number | string
   pending_count: number | string
   error_count: number | string
@@ -106,13 +108,30 @@ type AddressCoverageSnapshotRow = {
 
 function summarizeAddressCoverage(rows: AddressCoverageSnapshotRow[]) {
   const sum = (key: keyof AddressCoverageSnapshotRow) => rows.reduce((total, row) => total + Number(row[key] ?? 0), 0)
+  const hasAddressScopeBreakdown = rows.every((row) => (
+    row.street_count != null && row.municipality_count != null
+  ))
+  const exactCount = sum('exact_count')
+  const broadCount = sum('broad_count')
+  const streetCount = hasAddressScopeBreakdown ? sum('street_count') : broadCount
+  const municipalityCount = hasAddressScopeBreakdown ? sum('municipality_count') : 0
+  const pendingCount = sum('pending_count')
+  const unresolvedCount = sum('unresolved_count')
+  const searchableCount = exactCount + streetCount
   return {
     totalCount: sum('total_count'),
     normalizedCount: sum('normalized_count'),
-    exactCount: sum('exact_count'),
-    broadCount: sum('broad_count'),
-    unresolvedCount: sum('unresolved_count'),
-    pendingCount: sum('pending_count'),
+    exactCount,
+    broadCount,
+    streetCount,
+    municipalityCount,
+    searchableCount,
+    // Čekající adresy zatím neznají svůj výsledný rozsah, proto zůstávají
+    // ve jmenovateli. Jakmile skončí pouze na úrovni obce, z pracovního
+    // progressu vypadnou; nerozpoznané adresy jej naopak blokují.
+    progressTotalCount: searchableCount + pendingCount + unresolvedCount,
+    unresolvedCount,
+    pendingCount,
     errorCount: sum('error_count'),
     reviewCount: sum('review_count'),
     attentionCount: sum('attention_count'),
@@ -598,6 +617,10 @@ function mapAddressCoverage(input: {
   normalizedCount: number
   exactCount: number
   broadCount: number
+  streetCount: number
+  municipalityCount: number
+  searchableCount: number
+  progressTotalCount: number
   unresolvedCount: number
   pendingCount: number
   errorCount: number
@@ -625,7 +648,7 @@ function mapAddressCoverage(input: {
             ? 'processing'
             : 'current'
   const statusMessage = status === 'current'
-    ? 'Všechny adresy prošly aktuální verzí normalizátoru.'
+    ? 'Všechny použitelné adresy jsou připravené pro vyhledávání firem.'
     : status === 'processing'
       ? taskStatus === 'running' ? 'Právě se zpracovává další dávka adres.' : `${pendingCount} adres čeká na nejbližší dávku.`
     : status === 'error'
@@ -1299,13 +1322,25 @@ export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise
     },
     sources: sources.map((source) => {
       const row = coverageRows.find((item) => item.source === source)
+      const exactCount = Number(row?.exact_count ?? 0)
+      const broadCount = Number(row?.broad_count ?? 0)
+      const hasAddressScopeBreakdown = row?.street_count != null && row?.municipality_count != null
+      const streetCount = hasAddressScopeBreakdown ? Number(row.street_count) : broadCount
+      const municipalityCount = hasAddressScopeBreakdown ? Number(row.municipality_count) : 0
+      const pendingCount = Number(row?.pending_count ?? 0)
+      const unresolvedCount = Number(row?.unresolved_count ?? 0)
+      const searchableCount = exactCount + streetCount
       return {
         source,
         totalCount: Number(row?.total_count ?? 0),
         normalizedCount: Number(row?.normalized_count ?? 0),
-        exactCount: Number(row?.exact_count ?? 0),
-        broadCount: Number(row?.broad_count ?? 0),
-        pendingCount: Number(row?.pending_count ?? 0),
+        exactCount,
+        broadCount,
+        streetCount,
+        municipalityCount,
+        searchableCount,
+        progressTotalCount: searchableCount + pendingCount + unresolvedCount,
+        pendingCount,
         attentionCount: Number(row?.attention_count ?? 0),
       }
     }),

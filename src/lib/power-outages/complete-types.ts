@@ -369,6 +369,10 @@ export type CompleteAddressCoverage = {
   normalizedCount: number
   exactCount: number
   broadCount: number
+  streetCount: number
+  municipalityCount: number
+  searchableCount: number
+  progressTotalCount: number
   unresolvedCount: number
   pendingCount: number
   errorCount: number
@@ -404,6 +408,10 @@ export type CompleteAddressCoverageDiagnostic = {
     normalizedCount: number
     exactCount: number
     broadCount: number
+    streetCount: number
+    municipalityCount: number
+    searchableCount: number
+    progressTotalCount: number
     pendingCount: number
     attentionCount: number
   }>
