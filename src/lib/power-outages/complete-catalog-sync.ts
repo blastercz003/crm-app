@@ -377,6 +377,12 @@ async function updateSourceState(input: {
       lock_expires_at: null,
       metadata: {
         projectionContract: 'market-source-catalog-projection-v1',
+        completeCezProjection: input.upstreamMetadata?.completeCezProjection === 'shadow'
+          ? 'shadow'
+          : null,
+        completeCezCycleId: typeof input.upstreamMetadata?.completeCezCycleId === 'string'
+          ? input.upstreamMetadata.completeCezCycleId
+          : null,
         externalRequestsMade: 0,
         sourceScope: coverage.scope,
         upstreamQueryScope: typeof input.upstreamMetadata?.queryScope === 'string'

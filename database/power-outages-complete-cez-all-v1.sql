@@ -1,19 +1,38 @@
 begin;
 
 do $$
+declare
+  missing_dependencies text[] := '{}'::text[];
 begin
-  if to_regclass('public.complete_power_outage_cez_new_status_v3') is null
-    or to_regclass('public.complete_power_outage_cez_projection_state') is null
-    or to_regclass('public.complete_power_outages') is null
-    or to_regclass('public.complete_power_outage_addresses') is null
-    or to_regclass('public.complete_power_outage_companies') is null
-    or to_regclass('public.complete_power_outage_company_evidence') is null
-    or to_regclass('public.complete_power_outage_address_targets') is null
-    or to_regclass('public.complete_power_outage_company_assignments') is null
-    or to_regclass('public.complete_power_outage_company_notes') is null
-    or to_regprocedure('public.request_power_outages_endpoint(text)') is null
-  then
-    raise exception 'Chybi zavislosti pro bezpecnou aktivaci CEZ ALL v1.';
+  if to_regclass('public.complete_power_outage_cez_new_status_v3') is null then
+    missing_dependencies := array_append(missing_dependencies, 'VIEW complete_power_outage_cez_new_status_v3');
+  end if;
+  if to_regclass('public.complete_power_outage_cez_projection_state') is null then
+    missing_dependencies := array_append(missing_dependencies, 'TABLE complete_power_outage_cez_projection_state');
+  end if;
+  if to_regclass('public.complete_power_outages') is null then
+    missing_dependencies := array_append(missing_dependencies, 'TABLE complete_power_outages');
+  end if;
+  if to_regclass('public.complete_power_outage_addresses') is null then
+    missing_dependencies := array_append(missing_dependencies, 'TABLE complete_power_outage_addresses');
+  end if;
+  if to_regclass('public.complete_power_outage_companies') is null then
+    missing_dependencies := array_append(missing_dependencies, 'TABLE complete_power_outage_companies');
+  end if;
+  if to_regclass('public.complete_power_outage_company_evidence') is null then
+    missing_dependencies := array_append(missing_dependencies, 'TABLE complete_power_outage_company_evidence');
+  end if;
+  if to_regclass('public.complete_power_outage_address_targets') is null then
+    missing_dependencies := array_append(missing_dependencies, 'TABLE complete_power_outage_address_targets');
+  end if;
+  if to_regclass('public.complete_power_outage_company_assignments') is null then
+    missing_dependencies := array_append(missing_dependencies, 'TABLE complete_power_outage_company_assignments');
+  end if;
+  if to_regprocedure('public.request_power_outages_endpoint(text)') is null then
+    missing_dependencies := array_append(missing_dependencies, 'FUNCTION request_power_outages_endpoint(text)');
+  end if;
+  if cardinality(missing_dependencies) > 0 then
+    raise exception 'Chybi zavislosti pro CEZ ALL v1: %', array_to_string(missing_dependencies, ', ');
   end if;
 end
 $$;
@@ -179,7 +198,6 @@ begin
   lock table public.complete_power_outage_companies in share mode;
   lock table public.complete_power_outage_company_evidence in share mode;
   lock table public.complete_power_outage_company_assignments in share mode;
-  lock table public.complete_power_outage_company_notes in share mode;
 
   select active_source into current_source
   from public.complete_power_outage_cez_projection_state
@@ -244,16 +262,6 @@ begin
   join public.complete_power_outages outage on outage.id = address.outage_id
   where outage.source = 'cez';
   get diagnostics saved_assignments = row_count;
-
-  insert into public.complete_power_outage_cez_all_manifest_items
-    (manifest_id, entity_kind, entity_key, outage_id, payload)
-  select new_manifest_id, 'note', note.id::text, outage.id, to_jsonb(note)
-  from public.complete_power_outage_company_notes note
-  join public.complete_power_outage_companies company on company.id = note.candidate_id
-  join public.complete_power_outage_addresses address on address.id = company.outage_address_id
-  join public.complete_power_outages outage on outage.id = address.outage_id
-  where outage.source = 'cez';
-  get diagnostics saved_notes = row_count;
 
   update public.complete_power_outage_cez_all_manifests
   set outage_count = saved_outages,
