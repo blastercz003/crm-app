@@ -229,6 +229,10 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
       : comparison.status === 'queued'
         ? 'bg-amber-500'
         : 'bg-sky-500'
+  const duplicateCezV1ScanProgress = source.source === 'cez' && comparison.phase === 'source_scan'
+  const compactCompletedComparison = source.source === 'cez'
+    && comparison.status === 'current'
+    && comparison.phase === 'complete'
 
   useEffect(() => {
     setActivityNow(Date.now())
@@ -381,11 +385,11 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
           </>}
         </div>
         {source.source === 'cez' && source.cezCollectors ? <CezPanelCollectorProgress overview={source.cezCollectors} /> : null}
-        <div className="mt-2.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 lg:mt-2">
+        {!duplicateCezV1ScanProgress && compactCompletedComparison ? <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-3 py-2 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><span className="flex min-w-0 items-center gap-2"><ShieldCheck aria-hidden size={12} className="shrink-0" /><small className="truncate text-[7px] font-bold uppercase tracking-[0.055em]">{comparisonLabel}</small></span><ChevronRight aria-hidden size={11} className="shrink-0" /></div> : !duplicateCezV1ScanProgress ? <div className="mt-2.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 lg:mt-2">
           <div className="flex items-center justify-between gap-3"><small className="truncate text-[7px] font-bold uppercase tracking-[0.055em] text-[var(--text-secondary)]">{comparisonLabel}</small><strong className="shrink-0 text-[9px] tabular-nums text-[var(--accent)]">{(Math.round(comparisonPercent * 10) / 10).toLocaleString('cs-CZ')} %</strong></div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><span className={`block h-full rounded-full transition-[width] duration-500 ${comparisonBar}`} style={{ width: `${comparisonPercent}%` }} /></div>
           <div className="mt-1 flex items-center justify-between gap-2 text-[7px] text-[var(--text-secondary)]"><span className="truncate">{comparisonProcessedCount !== null && comparisonTotalCount !== null ? `${comparisonProcessedCount} / ${comparisonTotalCount}` : comparison.status === 'processing' ? 'Příprava dat pro porovnání' : 'Zatím nezahájeno'}</span><ChevronRight aria-hidden size={11} className="shrink-0" /></div>
-        </div>
+        </div> : null}
       </button>
     </section>
   )
