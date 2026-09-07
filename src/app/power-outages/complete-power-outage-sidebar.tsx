@@ -570,25 +570,40 @@ function DiscoveryPanel({ workspace, onRetry }: { workspace: CompletePowerOutage
     return () => window.clearInterval(interval)
   }, [selectedProvider, diagnostic?.state.status])
 
-  const RuntimeIcon = runtime.status === 'healthy'
+  const attentionProvider = workspace.providers.find((provider) => ['error', 'partial', 'exhausted'].includes(provider.status))
+  const attentionSource = workspace.sources.find((source) => (
+    ['error', 'delayed'].includes(source.discovery.status)
+    && !['error', 'delayed', 'partial'].includes(source.upstreamStatus)
+    && (source.discovery.remainingTargetCount > 0 || source.discovery.pendingCandidateCount > 0)
+  ))
+  const searchProcessing = workspace.providers.some((provider) => provider.status === 'processing')
+    || workspace.sources.some((source) => (
+      source.discovery.status === 'processing'
+      && !['error', 'delayed', 'partial'].includes(source.upstreamStatus)
+    ))
+  const searchWaiting = workspace.providers.every((provider) => provider.status === 'waiting' || provider.status === 'inactive')
+  const searchStatus = attentionProvider || attentionSource
+    ? 'attention' as const
+    : searchProcessing
+      ? 'processing' as const
+      : searchWaiting
+        ? 'waiting' as const
+        : 'healthy' as const
+  const RuntimeIcon = searchStatus === 'healthy'
     ? CircleCheck
-    : runtime.status === 'processing'
+    : searchStatus === 'processing'
       ? LoaderCircle
       : CircleAlert
-  const attentionSource = ['error', 'delayed', 'partial']
-    .map((status) => workspace.sources.find((source) => source.discovery.status === status))
-    .find(Boolean)
-  const attentionProvider = workspace.providers.find((provider) => ['error', 'partial', 'exhausted'].includes(provider.status))
-  const conciseAttention = attentionSource
-    ? `${sourceLabel(attentionSource.source)}: ${attentionSource.discovery.remainingTargetCount} cílů čeká`
-    : attentionProvider
-      ? `${providerLabel(attentionProvider.provider)}: ${attentionProvider.errorCount} chyb`
-      : runtime.issues[0] ?? 'provozní chyba'
-  const runtimeText = runtime.status === 'healthy'
+  const conciseAttention = attentionProvider
+    ? `${providerLabel(attentionProvider.provider)}: ${attentionProvider.statusMessage}`
+    : attentionSource
+      ? `${sourceLabel(attentionSource.source)}: ${attentionSource.discovery.statusMessage}`
+      : 'provozní chyba vyhledávání'
+  const runtimeText = searchStatus === 'healthy'
     ? 'Automatické zpracování je v pořádku'
-    : runtime.status === 'processing'
-      ? `Právě běží ${runtime.runningTaskCount} úloh`
-      : runtime.status === 'waiting'
+    : searchStatus === 'processing'
+      ? 'Vyhledávání nebo vyhodnocení právě pokračuje'
+      : searchStatus === 'waiting'
         ? 'Čeká na první automatický běh'
         : `Kontrola · ${conciseAttention}`
   if (workspace.loadErrors.providers) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><CircleAlert aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">ARES · Mapy.com · Google</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Vyhledávání firem</h3></span></div><PanelLoadError message={workspace.loadErrors.providers} onRetry={onRetry} /></PanelShell>
@@ -605,7 +620,7 @@ function DiscoveryPanel({ workspace, onRetry }: { workspace: CompletePowerOutage
         : `Dnes volných ${provider.dayRequestRemaining.toLocaleString('cs-CZ')} z ${provider.dayRequestLimit.toLocaleString('cs-CZ')} požadavků`
       : 'Kapacita není dostupná · chybí konfigurace'
     return <div key={provider.provider} className={`weather-alerts__record-surface h-full rounded-xl border px-2.5 py-1 lg:h-[126px] lg:px-3 lg:py-2 ${provider.configured ? '' : 'opacity-65'}`}><div className="flex items-center justify-between gap-2"><strong className="text-[12px] uppercase text-[var(--text-primary)]">{providerLabel(provider.provider)}</strong><CompletePanelStatusBadge label={provider.pendingCandidateCount > 0 && provider.remainingTargetCount === 0 ? 'VYHODNOCENÍ' : providerStatusLabel(provider.status)} badgeClassName={presentation.badge} dotClassName={presentation.dot} attention={presentation.attention} ariaLabel={`${providerLabel(provider.provider)}: ${provider.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : providerStatusLabel(provider.status)}. Zobrazit provozní detail.`} title="Zobrazit provozní detail" onClick={() => openProvider(provider.provider)} /></div><div className="mt-0.5 grid grid-cols-4 gap-1 text-center lg:mt-1 lg:gap-1.5"><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">S výsledkem</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.readyCount.toLocaleString('cs-CZ')}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Bez výsledku</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.notFoundCount.toLocaleString('cs-CZ')}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-sky-700 [html[data-theme=dark]_&]:text-sky-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Opakuje se</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.retryableErrorCount.toLocaleString('cs-CZ')}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-red-700 [html[data-theme=dark]_&]:text-red-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Ke kontrole</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.reviewErrorCount.toLocaleString('cs-CZ')}</strong></span></div><div className="mt-1"><div className="flex items-center justify-between gap-2 text-[6px] font-semibold text-[var(--text-secondary)]"><span>{provider.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : 'AKTUÁLNÍ FRONTA'} <strong className="tabular-nums text-[var(--text-primary)]">{provider.pendingCandidateCount > 0 ? `${provider.evaluatedCandidateCount.toLocaleString('cs-CZ')}/${provider.candidateCount.toLocaleString('cs-CZ')}` : `${provider.processedTargetCount.toLocaleString('cs-CZ')}/${provider.totalTargetCount.toLocaleString('cs-CZ')}`}</strong></span><strong className="tabular-nums text-[var(--accent)]">{progressPercent == null ? '—' : `${progressPercent.toLocaleString('cs-CZ')} %`}</strong></div><div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${progressPercent ?? 0}%` }} /></div></div><p className="mt-1 hidden truncate text-center text-[7px] leading-3 text-[var(--text-secondary)] lg:block">{provider.pendingCandidateCount > 0 ? `${provider.pendingCandidateCount.toLocaleString('cs-CZ')} kandidátů čeká na interní vyhodnocení` : capacityText}</p></div>
-  })}</div><div className={`mt-auto flex items-center justify-center gap-1.5 pt-2 text-center text-[9px] lg:pt-3 ${runtime.status === 'attention' ? 'text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'text-[var(--text-secondary)]'}`} title={runtime.issues.join('\n')}><RuntimeIcon aria-hidden size={12} className={runtime.status === 'processing' ? 'animate-spin' : ''} /><span className="truncate">{runtimeText}</span></div><p className="mt-0.5 flex items-center justify-center gap-1.5 text-center text-[8px] text-[var(--text-secondary)]"><TimerReset aria-hidden size={11} /><span>Poslední aktivita: {formatDate(runtime.lastActivityAt)}</span></p>{selectedProvider && typeof document !== 'undefined' ? createPortal(<CompleteProviderDiagnosticPopup provider={selectedProvider} diagnostic={diagnostic} loading={loading} error={error} isAdmin={workspace.currentUser.isAdmin} onReload={() => loadDiagnostic(selectedProvider, false)} onClose={() => { setSelectedProvider(null); setDiagnostic(null); setError(null) }} />, document.body) : null}</PanelShell>
+  })}</div><div className={`mt-auto flex items-center justify-center gap-1.5 pt-2 text-center text-[9px] lg:pt-3 ${searchStatus === 'attention' ? 'text-red-700 [html[data-theme=dark]_&]:text-red-300' : 'text-[var(--text-secondary)]'}`} title={searchStatus === 'attention' ? conciseAttention : runtimeText}><RuntimeIcon aria-hidden size={12} className={searchStatus === 'processing' ? 'animate-spin' : ''} /><span className="truncate">{runtimeText}</span></div><p className="mt-0.5 flex items-center justify-center gap-1.5 text-center text-[8px] text-[var(--text-secondary)]"><TimerReset aria-hidden size={11} /><span>Poslední aktivita: {formatDate(runtime.lastActivityAt)}</span></p>{selectedProvider && typeof document !== 'undefined' ? createPortal(<CompleteProviderDiagnosticPopup provider={selectedProvider} diagnostic={diagnostic} loading={loading} error={error} isAdmin={workspace.currentUser.isAdmin} onReload={() => loadDiagnostic(selectedProvider, false)} onClose={() => { setSelectedProvider(null); setDiagnostic(null); setError(null) }} />, document.body) : null}</PanelShell>
 }
 
 function AddressCoverageDiagnosticPopup({ diagnostic, loading, error, isAdmin, onReload, onClose }: {

@@ -11,6 +11,22 @@ export async function storePowerOutageSourceSnapshot(input: {
   observedAt: string
   metadata?: Record<string, unknown>
 }) {
+  // Snapshoty jsou obsahove adresovane hashem. Pokud uz stejny obsah mame,
+  // neposilame znovu cely (u EG.D velmi objemny) JSON do databaze. Krome
+  // zbytecneho prepisu tim predchazime cekani na zamek a statement timeoutu
+  // pri soubehu planovaneho a rucne opakovaneho nacteni.
+  const { data: existing, error: lookupError } = await input.client
+    .from('power_outage_source_payloads')
+    .select('id')
+    .eq('source', input.source)
+    .eq('payload_sha256', input.payloadSha256)
+    .maybeSingle()
+
+  if (lookupError) {
+    throw new Error(`Nepodařilo se ověřit zdrojový snapshot ${input.source.toUpperCase()}: ${lookupError.message}`)
+  }
+  if (existing) return
+
   const { error } = await input.client
     .from('power_outage_source_payloads')
     .upsert(
@@ -22,7 +38,7 @@ export async function storePowerOutageSourceSnapshot(input: {
         observed_at: input.observedAt,
         metadata: input.metadata ?? {},
       },
-      { onConflict: 'source,payload_sha256' },
+      { onConflict: 'source,payload_sha256', ignoreDuplicates: true },
     )
 
   if (error) {

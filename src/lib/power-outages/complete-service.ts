@@ -218,6 +218,32 @@ function metadataNumber(value: unknown, key: string) {
   return Number.isFinite(item) ? item : 0
 }
 
+function withLiveUpstreamState(
+  completeRow: Record<string, unknown>,
+  upstreamRow?: Record<string, unknown> | null,
+) {
+  const source = completeRow.source as PowerOutageSource
+  // CEZ ALL v1 ma vlastni celoplosny stav. EG.D a PRE jsou projekce MARKET
+  // katalogu, proto jejich detail musi pouzit nejnovejsi zivy stav zdroje,
+  // nikoli jen kopii zachycenou pri posledni sestihodinove projekci.
+  if (source === 'cez' || !upstreamRow) return completeRow
+  return {
+    ...completeRow,
+    metadata: {
+      ...((completeRow.metadata as Record<string, unknown> | null) ?? {}),
+      upstreamLastAttemptAt: upstreamRow.last_attempt_at ?? null,
+      upstreamLastSuccessAt: upstreamRow.last_success_at ?? null,
+      upstreamLastChangeAt: upstreamRow.last_change_at ?? null,
+      upstreamPayloadSha256: upstreamRow.latest_payload_sha256 ?? null,
+      upstreamConsecutiveFailureCount: Number(upstreamRow.consecutive_failure_count ?? 0),
+      upstreamLastErrorAt: upstreamRow.last_error_at ?? null,
+      upstreamLastErrorCode: upstreamRow.last_error_code ?? null,
+      upstreamLastErrorMessage: upstreamRow.last_error_message ?? null,
+      upstreamQueryScope: metadataText(upstreamRow.metadata, 'queryScope'),
+    },
+  }
+}
+
 function sourceUpstreamHealth(sourceRow: Record<string, unknown>) {
   const source = sourceRow.source as PowerOutageSource
   if (source === 'cez') return {
@@ -245,7 +271,7 @@ function sourceUpstreamHealth(sourceRow: Record<string, unknown>) {
     && (!Number.isFinite(projectionSuccessMs) || upstreamSuccessMs > projectionSuccessMs + 1_000)
   if (failed) return {
     status: 'error' as const,
-    message: metadataText(sourceRow.metadata, 'upstreamLastErrorMessage') || 'Poslední načtení dat distributora skončilo chybou.',
+    message: `${metadataText(sourceRow.metadata, 'upstreamLastErrorMessage') || 'Poslední načtení dat distributora skončilo chybou.'} Poslední úspěšně uložená data zůstávají dostupná.`,
     failed, stale, projectionBehind,
   }
   if (stale) return {
@@ -870,11 +896,12 @@ export async function getCompletePowerOutageStatistics(): Promise<CompletePowerO
 export async function getCompletePowerOutageSidebarWorkspace(): Promise<CompletePowerOutageSidebarWorkspace> {
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const [
-    coverageResult, sourceResult, sourceDiscoveryResult,
+    coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
     cezNewResult, providerResult, evaluationProgressResult, taskResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
+    supabase.from('power_outage_source_state').select('source,last_attempt_at,last_success_at,last_change_at,latest_payload_sha256,consecutive_failure_count,last_error_at,last_error_code,last_error_message,metadata').in('source', ['egd', 'pre']),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
     supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
@@ -885,8 +912,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const tasks = taskResult.data ?? []
   const discoveryRows = sourceDiscoveryResult.error ? [] : sourceDiscoveryResult.data ?? []
   const evaluationRows = evaluationProgressResult.error ? [] : evaluationProgressResult.data ?? []
+  const upstreamRows = upstreamSourceResult.error ? [] : upstreamSourceResult.data ?? []
   const sources = (sourceResult.data ?? []).map((row) => mapSourceState(
-    row, {
+    withLiveUpstreamState(row, upstreamRows.find((item) => item.source === row.source)), {
       ...(discoveryRows.find((item) => item.source === row.source) ?? {}),
       ...(evaluationRows.find((item) => item.source === row.source && item.provider === 'all') ?? {}),
     },
@@ -973,6 +1001,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     reviewCount,
     coverageResult,
     sourceResult,
+    upstreamSourceResult,
     sourceDiscoveryResult,
     cezNewResult,
     providerResult,
@@ -991,6 +1020,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).eq('candidate_status', 'needs_review').eq('business_relevance_status', 'eligible'), 'Počet firem k ověření se nepodařilo načíst'),
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
+    supabase.from('power_outage_source_state').select('source,last_attempt_at,last_success_at,last_change_at,latest_payload_sha256,consecutive_failure_count,last_error_at,last_error_code,last_error_message,metadata').in('source', ['egd', 'pre']),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
     supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
@@ -1008,8 +1038,9 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   if (ownerResult.error && !ownershipSchemaMissing(ownerResult.error)) throw new Error(`Seznam vlastníků se nepodařilo načíst: ${ownerResult.error.message}`)
 
   const tasks = taskResult.data ?? []
+  const upstreamRows = upstreamSourceResult.error ? [] : upstreamSourceResult.data ?? []
   const sources = (sourceResult.data ?? []).map((row) => mapSourceState(
-    row,
+    withLiveUpstreamState(row, upstreamRows.find((item) => item.source === row.source)),
     {
       ...(discoveryRows.find((item) => item.source === row.source) ?? {}),
       ...(evaluationRows.find((item) => item.source === row.source && item.provider === 'all') ?? {}),
@@ -1113,10 +1144,15 @@ export async function getCompletePowerOutageSourceDiagnostic(
   if (!['cez', 'egd', 'pre'].includes(source)) throw new Error('Neplatný distributor.')
   const { supabase } = await getPowerOutageRuntimeContext()
   const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
-  const [stateResult, discoveryResult, providersResult, providerEvaluationResult, runsResult, taskResult, evaluationTaskResult, pendingEvaluationResult] = await Promise.all([
+  const [stateResult, upstreamStateResult, discoveryResult, providersResult, providerEvaluationResult, runsResult, taskResult, evaluationTaskResult, pendingEvaluationResult] = await Promise.all([
     supabase.from('complete_power_outage_source_state')
       .select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata')
       .eq('source', source).maybeSingle(),
+    source === 'cez'
+      ? Promise.resolve({ data: null, error: null })
+      : supabase.from('power_outage_source_state')
+        .select('source,last_attempt_at,last_success_at,last_change_at,latest_payload_sha256,consecutive_failure_count,last_error_at,last_error_code,last_error_message,metadata')
+        .eq('source', source).maybeSingle(),
     supabase.from('complete_power_outage_source_discovery_overview')
       .select('*')
       .eq('source', source).maybeSingle(),
@@ -1177,6 +1213,10 @@ export async function getCompletePowerOutageSourceDiagnostic(
   const discoveryRow = (discoveryResult.data ?? {}) as Record<string, unknown>
   const providerEvaluationRows = providerEvaluationResult.error ? [] : providerEvaluationResult.data ?? []
   const sourceEvaluation = providerEvaluationRows.find((item) => item.provider === 'all')
+  const liveSourceState = withLiveUpstreamState(
+    stateResult.data as Record<string, unknown>,
+    upstreamStateResult.error ? null : upstreamStateResult.data as Record<string, unknown> | null,
+  )
   const providers = (providersResult.data ?? []).map((row) => {
     const provider = row.provider as CompleteProviderState['provider']
     const providerEvaluation = providerEvaluationRows.find((item) => item.provider === provider)
@@ -1238,7 +1278,7 @@ export async function getCompletePowerOutageSourceDiagnostic(
   })
   return {
     source,
-    state: mapSourceState(stateResult.data, {
+    state: mapSourceState(liveSourceState, {
       ...(discoveryResult.data ?? {}),
       candidate_count: Number(sourceEvaluation?.candidate_count ?? 0),
       evaluated_candidate_count: Number(sourceEvaluation?.evaluated_candidate_count ?? 0),
