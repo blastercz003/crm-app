@@ -148,6 +148,23 @@ async function loadAllStores(client: ServiceClient) {
   return rows
 }
 
+async function loadAllStoreRegistryRows(client: ServiceClient) {
+  const rows: RegistryRow[] = []
+  const pageSize = 1_000
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await client
+      .from('power_outage_store_registry')
+      .select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint,distributor')
+      .not('store_id', 'is', null)
+      .order('id')
+      .range(from, from + pageSize - 1)
+    if (error) throw error
+    rows.push(...((data ?? []) as RegistryRow[]))
+    if ((data?.length ?? 0) < pageSize) break
+  }
+  return rows
+}
+
 export async function auditPowerOutageStoreRegistry(
   triggerKind: 'scheduled' | 'manual' | 'retry' = 'scheduled',
 ) {
@@ -175,15 +192,10 @@ export async function auditPowerOutageStoreRegistry(
   if (runError) throw runError
 
   try {
-    const [stores, registryResult] = await Promise.all([
+    const [stores, registry] = await Promise.all([
       loadAllStores(client),
-      client
-        .from('power_outage_store_registry')
-        .select('id,store_id,store_chain_name,store_number,store_city,store_address,address_fingerprint,distributor')
-        .not('store_id', 'is', null),
+      loadAllStoreRegistryRows(client),
     ])
-    if (registryResult.error) throw registryResult.error
-    const registry = (registryResult.data ?? []) as RegistryRow[]
     const byStoreId = new Map(registry.map((row) => [row.store_id, row]))
     const currentStoreIds = new Set(stores.map((store) => store.id))
     const changedSnapshots = stores.flatMap((store) => {
