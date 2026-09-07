@@ -172,7 +172,12 @@ async function saveLookup(input: {
   if (previousError) throw previousError
   const attemptCount = Number(previous?.attempt_count ?? 0) + 1
   const httpStatus = input.error?.match(/HTTP\s+(\d{3})/i)?.[1]
-  const requiresReview = input.status === 'error' && httpStatus === '400' && attemptCount >= 3
+  const invalidRequestRequiresReview = input.status === 'error' && httpStatus === '400' && attemptCount >= 3
+  // Mapy.com obcas vrati opakovatelne HTTP 500 i pro jednu konkretni adresu.
+  // Takovy cil nesmi zustat v automatickem retry navzdy: po pate chybe se
+  // zachova pro audit a rucni rozhodnuti, zatimco bezna fronta pokracuje dal.
+  const retryLimitReached = input.status === 'error' && input.provider === 'mapy' && attemptCount >= 5
+  const requiresReview = invalidRequestRequiresReview || retryLimitReached
   const finalStatus = requiresReview ? 'needs_review' : input.status
   const retryDelayMs = attemptCount <= 1
     ? 15 * 60_000
@@ -195,7 +200,11 @@ async function saveLookup(input: {
     last_attempt_at: now,
     finished_at: finalStatus === 'error' ? null : now,
     last_error_code: finalStatus === 'error' || finalStatus === 'needs_review'
-      ? requiresReview ? 'COMPLETE_PROVIDER_REQUIRES_REVIEW' : input.errorCode ?? 'COMPLETE_PROVIDER_LOOKUP_FAILED'
+      ? retryLimitReached
+        ? 'COMPLETE_PROVIDER_RETRY_EXHAUSTED'
+        : requiresReview
+          ? 'COMPLETE_PROVIDER_REQUIRES_REVIEW'
+          : input.errorCode ?? 'COMPLETE_PROVIDER_LOOKUP_FAILED'
       : null,
     last_error_message: finalStatus === 'error' || finalStatus === 'needs_review' ? input.error?.slice(0, 2_000) ?? null : null,
     metadata: { ...(input.metadata ?? {}), httpStatus: httpStatus ? Number(httpStatus) : null, retryDisposition: finalStatus },
