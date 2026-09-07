@@ -620,6 +620,10 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         .upsert(batch, { onConflict: 'outage_id,address_key' })
       if (error) throw error
     }
+    // Celoplosny CEZ snapshot je po aktivaci autoritativni. Adresy, ktere v
+    // nem uz nejsou, muzeme odstranit vcetne nepotvrzenych nalezu puvodniho
+    // minimalniho katalogu. Pred prvni aktivaci je jejich uplna auditni kopie
+    // ulozena v nemenem preservation manifestu.
     for (const ids of chunks(staleAddressIds, 300)) {
       const { error } = await client.from('complete_power_outage_addresses').delete().in('id', ids)
       if (error) throw error
@@ -686,7 +690,12 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         source_record_count: outages.length,
         outage_upsert_count: changedOutageCount,
         address_upsert_count: changedAddressCount,
-        metadata: { externalRequestsMade: 0, removedAddressCount, removedOutageCount },
+        metadata: {
+          externalRequestsMade: 0,
+          removedAddressCount,
+          removedOutageCount,
+          addressPreservationContract: useCezShadow ? 'complete-cez-all-v1-audited-cleanup' : null,
+        },
       })
       .eq('id', run.id)
     if (finishRunError) throw finishRunError

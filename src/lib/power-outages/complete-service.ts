@@ -160,6 +160,10 @@ function cezNewMonitoringSchemaMissing(error: { code?: string; message?: string 
 async function loadCezNewMonitoringState(
   supabase: Awaited<ReturnType<typeof getPowerOutageRuntimeContext>>['supabase'],
 ) {
+  const activation = await supabase.from('complete_power_outage_cez_all_v1_readiness').select('*').maybeSingle()
+  if (!activation.error) return activation
+  if (!cezNewMonitoringSchemaMissing(activation.error)
+    && !activation.error.message?.includes('complete_power_outage_cez_all_v1_readiness')) return activation
   const enhanced = await supabase.from('complete_power_outage_cez_new_status_v3').select('*').maybeSingle()
   if (!enhanced.error) return enhanced
   if (!cezNewMonitoringSchemaMissing(enhanced.error)
@@ -446,7 +450,8 @@ function mapSourceState(
 
 function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
   const stage = row.current_stage as CompleteCezNewState['stage']
-  const status = (row.effective_readiness_status ?? row.readiness_status ?? row.overall_status) as CompleteCezNewState['status']
+  const rawStatus = (row.effective_readiness_status ?? row.readiness_status ?? row.overall_status) as CompleteCezNewState['status']
+  const status = row.activation_ready === true && rawStatus === 'waiting' ? 'ready' : rawStatus
   const done = Number(row.progress_done ?? 0)
   const total = Number(row.progress_total ?? 0)
   const stageLabel = ({
@@ -461,7 +466,9 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     activeSource: row.active_source === 'shadow' ? 'shadow' : 'legacy',
     status,
     stage,
-    statusMessage: status === 'error'
+    statusMessage: row.active_source === 'shadow' && stage === 'ready'
+      ? 'Celoplošný ČEZ katalog je aktivní a nové adresy vstupují do firemních front.'
+      : status === 'error'
       ? String(row.readiness_error_message || row.last_error_message || 'Nový ČEZ proces vyžaduje kontrolu.')
       : Number(row.scan_retryable_error_count ?? 0) > 0
         ? String(row.warning_message || 'Některé obce čekají na automatické opakování po dokončení aktuálního snapshotu.')

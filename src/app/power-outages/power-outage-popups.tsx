@@ -116,7 +116,7 @@ export function PowerOutagePopupShell({
   titleId: string
   icon: React.ReactNode
   eyebrow: string
-  title: string
+  title: React.ReactNode
   onClose: () => void
   children: React.ReactNode
   compact?: boolean
