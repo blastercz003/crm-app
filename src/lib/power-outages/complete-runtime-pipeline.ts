@@ -72,11 +72,10 @@ export async function runCompletePowerOutageRuntimePipeline() {
     () => normalizeCompletePowerOutageAddresses(300),
   ))
 
-  // ARES má vlastní tříminutový worker, aby jeho velká fronta nezdržovala
-  // Mapy.com, Google ani následné vyhodnocení v této společné pipeline.
+  // ARES i Mapy.com mají vlastní workery, aby jejich velké fronty nezdržovaly
+  // Google ani následné vyhodnocení v této společné pipeline.
   // Skutečný minutový, denní a u Mapy.com také společný měsíční kreditní limit
   // atomicky hlídá databáze.
-  steps.push(await runProvider('mapy', 7))
   steps.push(await runProvider('google', 2))
 
   steps.push(await runStep(

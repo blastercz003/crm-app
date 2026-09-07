@@ -252,6 +252,7 @@ export type CompleteProviderState = {
   dayRequestLimit: number
   dayRequestRemaining: number
   monthlyCreditCount: number
+  monthlyFreeCreditLimit: number
   monthlyCreditLimit: number
   monthlyCreditSafetyCap: number
   monthlyCreditRemaining: number

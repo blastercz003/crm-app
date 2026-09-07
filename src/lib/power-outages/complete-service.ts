@@ -26,7 +26,7 @@ import type {
   CompleteSourceState,
 } from './complete-types'
 import type { PowerOutageSource } from './types'
-import { MAPY_MONTHLY_CREDIT_LIMIT, MAPY_MONTHLY_CREDIT_SAFETY_CAP, providerConfigured, PROVIDER_LIMITS } from './complete-company-providers'
+import { MAPY_MONTHLY_CREDIT_LIMIT, MAPY_MONTHLY_CREDIT_SAFETY_CAP, MAPY_MONTHLY_FREE_CREDIT_LIMIT, providerConfigured, PROVIDER_LIMITS } from './complete-company-providers'
 
 type OverviewRow = {
   candidate_id: string
@@ -556,6 +556,7 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
   const dayRequestLimit = PROVIDER_LIMITS[provider].day
   const monthlyCreditLimit = provider === 'mapy' ? MAPY_MONTHLY_CREDIT_LIMIT : 0
   const monthlyCreditSafetyCap = provider === 'mapy' ? MAPY_MONTHLY_CREDIT_SAFETY_CAP : 0
+  const monthlyFreeCreditLimit = provider === 'mapy' ? MAPY_MONTHLY_FREE_CREDIT_LIMIT : 0
   const monthlyCreditCount = provider === 'mapy' ? Number(row.monthly_credit_count ?? 0) : 0
   return {
     provider,
@@ -575,6 +576,7 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
     dayRequestLimit,
     dayRequestRemaining: Math.max(0, dayRequestLimit - dayRequestCount),
     monthlyCreditCount,
+    monthlyFreeCreditLimit,
     monthlyCreditLimit,
     monthlyCreditSafetyCap,
     monthlyCreditRemaining: Math.max(0, monthlyCreditSafetyCap - monthlyCreditCount),
