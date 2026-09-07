@@ -56,7 +56,23 @@ function finiteNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-async function loadEvaluationQueue(client: ServiceClient, limit: number) {
+async function loadEvaluationQueue(client: ServiceClient, limit: number): Promise<string[]> {
+  const { data: weightedRows, error: weightedError } = await client.rpc(
+    'get_complete_power_outage_company_evaluation_queue',
+    { requested_limit: limit },
+  )
+  if (!weightedError) {
+    return [...new Set<string>(((weightedRows ?? []) as Array<{ outage_address_id: string }>).map((row) => (
+      String(row.outage_address_id)
+    )))]
+  }
+  const missingWeightedQueue = weightedError.code === 'PGRST202'
+    || weightedError.code === '42883'
+    || weightedError.message?.includes('get_complete_power_outage_company_evaluation_queue')
+  if (!missingWeightedQueue) throw weightedError
+
+  // Bezpecny prechod pri nasazeni aplikace pred SQL migraci. Po nasazeni
+  // vahovane fronty se tato vetev uz nepouzije.
   const { data, error } = await client
     .from('complete_power_outage_companies')
     .select('outage_address_id')

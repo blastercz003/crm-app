@@ -168,6 +168,9 @@ export type CompleteSourceDiscoveryState = {
   streetErrorTargetCount: number
   progressPercent: number
   lastProgressAt: string | null
+  candidateCount: number
+  evaluatedCandidateCount: number
+  pendingCandidateCount: number
 }
 
 export type CompleteSourceProviderProgress = {
@@ -186,6 +189,9 @@ export type CompleteSourceProviderProgress = {
   lastProgressAt: string | null
   supplementalTargetCount: number
   supplementalProcessedTargetCount: number
+  candidateCount: number
+  evaluatedCandidateCount: number
+  pendingCandidateCount: number
 }
 
 export type CompleteSourceRun = {
@@ -259,6 +265,9 @@ export type CompleteProviderState = {
   completeCreditCount: number
   marketsCreditCount: number
   lastRequestAt: string | null
+  candidateCount: number
+  evaluatedCandidateCount: number
+  pendingCandidateCount: number
 }
 
 export type CompleteProviderRun = {

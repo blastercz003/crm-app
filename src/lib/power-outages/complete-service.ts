@@ -291,6 +291,9 @@ function mapSourceDiscovery(
       streetErrorTargetCount: 0,
       progressPercent: 0,
       lastProgressAt: null,
+      candidateCount: 0,
+      evaluatedCandidateCount: 0,
+      pendingCandidateCount: 0,
     }
   }
   const totalTargetCount = Number(row?.total_target_count ?? 0)
@@ -304,9 +307,14 @@ function mapSourceDiscovery(
   const exactErrorTargetCount = Number(row?.exact_error_target_count ?? 0)
   const streetErrorTargetCount = Number(row?.street_error_target_count ?? 0)
   const remainingTargetCount = Math.max(0, totalTargetCount - completedTargetCount)
+  const candidateCount = Number(row?.candidate_count ?? 0)
+  const evaluatedCandidateCount = Number(row?.evaluated_candidate_count ?? 0)
+  const pendingCandidateCount = Number(row?.pending_candidate_count ?? 0)
   const lastProgressAt = (row.last_progress_at as string | null | undefined) ?? null
-  const progressPercent = totalTargetCount > 0
-    ? Math.round((completedTargetCount / totalTargetCount) * 1000) / 10
+  const totalWorkCount = totalTargetCount + candidateCount
+  const completedWorkCount = completedTargetCount + evaluatedCandidateCount
+  const progressPercent = totalWorkCount > 0
+    ? Math.round((completedWorkCount / totalWorkCount) * 1000) / 10
     : 100
   const progressIsStale = (lastProviderProgress: unknown, oldestPending: unknown) => {
     // Nově přidaný cíl nesmí zdědit několik hodin starý čas posledního
@@ -374,20 +382,22 @@ function mapSourceDiscovery(
           : pendingTargetCount === 0 && errorTargetCount > 0
               ? 'partial'
               : remainingTargetCount === 0
-              ? 'current'
+              ? pendingCandidateCount > 0 ? 'processing' : 'current'
               : delayed
                 ? 'delayed'
                 : completedTargetCount === 0
                   ? 'waiting'
                   : 'processing'
   const statusMessage = status === 'current'
-    ? 'Aktuální data distributora, interní projekce i prioritní fronta do 30 dnů jsou zpracované.'
+    ? 'Aktuální data distributora, interní projekce, providerové dotazy i vyhodnocení kandidátů jsou zpracované.'
     : status === 'processing'
       ? upstream.projectionBehind
         ? 'Novější data distributora čekají na promítnutí do katalogu KOMPLETNÍ.'
       : coverageStatus === 'processing'
         ? 'Právě se aktualizují zdrojová data distributora.'
-        : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.${errorTargetCount > 0 ? ` Dílčí chyby: ${errorTargetCount}.` : ''}`
+        : pendingCandidateCount > 0 && remainingTargetCount === 0
+          ? `VYHODNOCENÍ · ${pendingCandidateCount} nalezených kandidátů ještě čeká na interní klasifikaci.`
+          : `${remainingTargetCount} prioritních cílů ještě čeká na prověření.${pendingCandidateCount > 0 ? ` Na vyhodnocení čeká ${pendingCandidateCount} kandidátů.` : ''}${errorTargetCount > 0 ? ` Dílčí chyby: ${errorTargetCount}.` : ''}`
       : status === 'delayed'
         ? upstream.stale
           ? upstream.message
@@ -423,6 +433,9 @@ function mapSourceDiscovery(
     streetErrorTargetCount,
     progressPercent,
     lastProgressAt,
+    candidateCount,
+    evaluatedCandidateCount,
+    pendingCandidateCount,
   }
 }
 
@@ -577,6 +590,7 @@ function providerStatus(input: {
   reviewErrorCount: number
   errorCount: number
   quotaExhausted: boolean
+  pendingCandidateCount: number
   task?: Record<string, unknown> | null
 }): Pick<CompleteProviderState, 'status' | 'statusMessage'> {
   if (!input.configured) return { status: 'inactive', statusMessage: 'Poskytovatel není nakonfigurovaný.' }
@@ -589,6 +603,10 @@ function providerStatus(input: {
     statusMessage: input.retryableErrorCount > 0
       ? `Fronta pokračuje; ${input.retryableErrorCount} dočasných chyb čeká na automatické nebo ruční opakování.`
       : `${input.pendingCount} aktuálních dotazů ještě čeká na zpracování.`,
+  }
+  if (input.pendingCandidateCount > 0) return {
+    status: 'processing',
+    statusMessage: `VYHODNOCENÍ · ${input.pendingCandidateCount} nalezených kandidátů čeká na interní klasifikaci.`,
   }
   if (input.errorCount > 0) return { status: 'partial', statusMessage: `${input.errorCount} aktuálních dotazů čeká na opravu nebo opakování.` }
   if (input.task?.last_success_at) return { status: 'current', statusMessage: 'Automatické dohledávání pracuje správně.' }
@@ -617,10 +635,13 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
   const monthlyCreditSafetyCap = provider === 'mapy' ? MAPY_MONTHLY_CREDIT_SAFETY_CAP : 0
   const monthlyFreeCreditLimit = provider === 'mapy' ? MAPY_MONTHLY_FREE_CREDIT_LIMIT : 0
   const monthlyCreditCount = provider === 'mapy' ? Number(row.monthly_credit_count ?? 0) : 0
+  const candidateCount = Number(row.candidate_count ?? 0)
+  const evaluatedCandidateCount = Number(row.evaluated_candidate_count ?? 0)
+  const pendingCandidateCount = Number(row.pending_candidate_count ?? 0)
   return {
     provider,
     configured,
-    ...providerStatus({ configured, pendingCount, retryableErrorCount, reviewErrorCount, errorCount, quotaExhausted: monthlyCreditSafetyCap > 0 && monthlyCreditCount >= monthlyCreditSafetyCap, task }),
+    ...providerStatus({ configured, pendingCount, retryableErrorCount, reviewErrorCount, errorCount, pendingCandidateCount, quotaExhausted: monthlyCreditSafetyCap > 0 && monthlyCreditCount >= monthlyCreditSafetyCap, task }),
     totalTargetCount,
     processedTargetCount,
     remainingTargetCount,
@@ -642,6 +663,9 @@ function mapProviderState(row: Record<string, unknown>, task?: Record<string, un
     completeCreditCount: provider === 'mapy' ? Number(row.complete_credit_count ?? 0) : 0,
     marketsCreditCount: provider === 'mapy' ? Number(row.markets_credit_count ?? 0) : 0,
     lastRequestAt,
+    candidateCount,
+    evaluatedCandidateCount,
+    pendingCandidateCount,
   }
 }
 
@@ -847,25 +871,36 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const [
     coverageResult, sourceResult, sourceDiscoveryResult,
-    cezNewResult, providerResult, taskResult,
+    cezNewResult, providerResult, evaluationProgressResult, taskResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
     supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
+    supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
   ])
 
   const tasks = taskResult.data ?? []
   const discoveryRows = sourceDiscoveryResult.error ? [] : sourceDiscoveryResult.data ?? []
+  const evaluationRows = evaluationProgressResult.error ? [] : evaluationProgressResult.data ?? []
   const sources = (sourceResult.data ?? []).map((row) => mapSourceState(
-    row, discoveryRows.find((item) => item.source === row.source) ?? null,
+    row, {
+      ...(discoveryRows.find((item) => item.source === row.source) ?? {}),
+      ...(evaluationRows.find((item) => item.source === row.source && item.provider === 'all') ?? {}),
+    },
     tasks as Array<Record<string, unknown>>,
   ))
-  const providers = (providerResult.data ?? []).map((row) => mapProviderState(
-    row, tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null,
-  ))
+  const providers = (providerResult.data ?? []).map((row) => {
+    const providerEvaluation = evaluationRows.filter((item) => item.provider === row.provider)
+    return mapProviderState({
+      ...row,
+      candidate_count: providerEvaluation.reduce((sum, item) => sum + Number(item.candidate_count), 0),
+      evaluated_candidate_count: providerEvaluation.reduce((sum, item) => sum + Number(item.evaluated_candidate_count), 0),
+      pending_candidate_count: providerEvaluation.reduce((sum, item) => sum + Number(item.pending_candidate_count), 0),
+    }, tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null)
+  })
   const coverageSummary = summarizeAddressCoverage(
     (coverageResult.data ?? []) as AddressCoverageSnapshotRow[],
   )
@@ -941,6 +976,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     sourceDiscoveryResult,
     cezNewResult,
     providerResult,
+    evaluationProgressResult,
     taskResult,
     ownerResult,
   ] = await Promise.all([
@@ -958,11 +994,13 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
     supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
+    supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_company_assignments').select('owner_id,owner_name').order('owner_name').limit(1_000),
   ])
   if (sourceResult.error) throw new Error(`Stav zdrojů kompletních odstávek se nepodařilo načíst: ${sourceResult.error.message}`)
   const discoveryRows = sourceDiscoveryResult.error ? [] : sourceDiscoveryResult.data ?? []
+  const evaluationRows = evaluationProgressResult.error ? [] : evaluationProgressResult.data ?? []
   if (cezNewResult.error && !cezNewMonitoringSchemaMissing(cezNewResult.error)) throw new Error(`Stav nového sběru ČEZ se nepodařilo načíst: ${cezNewResult.error.message}`)
   if (providerResult.error) throw new Error(`Stav vyhledávání firem se nepodařilo načíst: ${providerResult.error.message}`)
   if (taskResult.error) throw new Error(`Provozní stav kompletních odstávek se nepodařilo načíst: ${taskResult.error.message}`)
@@ -972,13 +1010,21 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   const tasks = taskResult.data ?? []
   const sources = (sourceResult.data ?? []).map((row) => mapSourceState(
     row,
-    discoveryRows.find((item) => item.source === row.source) ?? null,
+    {
+      ...(discoveryRows.find((item) => item.source === row.source) ?? {}),
+      ...(evaluationRows.find((item) => item.source === row.source && item.provider === 'all') ?? {}),
+    },
     tasks as Array<Record<string, unknown>>,
   ))
-  const providerStates = (providerResult.data ?? []).map((row) => mapProviderState(
-    row,
-    tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null,
-  ))
+  const providerStates = (providerResult.data ?? []).map((row) => {
+    const providerEvaluation = evaluationRows.filter((item) => item.provider === row.provider)
+    return mapProviderState({
+      ...row,
+      candidate_count: providerEvaluation.reduce((sum, item) => sum + Number(item.candidate_count), 0),
+      evaluated_candidate_count: providerEvaluation.reduce((sum, item) => sum + Number(item.evaluated_candidate_count), 0),
+      pending_candidate_count: providerEvaluation.reduce((sum, item) => sum + Number(item.pending_candidate_count), 0),
+    }, tasks.find((task) => task.task_key === `discover_${row.provider}`) ?? null)
+  })
   const normalizationTask = tasks.find((task) => task.task_key === 'normalize_addresses') ?? null
   const coverageSummary = summarizeAddressCoverage(
     (coverageResult.data ?? []) as AddressCoverageSnapshotRow[],
@@ -1067,7 +1113,7 @@ export async function getCompletePowerOutageSourceDiagnostic(
   if (!['cez', 'egd', 'pre'].includes(source)) throw new Error('Neplatný distributor.')
   const { supabase } = await getPowerOutageRuntimeContext()
   const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
-  const [stateResult, discoveryResult, providersResult, runsResult, taskResult, evaluationTaskResult, pendingEvaluationResult] = await Promise.all([
+  const [stateResult, discoveryResult, providersResult, providerEvaluationResult, runsResult, taskResult, evaluationTaskResult, pendingEvaluationResult] = await Promise.all([
     supabase.from('complete_power_outage_source_state')
       .select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata')
       .eq('source', source).maybeSingle(),
@@ -1076,6 +1122,9 @@ export async function getCompletePowerOutageSourceDiagnostic(
       .eq('source', source).maybeSingle(),
     supabase.from('complete_power_outage_source_provider_overview')
       .select('source,provider,total_target_count,completed_target_count,pending_target_count,found_target_count,not_found_target_count,error_target_count,last_progress_at')
+      .eq('source', source).order('provider'),
+    supabase.from('complete_power_outage_evaluation_progress_snapshot')
+      .select('source,provider,candidate_count,evaluated_candidate_count,pending_candidate_count,last_evaluated_at')
       .eq('source', source).order('provider'),
     supabase.from('complete_power_outage_runs')
       .select('id,status,started_at,finished_at,source_record_count,outage_upsert_count,address_upsert_count,error_count,error_code,error_message,metadata')
@@ -1126,8 +1175,14 @@ export async function getCompletePowerOutageSourceDiagnostic(
     removedAddressCount: Number((row.metadata as Record<string, unknown> | null)?.removedAddressCount ?? 0),
   }))
   const discoveryRow = (discoveryResult.data ?? {}) as Record<string, unknown>
+  const providerEvaluationRows = providerEvaluationResult.error ? [] : providerEvaluationResult.data ?? []
+  const sourceEvaluation = providerEvaluationRows.find((item) => item.provider === 'all')
   const providers = (providersResult.data ?? []).map((row) => {
     const provider = row.provider as CompleteProviderState['provider']
+    const providerEvaluation = providerEvaluationRows.find((item) => item.provider === provider)
+    const candidateCount = Number(providerEvaluation?.candidate_count ?? 0)
+    const evaluatedCandidateCount = Number(providerEvaluation?.evaluated_candidate_count ?? 0)
+    const pendingCandidateCount = Number(providerEvaluation?.pending_candidate_count ?? 0)
     const rawTotalTargetCount = Number(row.total_target_count)
     const rawProcessedTargetCount = Math.max(0, rawTotalTargetCount - Number(row.pending_target_count))
     const requiredTotalTargetCount = provider === 'ares'
@@ -1166,7 +1221,9 @@ export async function getCompletePowerOutageSourceDiagnostic(
       foundTargetCount: provider === 'google' ? Number(row.found_target_count) : 0,
       notFoundTargetCount: provider === 'google' ? Number(row.not_found_target_count) : 0,
       errorTargetCount,
-      progressPercent: totalTargetCount > 0 ? Math.round((processedTargetCount / totalTargetCount) * 1000) / 10 : 100,
+      progressPercent: totalTargetCount + candidateCount > 0
+        ? Math.round(((processedTargetCount + evaluatedCandidateCount) / (totalTargetCount + candidateCount)) * 1000) / 10
+        : 100,
       lastProgressAt: (provider === 'ares'
         ? discoveryRow.exact_last_progress_at
         : provider === 'mapy'
@@ -1174,11 +1231,19 @@ export async function getCompletePowerOutageSourceDiagnostic(
           : row.last_progress_at) as string | null,
       supplementalTargetCount,
       supplementalProcessedTargetCount,
+      candidateCount,
+      evaluatedCandidateCount,
+      pendingCandidateCount,
     }
   })
   return {
     source,
-    state: mapSourceState(stateResult.data, discoveryResult.data, [
+    state: mapSourceState(stateResult.data, {
+      ...(discoveryResult.data ?? {}),
+      candidate_count: Number(sourceEvaluation?.candidate_count ?? 0),
+      evaluated_candidate_count: Number(sourceEvaluation?.evaluated_candidate_count ?? 0),
+      pending_candidate_count: Number(sourceEvaluation?.pending_candidate_count ?? pendingEvaluationResult.count ?? 0),
+    }, [
       ...(taskResult.data ? [{ ...taskResult.data, task_key: taskKey }] : []),
       ...(evaluationTaskResult.data ? [evaluationTaskResult.data] : []),
     ]),
@@ -1220,12 +1285,15 @@ export async function getCompletePowerOutageProviderDiagnostic(
   if (!['ares', 'mapy', 'google'].includes(provider)) throw new Error('Neplatný poskytovatel.')
   if (currentState && currentState.provider !== provider) throw new Error('Stav poskytovatele neodpovídá požadovanému detailu.')
   const { supabase } = await getPowerOutageRuntimeContext()
-  const [overviewResult, taskResult, runsResult, errorsResult] = await Promise.all([
+  const [overviewResult, evaluationProgressResult, taskResult, runsResult, errorsResult] = await Promise.all([
     currentState
       ? Promise.resolve({ data: null, error: null })
       : supabase.from('complete_power_outage_provider_overview')
         .select('*')
         .eq('provider', provider).maybeSingle(),
+    supabase.from('complete_power_outage_evaluation_progress_snapshot')
+      .select('candidate_count,evaluated_candidate_count,pending_candidate_count')
+      .eq('provider', provider),
     supabase.from('complete_power_outage_task_state')
       .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
       .eq('task_key', `discover_${provider}`).maybeSingle(),
@@ -1243,7 +1311,16 @@ export async function getCompletePowerOutageProviderDiagnostic(
   if (!currentState && !overviewResult.data) throw new Error('Stav poskytovatele není dostupný.')
 
   const task = taskResult.data as Record<string, unknown> | null
-  const state = currentState ?? mapProviderState(overviewResult.data as Record<string, unknown>, task)
+  const providerEvaluationRows = evaluationProgressResult.error ? [] : evaluationProgressResult.data ?? []
+  const evaluationCounts = {
+    candidate_count: providerEvaluationRows.reduce((sum, item) => sum + Number(item.candidate_count), 0),
+    evaluated_candidate_count: providerEvaluationRows.reduce((sum, item) => sum + Number(item.evaluated_candidate_count), 0),
+    pending_candidate_count: providerEvaluationRows.reduce((sum, item) => sum + Number(item.pending_candidate_count), 0),
+  }
+  const state = currentState ?? mapProviderState({
+    ...(overviewResult.data as Record<string, unknown>),
+    ...evaluationCounts,
+  }, task)
   const runs = (runsResult.data ?? []).map((row): CompleteProviderRun => {
     const metadata = row.metadata as Record<string, unknown> | null
     return {
