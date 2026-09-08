@@ -465,19 +465,28 @@ export async function discoverCompletePowerOutageCompanies(
   let errorCount = 0
   let quotaReached = false
   let retryRequestCount = 0
+  let reservedExternalRequestCount = 0
   let globalProviderError: string | null = null
   try {
     const targets = await loadTargets(client, provider, limit)
-    for (const target of targets) {
+    // ARES odpovida pomaleji, nez dovoluje nase stavajici kvota 60/min.
+    // Dva workery vyuziji uz povolenou kapacitu bez zvyseni externiho stropu.
+    // Mapy.com a Google zustavaji sekvencni kvuli kreditu a nizsim limitum.
+    const concurrency = provider === 'ares' ? 2 : 1
+    let stopRequested = false
+    for (let offset = 0; offset < targets.length && !stopRequested; offset += concurrency) {
+      const batch = targets.slice(offset, offset + concurrency)
+      await Promise.all(batch.map(async (target) => {
+      if (stopRequested) return
       const identity = lookupIdentity(provider, target)
       try {
       const retryTarget = target.lookup_status === 'error'
       const maxRetryRequests = Math.max(1, Math.floor(limit / 3))
-      if (retryTarget && retryRequestCount >= maxRetryRequests) continue
+      if (retryTarget && retryRequestCount >= maxRetryRequests) return
       if (!providerAcceptsTarget(provider, target.target_kind)) {
         await saveLookup({ client, targetId: target.id, provider, ...identity, status: 'skipped', metadata: { reason: 'target_too_broad' } })
         processedCount += 1
-        continue
+        return
       }
       const cache = await loadCache(client, provider, identity.lookupKind, identity.lookupKey)
       if (cache) {
@@ -496,12 +505,17 @@ export async function discoverCompletePowerOutageCompanies(
           status: cache.lookup_status, cacheId: cache.id, resultCount: candidates.length,
           metadata: { cacheHit: true },
         })
-        continue
+        return
       }
-      if (externalRequestCount >= limit) break
+      if (reservedExternalRequestCount >= limit) {
+        stopRequested = true
+        return
+      }
+      reservedExternalRequestCount += 1
       if (!await claimProviderQuota(client, provider)) {
         quotaReached = true
-        break
+        stopRequested = true
+        return
       }
       if (retryTarget) retryRequestCount += 1
       let candidates: CompleteCompanyCandidate[]
@@ -515,11 +529,12 @@ export async function discoverCompletePowerOutageCompanies(
         await saveLookup({ client, targetId: target.id, provider, ...identity, status: 'error', cacheId: savedCache.id, error: message })
         if (isGlobalProviderError(error)) {
           globalProviderError = message
-          break
+          stopRequested = true
+          return
         }
         const delay = provider === 'google' ? 1_200 : provider === 'mapy' ? 800 : 650
         await new Promise((resolve) => setTimeout(resolve, delay))
-        continue
+        return
       }
       let savedCacheId: string | null = null
       try {
@@ -566,26 +581,30 @@ export async function discoverCompletePowerOutageCompanies(
         }).catch(() => null)
         if (isGlobalProviderError(targetError)) {
           globalProviderError = message
-          break
+          stopRequested = true
         }
       }
+      }))
     }
     const finishedAt = new Date().toISOString()
+    // Hodnota se muze nastavit uvnitr soubezneho workeru; explicitni typ zde
+    // brani TypeScriptu zuzit closure promennou na jeji pocatecni null.
+    const finalGlobalProviderError = globalProviderError as string | null
     const status = errorCount > 0 ? 'partial' : processedCount === 0 ? 'no_change' : 'succeeded'
     const { error: finishError } = await client.from('complete_power_outage_runs').update({
       status, finished_at: finishedAt, source_record_count: processedCount,
       company_upsert_count: companyCount, evidence_upsert_count: evidenceCount,
       cache_hit_count: cacheHitCount, error_count: errorCount,
-      error_code: globalProviderError ? 'COMPLETE_PROVIDER_GLOBAL_FAILURE' : null,
-      error_message: globalProviderError?.slice(0, 2_000) ?? null,
+      error_code: finalGlobalProviderError ? 'COMPLETE_PROVIDER_GLOBAL_FAILURE' : null,
+      error_message: finalGlobalProviderError?.slice(0, 2_000) ?? null,
       metadata: { externalRequestCount, quotaReached, requestedLimit: limit, retryRequestCount },
     }).eq('id', run.id)
     if (finishError) throw finishError
     await finishCompletePowerOutageTask({
       taskKey: taskKey(provider), lockToken,
       status: errorCount > 0 ? 'partial' : 'succeeded', processedCount,
-      errorCode: globalProviderError ? 'COMPLETE_PROVIDER_GLOBAL_FAILURE' : undefined,
-      errorMessage: globalProviderError ?? undefined,
+      errorCode: finalGlobalProviderError ? 'COMPLETE_PROVIDER_GLOBAL_FAILURE' : undefined,
+      errorMessage: finalGlobalProviderError ?? undefined,
       cursor: { finishedAt, externalRequestCount, quotaReached },
     })
     // Monitoring is deliberately best-effort. A failed snapshot refresh must

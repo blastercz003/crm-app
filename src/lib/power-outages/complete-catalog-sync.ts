@@ -41,6 +41,7 @@ type SourceAddressRow = {
   id: string
   outage_id: string
   external_address_id: string | null
+  ruian_address_id?: number | null
   address_key: string
   municipality: string
   municipality_code: string | null
@@ -61,6 +62,20 @@ type CompleteAddressState = {
   id: string
   outage_id: string
   address_key: string
+  external_address_id: string | null
+  ruian_address_id: number | null
+  municipality: string
+  municipality_code: string | null
+  town_part: string | null
+  street: string
+  house_number: string | null
+  orientation_number: string | null
+  postal_code: string | null
+  raw_address: string
+  normalized_municipality: string
+  normalized_street: string
+  latitude: number | null
+  longitude: number | null
   lookup_fingerprint: string | null
 }
 
@@ -194,6 +209,9 @@ function addressScope(address: SourceAddressRow) {
 }
 
 function addressFingerprint(address: SourceAddressRow) {
+  // Otisk smi obsahovat jen hodnoty, ktere skutecne meni vyhledavaci cil.
+  // Diagnosticka metadata CEZ (napr. ID cyklu) se meni i pri stejne adrese a
+  // nesmi proto shazovat hotovou normalizaci ani existujici providerovou cache.
   return powerOutageSha256({
     externalAddressId: address.external_address_id,
     municipality: address.municipality,
@@ -202,13 +220,40 @@ function addressFingerprint(address: SourceAddressRow) {
     street: address.street,
     houseNumber: address.house_number,
     orientationNumber: address.orientation_number,
-    postalCode: address.postal_code,
     normalizedMunicipality: address.normalized_municipality,
     normalizedStreet: address.normalized_street,
     latitude: address.latitude,
     longitude: address.longitude,
-    metadata: address.metadata ?? {},
   })
+}
+
+function existingAddressFingerprint(address: CompleteAddressState) {
+  return addressFingerprint({
+    id: address.id,
+    outage_id: address.outage_id,
+    address_key: address.address_key,
+    external_address_id: address.external_address_id,
+    ruian_address_id: address.ruian_address_id,
+    municipality: address.municipality,
+    municipality_code: address.municipality_code,
+    town_part: address.town_part,
+    street: address.street,
+    house_number: address.house_number,
+    orientation_number: address.orientation_number,
+    postal_code: address.postal_code,
+    raw_address: address.raw_address,
+    normalized_municipality: address.normalized_municipality,
+    normalized_street: address.normalized_street,
+    latitude: address.latitude,
+    longitude: address.longitude,
+    metadata: null,
+  })
+}
+
+function nonLookupAddressDataChanged(existing: CompleteAddressState, desired: SourceAddressRow) {
+  return existing.postal_code !== desired.postal_code
+    || existing.raw_address !== desired.raw_address
+    || existing.ruian_address_id !== (desired.ruian_address_id ?? existing.ruian_address_id)
 }
 
 async function loadSourceOutages(client: ServiceClient, source: PowerOutageSource) {
@@ -291,6 +336,7 @@ async function loadProjectedCezAddresses(client: ServiceClient, externalIds: str
         id: row.id,
         outage_id: row.outage_external_id,
         external_address_id: row.ruian_address_id ? String(row.ruian_address_id) : null,
+        ruian_address_id: row.ruian_address_id,
         address_key: row.address_key,
         municipality: row.municipality,
         municipality_code: row.municipality_code,
@@ -554,7 +600,11 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
     for (const outageIds of chunks([...completeIdByExternalId.values()], 100)) {
       const { data, error } = await client
         .from('complete_power_outage_addresses')
-        .select('id,outage_id,address_key,lookup_fingerprint')
+        .select(`
+          id,outage_id,address_key,external_address_id,ruian_address_id,municipality,municipality_code,
+          town_part,street,house_number,orientation_number,postal_code,raw_address,normalized_municipality,
+          normalized_street,latitude,longitude,lookup_fingerprint
+        `)
         .in('outage_id', outageIds)
       if (error) throw error
       for (const row of (data ?? []) as CompleteAddressState[]) {
@@ -565,6 +615,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
     }
 
     const changedAddressRows: Array<Record<string, unknown>> = []
+    const preservedAddressRows: Array<Record<string, unknown>> = []
     const staleAddressIds: string[] = []
     for (const outage of outages) {
       const completeOutageId = completeIdByExternalId.get(outage.external_id)
@@ -577,6 +628,9 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         const base = {
           outage_id: completeOutageId,
           external_address_id: address.external_address_id,
+          ...(address.ruian_address_id !== undefined
+            ? { ruian_address_id: address.ruian_address_id }
+            : {}),
           address_key: address.address_key,
           address_scope: addressScope(address),
           municipality: address.municipality,
@@ -597,7 +651,8 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
             upstreamAddressId: address.id,
           },
         }
-        if (existingByKey.get(address.address_key)?.lookup_fingerprint !== fingerprint) {
+        const existingAddress = existingByKey.get(address.address_key)
+        if (!existingAddress || existingAddressFingerprint(existingAddress) !== fingerprint) {
           changedAddressRows.push({
             ...base,
             lookup_status: 'pending',
@@ -612,6 +667,14 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
             normalization_version: 0,
             normalized_at: null,
           })
+        } else if (
+          existingAddress.lookup_fingerprint !== fingerprint
+          || nonLookupAddressDataChanged(existingAddress, address)
+        ) {
+          // Jednorazovy prechod ze stareho otisku zahrnujiciho metadata.
+          // Vyhledavaci vyznam adresy je shodny, proto zachovame normalizaci,
+          // adresni cile i vysledky ARES/Mapy.com a zmenime pouze otisk.
+          preservedAddressRows.push(base)
         }
       }
 
@@ -621,6 +684,12 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         .map((row) => row.id))
     }
     for (const batch of chunks(changedAddressRows, 300)) {
+      const { error } = await client
+        .from('complete_power_outage_addresses')
+        .upsert(batch, { onConflict: 'outage_id,address_key' })
+      if (error) throw error
+    }
+    for (const batch of chunks(preservedAddressRows, 300)) {
       const { error } = await client
         .from('complete_power_outage_addresses')
         .upsert(batch, { onConflict: 'outage_id,address_key' })
@@ -700,6 +769,7 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
           externalRequestsMade: 0,
           removedAddressCount,
           removedOutageCount,
+          preservedNormalizedAddressCount: preservedAddressRows.length,
           addressPreservationContract: useCezShadow ? 'complete-cez-all-v1-audited-cleanup' : null,
         },
       })

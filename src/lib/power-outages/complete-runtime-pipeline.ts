@@ -1,6 +1,5 @@
 import 'server-only'
 
-import { normalizeCompletePowerOutageAddresses } from './complete-address-normalization'
 import { discoverCompletePowerOutageCompanies } from './complete-company-discovery'
 import {
   providerConfigured,
@@ -65,15 +64,8 @@ export async function runCompletePowerOutageRuntimePipeline() {
   const startedAt = new Date().toISOString()
   const steps: PipelineStep[] = []
 
-  // Menší dávka drží běh bezpečně pod limitem serverless funkce i u adres,
-  // které vytvářejí větší počet číselných cílů.
-  steps.push(await runStep(
-    'normalize_addresses',
-    () => normalizeCompletePowerOutageAddresses(300),
-  ))
-
-  // ARES i Mapy.com mají vlastní workery, aby jejich velké fronty nezdržovaly
-  // Google ani následné vyhodnocení v této společné pipeline.
+  // Normalizace, ARES i Mapy.com mají vlastní workery, aby jejich velké
+  // fronty nezdržovaly Google ani následné vyhodnocení v této pipeline.
   // Skutečný minutový, denní a u Mapy.com také společný měsíční kreditní limit
   // atomicky hlídá databáze.
   steps.push(await runProvider('google', 2))

@@ -410,6 +410,9 @@ export type CompleteAddressCoverageDiagnostic = {
   observedAt: string
   coverage: CompleteAddressCoverage
   normalizerVersion: number
+  normalizerBatchSize: number
+  normalizerCadenceMinutes: number
+  estimatedRemainingMinutes: number
   targets: { exactCount: number; streetCount: number; municipalityCount: number; totalCount: number }
   sources: Array<{
     source: PowerOutageSource

@@ -32,6 +32,8 @@ type TargetState = {
 const NORMALIZER_VERSION = 2
 const MAX_TARGETS_PER_ADDRESS = 2000
 const MAX_TARGETS_PER_RUN = 20000
+export const COMPLETE_ADDRESS_NORMALIZATION_BATCH_SIZE = 1000
+export const COMPLETE_ADDRESS_NORMALIZATION_CADENCE_MINUTES = 1
 
 function chunks<T>(values: T[], size: number) {
   const result: T[][] = []

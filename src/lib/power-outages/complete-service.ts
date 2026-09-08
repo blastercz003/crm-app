@@ -27,6 +27,10 @@ import type {
 } from './complete-types'
 import type { PowerOutageSource } from './types'
 import { MAPY_MONTHLY_CREDIT_LIMIT, MAPY_MONTHLY_CREDIT_SAFETY_CAP, MAPY_MONTHLY_FREE_CREDIT_LIMIT, providerConfigured, PROVIDER_LIMITS } from './complete-company-providers'
+import {
+  COMPLETE_ADDRESS_NORMALIZATION_BATCH_SIZE,
+  COMPLETE_ADDRESS_NORMALIZATION_CADENCE_MINUTES,
+} from './complete-address-normalization'
 
 function progressPercent(completed: number, total: number, emptyValue = 100) {
   if (total <= 0) return emptyValue
@@ -1458,6 +1462,12 @@ export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise
     observedAt: new Date().toISOString(),
     coverage,
     normalizerVersion: Number((runsResult.data?.[0]?.metadata as Record<string, unknown> | null)?.normalizerVersion ?? 2),
+    normalizerBatchSize: COMPLETE_ADDRESS_NORMALIZATION_BATCH_SIZE,
+    normalizerCadenceMinutes: COMPLETE_ADDRESS_NORMALIZATION_CADENCE_MINUTES,
+    estimatedRemainingMinutes: coverage.pendingCount > 0
+      ? Math.ceil(coverage.pendingCount / COMPLETE_ADDRESS_NORMALIZATION_BATCH_SIZE)
+        * COMPLETE_ADDRESS_NORMALIZATION_CADENCE_MINUTES
+      : 0,
     targets: {
       exactCount: coverageSummary.exactTargetCount,
       streetCount: coverageSummary.streetTargetCount,
