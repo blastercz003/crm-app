@@ -3,6 +3,7 @@ import 'server-only'
 import { getPowerOutageRuntimeContext } from './access'
 import type {
   CompleteEvidenceProvider,
+  CompleteGlobalProgress,
   CompleteAddressCoverage,
   CompleteAddressCoverageDiagnostic,
   CompleteAddressCoverageRun,
@@ -905,7 +906,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const [
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
-    cezNewResult, providerResult, evaluationProgressResult, taskResult,
+    cezNewResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
@@ -915,6 +916,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
     supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
+    supabase.from('complete_power_outage_global_progress_snapshot').select('status,progress_percent,remaining_seconds,estimated_finish_at,active_queue_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
   ])
 
   const tasks = taskResult.data ?? []
@@ -963,6 +965,22 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     : (coverageResult.data?.length ?? 0) !== 3
       ? 'Snapshot pokrytí adres není kompletní.'
       : taskLoadError
+  const globalProgressLoadError = globalProgressResult.error
+    ? `Celkový průběh se nepodařilo načíst: ${globalProgressResult.error.message}`
+    : !globalProgressResult.data
+      ? 'Souhrnný snapshot průběhu zatím není dostupný.'
+      : null
+  const globalProgress = globalProgressResult.data ? {
+    status: globalProgressResult.data.status,
+    progressPercent: Number(globalProgressResult.data.progress_percent) || 0,
+    remainingSeconds: globalProgressResult.data.remaining_seconds == null
+      ? null : Number(globalProgressResult.data.remaining_seconds),
+    estimatedFinishAt: globalProgressResult.data.estimated_finish_at,
+    activeQueueCount: Number(globalProgressResult.data.active_queue_count) || 0,
+    statusMessage: globalProgressResult.data.status_message,
+    lastProgressAt: globalProgressResult.data.last_progress_at,
+    refreshedAt: globalProgressResult.data.refreshed_at,
+  } satisfies CompleteGlobalProgress : null
   const nowMs = Date.now()
   const staleSources = sources.filter((source) => completeSourceIsStale(source, cezNew, nowMs))
   const failedTasks = tasks.filter((task) => task.last_status === 'failed' || task.last_status === 'partial' || Number(task.consecutive_failure_count) > 0)
@@ -982,6 +1000,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   ]
   return {
     currentUser: { id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' },
+    globalProgress,
     sources,
     cezNew,
     providers,
@@ -992,6 +1011,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     },
     addressCoverage,
     loadErrors: {
+      globalProgress: globalProgressLoadError,
       sources: sourceLoadError,
       providers: providerLoadError,
       addressCoverage: coverageLoadError,

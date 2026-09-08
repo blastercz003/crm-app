@@ -322,6 +322,17 @@ export type CompleteRuntimeState = {
   issues: string[]
 }
 
+export type CompleteGlobalProgress = {
+  status: 'waiting' | 'processing' | 'current' | 'delayed' | 'error'
+  progressPercent: number
+  remainingSeconds: number | null
+  estimatedFinishAt: string | null
+  activeQueueCount: number
+  statusMessage: string
+  lastProgressAt: string | null
+  refreshedAt: string | null
+}
+
 export type CompleteCezNewState = {
   activeSource: 'legacy' | 'shadow'
   status: 'waiting' | 'processing' | 'ready' | 'partial' | 'error'
@@ -462,7 +473,9 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
   CompletePowerOutageWorkspace,
   'currentUser' | 'sources' | 'cezNew' | 'providers' | 'runtime' | 'addressCoverage'
 > & {
+  globalProgress: CompleteGlobalProgress | null
   loadErrors: {
+    globalProgress: string | null
     sources: string | null
     providers: string | null
     addressCoverage: string | null

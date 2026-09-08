@@ -1,6 +1,6 @@
 'use client'
 
-import { CircleAlert, LoaderCircle, RefreshCw } from 'lucide-react'
+import { Activity, CircleAlert, LoaderCircle, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CompletePowerOutageCurrentUser, CompletePowerOutageSidebarWorkspace, CompletePowerOutageStatistics } from '@/lib/power-outages/complete-types'
 import { getCompletePowerOutageOwnersAction, getCompletePowerOutageSidebarAction, getCompletePowerOutageStatisticsAction } from './actions'
@@ -30,6 +30,12 @@ function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: 
   return <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
     <p className="mb-2 flex items-center justify-center text-center text-[10px] text-[var(--text-secondary)] lg:hidden">{error ? 'Provozní data vyžadují opakované načtení.' : 'Načítám provozní panely…'}</p>
     <aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none">
+      <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
+        <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><Activity aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">KOMPLETNÍ ANALÝZA</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Celkové zpracování</h3></span></div>{loadingBadge}</div>
+        <div className="mt-4 rounded-2xl border border-sky-400/25 bg-sky-500/8 p-3.5"><div className="flex items-end justify-between gap-3"><span><small className="block text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Všechny aktivní fronty</small><strong className="mt-1 flex items-center gap-1.5 text-[11px] leading-4 text-[var(--text-primary)]"><LoaderCircle aria-hidden size={11} className="animate-spin text-[var(--accent)]" /> Připravuji časový odhad</strong></span><strong className="shrink-0 text-3xl leading-none text-[var(--text-secondary)]">— %</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full w-2/5 animate-pulse rounded-full bg-sky-500/70" /></div></div>
+        <p className="mt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]">Načítám stav aktuálních povinných front.</p>
+        <div className="mt-auto flex items-center justify-between gap-3 pt-3 text-[7px] text-[var(--text-secondary)]"><span>Načítám aktivní fronty…</span><span>Výpočet se připravuje</span></div>
+      </section></div>
       <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
         {header('KOMPLETNÍ SBĚR', 'Stav distributorů')}
         <div className="mt-3 grid min-h-0 flex-1 grid-rows-3 gap-2 lg:mt-4 lg:block lg:space-y-2">{sourceCard('ČEZ', 'ALL v1')}{sourceCard('EG.D')}{sourceCard('PRE')}</div>
