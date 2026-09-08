@@ -151,6 +151,30 @@ async function releaseClaim(client: ServiceClient, row: ClaimRow) {
   if (error) throw error
 }
 
+async function beginEnrichmentRun(client: ServiceClient) {
+  const { data, error } = await client.rpc('begin_complete_power_outage_company_enrichment_run')
+  if (error) throw error
+  return typeof data === 'string' ? data : null
+}
+
+async function finishEnrichmentRun(client: ServiceClient, input: {
+  runToken: string
+  status: 'succeeded' | 'partial' | 'failed'
+  processedCount: number
+  errorCode?: string | null
+  errorMessage?: string | null
+}) {
+  const { data, error } = await client.rpc('finish_complete_power_outage_company_enrichment_run', {
+    requested_run_token: input.runToken,
+    requested_status: input.status,
+    requested_processed_count: input.processedCount,
+    requested_error_code: input.errorCode ?? null,
+    requested_error_message: input.errorMessage ?? null,
+  })
+  if (error) throw error
+  if (data !== true) throw new Error('ARES RES enrichment běh již nevlastní platný provozní zámek.')
+}
+
 async function finishClaim(client: ServiceClient, row: ClaimRow, input: {
   result: 'ready' | 'not_found' | 'error'
   profileId?: string | null
@@ -242,45 +266,72 @@ export async function enrichCompletePowerOutageCompanyProfiles(requestedLimit = 
     return { status: 'disabled' as const, claimed: 0, ready: 0, notFound: 0, failed: 0, contacts: 0 }
   }
 
-  const { data, error } = await client.rpc('claim_complete_power_outage_company_enrichment', {
-    requested_limit: limit,
-  })
-  if (error) throw error
-  const rows = (data ?? []) as ClaimRow[]
+  const runToken = await beginEnrichmentRun(client)
+  if (!runToken) {
+    return { status: 'busy' as const, claimed: 0, ready: 0, notFound: 0, failed: 0, contacts: 0 }
+  }
+
+  let rows: ClaimRow[] = []
   let ready = 0
   let notFound = 0
   let failed = 0
   let contacts = 0
 
-  for (let index = 0; index < rows.length; index += 1) {
-    const row = rows[index]
-    try {
-      if (!(await claimSharedAresQuota(client))) {
-        for (const waitingRow of rows.slice(index)) await releaseClaim(client, waitingRow)
-        break
-      }
-      const payload = await fetchPublicRes(row.ico)
-      if (!payload) {
-        await finishClaim(client, row, { result: 'not_found' })
-        notFound += 1
-        continue
-      }
-      const saved = await saveProfile(client, row.ico, payload)
-      await finishClaim(client, row, { result: 'ready', profileId: saved.profileId })
-      ready += 1
-      contacts += saved.contactCount
-    } catch (error) {
-      const message = powerOutageErrorMessage(error, 'ARES RES enrichment selhal.')
-      const retryable = !/HTTP\s+(400|404)\b/i.test(message)
-      await finishClaim(client, row, {
-        result: 'error',
-        errorCode: 'COMPLETE_COMPANY_ARES_RES_FAILED',
-        errorMessage: message,
-        retryable,
-      })
-      failed += 1
-    }
-  }
+  try {
+    const { data, error } = await client.rpc('claim_complete_power_outage_company_enrichment', {
+      requested_limit: limit,
+    })
+    if (error) throw error
+    rows = (data ?? []) as ClaimRow[]
 
-  return { status: 'processed' as const, claimed: rows.length, ready, notFound, failed, contacts }
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index]
+      try {
+        if (!(await claimSharedAresQuota(client))) {
+          for (const waitingRow of rows.slice(index)) await releaseClaim(client, waitingRow)
+          break
+        }
+        const payload = await fetchPublicRes(row.ico)
+        if (!payload) {
+          await finishClaim(client, row, { result: 'not_found' })
+          notFound += 1
+          continue
+        }
+        const saved = await saveProfile(client, row.ico, payload)
+        await finishClaim(client, row, { result: 'ready', profileId: saved.profileId })
+        ready += 1
+        contacts += saved.contactCount
+      } catch (error) {
+        const message = powerOutageErrorMessage(error, 'ARES RES enrichment selhal.')
+        const retryable = !/HTTP\s+(400|404)\b/i.test(message)
+        await finishClaim(client, row, {
+          result: 'error',
+          errorCode: 'COMPLETE_COMPANY_ARES_RES_FAILED',
+          errorMessage: message,
+          retryable,
+        })
+        failed += 1
+      }
+    }
+
+    const processedCount = ready + notFound + failed
+    await finishEnrichmentRun(client, {
+      runToken,
+      status: failed > 0 ? 'partial' : 'succeeded',
+      processedCount,
+      errorCode: failed > 0 ? 'COMPLETE_COMPANY_ENRICHMENT_ITEM_ERRORS' : null,
+      errorMessage: failed > 0 ? `${failed} položek v dávce se nepodařilo doplnit a čeká na další postup.` : null,
+    })
+    return { status: 'processed' as const, claimed: rows.length, ready, notFound, failed, contacts }
+  } catch (error) {
+    const message = powerOutageErrorMessage(error, 'ARES RES enrichment běh selhal.')
+    await finishEnrichmentRun(client, {
+      runToken,
+      status: 'failed',
+      processedCount: ready + notFound + failed,
+      errorCode: 'COMPLETE_COMPANY_ENRICHMENT_RUN_FAILED',
+      errorMessage: message,
+    }).catch(() => undefined)
+    throw error
+  }
 }

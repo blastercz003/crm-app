@@ -187,11 +187,11 @@ security definer
 set search_path = public
 as $$
 declare
-  activation_id uuid := gen_random_uuid();
-  candidate_count bigint;
-  ico_count bigint;
-  queue_count bigint;
-  existing_activation_id uuid;
+  v_activation_id uuid := gen_random_uuid();
+  v_candidate_count bigint;
+  v_ico_count bigint;
+  v_queue_count bigint;
+  v_existing_activation_id uuid;
 begin
   perform 1
   from public.complete_power_outage_commercial_selection_state
@@ -203,16 +203,16 @@ begin
     from public.complete_power_outage_commercial_selection_state
     where singleton
   ), false) then
-    select id into existing_activation_id
-    from public.complete_power_outage_company_enrichment_activations
-    where activation_status = 'complete'
-    order by activated_at desc
+    select activation_row.id into v_existing_activation_id
+    from public.complete_power_outage_company_enrichment_activations activation_row
+    where activation_row.activation_status = 'complete'
+    order by activation_row.activated_at desc
     limit 1;
-    return existing_activation_id;
+    return v_existing_activation_id;
   end if;
 
   select count(*), count(distinct company.ico)
-  into candidate_count, ico_count
+  into v_candidate_count, v_ico_count
   from public.complete_power_outage_companies company
   join public.complete_power_outage_addresses address_row
     on address_row.id = company.outage_address_id
@@ -223,14 +223,14 @@ begin
     and company.business_relevance_status = 'eligible'
     and outage.ends_at >= now()
     and outage.source_status in ('scheduled', 'active');
-  if ico_count = 0 then
+  if v_ico_count = 0 then
     raise exception 'Aktivaci nelze provést: aktuální tabulka KOMPLETNÍ neobsahuje žádné způsobilé IČO.';
   end if;
 
   insert into public.complete_power_outage_company_enrichment_activations (
     id, activation_status, current_candidate_count, unique_ico_count, metadata
   ) values (
-    activation_id, 'capturing', candidate_count, ico_count,
+    v_activation_id, 'capturing', v_candidate_count, v_ico_count,
     jsonb_build_object(
       'scope', 'visible_current_complete_companies',
       'priorityPolicy', 'equal_priority_no_date_or_distributor_weighting',
@@ -241,7 +241,7 @@ begin
   insert into public.complete_power_outage_company_enrichment_activation_items (
     activation_id, ico, candidate_count, sources
   )
-  select activation_id, company.ico, count(*)::integer,
+  select v_activation_id, company.ico, count(*)::integer,
     array_agg(distinct outage.source::text order by outage.source::text)
   from public.complete_power_outage_companies company
   join public.complete_power_outage_addresses address_row
@@ -259,22 +259,22 @@ begin
     ico, queue_status, priority, requested_sources, next_attempt_at, metadata
   )
   select item.ico, 'pending', 100, array['res']::text[], now(),
-    jsonb_build_object('queueReason', 'controlled_backfill', 'activationId', activation_id)
+    jsonb_build_object('queueReason', 'controlled_backfill', 'activationId', v_activation_id)
   from public.complete_power_outage_company_enrichment_activation_items item
-  where item.activation_id = activation_id
+  where item.activation_id = v_activation_id
   on conflict (ico) do nothing;
 
-  select count(*) into queue_count
+  select count(*) into v_queue_count
   from public.complete_power_outage_company_enrichment_activation_items item
   join public.complete_power_outage_company_enrichment_queue queue_row on queue_row.ico = item.ico
-  where item.activation_id = activation_id;
-  if queue_count <> ico_count then
-    raise exception 'Aktivační manifest není kompletně zastoupen ve frontě (% z %).', queue_count, ico_count;
+  where item.activation_id = v_activation_id;
+  if v_queue_count <> v_ico_count then
+    raise exception 'Aktivační manifest není kompletně zastoupen ve frontě (% z %).', v_queue_count, v_ico_count;
   end if;
 
   update public.complete_power_outage_company_enrichment_activations
-  set activation_status = 'complete', represented_queue_count = queue_count, activated_at = now()
-  where id = activation_id;
+  set activation_status = 'complete', represented_queue_count = v_queue_count, activated_at = now()
+  where id = v_activation_id;
 
   update public.complete_power_outage_commercial_selection_state
   set res_enrichment_enabled = true,
@@ -282,12 +282,12 @@ begin
       last_error_code = null,
       last_error_message = null,
       metadata = metadata || jsonb_build_object(
-        'resActivationId', activation_id,
+        'resActivationId', v_activation_id,
         'resActivatedAt', now(),
-        'resBackfillIcoCount', ico_count
+        'resBackfillIcoCount', v_ico_count
       )
   where singleton;
-  return activation_id;
+  return v_activation_id;
 end;
 $$;
 

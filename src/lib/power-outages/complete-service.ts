@@ -1419,7 +1419,7 @@ export async function getCompletePowerOutageProviderDiagnostic(
   if (!['ares', 'mapy', 'google'].includes(provider)) throw new Error('Neplatný poskytovatel.')
   if (currentState && currentState.provider !== provider) throw new Error('Stav poskytovatele neodpovídá požadovanému detailu.')
   const { supabase } = await getPowerOutageRuntimeContext()
-  const [overviewResult, evaluationProgressResult, taskResult, runsResult, errorsResult] = await Promise.all([
+  const [overviewResult, evaluationProgressResult, taskResult, runsResult, errorsResult, enrichmentOverviewResult, enrichmentErrorsResult] = await Promise.all([
     currentState
       ? Promise.resolve({ data: null, error: null })
       : supabase.from('complete_power_outage_provider_overview')
@@ -1437,6 +1437,14 @@ export async function getCompletePowerOutageProviderDiagnostic(
     supabase.from('complete_power_outage_active_provider_errors')
       .select('id,target_id,query_text,target_kind,attempt_count,last_attempt_at,next_attempt_at,last_error_code,last_error_message')
       .eq('provider', provider).in('lookup_status', ['error', 'needs_review']).order('last_attempt_at', { ascending: false }).limit(8),
+    provider === 'ares'
+      ? supabase.from('complete_power_outage_company_enrichment_overview').select('*').maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    provider === 'ares'
+      ? supabase.from('complete_power_outage_company_enrichment_queue')
+        .select('ico,queue_status,attempt_count,next_attempt_at,last_error_code,last_error_message,updated_at')
+        .in('queue_status', ['error', 'skipped']).order('updated_at', { ascending: false }).limit(8)
+      : Promise.resolve({ data: [], error: null }),
   ])
   if (overviewResult.error) throw new Error(`Stav poskytovatele se nepodařilo načíst: ${overviewResult.error.message}`)
   if (taskResult.error) throw new Error(`Stav úlohy se nepodařilo načíst: ${taskResult.error.message}`)
@@ -1473,6 +1481,9 @@ export async function getCompletePowerOutageProviderDiagnostic(
       errorMessage: row.error_message,
     }
   })
+  const enrichmentRow = enrichmentOverviewResult.error
+    ? null
+    : enrichmentOverviewResult.data as Record<string, unknown> | null
   return {
     provider,
     observedAt: new Date().toISOString(),
@@ -1500,6 +1511,38 @@ export async function getCompletePowerOutageProviderDiagnostic(
         errorMessage: row.last_error_message,
       }
     }),
+    enrichment: enrichmentRow ? {
+      enabled: enrichmentRow.res_enrichment_enabled === true,
+      status: enrichmentRow.status as CompleteProviderDiagnostic['enrichment'] extends infer E ? E extends { status: infer S } ? S : never : never,
+      workerStatus: enrichmentRow.worker_status as CompleteProviderDiagnostic['enrichment'] extends infer E ? E extends { workerStatus: infer S } ? S : never : never,
+      totalCount: Number(enrichmentRow.total_count),
+      pendingCount: Number(enrichmentRow.pending_count),
+      processingCount: Number(enrichmentRow.processing_count),
+      readyCount: Number(enrichmentRow.ready_count),
+      notFoundCount: Number(enrichmentRow.not_found_count),
+      retryCount: Number(enrichmentRow.retry_count),
+      reviewCount: Number(enrichmentRow.review_count),
+      profileCount: Number(enrichmentRow.profile_count),
+      emailCount: Number(enrichmentRow.email_count),
+      phoneCount: Number(enrichmentRow.phone_count),
+      progressPercent: Number(enrichmentRow.progress_percent),
+      lastActivityAt: enrichmentRow.last_enrichment_activity_at as string | null,
+      lastStartedAt: enrichmentRow.last_started_at as string | null,
+      lastFinishedAt: enrichmentRow.last_finished_at as string | null,
+      lastSuccessAt: enrichmentRow.last_success_at as string | null,
+      lastProcessedCount: Number(enrichmentRow.last_processed_count),
+      consecutiveFailureCount: Number(enrichmentRow.consecutive_failure_count),
+      lastErrorCode: enrichmentRow.last_error_code as string | null,
+      lastErrorMessage: enrichmentRow.last_error_message as string | null,
+      recentErrors: (enrichmentErrorsResult.error ? [] : enrichmentErrorsResult.data ?? []).map((row) => ({
+        ico: String(row.ico),
+        status: row.queue_status as 'error' | 'skipped',
+        attemptCount: Number(row.attempt_count),
+        nextAttemptAt: row.next_attempt_at,
+        errorCode: row.last_error_code,
+        errorMessage: row.last_error_message,
+      })),
+    } : null,
   }
 }
 

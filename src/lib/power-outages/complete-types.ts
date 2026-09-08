@@ -312,6 +312,39 @@ export type CompleteProviderRun = {
   errorMessage: string | null
 }
 
+export type CompleteCompanyEnrichmentDiagnostic = {
+  enabled: boolean
+  status: 'inactive' | 'waiting' | 'processing' | 'current' | 'partial' | 'error'
+  workerStatus: 'idle' | 'running' | 'succeeded' | 'partial' | 'failed'
+  totalCount: number
+  pendingCount: number
+  processingCount: number
+  readyCount: number
+  notFoundCount: number
+  retryCount: number
+  reviewCount: number
+  profileCount: number
+  emailCount: number
+  phoneCount: number
+  progressPercent: number
+  lastActivityAt: string | null
+  lastStartedAt: string | null
+  lastFinishedAt: string | null
+  lastSuccessAt: string | null
+  lastProcessedCount: number
+  consecutiveFailureCount: number
+  lastErrorCode: string | null
+  lastErrorMessage: string | null
+  recentErrors: Array<{
+    ico: string
+    status: 'error' | 'skipped'
+    attemptCount: number
+    nextAttemptAt: string | null
+    errorCode: string | null
+    errorMessage: string | null
+  }>
+}
+
 export type CompleteProviderDiagnostic = {
   provider: CompleteProviderState['provider']
   observedAt: string
@@ -337,6 +370,7 @@ export type CompleteProviderDiagnostic = {
     errorCode: string | null
     errorMessage: string | null
   }>
+  enrichment: CompleteCompanyEnrichmentDiagnostic | null
 }
 
 export type CompleteRuntimeState = {

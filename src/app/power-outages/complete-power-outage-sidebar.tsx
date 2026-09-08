@@ -156,6 +156,10 @@ function providerStatusLabel(status: CompleteProviderState['status']) {
   return ({ inactive: 'NEAKTIVNÍ', waiting: 'ČEKÁ', processing: 'ZPRACOVÁNÍ', current: 'AKTUÁLNÍ', partial: 'ČÁSTEČNĚ', error: 'CHYBA', exhausted: 'VYČERPÁNO' } as const)[status]
 }
 
+function enrichmentStatusLabel(status: NonNullable<CompleteProviderDiagnostic['enrichment']>['status']) {
+  return ({ inactive: 'NEAKTIVNÍ', waiting: 'ČEKÁ', processing: 'ZPRACOVÁNÍ', current: 'AKTUÁLNÍ', partial: 'ČÁSTEČNĚ', error: 'CHYBA' } as const)[status]
+}
+
 function providerStatusPresentation(status: CompleteProviderState['status']) {
   if (status === 'current') return { badge: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', dot: 'bg-emerald-500' }
   if (status === 'processing') return { badge: 'border-sky-400/35 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300', dot: 'animate-pulse bg-sky-500 motion-reduce:animate-none' }
@@ -578,6 +582,27 @@ function SourcesPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSi
   </PanelShell>
 }
 
+function CompleteCompanyEnrichmentSection({ enrichment }: {
+  enrichment: NonNullable<CompleteProviderDiagnostic['enrichment']>
+}) {
+  const presentation = providerStatusPresentation(enrichment.status)
+  const activeCount = enrichment.pendingCount + enrichment.processingCount + enrichment.retryCount
+  const hasErrors = Boolean(enrichment.lastErrorMessage) || enrichment.recentErrors.length > 0
+  return <section className="mt-5">
+    <div className="flex items-center justify-between gap-3">
+      <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><DatabaseZap aria-hidden size={14} /> Doplňkové profily ARES/RES</h3>
+      <span className={`inline-flex h-8 min-w-[104px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[8px] font-bold tracking-[0.07em] ${presentation.badge}`}><i className={`h-1.5 w-1.5 rounded-full ${presentation.dot}`} />{enrichmentStatusLabel(enrichment.status)}</span>
+    </div>
+    <div className={`mt-2 rounded-2xl border p-3.5 ${enrichment.status === 'processing' ? 'border-sky-400/25 bg-sky-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}>
+      <div className="flex items-start justify-between gap-3"><span><strong className="block text-[11px] text-[var(--text-primary)]">{enrichment.status === 'processing' ? `${activeCount.toLocaleString('cs-CZ')} profilů zbývá ve frontě` : enrichment.status === 'current' ? 'Všechny aktuální profily jsou doplněné' : enrichment.status === 'inactive' ? 'Doplňování profilů je pozastavené' : enrichment.status === 'error' ? 'Poslední dávka selhala' : 'Fronta vyžaduje pozornost'}</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">Samostatná fronta RES neovlivňuje původní vyhledávání firem přes ARES.</small></span><strong className="shrink-0 text-lg tabular-nums text-[var(--accent)]">{enrichment.progressPercent.toLocaleString('cs-CZ')} %</strong></div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${Math.min(100, enrichment.progressPercent)}%` }} /></div>
+      <div className="mt-2 flex items-center justify-between gap-3 text-[9px] text-[var(--text-secondary)]"><span>Dokončeno {(enrichment.readyCount + enrichment.notFoundCount + enrichment.reviewCount).toLocaleString('cs-CZ')} / {enrichment.totalCount.toLocaleString('cs-CZ')}</span><span>Poslední aktivita {formatDate(enrichment.lastActivityAt)}</span></div>
+    </div>
+    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><PowerOutageDetailRow label="Čeká" value={String(enrichment.pendingCount)} /><PowerOutageDetailRow label="Právě zpracovává" value={String(enrichment.processingCount)} /><PowerOutageDetailRow label="Profily doplněny" value={String(enrichment.readyCount)} /><PowerOutageDetailRow label="Bez profilu v RES" value={String(enrichment.notFoundCount)} /><PowerOutageDetailRow label="Opakuje se" value={String(enrichment.retryCount)} /><PowerOutageDetailRow label="Ke kontrole" value={String(enrichment.reviewCount)} /><PowerOutageDetailRow label="Nalezené e-maily" value={String(enrichment.emailCount)} /><PowerOutageDetailRow label="Nalezené telefony" value={String(enrichment.phoneCount)} /><PowerOutageDetailRow label="Stav workeru" value={providerTaskStatusLabel(enrichment.workerStatus)} /><PowerOutageDetailRow label="Poslední dávka" value={`${enrichment.lastProcessedCount} profilů`} /><PowerOutageDetailRow label="Poslední úspěch" value={formatDate(enrichment.lastSuccessAt)} /><PowerOutageDetailRow label="Selhání v řadě" value={String(enrichment.consecutiveFailureCount)} /></div>
+    {hasErrors ? <div className="mt-3"><h4 className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.11em] text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><CircleAlert aria-hidden size={13} /> Chyby doplňkových profilů</h4>{enrichment.lastErrorMessage ? <p className="mt-2 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3 text-[10px] leading-5 text-[var(--text-primary)]">{enrichment.lastErrorCode ? `${enrichment.lastErrorCode}: ` : ''}{enrichment.lastErrorMessage}</p> : null}<div className="mt-2 space-y-2">{enrichment.recentErrors.map((item) => <div key={`${item.ico}-${item.status}`} className="rounded-2xl border border-red-400/25 bg-red-500/5 px-3.5 py-3"><strong className="block text-[10px] text-[var(--text-primary)]">IČO {item.ico} · {item.status === 'error' ? 'automatický retry' : 'ruční kontrola'}</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">Pokusů {item.attemptCount} · další pokus {formatDate(item.nextAttemptAt)}</small>{item.errorMessage ? <p className="mt-1 text-[9px] leading-4 text-red-600 [html[data-theme=dark]_&]:text-red-300">{item.errorCode}: {item.errorMessage}</p> : null}</div>)}</div></div> : null}
+  </section>
+}
+
 function CompleteProviderDiagnosticPopup({ provider, diagnostic, loading, error, isAdmin, onReload, onClose }: {
   provider: CompleteProviderState['provider']
   diagnostic: CompleteProviderDiagnostic | null
@@ -612,6 +637,8 @@ function CompleteProviderDiagnosticPopup({ provider, diagnostic, loading, error,
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><PowerOutageDetailRow label="Aktuální cíle" value={String(diagnostic.state.totalTargetCount)} /><PowerOutageDetailRow label="Prověřeno" value={String(diagnostic.state.processedTargetCount)} /><PowerOutageDetailRow label="S výsledkem" value={String(diagnostic.state.readyCount)} /><PowerOutageDetailRow label="Bez výsledku" value={String(diagnostic.state.notFoundCount)} /><PowerOutageDetailRow label="Kandidáti celkem" value={String(diagnostic.state.candidateCount)} /><PowerOutageDetailRow label="K vyhodnocení" value={String(diagnostic.state.pendingCandidateCount)} /><PowerOutageDetailRow label="Vyhodnoceno" value={String(diagnostic.state.evaluatedCandidateCount)} /><PowerOutageDetailRow label="Automaticky se opakuje" value={String(diagnostic.state.retryableErrorCount)} /><PowerOutageDetailRow label="Ke kontrole" value={String(diagnostic.state.reviewErrorCount)} /><PowerOutageDetailRow label="Poslední požadavek" value={formatDate(diagnostic.state.lastRequestAt)} /><PowerOutageDetailRow label="Poslední úspěšný běh" value={formatDate(diagnostic.task?.lastSuccessAt ?? null)} /><PowerOutageDetailRow label="Stav úlohy" value={providerTaskStatusLabel(diagnostic.task?.status ?? null)} /><PowerOutageDetailRow label="Selhání v řadě" value={String(diagnostic.task?.consecutiveFailureCount ?? 0)} /></div>
 
+      {provider === 'ares' && diagnostic.enrichment ? <CompleteCompanyEnrichmentSection enrichment={diagnostic.enrichment} /> : null}
+
       <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[var(--text-secondary)]"><TimerReset aria-hidden size={14} /> Limity a cache</h3><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><PowerOutageDetailRow label="Minutový limit" value={`${minuteRequests} / ${diagnostic.limits.minute}`} /><PowerOutageDetailRow label="Denní limit" value={`${dayRequests} / ${diagnostic.limits.day}`} /><PowerOutageDetailRow label="Maximum v dávce" value={String(diagnostic.limits.maxPerRun)} /><PowerOutageDetailRow label="Platnost cache" value={diagnostic.limits.cacheHours == null ? 'Bez omezení' : `${diagnostic.limits.cacheHours} hodin`} /></div>{provider === 'mapy' ? <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5"><PowerOutageDetailRow label="Spotřeba / měsíční strop" value={`${diagnostic.state.monthlyCreditCount.toLocaleString('cs-CZ')} / ${diagnostic.state.monthlyCreditSafetyCap.toLocaleString('cs-CZ')}`} /><PowerOutageDetailRow label="Zbývá do stropu" value={`${diagnostic.state.monthlyCreditRemaining.toLocaleString('cs-CZ')} kreditů`} /><PowerOutageDetailRow label="Bezplatná hranice" value={`${diagnostic.state.monthlyFreeCreditLimit.toLocaleString('cs-CZ')} kreditů`} /><PowerOutageDetailRow label="KOMPLETNÍ" value={`${diagnostic.state.completeCreditCount.toLocaleString('cs-CZ')} kreditů`} /><PowerOutageDetailRow label="MARKETY" value={`${diagnostic.state.marketsCreditCount.toLocaleString('cs-CZ')} kreditů`} /></div> : null}<p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Limity jsou hlídané atomicky v databázi. Po dosažení měsíčního stropu se externí požadavky zastaví a stav Mapy.com se změní na VYČERPÁNO. Výsledek z cache nezvyšuje počet externích požadavků.</p></section>
 
       {diagnostic.task?.lastErrorMessage || diagnostic.recentErrors.length > 0 ? <section className="mt-5"><h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><CircleAlert aria-hidden size={14} /> Co vyžaduje pozornost</h3>{diagnostic.task?.lastErrorMessage ? <p className="mt-2 rounded-2xl border border-amber-400/30 bg-amber-500/8 p-3.5 text-xs leading-5 text-[var(--text-primary)]">{diagnostic.task.lastErrorCode ? `${diagnostic.task.lastErrorCode}: ` : ''}{diagnostic.task.lastErrorMessage}</p> : null}<div className="mt-2 space-y-2">{diagnostic.recentErrors.map((item) => <div key={item.id} className="rounded-2xl border border-red-400/25 bg-red-500/5 px-3.5 py-3"><strong className="block text-[10px] text-[var(--text-primary)]">{item.queryText}</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">Pokusů {item.attemptCount} · poslední {formatDate(item.lastAttemptAt)} · další {formatDate(item.nextAttemptAt)}</small>{item.errorMessage ? <p className="mt-1 text-[9px] leading-4 text-red-600 [html[data-theme=dark]_&]:text-red-300">{item.errorCode}: {item.errorMessage}</p> : null}</div>)}</div>{diagnostic.state.configured && diagnostic.recentErrors.length > 0 ? <RecoveryControl isAdmin={isAdmin} blocked={providerRecoveryBlocked} label="Opakovat chybné dotazy" request={{ target: 'provider_discovery', provider }} onRecovered={onReload} /> : null}{isAdmin && (provider === 'ares' || provider === 'mapy') && diagnostic.state.reviewErrorCount > 0 ? <SkipProviderReviewErrorsButton provider={provider} count={diagnostic.state.reviewErrorCount} onRecovered={onReload} /> : null}</section> : null}
@@ -644,10 +671,12 @@ function DiscoveryPanel({ workspace, onRetry }: { workspace: CompletePowerOutage
     void loadDiagnostic(provider)
   }
   useEffect(() => {
-    if (!selectedProvider || diagnostic?.state.status !== 'processing') return
+    const providerIsProcessing = diagnostic?.state.status === 'processing'
+    const enrichmentIsProcessing = diagnostic?.enrichment?.status === 'processing'
+    if (!selectedProvider || (!providerIsProcessing && !enrichmentIsProcessing)) return
     const interval = window.setInterval(() => { void loadDiagnostic(selectedProvider, false) }, 20_000)
     return () => window.clearInterval(interval)
-  }, [selectedProvider, diagnostic?.state.status])
+  }, [selectedProvider, diagnostic?.state.status, diagnostic?.enrichment?.status])
 
   const attentionProvider = workspace.providers.find((provider) => ['error', 'partial', 'exhausted'].includes(provider.status))
   const attentionSource = workspace.sources.find((source) => (
