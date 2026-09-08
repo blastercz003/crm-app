@@ -195,8 +195,20 @@ export async function recoverCompletePowerOutageTask(
     : { data: [], error: null, count: 0 }
   if (activeProviderErrors.error) throw activeProviderErrors.error
   const activeErrorCount = activeProviderErrors.count ?? 0
+  const providerQueue = input.target === 'provider_discovery'
+    ? await client
+      .from('complete_power_outage_provider_overview')
+      .select('pending_count')
+      .eq('provider', input.provider)
+      .maybeSingle<{ pending_count: number | string }>()
+    : { data: null, error: null }
+  if (providerQueue.error) throw providerQueue.error
+  const providerPendingCount = Number(providerQueue.data?.pending_count ?? 0)
 
-  if (!['failed', 'partial'].includes(data.last_status) && activeErrorCount === 0 && !expiredTask) {
+  if (!['failed', 'partial'].includes(data.last_status)
+    && activeErrorCount === 0
+    && providerPendingCount === 0
+    && !expiredTask) {
     return {
       status: 'not_needed',
       message: 'Úloha už není v chybovém stavu. Obnova nebyla potřeba.',

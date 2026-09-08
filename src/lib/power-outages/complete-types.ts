@@ -369,6 +369,16 @@ export type CompleteCezNewState = {
   projectionStatus: string
   projectionPendingCount: number
   lastProjectionAt: string | null
+  productionAddressTotal: number
+  productionAddressNormalized: number
+  productionAddressPending: number
+  productionAddressError: number
+  productionAddressReview: number
+  productionAddressRefreshedAt: string | null
+  productionNormalizationTaskStatus: 'idle' | 'running' | 'succeeded' | 'partial' | 'failed' | 'skipped' | null
+  productionNormalizationLastSuccessAt: string | null
+  productionNormalizationErrorCode: string | null
+  productionNormalizationErrorMessage: string | null
   publishableCycleCount: number
   recentCycleCount: number
   safeRecentCycleCount: number

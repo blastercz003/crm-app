@@ -573,6 +573,16 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     projectionStatus: String(row.projection_status ?? 'waiting'),
     projectionPendingCount: Number(row.projection_pending_count ?? 0),
     lastProjectionAt: row.last_projection_at as string | null,
+    productionAddressTotal: 0,
+    productionAddressNormalized: 0,
+    productionAddressPending: 0,
+    productionAddressError: 0,
+    productionAddressReview: 0,
+    productionAddressRefreshedAt: null,
+    productionNormalizationTaskStatus: null,
+    productionNormalizationLastSuccessAt: null,
+    productionNormalizationErrorCode: null,
+    productionNormalizationErrorMessage: null,
     publishableCycleCount: Number(row.publishable_cycle_count ?? 0),
     recentCycleCount: Number(row.recent_cycle_count ?? 0),
     safeRecentCycleCount: Number(row.safe_recent_cycle_count ?? 0),
@@ -584,6 +594,26 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     errorStage: (row.effective_error_stage ?? row.readiness_error_stage ?? null) as CompleteCezNewState['errorStage'],
     errorCode: (row.effective_error_code ?? row.readiness_error_code ?? null) as string | null,
     lastErrorMessage: (row.effective_error_message ?? row.readiness_error_message ?? row.last_error_message ?? null) as string | null,
+  }
+}
+
+function withCezProductionDiagnostics(
+  state: CompleteCezNewState,
+  coverage: AddressCoverageSnapshotRow | undefined,
+  task: Record<string, unknown> | null,
+): CompleteCezNewState {
+  return {
+    ...state,
+    productionAddressTotal: Number(coverage?.total_count ?? 0),
+    productionAddressNormalized: Number(coverage?.normalized_count ?? 0),
+    productionAddressPending: Number(coverage?.pending_count ?? 0),
+    productionAddressError: Number(coverage?.error_count ?? 0),
+    productionAddressReview: Number(coverage?.review_count ?? 0),
+    productionAddressRefreshedAt: coverage?.refreshed_at ?? null,
+    productionNormalizationTaskStatus: (task?.last_status ?? null) as CompleteCezNewState['productionNormalizationTaskStatus'],
+    productionNormalizationLastSuccessAt: (task?.last_success_at ?? null) as string | null,
+    productionNormalizationErrorCode: (task?.last_error_code ?? null) as string | null,
+    productionNormalizationErrorMessage: (task?.last_error_message ?? null) as string | null,
   }
 }
 
@@ -946,7 +976,11 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     ...coverageSummary,
     task: tasks.find((task) => task.task_key === 'normalize_addresses') ?? null,
   })
-  const cezNew = cezNewResult.data ? mapCezNewState(cezNewResult.data) : null
+  const cezCoverage = (coverageResult.data ?? []).find((row) => row.source === 'cez') as AddressCoverageSnapshotRow | undefined
+  const normalizationTask = tasks.find((task) => task.task_key === 'normalize_addresses') ?? null
+  const cezNew = cezNewResult.data
+    ? withCezProductionDiagnostics(mapCezNewState(cezNewResult.data), cezCoverage, normalizationTask)
+    : null
   const taskLoadError = taskResult.error
     ? `Provozní stav se nepodařilo načíst: ${taskResult.error.message}`
     : null
@@ -1092,7 +1126,10 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     ...coverageSummary,
     task: normalizationTask,
   })
-  const cezNew = cezNewResult.data ? mapCezNewState(cezNewResult.data) : null
+  const cezCoverage = (coverageResult.data ?? []).find((row) => row.source === 'cez') as AddressCoverageSnapshotRow | undefined
+  const cezNew = cezNewResult.data
+    ? withCezProductionDiagnostics(mapCezNewState(cezNewResult.data), cezCoverage, normalizationTask)
+    : null
 
   const nowMs = Date.now()
   const staleSources = sources.filter((source) => completeSourceIsStale(source, cezNew, nowMs))
