@@ -28,6 +28,12 @@ import type {
 import type { PowerOutageSource } from './types'
 import { MAPY_MONTHLY_CREDIT_LIMIT, MAPY_MONTHLY_CREDIT_SAFETY_CAP, MAPY_MONTHLY_FREE_CREDIT_LIMIT, providerConfigured, PROVIDER_LIMITS } from './complete-company-providers'
 
+function progressPercent(completed: number, total: number, emptyValue = 100) {
+  if (total <= 0) return emptyValue
+  const rounded = Math.round((Math.max(0, completed) / total) * 1000) / 10
+  return completed < total ? Math.min(99.9, rounded) : 100
+}
+
 type OverviewRow = {
   candidate_id: string
   outage_address_id: string
@@ -339,9 +345,7 @@ function mapSourceDiscovery(
   const lastProgressAt = (row.last_progress_at as string | null | undefined) ?? null
   const totalWorkCount = totalTargetCount + candidateCount
   const completedWorkCount = completedTargetCount + evaluatedCandidateCount
-  const progressPercent = totalWorkCount > 0
-    ? Math.round((completedWorkCount / totalWorkCount) * 1000) / 10
-    : 100
+  const progressPercentValue = progressPercent(completedWorkCount, totalWorkCount)
   const progressIsStale = (lastProviderProgress: unknown, oldestPending: unknown) => {
     // Nově přidaný cíl nesmí zdědit několik hodin starý čas posledního
     // dokončeného cíle a okamžitě se tvářit jako zpožděný. Fronta stojí teprve
@@ -457,7 +461,7 @@ function mapSourceDiscovery(
     streetPendingTargetCount,
     exactErrorTargetCount,
     streetErrorTargetCount,
-    progressPercent,
+    progressPercent: progressPercentValue,
     lastProgressAt,
     candidateCount,
     evaluatedCandidateCount,
@@ -535,7 +539,7 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
       : stageLabel,
     progressDone: done,
     progressTotal: total,
-    progressPercent: total > 0 ? Math.round((done / total) * 1000) / 10 : 0,
+    progressPercent: progressPercent(done, total, 0),
     catalogTotal: Number(row.catalog_total ?? 0),
     representativeDone: Number(row.representative_done ?? 0),
     representativeRemaining: Number(row.representative_remaining ?? 0),
@@ -1261,9 +1265,10 @@ export async function getCompletePowerOutageSourceDiagnostic(
       foundTargetCount: provider === 'google' ? Number(row.found_target_count) : 0,
       notFoundTargetCount: provider === 'google' ? Number(row.not_found_target_count) : 0,
       errorTargetCount,
-      progressPercent: totalTargetCount + candidateCount > 0
-        ? Math.round(((processedTargetCount + evaluatedCandidateCount) / (totalTargetCount + candidateCount)) * 1000) / 10
-        : 100,
+      progressPercent: progressPercent(
+        processedTargetCount + evaluatedCandidateCount,
+        totalTargetCount + candidateCount,
+      ),
       lastProgressAt: (provider === 'ares'
         ? discoveryRow.exact_last_progress_at
         : provider === 'mapy'
