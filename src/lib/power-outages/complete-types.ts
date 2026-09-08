@@ -111,6 +111,31 @@ export type CompletePowerOutageEvidence = {
   observedAt: string
 }
 
+export type CompleteCompanyContact = {
+  id: string
+  type: 'email' | 'phone'
+  value: string
+  sourceLabel: string
+  sourceUrl: string | null
+  validityStatus: 'unknown' | 'valid' | 'invalid' | 'expired'
+  lastVerifiedAt: string
+}
+
+export type CompleteCompanyEnrichment = {
+  status: 'not_available' | 'not_started' | 'waiting' | 'processing' | 'ready' | 'not_found' | 'attention'
+  enrichmentEnabled: boolean
+  officialName: string | null
+  legalForm: string | null
+  primaryNaceCode: string | null
+  naceCodes: string[]
+  subjectStatus: string | null
+  isInLiquidation: boolean
+  isTerminated: boolean
+  fetchedAt: string | null
+  contacts: CompleteCompanyContact[]
+  message: string
+}
+
 export type CompletePowerOutageDetail = CompletePowerOutageListItem & {
   addressLatitude: number | null
   addressLongitude: number | null
@@ -118,6 +143,7 @@ export type CompletePowerOutageDetail = CompletePowerOutageListItem & {
   companyLongitude: number | null
   metadata: Record<string, unknown>
   evidence: CompletePowerOutageEvidence[]
+  enrichment: CompleteCompanyEnrichment
 }
 
 export type CompleteSourceState = {

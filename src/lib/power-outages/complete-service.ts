@@ -3,6 +3,7 @@ import 'server-only'
 import { getPowerOutageRuntimeContext } from './access'
 import type {
   CompleteEvidenceProvider,
+  CompleteCompanyEnrichment,
   CompleteGlobalProgress,
   CompleteAddressCoverage,
   CompleteAddressCoverageDiagnostic,
@@ -91,6 +92,33 @@ type AssignmentRow = {
   notes: string
   claimed_at: string
   updated_at: string
+}
+
+type CompanyProfileRow = {
+  id: string
+  official_name: string
+  legal_form: string | null
+  primary_nace_code: string | null
+  nace_codes: unknown
+  subject_status: string | null
+  is_in_liquidation: boolean
+  is_terminated: boolean
+  fetched_at: string
+}
+
+type CompanyContactRow = {
+  id: string
+  contact_type: 'email' | 'phone'
+  contact_value: string
+  source_registry: string
+  source_url: string | null
+  source_validity_status: 'unknown' | 'valid' | 'invalid' | 'expired'
+  last_verified_at: string
+}
+
+type CompanyEnrichmentQueueRow = {
+  queue_status: 'pending' | 'processing' | 'ready' | 'not_found' | 'error' | 'skipped'
+  last_error_message: string | null
 }
 
 type PagedOverviewRow = OverviewRow & Partial<Omit<AssignmentRow, 'candidate_id'>> & {
@@ -1569,6 +1597,100 @@ export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise
   }
 }
 
+function emptyCompanyEnrichment(
+  message: string,
+  status: CompleteCompanyEnrichment['status'] = 'not_started',
+  enrichmentEnabled = false,
+): CompleteCompanyEnrichment {
+  return {
+    status,
+    enrichmentEnabled,
+    officialName: null,
+    legalForm: null,
+    primaryNaceCode: null,
+    naceCodes: [],
+    subjectStatus: null,
+    isInLiquidation: false,
+    isTerminated: false,
+    fetchedAt: null,
+    contacts: [],
+    message,
+  }
+}
+
+async function loadCompleteCompanyEnrichment(
+  supabase: Awaited<ReturnType<typeof getPowerOutageRuntimeContext>>['supabase'],
+  ico: string | null,
+): Promise<CompleteCompanyEnrichment> {
+  if (!ico) return emptyCompanyEnrichment('ARES/RES profil nelze načíst, protože záznam nemá IČO.', 'not_available')
+
+  const [stateResult, profileResult, queueResult] = await Promise.all([
+    supabase.from('complete_power_outage_commercial_selection_state')
+      .select('res_enrichment_enabled').eq('singleton', true).maybeSingle<{ res_enrichment_enabled: boolean }>(),
+    supabase.from('complete_power_outage_company_profiles')
+      .select('id,official_name,legal_form,primary_nace_code,nace_codes,subject_status,is_in_liquidation,is_terminated,fetched_at')
+      .eq('ico', ico).maybeSingle<CompanyProfileRow>(),
+    supabase.from('complete_power_outage_company_enrichment_queue')
+      .select('queue_status,last_error_message').eq('ico', ico).maybeSingle<CompanyEnrichmentQueueRow>(),
+  ])
+  const enrichmentEnabled = stateResult.data?.res_enrichment_enabled === true
+  if (stateResult.error || profileResult.error || queueResult.error) {
+    return emptyCompanyEnrichment('Doplňkové údaje ARES/RES se nepodařilo načíst.', 'not_available', enrichmentEnabled)
+  }
+
+  const profile = profileResult.data
+  const queue = queueResult.data
+  if (!profile) {
+    if (!queue) return emptyCompanyEnrichment('Doplňkové údaje ARES/RES zatím nebyly načteny.', 'not_started', enrichmentEnabled)
+    const status = queue.queue_status === 'processing'
+      ? 'processing'
+      : queue.queue_status === 'not_found'
+        ? 'not_found'
+        : queue.queue_status === 'skipped'
+          ? 'attention'
+          : 'waiting'
+    const message = status === 'processing'
+      ? 'ARES/RES profil se právě načítá.'
+      : status === 'not_found'
+        ? 'Veřejný ARES/RES profil nebyl pro toto IČO nalezen.'
+        : status === 'attention'
+          ? queue.last_error_message || 'Načtení ARES/RES profilu vyžaduje kontrolu.'
+          : 'ARES/RES profil čeká ve frontě na načtení.'
+    return emptyCompanyEnrichment(message, status, enrichmentEnabled)
+  }
+
+  const { data: contactRows, error: contactError } = await supabase
+    .from('complete_power_outage_company_contacts')
+    .select('id,contact_type,contact_value,source_registry,source_url,source_validity_status,last_verified_at')
+    .eq('company_profile_id', profile.id)
+    .order('contact_type')
+  const contacts = contactError ? [] : ((contactRows ?? []) as CompanyContactRow[]).map((row) => ({
+    id: row.id,
+    type: row.contact_type,
+    value: row.contact_value,
+    sourceLabel: row.source_registry === 'ares_res' ? 'ARES/RES' : 'Veřejný ARES',
+    sourceUrl: row.source_url,
+    validityStatus: row.source_validity_status,
+    lastVerifiedAt: row.last_verified_at,
+  }))
+  return {
+    status: 'ready',
+    enrichmentEnabled,
+    officialName: profile.official_name,
+    legalForm: profile.legal_form,
+    primaryNaceCode: profile.primary_nace_code,
+    naceCodes: stringArray(profile.nace_codes),
+    subjectStatus: profile.subject_status,
+    isInLiquidation: profile.is_in_liquidation,
+    isTerminated: profile.is_terminated,
+    fetchedAt: profile.fetched_at,
+    contacts,
+    message: contactError
+      ? 'Profil je načtený, veřejné kontakty se však nepodařilo zobrazit.'
+      : 'Veřejný profil ARES/RES byl načten.',
+  }
+}
+
 export async function getCompletePowerOutageDetail(candidateId: string): Promise<CompletePowerOutageDetail> {
   const cleanId = candidateId.trim()
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(cleanId)) throw new Error('Neplatné technické ID firmy.')
@@ -1586,6 +1708,7 @@ export async function getCompletePowerOutageDetail(candidateId: string): Promise
   if (evidenceError) throw new Error(`Důkazy firmy se nepodařilo načíst: ${evidenceError.message}`)
   if (assignmentError && !ownershipSchemaMissing(assignmentError)) throw new Error(`Přiřazení firmy se nepodařilo načíst: ${assignmentError.message}`)
   if (!overview) throw new Error('Požadovaná firma nebyla nalezena.')
+  const enrichment = await loadCompleteCompanyEnrichment(supabase, overview.ico)
   const evidence: CompletePowerOutageEvidence[] = (evidenceRows ?? []).map((row) => ({
     id: row.id,
     provider: row.provider as CompleteEvidenceProvider,
@@ -1607,6 +1730,7 @@ export async function getCompletePowerOutageDetail(candidateId: string): Promise
     companyLongitude: finiteNumber(overview.longitude),
     metadata: overview.metadata ?? {},
     evidence,
+    enrichment,
   }
 }
 

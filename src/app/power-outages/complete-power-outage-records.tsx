@@ -12,6 +12,7 @@ import {
   ExternalLink,
   FileText,
   LoaderCircle,
+  Mail,
   MapPin,
   MessageSquareText,
   Save,
@@ -19,6 +20,7 @@ import {
   SearchCheck,
   Send,
   SlidersHorizontal,
+  Phone,
   UserRound,
   X,
 } from 'lucide-react'
@@ -35,6 +37,7 @@ import type {
   CompletePowerOutagePageCursor,
   CompletePowerOutagePageFilters,
   CompletePowerOutageCurrentUser,
+  CompleteCompanyEnrichment,
 } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
 import {
@@ -132,6 +135,49 @@ function LoadingDetail() {
   return <div className="flex min-h-[280px] items-center justify-center"><span className="h-8 w-8 animate-spin rounded-full border-2 border-sky-500/20 border-t-sky-500" /></div>
 }
 
+function enrichmentStatusLabel(status: CompleteCompanyEnrichment['status']) {
+  return ({
+    not_available: 'NEDOSTUPNÉ',
+    not_started: 'NENAČTENO',
+    waiting: 'ČEKÁ',
+    processing: 'ZPRACOVÁNÍ',
+    ready: 'NAČTENO',
+    not_found: 'NENALEZENO',
+    attention: 'K OVĚŘENÍ',
+  } as const)[status]
+}
+
+function CompanyEnrichmentSummary({ enrichment }: { enrichment: CompleteCompanyEnrichment }) {
+  const tone = enrichment.status === 'ready'
+    ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'
+    : enrichment.status === 'processing' || enrichment.status === 'waiting'
+      ? 'border-sky-400/35 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300'
+      : enrichment.status === 'attention'
+        ? 'border-amber-400/40 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
+        : 'border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]'
+  const emails = enrichment.contacts.filter((contact) => contact.type === 'email')
+  const phones = enrichment.contacts.filter((contact) => contact.type === 'phone')
+  return <div className="mt-4 border-t border-sky-400/20 pt-3">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Doplňkové údaje ARES/RES</span>
+      <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[7px] font-bold uppercase tracking-[0.06em] ${tone}`}>{enrichmentStatusLabel(enrichment.status)}</span>
+    </div>
+    {enrichment.status === 'ready' ? <div className="mt-2 grid gap-2 text-[10px] sm:grid-cols-2">
+      <div className="rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/65 px-3 py-2">
+        <span className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Převažující CZ-NACE</span>
+        <strong className="mt-0.5 block text-[var(--text-primary)]">{enrichment.primaryNaceCode || 'Neuvedeno'}</strong>
+      </div>
+      <div className="rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/65 px-3 py-2">
+        <span className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Veřejné kontakty</span>
+        <strong className="mt-0.5 block text-[var(--text-primary)]">{emails.length + phones.length || 'Nenalezeny'}</strong>
+      </div>
+      {emails.map((contact) => <a key={contact.id} href={`mailto:${contact.value}`} className="flex min-w-0 items-center gap-2 rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/65 px-3 py-2 text-[var(--accent)] hover:border-sky-400/35"><Mail aria-hidden size={12} className="shrink-0" /><span className="truncate">{contact.value}</span><small className="ml-auto shrink-0 text-[7px] uppercase text-[var(--text-secondary)]">{contact.sourceLabel}</small></a>)}
+      {phones.map((contact) => <a key={contact.id} href={`tel:${contact.value}`} className="flex min-w-0 items-center gap-2 rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/65 px-3 py-2 text-[var(--accent)] hover:border-sky-400/35"><Phone aria-hidden size={12} className="shrink-0" /><span className="truncate">{contact.value}</span><small className="ml-auto shrink-0 text-[7px] uppercase text-[var(--text-secondary)]">{contact.sourceLabel}</small></a>)}
+    </div> : <p className="mt-2 text-[10px] leading-4 text-[var(--text-secondary)]">{enrichment.message}</p>}
+    {enrichment.status === 'ready' && !emails.length && !phones.length ? <p className="mt-2 text-[9px] text-[var(--text-secondary)]">Veřejná odpověď ARES/RES neobsahovala e-mail ani telefon.</p> : null}
+  </div>
+}
+
 function CompleteDetailPopup({ item, detail, loading, error, archived, onClose }: { item: CompletePowerOutageListItem; detail: CompletePowerOutageDetail | null; loading: boolean; error: string | null; archived: boolean; onClose: () => void }) {
   const showCezAnnouncement = detail?.source === 'cez'
     && Boolean(detail.announcementUrl)
@@ -142,6 +188,7 @@ function CompleteDetailPopup({ item, detail, loading, error, archived, onClose }
         <div className="flex flex-wrap items-center gap-2"><StatusBadge status={detail.candidateStatus} assignment={detail.assignment} /><EntityBadge kind={detail.entityKind} /><strong className="ml-auto text-xl tabular-nums text-[var(--accent)]">{Math.round(detail.confidence * 100)} %</strong></div>
         <h3 className="mt-3 text-lg font-semibold text-[var(--text-primary)]">{detail.companyName}</h3>
         <p className="mt-1 text-xs text-[var(--text-secondary)]">{detail.displayAddress || `${addressLabel(detail)}, ${detail.municipality}`}</p>
+        <CompanyEnrichmentSummary enrichment={detail.enrichment} />
       </section>
       <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyhodnocení systému</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="Výsledek" value={statusLabel(detail.candidateStatus)} /><PowerOutageDetailRow label="Jistota" value={`${Math.round(detail.confidence * 100)} %`} /><PowerOutageDetailRow label="Typ" value={entityLabel(detail.entityKind)} /><PowerOutageDetailRow label="Počet důkazů" value={String(detail.evidenceCount)} /></div>{detail.evaluationExplanations.length ? <ul className="mt-3 space-y-2">{detail.evaluationExplanations.map((text) => <li key={text} className="flex gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 text-[10px] leading-4 text-[var(--text-primary)]"><CircleCheck aria-hidden size={13} className="mt-0.5 shrink-0 text-[var(--accent)]" />{text}</li>)}</ul> : <p className="mt-3 text-xs text-[var(--text-secondary)]">Výsledek zatím čeká na první vyhodnocení.</p>}</section>
       <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Firma a dotčená adresa</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="IČO" value={detail.ico || 'Neuvedeno'} /><PowerOutageDetailRow label="Právní forma" value={detail.legalForm || 'Neuvedena'} /><PowerOutageDetailRow label="Obec" value={detail.municipality} /><PowerOutageDetailRow label="Adresa distributora" value={addressLabel(detail) || detail.rawAddress} /></div></section>
