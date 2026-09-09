@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Archive, CircleCheckBig, Database, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert, Zap } from 'lucide-react'
+import { Archive, CircleCheckBig, Database, LoaderCircle, RefreshCw, SearchCheck, Sparkles, Zap } from 'lucide-react'
 
 type SummaryTone = 'blue' | 'amber' | 'violet' | 'emerald' | 'slate'
 
@@ -9,7 +9,7 @@ export type PowerOutageSummaryCard = {
   label: string
   value: number | null
   tone: SummaryTone
-  icon?: 'check' | 'review'
+  icon?: 'check' | 'search' | 'sparkles'
 }
 
 const ICONS = {
@@ -19,7 +19,8 @@ const ICONS = {
   emerald: CircleCheckBig,
   slate: Archive,
   check: CircleCheckBig,
-  review: TriangleAlert,
+  search: SearchCheck,
+  sparkles: Sparkles,
 } as const
 
 const COUNT_DURATION_MS = 4_500

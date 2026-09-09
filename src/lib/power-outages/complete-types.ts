@@ -109,6 +109,7 @@ export type CompletePowerOutageStatistics = {
   currentOutageCount: number
   currentCompanyCount: number
   needsReviewCount: number
+  gradeACompanyCount: number
   normalizedAddressCount: number
 }
 

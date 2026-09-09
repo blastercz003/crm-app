@@ -994,13 +994,30 @@ async function countRows(query: PromiseLike<{ count: number | null; error: { mes
 export async function getCompletePowerOutageStatistics(): Promise<CompletePowerOutageStatistics> {
   const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const now = new Date().toISOString()
-  const [currentOutageCount, currentCompanyCount, needsReviewCount, normalizedAddressCount] = await Promise.all([
+  const [currentOutageCount, currentCompanyCount, needsReviewCount, normalizedAddressCount, commercialSelectionCountsResult] = await Promise.all([
     countRows(supabase.from('complete_power_outages').select('id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']), 'Počet aktuálních odstávek se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).in('candidate_status', ['confirmed', 'needs_review']).eq('business_relevance_status', 'eligible'), 'Počet nalezených firem se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_company_overview').select('candidate_id', { count: 'exact', head: true }).gte('ends_at', now).in('source_status', ['scheduled', 'active']).eq('candidate_status', 'needs_review').eq('business_relevance_status', 'eligible'), 'Počet firem k ověření se nepodařilo načíst'),
     countRows(supabase.from('complete_power_outage_addresses').select('id', { count: 'exact', head: true }).gte('normalization_version', 2), 'Počet normalizovaných adres se nepodařilo načíst'),
+    supabase.rpc('get_complete_power_outage_commercial_selection_counts', {
+      p_mode: 'current',
+      p_query: '',
+      p_owner_filter: 'all',
+      p_source: 'all',
+      p_entity_kind: 'all',
+      p_candidate_status: 'visible',
+    }),
   ])
-  return { currentOutageCount, currentCompanyCount, needsReviewCount, normalizedAddressCount }
+  if (commercialSelectionCountsResult.error) {
+    throw new Error(`Počet firem AI SELECT se nepodařilo načíst: ${commercialSelectionCountsResult.error.message}`)
+  }
+  const commercialSelectionCounts = commercialSelectionCountsResult.data
+    && typeof commercialSelectionCountsResult.data === 'object'
+    && !Array.isArray(commercialSelectionCountsResult.data)
+    ? commercialSelectionCountsResult.data as Record<string, unknown>
+    : {}
+  const gradeACompanyCount = Number(commercialSelectionCounts.gradeA) || 0
+  return { currentOutageCount, currentCompanyCount, needsReviewCount, gradeACompanyCount, normalizedAddressCount }
 }
 
 export async function getCompletePowerOutageSidebarWorkspace(): Promise<CompletePowerOutageSidebarWorkspace> {
@@ -1151,6 +1168,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     evaluationProgressResult,
     taskResult,
     ownerResult,
+    commercialSelectionCountsResult,
   ] = await Promise.all([
     getCompletePowerOutagePage({ mode: 'current', query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible', commercialSelection: 'all', commercialSort: 'date' })
       .then((page) => ({ page, error: null as string | null }))
@@ -1170,6 +1188,14 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_company_assignments').select('owner_id,owner_name').order('owner_name').limit(1_000),
+    supabase.rpc('get_complete_power_outage_commercial_selection_counts', {
+      p_mode: 'current',
+      p_query: '',
+      p_owner_filter: 'all',
+      p_source: 'all',
+      p_entity_kind: 'all',
+      p_candidate_status: 'visible',
+    }),
   ])
   if (sourceResult.error) throw new Error(`Stav zdrojů kompletních odstávek se nepodařilo načíst: ${sourceResult.error.message}`)
   const discoveryRows = sourceDiscoveryResult.error ? [] : sourceDiscoveryResult.data ?? []
@@ -1179,6 +1205,13 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   if (taskResult.error) throw new Error(`Provozní stav kompletních odstávek se nepodařilo načíst: ${taskResult.error.message}`)
   if (coverageResult.error) throw new Error(`Pokrytí aktuálních adres se nepodařilo načíst: ${coverageResult.error.message}`)
   if (ownerResult.error && !ownershipSchemaMissing(ownerResult.error)) throw new Error(`Seznam vlastníků se nepodařilo načíst: ${ownerResult.error.message}`)
+  if (commercialSelectionCountsResult.error) throw new Error(`Počet firem AI SELECT se nepodařilo načíst: ${commercialSelectionCountsResult.error.message}`)
+
+  const commercialSelectionCounts = commercialSelectionCountsResult.data
+    && typeof commercialSelectionCountsResult.data === 'object'
+    && !Array.isArray(commercialSelectionCountsResult.data)
+    ? commercialSelectionCountsResult.data as Record<string, unknown>
+    : {}
 
   const tasks = taskResult.data ?? []
   const upstreamRows = upstreamSourceResult.error ? [] : upstreamSourceResult.data ?? []
@@ -1258,6 +1291,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
       currentOutageCount,
       currentCompanyCount,
       needsReviewCount: reviewCount,
+      gradeACompanyCount: Number(commercialSelectionCounts.gradeA) || 0,
       normalizedAddressCount: coverageSummary.normalizedCount,
     },
     initialPage: initialPageResult.page,

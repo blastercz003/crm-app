@@ -31,7 +31,7 @@ function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: 
     <p className="mb-2 flex items-center justify-center text-center text-[10px] text-[var(--text-secondary)] lg:hidden">{error ? 'Provozní data vyžadují opakované načtení.' : 'Načítám provozní panely…'}</p>
     <aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none">
       <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
-        {header('OBCHODNÍ VÝBĚR', 'AI SELECT')}
+        {header('OBCHODNÍ VÝBĚR', 'AI SELECT™')}
         <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Načítám stav lokálního obchodního výběru.</p>
         <div className="mt-3 grid grid-cols-2 gap-2">{['TOP KANDIDÁTI', 'POUZE A', 'POUZE B', 'VŠECHNY'].map((label) => <span key={label} className="flex h-12 animate-pulse items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[8px] font-bold uppercase text-[var(--text-secondary)]">{label}</span>)}</div>
       </section></div>
@@ -120,9 +120,9 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   const confirmedMatchCount = statistics ? Math.max(0, statistics.currentCompanyCount - statistics.needsReviewCount) : 0
   const cards: PowerOutageSummaryCard[] = [
     { label: 'AKTUÁLNÍ ODSTÁVKY', value: statistics?.currentOutageCount ?? null, tone: 'blue' },
-    { label: 'NALEZENÉ SHODY', value: statistics?.currentCompanyCount ?? null, tone: 'violet' },
+    { label: 'NALEZENÉ SHODY', value: statistics?.currentCompanyCount ?? null, tone: 'amber', icon: 'search' },
     { label: 'POTVRZENÉ SHODY', value: statistics ? confirmedMatchCount : null, tone: 'emerald', icon: 'check' },
-    { label: 'K OVĚŘENÍ', value: statistics?.needsReviewCount ?? null, tone: 'amber', icon: 'review' },
+    { label: 'AI SELECT', value: statistics?.gradeACompanyCount ?? null, tone: 'violet', icon: 'sparkles' },
   ]
   return <>
     <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />
