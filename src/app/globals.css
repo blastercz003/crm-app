@@ -20825,3 +20825,27 @@ html[data-theme='dark'] [data-workspace-card]:not([data-workspace-card='kpis'])[
     animation: none !important;
   }
 }
+
+@keyframes complete-commercial-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes complete-commercial-core-breathe {
+  0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.78); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+}
+
+.complete-commercial-orbital-track {
+  animation: complete-commercial-orbit var(--complete-commercial-orbit-speed, 4s) linear infinite;
+}
+
+.complete-commercial-orbital-core {
+  animation: complete-commercial-core-breathe 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .complete-commercial-orbital-track,
+  .complete-commercial-orbital-core {
+    animation: none;
+  }
+}

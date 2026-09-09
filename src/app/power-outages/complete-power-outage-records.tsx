@@ -469,10 +469,17 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
       return
     }
     let active = true
-    void getCompletePowerOutageCommercialSelectionCountsAction(pageFilters).then((result) => {
-      if (active) onCommercialSelectionCountsChange(result.success ? result.counts : null)
-    })
-    return () => { active = false }
+    const refreshCounts = () => {
+      void getCompletePowerOutageCommercialSelectionCountsAction(pageFilters).then((result) => {
+        if (active) onCommercialSelectionCountsChange(result.success ? result.counts : null)
+      })
+    }
+    refreshCounts()
+    const interval = window.setInterval(refreshCounts, 60_000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
   }, [commercialCountsEnabled, filterKey, onCommercialSelectionCountsChange, pageFilters])
 
   useEffect(() => {

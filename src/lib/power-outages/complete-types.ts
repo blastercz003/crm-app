@@ -564,6 +564,18 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
     enabled: boolean
     scoringEnabled: boolean
     countsAndSortingEnabled: boolean
+    progress: {
+      status: 'inactive' | 'current' | 'processing' | 'attention'
+      stage: 'current' | 'evaluation' | 'enrichment' | 'scoring' | 'attention'
+      evaluationPendingCount: number
+      enrichmentPendingCount: number
+      scoringPendingCount: number
+      remainingCount: number
+      attentionCount: number
+      statusMessage: string
+      lastProgressAt: string | null
+      refreshedAt: string
+    } | null
   }
   loadErrors: {
     globalProgress: string | null

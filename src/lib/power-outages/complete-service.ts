@@ -1024,7 +1024,8 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const [
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
-    cezNewResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult, commercialSelectionResult,
+    cezNewResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
+    commercialSelectionResult, commercialSelectionProgressResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
@@ -1036,6 +1037,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_global_progress_snapshot').select('status,progress_percent,remaining_seconds,estimated_finish_at,active_queue_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
     supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled,metadata').eq('singleton', true).maybeSingle(),
+    supabase.from('complete_power_outage_commercial_selection_progress_snapshot').select('status,stage,evaluation_pending_count,enrichment_pending_count,scoring_pending_count,remaining_count,attention_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
   ])
 
   const tasks = taskResult.data ?? []
@@ -1107,6 +1109,28 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     lastProgressAt: globalProgressResult.data.last_progress_at,
     refreshedAt: globalProgressResult.data.refreshed_at,
   } satisfies CompleteGlobalProgress : null
+  const commercialSelectionProgressRow = commercialSelectionProgressResult.data
+  const commercialSelectionProgressRefreshedMs = commercialSelectionProgressRow
+    ? new Date(commercialSelectionProgressRow.refreshed_at).getTime()
+    : Number.NaN
+  const commercialSelectionProgressStale = commercialSelectionProgressRow
+    ? !Number.isFinite(commercialSelectionProgressRefreshedMs)
+      || Date.now() - commercialSelectionProgressRefreshedMs > 5 * 60_000
+    : false
+  const commercialSelectionProgress = commercialSelectionProgressRow ? {
+    status: commercialSelectionProgressStale ? 'attention' as const : commercialSelectionProgressRow.status,
+    stage: commercialSelectionProgressStale ? 'attention' as const : commercialSelectionProgressRow.stage,
+    evaluationPendingCount: Number(commercialSelectionProgressRow.evaluation_pending_count) || 0,
+    enrichmentPendingCount: Number(commercialSelectionProgressRow.enrichment_pending_count) || 0,
+    scoringPendingCount: Number(commercialSelectionProgressRow.scoring_pending_count) || 0,
+    remainingCount: Number(commercialSelectionProgressRow.remaining_count) || 0,
+    attentionCount: Number(commercialSelectionProgressRow.attention_count) || 0,
+    statusMessage: commercialSelectionProgressStale
+      ? 'Provozní stav obchodního výběru se déle než 5 minut neobnovil.'
+      : commercialSelectionProgressRow.status_message,
+    lastProgressAt: commercialSelectionProgressRow.last_progress_at,
+    refreshedAt: commercialSelectionProgressRow.refreshed_at,
+  } : null
   const nowMs = Date.now()
   const staleSources = sources.filter((source) => completeSourceIsStale(source, cezNew, nowMs))
   const failedTasks = tasks.filter((task) => task.last_status === 'failed' || task.last_status === 'partial' || Number(task.consecutive_failure_count) > 0)
@@ -1131,6 +1155,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       enabled: commercialSelectionResult.data?.ui_enabled === true,
       scoringEnabled: commercialSelectionResult.data?.scoring_enabled === true,
       countsAndSortingEnabled: commercialSelectionResult.data?.metadata?.uiContract === 'complete-commercial-selection-ui-v2',
+      progress: commercialSelectionProgress,
     },
     sources,
     cezNew,

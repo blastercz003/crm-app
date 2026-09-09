@@ -4,6 +4,7 @@ import { Activity, CircleAlert, LoaderCircle, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompletePowerOutageCurrentUser, CompletePowerOutageSidebarWorkspace, CompletePowerOutageStatistics } from '@/lib/power-outages/complete-types'
 import { getCompletePowerOutageOwnersAction, getCompletePowerOutageSidebarAction, getCompletePowerOutageStatisticsAction } from './actions'
+import { CommercialSelectionStatusBadge } from './complete-commercial-selection-status-badge'
 import { CompletePowerOutageRecords } from './complete-power-outage-records'
 import { CompletePanelStatusBadge } from './complete-panel-status-badge'
 import { CompletePowerOutageSidebar } from './complete-power-outage-sidebar'
@@ -31,7 +32,7 @@ function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: 
     <p className="mb-2 flex items-center justify-center text-center text-[10px] text-[var(--text-secondary)] lg:hidden">{error ? 'Provozní data vyžadují opakované načtení.' : 'Načítám provozní panely…'}</p>
     <aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none">
       <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
-        {header('OBCHODNÍ VÝBĚR', 'AI SELECT™')}
+        <div className="flex items-start justify-between gap-3">{header('OBCHODNÍ VÝBĚR', 'AI SELECT™')}<CommercialSelectionStatusBadge loading /></div>
         <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Načítám stav lokálního obchodního výběru.</p>
         <div className="mt-3 grid grid-cols-2 gap-2">{['TOP KANDIDÁTI', 'POUZE A', 'POUZE B', 'VŠECHNY'].map((label) => <span key={label} className="flex h-12 animate-pulse items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[8px] font-bold uppercase text-[var(--text-secondary)]">{label}</span>)}</div>
       </section></div>
