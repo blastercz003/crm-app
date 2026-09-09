@@ -156,6 +156,7 @@ export async function getCompletePowerOutagePageAction(input: {
     if (!['all', 'cez', 'egd', 'pre'].includes(filters.source)) throw new Error('Neplatný distributor.')
     if (!['all', 'registered_office', 'establishment', 'mixed'].includes(filters.entityKind)) throw new Error('Neplatný typ firmy.')
     if (!['visible', 'confirmed', 'needs_review', 'dismissed'].includes(filters.candidateStatus)) throw new Error('Neplatný stav výsledku.')
+    if (!['all', 'top', 'grade_a', 'grade_b'].includes(filters.commercialSelection)) throw new Error('Neplatný obchodní výběr.')
     if (filters.query.length > 200) throw new Error('Hledaný text je příliš dlouhý.')
     if (cursor && (!validUuid(cursor.id) || Number.isNaN(new Date(cursor.at).getTime()))) throw new Error('Neplatný kurzor stránky.')
     return { success: true, page: await getCompletePowerOutagePage(filters, cursor, 60), error: null }

@@ -4,6 +4,7 @@ export type CompleteCandidateStatus = 'new' | 'confirmed' | 'needs_review' | 'di
 export type CompleteEntityKind = 'registered_office' | 'establishment' | 'mixed'
 export type CompleteEvidenceProvider = 'ares' | 'res' | 'mapy' | 'google'
 export type CompleteCommunicationStatus = 'not_contacted' | 'contacted' | 'follow_up' | 'closed'
+export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'grade_a' | 'grade_b'
 
 export type CompletePowerOutageAssignment = {
   ownerId: string
@@ -60,6 +61,10 @@ export type CompletePowerOutageListItem = {
   evaluatedAt: string | null
   providers: CompleteEvidenceProvider[]
   evidenceCount: number
+  commercialScore: number | null
+  commercialGrade: 'A' | 'B' | 'C' | null
+  commercialSelectionEligible: boolean
+  commercialScoreStatus: 'pending' | 'complete' | 'preliminary' | 'stale' | 'error' | null
   assignment: CompletePowerOutageAssignment | null
 }
 
@@ -75,6 +80,7 @@ export type CompletePowerOutagePageFilters = {
   source: 'all' | PowerOutageSource
   entityKind: 'all' | CompleteEntityKind
   candidateStatus: 'visible' | 'confirmed' | 'needs_review' | 'dismissed'
+  commercialSelection: CompleteCommercialSelectionFilter
 }
 
 export type CompletePowerOutagePage = {
@@ -544,10 +550,15 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
   'currentUser' | 'sources' | 'cezNew' | 'providers' | 'runtime' | 'addressCoverage'
 > & {
   globalProgress: CompleteGlobalProgress | null
+  commercialSelection: {
+    enabled: boolean
+    scoringEnabled: boolean
+  }
   loadErrors: {
     globalProgress: string | null
     sources: string | null
     providers: string | null
     addressCoverage: string | null
+    commercialSelection: string | null
   }
 }

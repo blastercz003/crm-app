@@ -81,6 +81,10 @@ type OverviewRow = {
   evaluated_at: string | null
   evidence_providers: unknown
   evidence_count: number
+  commercial_score?: number | string | null
+  commercial_grade?: 'A' | 'B' | 'C' | null
+  commercial_selection_eligible?: boolean | null
+  commercial_score_status?: CompletePowerOutageListItem['commercialScoreStatus']
   metadata: Record<string, unknown> | null
 }
 
@@ -850,6 +854,10 @@ function mapOverview(row: OverviewRow, assignment?: AssignmentRow): CompletePowe
     evaluatedAt: row.evaluated_at,
     providers: providers(row.evidence_providers),
     evidenceCount: Number(row.evidence_count) || 0,
+    commercialScore: row.commercial_score == null ? null : finiteNumber(row.commercial_score),
+    commercialGrade: row.commercial_grade ?? null,
+    commercialSelectionEligible: row.commercial_selection_eligible === true,
+    commercialScoreStatus: row.commercial_score_status ?? null,
     assignment: mapAssignment(assignment),
   }
 }
@@ -885,10 +893,12 @@ export async function getCompletePowerOutagePage(
     p_source: filters.source,
     p_entity_kind: filters.entityKind,
     p_candidate_status: filters.candidateStatus,
+    p_commercial_filter: filters.commercialSelection,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v2', args)
-  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v2')) {
-    const fallback = await supabase.rpc('get_complete_power_outage_company_page', args)
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v3', args)
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v3')) {
+    const { p_commercial_filter: _commercialFilter, ...legacyArgs } = args
+    const fallback = await supabase.rpc('get_complete_power_outage_company_page_v2', legacyArgs)
     data = fallback.data
     error = fallback.error
   }
@@ -914,14 +924,22 @@ export async function getCompletePowerOutageCount(
   filters: CompletePowerOutagePageFilters,
 ): Promise<number> {
   const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const { data, error } = await supabase.rpc('count_complete_power_outage_companies', {
+  const args = {
     p_mode: filters.mode,
     p_query: filters.query.trim(),
     p_owner_filter: filters.owner,
     p_source: filters.source,
     p_entity_kind: filters.entityKind,
     p_candidate_status: filters.candidateStatus,
-  })
+    p_commercial_filter: filters.commercialSelection,
+  }
+  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v2', args)
+  if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v2')) {
+    const { p_commercial_filter: _commercialFilter, ...legacyArgs } = args
+    const fallback = await supabase.rpc('count_complete_power_outage_companies', legacyArgs)
+    data = fallback.data
+    error = fallback.error
+  }
   if (error) throw new Error(`Počet kompletních odstávek se nepodařilo načíst: ${error.message}`)
   return Number(data) || 0
 }
@@ -964,7 +982,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const [
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
-    cezNewResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
+    cezNewResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult, commercialSelectionResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
@@ -975,6 +993,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_global_progress_snapshot').select('status,progress_percent,remaining_seconds,estimated_finish_at,active_queue_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
+    supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled').eq('singleton', true).maybeSingle(),
   ])
 
   const tasks = taskResult.data ?? []
@@ -1032,6 +1051,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     : !globalProgressResult.data
       ? 'Souhrnný snapshot průběhu zatím není dostupný.'
       : null
+  const commercialSelectionLoadError = commercialSelectionResult.error
+    ? `Obchodní výběr se nepodařilo načíst: ${commercialSelectionResult.error.message}`
+    : null
   const globalProgress = globalProgressResult.data ? {
     status: globalProgressResult.data.status,
     progressPercent: Number(globalProgressResult.data.progress_percent) || 0,
@@ -1063,6 +1085,10 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   return {
     currentUser: { id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' },
     globalProgress,
+    commercialSelection: {
+      enabled: commercialSelectionResult.data?.ui_enabled === true,
+      scoringEnabled: commercialSelectionResult.data?.scoring_enabled === true,
+    },
     sources,
     cezNew,
     providers,
@@ -1077,6 +1103,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       sources: sourceLoadError,
       providers: providerLoadError,
       addressCoverage: coverageLoadError,
+      commercialSelection: commercialSelectionLoadError,
     },
   }
 }
@@ -1099,7 +1126,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     taskResult,
     ownerResult,
   ] = await Promise.all([
-    getCompletePowerOutagePage({ mode: 'current', query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible' })
+    getCompletePowerOutagePage({ mode: 'current', query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible', commercialSelection: 'all' })
       .then((page) => ({ page, error: null as string | null }))
       .catch((error: unknown) => ({
         page: { items: [], totalCount: 0, hasMore: false, nextCursor: null } satisfies CompletePowerOutagePage,
