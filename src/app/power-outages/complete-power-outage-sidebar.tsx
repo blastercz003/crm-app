@@ -488,7 +488,7 @@ function CompleteCezNewDiagnosticPopup({ state, source, isAdmin, onReload, onClo
   </PowerOutagePopupShell>
 }
 
-function SourcesPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; onRetry?: () => void }) {
+function SourcesPanel({ workspace, refreshWarning, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; refreshWarning?: string | null; onRetry?: () => void }) {
   const [selectedSource, setSelectedSource] = useState<PowerOutageSource | null>(null)
   const [showCezNew, setShowCezNew] = useState(false)
   const [diagnostic, setDiagnostic] = useState<CompleteSourceDiagnostic | null>(null)
@@ -538,7 +538,8 @@ function SourcesPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSi
       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><DatabaseZap aria-hidden size={18} /></span>
       <span><small className="block text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Kompletní sběr</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Stav distributorů</h3></span>
     </div>
-    <div className={`mt-3 grid min-h-0 flex-1 gap-2 ${compact ? 'grid-rows-4' : 'grid-rows-3'} lg:mt-4 lg:block lg:space-y-2`}>
+    {refreshWarning ? <p aria-live="polite" title={refreshWarning} className="mt-2 flex items-center gap-1.5 truncate rounded-lg border border-amber-400/25 bg-amber-500/8 px-2 py-1 text-[7px] text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><CircleAlert aria-hidden size={10} className="shrink-0" /><span className="truncate">Dočasně zobrazuji poslední dostupná data.</span></p> : null}
+    <div className={`${refreshWarning ? 'mt-2 lg:mt-2' : 'mt-3 lg:mt-4'} grid min-h-0 flex-1 gap-2 ${compact ? 'grid-rows-4' : 'grid-rows-3'} lg:block lg:space-y-2`}>
       {sourceCards.map((card) => {
         if (card.kind === 'cez-new') {
           const state = card.state
@@ -868,13 +869,13 @@ function CommercialSelectionPanel({ workspace, value, sort, counts, onChange, on
   </PanelShell>
 }
 
-export function CompletePowerOutageSidebar({ workspace, commercialSelection, commercialSort, commercialSelectionCounts, onCommercialSelectionChange, onCommercialSortChange, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; commercialSelection: CompleteCommercialSelectionFilter; commercialSort: CompleteCommercialSort; commercialSelectionCounts: CompleteCommercialSelectionCounts | null; onCommercialSelectionChange: (value: CompleteCommercialSelectionFilter) => void; onCommercialSortChange: (value: CompleteCommercialSort) => void; onRetry?: () => void }) {
+export function CompletePowerOutageSidebar({ workspace, sourceRefreshWarning, commercialSelection, commercialSort, commercialSelectionCounts, onCommercialSelectionChange, onCommercialSortChange, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; sourceRefreshWarning?: string | null; commercialSelection: CompleteCommercialSelectionFilter; commercialSort: CompleteCommercialSort; commercialSelectionCounts: CompleteCommercialSelectionCounts | null; onCommercialSelectionChange: (value: CompleteCommercialSelectionFilter) => void; onCommercialSortChange: (value: CompleteCommercialSort) => void; onRetry?: () => void }) {
   return <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
     <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-[10px] text-[var(--text-secondary)] lg:hidden"><Info aria-hidden size={12} /><span>Přejetím do strany zobrazíte další část.</span></p>
     <aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Stav kompletního sběru a vyhledávání firem">
       {workspace.commercialSelection.enabled ? <div className="min-w-0 snap-start snap-always lg:snap-none"><CommercialSelectionPanel workspace={workspace} value={commercialSelection} sort={commercialSort} counts={commercialSelectionCounts} onChange={onCommercialSelectionChange} onSortChange={onCommercialSortChange} onRetry={onRetry} /></div> : null}
       <div className="min-w-0 snap-start snap-always lg:snap-none"><GlobalProgressPanel workspace={workspace} onRetry={onRetry} /></div>
-      <div className="min-w-0 snap-start snap-always lg:snap-none"><SourcesPanel workspace={workspace} onRetry={onRetry} /></div>
+      <div className="min-w-0 snap-start snap-always lg:snap-none"><SourcesPanel workspace={workspace} refreshWarning={sourceRefreshWarning} onRetry={onRetry} /></div>
       <div className="min-w-0 snap-start snap-always lg:snap-none"><DiscoveryPanel workspace={workspace} onRetry={onRetry} /></div>
       <div className="min-w-0 snap-start snap-always lg:snap-none"><CoveragePanel workspace={workspace} onRetry={onRetry} /></div>
     </aside>

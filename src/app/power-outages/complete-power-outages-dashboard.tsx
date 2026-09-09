@@ -90,8 +90,23 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
     setSidebarError(null)
     try {
       const result = await getCompletePowerOutageSidebarAction()
-      if (result.success) setSidebar(result.workspace)
-      else setSidebarError(result.error)
+      if (result.success) {
+        const sourceRefreshError = result.workspace.loadErrors.sources
+        setSidebar((current) => {
+          if (!current || !sourceRefreshError) return result.workspace
+          return {
+            ...result.workspace,
+            sources: current.sources,
+            cezNew: current.cezNew,
+            loadErrors: { ...result.workspace.loadErrors, sources: null },
+          }
+        })
+        setSidebarError(sourceRefreshError)
+      } else setSidebarError(result.error)
+    } catch (error) {
+      setSidebarError(error instanceof Error
+        ? error.message
+        : 'Data pravého panelu se dočasně nepodařilo obnovit.')
     } finally {
       sidebarLoading.current = false
     }
@@ -128,7 +143,7 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
     <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />
     <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
       <CompletePowerOutageRecords currentUser={currentUser} owners={owners} commercialSelection={commercialSelection} commercialSort={commercialSort} commercialCountsEnabled={sidebar?.commercialSelection.countsAndSortingEnabled === true} onCommercialSelectionChange={setCommercialSelection} onCommercialSelectionCountsChange={setCommercialSelectionCounts} />
-      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} commercialSelection={commercialSelection} commercialSort={commercialSort} commercialSelectionCounts={commercialSelectionCounts} onCommercialSelectionChange={setCommercialSelection} onCommercialSortChange={setCommercialSort} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
+      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} sourceRefreshWarning={sidebarError} commercialSelection={commercialSelection} commercialSort={commercialSort} commercialSelectionCounts={commercialSelectionCounts} onCommercialSelectionChange={setCommercialSelection} onCommercialSortChange={setCommercialSort} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
     </div>
   </>
 }
