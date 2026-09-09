@@ -2,7 +2,7 @@
 
 import { Activity, CircleAlert, LoaderCircle, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CompleteCommercialSelectionFilter, CompletePowerOutageCurrentUser, CompletePowerOutageSidebarWorkspace, CompletePowerOutageStatistics } from '@/lib/power-outages/complete-types'
+import type { CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompletePowerOutageCurrentUser, CompletePowerOutageSidebarWorkspace, CompletePowerOutageStatistics } from '@/lib/power-outages/complete-types'
 import { getCompletePowerOutageOwnersAction, getCompletePowerOutageSidebarAction, getCompletePowerOutageStatisticsAction } from './actions'
 import { CompletePowerOutageRecords } from './complete-power-outage-records'
 import { CompletePanelStatusBadge } from './complete-panel-status-badge'
@@ -67,6 +67,8 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   const [sidebarError, setSidebarError] = useState<string | null>(null)
   const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([])
   const [commercialSelection, setCommercialSelection] = useState<CompleteCommercialSelectionFilter>('all')
+  const [commercialSort, setCommercialSort] = useState<CompleteCommercialSort>('date')
+  const [commercialSelectionCounts, setCommercialSelectionCounts] = useState<CompleteCommercialSelectionCounts | null>(null)
   const statisticsLoading = useRef(false)
   const sidebarLoading = useRef(false)
 
@@ -112,6 +114,7 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
 
   useEffect(() => {
     if (sidebar && !sidebar.commercialSelection.enabled) setCommercialSelection('all')
+    if (sidebar && !sidebar.commercialSelection.countsAndSortingEnabled) setCommercialSort('date')
   }, [sidebar])
 
   const confirmedMatchCount = statistics ? Math.max(0, statistics.currentCompanyCount - statistics.needsReviewCount) : 0
@@ -124,8 +127,8 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   return <>
     <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />
     <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
-      <CompletePowerOutageRecords currentUser={currentUser} owners={owners} commercialSelection={commercialSelection} onCommercialSelectionChange={setCommercialSelection} />
-      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} commercialSelection={commercialSelection} onCommercialSelectionChange={setCommercialSelection} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
+      <CompletePowerOutageRecords currentUser={currentUser} owners={owners} commercialSelection={commercialSelection} commercialSort={commercialSort} commercialCountsEnabled={sidebar?.commercialSelection.countsAndSortingEnabled === true} onCommercialSelectionChange={setCommercialSelection} onCommercialSelectionCountsChange={setCommercialSelectionCounts} />
+      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} commercialSelection={commercialSelection} commercialSort={commercialSort} commercialSelectionCounts={commercialSelectionCounts} onCommercialSelectionChange={setCommercialSelection} onCommercialSortChange={setCommercialSort} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
     </div>
   </>
 }

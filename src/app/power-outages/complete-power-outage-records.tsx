@@ -39,11 +39,14 @@ import type {
   CompletePowerOutageCurrentUser,
   CompleteCompanyEnrichment,
   CompleteCommercialSelectionFilter,
+  CompleteCommercialSelectionCounts,
+  CompleteCommercialSort,
 } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
 import {
   getCompletePowerOutageDetailAction,
   getCompletePowerOutageCommunicationNotesAction,
+  getCompletePowerOutageCommercialSelectionCountsAction,
   getCompletePowerOutageCountAction,
   getCompletePowerOutagePageAction,
   releaseCompletePowerOutageAssignmentAction,
@@ -355,11 +358,14 @@ function RecordsLoadingState() {
   </div>
 }
 
-export function CompletePowerOutageRecords({ currentUser, owners, commercialSelection, onCommercialSelectionChange, onInitialLoad }: {
+export function CompletePowerOutageRecords({ currentUser, owners, commercialSelection, commercialSort, commercialCountsEnabled, onCommercialSelectionChange, onCommercialSelectionCountsChange, onInitialLoad }: {
   currentUser: CompletePowerOutageCurrentUser
   owners: Array<{ id: string; name: string }>
   commercialSelection: CompleteCommercialSelectionFilter
+  commercialSort: CompleteCommercialSort
+  commercialCountsEnabled: boolean
   onCommercialSelectionChange: (value: CompleteCommercialSelectionFilter) => void
+  onCommercialSelectionCountsChange: (value: CompleteCommercialSelectionCounts | null) => void
   onInitialLoad?: () => void
 }) {
   const [tab, setTab] = useState<Tab>('current')
@@ -401,7 +407,8 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     entityKind: entity,
     candidateStatus: status,
     commercialSelection,
-  }), [commercialSelection, debouncedQuery, entity, owner, source, status, tab])
+    commercialSort,
+  }), [commercialSelection, commercialSort, debouncedQuery, entity, owner, source, status, tab])
   const filterKey = useMemo(() => JSON.stringify(pageFilters), [pageFilters])
 
   const loadPage = useCallback(async (reset: boolean) => {
@@ -455,6 +462,18 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     const timeout = window.setTimeout(() => void loadPage(true), 0)
     return () => window.clearTimeout(timeout)
   }, [filterKey, loadPage])
+
+  useEffect(() => {
+    if (!commercialCountsEnabled) {
+      onCommercialSelectionCountsChange(null)
+      return
+    }
+    let active = true
+    void getCompletePowerOutageCommercialSelectionCountsAction(pageFilters).then((result) => {
+      if (active) onCommercialSelectionCountsChange(result.success ? result.counts : null)
+    })
+    return () => { active = false }
+  }, [commercialCountsEnabled, filterKey, onCommercialSelectionCountsChange, pageFilters])
 
   useEffect(() => {
     const target = loadMoreRef.current

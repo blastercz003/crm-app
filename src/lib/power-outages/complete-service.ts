@@ -9,6 +9,7 @@ import type {
   CompleteAddressCoverageDiagnostic,
   CompleteAddressCoverageRun,
   CompleteCezNewState,
+  CompleteCommercialSelectionCounts,
   CompletePowerOutageAssignment,
   CompletePowerOutageCommunicationNote,
   CompletePowerOutageDetail,
@@ -888,17 +889,19 @@ export async function getCompletePowerOutagePage(
     p_limit: Math.min(100, Math.max(1, Math.trunc(pageSize))),
     p_cursor_at: cursor?.at ?? null,
     p_cursor_id: cursor?.id ?? null,
+    p_cursor_score: cursor?.score ?? null,
     p_query: filters.query.trim(),
     p_owner_filter: filters.owner,
     p_source: filters.source,
     p_entity_kind: filters.entityKind,
     p_candidate_status: filters.candidateStatus,
     p_commercial_filter: filters.commercialSelection,
+    p_sort: filters.commercialSort,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v3', args)
-  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v3')) {
-    const { p_commercial_filter: _commercialFilter, ...legacyArgs } = args
-    const fallback = await supabase.rpc('get_complete_power_outage_company_page_v2', legacyArgs)
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v4', args)
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v4')) {
+    const { p_cursor_score: _cursorScore, p_sort: _sort, ...legacyArgs } = args
+    const fallback = await supabase.rpc('get_complete_power_outage_company_page_v3', legacyArgs)
     data = fallback.data
     error = fallback.error
   }
@@ -915,8 +918,30 @@ export async function getCompletePowerOutagePage(
     totalCount: payload.totalCount == null ? null : Number(payload.totalCount) || 0,
     hasMore: payload.hasMore === true,
     nextCursor: next && typeof next.at === 'string' && typeof next.id === 'string'
-      ? { at: next.at, id: next.id }
+      ? { at: next.at, id: next.id, ...(next.score == null ? {} : { score: Number(next.score) }) }
       : null,
+  }
+}
+
+export async function getCompletePowerOutageCommercialSelectionCounts(
+  filters: CompletePowerOutagePageFilters,
+): Promise<CompleteCommercialSelectionCounts> {
+  const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  const { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', {
+    p_mode: filters.mode,
+    p_query: filters.query.trim(),
+    p_owner_filter: filters.owner,
+    p_source: filters.source,
+    p_entity_kind: filters.entityKind,
+    p_candidate_status: filters.candidateStatus,
+  })
+  if (error) throw new Error(`Počty obchodního výběru se nepodařilo načíst: ${error.message}`)
+  const payload = data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : {}
+  return {
+    all: Number(payload.all) || 0,
+    top: Number(payload.top) || 0,
+    gradeA: Number(payload.gradeA) || 0,
+    gradeB: Number(payload.gradeB) || 0,
   }
 }
 
@@ -993,7 +1018,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
     supabase.from('complete_power_outage_global_progress_snapshot').select('status,progress_percent,remaining_seconds,estimated_finish_at,active_queue_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
-    supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled').eq('singleton', true).maybeSingle(),
+    supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled,metadata').eq('singleton', true).maybeSingle(),
   ])
 
   const tasks = taskResult.data ?? []
@@ -1088,6 +1113,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     commercialSelection: {
       enabled: commercialSelectionResult.data?.ui_enabled === true,
       scoringEnabled: commercialSelectionResult.data?.scoring_enabled === true,
+      countsAndSortingEnabled: commercialSelectionResult.data?.metadata?.uiContract === 'complete-commercial-selection-ui-v2',
     },
     sources,
     cezNew,
@@ -1126,7 +1152,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     taskResult,
     ownerResult,
   ] = await Promise.all([
-    getCompletePowerOutagePage({ mode: 'current', query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible', commercialSelection: 'all' })
+    getCompletePowerOutagePage({ mode: 'current', query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible', commercialSelection: 'all', commercialSort: 'date' })
       .then((page) => ({ page, error: null as string | null }))
       .catch((error: unknown) => ({
         page: { items: [], totalCount: 0, hasMore: false, nextCursor: null } satisfies CompletePowerOutagePage,

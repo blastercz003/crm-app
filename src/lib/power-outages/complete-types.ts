@@ -5,6 +5,13 @@ export type CompleteEntityKind = 'registered_office' | 'establishment' | 'mixed'
 export type CompleteEvidenceProvider = 'ares' | 'res' | 'mapy' | 'google'
 export type CompleteCommunicationStatus = 'not_contacted' | 'contacted' | 'follow_up' | 'closed'
 export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'grade_a' | 'grade_b'
+export type CompleteCommercialSort = 'date' | 'score'
+export type CompleteCommercialSelectionCounts = {
+  all: number
+  top: number
+  gradeA: number
+  gradeB: number
+}
 
 export type CompletePowerOutageAssignment = {
   ownerId: string
@@ -71,6 +78,7 @@ export type CompletePowerOutageListItem = {
 export type CompletePowerOutagePageCursor = {
   at: string
   id: string
+  score?: number
 }
 
 export type CompletePowerOutagePageFilters = {
@@ -81,6 +89,7 @@ export type CompletePowerOutagePageFilters = {
   entityKind: 'all' | CompleteEntityKind
   candidateStatus: 'visible' | 'confirmed' | 'needs_review' | 'dismissed'
   commercialSelection: CompleteCommercialSelectionFilter
+  commercialSort: CompleteCommercialSort
 }
 
 export type CompletePowerOutagePage = {
@@ -553,6 +562,7 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
   commercialSelection: {
     enabled: boolean
     scoringEnabled: boolean
+    countsAndSortingEnabled: boolean
   }
   loadErrors: {
     globalProgress: string | null

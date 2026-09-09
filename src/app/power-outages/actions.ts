@@ -13,9 +13,10 @@ import { planMarketClientEmailCandidates } from '@/lib/power-outages/client-emai
 import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-resend-config'
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
-import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics } from '@/lib/power-outages/complete-service'
+import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
+  CompleteCommercialSelectionCounts,
   CompleteAddressCoverageDiagnostic,
   CompletePowerOutageAssignment,
   CompletePowerOutageCommunicationNote,
@@ -50,6 +51,10 @@ type CompletePageActionResult =
 type CompleteCountActionResult =
   | { success: true; count: number; error: null }
   | { success: false; count: null; error: string }
+
+type CompleteCommercialSelectionCountsActionResult =
+  | { success: true; counts: CompleteCommercialSelectionCounts; error: null }
+  | { success: false; counts: null; error: string }
 
 type CompleteOwnersActionResult =
   | { success: true; owners: Array<{ id: string; name: string }>; error: null }
@@ -157,6 +162,7 @@ export async function getCompletePowerOutagePageAction(input: {
     if (!['all', 'registered_office', 'establishment', 'mixed'].includes(filters.entityKind)) throw new Error('Neplatný typ firmy.')
     if (!['visible', 'confirmed', 'needs_review', 'dismissed'].includes(filters.candidateStatus)) throw new Error('Neplatný stav výsledku.')
     if (!['all', 'top', 'grade_a', 'grade_b'].includes(filters.commercialSelection)) throw new Error('Neplatný obchodní výběr.')
+    if (!['date', 'score'].includes(filters.commercialSort)) throw new Error('Neplatné řazení obchodního výběru.')
     if (filters.query.length > 200) throw new Error('Hledaný text je příliš dlouhý.')
     if (cursor && (!validUuid(cursor.id) || Number.isNaN(new Date(cursor.at).getTime()))) throw new Error('Neplatný kurzor stránky.')
     return { success: true, page: await getCompletePowerOutagePage(filters, cursor, 60), error: null }
@@ -172,6 +178,16 @@ export async function getCompletePowerOutageCountAction(
     return { success: true, count: await getCompletePowerOutageCount(filters), error: null }
   } catch (error) {
     return { success: false, count: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageCommercialSelectionCountsAction(
+  filters: CompletePowerOutagePageFilters,
+): Promise<CompleteCommercialSelectionCountsActionResult> {
+  try {
+    return { success: true, counts: await getCompletePowerOutageCommercialSelectionCounts(filters), error: null }
+  } catch (error) {
+    return { success: false, counts: null, error: errorMessage(error) }
   }
 }
 
