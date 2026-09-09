@@ -280,16 +280,21 @@ async function loadSourceOutages(client: ServiceClient, source: PowerOutageSourc
 async function loadSourceAddresses(client: ServiceClient, outageIds: string[]) {
   const rows: SourceAddressRow[] = []
   for (const ids of chunks(outageIds, 100)) {
-    const { data, error } = await client
-      .from('power_outage_addresses')
-      .select(`
-        id,outage_id,external_address_id,address_key,municipality,municipality_code,
-        town_part,street,house_number,orientation_number,postal_code,raw_address,
-        normalized_municipality,normalized_street,latitude,longitude,metadata
-      `)
-      .in('outage_id', ids)
-    if (error) throw error
-    rows.push(...((data ?? []) as SourceAddressRow[]))
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await client
+        .from('power_outage_addresses')
+        .select(`
+          id,outage_id,external_address_id,address_key,municipality,municipality_code,
+          town_part,street,house_number,orientation_number,postal_code,raw_address,
+          normalized_municipality,normalized_street,latitude,longitude,metadata
+        `)
+        .in('outage_id', ids)
+        .order('id')
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw error
+      rows.push(...((data ?? []) as SourceAddressRow[]))
+      if ((data?.length ?? 0) < PAGE_SIZE) break
+    }
   }
   return rows
 }
@@ -319,51 +324,80 @@ async function loadProjectedCezOutages(client: ServiceClient) {
 
 async function loadProjectedCezAddresses(client: ServiceClient, externalIds: string[]) {
   const rows: SourceAddressRow[] = []
+  const { count: expectedCount, error: countError } = await client
+    .from('complete_power_outage_cez_shadow_addresses')
+    .select('id', { count: 'exact', head: true })
+  if (countError) throw countError
+
   for (const ids of chunks(externalIds, 100)) {
-    const { data, error } = await client
-      .from('complete_power_outage_cez_shadow_addresses')
-      .select(`
-        id,outage_external_id,address_key,address_scope,validation_status,
-        ruian_address_id,municipality,municipality_code,town_part,street,
-        house_number,orientation_number,postal_code,raw_address,
-        normalized_municipality,normalized_street,metadata
-      `)
-      .in('outage_external_id', ids)
-    if (error) throw error
-    for (const value of data ?? []) {
-      const row = value as ProjectedCezAddressRow
-      rows.push({
-        id: row.id,
-        outage_id: row.outage_external_id,
-        external_address_id: row.ruian_address_id ? String(row.ruian_address_id) : null,
-        ruian_address_id: row.ruian_address_id,
-        address_key: row.address_key,
-        municipality: row.municipality,
-        municipality_code: row.municipality_code,
-        town_part: row.town_part,
-        street: row.street,
-        house_number: row.house_number,
-        orientation_number: row.orientation_number,
-        postal_code: row.postal_code,
-        raw_address: row.raw_address,
-        normalized_municipality: row.normalized_municipality,
-        normalized_street: row.normalized_street,
-        latitude: null,
-        longitude: null,
-        metadata: {
-          ...(row.metadata ?? {}),
-          completeCezProjection: true,
-          ruianAddressId: row.ruian_address_id,
-          validationStatus: row.validation_status,
-          buildingNumberPairs: row.address_scope === 'exact' ? [{
-            houseNumber: row.house_number,
-            orientationNumber: row.orientation_number,
-          }] : [],
-        },
-      })
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await client
+        .from('complete_power_outage_cez_shadow_addresses')
+        .select(`
+          id,outage_external_id,address_key,address_scope,validation_status,
+          ruian_address_id,municipality,municipality_code,town_part,street,
+          house_number,orientation_number,postal_code,raw_address,
+          normalized_municipality,normalized_street,metadata
+        `)
+        .in('outage_external_id', ids)
+        .order('id')
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw error
+      for (const value of data ?? []) {
+        const row = value as ProjectedCezAddressRow
+        rows.push({
+          id: row.id,
+          outage_id: row.outage_external_id,
+          external_address_id: row.ruian_address_id ? String(row.ruian_address_id) : null,
+          ruian_address_id: row.ruian_address_id,
+          address_key: row.address_key,
+          municipality: row.municipality,
+          municipality_code: row.municipality_code,
+          town_part: row.town_part,
+          street: row.street,
+          house_number: row.house_number,
+          orientation_number: row.orientation_number,
+          postal_code: row.postal_code,
+          raw_address: row.raw_address,
+          normalized_municipality: row.normalized_municipality,
+          normalized_street: row.normalized_street,
+          latitude: null,
+          longitude: null,
+          metadata: {
+            ...(row.metadata ?? {}),
+            completeCezProjection: true,
+            ruianAddressId: row.ruian_address_id,
+            validationStatus: row.validation_status,
+            buildingNumberPairs: row.address_scope === 'exact' ? [{
+              houseNumber: row.house_number,
+              orientationNumber: row.orientation_number,
+            }] : [],
+          },
+        })
+      }
+      if ((data?.length ?? 0) < PAGE_SIZE) break
     }
   }
+
+  if (rows.length !== (expectedCount ?? 0)) {
+    throw new Error(
+      `Neúplné načtení adres ČEZ ALL v1: načteno ${rows.length} z ${expectedCount ?? 0} adres stínové projekce. Publikace byla bezpečně zastavena.`,
+    )
+  }
   return rows
+}
+
+async function countCompleteAddresses(client: ServiceClient, outageIds: string[]) {
+  let result = 0
+  for (const ids of chunks(outageIds, 100)) {
+    const { count, error } = await client
+      .from('complete_power_outage_addresses')
+      .select('id', { count: 'exact', head: true })
+      .in('outage_id', ids)
+    if (error) throw error
+    result += count ?? 0
+  }
+  return result
 }
 
 async function updateSourceState(input: {
@@ -598,19 +632,24 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
 
     const existingAddressesByOutageId = new Map<string, Map<string, CompleteAddressState>>()
     for (const outageIds of chunks([...completeIdByExternalId.values()], 100)) {
-      const { data, error } = await client
-        .from('complete_power_outage_addresses')
-        .select(`
-          id,outage_id,address_key,external_address_id,ruian_address_id,municipality,municipality_code,
-          town_part,street,house_number,orientation_number,postal_code,raw_address,normalized_municipality,
-          normalized_street,latitude,longitude,lookup_fingerprint
-        `)
-        .in('outage_id', outageIds)
-      if (error) throw error
-      for (const row of (data ?? []) as CompleteAddressState[]) {
-        const group = existingAddressesByOutageId.get(row.outage_id) ?? new Map()
-        group.set(row.address_key, row)
-        existingAddressesByOutageId.set(row.outage_id, group)
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await client
+          .from('complete_power_outage_addresses')
+          .select(`
+            id,outage_id,address_key,external_address_id,ruian_address_id,municipality,municipality_code,
+            town_part,street,house_number,orientation_number,postal_code,raw_address,normalized_municipality,
+            normalized_street,latitude,longitude,lookup_fingerprint
+          `)
+          .in('outage_id', outageIds)
+          .order('id')
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        for (const row of (data ?? []) as CompleteAddressState[]) {
+          const group = existingAddressesByOutageId.get(row.outage_id) ?? new Map()
+          group.set(row.address_key, row)
+          existingAddressesByOutageId.set(row.outage_id, group)
+        }
+        if ((data?.length ?? 0) < PAGE_SIZE) break
       }
     }
 
@@ -704,6 +743,19 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
       if (error) throw error
     }
 
+    let verifiedProductionAddressCount: number | null = null
+    if (useCezShadow) {
+      verifiedProductionAddressCount = await countCompleteAddresses(
+        client,
+        [...completeIdByExternalId.values()],
+      )
+      if (verifiedProductionAddressCount !== sourceAddresses.length) {
+        throw new Error(
+          `Kontrola publikace ČEZ ALL v1 selhala: v produkčním katalogu je ${verifiedProductionAddressCount} z očekávaných ${sourceAddresses.length} adres. Publikace nebude označena jako úspěšná.`,
+        )
+      }
+    }
+
     // Teprve po úspěšném načtení nového ČEZ snapshotu označíme původní
     // budoucí záznamy, které v úplném novém katalogu nejsou. Nová data jsou
     // v tuto chvíli již uložená, takže při přepnutí nevznikne prázdné okno.
@@ -771,6 +823,8 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
           removedOutageCount,
           preservedNormalizedAddressCount: preservedAddressRows.length,
           addressPreservationContract: useCezShadow ? 'complete-cez-all-v1-audited-cleanup' : null,
+          addressPaginationContract: useCezShadow ? 'complete-cez-address-pagination-v2' : null,
+          verifiedProductionAddressCount,
         },
       })
       .eq('id', run.id)
