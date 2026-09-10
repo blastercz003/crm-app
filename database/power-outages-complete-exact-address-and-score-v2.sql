@@ -189,7 +189,38 @@ with registered_office_counts as (
   from normalized
 )
 select
-  calculated.*,
+  calculated.candidate_id,
+  calculated.company_profile_id,
+  calculated.ico,
+  calculated.legal_form,
+  calculated.nace_codes,
+  calculated.primary_nace_code,
+  calculated.entity_kind,
+  calculated.company_metadata,
+  calculated.address_scope,
+  calculated.street,
+  calculated.house_number,
+  calculated.orientation_number,
+  calculated.starts_at,
+  calculated.ends_at,
+  calculated.registered_office_count,
+  calculated.is_in_liquidation,
+  calculated.is_terminated,
+  calculated.profile_payload_sha256,
+  calculated.profile_fetched_at,
+  calculated.enrichment_status,
+  calculated.industry_points,
+  calculated.outage_points,
+  calculated.establishment_points,
+  calculated.mass_or_virtual_office,
+  calculated.natural_person_office_only,
+  calculated.incomplete_address,
+  calculated.provider_conflict,
+  calculated.short_outage,
+  calculated.insufficient_notice,
+  calculated.penalty_points,
+  calculated.reason_codes,
+  calculated.penalty_codes,
   greatest(0, least(100, industry_points + outage_points + establishment_points - penalty_points))::integer as score,
   case
     when greatest(0, least(100, industry_points + outage_points + establishment_points - penalty_points)) >= 75 then 'A'
@@ -206,7 +237,9 @@ select
     coalesce(profile_payload_sha256, ''), current_date::text,
     mass_or_virtual_office::text, natural_person_office_only::text,
     incomplete_address::text, provider_conflict::text
-  ), 'sha256'), 'hex') as calculation_input_hash
+  ), 'sha256'), 'hex') as calculation_input_hash,
+  calculated.mapy_labels,
+  calculated.industry_evidence_source
 from calculated;
 
 -- Posune provozní kontrakt fronty vyhodnocení z verze 2 na verzi 3, aniž by
@@ -318,7 +351,7 @@ notify pgrst, 'reload schema';
 commit;
 
 select 'FUNCTION' as check_type, 'Mapy category supplies industry evidence' as object_name,
-  to_regprocedure('public.complete_power_outage_mapy_industry_points(text[])') is not null
+  to_regprocedure('public.complete_power_outage_mapy_industry_points(text[])') is not null as is_correct
 union all
 select 'LOGIC', 'missing NACE uses neutral preliminary industry value',
   exists (
