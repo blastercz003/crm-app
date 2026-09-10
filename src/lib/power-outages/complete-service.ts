@@ -238,6 +238,23 @@ async function loadCezNewMonitoringState(
   return supabase.from('complete_power_outage_cez_new_status').select('*').maybeSingle()
 }
 
+function loadLatestCompletedCezCycle(
+  supabase: Awaited<ReturnType<typeof getPowerOutageRuntimeContext>>['supabase'],
+) {
+  return supabase
+    .from('complete_power_outage_cez_scan_cycles')
+    .select('finished_at')
+    .eq('is_pilot', false)
+    .eq('snapshot_contract_version', 2)
+    .in('status', ['succeeded', 'no_change'])
+    .eq('snapshot_status', 'complete')
+    .eq('snapshot_publishable', true)
+    .not('finished_at', 'is', null)
+    .order('finished_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+}
+
 function mapAssignment(row: AssignmentRow | undefined): CompletePowerOutageAssignment | null {
   if (!row) return null
   return {
@@ -596,6 +613,7 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     scanAddressCount: Number(row.scan_address_count ?? 0),
     scanStartedAt: row.scan_started_at as string | null,
     scanFinishedAt: row.scan_finished_at as string | null,
+    lastCompletedScanAt: row.last_completed_scan_at as string | null,
     normalizationTotal: Number(row.normalization_total ?? 0),
     normalizationDone: Number(row.normalization_done ?? 0),
     normalizationRemaining: Number(row.normalization_remaining ?? 0),
@@ -1024,7 +1042,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
   const [
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
-    cezNewResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
+    cezNewResult, cezCompletedCycleResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
     commercialSelectionResult, commercialSelectionProgressResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
@@ -1032,6 +1050,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('power_outage_source_state').select('source,last_attempt_at,last_success_at,last_change_at,latest_payload_sha256,consecutive_failure_count,last_error_at,last_error_code,last_error_message,metadata').in('source', ['egd', 'pre']),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
+    loadLatestCompletedCezCycle(supabase),
     supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
     supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
@@ -1070,7 +1089,10 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const cezCoverage = (coverageResult.data ?? []).find((row) => row.source === 'cez') as AddressCoverageSnapshotRow | undefined
   const normalizationTask = tasks.find((task) => task.task_key === 'normalize_addresses') ?? null
   const cezNew = cezNewResult.data
-    ? withCezProductionDiagnostics(mapCezNewState(cezNewResult.data), cezCoverage, normalizationTask)
+    ? withCezProductionDiagnostics(mapCezNewState({
+        ...cezNewResult.data,
+        last_completed_scan_at: cezCompletedCycleResult.data?.finished_at ?? null,
+      }), cezCoverage, normalizationTask)
     : null
   const taskLoadError = taskResult.error
     ? `Provozní stav se nepodařilo načíst: ${taskResult.error.message}`
@@ -1189,6 +1211,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     upstreamSourceResult,
     sourceDiscoveryResult,
     cezNewResult,
+    cezCompletedCycleResult,
     providerResult,
     evaluationProgressResult,
     taskResult,
@@ -1209,6 +1232,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     supabase.from('power_outage_source_state').select('source,last_attempt_at,last_success_at,last_change_at,latest_payload_sha256,consecutive_failure_count,last_error_at,last_error_code,last_error_message,metadata').in('source', ['egd', 'pre']),
     supabase.from('complete_power_outage_source_discovery_overview').select('*').order('source'),
     loadCezNewMonitoringState(supabase),
+    loadLatestCompletedCezCycle(supabase),
     supabase.from('complete_power_outage_provider_overview').select('*').order('provider'),
     supabase.from('complete_power_outage_evaluation_progress_snapshot').select('*').order('source').order('provider'),
     supabase.from('complete_power_outage_task_state').select('task_key,last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message,lock_expires_at').order('task_key'),
@@ -1267,7 +1291,10 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
   })
   const cezCoverage = (coverageResult.data ?? []).find((row) => row.source === 'cez') as AddressCoverageSnapshotRow | undefined
   const cezNew = cezNewResult.data
-    ? withCezProductionDiagnostics(mapCezNewState(cezNewResult.data), cezCoverage, normalizationTask)
+    ? withCezProductionDiagnostics(mapCezNewState({
+        ...cezNewResult.data,
+        last_completed_scan_at: cezCompletedCycleResult.data?.finished_at ?? null,
+      }), cezCoverage, normalizationTask)
     : null
 
   const nowMs = Date.now()

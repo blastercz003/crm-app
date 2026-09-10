@@ -435,6 +435,7 @@ export type CompleteCezNewState = {
   scanAddressCount: number
   scanStartedAt: string | null
   scanFinishedAt: string | null
+  lastCompletedScanAt: string | null
   normalizationTotal: number
   normalizationDone: number
   normalizationRemaining: number
