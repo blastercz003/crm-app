@@ -8,8 +8,8 @@ import { PowerOutageSummaryStats, type PowerOutageSummaryCard } from './power-ou
 export function PowerOutagesDashboard({ workspace, isAdmin }: { workspace: PowerOutageWorkspace; isAdmin: boolean }) {
   const summaryCards: PowerOutageSummaryCard[] = [
     { label: 'ANALYZOVÁNO', value: workspace.statistics.analyzedOutageCount, tone: 'blue' },
-    { label: 'NALEZENÉ ODSTÁVKY', value: workspace.statistics.currentMatchCount, tone: 'amber' },
-    { label: 'K OVĚŘENÍ', value: workspace.statistics.needsReviewCount, tone: 'violet' },
+    { label: 'NALEZENÉ ODSTÁVKY', value: workspace.statistics.currentMatchCount, tone: 'violet' },
+    { label: 'K OVĚŘENÍ', value: workspace.statistics.needsReviewCount, tone: 'amber' },
     { label: 'ARCHIVOVÁNO', value: workspace.statistics.archivedMatchCount, tone: 'slate' },
   ]
 

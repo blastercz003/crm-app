@@ -34,7 +34,7 @@ function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: 
       <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
         <div className="flex items-start justify-between gap-3">{header('OBCHODNÍ VÝBĚR', 'AI SELECT™')}<CommercialSelectionStatusBadge loading /></div>
         <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Načítám stav lokálního obchodního výběru.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">{['TOP KANDIDÁTI', 'POUZE A', 'POUZE B', 'VŠECHNY'].map((label) => <span key={label} className="flex h-12 animate-pulse items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[8px] font-bold uppercase text-[var(--text-secondary)]">{label}</span>)}</div>
+        <div className="mt-3 grid grid-cols-2 gap-2">{['TOP VÝBĚR', 'POUZE A', 'POUZE B', 'VŠECHNY'].map((label) => <span key={label} className="flex h-12 animate-pulse items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[8px] font-bold uppercase text-[var(--text-secondary)]">{label}</span>)}</div>
       </section></div>
       <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
         <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><Activity aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">KOMPLETNÍ ANALÝZA</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Celkové zpracování</h3></span></div>{loadingBadge}</div>
@@ -67,7 +67,7 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   const [sidebar, setSidebar] = useState<CompletePowerOutageSidebarWorkspace | null>(null)
   const [sidebarError, setSidebarError] = useState<string | null>(null)
   const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([])
-  const [commercialSelection, setCommercialSelection] = useState<CompleteCommercialSelectionFilter>('all')
+  const [commercialSelection, setCommercialSelection] = useState<CompleteCommercialSelectionFilter>('top')
   const [commercialSort, setCommercialSort] = useState<CompleteCommercialSort>('date')
   const [commercialSelectionCounts, setCommercialSelectionCounts] = useState<CompleteCommercialSelectionCounts | null>(null)
   const statisticsLoading = useRef(false)

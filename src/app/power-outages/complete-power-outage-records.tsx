@@ -519,7 +519,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
       ? { ...item, assignment: assignmentOverrides[item.candidateId] }
       : item
   )), [assignmentOverrides, pageItems])
-  const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'visible', commercialSelection !== 'all'].filter(Boolean).length
+  const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'visible', commercialSelection !== 'top'].filter(Boolean).length
   const openDetail = async (item: CompletePowerOutageListItem) => {
     setSelected(item); setPopupMode('detail'); setDetail(null); setDetailError(null); setDetailLoading(true)
     const result = await getCompletePowerOutageDetailAction(item.candidateId)
@@ -536,7 +536,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     setAssignmentOverrides((current) => ({ ...current, [candidateId]: assignment }))
   }
   const closePopup = () => { setSelected(null); setPopupMode(null); setDetail(null); setDetailError(null); setDetailLoading(false) }
-  const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('visible'); onCommercialSelectionChange('all') }
+  const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('visible'); onCommercialSelectionChange('top') }
   return <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:flex xl:h-0 xl:min-h-full xl:flex-col xl:overflow-hidden">
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center xl:grid-cols-[175px_minmax(0,1fr)_160px] xl:gap-2">
       <div className="min-w-0 lg:contents">

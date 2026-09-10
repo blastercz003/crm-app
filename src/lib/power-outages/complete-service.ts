@@ -955,7 +955,18 @@ export async function getCompletePowerOutagePage(
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v4')) {
-    const { p_cursor_score: _cursorScore, p_sort: _sort, ...legacyArgs } = args
+    const legacyArgs = {
+      p_mode: args.p_mode,
+      p_limit: args.p_limit,
+      p_cursor_at: args.p_cursor_at,
+      p_cursor_id: args.p_cursor_id,
+      p_query: args.p_query,
+      p_owner_filter: args.p_owner_filter,
+      p_source: args.p_source,
+      p_entity_kind: args.p_entity_kind,
+      p_candidate_status: args.p_candidate_status,
+      p_commercial_filter: args.p_commercial_filter,
+    }
     const fallback = await supabase.rpc('get_complete_power_outage_company_page_v3', legacyArgs)
     data = fallback.data
     error = fallback.error
@@ -982,14 +993,20 @@ export async function getCompletePowerOutageCommercialSelectionCounts(
   filters: CompletePowerOutagePageFilters,
 ): Promise<CompleteCommercialSelectionCounts> {
   const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', {
+  const args = {
     p_mode: filters.mode,
     p_query: filters.query.trim(),
     p_owner_filter: filters.owner,
     p_source: filters.source,
     p_entity_kind: filters.entityKind,
     p_candidate_status: filters.candidateStatus,
-  })
+  }
+  let { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v2', args)
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v2')) {
+    const fallback = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', args)
+    data = fallback.data
+    error = fallback.error
+  }
   if (error) throw new Error(`Počty obchodního výběru se nepodařilo načíst: ${error.message}`)
   const payload = data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : {}
   return {
@@ -1013,9 +1030,21 @@ export async function getCompletePowerOutageCount(
     p_candidate_status: filters.candidateStatus,
     p_commercial_filter: filters.commercialSelection,
   }
-  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v2', args)
+  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v3', args)
+  if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v3')) {
+    const current = await supabase.rpc('count_complete_power_outage_companies_v2', args)
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v2')) {
-    const { p_commercial_filter: _commercialFilter, ...legacyArgs } = args
+    const legacyArgs = {
+      p_mode: args.p_mode,
+      p_query: args.p_query,
+      p_owner_filter: args.p_owner_filter,
+      p_source: args.p_source,
+      p_entity_kind: args.p_entity_kind,
+      p_candidate_status: args.p_candidate_status,
+    }
     const fallback = await supabase.rpc('count_complete_power_outage_companies', legacyArgs)
     data = fallback.data
     error = fallback.error
@@ -1213,7 +1242,12 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     commercialSelection: {
       enabled: commercialSelectionResult.data?.ui_enabled === true,
       scoringEnabled: commercialSelectionResult.data?.scoring_enabled === true,
-      countsAndSortingEnabled: commercialSelectionResult.data?.metadata?.uiContract === 'complete-commercial-selection-ui-v2',
+      countsAndSortingEnabled: ['complete-commercial-selection-ui-v2', 'complete-commercial-selection-ui-v3'].includes(
+        commercialSelectionResult.data?.metadata?.uiContract ?? '',
+      ),
+      versionLabel: typeof commercialSelectionResult.data?.metadata?.topSelectionVersionLabel === 'string'
+        ? commercialSelectionResult.data.metadata.topSelectionVersionLabel
+        : 'v1 – 11. 9. 26',
       progress: commercialSelectionProgress,
     },
     sources,
