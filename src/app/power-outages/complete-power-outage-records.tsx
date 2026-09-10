@@ -24,6 +24,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type {
@@ -117,7 +118,7 @@ function StatusBadge({ status, assignment, desktop = false }: { status: Complete
       : 'border-slate-400/40 bg-slate-400/10 text-[var(--text-secondary)]'
   return <span className="relative inline-flex h-6 w-[88px] shrink-0 items-center justify-center whitespace-nowrap rounded-full">
     <span className={`inline-flex h-6 w-full items-center justify-center whitespace-nowrap rounded-full border px-2 font-bold uppercase ${desktop ? 'text-[8px] tracking-[0.07em]' : 'text-[7px] tracking-[0.045em]'} ${tone}`}>{statusLabel(status)}</span>
-    {assignment ? <span title={`Záznam spravuje ${assignment.ownerName}`} className="absolute -right-2.5 -top-2.5 z-[1] inline-flex h-5 max-w-[84px] items-center rounded-full border border-white/80 bg-sky-600 px-2.5 text-[7px] font-extrabold uppercase leading-none tracking-[0.03em] text-white shadow-sm [html[data-theme=dark]_&]:border-slate-900"><span className="truncate">{assignment.ownerName}</span></span> : null}
+    {assignment ? <span title={`Záznam spravuje ${assignment.ownerName}`} className="absolute -right-2.5 -top-2.5 z-[1] inline-flex h-5 max-w-[84px] items-center rounded-full border border-sky-600 bg-sky-600 px-2.5 text-[7px] font-extrabold uppercase leading-none tracking-[0.03em] text-white shadow-sm"><span className="truncate">{assignment.ownerName}</span></span> : null}
   </span>
 }
 
@@ -136,6 +137,26 @@ function CommercialScoreBadge({ item, compact = false }: { item: CompletePowerOu
         : 'border-violet-400/30 bg-violet-400/8 text-violet-700 [html[data-theme=dark]_&]:text-violet-300'
   const label = item.commercialScore == null ? 'ČEKÁ' : `${grade ?? '—'} · ${Math.round(item.commercialScore)}`
   return <span title={item.commercialScore == null ? 'Obchodní skóre se připravuje' : `Obchodní skóre ${item.commercialScore} ze 100, třída ${grade}`} className={`inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-full border font-bold uppercase ${compact ? 'min-w-[42px] px-1.5 text-[6.5px]' : 'min-w-[56px] px-2 text-[8px]'} ${tone}`}>{label}</span>
+}
+
+function LinkedJobBadge({ item, mobileOverlay = false }: { item: CompletePowerOutageListItem; mobileOverlay?: boolean }) {
+  if (!item.linkedJob) return null
+
+  const additionalCount = Math.max(0, item.linkedJob.matchCount - 1)
+  const title = additionalCount > 0
+    ? `Zakázka ${item.linkedJob.jobNumber} a ${additionalCount} další vytvořena`
+    : `Zakázka ${item.linkedJob.jobNumber} vytvořena`
+
+  return <Link
+    href={`/jobs?q=${encodeURIComponent(item.linkedJob.jobNumber)}`}
+    aria-label={title}
+    title={title}
+    className={mobileOverlay
+      ? 'absolute -bottom-1 -right-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-emerald-400/55 bg-emerald-100 text-emerald-700 shadow-sm transition hover:scale-105 [html[data-theme=dark]_&]:bg-emerald-950 [html[data-theme=dark]_&]:text-emerald-300'
+      : 'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-400/45 bg-emerald-400/12 text-emerald-700 transition hover:-translate-y-px hover:bg-emerald-400/20 lg:h-6 lg:w-6 [html[data-theme=dark]_&]:text-emerald-300'}
+  >
+    <Check aria-hidden size={mobileOverlay ? 8 : 13} strokeWidth={3} />
+  </Link>
 }
 
 function addressLabel(item: CompletePowerOutageListItem) {
@@ -346,7 +367,7 @@ function CompleteAssignmentPopup({
 
 function MobileCard({ item, onDetail, onAnnouncement, onAssignment }: { item: CompletePowerOutageListItem; onDetail: () => void; onAnnouncement: () => void; onAssignment: () => void }) {
   const actionClass = 'inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-sky-400/20 bg-sky-500/10 px-2 text-[7px] font-bold uppercase tracking-[0.035em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20'
-  return <article className="power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5"><div className="flex min-w-0 items-start justify-between gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /></span><div className="flex min-w-0 flex-nowrap justify-end gap-1"><CommercialScoreBadge item={item} compact /><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
+  return <article className="power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5"><div className="flex min-w-0 items-start justify-between gap-2"><span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /><LinkedJobBadge item={item} mobileOverlay /></span><div className="flex min-w-0 flex-nowrap justify-end gap-1"><CommercialScoreBadge item={item} compact /><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
 }
 
 function RecordsLoadingState() {
@@ -556,7 +577,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
             <td className="px-3 py-3 align-middle"><SourceBadge source={item.source} /></td>
             <td className="px-3 py-3 align-middle text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.startsAt)}</td>
             <td className="px-3 py-3 align-middle text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.endsAt)}</td>
-            <td className="px-3 py-3 align-middle"><StatusBadge status={item.candidateStatus} assignment={item.assignment} desktop /></td>
+            <td className="px-3 py-3 align-middle"><div className="flex flex-nowrap items-center gap-1"><StatusBadge status={item.candidateStatus} assignment={item.assignment} desktop /><LinkedJobBadge item={item} /></div></td>
             <td className="px-2 py-3 text-center align-middle"><CommercialScoreBadge item={item} /></td>
             <td className="py-3 pl-1.5 pr-3 align-middle"><div className="flex justify-end gap-1.5"><button type="button" onClick={() => openAssignment(item)} aria-label={`Správa komunikace pro firmu ${item.companyName}`} title="Správa komunikace" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><MessageSquareText aria-hidden size={13} /></button><button type="button" onClick={() => void openDetail(item)} aria-label={`Otevřít detail odstávky pro firmu ${item.companyName}`} title="Detail odstávky" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Eye aria-hidden size={14} /></button><button type="button" onClick={() => openAnnouncement(item)} aria-label={`Vytvořit oznámení o odstávce pro firmu ${item.companyName}`} title="Oznámení o odstávce" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Send aria-hidden size={13} /></button></div></td>
           </tr>)}</tbody>

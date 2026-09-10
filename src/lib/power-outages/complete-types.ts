@@ -73,6 +73,11 @@ export type CompletePowerOutageListItem = {
   commercialSelectionEligible: boolean
   commercialScoreStatus: 'pending' | 'complete' | 'preliminary' | 'stale' | 'error' | null
   assignment: CompletePowerOutageAssignment | null
+  linkedJob: {
+    id: string
+    jobNumber: string
+    matchCount: number
+  } | null
 }
 
 export type CompletePowerOutagePageCursor = {
