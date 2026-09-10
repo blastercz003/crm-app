@@ -2,7 +2,7 @@ import 'server-only'
 
 import { normalizePowerOutageText } from './normalization'
 
-export const COMPLETE_COMPANY_EVALUATION_VERSION = 2
+export const COMPLETE_COMPANY_EVALUATION_VERSION = 3
 export const MASS_REGISTERED_OFFICE_THRESHOLD = 20
 
 export type CompleteBusinessRelevanceStatus =
@@ -91,19 +91,22 @@ export function evaluateCompleteBusinessRelevance(input: {
   legalForm: string | null
   evidence: CompleteCompanyEvaluationEvidence[]
 }): CompleteBusinessRelevance {
+  // Google není v aktuálním provozním kontraktu aktivním zdrojem. Historické
+  // důkazy mohou zůstat uložené pro audit, ale nesmějí ovlivnit stav kandidáta.
+  const activeEvidence = input.evidence.filter((item) => item.provider !== 'google')
   const legalForm = input.legalForm?.trim() ?? ''
   const naturalPerson = isCompleteNaturalPersonLegalForm(legalForm)
-  const hasRegisteredOffice = input.evidence.some((item) => (
+  const hasRegisteredOffice = activeEvidence.some((item) => (
     (item.provider === 'ares' || item.provider === 'res')
     && item.evidenceKind === 'registered_office'
   ))
-  const hasExactPublicEstablishment = input.evidence.some((item) => (
-    (item.provider === 'mapy' || item.provider === 'google')
+  const hasExactPublicEstablishment = activeEvidence.some((item) => (
+    item.provider === 'mapy'
     && item.evidenceKind === 'establishment'
     && (item.matchLevel === 'exact_address' || item.matchLevel === 'same_building')
   ))
-  const hasPublicEstablishment = input.evidence.some((item) => (
-    (item.provider === 'mapy' || item.provider === 'google')
+  const hasPublicEstablishment = activeEvidence.some((item) => (
+    item.provider === 'mapy'
     && item.evidenceKind === 'establishment'
   ))
 
@@ -148,26 +151,28 @@ export function evaluateCompleteCompanyCandidate(input: {
   evidence: CompleteCompanyEvaluationEvidence[]
   registeredOfficeCountAtAddress: number
 }): CompleteCompanyEvaluation {
-  const providers = [...new Set(input.evidence.map((item) => item.provider))].sort()
-  const exactEvidence = input.evidence.filter((item) => (
+  // Stejně jako u obchodní relevance se historický Google důkaz uchovává,
+  // ale není součástí aktuálního rozhodnutí o shodě adresy.
+  const activeEvidence = input.evidence.filter((item) => item.provider !== 'google')
+  const providers = [...new Set(activeEvidence.map((item) => item.provider))].sort()
+  const exactEvidence = activeEvidence.filter((item) => (
     item.matchLevel === 'exact_address' || item.matchLevel === 'same_building'
   ))
   const exactProviders = new Set(exactEvidence.map((item) => item.provider))
   const hasAresExact = exactEvidence.some((item) => item.provider === 'ares' || item.provider === 'res')
   const hasMapyExact = exactEvidence.some((item) => item.provider === 'mapy')
-  const hasGoogleExact = exactEvidence.some((item) => item.provider === 'google')
-  const hasRegisteredOffice = input.evidence.some((item) => item.evidenceKind === 'registered_office')
-  const hasEstablishment = input.evidence.some((item) => item.evidenceKind === 'establishment')
+  const hasRegisteredOffice = activeEvidence.some((item) => item.evidenceKind === 'registered_office')
+  const hasEstablishment = activeEvidence.some((item) => item.evidenceKind === 'establishment')
   const massRegisteredOffice = hasRegisteredOffice
     && input.registeredOfficeCountAtAddress >= MASS_REGISTERED_OFFICE_THRESHOLD
   const canonicalNames = new Set(
-    input.evidence.map((item) => canonicalCompleteCompanyName(item.displayName)).filter(Boolean),
+    activeEvidence.map((item) => canonicalCompleteCompanyName(item.displayName)).filter(Boolean),
   )
   const companyCanonicalName = canonicalCompleteCompanyName(input.companyName)
   const materiallyDifferentNames = [...canonicalNames].filter((name) => name !== companyCanonicalName)
   const nameConflict = providers.length > 1 && materiallyDifferentNames.length > 0
 
-  let confidence = Math.max(0, ...input.evidence.map((item) => finiteConfidence(item.confidence)))
+  let confidence = Math.max(0, ...activeEvidence.map((item) => finiteConfidence(item.confidence)))
   const reasonCodes: string[] = []
   const explanations: string[] = []
 
@@ -187,21 +192,11 @@ export function evaluateCompleteCompanyCandidate(input: {
     explanations.push('ARES eviduje sídlo firmy na přesné dotčené adrese.')
   }
   if (hasMapyExact) {
-    confidence = Math.max(confidence, 0.82)
+    confidence = Math.max(confidence, 0.92)
     reasonCodes.push('mapy_exact_address')
     explanations.push('Mapy.com evidují provozovnu na přesné dotčené adrese.')
   }
-  if (hasGoogleExact) {
-    confidence = Math.max(confidence, 0.8)
-    reasonCodes.push('google_exact_address')
-    explanations.push('Google Places potvrzuje provozovnu na přesné dotčené adrese.')
-  }
-  if (hasMapyExact && hasGoogleExact) {
-    confidence = Math.max(confidence, 0.92)
-    reasonCodes.push('poi_sources_agree')
-    explanations.push('Dva nezávislé katalogy provozoven se shodují na stejné firmě a adrese.')
-  }
-  if (hasAresExact && (hasMapyExact || hasGoogleExact)) {
+  if (hasAresExact && hasMapyExact) {
     confidence = Math.max(confidence, 0.98)
     reasonCodes.push('registry_and_poi_agree')
     explanations.push('Registr sídel a katalog provozoven se shodují na stejné firmě a adrese.')
@@ -210,14 +205,12 @@ export function evaluateCompleteCompanyCandidate(input: {
     reasonCodes.push('multiple_exact_sources')
   }
   if (massRegisteredOffice) {
-    confidence = Math.min(confidence, 0.74)
     reasonCodes.push('mass_registered_office')
-    explanations.push('Na adrese je evidováno neobvykle mnoho sídel; výsledek vyžaduje ruční kontrolu.')
+    explanations.push('Na adrese je evidováno neobvykle mnoho sídel; tato okolnost ovlivňuje obchodní výběr, nikoliv přesnou shodu adresy.')
   }
   if (nameConflict) {
-    confidence = Math.min(confidence, 0.69)
     reasonCodes.push('provider_name_conflict')
-    explanations.push('Jednotlivé zdroje uvádějí odlišné názvy firmy.')
+    explanations.push('Jednotlivé zdroje uvádějí odlišné názvy firmy; přesná shoda adresy tím není zrušena.')
   }
   if (providers.length === 1) {
     reasonCodes.push('single_source')
@@ -225,11 +218,7 @@ export function evaluateCompleteCompanyCandidate(input: {
   }
 
   confidence = Math.round(confidence * 10_000) / 10_000
-  const canConfirm = input.addressScope === 'exact'
-    && confidence >= 0.9
-    && !massRegisteredOffice
-    && !nameConflict
-    && (hasAresExact || (hasMapyExact && hasGoogleExact))
+  const canConfirm = input.addressScope === 'exact' && (hasAresExact || hasMapyExact)
 
   return {
     confidence,
