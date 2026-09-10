@@ -211,6 +211,23 @@ function explanations(metadata: Record<string, unknown> | null) {
   return stringArray((evaluation as Record<string, unknown>).explanations)
 }
 
+function sourcePublicationChanges(metadata: unknown): CompleteSourceState['lastPublicationChanges'] {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null
+  const publication = (metadata as Record<string, unknown>).lastPublicationChanges
+  if (!publication || typeof publication !== 'object' || Array.isArray(publication)) return null
+  const value = publication as Record<string, unknown>
+  if (value.contract !== 'complete-source-publication-changes-v1') return null
+  return {
+    completedAt: typeof value.completedAt === 'string' ? value.completedAt : null,
+    outageAddedCount: Number(value.outageAddedCount) || 0,
+    outageUpdatedCount: Number(value.outageUpdatedCount) || 0,
+    outageCancelledOrMissingCount: Number(value.outageCancelledOrMissingCount) || 0,
+    addressAddedCount: Number(value.addressAddedCount) || 0,
+    addressUpdatedCount: Number(value.addressUpdatedCount) || 0,
+    addressRemovedCount: Number(value.addressRemovedCount) || 0,
+  }
+}
+
 function ownershipSchemaMissing(error: { code?: string; message?: string } | null) {
   return error?.code === 'PGRST205'
     || error?.code === '42P01'
@@ -559,6 +576,8 @@ function mapSourceState(
     dataVersion: Number(row.data_version),
     publishedOutageCount: Number(row.published_outage_count),
     publishedAddressCount: Number(row.published_address_count),
+    publishedCycleId: metadataText(row.metadata, 'completeCezCycleId'),
+    lastPublicationChanges: sourcePublicationChanges(row.metadata),
     futureOutageCount: Number(row.future_outage_count),
     activeOutageCount: Number(row.active_outage_count),
     coverageProcessedCount: Number(row.coverage_processed_count),
@@ -627,6 +646,9 @@ function mapCezNewState(row: Record<string, unknown>): CompleteCezNewState {
     projectionStatus: String(row.projection_status ?? 'waiting'),
     projectionPendingCount: Number(row.projection_pending_count ?? 0),
     lastProjectionAt: row.last_projection_at as string | null,
+    latestAppliedCycleId: (row.latest_applied_cycle_id ?? null) as string | null,
+    latestCompleteCycleId: (row.latest_complete_cycle_id ?? null) as string | null,
+    latestFinalizedCycleId: (row.latest_finalized_cycle_id ?? null) as string | null,
     productionAddressTotal: 0,
     productionAddressNormalized: 0,
     productionAddressPending: 0,

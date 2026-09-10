@@ -189,6 +189,16 @@ export type CompleteSourceState = {
   dataVersion: number
   publishedOutageCount: number
   publishedAddressCount: number
+  publishedCycleId: string | null
+  lastPublicationChanges: {
+    completedAt: string | null
+    outageAddedCount: number
+    outageUpdatedCount: number
+    outageCancelledOrMissingCount: number
+    addressAddedCount: number
+    addressUpdatedCount: number
+    addressRemovedCount: number
+  } | null
   futureOutageCount: number
   activeOutageCount: number
   coverageProcessedCount: number
@@ -451,6 +461,9 @@ export type CompleteCezNewState = {
   projectionStatus: string
   projectionPendingCount: number
   lastProjectionAt: string | null
+  latestAppliedCycleId: string | null
+  latestCompleteCycleId: string | null
+  latestFinalizedCycleId: string | null
   productionAddressTotal: number
   productionAddressNormalized: number
   productionAddressPending: number

@@ -409,6 +409,14 @@ async function updateSourceState(input: {
   changed: boolean
   upstreamState: UpstreamSourceState | null
   upstreamMetadata: Record<string, unknown> | null
+  publicationChanges: {
+    outageAddedCount: number
+    outageUpdatedCount: number
+    outageCancelledOrMissingCount: number
+    addressAddedCount: number
+    addressUpdatedCount: number
+    addressRemovedCount: number
+  }
 }) {
   const active = input.outages.filter((row) => (
     row.missing_since === null
@@ -477,6 +485,14 @@ async function updateSourceState(input: {
         upstreamLastErrorAt: input.upstreamState?.last_error_at ?? null,
         upstreamLastErrorCode: input.upstreamState?.last_error_code ?? null,
         upstreamLastErrorMessage: input.upstreamState?.last_error_message ?? null,
+        lastPublicationChanges: {
+          contract: 'complete-source-publication-changes-v1',
+          completedAt: input.completedAt,
+          cycleId: typeof input.upstreamMetadata?.completeCezCycleId === 'string'
+            ? input.upstreamMetadata.completeCezCycleId
+            : null,
+          ...input.publicationChanges,
+        },
       },
     })
     .eq('source', input.source)
@@ -570,6 +586,9 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
 
     const completeIdByExternalId = new Map<string, string>()
     let changedOutageCount = 0
+    let newOutageCount = 0
+    let updatedOutageCount = 0
+    let cancelledOrMissingOutageCount = 0
     for (const batch of chunks(outages, 100)) {
       const { data: existing, error: existingError } = await client
         .from('complete_power_outages')
@@ -590,6 +609,20 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
           || String(current.source_status) !== row.source_status
           || (current.missing_since ?? null) !== row.missing_since
       })
+      for (const row of changedBatch) {
+        const current = existingByExternalId.get(row.external_id)
+        if (!current) {
+          newOutageCount += 1
+        } else if (
+          !['cancelled'].includes(String(current.source_status))
+          && current.missing_since == null
+          && (row.source_status === 'cancelled' || row.missing_since != null)
+        ) {
+          cancelledOrMissingOutageCount += 1
+        } else {
+          updatedOutageCount += 1
+        }
+      }
       changedOutageCount += changedBatch.length
       if (changedBatch.length === 0) continue
 
@@ -656,6 +689,8 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
     const changedAddressRows: Array<Record<string, unknown>> = []
     const preservedAddressRows: Array<Record<string, unknown>> = []
     const staleAddressIds: string[] = []
+    let newAddressCount = 0
+    let updatedAddressCount = 0
     for (const outage of outages) {
       const completeOutageId = completeIdByExternalId.get(outage.external_id)
       if (!completeOutageId) throw new Error(`Kompletní odstávka ${source}:${outage.external_id} nemá ID.`)
@@ -692,6 +727,8 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         }
         const existingAddress = existingByKey.get(address.address_key)
         if (!existingAddress || existingAddressFingerprint(existingAddress) !== fingerprint) {
+          if (existingAddress) updatedAddressCount += 1
+          else newAddressCount += 1
           changedAddressRows.push({
             ...base,
             lookup_status: 'pending',
@@ -713,6 +750,9 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
           // Jednorazovy prechod ze stareho otisku zahrnujiciho metadata.
           // Vyhledavaci vyznam adresy je shodny, proto zachovame normalizaci,
           // adresni cile i vysledky ARES/Mapy.com a zmenime pouze otisk.
+          if (nonLookupAddressDataChanged(existingAddress, address)) {
+            updatedAddressCount += 1
+          }
           preservedAddressRows.push(base)
         }
       }
@@ -789,10 +829,11 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         if (error) throw error
       }
       removedOutageCount = staleOutageIds.length
+      cancelledOrMissingOutageCount += removedOutageCount
     }
 
     const completedAt = new Date().toISOString()
-    const changedAddressCount = changedAddressRows.length
+    const changedAddressCount = newAddressCount + updatedAddressCount
     const removedAddressCount = staleAddressIds.length
     const changed = changedOutageCount > 0 || changedAddressCount > 0
       || removedAddressCount > 0 || removedOutageCount > 0
@@ -808,6 +849,14 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
         completeCezProjection: 'shadow',
         completeCezCycleId: cezProjectionState.latest_complete_cycle_id,
       } : upstreamState?.metadata ?? null,
+      publicationChanges: {
+        outageAddedCount: newOutageCount,
+        outageUpdatedCount: updatedOutageCount,
+        outageCancelledOrMissingCount: cancelledOrMissingOutageCount,
+        addressAddedCount: newAddressCount,
+        addressUpdatedCount: updatedAddressCount,
+        addressRemovedCount: removedAddressCount,
+      },
     })
     const { error: finishRunError } = await client
       .from('complete_power_outage_runs')
@@ -825,6 +874,12 @@ export async function syncCompletePowerOutageCatalogSource(source: PowerOutageSo
           addressPreservationContract: useCezShadow ? 'complete-cez-all-v1-audited-cleanup' : null,
           addressPaginationContract: useCezShadow ? 'complete-cez-address-pagination-v2' : null,
           verifiedProductionAddressCount,
+          publicationChangesContract: 'complete-source-publication-changes-v1',
+          newOutageCount,
+          updatedOutageCount,
+          cancelledOrMissingOutageCount,
+          newAddressCount,
+          updatedAddressCount,
         },
       })
       .eq('id', run.id)
