@@ -41,6 +41,12 @@ type BraveWebSearchPayload = {
   }
 }
 
+type BraveErrorPayload = {
+  error?: {
+    code?: unknown
+  }
+}
+
 export type BraveOfficialWebsiteCandidate = {
   rank: number
   url: string
@@ -116,8 +122,6 @@ export async function diagnoseOfficialWebsiteWithBrave(input: {
   const query = buildBraveOfficialWebsiteQuery(input.companyName, input.ico)
   const endpoint = new URL(BRAVE_WEB_SEARCH_ENDPOINT)
   endpoint.searchParams.set('q', query)
-  endpoint.searchParams.set('country', 'CZ')
-  endpoint.searchParams.set('search_lang', 'cs')
   endpoint.searchParams.set('count', String(BRAVE_RESULT_LIMIT))
   endpoint.searchParams.set('result_filter', 'web')
   endpoint.searchParams.set('safesearch', 'strict')
@@ -138,7 +142,11 @@ export async function diagnoseOfficialWebsiteWithBrave(input: {
     })
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
+      const errorPayload = await response.json().catch(() => null) as BraveErrorPayload | null
+      const errorCode = typeof errorPayload?.error?.code === 'string'
+        ? errorPayload.error.code
+        : null
+      if (errorCode === 'SUBSCRIPTION_TOKEN_INVALID' || response.status === 401 || response.status === 403) {
         throw new Error('Brave Search odmítl API klíč nebo oprávnění.')
       }
       if (response.status === 429) {
