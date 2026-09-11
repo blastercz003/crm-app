@@ -118,7 +118,6 @@ export async function diagnoseOfficialWebsiteWithBrave(input: {
   endpoint.searchParams.set('q', query)
   endpoint.searchParams.set('country', 'CZ')
   endpoint.searchParams.set('search_lang', 'cs')
-  endpoint.searchParams.set('ui_lang', 'cs-CZ')
   endpoint.searchParams.set('count', String(BRAVE_RESULT_LIMIT))
   endpoint.searchParams.set('result_filter', 'web')
   endpoint.searchParams.set('safesearch', 'strict')
