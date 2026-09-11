@@ -3,7 +3,7 @@ import 'server-only'
 import { lookup } from 'node:dns/promises'
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
-import { isIP } from 'node:net'
+import { isIP, type LookupFunction } from 'node:net'
 import { domainToASCII } from 'node:url'
 
 const FETCH_TIMEOUT_MS = 7_000
@@ -100,6 +100,13 @@ async function requestSafeHtml(rawUrl: string, redirectCount = 0): Promise<SafeH
   const url = assertSafeUrl(rawUrl)
   const address = await resolvePublicAddress(url.hostname)
   const transport = url.protocol === 'https:' ? httpsRequest : httpRequest
+  const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
+    if (options.all) {
+      callback(null, [{ address: address.address, family: address.family }])
+      return
+    }
+    callback(null, address.address, address.family)
+  }
 
   return await new Promise<SafeHtmlResponse>((resolve, reject) => {
     const request = transport(url, {
@@ -108,7 +115,7 @@ async function requestSafeHtml(rawUrl: string, redirectCount = 0): Promise<SafeH
         Accept: 'text/html,application/xhtml+xml;q=0.9',
         'User-Agent': 'B-ENERGY-OfficialWebsiteVerifier/1.0 (+https://www.blaster-energy.cz)',
       },
-      lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
+      lookup: pinnedLookup,
     }, (response) => {
       const status = response.statusCode ?? 0
       const location = response.headers.location
