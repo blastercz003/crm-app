@@ -90,6 +90,9 @@ type OverviewRow = {
   linked_job_id?: string | null
   linked_job_number?: string | null
   linked_job_count?: number | string | null
+  is_accessible_client?: boolean | null
+  accessible_client_match_count?: number | string | null
+  accessible_client_match_method?: 'ico_exact' | 'name_exact' | 'name_fuzzy' | null
   metadata: Record<string, unknown> | null
 }
 
@@ -909,6 +912,9 @@ function mapOverview(row: OverviewRow, assignment?: AssignmentRow): CompletePowe
           matchCount: Math.max(1, Number(row.linked_job_count) || 1),
         }
       : null,
+    isAccessibleClient: row.is_accessible_client === true,
+    accessibleClientMatchCount: Math.max(0, Number(row.accessible_client_match_count) || 0),
+    accessibleClientMatchMethod: row.accessible_client_match_method ?? null,
   }
 }
 
@@ -933,7 +939,7 @@ export async function getCompletePowerOutagePage(
   pageSize = 60,
 ): Promise<CompletePowerOutagePage> {
   const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const args = {
+  const baseArgs = {
     p_mode: filters.mode,
     p_limit: Math.min(100, Math.max(1, Math.trunc(pageSize))),
     p_cursor_at: cursor?.at ?? null,
@@ -947,29 +953,38 @@ export async function getCompletePowerOutagePage(
     p_commercial_filter: filters.commercialSelection,
     p_sort: filters.commercialSort,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v6', args)
+  const priorityArgs = {
+    ...baseArgs,
+    p_cursor_client_priority: cursor?.clientPriority ?? null,
+  }
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v7', priorityArgs)
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v7')) {
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v6', baseArgs)
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v6')) {
-    const current = await supabase.rpc('get_complete_power_outage_company_page_v5', args)
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v5', baseArgs)
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v5')) {
-    const current = await supabase.rpc('get_complete_power_outage_company_page_v4', args)
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v4', baseArgs)
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v4')) {
     const legacyArgs = {
-      p_mode: args.p_mode,
-      p_limit: args.p_limit,
-      p_cursor_at: args.p_cursor_at,
-      p_cursor_id: args.p_cursor_id,
-      p_query: args.p_query,
-      p_owner_filter: args.p_owner_filter,
-      p_source: args.p_source,
-      p_entity_kind: args.p_entity_kind,
-      p_candidate_status: args.p_candidate_status,
-      p_commercial_filter: args.p_commercial_filter,
+      p_mode: baseArgs.p_mode,
+      p_limit: baseArgs.p_limit,
+      p_cursor_at: baseArgs.p_cursor_at,
+      p_cursor_id: baseArgs.p_cursor_id,
+      p_query: baseArgs.p_query,
+      p_owner_filter: baseArgs.p_owner_filter,
+      p_source: baseArgs.p_source,
+      p_entity_kind: baseArgs.p_entity_kind,
+      p_candidate_status: baseArgs.p_candidate_status,
+      p_commercial_filter: baseArgs.p_commercial_filter,
     }
     const fallback = await supabase.rpc('get_complete_power_outage_company_page_v3', legacyArgs)
     data = fallback.data
@@ -988,7 +1003,12 @@ export async function getCompletePowerOutagePage(
     totalCount: payload.totalCount == null ? null : Number(payload.totalCount) || 0,
     hasMore: payload.hasMore === true,
     nextCursor: next && typeof next.at === 'string' && typeof next.id === 'string'
-      ? { at: next.at, id: next.id, ...(next.score == null ? {} : { score: Number(next.score) }) }
+      ? {
+          at: next.at,
+          id: next.id,
+          ...(next.score == null ? {} : { score: Number(next.score) }),
+          ...(typeof next.clientPriority === 'boolean' ? { clientPriority: next.clientPriority } : {}),
+        }
       : null,
   }
 }
@@ -1005,7 +1025,12 @@ export async function getCompletePowerOutageCommercialSelectionCounts(
     p_entity_kind: filters.entityKind,
     p_candidate_status: filters.candidateStatus,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v2', args)
+  let { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v3', args)
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v3')) {
+    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v2', args)
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v2')) {
     const fallback = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', args)
     data = fallback.data
@@ -1034,7 +1059,12 @@ export async function getCompletePowerOutageCount(
     p_candidate_status: filters.candidateStatus,
     p_commercial_filter: filters.commercialSelection,
   }
-  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v3', args)
+  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v4', args)
+  if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v4')) {
+    const current = await supabase.rpc('count_complete_power_outage_companies_v3', args)
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v3')) {
     const current = await supabase.rpc('count_complete_power_outage_companies_v2', args)
     data = current.data

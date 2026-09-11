@@ -165,6 +165,7 @@ export async function getCompletePowerOutagePageAction(input: {
     if (!['date', 'score'].includes(filters.commercialSort)) throw new Error('Neplatné řazení obchodního výběru.')
     if (filters.query.length > 200) throw new Error('Hledaný text je příliš dlouhý.')
     if (cursor && (!validUuid(cursor.id) || Number.isNaN(new Date(cursor.at).getTime()))) throw new Error('Neplatný kurzor stránky.')
+    if (cursor?.clientPriority != null && typeof cursor.clientPriority !== 'boolean') throw new Error('Neplatná priorita kurzoru stránky.')
     return { success: true, page: await getCompletePowerOutagePage(filters, cursor, 60), error: null }
   } catch (error) {
     return { success: false, page: null, error: errorMessage(error) }

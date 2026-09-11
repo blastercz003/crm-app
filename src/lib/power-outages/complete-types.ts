@@ -76,12 +76,16 @@ export type CompletePowerOutageListItem = {
   linkedJob: {
     matchCount: number
   } | null
+  isAccessibleClient: boolean
+  accessibleClientMatchCount: number
+  accessibleClientMatchMethod: 'ico_exact' | 'name_exact' | 'name_fuzzy' | null
 }
 
 export type CompletePowerOutagePageCursor = {
   at: string
   id: string
   score?: number
+  clientPriority?: boolean
 }
 
 export type CompletePowerOutagePageFilters = {
