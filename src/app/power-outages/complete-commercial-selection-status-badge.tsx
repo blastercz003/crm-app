@@ -37,14 +37,40 @@ const PRESENTATION: Record<OrbitalStatus, {
   },
 }
 
+function preciseProcessingMessage(progress: NonNullable<CommercialSelectionProgress>) {
+  const evaluating = progress.evaluationPendingCount > 0
+  const enriching = progress.enrichmentPendingCount > 0
+  const scoring = progress.scoringPendingCount > 0
+  if (evaluating && enriching) return 'Probíhá vyhodnocení nových a aktualizovaných kandidátů i doplňování profilů ARES/RES.'
+  if (evaluating) return 'Probíhá vyhodnocení nových a aktualizovaných kandidátních záznamů.'
+  if (enriching && scoring) return 'Probíhá doplňování profilů ARES/RES i navazující přepočet skóre.'
+  if (enriching) return 'Probíhá doplňování firemních profilů ARES/RES.'
+  if (scoring) return 'Probíhá přepočet obchodního skóre.'
+  return progress.statusMessage
+}
+
 export function CommercialSelectionStatusBadge({ progress, loading = false }: {
   progress?: CommercialSelectionProgress
   loading?: boolean
 }) {
   const status: OrbitalStatus = loading ? 'loading' : progress?.status ?? 'unavailable'
   const presentation = PRESENTATION[status]
+  const queueSummary = progress ? [
+    progress.evaluationPendingCount > 0
+      ? `Vyhodnocení nových a aktualizovaných kandidátních záznamů: ${progress.evaluationPendingCount.toLocaleString('cs-CZ')}.`
+      : null,
+    progress.enrichmentPendingCount > 0
+      ? `Doplnění profilů ARES/RES: ${progress.enrichmentPendingCount.toLocaleString('cs-CZ')}.`
+      : null,
+    progress.scoringPendingCount > 0
+      ? `Výpočet skóre: ${progress.scoringPendingCount.toLocaleString('cs-CZ')}.`
+      : null,
+  ].filter((item): item is string => Boolean(item)).join(' ') : ''
+  const statusMessage = progress?.status === 'processing'
+    ? preciseProcessingMessage(progress)
+    : progress?.statusMessage
   const title = progress
-    ? `${progress.statusMessage} Zbývá ${progress.remainingCount.toLocaleString('cs-CZ')} položek.`
+    ? `${statusMessage}${queueSummary ? ` ${queueSummary}` : ''}`
     : loading ? 'Načítám provozní stav obchodního výběru.' : 'Provozní stav obchodního výběru není dostupný.'
 
   return <span
