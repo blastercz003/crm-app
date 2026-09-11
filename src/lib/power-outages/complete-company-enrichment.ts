@@ -62,6 +62,30 @@ function normalizeNace(value: string) {
   return digits.length >= 2 && digits.length <= 6 ? digits : null
 }
 
+function directNaceCodes(root: unknown, key: string) {
+  const object = objectValue(root)
+  const value = object?.[key]
+  if (!Array.isArray(value)) return []
+  const codes: string[] = []
+  const seen = new Set<string>()
+  for (const item of value) {
+    const text = scalarText(item)
+    const code = text ? normalizeNace(text) : null
+    if (code && !seen.has(code)) {
+      seen.add(code)
+      codes.push(code)
+    }
+  }
+  return codes
+}
+
+function employeeCategoryCode(root: unknown) {
+  const object = objectValue(root)
+  const statistics = objectValue(object?.statistickeUdaje)
+  const code = firstField(statistics, ['kategoriePoctuPracovniku'])
+  return code && /^\d{3}$/.test(code) ? code : null
+}
+
 function collectNaceCodes(value: unknown, keyHint = '', output = new Set<string>()) {
   if (Array.isArray(value)) {
     for (const item of value) collectNaceCodes(item, keyHint, output)
@@ -200,9 +224,19 @@ async function saveProfile(client: ServiceClient, ico: string, payload: unknown)
   if (!subject) throw new Error('ARES RES vrátil neplatný profil subjektu.')
   const officialName = firstField(subject, ['obchodniJmeno', 'nazev', 'firma'])
   if (!officialName) throw new Error('ARES RES profil neobsahuje název subjektu.')
-  const naceCodes = [...collectNaceCodes(subject)].sort()
-  const prevailingNace = firstField(subject, ['czNacePrevazujici', 'czNacePrevazujici2008'])
-  const primaryNaceCode = prevailingNace ? normalizeNace(prevailingNace) : null
+  const nace2025Codes = directNaceCodes(subject, 'czNace')
+  const nace2008Codes = directNaceCodes(subject, 'czNace2008')
+  const naceCodes = [...new Set([...nace2025Codes, ...nace2008Codes, ...collectNaceCodes(subject)])].sort()
+  const prevailingNace2025 = firstField(subject, ['czNacePrevazujici'])
+  const prevailingNace2008 = firstField(subject, ['czNacePrevazujici2008'])
+  const primaryNace2025Code = prevailingNace2025
+    ? normalizeNace(prevailingNace2025)
+    : nace2025Codes[0] ?? null
+  const primaryNace2008Code = prevailingNace2008
+    ? normalizeNace(prevailingNace2008)
+    : nace2008Codes[0] ?? null
+  const primaryNaceCode = primaryNace2025Code ?? primaryNace2008Code ?? naceCodes[0] ?? null
+  const workforceCategoryCode = employeeCategoryCode(subject)
   const fetchedAt = new Date()
   const expiresAt = new Date(fetchedAt.getTime() + 30 * 24 * 60 * 60_000)
   const subjectStatus = firstField(subject, ['stavZdrojeRes', 'stavSubjektu', 'stav'])
@@ -211,9 +245,14 @@ async function saveProfile(client: ServiceClient, ico: string, payload: unknown)
     .upsert({
       ico,
       official_name: officialName,
-      legal_form: firstField(subject, ['pravniForma', 'kodPravniFormy']),
-      primary_nace_code: primaryNaceCode ?? naceCodes[0] ?? null,
+      legal_form: firstField(subject, ['pravniFormaRos', 'pravniForma', 'kodPravniFormy']),
+      primary_nace_code: primaryNaceCode,
       nace_codes: naceCodes,
+      primary_nace_2025_code: primaryNace2025Code,
+      nace_2025_codes: nace2025Codes,
+      primary_nace_2008_code: primaryNace2008Code,
+      nace_2008_codes: nace2008Codes,
+      employee_category_code: workforceCategoryCode,
       subject_status: subjectStatus,
       is_in_liquidation: /v\s+likvidaci/i.test(officialName),
       is_terminated: /zanikl|vymazan|ukoncen/i.test(subjectStatus ?? ''),
@@ -221,7 +260,18 @@ async function saveProfile(client: ServiceClient, ico: string, payload: unknown)
       fetched_at: fetchedAt.toISOString(),
       expires_at: expiresAt.toISOString(),
       payload_sha256: powerOutageSha256(payload),
-      metadata: { contract: 'complete-company-ares-res-v1', publicSource: true },
+      metadata: {
+        contract: 'complete-company-ares-res-v2',
+        publicSource: true,
+        nacePreference: primaryNace2025Code ? 'cz-nace-2025' : primaryNace2008Code ? 'cz-nace-2008' : 'unavailable',
+        primaryNace2025Source: prevailingNace2025
+          ? 'czNacePrevazujici'
+          : nace2025Codes.length > 0 ? 'firstCzNace' : null,
+        primaryNace2008Source: prevailingNace2008
+          ? 'czNacePrevazujici2008'
+          : nace2008Codes.length > 0 ? 'firstCzNace2008' : null,
+        workforceCategoryAvailable: workforceCategoryCode !== null,
+      },
     }, { onConflict: 'ico' })
     .select('id')
     .single<{ id: string }>()
