@@ -71,24 +71,26 @@ export function SlidingTwoTabSwitch<T extends string>({
   onValueChange,
   ariaLabel,
   className = '',
+  compact = false,
 }: {
   value: T
   options: readonly [SlidingTabOption<T>, SlidingTabOption<T>]
   onValueChange: (value: T) => void
   ariaLabel: string
   className?: string
+  compact?: boolean
 }) {
   const { visualValue, selectTab } = useSlidingTabValue(value, onValueChange)
   const activeIndex = options.findIndex((option) => option.value === visualValue)
 
   return (
     <nav className={className} aria-label={ariaLabel}>
-      <div className="relative h-10">
+      <div className={`relative ${compact ? 'h-8' : 'h-10'}`}>
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid grid-cols-2 gap-2">
           {options.map((option) => (
             <span
               key={option.value}
-              className="flex items-center justify-center px-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600 sm:text-[11px] [html[data-theme='dark']_&]:text-slate-400"
+              className={`flex items-center justify-center text-center font-semibold uppercase text-zinc-600 [html[data-theme='dark']_&]:text-slate-400 ${compact ? 'px-1 text-[6.5px] leading-3 tracking-normal' : 'px-2 text-[10px] tracking-[0.08em] sm:text-[11px]'}`}
             >
               {option.label}
             </span>
@@ -97,7 +99,7 @@ export function SlidingTwoTabSwitch<T extends string>({
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 rounded-xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition-transform duration-[480ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none [html[data-theme='dark']_&]:border-[rgba(92,167,219,0.32)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(45,97,142,0.98)_0%,rgba(28,76,118,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_20px_rgba(9,48,82,0.22)]"
+          className={`pointer-events-none absolute inset-y-0 left-0 z-10 border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_10px_20px_rgba(41,128,185,0.22)] transition-transform duration-[480ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none [html[data-theme='dark']_&]:border-[rgba(92,167,219,0.32)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(45,97,142,0.98)_0%,rgba(28,76,118,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_20px_rgba(9,48,82,0.22)] ${compact ? 'rounded-[9px]' : 'rounded-xl'}`}
           style={{
             width: 'calc((100% - 0.5rem) / 2)',
             transform:
@@ -118,7 +120,7 @@ export function SlidingTwoTabSwitch<T extends string>({
           {options.map((option) => (
             <span
               key={option.value}
-              className="flex items-center justify-center px-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-white sm:text-[11px]"
+              className={`flex items-center justify-center text-center font-semibold uppercase text-white ${compact ? 'px-1 text-[6.5px] leading-3 tracking-normal' : 'px-2 text-[10px] tracking-[0.08em] sm:text-[11px]'}`}
             >
               {option.label}
             </span>
@@ -133,7 +135,7 @@ export function SlidingTwoTabSwitch<T extends string>({
               onClick={() => selectTab(option.value)}
               onMouseDown={(event) => event.preventDefault()}
               aria-pressed={visualValue === option.value}
-              className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fc2e5] focus-visible:ring-offset-2"
+              className={`${compact ? 'rounded-[9px]' : 'rounded-xl'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fc2e5] focus-visible:ring-offset-2`}
             >
               <span className="sr-only">{option.label}</span>
             </button>
