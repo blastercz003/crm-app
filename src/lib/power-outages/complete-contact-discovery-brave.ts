@@ -4,6 +4,10 @@ const BRAVE_WEB_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/web/searc
 const BRAVE_RESULT_LIMIT = 5
 const BRAVE_TIMEOUT_MS = 12_000
 const BRAVE_CANDIDATE_LIMIT = 3
+const BRAVE_MIN_REQUEST_INTERVAL_MS = 1_100
+const BRAVE_RATE_LIMIT_RETRY_CAP_MS = 5_000
+
+let lastBraveRequestStartedAt = 0
 
 const BLOCKED_HOSTS = new Set([
   'ares.gov.cz',
@@ -85,6 +89,28 @@ type BraveErrorPayload = {
   error?: {
     code?: unknown
   }
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+async function waitForBraveRequestSlot() {
+  const remaining = BRAVE_MIN_REQUEST_INTERVAL_MS - (Date.now() - lastBraveRequestStartedAt)
+  if (remaining > 0) await wait(remaining)
+  lastBraveRequestStartedAt = Date.now()
+}
+
+function rateLimitResetMilliseconds(response: Response) {
+  const retryAfter = Number(response.headers.get('retry-after'))
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) return Math.ceil(retryAfter * 1_000) + 100
+
+  const resetValues = (response.headers.get('x-ratelimit-reset') ?? '')
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isFinite(value) && value >= 0)
+  if (resetValues.length === 0) return BRAVE_MIN_REQUEST_INTERVAL_MS
+  return Math.ceil(Math.min(...resetValues) * 1_000) + 100
 }
 
 export type BraveOfficialWebsiteCandidate = {
@@ -182,45 +208,58 @@ async function braveSearch(input: {
   endpoint.searchParams.set('safesearch', 'strict')
   endpoint.searchParams.set('spellcheck', 'false')
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), BRAVE_TIMEOUT_MS)
-  try {
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        'Accept-Encoding': 'gzip',
-        'X-Subscription-Token': apiKey,
-      },
-      cache: 'no-store',
-      signal: controller.signal,
-    })
+  for (let requestAttempt = 0; requestAttempt < 2; requestAttempt += 1) {
+    await waitForBraveRequestSlot()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), BRAVE_TIMEOUT_MS)
+    try {
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'Accept-Encoding': 'gzip',
+          'X-Subscription-Token': apiKey,
+        },
+        cache: 'no-store',
+        signal: controller.signal,
+      })
 
-    if (!response.ok) {
-      const errorPayload = await response.json().catch(() => null) as BraveErrorPayload | null
-      const errorCode = typeof errorPayload?.error?.code === 'string'
-        ? errorPayload.error.code
-        : null
-      if (errorCode === 'SUBSCRIPTION_TOKEN_INVALID' || response.status === 401 || response.status === 403) {
-        throw new Error('Brave Search odmítl API klíč nebo oprávnění.')
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => null) as BraveErrorPayload | null
+        const errorCode = typeof errorPayload?.error?.code === 'string'
+          ? errorPayload.error.code
+          : null
+        if (errorCode === 'SUBSCRIPTION_TOKEN_INVALID' || response.status === 401 || response.status === 403) {
+          throw new Error('Brave Search odmítl API klíč nebo oprávnění.')
+        }
+        if (response.status === 429) {
+          if (errorCode === 'QUOTA_LIMITED') {
+            throw new Error('Brave Search vyčerpal měsíční kvótu API.')
+          }
+          const retryInMs = rateLimitResetMilliseconds(response)
+          if (requestAttempt === 0 && retryInMs <= BRAVE_RATE_LIMIT_RETRY_CAP_MS) {
+            await wait(Math.max(BRAVE_MIN_REQUEST_INTERVAL_MS, retryInMs))
+            continue
+          }
+          throw new Error(`Brave Search dočasně odmítl dotaz kvůli limitu; další pokus nejdříve za ${Math.ceil(retryInMs / 1_000)} s.`)
+        }
+        throw new Error(`Brave Search vrátil HTTP ${response.status}.`)
       }
-      if (response.status === 429) {
-        throw new Error('Brave Search dočasně odmítl dotaz kvůli limitu.')
-      }
-      throw new Error(`Brave Search vrátil HTTP ${response.status}.`)
-    }
 
-    const payload = await response.json() as BraveWebSearchPayload
-    const rawResults = Array.isArray(payload.web?.results) ? payload.web.results : []
-    return rawResults.map((result, index) => candidateFromResult(result, index + 1, input.variant))
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Brave Search překročil bezpečný časový limit.')
+      const payload = await response.json() as BraveWebSearchPayload
+      const rawResults = Array.isArray(payload.web?.results) ? payload.web.results : []
+      return rawResults.map((result, index) => candidateFromResult(result, index + 1, input.variant))
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Brave Search překročil bezpečný časový limit.')
+      }
+      throw error
+    } finally {
+      clearTimeout(timeout)
     }
-    throw error
-  } finally {
-    clearTimeout(timeout)
   }
+
+  throw new Error('Brave Search nevrátil výsledek po bezpečném opakování.')
 }
 
 export async function diagnoseOfficialWebsiteWithBrave(input: {

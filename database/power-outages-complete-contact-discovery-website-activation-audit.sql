@@ -71,9 +71,11 @@ with checks as (
     discovery_enabled and website_lookup_enabled
     from public.complete_power_outage_contact_discovery_state where singleton
   union all
-  select 'CRON', 'official website discovery every minute',
+  select 'CRON', 'official website discovery every fifteen seconds',
     count(*) = 1
-    from cron.job where jobname = 'complete_contact_discovery_websites_every_minute'
+    from cron.job
+    where jobname = 'complete_contact_discovery_websites_every_fifteen_seconds'
+      and schedule = '15 seconds'
   union all
   select 'VIEW', 'official website discovery operational overview',
     to_regclass('public.complete_power_outage_contact_discovery_operational_overview') is not null

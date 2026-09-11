@@ -503,6 +503,7 @@ begin
     select jobid from cron.job
     where jobname in (
       'complete_contact_discovery_websites_every_minute',
+      'complete_contact_discovery_websites_every_fifteen_seconds',
       'complete_contact_discovery_websites_every_two_minutes',
       'complete_contact_discovery_websites_every_five_minutes'
     )
@@ -510,8 +511,8 @@ begin
 
   perform public.activate_complete_power_outage_contact_discovery_websites();
   perform cron.schedule(
-    'complete_contact_discovery_websites_every_minute',
-    '* * * * *',
+    'complete_contact_discovery_websites_every_fifteen_seconds',
+    '15 seconds',
     $job$select public.request_complete_power_outage_contact_discovery_websites();$job$
   );
 end

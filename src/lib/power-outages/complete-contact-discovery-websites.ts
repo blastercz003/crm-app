@@ -24,7 +24,7 @@ type CheckedCandidate = {
 }
 
 function retryableWebsiteError(message: string) {
-  return !/BRAVE_SEARCH_API_KEY|API kl[ií][cč]|opr[aá]vn[eě]n[ií]|neplatn[yý] v[yý]sledek|chybi serverov[aá] konfigurace/i.test(message)
+  return !/BRAVE_SEARCH_API_KEY|API kl[ií][cč]|opr[aá]vn[eě]n[ií]|m[eě]s[ií][cč]n[ií] kv[oó]tu|neplatn[yý] v[yý]sledek|chybi serverov[aá] konfigurace/i.test(message)
 }
 
 async function finishWebsiteClaim(client: ServiceClient, claim: WebsiteClaim, input: {
