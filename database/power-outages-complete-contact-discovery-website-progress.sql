@@ -1,0 +1,2 @@
+select *
+from public.complete_power_outage_contact_discovery_operational_overview;
