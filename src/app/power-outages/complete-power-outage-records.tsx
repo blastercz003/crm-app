@@ -138,7 +138,7 @@ function CommercialScoreBadge({ item, compact = false }: { item: CompletePowerOu
   return <span title={item.commercialScore == null ? 'Obchodní skóre se připravuje' : `Obchodní skóre ${item.commercialScore} ze 100, třída ${grade}`} className={`inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-full border font-bold uppercase ${compact ? 'min-w-[42px] px-1.5 text-[6.5px]' : 'min-w-[56px] px-2 text-[8px]'} ${tone}`}>{label}</span>
 }
 
-function AccessibleClientBadge({ item, compact = false }: { item: CompletePowerOutageListItem; compact?: boolean }) {
+function AccessibleClientBadge({ item, placement }: { item: CompletePowerOutageListItem; placement: 'desktop' | 'mobile' }) {
   if (!item.isAccessibleClient) return null
 
   const method = item.accessibleClientMatchMethod === 'ico_exact'
@@ -149,7 +149,7 @@ function AccessibleClientBadge({ item, compact = false }: { item: CompletePowerO
   const additionalCount = Math.max(0, item.accessibleClientMatchCount - 1)
   const title = `Firma je vedena mezi vašimi klienty (${method})${additionalCount ? ` a má ${additionalCount} další dostupné vazby` : ''}.`
 
-  return <span title={title} className={`inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-teal-400/45 bg-teal-400/15 font-extrabold uppercase text-teal-700 [html[data-theme=dark]_&]:text-teal-200 ${compact ? 'h-5 px-1.5 text-[6px] tracking-[0.035em]' : 'h-6 px-2 text-[7px] tracking-[0.06em]'}`}><CircleCheck aria-hidden size={compact ? 9 : 11} strokeWidth={2.6} /> Klient</span>
+  return <span aria-label="Klient dotčený odstávkou" title={title} className={`absolute z-[1] inline-flex h-4 w-4 items-center justify-center rounded-full border border-emerald-500 bg-emerald-500 text-white shadow-sm ${placement === 'desktop' ? '-right-1 -top-1' : '-left-1 -top-1'}`}><Check aria-hidden size={9} strokeWidth={3.2} /></span>
 }
 
 function LinkedJobBadge({ item, mobileOverlay = false }: { item: CompletePowerOutageListItem; mobileOverlay?: boolean }) {
@@ -377,9 +377,9 @@ function CompleteAssignmentPopup({
   </PowerOutagePopupShell>
 }
 
-function MobileCard({ item, onDetail, onAnnouncement, onAssignment }: { item: CompletePowerOutageListItem; onDetail: () => void; onAnnouncement: () => void; onAssignment: () => void }) {
+function MobileCard({ item, showClientIndicator, onDetail, onAnnouncement, onAssignment }: { item: CompletePowerOutageListItem; showClientIndicator: boolean; onDetail: () => void; onAnnouncement: () => void; onAssignment: () => void }) {
   const actionClass = 'inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-sky-400/20 bg-sky-500/10 px-2 text-[7px] font-bold uppercase tracking-[0.035em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20'
-  return <article className={`power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5 ${item.isAccessibleClient ? 'border-teal-400/45 bg-teal-500/10 shadow-[inset_3px_0_0_rgba(20,184,166,0.65)]' : ''}`}><div className="flex min-w-0 items-start justify-between gap-2"><span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /><LinkedJobBadge item={item} mobileOverlay /></span><div className="flex min-w-0 flex-wrap justify-end gap-1"><AccessibleClientBadge item={item} compact /><CommercialScoreBadge item={item} compact /><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
+  return <article className={`power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5 ${showClientIndicator && item.isAccessibleClient ? 'border-teal-400/45 bg-teal-500/10 shadow-[inset_3px_0_0_rgba(20,184,166,0.65)]' : ''}`}><div className="flex min-w-0 items-start justify-between gap-2"><span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} />{showClientIndicator ? <AccessibleClientBadge item={item} placement="mobile" /> : null}<LinkedJobBadge item={item} mobileOverlay /></span><div className="flex min-w-0 flex-nowrap justify-end gap-1"><CommercialScoreBadge item={item} compact /><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
 }
 
 function RecordsLoadingState() {
@@ -391,13 +391,15 @@ function RecordsLoadingState() {
   </div>
 }
 
-export function CompletePowerOutageRecords({ currentUser, owners, commercialSelection, commercialSort, commercialCountsEnabled, onCommercialSelectionChange, onCommercialSelectionCountsChange, onInitialLoad }: {
+export function CompletePowerOutageRecords({ currentUser, owners, commercialSelection, commercialSort, clientsOnly, commercialCountsEnabled, onCommercialSelectionChange, onClientsOnlyChange, onCommercialSelectionCountsChange, onInitialLoad }: {
   currentUser: CompletePowerOutageCurrentUser
   owners: Array<{ id: string; name: string }>
   commercialSelection: CompleteCommercialSelectionFilter
   commercialSort: CompleteCommercialSort
+  clientsOnly: boolean
   commercialCountsEnabled: boolean
   onCommercialSelectionChange: (value: CompleteCommercialSelectionFilter) => void
+  onClientsOnlyChange: (value: boolean) => void
   onCommercialSelectionCountsChange: (value: CompleteCommercialSelectionCounts | null) => void
   onInitialLoad?: () => void
 }) {
@@ -434,6 +436,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
 
   const pageFilters = useMemo<CompletePowerOutagePageFilters>(() => ({
     mode: tab,
+    clientsOnly,
     query: debouncedQuery,
     owner,
     source,
@@ -441,7 +444,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     candidateStatus: status,
     commercialSelection,
     commercialSort,
-  }), [commercialSelection, commercialSort, debouncedQuery, entity, owner, source, status, tab])
+  }), [clientsOnly, commercialSelection, commercialSort, debouncedQuery, entity, owner, source, status, tab])
   const filterKey = useMemo(() => JSON.stringify(pageFilters), [pageFilters])
 
   const loadPage = useCallback(async (reset: boolean) => {
@@ -531,7 +534,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
       ? { ...item, assignment: assignmentOverrides[item.candidateId] }
       : item
   )), [assignmentOverrides, pageItems])
-  const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'visible', commercialSelection !== 'top'].filter(Boolean).length
+  const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'visible', commercialSelection !== 'top', clientsOnly].filter(Boolean).length
   const openDetail = async (item: CompletePowerOutageListItem) => {
     setSelected(item); setPopupMode('detail'); setDetail(null); setDetailError(null); setDetailLoading(true)
     const result = await getCompletePowerOutageDetailAction(item.candidateId)
@@ -548,7 +551,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     setAssignmentOverrides((current) => ({ ...current, [candidateId]: assignment }))
   }
   const closePopup = () => { setSelected(null); setPopupMode(null); setDetail(null); setDetailError(null); setDetailLoading(false) }
-  const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('visible'); onCommercialSelectionChange('top') }
+  const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('visible'); onCommercialSelectionChange('top'); onClientsOnlyChange(false) }
   return <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:flex xl:h-0 xl:min-h-full xl:flex-col xl:overflow-hidden">
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center xl:grid-cols-[175px_minmax(0,1fr)_160px] xl:gap-2">
       <div className="min-w-0 lg:contents">
@@ -583,8 +586,8 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
       {records.length ? <div ref={scrollContainerRef} className="-mx-2 max-h-[610px] overflow-y-auto px-2 py-1 lg:mx-0 lg:max-h-[500px] lg:px-0 lg:py-0 xl:min-h-0 xl:max-h-none xl:flex-1">
         <div className="hidden lg:block"><table className="w-full table-fixed border-collapse text-left">
           <thead className="power-outages-table__header sticky top-0 z-10 shadow-[0_1px_0_var(--surface-border)]"><tr className="text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]"><th className="w-[16%] px-3 py-2.5">Firma / subjekt</th><th className="w-[15%] px-3 py-2.5">Adresa</th><th className="w-[8%] px-3 py-2.5">Distributor</th><th className="w-[13%] px-3 py-2.5">Termín od</th><th className="w-[13%] px-3 py-2.5">Termín do</th><th className="w-[15%] px-3 py-2.5">Stav</th><th className="w-[7%] px-2 py-2.5 text-center">Skóre</th><th className="w-[13%] px-3 py-2.5 text-right">Akce</th></tr></thead>
-          <tbody className="divide-y divide-[var(--surface-border)]">{records.map((item) => <tr key={item.candidateId} className={`group transition-colors ${item.isAccessibleClient ? 'bg-teal-500/10 shadow-[inset_3px_0_0_rgba(20,184,166,0.65)] hover:bg-teal-500/15' : 'hover:bg-[var(--surface-muted)]'}`}>
-            <td className="px-3 py-3 align-middle"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} /></span><span className="min-w-0"><span className="flex min-w-0 items-center gap-1.5"><strong className="min-w-0 truncate text-[11px] text-[var(--text-primary)]">{item.companyName}</strong><AccessibleClientBadge item={item} compact /></span><small className="block truncate text-[9px] font-semibold text-[var(--text-secondary)]">{item.ico ? `IČO ${item.ico}` : 'IČO neuvedeno'}</small></span></div></td>
+          <tbody className="divide-y divide-[var(--surface-border)]">{records.map((item) => <tr key={item.candidateId} className={`group transition-colors ${clientsOnly && item.isAccessibleClient ? 'bg-teal-500/10 shadow-[inset_3px_0_0_rgba(20,184,166,0.65)] hover:bg-teal-500/15' : 'hover:bg-[var(--surface-muted)]'}`}>
+            <td className="px-3 py-3 align-middle"><div className="flex min-w-0 items-center gap-2.5"><span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} />{clientsOnly ? <AccessibleClientBadge item={item} placement="desktop" /> : null}</span><span className="min-w-0"><strong className="block truncate text-[11px] text-[var(--text-primary)]">{item.companyName}</strong><small className="block truncate text-[9px] font-semibold text-[var(--text-secondary)]">{item.ico ? `IČO ${item.ico}` : 'IČO neuvedeno'}</small></span></div></td>
             <td className="px-3 py-3 align-middle"><strong className="block truncate text-[10px] text-[var(--text-primary)]">{item.municipality}</strong><small className="block truncate text-[9px] text-[var(--text-secondary)]">{addressLabel(item)}</small></td>
             <td className="px-3 py-3 align-middle"><SourceBadge source={item.source} /></td>
             <td className="px-3 py-3 align-middle text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.startsAt)}</td>
@@ -594,7 +597,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
             <td className="py-3 pl-1.5 pr-3 align-middle"><div className="flex justify-end gap-1.5"><button type="button" onClick={() => openAssignment(item)} aria-label={`Správa komunikace pro firmu ${item.companyName}`} title="Správa komunikace" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><MessageSquareText aria-hidden size={13} /></button><button type="button" onClick={() => void openDetail(item)} aria-label={`Otevřít detail odstávky pro firmu ${item.companyName}`} title="Detail odstávky" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Eye aria-hidden size={14} /></button><button type="button" onClick={() => openAnnouncement(item)} aria-label={`Vytvořit oznámení o odstávce pro firmu ${item.companyName}`} title="Oznámení o odstávce" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Send aria-hidden size={13} /></button></div></td>
           </tr>)}</tbody>
         </table></div>
-        <div className="grid gap-2.5 lg:hidden">{records.map((item) => <MobileCard key={item.candidateId} item={item} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} onAssignment={() => openAssignment(item)} />)}</div>
+        <div className="grid gap-2.5 lg:hidden">{records.map((item) => <MobileCard key={item.candidateId} item={item} showClientIndicator={clientsOnly} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} onAssignment={() => openAssignment(item)} />)}</div>
         <div ref={loadMoreRef} className="flex min-h-14 items-center justify-center px-4 py-3">
           {pageLoading ? <span className="inline-flex items-center gap-2 text-[10px] font-semibold text-[var(--text-secondary)]"><LoaderCircle aria-hidden size={15} className="animate-spin text-[var(--accent)]" /> Načítám další záznamy…</span> : pageError ? <div className="flex flex-wrap items-center justify-center gap-2 text-center"><span className="text-[10px] font-medium text-red-600 [html[data-theme=dark]_&]:text-red-300">{pageError}</span><button type="button" onClick={() => void loadPage(false)} className="h-8 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase text-[var(--accent)] transition hover:-translate-y-px">Zkusit znovu</button></div> : hasMore ? <span className="text-[9px] text-[var(--text-secondary)]">Další záznamy se načtou automaticky.</span> : <span className="text-[9px] text-[var(--text-secondary)]">Zobrazeny všechny výsledky.</span>}
         </div>

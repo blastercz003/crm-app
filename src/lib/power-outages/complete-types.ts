@@ -90,6 +90,7 @@ export type CompletePowerOutagePageCursor = {
 
 export type CompletePowerOutagePageFilters = {
   mode: 'current' | 'archive'
+  clientsOnly: boolean
   query: string
   owner: string
   source: 'all' | PowerOutageSource

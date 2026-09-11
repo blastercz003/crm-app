@@ -69,6 +69,7 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([])
   const [commercialSelection, setCommercialSelection] = useState<CompleteCommercialSelectionFilter>('top')
   const [commercialSort, setCommercialSort] = useState<CompleteCommercialSort>('date')
+  const [clientsOnly, setClientsOnly] = useState(false)
   const [commercialSelectionCounts, setCommercialSelectionCounts] = useState<CompleteCommercialSelectionCounts | null>(null)
   const statisticsLoading = useRef(false)
   const sidebarLoading = useRef(false)
@@ -143,8 +144,8 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   return <>
     <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />
     <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
-      <CompletePowerOutageRecords currentUser={currentUser} owners={owners} commercialSelection={commercialSelection} commercialSort={commercialSort} commercialCountsEnabled={sidebar?.commercialSelection.countsAndSortingEnabled === true} onCommercialSelectionChange={setCommercialSelection} onCommercialSelectionCountsChange={setCommercialSelectionCounts} />
-      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} sourceRefreshWarning={sidebarError} commercialSelection={commercialSelection} commercialSort={commercialSort} commercialSelectionCounts={commercialSelectionCounts} onCommercialSelectionChange={setCommercialSelection} onCommercialSortChange={setCommercialSort} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
+      <CompletePowerOutageRecords currentUser={currentUser} owners={owners} commercialSelection={commercialSelection} commercialSort={commercialSort} clientsOnly={clientsOnly} commercialCountsEnabled={sidebar?.commercialSelection.countsAndSortingEnabled === true} onCommercialSelectionChange={setCommercialSelection} onClientsOnlyChange={setClientsOnly} onCommercialSelectionCountsChange={setCommercialSelectionCounts} />
+      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} sourceRefreshWarning={sidebarError} commercialSelection={commercialSelection} commercialSort={commercialSort} clientsOnly={clientsOnly} commercialSelectionCounts={commercialSelectionCounts} onCommercialSelectionChange={setCommercialSelection} onCommercialSortChange={setCommercialSort} onClientsOnlyChange={setClientsOnly} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
     </div>
   </>
 }

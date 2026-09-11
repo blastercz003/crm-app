@@ -957,7 +957,15 @@ export async function getCompletePowerOutagePage(
     ...baseArgs,
     p_cursor_client_priority: cursor?.clientPriority ?? null,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v7', priorityArgs)
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v8', {
+    ...priorityArgs,
+    p_clients_only: filters.clientsOnly,
+  })
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v8')) {
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v7', priorityArgs)
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v7')) {
     const current = await supabase.rpc('get_complete_power_outage_company_page_v6', baseArgs)
     data = current.data
@@ -1017,7 +1025,7 @@ export async function getCompletePowerOutageCommercialSelectionCounts(
   filters: CompletePowerOutagePageFilters,
 ): Promise<CompleteCommercialSelectionCounts> {
   const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const args = {
+  const baseArgs = {
     p_mode: filters.mode,
     p_query: filters.query.trim(),
     p_owner_filter: filters.owner,
@@ -1025,14 +1033,22 @@ export async function getCompletePowerOutageCommercialSelectionCounts(
     p_entity_kind: filters.entityKind,
     p_candidate_status: filters.candidateStatus,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v3', args)
+  let { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v4', {
+    ...baseArgs,
+    p_clients_only: filters.clientsOnly,
+  })
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v4')) {
+    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v3', baseArgs)
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v3')) {
-    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v2', args)
+    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v2', baseArgs)
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v2')) {
-    const fallback = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', args)
+    const fallback = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', baseArgs)
     data = fallback.data
     error = fallback.error
   }
@@ -1050,7 +1066,7 @@ export async function getCompletePowerOutageCount(
   filters: CompletePowerOutagePageFilters,
 ): Promise<number> {
   const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const args = {
+  const baseArgs = {
     p_mode: filters.mode,
     p_query: filters.query.trim(),
     p_owner_filter: filters.owner,
@@ -1059,25 +1075,33 @@ export async function getCompletePowerOutageCount(
     p_candidate_status: filters.candidateStatus,
     p_commercial_filter: filters.commercialSelection,
   }
-  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v4', args)
+  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v5', {
+    ...baseArgs,
+    p_clients_only: filters.clientsOnly,
+  })
+  if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v5')) {
+    const current = await supabase.rpc('count_complete_power_outage_companies_v4', baseArgs)
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v4')) {
-    const current = await supabase.rpc('count_complete_power_outage_companies_v3', args)
+    const current = await supabase.rpc('count_complete_power_outage_companies_v3', baseArgs)
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v3')) {
-    const current = await supabase.rpc('count_complete_power_outage_companies_v2', args)
+    const current = await supabase.rpc('count_complete_power_outage_companies_v2', baseArgs)
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v2')) {
     const legacyArgs = {
-      p_mode: args.p_mode,
-      p_query: args.p_query,
-      p_owner_filter: args.p_owner_filter,
-      p_source: args.p_source,
-      p_entity_kind: args.p_entity_kind,
-      p_candidate_status: args.p_candidate_status,
+      p_mode: baseArgs.p_mode,
+      p_query: baseArgs.p_query,
+      p_owner_filter: baseArgs.p_owner_filter,
+      p_source: baseArgs.p_source,
+      p_entity_kind: baseArgs.p_entity_kind,
+      p_candidate_status: baseArgs.p_candidate_status,
     }
     const fallback = await supabase.rpc('count_complete_power_outage_companies', legacyArgs)
     data = fallback.data
@@ -1323,7 +1347,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     ownerResult,
     commercialSelectionCountsResult,
   ] = await Promise.all([
-    getCompletePowerOutagePage({ mode: 'current', query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible', commercialSelection: 'all', commercialSort: 'date' })
+    getCompletePowerOutagePage({ mode: 'current', clientsOnly: false, query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible', commercialSelection: 'all', commercialSort: 'date' })
       .then((page) => ({ page, error: null as string | null }))
       .catch((error: unknown) => ({
         page: { items: [], totalCount: 0, hasMore: false, nextCursor: null } satisfies CompletePowerOutagePage,

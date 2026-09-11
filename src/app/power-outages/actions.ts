@@ -161,6 +161,7 @@ export async function getCompletePowerOutagePageAction(input: {
     if (!['all', 'cez', 'egd', 'pre'].includes(filters.source)) throw new Error('Neplatný distributor.')
     if (!['all', 'registered_office', 'establishment', 'mixed'].includes(filters.entityKind)) throw new Error('Neplatný typ firmy.')
     if (!['visible', 'confirmed', 'needs_review', 'dismissed'].includes(filters.candidateStatus)) throw new Error('Neplatný stav výsledku.')
+    if (typeof filters.clientsOnly !== 'boolean') throw new Error('Neplatný filtr klientských odstávek.')
     if (!['all', 'top', 'grade_a', 'grade_b'].includes(filters.commercialSelection)) throw new Error('Neplatný obchodní výběr.')
     if (!['date', 'score'].includes(filters.commercialSort)) throw new Error('Neplatné řazení obchodního výběru.')
     if (filters.query.length > 200) throw new Error('Hledaný text je příliš dlouhý.')
