@@ -331,7 +331,7 @@ export async function acknowledgePowerOutageMatchesAction(
 
     if (uniqueMatchIds.length === 0) return { success: true, error: null }
 
-    const { supabase, user } = await getPowerOutageRuntimeContext()
+    const { supabase, user } = await getPowerOutageRuntimeContext({ requireMarkets: true })
     const { error } = await supabase
       .from('power_outage_match_views')
       .upsert(

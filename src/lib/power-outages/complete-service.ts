@@ -1449,7 +1449,7 @@ export async function getCompletePowerOutageSourceDiagnostic(
   source: PowerOutageSource,
 ): Promise<CompleteSourceDiagnostic> {
   if (!['cez', 'egd', 'pre'].includes(source)) throw new Error('Neplatný distributor.')
-  const { supabase } = await getPowerOutageRuntimeContext()
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
   const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
   const [stateResult, upstreamStateResult, discoveryResult, providersResult, providerEvaluationResult, runsResult, taskResult, evaluationTaskResult, pendingEvaluationResult] = await Promise.all([
     supabase.from('complete_power_outage_source_state')
@@ -1632,7 +1632,7 @@ export async function getCompletePowerOutageProviderDiagnostic(
 ): Promise<CompleteProviderDiagnostic> {
   if (!['ares', 'mapy', 'google'].includes(provider)) throw new Error('Neplatný poskytovatel.')
   if (currentState && currentState.provider !== provider) throw new Error('Stav poskytovatele neodpovídá požadovanému detailu.')
-  const { supabase } = await getPowerOutageRuntimeContext()
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
   const [overviewResult, evaluationProgressResult, taskResult, runsResult, errorsResult, enrichmentOverviewResult, enrichmentErrorsResult] = await Promise.all([
     currentState
       ? Promise.resolve({ data: null, error: null })
@@ -1761,7 +1761,7 @@ export async function getCompletePowerOutageProviderDiagnostic(
 }
 
 export async function getCompletePowerOutageAddressCoverageDiagnostic(): Promise<CompleteAddressCoverageDiagnostic> {
-  const { supabase } = await getPowerOutageRuntimeContext()
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
   const sources = ['cez', 'egd', 'pre'] as const
   const [coverageResult, taskResult, runsResult] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),

@@ -10,7 +10,7 @@ export const maxDuration = 30
 const HEADERS = { 'Cache-Control': 'no-store, max-age=0' } as const
 
 export async function GET(request: Request) {
-  if (!(await isPowerOutageRequestAuthorized(request))) {
+  if (!(await isPowerOutageRequestAuthorized(request, { marketsOnly: true }))) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: HEADERS })
   }
 

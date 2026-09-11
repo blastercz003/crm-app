@@ -678,7 +678,7 @@ export async function getPowerOutageSourceDiagnostic(
   source: PowerOutageSource,
 ): Promise<PowerOutageSourceDiagnostic> {
   if (source !== 'cez' && source !== 'egd' && source !== 'pre') throw new Error('Neznámý zdroj odstávek.')
-  const { supabase } = await getPowerOutageRuntimeContext()
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true, requireMarkets: true })
   const taskKey = source === 'cez' ? 'sync_cez' : source === 'egd' ? 'sync_egd' : 'sync_pre'
 
   const [stateResult, taskResult, catalogResult, storeCountResult, runsResult, health, cezOverview] = await Promise.all([

@@ -24,9 +24,9 @@ export default async function PowerOutagesPage({
   noStore()
   const params = searchParams ? await searchParams : {}
   const { profile, user } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const completeEnabled = profile.role === 'admin' || process.env.COMPLETE_POWER_OUTAGES_ENABLED === 'true'
+  const canViewMarkets = profile.role === 'admin' || profile.can_view_markets === true
   const requestedMode: PowerOutageMode = firstParam(params.mode) === 'complete' ? 'complete' : 'markets'
-  const mode: PowerOutageMode = requestedMode === 'complete' && completeEnabled ? 'complete' : 'markets'
+  const mode: PowerOutageMode = canViewMarkets ? requestedMode : 'complete'
   const marketWorkspace = mode === 'markets' ? await getPowerOutageWorkspace() : null
 
   return (
@@ -47,7 +47,7 @@ export default async function PowerOutagesPage({
           </div>
         </header>
 
-        {completeEnabled ? <PowerOutageModeSwitch mode={mode} /> : null}
+        {canViewMarkets ? <PowerOutageModeSwitch mode={mode} /> : null}
 
         {mode === 'markets' && marketWorkspace
           ? <PowerOutagesDashboard workspace={marketWorkspace} isAdmin={profile.role === 'admin'} />

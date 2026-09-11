@@ -11,7 +11,7 @@ type PreferenceRow = {
 }
 
 export async function getPowerOutageNotificationPreferences(): Promise<PowerOutageNotificationPreferences> {
-  const { supabase, user } = await getPowerOutageRuntimeContext()
+  const { supabase, user } = await getPowerOutageRuntimeContext({ requireMarkets: true })
   const { data, error } = await supabase
     .from('power_outage_notification_preferences')
     .select('notifications_enabled,reminder_24h_enabled,updated_at')
@@ -33,7 +33,7 @@ export async function updatePowerOutageNotificationPreferences(input: {
   notificationsEnabled: boolean
   reminder24hEnabled: boolean
 }): Promise<PowerOutageNotificationPreferences> {
-  const { supabase, user, profile } = await getPowerOutageRuntimeContext()
+  const { supabase, user, profile } = await getPowerOutageRuntimeContext({ requireMarkets: true })
   const notificationScope = await getPowerOutageNotificationScope(supabase, profile)
   if (input.notificationsEnabled && !notificationScope) {
     throw new Error('Upozornění na odstávky může zapnout pouze administrátor nebo pověřený uživatel.')

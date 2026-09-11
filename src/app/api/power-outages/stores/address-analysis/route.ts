@@ -26,7 +26,7 @@ async function currentUserIsAdmin() {
 }
 
 export async function GET(request: Request) {
-  if (!(await isPowerOutageRequestAuthorized(request))) {
+  if (!(await isPowerOutageRequestAuthorized(request, { adminOnly: true, marketsOnly: true }))) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: HEADERS })
   }
   try {

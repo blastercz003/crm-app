@@ -290,7 +290,7 @@ async function loadViewedMatchIds(
 }
 
 export async function getPowerOutageWorkspace(): Promise<PowerOutageWorkspace> {
-  const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true, requireMarkets: true })
   const notificationScope = await getPowerOutageNotificationScope(supabase, profile)
 
   const [
@@ -534,7 +534,7 @@ export async function getPowerOutageDetail(matchId: string): Promise<PowerOutage
     throw new Error('Neplatné technické ID shody odstávky.')
   }
 
-  const { supabase } = await getPowerOutageRuntimeContext()
+  const { supabase } = await getPowerOutageRuntimeContext({ requireMarkets: true })
   const { data: matchData, error: matchError } = await supabase
     .from('power_outage_store_matches')
     .select(`

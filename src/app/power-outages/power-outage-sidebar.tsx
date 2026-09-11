@@ -145,7 +145,7 @@ function Switch({ checked, disabled = false, label, onChange }: { checked: boole
   )
 }
 
-function NotificationSettings({ initial, scope }: { initial: PowerOutageNotificationPreferences; scope: PowerOutageNotificationScope }) {
+function NotificationSettings({ initial, scope, readOnly = false }: { initial: PowerOutageNotificationPreferences; scope: PowerOutageNotificationScope; readOnly?: boolean }) {
   const [preferences, setPreferences] = useState(initial)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -175,7 +175,7 @@ function NotificationSettings({ initial, scope }: { initial: PowerOutageNotifica
       <div className="mt-4">
         <div className="weather-alerts__record-surface flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border px-3.5 py-3">
           <span className="min-w-0"><strong className="block text-xs text-[var(--text-primary)]">Nově nalezené odstávky</strong><small className="mt-1 block text-[9px] leading-4 text-[var(--text-secondary)]">ČEZ, EG.D a PRE · {scope === 'all' ? 'všichni klienti' : 'pouze ALBERT'}.</small></span>
-          <Switch checked={preferences.notificationsEnabled} disabled={pending} label="Upozornění na nové odstávky" onChange={(checked) => save({ ...preferences, notificationsEnabled: checked, reminder24hEnabled: false })} />
+          <Switch checked={preferences.notificationsEnabled} disabled={pending || readOnly} label="Upozornění na nové odstávky" onChange={(checked) => save({ ...preferences, notificationsEnabled: checked, reminder24hEnabled: false })} />
         </div>
       </div>
       <div className="mt-auto pt-3">
@@ -342,7 +342,7 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
   return (
     <section className="activities-page__panel flex h-[360px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto lg:p-4">
       <div className="flex items-start justify-between gap-2">
-        <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+        <button type="button" onClick={onOpen} disabled={!isAdmin} className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-default">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><DatabaseZap aria-hidden size={18} /></span>
           <span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdroj dat</span><strong className="block truncate text-base font-semibold text-[var(--text-primary)]"><SourcePanelName source={source.source} /></strong></span>
         </button>
@@ -352,9 +352,10 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
             <button
               type="button"
               onClick={onOpen}
+              disabled={!isAdmin}
               aria-label={`${status.label} – otevřít provozní detail ${sourceName(source.source)}`}
               title="Otevřít provozní detail"
-              className={`relative inline-flex h-8 w-full items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] transition hover:-translate-y-px ${status.badge}`}
+              className={`relative inline-flex h-8 w-full items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] transition enabled:hover:-translate-y-px disabled:cursor-default ${status.badge}`}
             >
               <i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
               <span className="translate-y-px">{status.label}</span>
@@ -370,7 +371,7 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
         {refreshError ? <p role="alert" className="rounded-lg border border-red-500/25 bg-red-500/8 px-2 py-1 text-[7px] leading-3 text-red-700 [html[data-theme=dark]_&]:text-red-300">{refreshError}</p> : null}
       </div> : null}
 
-      <button type="button" onClick={onOpen} className={`${refreshNotice || refreshError ? 'mt-2' : 'mt-4 lg:mt-3'} min-h-0 flex-1 text-left`}>
+      <button type="button" onClick={onOpen} disabled={!isAdmin} className={`${refreshNotice || refreshError ? 'mt-2' : 'mt-4 lg:mt-3'} min-h-0 flex-1 text-left disabled:cursor-default`}>
         <div className="grid grid-cols-2 gap-2 lg:gap-1.5">
           {source.source === 'cez' && source.cezCollectors ? <>
             <div className="weather-alerts__record-surface rounded-xl border p-2.5 lg:py-2"><span className="block text-[7px] font-bold uppercase leading-[9px] tracking-[0.045em] text-[var(--text-secondary)]">Nalezeno v1</span><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{source.cezCollectors.v1OutageCount}</strong></div>
@@ -395,7 +396,7 @@ function SourcePanel({ source, totalStoreCount, isAdmin, onOpen }: { source: Pow
   )
 }
 
-function StoreCoveragePanel({ coverage, onOpenAnalysis, onOpenDetail }: { coverage: PowerOutageStoreCoverage; onOpenAnalysis: () => void; onOpenDetail: () => void }) {
+function StoreCoveragePanel({ coverage, isAdmin, onOpenAnalysis, onOpenDetail }: { coverage: PowerOutageStoreCoverage; isAdmin: boolean; onOpenAnalysis: () => void; onOpenDetail: () => void }) {
   const percent = Math.min(100, Math.max(0, coverage.coveragePercent))
 
   return (
@@ -408,9 +409,10 @@ function StoreCoveragePanel({ coverage, onOpenAnalysis, onOpenDetail }: { covera
         <button
           type="button"
           onClick={onOpenAnalysis}
+          disabled={!isAdmin}
           aria-label="Otevřít kontrolu adres prodejen"
           title="Otevřít kontrolu adres"
-          className="inline-flex h-8 w-[76px] shrink-0 items-center justify-center gap-1 rounded-xl border border-sky-500/40 bg-sky-500/10 px-2 text-center text-[7px] font-bold leading-none tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:bg-sky-500/15 sm:w-[108px] sm:text-[7.5px] [html[data-theme=dark]_&]:text-sky-300"
+          className="inline-flex h-8 w-[76px] shrink-0 items-center justify-center gap-1 rounded-xl border border-sky-500/40 bg-sky-500/10 px-2 text-center text-[7px] font-bold leading-none tracking-[0.06em] text-sky-700 transition enabled:hover:-translate-y-px enabled:hover:bg-sky-500/15 disabled:cursor-default sm:w-[108px] sm:text-[7.5px] [html[data-theme=dark]_&]:text-sky-300"
         >
           <MapPinCheck aria-hidden size={12} className="shrink-0" />
           <span className="sm:hidden">KONTROLA</span>
@@ -418,7 +420,7 @@ function StoreCoveragePanel({ coverage, onOpenAnalysis, onOpenDetail }: { covera
         </button>
       </div>
 
-      <button type="button" onClick={onOpenDetail} aria-label="Otevřít detail pokrytí adres" className="mt-4 w-full rounded-2xl border border-sky-500/35 bg-sky-500/5 p-3.5 text-left transition hover:border-[var(--surface-border)] hover:bg-[var(--surface-muted)]">
+      <button type="button" onClick={onOpenDetail} disabled={!isAdmin} aria-label="Detail pokrytí adres" className="mt-4 w-full rounded-2xl border border-sky-500/35 bg-sky-500/5 p-3.5 text-left transition enabled:hover:border-[var(--surface-border)] enabled:hover:bg-[var(--surface-muted)] disabled:cursor-default">
         <div className="flex items-end justify-between gap-3">
           <span><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Ověřeno pro porovnání</small><strong className="mt-1 block text-[11px] text-[var(--text-primary)]">{coverage.readyStoreCount} z {coverage.totalStoreCount} adres</strong></span>
           <span className="flex items-center gap-2"><strong className="text-3xl font-semibold leading-none tabular-nums text-[var(--accent)]">{percent.toLocaleString('cs-CZ')} %</strong><ChevronRight aria-hidden size={15} className="text-[var(--text-secondary)]" /></span>
@@ -826,6 +828,7 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmi
   const [error, setError] = useState<string | null>(null)
 
   const openSource = async (source: PowerOutageSource) => {
+    if (!isAdmin) return
     setSelectedSource(source)
     setDiagnostic(null)
     setError(null)
@@ -882,7 +885,7 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmi
           <span>Přejetím do strany zobrazíte další část.</span>
         </p>
         <aside className="power-outages-mobile-aside-carousel activities-manual-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Nastavení upozornění, stav zdrojů a pokrytí prodejen">
-          {notificationScope ? <div className="order-5 min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} scope={notificationScope} /></div> : null}
+          {notificationScope ? <div className="order-5 min-w-0 snap-start snap-always lg:snap-none"><NotificationSettings key={preferences.updatedAt ?? 'default'} initial={preferences} scope={notificationScope} readOnly={!isAdmin} /></div> : null}
           {isAdmin ? <div className="order-6 min-w-0 snap-start snap-always lg:snap-none"><MarketClientEmailAdminPanel /></div> : null}
           {sources.map((source) => (
             <div
@@ -892,12 +895,12 @@ export function PowerOutageSidebar({ preferences, sources, storeCoverage, isAdmi
               <SourcePanel source={source} totalStoreCount={storeCoverage.totalStoreCount} isAdmin={isAdmin} onOpen={() => void openSource(source.source)} />
             </div>
           ))}
-          <div className="order-1 min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} onOpenAnalysis={() => setShowAddressAnalysis(true)} onOpenDetail={() => setShowCoverageDetail(true)} /></div>
+          <div className="order-1 min-w-0 snap-start snap-always lg:snap-none"><StoreCoveragePanel coverage={storeCoverage} isAdmin={isAdmin} onOpenAnalysis={() => setShowAddressAnalysis(true)} onOpenDetail={() => setShowCoverageDetail(true)} /></div>
         </aside>
       </div>
-      {selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} isAdmin={isAdmin} onReload={() => reloadDiagnostic(selectedSource)} onClose={close} />, document.body) : null}
-      {showCoverageDetail && typeof document !== 'undefined' ? createPortal(<CoverageDetailPopup coverage={storeCoverage} sources={sources} onClose={() => setShowCoverageDetail(false)} />, document.body) : null}
-      {showAddressAnalysis && typeof document !== 'undefined' ? createPortal(<StoreAddressAnalysisPopup onClose={() => setShowAddressAnalysis(false)} />, document.body) : null}
+      {isAdmin && selectedSource && typeof document !== 'undefined' ? createPortal(<SourceDiagnosticPopup source={selectedSource} diagnostic={diagnostic} loading={loading} error={error} isAdmin onReload={() => reloadDiagnostic(selectedSource)} onClose={close} />, document.body) : null}
+      {isAdmin && showCoverageDetail && typeof document !== 'undefined' ? createPortal(<CoverageDetailPopup coverage={storeCoverage} sources={sources} onClose={() => setShowCoverageDetail(false)} />, document.body) : null}
+      {isAdmin && showAddressAnalysis && typeof document !== 'undefined' ? createPortal(<StoreAddressAnalysisPopup onClose={() => setShowAddressAnalysis(false)} />, document.body) : null}
     </>
   )
 }

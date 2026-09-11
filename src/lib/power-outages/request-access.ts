@@ -5,7 +5,7 @@ import { isPowerOutageAutomationAuthorized } from './automation-auth'
 
 export async function isPowerOutageRequestAuthorized(
   request: Request,
-  options: { adminOnly?: boolean } = {},
+  options: { adminOnly?: boolean; marketsOnly?: boolean } = {},
 ) {
   if (isPowerOutageAutomationAuthorized(request)) return true
 
@@ -15,11 +15,12 @@ export async function isPowerOutageRequestAuthorized(
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role,can_view_power_outages')
+    .select('role,can_view_power_outages,can_view_markets')
     .eq('id', user.id)
-    .maybeSingle<{ role: string | null; can_view_power_outages: boolean | null }>()
+    .maybeSingle<{ role: string | null; can_view_power_outages: boolean | null; can_view_markets: boolean | null }>()
 
   if (profileError || !profile) return false
   if (profile.role === 'admin') return true
-  return !options.adminOnly && profile.can_view_power_outages === true
+  if (options.adminOnly || profile.can_view_power_outages !== true) return false
+  return !options.marketsOnly || profile.can_view_markets === true
 }
