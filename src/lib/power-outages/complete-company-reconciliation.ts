@@ -21,12 +21,20 @@ type CompanyRow = {
   ico: string | null
   legal_form: string | null
   business_relevance_override: boolean
+  business_relevance_status: 'pending' | 'eligible' | 'excluded_natural_person' | 'needs_review'
+  evaluation_version: number
   candidate_status: 'new' | 'confirmed' | 'needs_review' | 'dismissed' | 'stale'
   confidence: number | string
   resolved_at: string | null
   resolved_by: string | null
   metadata: Record<string, unknown> | null
   created_at: string
+}
+
+type EvaluationQueueItem = {
+  candidateId: string
+  outageAddressId: string
+  registeredOfficeCount: number
 }
 
 type AddressRow = {
@@ -56,15 +64,44 @@ function finiteNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-async function loadEvaluationQueue(client: ServiceClient, limit: number): Promise<string[]> {
+async function loadEvaluationQueue(client: ServiceClient, limit: number): Promise<{
+  mode: 'candidate' | 'legacy'
+  items: EvaluationQueueItem[]
+}> {
+  const { data: candidateRows, error: candidateError } = await client.rpc(
+    'get_complete_power_outage_company_evaluation_candidate_queue',
+    { requested_limit: limit },
+  )
+  if (!candidateError) {
+    return {
+      mode: 'candidate',
+      items: ((candidateRows ?? []) as Array<{
+        candidate_id: string
+        outage_address_id: string
+        registered_office_count: number | string | null
+      }>).map((row) => ({
+        candidateId: String(row.candidate_id),
+        outageAddressId: String(row.outage_address_id),
+        registeredOfficeCount: Math.max(0, Math.trunc(finiteNumber(row.registered_office_count))),
+      })),
+    }
+  }
+  const missingCandidateQueue = candidateError.code === 'PGRST202'
+    || candidateError.code === '42883'
+    || candidateError.message?.includes('get_complete_power_outage_company_evaluation_candidate_queue')
+  if (!missingCandidateQueue) throw candidateError
+
   const { data: weightedRows, error: weightedError } = await client.rpc(
     'get_complete_power_outage_company_evaluation_queue',
     { requested_limit: limit },
   )
   if (!weightedError) {
-    return [...new Set<string>(((weightedRows ?? []) as Array<{ outage_address_id: string }>).map((row) => (
-      String(row.outage_address_id)
-    )))]
+    return {
+      mode: 'legacy',
+      items: [...new Set<string>(((weightedRows ?? []) as Array<{ outage_address_id: string }>).map((row) => (
+        String(row.outage_address_id)
+      )))].map((outageAddressId) => ({ candidateId: '', outageAddressId, registeredOfficeCount: 0 })),
+    }
   }
   const missingWeightedQueue = weightedError.code === 'PGRST202'
     || weightedError.code === '42883'
@@ -82,22 +119,31 @@ async function loadEvaluationQueue(client: ServiceClient, limit: number): Promis
     .order('id')
     .limit(limit)
   if (error) throw error
-  return [...new Set((data ?? []).map((row) => String(row.outage_address_id)))]
+  return {
+    mode: 'legacy',
+    items: [...new Set((data ?? []).map((row) => String(row.outage_address_id)))]
+      .map((outageAddressId) => ({ candidateId: '', outageAddressId, registeredOfficeCount: 0 })),
+  }
 }
 
-async function loadAddressBundle(client: ServiceClient, addressIds: string[]) {
+async function loadAddressBundle(client: ServiceClient, queue: Awaited<ReturnType<typeof loadEvaluationQueue>>) {
+  const addressIds = [...new Set(queue.items.map((item) => item.outageAddressId))]
+  const candidateIds = [...new Set(queue.items.map((item) => item.candidateId).filter(Boolean))]
   const addresses: AddressRow[] = []
   const companies: CompanyRow[] = []
   for (const ids of chunks(addressIds, 100)) {
-    const [{ data: addressRows, error: addressError }, { data: companyRows, error: companyError }] = await Promise.all([
-      client.from('complete_power_outage_addresses').select('id,address_scope').in('id', ids),
-      client.from('complete_power_outage_companies')
-        .select('id,outage_address_id,company_name,normalized_company_name,ico,legal_form,business_relevance_override,candidate_status,confidence,resolved_at,resolved_by,metadata,created_at')
-        .in('outage_address_id', ids),
-    ])
+    const { data: addressRows, error: addressError } = await client
+      .from('complete_power_outage_addresses').select('id,address_scope').in('id', ids)
     if (addressError) throw addressError
-    if (companyError) throw companyError
     addresses.push(...((addressRows ?? []) as AddressRow[]))
+  }
+  const companyChunks = queue.mode === 'candidate' ? chunks(candidateIds, 100) : chunks(addressIds, 100)
+  for (const ids of companyChunks) {
+    let query = client.from('complete_power_outage_companies')
+      .select('id,outage_address_id,company_name,normalized_company_name,ico,legal_form,business_relevance_override,business_relevance_status,evaluation_version,candidate_status,confidence,resolved_at,resolved_by,metadata,created_at')
+    query = queue.mode === 'candidate' ? query.in('id', ids) : query.in('outage_address_id', ids)
+    const { data: companyRows, error: companyError } = await query
+    if (companyError) throw companyError
     companies.push(...((companyRows ?? []) as CompanyRow[]))
   }
   return { addresses, companies }
@@ -210,9 +256,10 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
     if (runError) throw runError
     runId = run.id
 
-    const addressIds = await loadEvaluationQueue(client, limit)
+    const queue = await loadEvaluationQueue(client, limit)
+    const addressIds = [...new Set(queue.items.map((item) => item.outageAddressId))]
     let mergedCount = 0
-    const initial = await loadAddressBundle(client, addressIds)
+    const initial = await loadAddressBundle(client, queue)
     for (const addressId of addressIds) {
       mergedCount += await deduplicateAddressCompanies(
         client,
@@ -220,7 +267,9 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
       )
     }
 
-    const bundle = await loadAddressBundle(client, addressIds)
+    // Kandidát mohl být během deduplikace sloučen. Načtení podle stabilního
+    // seznamu kandidátů proto bezpečně vynechá již odstraněné duplicity.
+    const bundle = await loadAddressBundle(client, queue)
     const evidence = await loadEvidence(client, bundle.companies.map((company) => company.id))
     const addressById = new Map(bundle.addresses.map((address) => [address.id, address]))
     const evidenceByCompany = new Map<string, EvidenceRow[]>()
@@ -234,22 +283,61 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
     let confirmedCount = 0
     let reviewCount = 0
     let preservedManualCount = 0
+    const registeredOfficeCountByAddress = new Map(queue.items.map((item) => (
+      [item.outageAddressId, item.registeredOfficeCount] as const
+    )))
     for (const addressId of addressIds) {
       const address = addressById.get(addressId)
       if (!address) continue
       const addressCompanies = bundle.companies.filter((company) => company.outage_address_id === addressId)
-      const registeredOfficeCount = addressCompanies.filter((company) => (
-        (evidenceByCompany.get(company.id) ?? []).some((item) => (
-          (item.provider === 'ares' || item.provider === 'res')
-          && item.evidence_kind === 'registered_office'
-          && (item.match_level === 'exact_address' || item.match_level === 'same_building')
-        ))
-      )).length
+      const registeredOfficeCount = queue.mode === 'candidate'
+        ? (registeredOfficeCountByAddress.get(addressId) ?? 0)
+        : addressCompanies.filter((company) => (
+          (evidenceByCompany.get(company.id) ?? []).some((item) => (
+            (item.provider === 'ares' || item.provider === 'res')
+            && item.evidence_kind === 'registered_office'
+            && (item.match_level === 'exact_address' || item.match_level === 'same_building')
+          ))
+        )).length
 
       for (const company of addressCompanies) {
         if (company.candidate_status === 'dismissed' || company.candidate_status === 'stale') continue
+        if (queue.mode === 'candidate'
+          && company.evaluation_version >= COMPLETE_COMPANY_EVALUATION_VERSION
+          && company.business_relevance_status !== 'pending') continue
         const companyEvidence = evidenceByCompany.get(company.id) ?? []
-        if (companyEvidence.length === 0) continue
+        if (companyEvidence.length === 0) {
+          const manuallyResolved = Boolean(company.resolved_by)
+          const update: Record<string, unknown> = {
+            evaluation_version: COMPLETE_COMPANY_EVALUATION_VERSION,
+            evaluation_reasons: ['missing_evidence'],
+            evaluated_at: new Date().toISOString(),
+            metadata: {
+              ...(company.metadata ?? {}),
+              evaluation: {
+                version: COMPLETE_COMPANY_EVALUATION_VERSION,
+                explanations: ['Kandidátní záznam nemá dostupný zdrojový důkaz a vyžaduje kontrolu.'],
+                providers: [],
+                exactProviderCount: 0,
+                massRegisteredOffice: false,
+                nameConflict: false,
+              },
+            },
+          }
+          if (!company.business_relevance_override) {
+            update.business_relevance_status = 'needs_review'
+            update.business_relevance_version = COMPLETE_COMPANY_EVALUATION_VERSION
+            update.business_relevance_reasons = ['missing_evidence']
+            update.business_relevance_evaluated_at = new Date().toISOString()
+          }
+          if (!manuallyResolved) update.candidate_status = 'needs_review'
+          else preservedManualCount += 1
+          const { error } = await client.from('complete_power_outage_companies').update(update).eq('id', company.id)
+          if (error) throw error
+          evaluatedCount += 1
+          reviewCount += 1
+          continue
+        }
         const evaluation = evaluateCompleteCompanyCandidate({
           addressScope: address.address_scope,
           companyName: company.company_name,
@@ -318,7 +406,14 @@ export async function reconcileCompletePowerOutageCompanies(requestedLimit = 250
       finished_at: finishedAt,
       source_record_count: evaluatedCount,
       company_upsert_count: evaluatedCount,
-      metadata: { mergedCount, confirmedCount, reviewCount, preservedManualCount, evaluationVersion: COMPLETE_COMPANY_EVALUATION_VERSION },
+      metadata: {
+        mergedCount,
+        confirmedCount,
+        reviewCount,
+        preservedManualCount,
+        evaluationVersion: COMPLETE_COMPANY_EVALUATION_VERSION,
+        queueMode: queue.mode,
+      },
     }).eq('id', run.id)
     if (finishRunError) throw finishRunError
     await finishCompletePowerOutageTask({

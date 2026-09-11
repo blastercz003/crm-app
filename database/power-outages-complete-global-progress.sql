@@ -1,5 +1,15 @@
 begin;
 
+do $$
+begin
+  if to_regclass('public.complete_power_outage_company_enrichment_overview') is null
+     or to_regclass('public.complete_power_outage_company_scoring_overview') is null
+     or to_regprocedure('public.complete_power_outage_pending_queue_since(text)') is null then
+    raise exception 'Chybí závislosti pro globální progress v2 (enrichment, scoring nebo stáří fronty).';
+  end if;
+end
+$$;
+
 -- Jediný lehký snapshot pro souhrnný panel KOMPLETNÍ. Nevolá žádného
 -- externího poskytovatele a nezasahuje do jednotlivých pracovních front.
 create table if not exists public.complete_power_outage_global_progress_snapshot (
@@ -64,6 +74,7 @@ begin
       and source_record_count > 0
       and finished_at > started_at
       and run_kind in ('source_sync', 'address_normalization', 'company_discovery', 'company_reconciliation')
+      and (run_kind <> 'company_reconciliation' or metadata ->> 'queueMode' = 'candidate')
   ), run_rates as (
     select lane,
       percentile_cont(0.5) within group (order by items_per_second)::numeric as items_per_second
@@ -89,6 +100,8 @@ begin
       coalesce((select items_per_second from run_rates where lane = 'ares'), 50.0 / 60.0) as ares,
       coalesce((select items_per_second from run_rates where lane = 'mapy'), 25.0 / 60.0) as mapy,
       coalesce((select items_per_second from run_rates where lane = 'evaluation'), 250.0 / 60.0) as evaluation,
+      20.0 / 60.0 as enrichment,
+      1000.0 / 60.0 as scoring,
       coalesce((select items_per_second from run_rates where lane = 'source_egd'), 1000.0 / 60.0) as source_egd,
       coalesce((select items_per_second from run_rates where lane = 'source_pre'), 1000.0 / 60.0) as source_pre,
       coalesce((select items_per_second from cez_rate), 20.0 / 60.0) as source_cez
@@ -139,7 +152,7 @@ begin
       coalesce(sum(exact_error_target_count), 0)::bigint as error_count,
       count(*) filter (
         where exact_pending_target_count > 0
-          and coalesce(exact_last_progress_at, exact_oldest_pending_at)
+          and coalesce(greatest(exact_last_progress_at, exact_oldest_pending_at), '-infinity'::timestamptz)
             < now() - interval '45 minutes'
       )::integer as delayed_count,
       max(exact_last_progress_at) as ares_last_progress_at
@@ -158,18 +171,58 @@ begin
       coalesce(sum(pending_candidate_count), 0)::numeric as remaining,
       count(*) filter (
         where pending_candidate_count > 0
-          and last_evaluated_at < now() - interval '45 minutes'
+          and coalesce(greatest(
+            last_evaluated_at,
+            public.complete_power_outage_pending_queue_since('evaluation')
+          ), '-infinity'::timestamptz) < now() - interval '45 minutes'
       )::integer as delayed_count,
       max(last_evaluated_at) as last_progress_at
     from public.complete_power_outage_evaluation_progress_snapshot
     where provider = 'all'
+  ), enrichment_counts as (
+    select
+      greatest(total_count - pending_count - processing_count - retry_count, 0)::numeric as processed,
+      total_count::numeric as total,
+      (pending_count + processing_count + retry_count)::numeric as remaining,
+      case when status = 'error' or consecutive_failure_count > 0 then 1 else 0 end::integer as error_count,
+      case when pending_count + processing_count + retry_count > 0
+          and coalesce(greatest(
+            last_enrichment_activity_at, last_success_at, last_started_at,
+            public.complete_power_outage_pending_queue_since('enrichment')
+          ), '-infinity'::timestamptz)
+            < now() - interval '10 minutes'
+        then 1 else 0 end::integer as delayed_count,
+      greatest(last_enrichment_activity_at, last_success_at, last_started_at) as last_progress_at
+    from public.complete_power_outage_company_enrichment_overview
+  ), scoring_counts as (
+    select
+      greatest(current_candidate_count - (
+        greatest(current_candidate_count - represented_count, 0) + pending_count + attention_count
+      ), 0)::numeric as processed,
+      current_candidate_count::numeric as total,
+      (greatest(current_candidate_count - represented_count, 0)
+        + pending_count + attention_count)::numeric as remaining,
+      case when scoring_consecutive_failure_count > 0 or attention_count > 0 then 1 else 0 end::integer as error_count,
+      case when greatest(current_candidate_count - represented_count, 0)
+          + pending_count + attention_count > 0
+          and coalesce(greatest(
+            last_scoring_activity_at, scoring_last_success_at,
+            public.complete_power_outage_pending_queue_since('scoring')
+          ), '-infinity'::timestamptz)
+            < now() - interval '5 minutes'
+        then 1 else 0 end::integer as delayed_count,
+      greatest(last_scoring_activity_at, scoring_last_success_at) as last_progress_at
+    from public.complete_power_outage_company_scoring_overview
   ), task_health as (
     select
       count(*) filter (where last_status in ('failed', 'partial') or consecutive_failure_count > 0)::integer as failed_count,
       count(*) filter (
         where task_key = 'normalize_addresses'
           and last_status <> 'running'
-          and coalesce(last_finished_at, last_success_at, last_started_at)
+          and coalesce(greatest(
+            last_finished_at, last_success_at, last_started_at,
+            public.complete_power_outage_pending_queue_since('normalization')
+          ), '-infinity'::timestamptz)
             < now() - interval '15 minutes'
       )::integer as normalization_delayed_count,
       max(coalesce(last_finished_at, last_started_at, last_success_at)) as last_activity_at
@@ -179,59 +232,78 @@ begin
   ), calculation as (
     select
       src.total + cez.total + norm.total + disc.ares_total
-        + mapy.total + eval.total as total_units,
+        + mapy.total + eval.total + enrich.total + score.total as total_units,
       src.processed / greatest(r.source_egd, r.source_pre, 0.001)
         + cez.processed / greatest(r.source_cez, 0.001)
         + norm.processed / greatest(r.normalization, 0.001)
         + disc.ares_processed / greatest(r.ares, 0.001)
         + mapy.processed / greatest(r.mapy, 0.001)
-        + eval.processed / greatest(r.evaluation, 0.001) as processed_effort_seconds,
+        + eval.processed / greatest(r.evaluation, 0.001)
+        + enrich.processed / greatest(r.enrichment, 0.001)
+        + score.processed / greatest(r.scoring, 0.001) as processed_effort_seconds,
       src.total / greatest(r.source_egd, r.source_pre, 0.001)
         + cez.total / greatest(r.source_cez, 0.001)
         + norm.total / greatest(r.normalization, 0.001)
         + disc.ares_total / greatest(r.ares, 0.001)
         + mapy.total / greatest(r.mapy, 0.001)
-        + eval.total / greatest(r.evaluation, 0.001) as total_effort_seconds,
+        + eval.total / greatest(r.evaluation, 0.001)
+        + enrich.total / greatest(r.enrichment, 0.001)
+        + score.total / greatest(r.scoring, 0.001) as total_effort_seconds,
       src.remaining + cez.remaining + norm.remaining + disc.ares_remaining
-        + mapy.remaining + eval.remaining as remaining_units,
+        + mapy.remaining + eval.remaining + enrich.remaining + score.remaining as remaining_units,
       src.active_count + cez.active_count
         + case when norm.remaining > 0 then 1 else 0 end
         + case when disc.ares_remaining > 0 then 1 else 0 end
         + case when mapy.remaining > 0 then 1 else 0 end
-        + case when eval.remaining > 0 then 1 else 0 end as active_queue_count,
+        + case when eval.remaining > 0 then 1 else 0 end
+        + case when enrich.remaining > 0 then 1 else 0 end
+        + case when score.remaining > 0 then 1 else 0 end as active_queue_count,
       greatest(
         ceil(src.remaining / greatest(r.source_egd, r.source_pre, 0.001)),
         ceil(cez.remaining / greatest(r.source_cez, 0.001)),
-        ceil(norm.remaining / greatest(r.normalization, 0.001))
-          + greatest(
-              ceil(disc.ares_remaining / greatest(r.ares, 0.001)),
-              ceil(mapy.remaining / greatest(r.mapy, 0.001))
-            )
-          + ceil(eval.remaining / greatest(r.evaluation, 0.001))
+        greatest(
+          ceil(norm.remaining / greatest(r.normalization, 0.001))
+            + greatest(
+                ceil(disc.ares_remaining / greatest(r.ares, 0.001)),
+                ceil(mapy.remaining / greatest(r.mapy, 0.001))
+              )
+            + ceil(eval.remaining / greatest(r.evaluation, 0.001)),
+          ceil(enrich.remaining / greatest(r.enrichment, 0.001))
+        ) + ceil(score.remaining / greatest(r.scoring, 0.001))
       )::bigint as remaining_seconds,
       greatest(src.last_progress_at, cez.last_progress_at, norm.last_progress_at,
         disc.ares_last_progress_at, mapy.last_progress_at,
-        eval.last_progress_at, health.last_activity_at) as last_progress_at,
-      health.failed_count,
+        eval.last_progress_at, enrich.last_progress_at, score.last_progress_at,
+        health.last_activity_at) as last_progress_at,
+      health.failed_count + enrich.error_count + score.error_count as failed_count,
       cez.error_count + norm.error_count as queue_error_count,
       disc.error_count + mapy.error_count as provider_attention_count,
       src.delayed_count + disc.delayed_count + eval.delayed_count
+        + enrich.delayed_count + score.delayed_count
         + case when mapy.remaining > 0
-            and mapy.last_progress_at < now() - interval '45 minutes' then 1 else 0 end
+            and coalesce(greatest(
+              mapy.last_progress_at,
+              public.complete_power_outage_pending_queue_since('mapy')
+            ), '-infinity'::timestamptz) < now() - interval '45 minutes' then 1 else 0 end
         + case when norm.remaining > 0 then health.normalization_delayed_count else 0 end
         as delayed_count,
       r.normalization as normalization_rate,
       r.ares as ares_rate,
       r.mapy as mapy_rate,
       r.evaluation as evaluation_rate,
+      r.enrichment as enrichment_rate,
+      r.scoring as scoring_rate,
       src.remaining as source_remaining,
       cez.remaining as cez_remaining,
       norm.remaining as normalization_remaining,
       disc.ares_remaining,
       mapy.remaining as mapy_remaining,
-      eval.remaining as evaluation_remaining
+      eval.remaining as evaluation_remaining,
+      enrich.remaining as enrichment_remaining,
+      score.remaining as scoring_remaining
     from source_counts src cross join cez_counts cez cross join normalization_counts norm
     cross join discovery_counts disc cross join mapy_counts mapy cross join evaluation_counts eval
+    cross join enrichment_counts enrich cross join scoring_counts score
     cross join task_health health cross join rates r
   ), final as (
     select *,
@@ -269,15 +341,17 @@ begin
       'remaining', jsonb_build_object(
         'sources', source_remaining, 'cezScan', cez_remaining,
         'normalization', normalization_remaining, 'ares', ares_remaining,
-        'mapy', mapy_remaining, 'evaluation', evaluation_remaining
+        'mapy', mapy_remaining, 'evaluation', evaluation_remaining,
+        'enrichment', enrichment_remaining, 'scoring', scoring_remaining
       ),
       'ratesPerMinute', jsonb_build_object(
         'normalization', normalization_rate * 60, 'ares', ares_rate * 60,
-        'mapy', mapy_rate * 60, 'evaluation', evaluation_rate * 60
+        'mapy', mapy_rate * 60, 'evaluation', evaluation_rate * 60,
+        'enrichment', enrichment_rate * 60, 'scoring', scoring_rate * 60
       ),
       'failedTaskCount', failed_count, 'queueErrorCount', queue_error_count,
       'providerAttentionCount', provider_attention_count,
-      'calculation', 'critical-path-v1'
+      'calculation', 'critical-path-v2-commercial-selection'
     )
   from final
   on conflict (singleton) do update set
