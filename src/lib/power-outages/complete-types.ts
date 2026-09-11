@@ -383,6 +383,12 @@ export type CompleteProviderDiagnostic = {
   provider: CompleteProviderState['provider']
   observedAt: string
   state: CompleteProviderState
+  evaluationBySource: Array<{
+    source: 'cez' | 'egd' | 'pre'
+    candidateCount: number
+    evaluatedCandidateCount: number
+    pendingCandidateCount: number
+  }>
   limits: { minute: number; day: number; maxPerRun: number; cacheHours: number | null }
   task: {
     status: 'idle' | 'running' | 'succeeded' | 'partial' | 'failed' | 'skipped'

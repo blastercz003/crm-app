@@ -1695,7 +1695,7 @@ export async function getCompletePowerOutageProviderDiagnostic(
         .select('*')
         .eq('provider', provider).maybeSingle(),
     supabase.from('complete_power_outage_evaluation_progress_snapshot')
-      .select('candidate_count,evaluated_candidate_count,pending_candidate_count')
+      .select('source,candidate_count,evaluated_candidate_count,pending_candidate_count')
       .eq('provider', provider),
     supabase.from('complete_power_outage_task_state')
       .select('last_status,last_started_at,last_finished_at,last_success_at,consecutive_failure_count,last_error_code,last_error_message')
@@ -1757,6 +1757,12 @@ export async function getCompletePowerOutageProviderDiagnostic(
     provider,
     observedAt: new Date().toISOString(),
     state,
+    evaluationBySource: providerEvaluationRows.map((row) => ({
+      source: row.source as CompleteProviderDiagnostic['evaluationBySource'][number]['source'],
+      candidateCount: Number(row.candidate_count),
+      evaluatedCandidateCount: Number(row.evaluated_candidate_count),
+      pendingCandidateCount: Number(row.pending_candidate_count),
+    })),
     limits: PROVIDER_LIMITS[provider],
     loadWarnings: {
       task: taskResult.error ? `Stav úlohy se nepodařilo obnovit: ${taskResult.error.message}` : null,
