@@ -394,6 +394,12 @@ export type CompleteProviderDiagnostic = {
     lastErrorMessage: string | null
   } | null
   runs: CompleteProviderRun[]
+  loadWarnings: {
+    task: string | null
+    runs: string | null
+    recentErrors: string | null
+    enrichment: string | null
+  }
   recentErrors: Array<{
     id: string
     queryText: string

@@ -1,7 +1,7 @@
 'use client'
 
 import { Activity, CircleAlert, CircleCheck, DatabaseZap, History, Info, LoaderCircle, MapPinned, RefreshCw, Route, SearchCheck, ShieldCheck, Sparkles, TimerReset } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteGlobalProgress, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
@@ -668,11 +668,12 @@ function CompleteCompanyEnrichmentSection({ enrichment }: {
   </section>
 }
 
-function CompleteProviderDiagnosticPopup({ provider, diagnostic, loading, error, isAdmin, onReload, onClose }: {
+function CompleteProviderDiagnosticPopup({ provider, diagnostic, loading, error, refreshWarning, isAdmin, onReload, onClose }: {
   provider: CompleteProviderState['provider']
   diagnostic: CompleteProviderDiagnostic | null
   loading: boolean
   error: string | null
+  refreshWarning: string | null
   isAdmin: boolean
   onReload: () => void | Promise<void>
   onClose: () => void
@@ -681,24 +682,40 @@ function CompleteProviderDiagnosticPopup({ provider, diagnostic, loading, error,
   const lastRequestAge = diagnostic?.state.lastRequestAt ? new Date(diagnostic.observedAt).getTime() - new Date(diagnostic.state.lastRequestAt).getTime() : Number.POSITIVE_INFINITY
   const minuteRequests = lastRequestAge <= 60_000 ? diagnostic?.state.minuteRequestCount ?? 0 : 0
   const dayRequests = lastRequestAge <= 24 * 60 * 60_000 ? diagnostic?.state.dayRequestCount ?? 0 : 0
-  const totalWorkCount = diagnostic
-    ? diagnostic.state.totalTargetCount + diagnostic.state.candidateCount
+  const targetProgressPercent = diagnostic
+    ? boundedProgressPercent(diagnostic.state.processedTargetCount, diagnostic.state.totalTargetCount, 100)
     : 0
-  const completedWorkCount = diagnostic
-    ? diagnostic.state.processedTargetCount + diagnostic.state.evaluatedCandidateCount
+  const evaluationProgressPercent = diagnostic
+    ? boundedProgressPercent(diagnostic.state.evaluatedCandidateCount, diagnostic.state.candidateCount, 100)
     : 0
-  const progressPercent = boundedProgressPercent(completedWorkCount, totalWorkCount)
   const providerBatchRunning = diagnostic?.task?.status === 'running'
   const providerRecoveryBlocked = recoveryNeedsManualRepair(
     diagnostic?.task?.lastErrorCode ?? diagnostic?.recentErrors[0]?.errorCode,
     diagnostic?.task?.lastErrorMessage ?? diagnostic?.recentErrors[0]?.errorMessage,
   )
+  const diagnosticWarnings = diagnostic ? Object.values(diagnostic.loadWarnings).filter(Boolean) as string[] : []
 
   return <PowerOutagePopupShell titleId={`complete-provider-${provider}`} eyebrow="KOMPLETNÍ SBĚR · DOHLEDÁVÁNÍ FIREM" title={providerLabel(provider)} icon={<SearchCheck aria-hidden size={21} />} onClose={onClose}>
     {loading ? <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center p-6 text-center"><span className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--surface-border)] border-t-[var(--accent)]" /><strong className="mt-4 text-sm text-[var(--text-primary)]">Načítám provozní stav…</strong></div> : error || !diagnostic ? <div className="flex min-h-[300px] flex-1 flex-col items-center justify-center p-6 text-center"><CircleAlert aria-hidden size={28} className="text-red-500" /><strong className="mt-3 text-sm text-[var(--text-primary)]">Detail poskytovatele se nepodařilo načíst</strong><p className="mt-1 max-w-md text-xs leading-5 text-[var(--text-secondary)]">{error ?? 'Data nejsou dostupná.'}</p></div> : <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
+      {refreshWarning || diagnosticWarnings.length > 0 ? <div className="mb-3 flex items-start gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/8 px-3.5 py-3 text-[9px] leading-4 text-amber-800 [html[data-theme=dark]_&]:text-amber-200"><CircleAlert aria-hidden size={14} className="mt-0.5 shrink-0" /><span><strong className="block text-[10px]">Část detailu se nyní nepodařilo obnovit</strong><span className="mt-0.5 block">Zobrazujeme poslední dostupný provozní stav. {refreshWarning ?? diagnosticWarnings[0]}</span></span></div> : null}
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5"><span><small className="block text-[8px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Aktuální stav poskytovatele</small><strong className="mt-1 block text-sm text-[var(--text-primary)]">{diagnostic.state.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : providerStatusLabel(diagnostic.state.status)}</strong><span className="mt-1 block max-w-lg text-[9px] leading-4 text-[var(--text-secondary)]">{diagnostic.state.statusMessage}</span></span><span className={`relative inline-flex h-8 w-[104px] shrink-0 items-center justify-center gap-1 rounded-xl border px-2 text-center text-[8px] font-bold leading-none tracking-[0.07em] ${presentation.badge}`}><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} /><span className="translate-y-px">{diagnostic.state.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : providerStatusLabel(diagnostic.state.status)}</span></span></div>
 
-      <section className={`mt-3 rounded-2xl border p-3.5 ${diagnostic.state.status === 'processing' ? 'border-sky-400/25 bg-sky-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3">{providerBatchRunning || diagnostic.state.pendingCandidateCount > 0 ? <LoaderCircle aria-hidden size={18} className="shrink-0 animate-spin text-sky-500" /> : diagnostic.state.status === 'current' ? <CircleCheck aria-hidden size={18} className="shrink-0 text-emerald-500" /> : diagnostic.state.status === 'processing' ? <TimerReset aria-hidden size={18} className="shrink-0 text-sky-500" /> : <CircleAlert aria-hidden size={18} className={`shrink-0 ${diagnostic.state.status === 'error' ? 'text-red-500' : 'text-amber-500'}`} />}<span><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Aktuální fronta</small><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{diagnostic.state.pendingCandidateCount > 0 && diagnostic.state.remainingTargetCount === 0 ? `VYHODNOCENÍ · čeká ${diagnostic.state.pendingCandidateCount.toLocaleString('cs-CZ')} kandidátů` : providerBatchRunning ? 'Probíhá zpracování další bezpečné dávky dotazů' : diagnostic.state.status === 'processing' ? 'Fronta čeká na další automatickou dávku' : diagnostic.state.remainingTargetCount === 0 ? 'Všechny aktuální cíle i kandidáti jsou zpracovaní' : diagnostic.state.statusMessage}</strong></span></div><strong className="shrink-0 whitespace-nowrap text-lg tabular-nums text-[var(--accent)]">{progressPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${progressPercent}%` }} /></div><div className="mt-2 flex items-center justify-between gap-3 text-[9px] leading-4 text-[var(--text-secondary)]"><span>Dotazy {diagnostic.state.processedTargetCount.toLocaleString('cs-CZ')} / {diagnostic.state.totalTargetCount.toLocaleString('cs-CZ')}</span><span className="shrink-0">Kandidáti {diagnostic.state.evaluatedCandidateCount.toLocaleString('cs-CZ')} / {diagnostic.state.candidateCount.toLocaleString('cs-CZ')}</span></div><p className="mt-1 text-[8px] leading-4 text-[var(--text-secondary)]">Nové cíle z ČEZ, EG.D a PRE mohou celkový rozsah fronty průběžně zvýšit. Detail se při zpracování obnovuje z databáze každých 20 sekund.</p></section>
+      <section className={`mt-3 rounded-2xl border p-3.5 ${diagnostic.state.status === 'processing' ? 'border-sky-400/25 bg-sky-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}>
+        <div className="flex items-center gap-2"><Route aria-hidden size={14} className="text-[var(--text-secondary)]" /><h3 className="text-[9px] font-bold uppercase tracking-[0.11em] text-[var(--text-secondary)]">Aktuální fronty</h3></div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3">
+            <div className="flex items-start justify-between gap-3"><span className="flex min-w-0 items-center gap-2">{diagnostic.state.remainingTargetCount > 0 || providerBatchRunning ? <LoaderCircle aria-hidden size={16} className="shrink-0 animate-spin text-sky-500" /> : <CircleCheck aria-hidden size={16} className="shrink-0 text-emerald-500" />}<span><small className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Adresní dotazy {providerLabel(provider)}</small><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{diagnostic.state.remainingTargetCount > 0 ? `${diagnostic.state.remainingTargetCount.toLocaleString('cs-CZ')} dotazů čeká na poskytovatele` : 'Všechny aktuální adresní dotazy jsou hotové'}</strong></span></span><strong className="shrink-0 text-base tabular-nums text-[var(--accent)]">{targetProgressPercent.toLocaleString('cs-CZ')} %</strong></div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sky-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${targetProgressPercent}%` }} /></div>
+            <p className="mt-2 text-[8px] text-[var(--text-secondary)]">{diagnostic.state.processedTargetCount.toLocaleString('cs-CZ')} / {diagnostic.state.totalTargetCount.toLocaleString('cs-CZ')} adresních cílů</p>
+          </div>
+          <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3">
+            <div className="flex items-start justify-between gap-3"><span className="flex min-w-0 items-center gap-2">{diagnostic.state.pendingCandidateCount > 0 ? <LoaderCircle aria-hidden size={16} className="shrink-0 animate-spin text-violet-500" /> : <CircleCheck aria-hidden size={16} className="shrink-0 text-emerald-500" />}<span><small className="block text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Interní vyhodnocení kandidátů</small><strong className="mt-1 block text-[10px] text-[var(--text-primary)]">{diagnostic.state.pendingCandidateCount > 0 ? `${diagnostic.state.pendingCandidateCount.toLocaleString('cs-CZ')} kandidátů čeká na lokální vyhodnocení` : 'Všichni aktuální kandidáti jsou vyhodnoceni'}</strong></span></span><strong className="shrink-0 text-base tabular-nums text-violet-600 [html[data-theme=dark]_&]:text-violet-300">{evaluationProgressPercent.toLocaleString('cs-CZ')} %</strong></div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-violet-950/10 [html[data-theme=dark]_&]:bg-white/10"><div className="h-full rounded-full bg-violet-500 transition-[width] duration-700" style={{ width: `${evaluationProgressPercent}%` }} /></div>
+            <p className="mt-2 text-[8px] text-[var(--text-secondary)]">{diagnostic.state.evaluatedCandidateCount.toLocaleString('cs-CZ')} / {diagnostic.state.candidateCount.toLocaleString('cs-CZ')} kandidátů · bez externích požadavků</p>
+          </div>
+        </div>
+        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Nové cíle z ČEZ, EG.D a PRE mohou oba rozsahy průběžně zvýšit. Základní stav se při zpracování obnovuje každých 20 sekund; seznam chyb pouze při otevření nebo ruční obnově.</p>
+      </section>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><PowerOutageDetailRow label="Aktuální cíle" value={String(diagnostic.state.totalTargetCount)} /><PowerOutageDetailRow label="Prověřeno" value={String(diagnostic.state.processedTargetCount)} /><PowerOutageDetailRow label="S výsledkem" value={String(diagnostic.state.readyCount)} /><PowerOutageDetailRow label="Bez výsledku" value={String(diagnostic.state.notFoundCount)} /><PowerOutageDetailRow label="Kandidáti celkem" value={String(diagnostic.state.candidateCount)} /><PowerOutageDetailRow label="K vyhodnocení" value={String(diagnostic.state.pendingCandidateCount)} /><PowerOutageDetailRow label="Vyhodnoceno" value={String(diagnostic.state.evaluatedCandidateCount)} /><PowerOutageDetailRow label="Automaticky se opakuje" value={String(diagnostic.state.retryableErrorCount)} /><PowerOutageDetailRow label="Ke kontrole" value={String(diagnostic.state.reviewErrorCount)} /><PowerOutageDetailRow label="Poslední požadavek" value={formatDate(diagnostic.state.lastRequestAt)} /><PowerOutageDetailRow label="Poslední úspěšný běh" value={formatDate(diagnostic.task?.lastSuccessAt ?? null)} /><PowerOutageDetailRow label="Stav úlohy" value={providerTaskStatusLabel(diagnostic.task?.status ?? null)} /><PowerOutageDetailRow label="Selhání v řadě" value={String(diagnostic.task?.consecutiveFailureCount ?? 0)} /></div>
 
@@ -715,31 +732,92 @@ function CompleteProviderDiagnosticPopup({ provider, diagnostic, loading, error,
   </PowerOutagePopupShell>
 }
 
+function ProviderCardProgress({ provider, capacityText }: {
+  provider: CompleteProviderState
+  capacityText: string
+}) {
+  const targetPercent = boundedProgressPercent(provider.processedTargetCount, provider.totalTargetCount, 100)
+  const evaluationPercent = boundedProgressPercent(provider.evaluatedCandidateCount, provider.candidateCount, 100)
+  if (provider.provider === 'ares') {
+    return <div className="mt-1 space-y-1">
+      <div><div className="flex items-center justify-between gap-2 text-[6px] font-semibold text-[var(--text-secondary)]"><span>ARES DOTAZY <strong className="tabular-nums text-[var(--text-primary)]">{provider.processedTargetCount.toLocaleString('cs-CZ')}/{provider.totalTargetCount.toLocaleString('cs-CZ')}</strong></span><strong className="tabular-nums text-[var(--accent)]">{targetPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-0.5 h-1 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${targetPercent}%` }} /></div></div>
+      <div><div className="flex items-center justify-between gap-2 text-[6px] font-semibold text-[var(--text-secondary)]"><span>INTERNÍ VYHODNOCENÍ <strong className="tabular-nums text-[var(--text-primary)]">{provider.evaluatedCandidateCount.toLocaleString('cs-CZ')}/{provider.candidateCount.toLocaleString('cs-CZ')}</strong></span><strong className="tabular-nums text-violet-600 [html[data-theme=dark]_&]:text-violet-300">{evaluationPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-0.5 h-1 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-violet-500 transition-[width] duration-700" style={{ width: `${evaluationPercent}%` }} /></div></div>
+    </div>
+  }
+  const totalWorkCount = provider.totalTargetCount + provider.candidateCount
+  const completedWorkCount = provider.processedTargetCount + provider.evaluatedCandidateCount
+  const progressPercent = totalWorkCount > 0 ? boundedProgressPercent(completedWorkCount, totalWorkCount) : null
+  const progressCountText = provider.pendingCandidateCount > 0
+    ? `${completedWorkCount.toLocaleString('cs-CZ')}/${totalWorkCount.toLocaleString('cs-CZ')}`
+    : `${provider.processedTargetCount.toLocaleString('cs-CZ')}/${provider.totalTargetCount.toLocaleString('cs-CZ')}`
+  return <><div className="mt-1"><div className="flex items-center justify-between gap-2 text-[6px] font-semibold text-[var(--text-secondary)]"><span>{provider.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : 'AKTUÁLNÍ FRONTA'} <strong className="tabular-nums text-[var(--text-primary)]">{progressCountText}</strong></span><strong className="tabular-nums text-[var(--accent)]">{progressPercent == null ? '—' : `${progressPercent.toLocaleString('cs-CZ')} %`}</strong></div><div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${progressPercent ?? 0}%` }} /></div></div><p className="mt-1 hidden truncate text-center text-[7px] leading-3 text-[var(--text-secondary)] lg:block">{provider.pendingCandidateCount > 0 ? `${provider.pendingCandidateCount.toLocaleString('cs-CZ')} kandidátů čeká na interní vyhodnocení` : capacityText}</p></>
+}
+
 function DiscoveryPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; onRetry?: () => void }) {
   const runtime = workspace.runtime
   const [selectedProvider, setSelectedProvider] = useState<CompleteProviderState['provider'] | null>(null)
   const [diagnostic, setDiagnostic] = useState<CompleteProviderDiagnostic | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null)
+  const diagnosticRef = useRef<CompleteProviderDiagnostic | null>(null)
+  const requestInFlightRef = useRef(false)
 
-  const loadDiagnostic = async (provider: CompleteProviderState['provider'], showLoading = true) => {
+  const loadDiagnostic = async (
+    provider: CompleteProviderState['provider'],
+    showLoading = true,
+    includeErrorDetails = true,
+  ) => {
+    if (requestInFlightRef.current) return
+    requestInFlightRef.current = true
     if (showLoading) setLoading(true)
-    setError(null)
-    const result = await getCompletePowerOutageProviderDiagnosticAction(provider)
-    if (result.success) setDiagnostic(result.diagnostic)
-    else setError(result.error)
-    setLoading(false)
+    if (!diagnosticRef.current) setError(null)
+    try {
+      const result = await getCompletePowerOutageProviderDiagnosticAction(provider, undefined, includeErrorDetails)
+      if (result.success) {
+        const nextDiagnostic = includeErrorDetails || !diagnosticRef.current
+          ? result.diagnostic
+          : {
+              ...result.diagnostic,
+              loadWarnings: {
+                ...result.diagnostic.loadWarnings,
+                recentErrors: diagnosticRef.current.loadWarnings.recentErrors,
+              },
+              recentErrors: diagnosticRef.current.recentErrors,
+              enrichment: result.diagnostic.enrichment && diagnosticRef.current.enrichment
+                ? { ...result.diagnostic.enrichment, recentErrors: diagnosticRef.current.enrichment.recentErrors }
+                : result.diagnostic.enrichment,
+            }
+        diagnosticRef.current = nextDiagnostic
+        setDiagnostic(nextDiagnostic)
+        setError(null)
+        setRefreshWarning(null)
+      } else if (diagnosticRef.current) {
+        setRefreshWarning(result.error)
+      } else {
+        setError(result.error)
+      }
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : 'Obnovení detailu se nezdařilo.'
+      if (diagnosticRef.current) setRefreshWarning(message)
+      else setError(message)
+    } finally {
+      requestInFlightRef.current = false
+      setLoading(false)
+    }
   }
   const openProvider = (provider: CompleteProviderState['provider']) => {
     setSelectedProvider(provider)
     setDiagnostic(null)
+    diagnosticRef.current = null
+    setRefreshWarning(null)
     void loadDiagnostic(provider)
   }
   useEffect(() => {
     const providerIsProcessing = diagnostic?.state.status === 'processing'
     const enrichmentIsProcessing = diagnostic?.enrichment?.status === 'processing'
     if (!selectedProvider || (!providerIsProcessing && !enrichmentIsProcessing)) return
-    const interval = window.setInterval(() => { void loadDiagnostic(selectedProvider, false) }, 20_000)
+    const interval = window.setInterval(() => { void loadDiagnostic(selectedProvider, false, false) }, 20_000)
     return () => window.clearInterval(interval)
   }, [selectedProvider, diagnostic?.state.status, diagnostic?.enrichment?.status])
 
@@ -792,23 +870,22 @@ function DiscoveryPanel({ workspace, onRetry }: { workspace: CompletePowerOutage
   if (workspace.loadErrors.providers) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><CircleAlert aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">ARES · Mapy.com · Google</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Vyhledávání firem</h3></span></div><PanelLoadError message={workspace.loadErrors.providers} onRetry={onRetry} /></PanelShell>
   return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 [html[data-theme=dark]_&]:text-violet-300"><SearchCheck aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">ARES · Mapy.com · Google</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Vyhledávání firem</h3></span></div><div className="mt-3 grid min-h-0 flex-1 grid-rows-3 gap-2 lg:mt-4 lg:block lg:space-y-2.5">{workspace.providers.map((provider) => {
     const presentation = providerStatusPresentation(provider.status)
-    const totalWorkCount = provider.totalTargetCount + provider.candidateCount
-    const completedWorkCount = provider.processedTargetCount + provider.evaluatedCandidateCount
-    const progressPercent = totalWorkCount > 0
-      ? boundedProgressPercent(completedWorkCount, totalWorkCount)
-      : null
-    const progressCountText = provider.pendingCandidateCount > 0
-      ? provider.provider === 'mapy'
-        ? `${completedWorkCount.toLocaleString('cs-CZ')}/${totalWorkCount.toLocaleString('cs-CZ')}`
-        : `${provider.evaluatedCandidateCount.toLocaleString('cs-CZ')}/${provider.candidateCount.toLocaleString('cs-CZ')}`
-      : `${provider.processedTargetCount.toLocaleString('cs-CZ')}/${provider.totalTargetCount.toLocaleString('cs-CZ')}`
     const capacityText = provider.configured
       ? provider.provider === 'mapy'
         ? `Zbývá ${provider.monthlyCreditRemaining.toLocaleString('cs-CZ')} z měsíčního stropu ${provider.monthlyCreditSafetyCap.toLocaleString('cs-CZ')} kreditů`
         : `Dnes volných ${provider.dayRequestRemaining.toLocaleString('cs-CZ')} z ${provider.dayRequestLimit.toLocaleString('cs-CZ')} požadavků`
       : 'Kapacita není dostupná · chybí konfigurace'
-    return <div key={provider.provider} className={`weather-alerts__record-surface h-full rounded-xl border px-2.5 py-1 lg:h-[126px] lg:px-3 lg:py-2 ${provider.configured ? '' : 'opacity-65'}`}><div className="flex items-center justify-between gap-2"><strong className="text-[12px] uppercase text-[var(--text-primary)]">{providerLabel(provider.provider)}</strong><CompletePanelStatusBadge label={provider.pendingCandidateCount > 0 && provider.remainingTargetCount === 0 ? 'VYHODNOCENÍ' : providerStatusLabel(provider.status)} badgeClassName={presentation.badge} dotClassName={presentation.dot} attention={presentation.attention} ariaLabel={`${providerLabel(provider.provider)}: ${provider.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : providerStatusLabel(provider.status)}.`} title={workspace.currentUser.isAdmin ? 'Zobrazit provozní detail' : undefined} onClick={workspace.currentUser.isAdmin ? () => openProvider(provider.provider) : undefined} /></div><div className="mt-0.5 grid grid-cols-4 gap-1 text-center lg:mt-1 lg:gap-1.5"><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">S výsledkem</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.readyCount.toLocaleString('cs-CZ')}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Bez výsledku</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.notFoundCount.toLocaleString('cs-CZ')}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-sky-700 [html[data-theme=dark]_&]:text-sky-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Opakuje se</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.retryableErrorCount.toLocaleString('cs-CZ')}</strong></span><span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-red-700 [html[data-theme=dark]_&]:text-red-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Ke kontrole</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.reviewErrorCount.toLocaleString('cs-CZ')}</strong></span></div><div className="mt-1"><div className="flex items-center justify-between gap-2 text-[6px] font-semibold text-[var(--text-secondary)]"><span>{provider.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : 'AKTUÁLNÍ FRONTA'} <strong className="tabular-nums text-[var(--text-primary)]">{progressCountText}</strong></span><strong className="tabular-nums text-[var(--accent)]">{progressPercent == null ? '—' : `${progressPercent.toLocaleString('cs-CZ')} %`}</strong></div><div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full rounded-full bg-sky-500 transition-[width] duration-700" style={{ width: `${progressPercent ?? 0}%` }} /></div></div><p className="mt-1 hidden truncate text-center text-[7px] leading-3 text-[var(--text-secondary)] lg:block">{provider.pendingCandidateCount > 0 ? `${provider.pendingCandidateCount.toLocaleString('cs-CZ')} kandidátů čeká na interní vyhodnocení` : capacityText}</p></div>
-  })}</div><div className={`mt-auto flex items-center justify-center gap-1.5 pt-2 text-center text-[9px] lg:pt-3 ${runtimeTone}`} title={runtimeHasAttention ? conciseAttention : runtimeText}><RuntimeIcon aria-hidden size={12} className={searchStatus === 'processing' ? 'animate-spin' : ''} /><span className="truncate">{runtimeText}</span></div><p className="mt-0.5 flex items-center justify-center gap-1.5 text-center text-[8px] text-[var(--text-secondary)]"><TimerReset aria-hidden size={11} /><span>Poslední aktivita: {formatDate(runtime.lastActivityAt)}</span></p>{workspace.currentUser.isAdmin && selectedProvider && typeof document !== 'undefined' ? createPortal(<CompleteProviderDiagnosticPopup provider={selectedProvider} diagnostic={diagnostic} loading={loading} error={error} isAdmin onReload={() => loadDiagnostic(selectedProvider, false)} onClose={() => { setSelectedProvider(null); setDiagnostic(null); setError(null) }} />, document.body) : null}</PanelShell>
+    return <div key={provider.provider} className={`weather-alerts__record-surface h-full rounded-xl border px-2.5 py-1 lg:h-[126px] lg:px-3 lg:py-2 ${provider.configured ? '' : 'opacity-65'}`}>
+      <div className="flex items-center justify-between gap-2"><strong className="text-[12px] uppercase text-[var(--text-primary)]">{providerLabel(provider.provider)}</strong><CompletePanelStatusBadge label={provider.pendingCandidateCount > 0 && provider.remainingTargetCount === 0 ? 'VYHODNOCENÍ' : providerStatusLabel(provider.status)} badgeClassName={presentation.badge} dotClassName={presentation.dot} attention={presentation.attention} ariaLabel={`${providerLabel(provider.provider)}: ${provider.pendingCandidateCount > 0 ? 'VYHODNOCENÍ' : providerStatusLabel(provider.status)}.`} title={workspace.currentUser.isAdmin ? 'Zobrazit provozní detail' : undefined} onClick={workspace.currentUser.isAdmin ? () => openProvider(provider.provider) : undefined} /></div>
+      <div className="mt-0.5 grid grid-cols-4 gap-1 text-center lg:mt-1 lg:gap-1.5">
+        <span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">S výsledkem</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.readyCount.toLocaleString('cs-CZ')}</strong></span>
+        <span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-amber-700 [html[data-theme=dark]_&]:text-amber-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Bez výsledku</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.notFoundCount.toLocaleString('cs-CZ')}</strong></span>
+        <span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-sky-700 [html[data-theme=dark]_&]:text-sky-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Opakuje se</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.retryableErrorCount.toLocaleString('cs-CZ')}</strong></span>
+        <span className="weather-alerts__record-surface flex h-8 flex-col items-center justify-center rounded-lg border text-red-700 [html[data-theme=dark]_&]:text-red-300"><small className="whitespace-nowrap text-[6px] font-bold uppercase leading-[8px]">Ke kontrole</small><strong className="text-sm leading-4 tabular-nums text-[var(--text-primary)]">{provider.reviewErrorCount.toLocaleString('cs-CZ')}</strong></span>
+      </div>
+      <ProviderCardProgress provider={provider} capacityText={capacityText} />
+    </div>
+  })}</div><div className={`mt-auto flex items-center justify-center gap-1.5 pt-2 text-center text-[9px] lg:pt-3 ${runtimeTone}`} title={runtimeHasAttention ? conciseAttention : runtimeText}><RuntimeIcon aria-hidden size={12} className={searchStatus === 'processing' ? 'animate-spin' : ''} /><span className="truncate">{runtimeText}</span></div><p className="mt-0.5 flex items-center justify-center gap-1.5 text-center text-[8px] text-[var(--text-secondary)]"><TimerReset aria-hidden size={11} /><span>Poslední aktivita: {formatDate(runtime.lastActivityAt)}</span></p>{workspace.currentUser.isAdmin && selectedProvider && typeof document !== 'undefined' ? createPortal(<CompleteProviderDiagnosticPopup provider={selectedProvider} diagnostic={diagnostic} loading={loading} error={error} refreshWarning={refreshWarning} isAdmin onReload={() => loadDiagnostic(selectedProvider, false, true)} onClose={() => { setSelectedProvider(null); setDiagnostic(null); diagnosticRef.current = null; setError(null); setRefreshWarning(null) }} />, document.body) : null}</PanelShell>
 }
 
 function AddressCoverageDiagnosticPopup({ diagnostic, loading, error, isAdmin, onReload, onClose }: {

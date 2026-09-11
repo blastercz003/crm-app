@@ -1683,6 +1683,7 @@ export async function getCompletePowerOutageSourceDiagnostic(
 export async function getCompletePowerOutageProviderDiagnostic(
   provider: CompleteProviderState['provider'],
   currentState?: CompleteProviderState,
+  includeErrorDetails = true,
 ): Promise<CompleteProviderDiagnostic> {
   if (!['ares', 'mapy', 'google'].includes(provider)) throw new Error('Neplatný poskytovatel.')
   if (currentState && currentState.provider !== provider) throw new Error('Stav poskytovatele neodpovídá požadovanému detailu.')
@@ -1702,26 +1703,26 @@ export async function getCompletePowerOutageProviderDiagnostic(
     supabase.from('complete_power_outage_runs')
       .select('id,status,started_at,finished_at,source_record_count,company_upsert_count,evidence_upsert_count,cache_hit_count,error_count,error_code,error_message,metadata')
       .eq('provider', provider).eq('run_kind', 'company_discovery').order('started_at', { ascending: false }).limit(8),
-    supabase.from('complete_power_outage_active_provider_errors')
-      .select('id,target_id,query_text,target_kind,attempt_count,last_attempt_at,next_attempt_at,last_error_code,last_error_message')
-      .eq('provider', provider).in('lookup_status', ['error', 'needs_review']).order('last_attempt_at', { ascending: false }).limit(8),
+    includeErrorDetails
+      ? supabase.from('complete_power_outage_active_provider_errors')
+        .select('id,target_id,query_text,target_kind,attempt_count,last_attempt_at,next_attempt_at,last_error_code,last_error_message')
+        .eq('provider', provider).in('lookup_status', ['error', 'needs_review']).order('last_attempt_at', { ascending: false }).limit(8)
+      : Promise.resolve({ data: [], error: null }),
     provider === 'ares'
       ? supabase.from('complete_power_outage_company_enrichment_overview').select('*').maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    provider === 'ares'
+    provider === 'ares' && includeErrorDetails
       ? supabase.from('complete_power_outage_company_enrichment_queue')
         .select('ico,queue_status,attempt_count,next_attempt_at,last_error_code,last_error_message,updated_at')
         .in('queue_status', ['error', 'skipped']).order('updated_at', { ascending: false }).limit(8)
       : Promise.resolve({ data: [], error: null }),
   ])
   if (overviewResult.error) throw new Error(`Stav poskytovatele se nepodařilo načíst: ${overviewResult.error.message}`)
-  if (taskResult.error) throw new Error(`Stav úlohy se nepodařilo načíst: ${taskResult.error.message}`)
-  if (runsResult.error) throw new Error(`Historii vyhledávání se nepodařilo načíst: ${runsResult.error.message}`)
-  if (errorsResult.error) throw new Error(`Chybné dotazy se nepodařilo načíst: ${errorsResult.error.message}`)
+  if (evaluationProgressResult.error) throw new Error(`Stav vyhodnocování se nepodařilo načíst: ${evaluationProgressResult.error.message}`)
   if (!currentState && !overviewResult.data) throw new Error('Stav poskytovatele není dostupný.')
 
-  const task = taskResult.data as Record<string, unknown> | null
-  const providerEvaluationRows = evaluationProgressResult.error ? [] : evaluationProgressResult.data ?? []
+  const task = taskResult.error ? null : taskResult.data as Record<string, unknown> | null
+  const providerEvaluationRows = evaluationProgressResult.data ?? []
   const evaluationCounts = {
     candidate_count: providerEvaluationRows.reduce((sum, item) => sum + Number(item.candidate_count), 0),
     evaluated_candidate_count: providerEvaluationRows.reduce((sum, item) => sum + Number(item.evaluated_candidate_count), 0),
@@ -1731,7 +1732,7 @@ export async function getCompletePowerOutageProviderDiagnostic(
     ...(overviewResult.data as Record<string, unknown>),
     ...evaluationCounts,
   }, task)
-  const runs = (runsResult.data ?? []).map((row): CompleteProviderRun => {
+  const runs = (runsResult.error ? [] : runsResult.data ?? []).map((row): CompleteProviderRun => {
     const metadata = row.metadata as Record<string, unknown> | null
     return {
       id: String(row.id),
@@ -1757,6 +1758,16 @@ export async function getCompletePowerOutageProviderDiagnostic(
     observedAt: new Date().toISOString(),
     state,
     limits: PROVIDER_LIMITS[provider],
+    loadWarnings: {
+      task: taskResult.error ? `Stav úlohy se nepodařilo obnovit: ${taskResult.error.message}` : null,
+      runs: runsResult.error ? `Historii běhů se nepodařilo obnovit: ${runsResult.error.message}` : null,
+      recentErrors: errorsResult.error ? `Seznam chybných dotazů se nepodařilo obnovit: ${errorsResult.error.message}` : null,
+      enrichment: enrichmentOverviewResult.error
+        ? `Stav doplňkových profilů se nepodařilo obnovit: ${enrichmentOverviewResult.error.message}`
+        : enrichmentErrorsResult.error
+          ? `Chyby doplňkových profilů se nepodařilo obnovit: ${enrichmentErrorsResult.error.message}`
+          : null,
+    },
     task: task ? {
       status: task.last_status as CompleteProviderDiagnostic['task'] extends infer T ? T extends { status: infer S } ? S : never : never,
       lastStartedAt: task.last_started_at as string | null,

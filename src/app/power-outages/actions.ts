@@ -307,9 +307,10 @@ export async function getCompletePowerOutageSourceDiagnosticAction(
 export async function getCompletePowerOutageProviderDiagnosticAction(
   provider: 'ares' | 'mapy' | 'google',
   currentState?: CompleteProviderState,
+  includeErrorDetails = true,
 ): Promise<CompleteProviderDiagnosticActionResult> {
   try {
-    return { success: true, diagnostic: await getCompletePowerOutageProviderDiagnostic(provider, currentState), error: null }
+    return { success: true, diagnostic: await getCompletePowerOutageProviderDiagnostic(provider, currentState, includeErrorDetails), error: null }
   } catch (error) {
     return { success: false, diagnostic: null, error: errorMessage(error) }
   }
