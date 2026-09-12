@@ -38,6 +38,7 @@ import type {
   CompletePowerOutagePageFilters,
   CompletePowerOutageCurrentUser,
   CompleteCompanyEnrichment,
+  CompleteDiscoveredContacts,
   CompleteCommercialSelectionFilter,
   CompleteCommercialSelectionCounts,
   CompleteCommercialSort,
@@ -228,6 +229,84 @@ function CompanyEnrichmentSummary({ enrichment }: { enrichment: CompleteCompanyE
   </div>
 }
 
+function discoveredContactClassLabel(contactClass: CompleteDiscoveredContacts['contacts'][number]['contactClass']) {
+  return ({
+    operations: 'PROVOZNÍ',
+    general: 'OBECNÝ',
+    commercial: 'OBCHODNÍ',
+    personal: 'OSOBNÍ',
+    administrative: 'ADMINISTRATIVNÍ',
+    sensitive: 'CITLIVÝ',
+    unknown: 'NEURČENÝ',
+    phone_general: 'OBECNÝ',
+    phone_unknown: 'VEŘEJNÝ',
+  } as const)[contactClass]
+}
+
+function DiscoveredContactsSummary({ discoveredContacts }: { discoveredContacts: CompleteDiscoveredContacts }) {
+  const automaticEmails = discoveredContacts.contacts.filter((contact) => contact.type === 'email' && contact.notificationEligible)
+  const primaryEmail = automaticEmails.find((contact) => contact.isPrimary) ?? null
+  const otherAutomaticEmails = automaticEmails.filter((contact) => contact !== primaryEmail)
+  const reviewEmails = discoveredContacts.contacts.filter((contact) => contact.type === 'email' && contact.classificationStatus === 'needs_review')
+  const phones = discoveredContacts.contacts.filter((contact) => contact.type === 'phone')
+  const domainContact = discoveredContacts.contacts[0] ?? null
+  const statusLabel = discoveredContacts.status === 'available'
+    ? primaryEmail ? 'KONTAKT NALEZEN' : reviewEmails.length ? 'KE KONTROLE' : 'POUZE TELEFON'
+    : discoveredContacts.status === 'not_found'
+      ? 'NENALEZENO'
+      : discoveredContacts.status === 'not_eligible'
+        ? 'NEDOSTUPNÉ'
+        : 'CHYBA NAČTENÍ'
+  const statusTone = primaryEmail
+    ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300'
+    : reviewEmails.length
+      ? 'border-amber-400/40 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
+      : 'border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]'
+
+  return <section className="mt-4 rounded-2xl border border-sky-400/20 bg-[var(--surface-muted)] p-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Kontakty z webu firmy</h4>
+        <p className="mt-1 text-[9px] text-[var(--text-secondary)]">Veřejné kontakty z ověřené firemní domény · pouze pro zobrazení</p>
+      </div>
+      <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[7px] font-bold uppercase tracking-[0.06em] ${statusTone}`}>{statusLabel}</span>
+    </div>
+
+    {discoveredContacts.status === 'available' ? <>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/70 px-3 py-2">
+          <span className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Použitelné e-maily</span>
+          <strong className="mt-0.5 block text-[11px] text-[var(--text-primary)]">{automaticEmails.length}</strong>
+        </div>
+        <div className="rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/70 px-3 py-2">
+          <span className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Nalezené telefony</span>
+          <strong className="mt-0.5 block text-[11px] text-[var(--text-primary)]">{phones.length}</strong>
+        </div>
+      </div>
+
+      {primaryEmail ? <a href={`mailto:${primaryEmail.value}`} className="mt-2 flex min-w-0 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-emerald-700 transition hover:border-emerald-400/55 [html[data-theme=dark]_&]:text-emerald-300">
+        <Mail aria-hidden size={13} className="shrink-0" />
+        <span className="min-w-0 truncate text-[11px] font-semibold">{primaryEmail.value}</span>
+        <small className="ml-auto shrink-0 text-[7px] font-bold uppercase tracking-[0.06em]">HLAVNÍ · {discoveredContactClassLabel(primaryEmail.contactClass)}</small>
+      </a> : null}
+
+      {otherAutomaticEmails.length || phones.length ? <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {otherAutomaticEmails.map((contact) => <a key={`${contact.type}-${contact.value}`} href={`mailto:${contact.value}`} className="flex min-w-0 items-center gap-2 rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/70 px-3 py-2 text-[var(--accent)] transition hover:border-sky-400/35"><Mail aria-hidden size={12} className="shrink-0" /><span className="min-w-0 truncate text-[10px]">{contact.value}</span><small className="ml-auto shrink-0 text-[7px] uppercase text-[var(--text-secondary)]">{discoveredContactClassLabel(contact.contactClass)}</small></a>)}
+        {phones.map((contact) => <a key={`${contact.type}-${contact.value}`} href={`tel:${contact.value}`} className="flex min-w-0 items-center gap-2 rounded-xl border border-sky-400/15 bg-[var(--surface-strong)]/70 px-3 py-2 text-[var(--accent)] transition hover:border-sky-400/35"><Phone aria-hidden size={12} className="shrink-0" /><span className="min-w-0 truncate text-[10px]">{contact.value}</span>{contact.isPrimary ? <small className="ml-auto shrink-0 text-[7px] font-bold uppercase text-[var(--text-secondary)]">HLAVNÍ</small> : null}</a>)}
+      </div> : null}
+
+      {reviewEmails.length ? <details className="mt-3 rounded-xl border border-amber-400/25 bg-amber-400/8">
+        <summary className="cursor-pointer list-none px-3 py-2 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-700 marker:hidden [html[data-theme=dark]_&]:text-amber-300">Kontakty ke kontrole · {reviewEmails.length}</summary>
+        <div className="grid gap-2 border-t border-amber-400/20 p-2 sm:grid-cols-2">
+          {reviewEmails.map((contact) => <a key={`${contact.type}-${contact.value}`} href={`mailto:${contact.value}`} className="flex min-w-0 items-center gap-2 rounded-lg bg-[var(--surface-strong)]/70 px-2.5 py-2 text-[var(--text-secondary)] transition hover:text-[var(--accent)]"><Mail aria-hidden size={11} className="shrink-0" /><span className="min-w-0 truncate text-[9px]">{contact.value}</span><small className="ml-auto shrink-0 text-[6.5px] uppercase">{discoveredContactClassLabel(contact.contactClass)}</small></a>)}
+        </div>
+      </details> : null}
+
+      {domainContact ? <a href={domainContact.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[8px] font-semibold text-[var(--accent)]">Zdroj: {domainContact.normalizedDomain}<ExternalLink aria-hidden size={10} /></a> : null}
+    </> : <p className="mt-3 text-[10px] leading-4 text-[var(--text-secondary)]">{discoveredContacts.message}</p>}
+  </section>
+}
+
 function CompleteDetailPopup({ item, detail, loading, error, archived, onClose }: { item: CompletePowerOutageListItem; detail: CompletePowerOutageDetail | null; loading: boolean; error: string | null; archived: boolean; onClose: () => void }) {
   const showCezAnnouncement = detail?.source === 'cez'
     && Boolean(detail.announcementUrl)
@@ -240,6 +319,7 @@ function CompleteDetailPopup({ item, detail, loading, error, archived, onClose }
         <p className="mt-1 text-xs text-[var(--text-secondary)]">{detail.displayAddress || `${addressLabel(detail)}, ${detail.municipality}`}</p>
         <CompanyEnrichmentSummary enrichment={detail.enrichment} />
       </section>
+      <DiscoveredContactsSummary discoveredContacts={detail.discoveredContacts} />
       <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyhodnocení systému</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="Výsledek" value={statusLabel(detail.candidateStatus)} /><PowerOutageDetailRow label="Jistota" value={`${Math.round(detail.confidence * 100)} %`} /><PowerOutageDetailRow label="Typ" value={entityLabel(detail.entityKind)} /><PowerOutageDetailRow label="Počet důkazů" value={String(detail.evidenceCount)} /></div>{detail.evaluationExplanations.length ? <ul className="mt-3 space-y-2">{detail.evaluationExplanations.map((text) => <li key={text} className="flex gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 text-[10px] leading-4 text-[var(--text-primary)]"><CircleCheck aria-hidden size={13} className="mt-0.5 shrink-0 text-[var(--accent)]" />{text}</li>)}</ul> : <p className="mt-3 text-xs text-[var(--text-secondary)]">Výsledek zatím čeká na první vyhodnocení.</p>}</section>
       <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Firma a dotčená adresa</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="IČO" value={detail.ico || 'Neuvedeno'} /><PowerOutageDetailRow label="Právní forma" value={detail.legalForm || 'Neuvedena'} /><PowerOutageDetailRow label="Obec" value={detail.municipality} /><PowerOutageDetailRow label="Adresa distributora" value={addressLabel(detail) || detail.rawAddress} /></div></section>
       <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Termín odstávky</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="Distributor" value={sourceLabel(detail.source)} /><PowerOutageDetailRow label="Stav zdroje" value={detail.sourceStatus.toUpperCase()} /><PowerOutageDetailRow label="Termín od" value={formatDateTime(detail.startsAt)} /><PowerOutageDetailRow label="Termín do" value={formatDateTime(detail.endsAt)} /></div><div className="mt-2 flex flex-wrap items-center gap-2">{showCezAnnouncement ? <a href={detail.announcementUrl!} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 text-[10px] font-semibold text-[var(--accent)] transition hover:-translate-y-0.5 hover:border-sky-500/50 hover:bg-sky-500/15"><FileText aria-hidden size={13} />Oznámení ČEZ (PDF)<ExternalLink aria-hidden size={11} /></a> : null}{detail.sourceUrl ? <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[10px] font-semibold text-[var(--accent)] transition hover:-translate-y-0.5 hover:border-sky-500/40">Stránka distributora <ExternalLink aria-hidden size={12} /></a> : null}</div></section>

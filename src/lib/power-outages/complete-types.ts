@@ -160,6 +160,24 @@ export type CompleteCompanyEnrichment = {
   message: string
 }
 
+export type CompleteDiscoveredContact = {
+  type: 'email' | 'phone'
+  value: string
+  contactClass: 'operations' | 'general' | 'commercial' | 'personal' | 'administrative' | 'sensitive' | 'unknown' | 'phone_general' | 'phone_unknown'
+  classificationStatus: 'automatic' | 'needs_review' | 'informational'
+  notificationEligible: boolean
+  isPrimary: boolean
+  normalizedDomain: string
+  sourceUrl: string
+  transportSecurity: 'https' | 'http'
+}
+
+export type CompleteDiscoveredContacts = {
+  status: 'available' | 'not_found' | 'not_eligible' | 'unavailable'
+  contacts: CompleteDiscoveredContact[]
+  message: string
+}
+
 export type CompletePowerOutageDetail = CompletePowerOutageListItem & {
   addressLatitude: number | null
   addressLongitude: number | null
@@ -168,6 +186,7 @@ export type CompletePowerOutageDetail = CompletePowerOutageListItem & {
   metadata: Record<string, unknown>
   evidence: CompletePowerOutageEvidence[]
   enrichment: CompleteCompanyEnrichment
+  discoveredContacts: CompleteDiscoveredContacts
 }
 
 export type CompleteSourceState = {

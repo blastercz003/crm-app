@@ -4,6 +4,8 @@ import { getPowerOutageRuntimeContext } from './access'
 import type {
   CompleteEvidenceProvider,
   CompleteCompanyEnrichment,
+  CompleteDiscoveredContact,
+  CompleteDiscoveredContacts,
   CompleteGlobalProgress,
   CompleteAddressCoverage,
   CompleteAddressCoverageDiagnostic,
@@ -131,6 +133,18 @@ type CompanyContactRow = {
 type CompanyEnrichmentQueueRow = {
   queue_status: 'pending' | 'processing' | 'ready' | 'not_found' | 'error' | 'skipped'
   last_error_message: string | null
+}
+
+type DiscoveredContactRow = {
+  contact_type: CompleteDiscoveredContact['type']
+  contact_value: string
+  contact_class: CompleteDiscoveredContact['contactClass']
+  classification_status: CompleteDiscoveredContact['classificationStatus']
+  notification_eligible: boolean
+  is_primary: boolean
+  normalized_domain: string
+  source_url: string
+  transport_security: CompleteDiscoveredContact['transportSecurity']
 }
 
 type PagedOverviewRow = OverviewRow & Partial<Omit<AssignmentRow, 'candidate_id'>> & {
@@ -2019,6 +2033,54 @@ async function loadCompleteCompanyEnrichment(
   }
 }
 
+async function loadCompleteDiscoveredContacts(
+  supabase: Awaited<ReturnType<typeof getPowerOutageRuntimeContext>>['supabase'],
+  candidateId: string,
+  ico: string | null,
+  candidateStatus: CompletePowerOutageListItem['candidateStatus'],
+): Promise<CompleteDiscoveredContacts> {
+  if (!ico || candidateStatus !== 'confirmed') {
+    return {
+      status: 'not_eligible',
+      contacts: [],
+      message: !ico
+        ? 'Kontakty nelze dohledat, protože záznam nemá IČO.'
+        : 'Kontakty se zobrazují pouze u potvrzené shody firmy a odstávky.',
+    }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'get_complete_power_outage_contact_detail_v1',
+    { requested_candidate_id: candidateId },
+  )
+  if (error) {
+    return {
+      status: 'unavailable',
+      contacts: [],
+      message: 'Dohledané kontakty se nyní nepodařilo načíst.',
+    }
+  }
+
+  const contacts = ((data ?? []) as DiscoveredContactRow[]).map((row) => ({
+    type: row.contact_type,
+    value: row.contact_value,
+    contactClass: row.contact_class,
+    classificationStatus: row.classification_status,
+    notificationEligible: row.notification_eligible,
+    isPrimary: row.is_primary,
+    normalizedDomain: row.normalized_domain,
+    sourceUrl: row.source_url,
+    transportSecurity: row.transport_security,
+  }))
+  return {
+    status: contacts.length ? 'available' : 'not_found',
+    contacts,
+    message: contacts.length
+      ? 'Kontakty byly dohledány na ověřeném veřejném webu firmy.'
+      : 'Pro tuto firmu zatím nebyl nalezen žádný použitelný kontakt.',
+  }
+}
+
 export async function getCompletePowerOutageDetail(candidateId: string): Promise<CompletePowerOutageDetail> {
   const cleanId = candidateId.trim()
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(cleanId)) throw new Error('Neplatné technické ID firmy.')
@@ -2036,7 +2098,10 @@ export async function getCompletePowerOutageDetail(candidateId: string): Promise
   if (evidenceError) throw new Error(`Důkazy firmy se nepodařilo načíst: ${evidenceError.message}`)
   if (assignmentError && !ownershipSchemaMissing(assignmentError)) throw new Error(`Přiřazení firmy se nepodařilo načíst: ${assignmentError.message}`)
   if (!overview) throw new Error('Požadovaná firma nebyla nalezena.')
-  const enrichment = await loadCompleteCompanyEnrichment(supabase, overview.ico)
+  const [enrichment, discoveredContacts] = await Promise.all([
+    loadCompleteCompanyEnrichment(supabase, overview.ico),
+    loadCompleteDiscoveredContacts(supabase, cleanId, overview.ico, overview.candidate_status),
+  ])
   const evidence: CompletePowerOutageEvidence[] = (evidenceRows ?? []).map((row) => ({
     id: row.id,
     provider: row.provider as CompleteEvidenceProvider,
@@ -2059,6 +2124,7 @@ export async function getCompletePowerOutageDetail(candidateId: string): Promise
     metadata: overview.metadata ?? {},
     evidence,
     enrichment,
+    discoveredContacts,
   }
 }
 
