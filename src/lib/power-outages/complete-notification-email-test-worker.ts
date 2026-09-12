@@ -1,8 +1,14 @@
 import 'server-only'
 
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { Resend, type ErrorResponse } from 'resend'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getCompleteNotificationResendConfiguration } from './complete-notification-email-resend-config'
+import {
+  COMPLETE_NOTIFICATION_EMAIL_LOGO_CONTENT_ID,
+  renderCompleteNotificationEmail,
+} from './complete-notification-email-template'
 
 type ClaimedDelivery = {
   id: string
@@ -12,6 +18,10 @@ type ClaimedDelivery = {
   startsAt: string
   endsAt: string
   addresses: unknown[]
+  source: string
+  municipality: string | null
+  announcementUrl: string | null
+  sourceUrl: string | null
   originalRecipient: string
   attemptCount: number
 }
@@ -22,10 +32,11 @@ type Claim = {
   delivery?: ClaimedDelivery | null
 }
 
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
-  })[character] ?? character)
+let bEnergyLogoPromise: Promise<Buffer> | null = null
+
+function getBEnergyLogo() {
+  bEnergyLogoPromise ??= readFile(path.join(process.cwd(), 'public', 'logo2.png'))
+  return bEnergyLogoPromise
 }
 
 function errorDetails(error: unknown) {
@@ -43,12 +54,6 @@ function resendErrorDetails(error: ErrorResponse) {
   return { code: error.name, message: error.message }
 }
 
-function renderTestHtml(delivery: ClaimedDelivery) {
-  const originalRecipient = escapeHtml(delivery.originalRecipient)
-  const body = escapeHtml(delivery.text).replace(/\n/g, '<br>')
-  return `<!doctype html><html lang="cs"><body style="margin:0;background:#eef2f7;font-family:Arial,sans-serif;color:#0f172a"><div style="max-width:680px;margin:0 auto;padding:24px"><div style="border:2px solid #7c3aed;border-radius:16px;background:#f5f3ff;padding:16px;color:#5b21b6"><strong>TEST KOMPLETNÍ · KLIENT NIC NEOBDRŽÍ</strong><br><span style="font-size:13px">Původní příjemce: ${originalRecipient}</span></div><div style="margin-top:16px;border:1px solid #dbe3ee;border-radius:20px;background:#fff;padding:28px"><h1 style="margin:0 0 16px;font-size:24px">${escapeHtml(delivery.subject)}</h1><p style="font-size:15px;line-height:1.65">${body}</p><hr style="margin:24px 0;border:0;border-top:1px solid #e2e8f0"><p style="font-size:12px;line-height:1.5;color:#64748b">Toto je bezpečný interní náhled. Odkaz pro odhlášení je v TEST režimu neaktivní.</p></div></div></body></html>`
-}
-
 export async function sendOneCompleteNotificationTest(planId?: string) {
   const configuration = getCompleteNotificationResendConfiguration()
   if (!configuration.testReady) {
@@ -64,7 +69,7 @@ export async function sendOneCompleteNotificationTest(planId?: string) {
   if (prepareError) throw new Error(`TEST zprávu se nepodařilo připravit: ${prepareError.message}`)
 
   const { data, error: claimError } = await service.rpc(
-    'claim_complete_power_outage_notification_email_test_v1',
+    'claim_cpo_notification_email_test_v2',
   )
   if (claimError) throw new Error(`TEST zprávu se nepodařilo převzít: ${claimError.message}`)
   const claim = data as Claim
@@ -73,18 +78,35 @@ export async function sendOneCompleteNotificationTest(planId?: string) {
   }
 
   const delivery = claim.delivery
+  const template = renderCompleteNotificationEmail({
+    companyName: delivery.companyName,
+    startsAt: delivery.startsAt,
+    endsAt: delivery.endsAt,
+    source: delivery.source,
+    municipality: delivery.municipality,
+    addresses: delivery.addresses,
+    announcementUrl: delivery.announcementUrl,
+    sourceUrl: delivery.sourceUrl,
+    testMode: true,
+  })
   const resend = new Resend(configuration.apiKey)
   try {
     const response = await resend.emails.send({
       from: `${configuration.fromName.replace(/[\r\n"<>]/g, ' ')} <${configuration.fromEmail}>`,
       to: [configuration.testRecipient],
       replyTo: configuration.replyToEmail ?? undefined,
-      subject: `[TEST KOMPLETNÍ] ${delivery.subject}`,
-      html: renderTestHtml(delivery),
-      text: `TEST KOMPLETNÍ – klient nic neobdrží.\nPůvodní příjemce: ${delivery.originalRecipient}\n\n${delivery.text}\n\nOdkaz pro odhlášení je v TEST režimu neaktivní.`,
+      subject: `[TEST KOMPLETNÍ] ${template.subject}`,
+      html: template.html,
+      text: `TEST KOMPLETNÍ – firma nic neobdrží.\nPůvodní příjemce: ${delivery.originalRecipient}\n\n${template.text}`,
+      attachments: [{
+        filename: 'b-energy-logo.png',
+        content: await getBEnergyLogo(),
+        contentId: COMPLETE_NOTIFICATION_EMAIL_LOGO_CONTENT_ID,
+      }],
       tags: [
         { name: 'category', value: 'complete_outage_test' },
         { name: 'delivery_id', value: delivery.id },
+        { name: 'template', value: template.templateVersion },
       ],
     }, { idempotencyKey: `complete-outage-test-${delivery.id}` })
 
