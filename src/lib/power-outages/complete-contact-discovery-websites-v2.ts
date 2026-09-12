@@ -27,6 +27,11 @@ type CheckedCandidateV2 = {
   verification: OfficialWebsiteVerificationV2
 }
 
+const ITEM_BUDGET_MS = 210_000
+const CANDIDATE_BUDGET_MS = 35_000
+const COMPLETION_RESERVE_MS = 15_000
+const VERIFICATION_BUDGET_ERROR = 'WEBSITE_VERIFICATION_BUDGET_EXCEEDED'
+
 function isVerifiedCandidate(candidate: CheckedCandidateV2): candidate is CheckedCandidateV2 & {
   verification: OfficialWebsiteVerificationV2 & { status: 'verified_company' | 'verified_group' }
 } {
@@ -75,13 +80,34 @@ async function checkCandidate(input: {
   url: string
   rank: number
   queryVariant: CheckedCandidateV2['queryVariant']
+  itemDeadlineAt: number
 }): Promise<CheckedCandidateV2> {
   const url = new URL(input.url)
-  const verification = await verifyOfficialWebsiteCandidateV2({
-    candidateUrl: url.toString(),
-    companyName: input.claim.company_name,
-    ico: input.claim.ico,
-  })
+  const deadlineAt = Math.min(
+    input.itemDeadlineAt - COMPLETION_RESERVE_MS,
+    Date.now() + CANDIDATE_BUDGET_MS,
+  )
+  let verification: OfficialWebsiteVerificationV2
+  try {
+    verification = await verifyOfficialWebsiteCandidateV2({
+      candidateUrl: url.toString(),
+      companyName: input.claim.company_name,
+      ico: input.claim.ico,
+      deadlineAt,
+      maxPages: 2,
+    })
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== VERIFICATION_BUDGET_ERROR) throw error
+    verification = {
+      status: 'needs_review',
+      normalizedDomain: url.hostname.toLowerCase().replace(/^www\./, ''),
+      verifiedUrl: null,
+      confidence: 0,
+      verificationMethods: [],
+      reasonCodes: ['candidate_verification_timeout'],
+      checkedPages: [],
+    }
+  }
   return {
     rank: input.rank,
     queryVariant: input.queryVariant,
@@ -121,6 +147,7 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
   }
 
   const claim = claims[0]
+  const itemDeadlineAt = Date.now() + ITEM_BUDGET_MS
   try {
     const checkedCandidates: CheckedCandidateV2[] = []
     const seenHosts = new Set<string>()
@@ -131,6 +158,7 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
         url: claim.prior_website_url,
         rank: 0,
         queryVariant: 'v1_verified',
+        itemDeadlineAt,
       })
       checkedCandidates.push(prior)
       seenHosts.add(prior.hostname)
@@ -152,9 +180,27 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
         acceptedCandidateCount: search.acceptedCandidateCount,
       }
       for (const candidate of search.candidates) {
+        if (Date.now() >= itemDeadlineAt - COMPLETION_RESERVE_MS) {
+          checkedCandidates.push({
+            rank: candidate.rank,
+            queryVariant: candidate.queryVariant,
+            url: candidate.url,
+            hostname: candidate.hostname,
+            verification: {
+              status: 'needs_review',
+              normalizedDomain: candidate.hostname,
+              verifiedUrl: null,
+              confidence: 0,
+              verificationMethods: [],
+              reasonCodes: ['company_verification_time_budget_exceeded'],
+              checkedPages: [],
+            },
+          })
+          break
+        }
         if (seenHosts.has(candidate.hostname)) continue
         seenHosts.add(candidate.hostname)
-        const checked = await checkCandidate({ claim, ...candidate })
+        const checked = await checkCandidate({ claim, ...candidate, itemDeadlineAt })
         checkedCandidates.push(checked)
         if (isVerifiedCandidate(checked)) {
           accepted = checked
@@ -172,6 +218,11 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
       rawSearchPayloadStored: false,
       rawHtmlStored: false,
       contactsPersisted: false,
+      timeBudget: {
+        itemMilliseconds: ITEM_BUDGET_MS,
+        candidateMilliseconds: CANDIDATE_BUDGET_MS,
+        maxPagesPerCandidate: 2,
+      },
     }
 
     if (accepted) {

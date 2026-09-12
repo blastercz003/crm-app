@@ -10,6 +10,7 @@ const FETCH_TIMEOUT_MS = 7_000
 const MAX_RESPONSE_BYTES = 1_000_000
 const MAX_REDIRECTS = 3
 const MAX_PAGES_PER_CANDIDATE = 3
+const WEBSITE_VERIFICATION_BUDGET_EXCEEDED = 'WEBSITE_VERIFICATION_BUDGET_EXCEEDED'
 
 type SafeHtmlResponse = {
   url: string
@@ -110,17 +111,41 @@ function assertSafeUrl(rawUrl: string) {
   return url
 }
 
-async function resolvePublicAddress(hostname: string) {
-  const addresses = await lookup(hostname, { all: true, verbatim: true })
+function remainingBudgetMs(deadlineAt?: number) {
+  if (deadlineAt === undefined) return FETCH_TIMEOUT_MS
+  const remaining = deadlineAt - Date.now()
+  if (remaining <= 0) throw new Error(WEBSITE_VERIFICATION_BUDGET_EXCEEDED)
+  return Math.min(FETCH_TIMEOUT_MS, remaining)
+}
+
+async function resolvePublicAddress(hostname: string, deadlineAt?: number) {
+  const budgetRemainingMs = deadlineAt === undefined ? Number.POSITIVE_INFINITY : deadlineAt - Date.now()
+  const timeoutMs = remainingBudgetMs(deadlineAt)
+  const timeoutCode = budgetRemainingMs <= FETCH_TIMEOUT_MS
+    ? WEBSITE_VERIFICATION_BUDGET_EXCEEDED
+    : 'WEBSITE_DNS_TIMEOUT'
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const addresses = await Promise.race([
+    lookup(hostname, { all: true, verbatim: true }),
+    new Promise<never>((_resolve, reject) => {
+      timeout = setTimeout(() => reject(new Error(timeoutCode)), timeoutMs)
+    }),
+  ]).finally(() => {
+    if (timeout) clearTimeout(timeout)
+  })
   if (addresses.length === 0 || addresses.some((item) => isUnsafeIp(item.address))) {
     throw new Error('WEBSITE_PRIVATE_ADDRESS_BLOCKED')
   }
   return addresses.find((item) => item.family === 4) ?? addresses[0]
 }
 
-async function requestSafeHtml(rawUrl: string, redirectCount = 0): Promise<SafeHtmlResponse> {
+async function requestSafeHtml(
+  rawUrl: string,
+  redirectCount = 0,
+  deadlineAt?: number,
+): Promise<SafeHtmlResponse> {
   const url = assertSafeUrl(rawUrl)
-  const address = await resolvePublicAddress(url.hostname)
+  const address = await resolvePublicAddress(url.hostname, deadlineAt)
   const transport = url.protocol === 'https:' ? httpsRequest : httpRequest
   const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
     if (options.all) {
@@ -152,7 +177,7 @@ async function requestSafeHtml(rawUrl: string, redirectCount = 0): Promise<SafeH
           reject(new Error('WEBSITE_INSECURE_REDIRECT_BLOCKED'))
           return
         }
-        requestSafeHtml(redirected.toString(), redirectCount + 1).then(resolve, reject)
+        requestSafeHtml(redirected.toString(), redirectCount + 1, deadlineAt).then(resolve, reject)
         return
       }
 
@@ -189,7 +214,13 @@ async function requestSafeHtml(rawUrl: string, redirectCount = 0): Promise<SafeH
       })
     })
 
-    request.setTimeout(FETCH_TIMEOUT_MS, () => request.destroy(new Error('WEBSITE_FETCH_TIMEOUT')))
+    request.setTimeout(remainingBudgetMs(deadlineAt), () => {
+      request.destroy(new Error(
+        deadlineAt !== undefined && Date.now() >= deadlineAt
+          ? WEBSITE_VERIFICATION_BUDGET_EXCEEDED
+          : 'WEBSITE_FETCH_TIMEOUT',
+      ))
+    })
     request.on('error', reject)
     request.end()
   })
@@ -415,6 +446,8 @@ export async function verifyOfficialWebsiteCandidateV2(input: {
   candidateUrl: string
   companyName: string
   ico: string
+  deadlineAt?: number
+  maxPages?: number
 }): Promise<OfficialWebsiteVerificationV2> {
   const initialUrl = assertSafeUrl(input.candidateUrl)
   const normalizedDomain = initialUrl.hostname.replace(/^www\./, '')
@@ -442,10 +475,12 @@ export async function verifyOfficialWebsiteCandidateV2(input: {
   let anyDomainEmailMatch = false
   const distinctiveDomainMatch = hasDistinctiveCompanyTokenInDomain(normalizedDomain, input.companyName)
 
-  for (let index = 0; index < urls.length && index < MAX_PAGES_PER_CANDIDATE; index += 1) {
+  const maxPages = Math.max(1, Math.min(MAX_PAGES_PER_CANDIDATE, input.maxPages ?? MAX_PAGES_PER_CANDIDATE))
+  for (let index = 0; index < urls.length && index < maxPages; index += 1) {
     const url = urls[index]
     try {
-      const response = await requestSafeHtml(url)
+      remainingBudgetMs(input.deadlineAt)
+      const response = await requestSafeHtml(url, 0, input.deadlineAt)
       const evidenceText = htmlToEvidenceText(response.html)
       const matchedIco = hasIcoEvidence(evidenceText, input.ico)
       const matchedName = hasCompanyNameEvidence(evidenceText, input.companyName)
@@ -463,7 +498,7 @@ export async function verifyOfficialWebsiteCandidateV2(input: {
         errorCode: null,
       })
 
-      if (urls.length < MAX_PAGES_PER_CANDIDATE) {
+      if (urls.length < maxPages) {
         for (const contactUrl of contactLinks(response.html, response.url)) {
           if (!queued.has(contactUrl)) {
             queued.add(contactUrl)
@@ -473,6 +508,7 @@ export async function verifyOfficialWebsiteCandidateV2(input: {
         }
       }
     } catch (error) {
+      if (error instanceof Error && error.message === WEBSITE_VERIFICATION_BUDGET_EXCEEDED) throw error
       checkedPages.push({
         url,
         status: null,
