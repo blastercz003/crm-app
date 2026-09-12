@@ -2,12 +2,12 @@ import 'server-only'
 
 const DOMAIN_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i
 const API_KEY_PATTERN = /^re_[A-Za-z0-9_-]{16,}$/
-const WEBHOOK_SECRET_PATTERN = /^whsec_[A-Za-z0-9_-]{16,}$/
+const WEBHOOK_SECRET_PATTERN = /^whsec_\S{16,}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function maskEmail(value: string) {
   return value.replace(/^(.)([^@]*)(@.*)$/, (_match, first: string, middle: string, domain: string) =>
-    `${first}${middle ? '•••' : ''}${domain}`)
+    `${first}${middle ? '***' : ''}${domain}`)
 }
 
 export function getCompleteNotificationResendConfiguration() {
@@ -22,6 +22,7 @@ export function getCompleteNotificationResendConfiguration() {
   const replyToEmail = process.env.COMPLETE_RESEND_REPLY_TO_EMAIL?.trim().toLowerCase() ?? ''
 
   const apiKeyConfigured = API_KEY_PATTERN.test(apiKey)
+  const webhookSecretPresent = webhookSecret.length > 0
   const webhookSecretConfigured = WEBHOOK_SECRET_PATTERN.test(webhookSecret)
   const testRecipientConfigured = EMAIL_PATTERN.test(testRecipient)
   const fromEmailConfigured = EMAIL_PATTERN.test(fromEmail)
@@ -32,7 +33,8 @@ export function getCompleteNotificationResendConfiguration() {
   if (!apiKeyConfigured) issues.push('Chybí samostatný COMPLETE_RESEND_API_KEY.')
   if (!sendingDomain) issues.push('Chybí platná COMPLETE_RESEND_SENDING_DOMAIN.')
   if (sendingDomain && !domainVerified) issues.push('Doména KOMPLETNI ještě není označena jako ověřená.')
-  if (!webhookSecretConfigured) issues.push('Chybí samostatný COMPLETE_RESEND_WEBHOOK_SECRET.')
+  if (!webhookSecretPresent) issues.push('Chybí samostatný COMPLETE_RESEND_WEBHOOK_SECRET.')
+  else if (!webhookSecretConfigured) issues.push('COMPLETE_RESEND_WEBHOOK_SECRET nemá očekávaný formát whsec_...')
   if (!testRecipientConfigured) issues.push('Chybí platná interní COMPLETE_RESEND_TEST_RECIPIENT.')
   if (!fromEmailConfigured) issues.push('Chybí platná COMPLETE_RESEND_FROM_EMAIL.')
   if (fromEmailConfigured && !fromDomainMatches) issues.push('Odesílatel nepatří do domény KOMPLETNI.')
@@ -48,6 +50,7 @@ export function getCompleteNotificationResendConfiguration() {
     apiKeyConfigured,
     sendingDomain,
     domainVerified: Boolean(sendingDomain && domainVerified),
+    webhookSecretPresent,
     webhookSecretConfigured,
     testRecipientConfigured,
     testRecipientMasked: testRecipientConfigured ? maskEmail(testRecipient) : null,

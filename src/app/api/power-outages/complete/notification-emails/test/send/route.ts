@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     sendingDomain: configuration.sendingDomain,
     apiKeyConfigured: configuration.apiKeyConfigured,
     domainVerified: configuration.domainVerified,
+    webhookSecretPresent: configuration.webhookSecretPresent,
     webhookSecretConfigured: configuration.webhookSecretConfigured,
     fromEmailConfigured: configuration.fromEmailConfigured,
     fromDomainMatches: configuration.fromDomainMatches,
