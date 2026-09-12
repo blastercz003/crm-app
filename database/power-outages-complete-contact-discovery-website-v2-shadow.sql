@@ -224,8 +224,14 @@ begin
     if requested_candidate_url !~* '^https?://'
        or nullif(btrim(requested_normalized_domain), '') is null
        or requested_confidence < 0.9
-       or requested_website_kind is distinct from
-          case when requested_result = 'verified_company' then 'company' else 'group' end
+       or (
+         requested_result = 'verified_company'
+         and requested_website_kind is distinct from 'company'
+       )
+       or (
+         requested_result = 'verified_group'
+         and requested_website_kind is distinct from 'group'
+       )
     then raise exception 'Overeny v2 vysledek nema uplny first-party dukaz.'; end if;
   end if;
 

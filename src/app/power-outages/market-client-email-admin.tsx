@@ -93,6 +93,55 @@ function formatDateTime(value: string | null) {
   return Number.isNaN(date.getTime()) ? '—' : DATE_TIME_FORMATTER.format(date)
 }
 
+const COMPACT_TIME_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
+  timeZone: 'Europe/Prague',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+const COMPACT_DATE_FORMATTER = new Intl.DateTimeFormat('cs-CZ', {
+  timeZone: 'Europe/Prague',
+  day: 'numeric',
+  month: 'numeric',
+})
+
+function compactDeliveryTime(value: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  const now = new Date()
+  const pragueDay = (item: Date) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(item)
+  if (pragueDay(date) === pragueDay(now)) return COMPACT_TIME_FORMATTER.format(date)
+  const yesterday = new Date(now.getTime() - 86_400_000)
+  if (pragueDay(date) === pragueDay(yesterday)) return 'včera'
+  return COMPACT_DATE_FORMATTER.format(date)
+}
+
+const CLIENT_SUMMARY_PRESENTATION = {
+  disabled: { label: 'VYPNUTO', className: 'border-slate-400/30 bg-slate-400/8', text: 'text-[var(--text-secondary)]', dot: 'bg-slate-400' },
+  shadow: { label: 'STÍNOVÝ', className: 'border-sky-400/30 bg-sky-500/8', text: 'text-sky-700 [html[data-theme=dark]_&]:text-sky-300', dot: 'bg-sky-500' },
+  test: { label: 'TEST', className: 'border-violet-400/30 bg-violet-500/8', text: 'text-violet-700 [html[data-theme=dark]_&]:text-violet-300', dot: 'bg-violet-500' },
+  live: { label: 'AKTIVNÍ', className: 'border-emerald-400/30 bg-emerald-500/8', text: 'text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300', dot: 'bg-emerald-500' },
+  processing: { label: 'ZPRACOVÁNÍ', className: 'border-sky-400/35 bg-sky-500/10', text: 'text-sky-700 [html[data-theme=dark]_&]:text-sky-300', dot: 'bg-sky-500' },
+  error: { label: 'VYŽADUJE POZORNOST', className: 'border-red-400/40 bg-red-500/10', text: 'text-red-700 [html[data-theme=dark]_&]:text-red-300', dot: 'bg-red-500' },
+} as const
+
+function clientSummaryPresentation(client: MarketClientEmailConfiguration) {
+  const latestRelevantDelivery = client.deliveries.find((delivery) => delivery.mode === client.mode)
+  if (latestRelevantDelivery && ['failed', 'bounced', 'complained'].includes(latestRelevantDelivery.status)) {
+    return CLIENT_SUMMARY_PRESENTATION.error
+  }
+  if (latestRelevantDelivery && ['planned', 'queued', 'sending', 'sent'].includes(latestRelevantDelivery.status)) {
+    return CLIENT_SUMMARY_PRESENTATION.processing
+  }
+  return CLIENT_SUMMARY_PRESENTATION[client.mode]
+}
+
 function ModeBadge({ mode }: { mode: MarketClientEmailMode }) {
   const presentation = MODE_PRESENTATION[mode]
   return (
@@ -504,9 +553,56 @@ export function MarketClientEmailAdminPanel() {
     return () => { cancelled = true }
   }, [])
 
-  const activeCount = useMemo(() => workspace?.clients.filter((client) => client.mode !== 'disabled').length ?? 0, [workspace])
-  const recipientCount = useMemo(() => workspace?.clients.reduce((sum, client) => sum + client.recipients.filter((recipient) => recipient.isActive).length, 0) ?? 0, [workspace])
-  const errorCount = useMemo(() => workspace?.clients.reduce((sum, client) => sum + client.deliveries.filter((delivery) => ['failed', 'bounced', 'complained'].includes(delivery.status)).length, 0) ?? 0, [workspace])
+  useEffect(() => {
+    let cancelled = false
+    let inFlight = false
+    const refreshVisiblePanel = async () => {
+      if (document.visibilityState !== 'visible' || inFlight) return
+      inFlight = true
+      try {
+        const result = await getMarketClientEmailAdminWorkspaceAction()
+        if (cancelled) return
+        if (result.success) {
+          setWorkspace(result.workspace)
+          setError(null)
+          setSelectedClientId((current) => current ?? result.workspace.clients[0]?.clientId ?? null)
+        } else {
+          setError(result.error)
+        }
+      } finally {
+        inFlight = false
+      }
+    }
+    const intervalId = window.setInterval(() => { void refreshVisiblePanel() }, 60_000)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void refreshVisiblePanel()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
+  const recentDelivered = useMemo(() => (workspace?.clients.flatMap((client) => (
+    client.deliveries
+      .filter((delivery) => delivery.mode === 'live' && delivery.status === 'delivered' && delivery.deliveredAt)
+      .map((delivery) => ({ client, delivery }))
+  )) ?? [])
+    .sort((left, right) => Date.parse(right.delivery.deliveredAt ?? '') - Date.parse(left.delivery.deliveredAt ?? ''))
+    .slice(0, 3), [workspace])
+
+  const footerStatus = !workspace
+    ? { label: 'Načítám provozní stav', className: 'text-[var(--text-secondary)]', Icon: LoaderCircle, iconClassName: 'animate-spin text-[var(--accent)]' }
+    : workspace.automationHealth.overallStatus === 'error'
+      || workspace.automationHealth.overallStatus === 'warning'
+      || Boolean(workspace.lastErrorMessage)
+      ? { label: 'Odesílání vyžaduje pozornost', className: 'text-red-700 [html[data-theme=dark]_&]:text-red-300', Icon: AlertTriangle, iconClassName: 'text-red-500' }
+      : workspace.runtimeMode === 'live' && workspace.dispatchEnabled
+        ? { label: 'Automatické odesílání aktivní', className: 'text-[var(--text-secondary)]', Icon: ShieldCheck, iconClassName: 'text-emerald-500' }
+        : { label: 'Automatické odesílání vypnuté', className: 'text-[var(--text-secondary)]', Icon: LockKeyhole, iconClassName: 'text-slate-400' }
+  const FooterStatusIcon = footerStatus.Icon
 
   return (
     <>
@@ -515,8 +611,8 @@ export function MarketClientEmailAdminPanel() {
           <span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 [html[data-theme=dark]_&]:text-violet-300"><MailCheck aria-hidden size={18} /></span><span className="min-w-0"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Klientské notifikace</span><h2 className="truncate text-base font-semibold text-[var(--text-primary)]">E-mailová upozornění</h2></span></span>
           <ChevronRight aria-hidden size={17} className="mt-3 shrink-0 text-[var(--text-secondary)]" />
         </button>
-        {loading && !workspace ? <LoadingBlock label="Načítám nastavení…" /> : error && !workspace ? <button type="button" onClick={openPopup} className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/8 p-4 text-center"><AlertTriangle aria-hidden size={20} className="text-red-500" /><strong className="mt-2 text-[10px] text-[var(--text-primary)]">Nastavení se nepodařilo načíst</strong><span className="mt-1 text-[8px] text-[var(--text-secondary)]">Otevřít detail a opakovat</span></button> : workspace ? <button type="button" onClick={openPopup} className="mt-4 min-h-0 flex-1 text-left"><div className="grid grid-cols-2 gap-2">{workspace.clients.map((client) => <div key={client.clientId} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2.5"><div className="flex items-center justify-between gap-2"><strong className="truncate text-[10px] text-[var(--text-primary)]">{client.chainName}</strong><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${MODE_PRESENTATION[client.mode].dot}`} /></div><small className="mt-1 block text-[7px] font-bold uppercase text-[var(--text-secondary)]">{MODE_PRESENTATION[client.mode].label}</small></div>)}</div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nastaveno</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{activeCount}/4</strong></span><span className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-2"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Příjemci</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{recipientCount}</strong></span><span className={`rounded-xl border p-2 ${errorCount > 0 ? 'border-red-400/30 bg-red-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Chyby</small><strong className="mt-1 block text-sm tabular-nums text-[var(--text-primary)]">{errorCount}</strong></span></div></button> : null}
-        <p className="mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Pouze pro administrátory · Resend {workspace?.resend.providerReady ? 'připraven' : 'čeká na nastavení'} · {workspace?.runtimeMode === 'test' && workspace.dispatchEnabled ? 'bezpečný TEST aktivní' : workspace?.runtimeMode === 'live' && workspace.dispatchEnabled ? 'ostrý provoz aktivní' : 'odesílání vypnuto'}</p>
+        {loading && !workspace ? <LoadingBlock label="Načítám nastavení…" /> : error && !workspace ? <button type="button" onClick={openPopup} className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/8 p-4 text-center"><AlertTriangle aria-hidden size={20} className="text-red-500" /><strong className="mt-2 text-[10px] text-[var(--text-primary)]">Nastavení se nepodařilo načíst</strong><span className="mt-1 text-[8px] text-[var(--text-secondary)]">Otevřít detail a opakovat</span></button> : workspace ? <button type="button" onClick={openPopup} className="mt-4 min-h-0 flex-1 text-left"><div className="grid grid-cols-2 gap-2">{workspace.clients.map((client) => { const presentation = clientSummaryPresentation(client); return <div key={client.clientId} className={`rounded-xl border px-2.5 py-2 ${presentation.className}`}><div className="flex items-center justify-between gap-2"><strong className="truncate text-[10px] text-[var(--text-primary)]">{client.chainName}</strong><i aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${presentation.dot}`} /></div><small className={`mt-1 block truncate text-[7px] font-bold uppercase ${presentation.text}`}>{presentation.label}</small></div> })}</div><div className="mt-3"><div className="flex items-center"><span className="text-[7px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Poslední doručené e-maily</span></div>{recentDelivered.length > 0 ? <div className="mt-1.5 space-y-1">{recentDelivered.map(({ client, delivery }) => { const primaryStore = delivery.stores[0]; const extraStores = Math.max(0, delivery.stores.length - 1); return <div key={delivery.id} className="flex h-6 min-w-0 items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-500/5 px-2"><time className="w-8 shrink-0 text-[7px] font-semibold tabular-nums text-[var(--text-secondary)]">{compactDeliveryTime(delivery.deliveredAt)}</time><span className="min-w-0 flex-1 truncate text-[8px] text-[var(--text-primary)]"><strong>{client.chainName}</strong>{primaryStore?.city ? ` · ${primaryStore.city}` : ''}{extraStores > 0 ? ` +${extraStores}` : ''}</span><CheckCircle2 aria-hidden size={11} className="shrink-0 text-emerald-500" /></div> })}</div> : <div className="mt-1.5 flex h-[76px] items-center justify-center rounded-xl border border-dashed border-[var(--surface-border)] px-3 text-center text-[8px] text-[var(--text-secondary)]">Zatím není evidován žádný doručený ostrý e-mail.</div>}</div></button> : null}
+        <p className={`mt-auto flex items-center justify-center gap-2 pt-3 text-center text-[8px] leading-4 ${footerStatus.className}`}><FooterStatusIcon aria-hidden size={13} className={`shrink-0 ${footerStatus.iconClassName}`} /> Pouze pro administrátory · {footerStatus.label}</p>
       </section>
       {open && typeof document !== 'undefined' ? createPortal(<AdminPopup workspace={workspace} loading={loading} error={error} selectedClientId={selectedClientId} onSelectClient={setSelectedClientId} onReload={() => void load()} onWorkspaceChange={(next) => { setWorkspace(next); setError(null) }} onClose={() => setOpen(false)} />, document.body) : null}
     </>
