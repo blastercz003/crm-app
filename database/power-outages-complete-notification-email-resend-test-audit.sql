@@ -11,14 +11,14 @@ with checks(check_type, object_name, is_correct) as (
   ('FUNCTION', 'controlled COMPLETE Resend TEST claim exists',
     to_regprocedure('public.claim_complete_power_outage_notification_email_test_v1()') is not null),
   ('FUNCTION', 'idempotent COMPLETE Resend webhook recording exists',
-    to_regprocedure('public.record_complete_power_outage_notification_email_test_resend_event_v1(text,text,text,jsonb)') is not null),
+    to_regprocedure('public.record_cpo_notification_email_test_event_v1(text,text,text,jsonb)') is not null),
   ('GRANT', 'authenticated cannot prepare or claim COMPLETE TEST delivery',
     not has_function_privilege('authenticated', 'public.prepare_complete_power_outage_notification_email_test_v1(uuid)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.claim_complete_power_outage_notification_email_test_v1()', 'EXECUTE')),
   ('GRANT', 'authenticated cannot finish or record COMPLETE TEST delivery',
     not has_function_privilege('authenticated', 'public.finish_complete_power_outage_notification_email_test_sent_v1(uuid,uuid,text,text)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.finish_complete_power_outage_notification_email_test_failed_v1(uuid,uuid,text,text)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.record_complete_power_outage_notification_email_test_resend_event_v1(text,text,text,jsonb)', 'EXECUTE')),
+    and not has_function_privilege('authenticated', 'public.record_cpo_notification_email_test_event_v1(text,text,text,jsonb)', 'EXECUTE')),
   ('RLS', 'COMPLETE Resend TEST tables have RLS',
     (select bool_and(c.relrowsecurity)
      from pg_class c
@@ -40,7 +40,7 @@ with checks(check_type, object_name, is_correct) as (
         'public.claim_complete_power_outage_notification_email_test_v1()'::regprocedure,
         'public.finish_complete_power_outage_notification_email_test_sent_v1(uuid,uuid,text,text)'::regprocedure,
         'public.finish_complete_power_outage_notification_email_test_failed_v1(uuid,uuid,text,text)'::regprocedure,
-        'public.record_complete_power_outage_notification_email_test_resend_event_v1(text,text,text,jsonb)'::regprocedure
+        'public.record_cpo_notification_email_test_event_v1(text,text,text,jsonb)'::regprocedure
       ]) and pg_get_functiondef(p.oid) ilike '%power_outage_client_email%'
     )),
   ('LOGIC', 'only SHADOW ready future plans can enter COMPLETE TEST',
@@ -79,7 +79,7 @@ with checks(check_type, object_name, is_correct) as (
   ('SAFETY', 'no TEST delivery was created during installation',
     not exists (select 1 from public.complete_power_outage_notification_email_test_deliveries)),
   ('SAFETY', 'TEST webhook does not suppress real company recipients',
-    pg_get_functiondef('public.record_complete_power_outage_notification_email_test_resend_event_v1(text,text,text,jsonb)'::regprocedure)
+    pg_get_functiondef('public.record_cpo_notification_email_test_event_v1(text,text,text,jsonb)'::regprocedure)
       not ilike '%notification_email_suppression_events%'),
   ('STATE', 'COMPLETE Resend TEST contract version one is recorded',
     (select configuration_contract_version = 1

@@ -380,7 +380,11 @@ begin
 end;
 $$;
 
-create or replace function public.record_complete_power_outage_notification_email_test_resend_event_v1(
+-- Puvodni delsi identifikator PostgreSQL zkratil na 63 znaku. DROP pouziva
+-- stejny vstup, a proto bezpecne odstrani prave tuto legacy funkci.
+drop function if exists public.record_complete_power_outage_notification_email_test_resend_event_v1(text,text,text,jsonb);
+
+create or replace function public.record_cpo_notification_email_test_event_v1(
   requested_provider_event_id text,
   requested_provider_message_id text,
   requested_event_kind text,
@@ -470,7 +474,7 @@ revoke all on function public.finish_complete_power_outage_notification_email_te
   from public, anon, authenticated;
 revoke all on function public.finish_complete_power_outage_notification_email_test_failed_v1(uuid,uuid,text,text)
   from public, anon, authenticated;
-revoke all on function public.record_complete_power_outage_notification_email_test_resend_event_v1(text,text,text,jsonb)
+revoke all on function public.record_cpo_notification_email_test_event_v1(text,text,text,jsonb)
   from public, anon, authenticated;
 revoke all on function public.get_complete_power_outage_notification_email_test_summary_v1()
   from public, anon;
@@ -483,7 +487,7 @@ grant execute on function public.finish_complete_power_outage_notification_email
   to service_role;
 grant execute on function public.finish_complete_power_outage_notification_email_test_failed_v1(uuid,uuid,text,text)
   to service_role;
-grant execute on function public.record_complete_power_outage_notification_email_test_resend_event_v1(text,text,text,jsonb)
+grant execute on function public.record_cpo_notification_email_test_event_v1(text,text,text,jsonb)
   to service_role;
 grant execute on function public.get_complete_power_outage_notification_email_test_summary_v1()
   to authenticated, service_role;

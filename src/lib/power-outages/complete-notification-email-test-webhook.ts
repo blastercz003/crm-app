@@ -42,7 +42,7 @@ export async function recordCompleteNotificationTestWebhook(
   const service = getServiceRoleClient()
   if (!service) throw new Error('Chybí serverové připojení pro Resend TEST webhook KOMPLETNI.')
   const { data, error } = await service.rpc(
-    'record_complete_power_outage_notification_email_test_resend_event_v1',
+    'record_cpo_notification_email_test_event_v1',
     {
       requested_provider_event_id: providerEventId,
       requested_provider_message_id: event.data.email_id,
