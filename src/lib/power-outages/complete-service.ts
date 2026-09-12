@@ -183,11 +183,41 @@ function mapNotificationEmailManagementWorkspace(value: unknown): CompleteNotifi
   const rateLimit = objectValue(row.rateLimit)
   const safety = objectValue(row.safety)
   const operations = objectValue(row.operations)
+  const productionConfiguration = objectValue(row.productionConfiguration)
   const runtimeMode = String(operations.runtimeMode ?? 'shadow')
   return {
     contract: String(row.contract ?? ''),
     adminOnly: row.adminOnly === true,
     liveActivationAvailable: row.liveActivationAvailable === true,
+    productionConfiguration: {
+      configurationStatus: (['draft', 'ready', 'paused', 'live'].includes(String(productionConfiguration.configurationStatus))
+        ? productionConfiguration.configurationStatus
+        : 'draft') as CompleteNotificationEmailManagementWorkspace['productionConfiguration']['configurationStatus'],
+      settingsUiEnabled: productionConfiguration.settingsUiEnabled === true,
+      productionActivationEnabled: productionConfiguration.productionActivationEnabled === true,
+      continuousPlanningEnabled: productionConfiguration.continuousPlanningEnabled === true,
+      continuousDispatchEnabled: productionConfiguration.continuousDispatchEnabled === true,
+      activeSelectorKey: String(productionConfiguration.activeSelectorKey ?? operations.selectedSelectorKey ?? 'top_v1'),
+      selectorChangeRequiresPausedDispatch: productionConfiguration.selectorChangeRequiresPausedDispatch !== false,
+      recipientMode: 'automatic_eligible_primary',
+      dailySendLimit: Number(productionConfiguration.dailySendLimit) || 10,
+      hardDailySendLimit: Number(productionConfiguration.hardDailySendLimit) || 100,
+      monthlySendLimit: Number(productionConfiguration.monthlySendLimit) || 300,
+      hardMonthlySendLimit: Number(productionConfiguration.hardMonthlySendLimit) || 2500,
+      minimumIntervalSeconds: Number(productionConfiguration.minimumIntervalSeconds) || 300,
+      reservationLeaseSeconds: Number(productionConfiguration.reservationLeaseSeconds) || 120,
+      accountingTimezone: String(productionConfiguration.accountingTimezone ?? 'Europe/Prague'),
+      sendWindowStart: String(productionConfiguration.sendWindowStart ?? '07:00'),
+      sendWindowEnd: String(productionConfiguration.sendWindowEnd ?? '18:00'),
+      sendWeekdays: Array.isArray(productionConfiguration.sendWeekdays)
+        ? productionConfiguration.sendWeekdays.map(Number).filter((day) => Number.isInteger(day) && day >= 1 && day <= 7)
+        : [1, 2, 3, 4, 5],
+      maximumOutageHorizonDays: Number(productionConfiguration.maximumOutageHorizonDays) || 30,
+      minimumOutageLeadMinutes: Number(productionConfiguration.minimumOutageLeadMinutes) || 0,
+      configurationVersion: Number(productionConfiguration.configurationVersion) || 1,
+      lastConfiguredAt: typeof productionConfiguration.lastConfiguredAt === 'string' ? productionConfiguration.lastConfiguredAt : null,
+      canEditNow: productionConfiguration.canEditNow === true,
+    },
     operations: {
       runtimeMode: (['disabled', 'shadow', 'paused', 'test', 'live'].includes(runtimeMode) ? runtimeMode : 'shadow') as CompleteNotificationEmailManagementWorkspace['operations']['runtimeMode'],
       planningEnabled: operations.planningEnabled === true,
@@ -1431,7 +1461,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       ? supabase.rpc('get_complete_power_outage_contact_management_summary_v3')
       : Promise.resolve({ data: null, error: null }),
     profile.role === 'admin'
-      ? supabase.rpc('get_cpo_notification_email_management_v1', { requested_limit: 100 })
+      ? supabase.rpc('get_cpo_notification_email_management_v2', { requested_limit: 100 })
       : Promise.resolve({ data: null, error: null }),
   ])
 
@@ -1623,9 +1653,36 @@ export async function setCompletePowerOutageContactRuntime(
 
 export async function getCompleteNotificationEmailManagementWorkspace(): Promise<CompleteNotificationEmailManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const { data, error } = await supabase.rpc('get_cpo_notification_email_management_v1', { requested_limit: 100 })
+  const { data, error } = await supabase.rpc('get_cpo_notification_email_management_v2', { requested_limit: 100 })
   if (error) throw new Error(`Správu e-mailových upozornění se nepodařilo načíst: ${error.message}`)
   return mapNotificationEmailManagementWorkspace(data)
+}
+
+export async function setCompleteNotificationEmailProductionConfig(input: {
+  dailySendLimit: number
+  monthlySendLimit: number
+  minimumIntervalSeconds: number
+  sendWindowStart: string
+  sendWindowEnd: string
+  sendWeekdays: number[]
+  maximumOutageHorizonDays: number
+  minimumOutageLeadMinutes: number
+  reason: string
+}): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('set_cpo_notification_email_production_config_v1', {
+    requested_daily_send_limit: input.dailySendLimit,
+    requested_monthly_send_limit: input.monthlySendLimit,
+    requested_minimum_interval_seconds: input.minimumIntervalSeconds,
+    requested_send_window_start: input.sendWindowStart,
+    requested_send_window_end: input.sendWindowEnd,
+    requested_send_weekdays: input.sendWeekdays,
+    requested_maximum_outage_horizon_days: input.maximumOutageHorizonDays,
+    requested_minimum_outage_lead_minutes: input.minimumOutageLeadMinutes,
+    requested_reason: input.reason,
+  })
+  if (error) throw new Error(`Produkční nastavení e-mailů se nepodařilo uložit: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
 }
 
 export async function getCompleteNotificationEmailDeliveryHistory(input: {

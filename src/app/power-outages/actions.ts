@@ -14,7 +14,7 @@ import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-r
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getCompleteNotificationResendConfiguration } from '@/lib/power-outages/complete-notification-email-resend-config'
-import { acknowledgeCompleteNotificationEmailPilotPause, activateCompleteNotificationEmailLivePilot, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
+import { acknowledgeCompleteNotificationEmailPilotPause, activateCompleteNotificationEmailLivePilot, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist, setCompleteNotificationEmailProductionConfig, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteContactManagementWorkspace,
@@ -302,6 +302,43 @@ export async function setCompletePowerOutageContactRuntimeAction(input: {
 export async function getCompleteNotificationEmailManagementAction(): Promise<CompleteNotificationEmailManagementActionResult> {
   try {
     return { success: true, workspace: await getCompleteNotificationEmailManagementWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function setCompleteNotificationEmailProductionConfigAction(input: {
+  dailySendLimit: number
+  monthlySendLimit: number
+  minimumIntervalSeconds: number
+  sendWindowStart: string
+  sendWindowEnd: string
+  sendWeekdays: number[]
+  maximumOutageHorizonDays: number
+  minimumOutageLeadMinutes: number
+  reason: string
+}): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+    const normalizedReason = input.reason.trim()
+    if (!Number.isInteger(input.dailySendLimit) || input.dailySendLimit < 1 || input.dailySendLimit > 100) throw new Error('Denní limit musí být mezi 1 a 100.')
+    if (!Number.isInteger(input.monthlySendLimit) || input.monthlySendLimit < input.dailySendLimit || input.monthlySendLimit > 2500) throw new Error('Měsíční limit musí být nejméně denní limit a nejvýše 2500.')
+    if (!Number.isInteger(input.minimumIntervalSeconds) || input.minimumIntervalSeconds < 60 || input.minimumIntervalSeconds > 3600) throw new Error('Rozestup musí být mezi 1 a 60 minutami.')
+    if (!timePattern.test(input.sendWindowStart) || !timePattern.test(input.sendWindowEnd) || input.sendWindowStart >= input.sendWindowEnd) throw new Error('Odesílací okno nemá platný začátek a konec.')
+    const uniqueWeekdays = [...new Set(input.sendWeekdays)]
+    if (uniqueWeekdays.length < 1 || uniqueWeekdays.length > 7 || uniqueWeekdays.some((day) => !Number.isInteger(day) || day < 1 || day > 7)) throw new Error('Vyberte alespoň jeden platný den v týdnu.')
+    if (!Number.isInteger(input.maximumOutageHorizonDays) || input.maximumOutageHorizonDays < 1 || input.maximumOutageHorizonDays > 30) throw new Error('Časový horizont musí být mezi 1 a 30 dny.')
+    if (!Number.isInteger(input.minimumOutageLeadMinutes) || input.minimumOutageLeadMinutes < 0 || input.minimumOutageLeadMinutes > 4320) throw new Error('Minimální předstih musí být mezi 0 a 72 hodinami.')
+    if (normalizedReason.length < 3 || normalizedReason.length > 500) throw new Error('Důvod změny musí mít 3 až 500 znaků.')
+    return {
+      success: true,
+      workspace: await setCompleteNotificationEmailProductionConfig({
+        ...input,
+        sendWeekdays: uniqueWeekdays.sort((left, right) => left - right),
+        reason: normalizedReason,
+      }),
+      error: null,
+    }
   } catch (error) {
     return { success: false, workspace: null, error: errorMessage(error) }
   }

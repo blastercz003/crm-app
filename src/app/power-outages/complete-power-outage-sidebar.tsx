@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
 import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteContactManagementSummary, CompleteContactManagementWorkspace, CompleteGlobalProgress, CompleteNotificationEmailDeliveryHistory, CompleteNotificationEmailDeliveryStatus, CompleteNotificationEmailManagementWorkspace, CompleteNotificationEmailPlanItem, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
-import { acknowledgeCompleteNotificationEmailPilotPauseAction, decideCompleteNotificationEmailPilotReviewAction, decideCompletePowerOutageContactReviewAction, decideCompletePowerOutageDomainReviewAction, getCompleteNotificationEmailDeliveryHistoryAction, getCompleteNotificationEmailManagementAction, getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageContactManagementAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction, pauseCompleteNotificationEmailLivePilotAction, prepareCompletePowerOutageContactSelectorAction, setCompleteNotificationEmailPilotAllowlistAction, setCompletePowerOutageContactRuntimeAction } from './actions'
+import { acknowledgeCompleteNotificationEmailPilotPauseAction, decideCompleteNotificationEmailPilotReviewAction, decideCompletePowerOutageContactReviewAction, decideCompletePowerOutageDomainReviewAction, getCompleteNotificationEmailDeliveryHistoryAction, getCompleteNotificationEmailManagementAction, getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageContactManagementAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction, pauseCompleteNotificationEmailLivePilotAction, prepareCompletePowerOutageContactSelectorAction, setCompleteNotificationEmailPilotAllowlistAction, setCompleteNotificationEmailProductionConfigAction, setCompletePowerOutageContactRuntimeAction } from './actions'
 import { CommercialSelectionStatusBadge } from './complete-commercial-selection-status-badge'
 import { CompletePanelStatusBadge } from './complete-panel-status-badge'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
@@ -1264,9 +1264,31 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
   const [historyPeriod, setHistoryPeriod] = useState<'all' | '7' | '30' | '90'>('all')
   const [historySearch, setHistorySearch] = useState('')
   const [historyAppliedSearch, setHistoryAppliedSearch] = useState('')
+  const [dailyLimit, setDailyLimit] = useState(String(initialWorkspace.productionConfiguration.dailySendLimit))
+  const [monthlyLimit, setMonthlyLimit] = useState(String(initialWorkspace.productionConfiguration.monthlySendLimit))
+  const [minimumIntervalMinutesInput, setMinimumIntervalMinutesInput] = useState(String(Math.ceil(initialWorkspace.productionConfiguration.minimumIntervalSeconds / 60)))
+  const [sendWindowStart, setSendWindowStart] = useState(initialWorkspace.productionConfiguration.sendWindowStart)
+  const [sendWindowEnd, setSendWindowEnd] = useState(initialWorkspace.productionConfiguration.sendWindowEnd)
+  const [sendWeekdays, setSendWeekdays] = useState(initialWorkspace.productionConfiguration.sendWeekdays)
+  const [maximumHorizonDays, setMaximumHorizonDays] = useState(String(initialWorkspace.productionConfiguration.maximumOutageHorizonDays))
+  const [minimumLeadHours, setMinimumLeadHours] = useState(String(initialWorkspace.productionConfiguration.minimumOutageLeadMinutes / 60))
+  const [configurationReason, setConfigurationReason] = useState('Úprava provozního nastavení administrátorem.')
+
+  const syncProductionSettings = (next: CompleteNotificationEmailManagementWorkspace) => {
+    const config = next.productionConfiguration
+    setDailyLimit(String(config.dailySendLimit))
+    setMonthlyLimit(String(config.monthlySendLimit))
+    setMinimumIntervalMinutesInput(String(Math.ceil(config.minimumIntervalSeconds / 60)))
+    setSendWindowStart(config.sendWindowStart)
+    setSendWindowEnd(config.sendWindowEnd)
+    setSendWeekdays(config.sendWeekdays)
+    setMaximumHorizonDays(String(config.maximumOutageHorizonDays))
+    setMinimumLeadHours(String(config.minimumOutageLeadMinutes / 60))
+  }
 
   const applyWorkspace = (next: CompleteNotificationEmailManagementWorkspace) => {
     setWorkspace(next)
+    syncProductionSettings(next)
     onWorkspaceChange(next)
   }
   const reload = async () => {
@@ -1309,6 +1331,24 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
     else setError(result.error)
     setPendingKey(null)
   }
+  const saveProductionSettings = async () => {
+    setPendingKey('production-settings')
+    setError(null)
+    const result = await setCompleteNotificationEmailProductionConfigAction({
+      dailySendLimit: Number(dailyLimit),
+      monthlySendLimit: Number(monthlyLimit),
+      minimumIntervalSeconds: Number(minimumIntervalMinutesInput) * 60,
+      sendWindowStart,
+      sendWindowEnd,
+      sendWeekdays,
+      maximumOutageHorizonDays: Number(maximumHorizonDays),
+      minimumOutageLeadMinutes: Number(minimumLeadHours) * 60,
+      reason: configurationReason,
+    })
+    if (result.success) applyWorkspace(result.workspace)
+    else setError(result.error)
+    setPendingKey(null)
+  }
   const loadHistory = async (options?: { append?: boolean; search?: string }) => {
     const append = options?.append === true
     const search = options?.search ?? historyAppliedSearch
@@ -1340,7 +1380,7 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
   const approvedItems = workspace.review.items.filter((item) => item.reviewStatus === 'approved' && item.approvedAndEligibleNow)
   const inactiveItems = workspace.review.items.filter((item) => item.reviewStatus === 'rejected' || item.reviewStatus === 'stale')
   const allowlistFull = workspace.allowlist.activeCompanyCount >= workspace.allowlist.configuredMaximumCompanyCount
-  const minimumIntervalMinutes = Math.ceil(workspace.rateLimit.minimumIntervalSeconds / 60)
+  const productionConfig = workspace.productionConfiguration
   const liveDispatchEnabled = workspace.review.liveDispatchEnabled || workspace.allowlist.liveDispatchEnabled || workspace.rateLimit.liveDispatchEnabled || workspace.safety.dispatchEnabled
   const operationalProblemCount = workspace.safety.recentSignals.filter((signal) => signal.signalType !== 'delivery_success').length
   const attentionCount = workspace.review.pendingCount + operationalProblemCount
@@ -1350,6 +1390,13 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
       ? 'Automatické odesílání je aktivní'
       : 'Automatické odesílání je připravené'
   const actionButton = 'inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-45'
+  const settingsInput = 'mt-1.5 h-9 w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[9px] font-semibold text-[var(--text-primary)] outline-none focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50'
+  const settingsEditable = productionConfig.settingsUiEnabled && productionConfig.canEditNow && !liveDispatchEnabled && pendingKey === null
+  const weekdayOptions = [
+    { value: 1, label: 'Po' }, { value: 2, label: 'Út' }, { value: 3, label: 'St' },
+    { value: 4, label: 'Čt' }, { value: 5, label: 'Pá' }, { value: 6, label: 'So' },
+    { value: 7, label: 'Ne' },
+  ]
 
   const renderNotice = (item: CompleteNotificationEmailPlanItem, mode: 'pending' | 'approved' | 'inactive') => {
     const reviewKey = `review-${item.planId}`
@@ -1407,7 +1454,22 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
 
       <section className={`mt-4 rounded-2xl border p-4 ${attentionCount ? 'border-amber-400/30 bg-amber-400/8' : 'border-emerald-400/25 bg-emerald-400/8'}`}><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyžaduje pozornost</h3><span className={`text-[9px] font-bold ${attentionCount ? 'text-amber-600' : 'text-emerald-600'}`}>{attentionCount}</span></div>{attentionCount ? <div className="mt-2 space-y-2">{pendingItems.map((item) => renderNotice(item, 'pending'))}{workspace.safety.recentSignals.filter((signal) => signal.signalType !== 'delivery_success').map((signal) => <p key={`${signal.signalType}-${signal.createdAt}`} className="rounded-xl border border-red-400/25 bg-red-400/8 px-3 py-2 text-[9px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{signal.signalType} · {signal.errorCode || 'bez kódu'} · {formatDate(signal.createdAt)}</p>)}</div> : <p className="mt-2 flex items-center gap-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><CircleCheck aria-hidden size={13} />Žádný problém nevyžaduje zásah.</p>}</section>
 
-      <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Nastavení rozesílání</summary><div className="border-t border-[var(--surface-border)] p-4"><div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Výběr firem" value={contactSelectorLabel(workspace.operations.selectedSelectorKey)} /><PowerOutageDetailRow label="Denní limit" value={`${workspace.rateLimit.dailySendLimit} e-maily`} /><PowerOutageDetailRow label="Minimální rozestup" value={`${minimumIntervalMinutes} min`} /><PowerOutageDetailRow label="Odhlášené kontakty" value={workspace.operations.suppressedRecipientCount.toLocaleString('cs-CZ')} /></div><p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Resend a webhook jsou oddělené od panelu MARKETY. Změna režimu nebo limitů bude vždy vyžadovat samostatné potvrzení administrátorem.</p></div></details>
+      <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Nastavení rozesílání</summary><div className="border-t border-[var(--surface-border)] p-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Výběr firem" value={contactSelectorLabel(productionConfig.activeSelectorKey)} /><PowerOutageDetailRow label="Verze nastavení" value={`v${productionConfig.configurationVersion}`} /><PowerOutageDetailRow label="Časové pásmo" value="Europe/Prague" /><PowerOutageDetailRow label="Odhlášené kontakty" value={workspace.operations.suppressedRecipientCount.toLocaleString('cs-CZ')} /></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Denní limit<input type="number" min={1} max={productionConfig.hardDailySendLimit} value={dailyLimit} disabled={!settingsEditable} onChange={(event) => setDailyLimit(event.target.value)} className={settingsInput} /><small className="mt-1 block font-medium normal-case tracking-normal">Pevné maximum {productionConfig.hardDailySendLimit}</small></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Měsíční limit<input type="number" min={1} max={productionConfig.hardMonthlySendLimit} value={monthlyLimit} disabled={!settingsEditable} onChange={(event) => setMonthlyLimit(event.target.value)} className={settingsInput} /><small className="mt-1 block font-medium normal-case tracking-normal">Pevné maximum {productionConfig.hardMonthlySendLimit}</small></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Rozestup mezi e-maily<input type="number" min={1} max={60} value={minimumIntervalMinutesInput} disabled={!settingsEditable} onChange={(event) => setMinimumIntervalMinutesInput(event.target.value)} className={settingsInput} /><small className="mt-1 block font-medium normal-case tracking-normal">V minutách, rozsah 1–60</small></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Začátek odesílání<input type="time" value={sendWindowStart} disabled={!settingsEditable} onChange={(event) => setSendWindowStart(event.target.value)} className={settingsInput} /></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Konec odesílání<input type="time" value={sendWindowEnd} disabled={!settingsEditable} onChange={(event) => setSendWindowEnd(event.target.value)} className={settingsInput} /></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Horizont odstávky<input type="number" min={1} max={30} value={maximumHorizonDays} disabled={!settingsEditable} onChange={(event) => setMaximumHorizonDays(event.target.value)} className={settingsInput} /><small className="mt-1 block font-medium normal-case tracking-normal">Kolik dnů dopředu, maximum 30</small></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Minimální předstih<input type="number" min={0} max={72} step={0.5} value={minimumLeadHours} disabled={!settingsEditable} onChange={(event) => setMinimumLeadHours(event.target.value)} className={settingsInput} /><small className="mt-1 block font-medium normal-case tracking-normal">V hodinách před začátkem odstávky</small></label>
+        </div>
+        <fieldset className="mt-4"><legend className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Odesílací dny</legend><div className="mt-2 grid grid-cols-7 gap-1">{weekdayOptions.map((day) => { const selected = sendWeekdays.includes(day.value); return <button key={day.value} type="button" aria-pressed={selected} disabled={!settingsEditable || (selected && sendWeekdays.length === 1)} onClick={() => setSendWeekdays((current) => selected ? current.filter((value) => value !== day.value) : [...current, day.value].sort((a, b) => a - b))} className={`h-8 rounded-lg border text-[8px] font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${selected ? 'border-sky-400/45 bg-sky-500/12 text-sky-700 [html[data-theme=dark]_&]:text-sky-300' : 'border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]'}`}>{day.label}</button> })}</div></fieldset>
+        <label className="mt-4 block text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Důvod změny<textarea rows={2} maxLength={500} value={configurationReason} disabled={!settingsEditable} onChange={(event) => setConfigurationReason(event.target.value)} className="mt-1.5 w-full resize-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2 text-[9px] font-medium normal-case tracking-normal text-[var(--text-primary)] outline-none focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50" /></label>
+        <button type="button" disabled={!settingsEditable || configurationReason.trim().length < 3} onClick={() => void saveProductionSettings()} className={`${actionButton} mt-3 w-full border-sky-400/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300`}>{pendingKey === 'production-settings' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Uložit nastavení</button>
+        <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Nastavení lze měnit pouze při vypnutém odesílání. Tento krok nezpřístupňuje ostrou aktivaci ani neposílá e-maily. Každá změna se zapisuje do neměnné auditní historie; Resend pro KOMPLETNÍ zůstává oddělený od panelu MARKETY.</p>
+      </div></details>
 
       <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Bezpečnost a pozastavení</summary><div className="border-t border-[var(--surface-border)] p-4"><div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Série chyb" value={`${workspace.safety.consecutiveTransientFailureCount} / ${workspace.safety.transientFailureThreshold}`} /><PowerOutageDetailRow label="Aktivní rezervace" value={workspace.rateLimit.activeReservationCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Webhook" value={workspace.safety.liveSignalIngestionEnabled ? 'AKTIVNÍ' : 'PŘIPRAVEN'} /><PowerOutageDetailRow label="Režim" value={workspace.operations.runtimeMode.toUpperCase()} /></div><p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Complaint, hard bounce nebo chyba konfigurace zastaví odesílání okamžitě. Tři navazující přechodné chyby jej zastaví také.</p>{liveDispatchEnabled ? <div className="mt-4 border-t border-red-400/20 pt-4"><p className="text-[9px] leading-4 text-[var(--text-secondary)]">Nouzové pozastavení vypne pouze rozesílání KOMPLETNÍ. Panel MARKETY zůstane beze změny.</p><textarea value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || pauseReason.trim().length < 3} onClick={() => void pauseLivePilot()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'pause-live' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <X aria-hidden size={11} />}Pozastavit odesílání</button></div> : null}</div></details>
 

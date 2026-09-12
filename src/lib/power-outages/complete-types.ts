@@ -293,6 +293,31 @@ export type CompleteNotificationEmailManagementWorkspace = {
   contract: string
   adminOnly: boolean
   liveActivationAvailable: boolean
+  productionConfiguration: {
+    configurationStatus: 'draft' | 'ready' | 'paused' | 'live'
+    settingsUiEnabled: boolean
+    productionActivationEnabled: boolean
+    continuousPlanningEnabled: boolean
+    continuousDispatchEnabled: boolean
+    activeSelectorKey: string
+    selectorChangeRequiresPausedDispatch: boolean
+    recipientMode: 'automatic_eligible_primary'
+    dailySendLimit: number
+    hardDailySendLimit: number
+    monthlySendLimit: number
+    hardMonthlySendLimit: number
+    minimumIntervalSeconds: number
+    reservationLeaseSeconds: number
+    accountingTimezone: string
+    sendWindowStart: string
+    sendWindowEnd: string
+    sendWeekdays: number[]
+    maximumOutageHorizonDays: number
+    minimumOutageLeadMinutes: number
+    configurationVersion: number
+    lastConfiguredAt: string | null
+    canEditNow: boolean
+  }
   operations: {
     runtimeMode: 'disabled' | 'shadow' | 'paused' | 'test' | 'live'
     planningEnabled: boolean
