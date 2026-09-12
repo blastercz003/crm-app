@@ -13,10 +13,11 @@ import { planMarketClientEmailCandidates } from '@/lib/power-outages/client-emai
 import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-resend-config'
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
-import { decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, prepareCompletePowerOutageContactSelector } from '@/lib/power-outages/complete-service'
+import { acknowledgeCompleteNotificationEmailPilotPause, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteContactManagementWorkspace,
+  CompleteNotificationEmailManagementWorkspace,
   CompleteCommercialSelectionCounts,
   CompleteAddressCoverageDiagnostic,
   CompletePowerOutageAssignment,
@@ -71,6 +72,10 @@ type CompleteSidebarActionResult =
 
 type CompleteContactManagementActionResult =
   | { success: true; workspace: CompleteContactManagementWorkspace; error: null }
+  | { success: false; workspace: null; error: string }
+
+type CompleteNotificationEmailManagementActionResult =
+  | { success: true; workspace: CompleteNotificationEmailManagementWorkspace; error: null }
   | { success: false; workspace: null; error: string }
 
 type CompleteAssignmentActionResult =
@@ -264,6 +269,51 @@ export async function prepareCompletePowerOutageContactSelectorAction(
   try {
     if (!/^[a-z0-9_]{2,64}$/.test(selectorKey)) throw new Error('Neplatný klíč výběru.')
     return { success: true, workspace: await prepareCompletePowerOutageContactSelector(selectorKey), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompleteNotificationEmailManagementAction(): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    return { success: true, workspace: await getCompleteNotificationEmailManagementWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function decideCompleteNotificationEmailPilotReviewAction(input: {
+  planId: string
+  decision: 'approved' | 'rejected' | 'revoked'
+}): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    if (!validUuid(input.planId)) throw new Error('Neplatné ID připraveného oznámení.')
+    if (!['approved', 'rejected', 'revoked'].includes(input.decision)) throw new Error('Neplatné rozhodnutí o oznámení.')
+    return { success: true, workspace: await decideCompleteNotificationEmailPilotReview(input.planId, input.decision), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function setCompleteNotificationEmailPilotAllowlistAction(input: {
+  planId: string
+  included: boolean
+}): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    if (!validUuid(input.planId)) throw new Error('Neplatné ID připraveného oznámení.')
+    return { success: true, workspace: await setCompleteNotificationEmailPilotAllowlist(input.planId, input.included), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function acknowledgeCompleteNotificationEmailPilotPauseAction(
+  note: string,
+): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    const normalizedNote = note.trim()
+    if (normalizedNote.length < 3 || normalizedNote.length > 500) throw new Error('Poznámka musí mít 3 až 500 znaků.')
+    return { success: true, workspace: await acknowledgeCompleteNotificationEmailPilotPause(normalizedNote), error: null }
   } catch (error) {
     return { success: false, workspace: null, error: errorMessage(error) }
   }

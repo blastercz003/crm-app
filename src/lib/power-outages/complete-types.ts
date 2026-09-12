@@ -238,6 +238,80 @@ export type CompleteContactManagementWorkspace = {
   }>
 }
 
+export type CompleteNotificationEmailPlanItem = {
+  planId: string
+  reviewStatus: 'pending' | 'approved' | 'rejected' | 'stale'
+  approvedAndEligibleNow: boolean
+  companyName: string
+  ico: string
+  recipientEmail: string
+  source: PowerOutageSource
+  startsAt: string
+  endsAt: string
+  municipality: string | null
+  addresses: Array<Record<string, unknown>>
+  reason: string | null
+  decidedAt: string | null
+}
+
+export type CompleteNotificationEmailManagementWorkspace = {
+  contract: string
+  adminOnly: boolean
+  liveActivationAvailable: boolean
+  review: {
+    reviewEnabled: boolean
+    reviewUiEnabled: boolean
+    sendingEnabled: boolean
+    liveDispatchEnabled: boolean
+    pendingCount: number
+    approvedCount: number
+    approvedAndEligibleNowCount: number
+    rejectedCount: number
+    staleApprovalCount: number
+    items: CompleteNotificationEmailPlanItem[]
+  }
+  allowlist: {
+    managementEnabled: boolean
+    uiEnabled: boolean
+    liveDispatchEnabled: boolean
+    configuredMaximumCompanyCount: number
+    hardMaximumCompanyCount: number
+    activeCompanyCount: number
+    activeItems: CompleteNotificationEmailPlanItem[]
+    approvedCandidates: CompleteNotificationEmailPlanItem[]
+  }
+  rateLimit: {
+    enforcementEnabled: boolean
+    reservationEnabled: boolean
+    dailySendLimit: number
+    minimumIntervalSeconds: number
+    reservationLeaseSeconds: number
+    accountingTimezone: string
+    sentTodayCount: number
+    activeReservationCount: number
+    expiredReservationCount: number
+    sendingEnabled: boolean
+    liveDispatchEnabled: boolean
+  }
+  safety: {
+    monitoringEnabled: boolean
+    liveSignalIngestionEnabled: boolean
+    autoPauseEnabled: boolean
+    transientFailureThreshold: number
+    consecutiveTransientFailureCount: number
+    isPaused: boolean
+    pausedAt: string | null
+    pauseReasonCode: string | null
+    lastSignalAt: string | null
+    lastErrorCode: string | null
+    lastErrorMessage: string | null
+    recentSignals: Array<{ signalType: string; errorCode: string | null; createdAt: string }>
+    planningEnabled: boolean
+    dispatchEnabled: boolean
+    rateReservationEnabled: boolean
+  }
+}
+
 export type CompletePowerOutageDetail = CompletePowerOutageListItem & {
   addressLatitude: number | null
   addressLongitude: number | null
@@ -674,6 +748,7 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
 > & {
   globalProgress: CompleteGlobalProgress | null
   contactManagement: CompleteContactManagementSummary | null
+  emailManagement: CompleteNotificationEmailManagementWorkspace | null
   commercialSelection: {
     enabled: boolean
     scoringEnabled: boolean
@@ -699,5 +774,6 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
     addressCoverage: string | null
     commercialSelection: string | null
     contactManagement: string | null
+    emailManagement: string | null
   }
 }

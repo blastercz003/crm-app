@@ -6,6 +6,7 @@ import type {
   CompleteCompanyEnrichment,
   CompleteContactManagementSummary,
   CompleteContactManagementWorkspace,
+  CompleteNotificationEmailManagementWorkspace,
   CompleteDiscoveredContact,
   CompleteDiscoveredContacts,
   CompleteGlobalProgress,
@@ -119,6 +120,97 @@ function mapContactManagementWorkspace(value: unknown): CompleteContactManagemen
       capturedAt: typeof batch.capturedAt === 'string' ? batch.capturedAt : null,
       finishedAt: typeof batch.finishedAt === 'string' ? batch.finishedAt : null,
     })).filter((batch) => batch.id),
+  }
+}
+
+function mapNotificationEmailPlanItem(value: unknown): CompleteNotificationEmailManagementWorkspace['review']['items'][number] {
+  const row = objectValue(value)
+  const reviewStatus = ['approved', 'rejected', 'stale'].includes(String(row.reviewStatus))
+    ? String(row.reviewStatus) as 'approved' | 'rejected' | 'stale'
+    : 'pending'
+  return {
+    planId: String(row.planId ?? ''),
+    reviewStatus,
+    approvedAndEligibleNow: row.approvedAndEligibleNow === true,
+    companyName: String(row.companyName ?? ''),
+    ico: String(row.ico ?? ''),
+    recipientEmail: String(row.recipientEmail ?? ''),
+    source: (['cez', 'egd', 'pre'].includes(String(row.source)) ? row.source : 'cez') as PowerOutageSource,
+    startsAt: String(row.startsAt ?? ''),
+    endsAt: String(row.endsAt ?? ''),
+    municipality: typeof row.municipality === 'string' ? row.municipality : null,
+    addresses: objectArray(row.addresses),
+    reason: typeof row.reason === 'string' ? row.reason : null,
+    decidedAt: typeof row.decidedAt === 'string' ? row.decidedAt : null,
+  }
+}
+
+function mapNotificationEmailManagementWorkspace(value: unknown): CompleteNotificationEmailManagementWorkspace {
+  const row = objectValue(value)
+  const review = objectValue(row.review)
+  const allowlist = objectValue(row.allowlist)
+  const rateLimit = objectValue(row.rateLimit)
+  const safety = objectValue(row.safety)
+  return {
+    contract: String(row.contract ?? ''),
+    adminOnly: row.adminOnly === true,
+    liveActivationAvailable: row.liveActivationAvailable === true,
+    review: {
+      reviewEnabled: review.reviewEnabled === true,
+      reviewUiEnabled: review.reviewUiEnabled === true,
+      sendingEnabled: review.sendingEnabled === true,
+      liveDispatchEnabled: review.liveDispatchEnabled === true,
+      pendingCount: Number(review.pendingCount) || 0,
+      approvedCount: Number(review.approvedCount) || 0,
+      approvedAndEligibleNowCount: Number(review.approvedAndEligibleNowCount) || 0,
+      rejectedCount: Number(review.rejectedCount) || 0,
+      staleApprovalCount: Number(review.staleApprovalCount) || 0,
+      items: objectArray(review.items).map(mapNotificationEmailPlanItem).filter((item) => item.planId),
+    },
+    allowlist: {
+      managementEnabled: allowlist.managementEnabled === true,
+      uiEnabled: allowlist.uiEnabled === true,
+      liveDispatchEnabled: allowlist.liveDispatchEnabled === true,
+      configuredMaximumCompanyCount: Number(allowlist.configuredMaximumCompanyCount) || 3,
+      hardMaximumCompanyCount: Number(allowlist.hardMaximumCompanyCount) || 5,
+      activeCompanyCount: Number(allowlist.activeCompanyCount) || 0,
+      activeItems: objectArray(allowlist.activeItems).map(mapNotificationEmailPlanItem).filter((item) => item.planId),
+      approvedCandidates: objectArray(allowlist.approvedCandidates).map(mapNotificationEmailPlanItem).filter((item) => item.planId),
+    },
+    rateLimit: {
+      enforcementEnabled: rateLimit.enforcementEnabled === true,
+      reservationEnabled: rateLimit.reservationEnabled === true,
+      dailySendLimit: Number(rateLimit.dailySendLimit) || 3,
+      minimumIntervalSeconds: Number(rateLimit.minimumIntervalSeconds) || 600,
+      reservationLeaseSeconds: Number(rateLimit.reservationLeaseSeconds) || 120,
+      accountingTimezone: String(rateLimit.accountingTimezone ?? 'Europe/Prague'),
+      sentTodayCount: Number(rateLimit.sentTodayCount) || 0,
+      activeReservationCount: Number(rateLimit.activeReservationCount) || 0,
+      expiredReservationCount: Number(rateLimit.expiredReservationCount) || 0,
+      sendingEnabled: rateLimit.sendingEnabled === true,
+      liveDispatchEnabled: rateLimit.liveDispatchEnabled === true,
+    },
+    safety: {
+      monitoringEnabled: safety.monitoringEnabled === true,
+      liveSignalIngestionEnabled: safety.liveSignalIngestionEnabled === true,
+      autoPauseEnabled: safety.autoPauseEnabled === true,
+      transientFailureThreshold: Number(safety.transientFailureThreshold) || 3,
+      consecutiveTransientFailureCount: Number(safety.consecutiveTransientFailureCount) || 0,
+      isPaused: safety.isPaused === true,
+      pausedAt: typeof safety.pausedAt === 'string' ? safety.pausedAt : null,
+      pauseReasonCode: typeof safety.pauseReasonCode === 'string' ? safety.pauseReasonCode : null,
+      lastSignalAt: typeof safety.lastSignalAt === 'string' ? safety.lastSignalAt : null,
+      lastErrorCode: typeof safety.lastErrorCode === 'string' ? safety.lastErrorCode : null,
+      lastErrorMessage: typeof safety.lastErrorMessage === 'string' ? safety.lastErrorMessage : null,
+      recentSignals: objectArray(safety.recentSignals).map((signal) => ({
+        signalType: String(signal.signalType ?? ''),
+        errorCode: typeof signal.errorCode === 'string' ? signal.errorCode : null,
+        createdAt: String(signal.createdAt ?? ''),
+      })).filter((signal) => signal.signalType && signal.createdAt),
+      planningEnabled: safety.planningEnabled === true,
+      dispatchEnabled: safety.dispatchEnabled === true,
+      rateReservationEnabled: safety.rateReservationEnabled === true,
+    },
   }
 }
 
@@ -1261,7 +1353,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const [
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
     cezNewResult, cezCompletedCycleResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
-    commercialSelectionResult, commercialSelectionProgressResult, contactManagementResult,
+    commercialSelectionResult, commercialSelectionProgressResult, contactManagementResult, emailManagementResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
@@ -1277,6 +1369,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_commercial_selection_progress_snapshot').select('status,stage,evaluation_pending_count,enrichment_pending_count,scoring_pending_count,remaining_count,attention_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
     profile.role === 'admin'
       ? supabase.rpc('get_complete_power_outage_contact_management_summary_v1')
+      : Promise.resolve({ data: null, error: null }),
+    profile.role === 'admin'
+      ? supabase.rpc('get_cpo_notification_email_management_v1', { requested_limit: 100 })
       : Promise.resolve({ data: null, error: null }),
   ])
 
@@ -1344,6 +1439,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const contactManagementLoadError = profile.role === 'admin' && contactManagementResult.error
     ? `Dohledávání kontaktů se nepodařilo načíst: ${contactManagementResult.error.message}`
     : null
+  const emailManagementLoadError = profile.role === 'admin' && emailManagementResult.error
+    ? `Správu e-mailových upozornění se nepodařilo načíst: ${emailManagementResult.error.message}`
+    : null
   const globalProgress = globalProgressResult.data ? {
     status: globalProgressResult.data.status,
     progressPercent: Number(globalProgressResult.data.progress_percent) || 0,
@@ -1400,6 +1498,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     contactManagement: profile.role === 'admin' && !contactManagementResult.error
       ? mapContactManagementSummary(contactManagementResult.data)
       : null,
+    emailManagement: profile.role === 'admin' && !emailManagementResult.error
+      ? mapNotificationEmailManagementWorkspace(emailManagementResult.data)
+      : null,
     commercialSelection: {
       enabled: commercialSelectionResult.data?.ui_enabled === true,
       scoringEnabled: commercialSelectionResult.data?.scoring_enabled === true,
@@ -1427,6 +1528,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       addressCoverage: coverageLoadError,
       commercialSelection: commercialSelectionLoadError,
       contactManagement: contactManagementLoadError,
+      emailManagement: emailManagementLoadError,
     },
   }
 }
@@ -1436,6 +1538,52 @@ export async function getCompletePowerOutageContactManagementWorkspace(): Promis
   const { data, error } = await supabase.rpc('get_complete_power_outage_contact_management_workspace_v1')
   if (error) throw new Error(`Správu dohledávání kontaktů se nepodařilo načíst: ${error.message}`)
   return mapContactManagementWorkspace(data)
+}
+
+export async function getCompleteNotificationEmailManagementWorkspace(): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { data, error } = await supabase.rpc('get_cpo_notification_email_management_v1', { requested_limit: 100 })
+  if (error) throw new Error(`Správu e-mailových upozornění se nepodařilo načíst: ${error.message}`)
+  return mapNotificationEmailManagementWorkspace(data)
+}
+
+export async function decideCompleteNotificationEmailPilotReview(
+  planId: string,
+  decision: 'approved' | 'rejected' | 'revoked',
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('decide_cpo_notification_email_pilot_v1', {
+    requested_plan_id: planId,
+    requested_decision: decision,
+    requested_reason: null,
+  })
+  if (error) throw new Error(`Rozhodnutí o oznámení se nepodařilo uložit: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
+}
+
+export async function setCompleteNotificationEmailPilotAllowlist(
+  planId: string,
+  included: boolean,
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('set_cpo_notification_email_pilot_allowlist_v1', {
+    requested_plan_id: planId,
+    requested_included: included,
+    requested_reason: null,
+  })
+  if (error) throw new Error(`Pilotní allowlist se nepodařilo změnit: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
+}
+
+export async function acknowledgeCompleteNotificationEmailPilotPause(
+  note: string,
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('acknowledge_cpo_notification_email_pilot_pause_v1', {
+    requested_note: note,
+  })
+  if (error) throw new Error(`Incident se nepodařilo potvrdit: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
 }
 
 export async function decideCompletePowerOutageContactReview(
