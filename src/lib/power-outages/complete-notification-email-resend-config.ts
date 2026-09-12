@@ -60,6 +60,9 @@ export function getCompleteNotificationResendConfiguration() {
     testReady: apiKeyConfigured && Boolean(sendingDomain) && domainVerified
       && webhookSecretConfigured && testRecipientConfigured
       && fromEmailConfigured && fromDomainMatches && replyToConfigured,
+    liveReady: apiKeyConfigured && Boolean(sendingDomain) && domainVerified
+      && webhookSecretConfigured && fromEmailConfigured
+      && fromDomainMatches && replyToConfigured,
     issues,
   }
 }

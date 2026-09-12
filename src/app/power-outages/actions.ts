@@ -13,7 +13,8 @@ import { planMarketClientEmailCandidates } from '@/lib/power-outages/client-emai
 import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-resend-config'
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
-import { acknowledgeCompleteNotificationEmailPilotPause, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist } from '@/lib/power-outages/complete-service'
+import { getCompleteNotificationResendConfiguration } from '@/lib/power-outages/complete-notification-email-resend-config'
+import { acknowledgeCompleteNotificationEmailPilotPause, activateCompleteNotificationEmailLivePilot, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteContactManagementWorkspace,
@@ -314,6 +315,31 @@ export async function acknowledgeCompleteNotificationEmailPilotPauseAction(
     const normalizedNote = note.trim()
     if (normalizedNote.length < 3 || normalizedNote.length > 500) throw new Error('Poznámka musí mít 3 až 500 znaků.')
     return { success: true, workspace: await acknowledgeCompleteNotificationEmailPilotPause(normalizedNote), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function activateCompleteNotificationEmailLivePilotAction(
+  confirmation: string,
+): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    if (confirmation !== 'AKTIVOVAT PILOT KOMPLETNÍ') throw new Error('Zadejte přesnou potvrzovací frázi.')
+    const configuration = getCompleteNotificationResendConfiguration()
+    if (!configuration.liveReady) throw new Error(`Resend LIVE není připraven: ${configuration.issues.join(' ')}`)
+    return { success: true, workspace: await activateCompleteNotificationEmailLivePilot(confirmation), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function pauseCompleteNotificationEmailLivePilotAction(
+  reason: string,
+): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    const normalizedReason = reason.trim()
+    if (normalizedReason.length < 3 || normalizedReason.length > 500) throw new Error('Důvod musí mít 3 až 500 znaků.')
+    return { success: true, workspace: await pauseCompleteNotificationEmailLivePilot(normalizedReason), error: null }
   } catch (error) {
     return { success: false, workspace: null, error: errorMessage(error) }
   }

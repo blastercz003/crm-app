@@ -4,6 +4,7 @@ import {
   recordCompleteNotificationTestWebhook,
   verifyCompleteNotificationTestWebhook,
 } from '@/lib/power-outages/complete-notification-email-test-webhook'
+import { recordCompleteNotificationLiveWebhook } from '@/lib/power-outages/complete-notification-email-live-webhook'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,14 +27,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await recordCompleteNotificationTestWebhook(id, event)
-    return NextResponse.json({ ok: true, result })
+    const testResult = await recordCompleteNotificationTestWebhook(id, event)
+    const liveResult = await recordCompleteNotificationLiveWebhook(id, event)
+    return NextResponse.json({ ok: true, testResult, liveResult })
   } catch (error) {
     await reportRouteError({
       error,
       route: '/api/power-outages/complete/notification-emails/test/webhook',
       section: 'power-outages',
-      errorType: 'CompleteNotificationEmailTestWebhookError',
+      errorType: 'CompleteNotificationEmailWebhookError',
     })
     return NextResponse.json({ ok: false, error: 'Webhook event could not be stored' }, { status: 500 })
   }

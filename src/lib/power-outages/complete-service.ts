@@ -1586,6 +1586,28 @@ export async function acknowledgeCompleteNotificationEmailPilotPause(
   return getCompleteNotificationEmailManagementWorkspace()
 }
 
+export async function activateCompleteNotificationEmailLivePilot(
+  confirmation: string,
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('activate_cpo_notification_email_live_pilot_v1', {
+    requested_confirmation: confirmation,
+  })
+  if (error) throw new Error(`LIVE pilot se nepodařilo aktivovat: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
+}
+
+export async function pauseCompleteNotificationEmailLivePilot(
+  reason: string,
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('pause_cpo_notification_email_live_pilot_v1', {
+    requested_reason: reason,
+  })
+  if (error) throw new Error(`LIVE pilot se nepodařilo pozastavit: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
+}
+
 export async function decideCompletePowerOutageContactReview(
   contactId: string,
   decision: 'approved' | 'rejected',
