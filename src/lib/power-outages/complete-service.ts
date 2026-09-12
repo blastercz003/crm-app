@@ -1670,7 +1670,7 @@ export async function setCompleteNotificationEmailProductionConfig(input: {
   reason: string
 }): Promise<CompleteNotificationEmailManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const { error } = await supabase.rpc('set_cpo_notification_email_production_config_v1', {
+  const { error } = await supabase.rpc('set_cpo_notification_email_production_config_v2', {
     requested_daily_send_limit: input.dailySendLimit,
     requested_monthly_send_limit: input.monthlySendLimit,
     requested_minimum_interval_seconds: input.minimumIntervalSeconds,
