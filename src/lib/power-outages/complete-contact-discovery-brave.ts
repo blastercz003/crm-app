@@ -2,8 +2,10 @@ import 'server-only'
 
 const BRAVE_WEB_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search'
 const BRAVE_RESULT_LIMIT = 5
+const BRAVE_V2_RESULT_LIMIT = 10
 const BRAVE_TIMEOUT_MS = 12_000
 const BRAVE_CANDIDATE_LIMIT = 3
+const BRAVE_V2_CANDIDATE_LIMIT = 5
 const BRAVE_MIN_REQUEST_INTERVAL_MS = 1_100
 const BRAVE_RATE_LIMIT_RETRY_CAP_MS = 5_000
 
@@ -19,26 +21,59 @@ const BLOCKED_HOSTS = new Set([
   'finance.cz',
   'companywall.cz',
   'b2bhint.com',
+  'aaadodavatel.cz',
+  'aktualnezregionu.cz',
+  'autobazar.sk',
   'betonserver.cz',
+  'chytryrejstrik.cz',
+  'dobrykontakt.cz',
   'edb.cz',
+  'electroindustry.cz',
+  'firmyvdosahu.cz',
+  'financni-web.cz',
+  'hlidacstatu.cz',
   'idatabaze.cz',
+  'industrycontact.cz',
   'info-morava.cz',
+  'info-cechy.cz',
+  'info-vysocina.cz',
   'instagram.com',
+  'ispis.com',
+  'ispis.cz',
   'jenfirmy.cz',
   'justice.cz',
   'kompass.com',
   'kurzy.cz',
   'linkedin.com',
+  'lei.bloomberg.com',
+  'medicusindex.cz',
+  'northdata.com',
+  'nzip.cz',
   'mapy.com',
   'mapy.cz',
   'mesec.cz',
   'or.justice.cz',
+  'orsr.sk',
+  'obchodiste.cz',
+  'ov.gov.cz',
   'penize.cz',
   'podnikatel.cz',
   'portal.gov.cz',
   'pracesemily.cz',
+  'qoobus.com',
   'rejstriky.finance.cz',
   'rocketreach.co',
+  'search.seznam.cz',
+  'seznamremeslniku.cz',
+  'sluzby.cz',
+  'telefonny.zoznam.sk',
+  'transparex.sk',
+  'usteckyinfo.cz',
+  'wikidata.org',
+  'zlatestranky.cz',
+  'hradeckralove.org',
+  'ceska-trebova.cz',
+  'ratajpolska.pl',
   'x.com',
   'youtube.com',
   'zivefirmy.cz',
@@ -53,23 +88,56 @@ const BLOCKED_HOST_SUFFIXES = [
   '.finance.cz',
   '.companywall.cz',
   '.b2bhint.com',
+  '.aaadodavatel.cz',
+  '.aktualnezregionu.cz',
+  '.autobazar.sk',
   '.betonserver.cz',
+  '.chytryrejstrik.cz',
+  '.dobrykontakt.cz',
   '.edb.cz',
+  '.electroindustry.cz',
+  '.firmyvdosahu.cz',
+  '.financni-web.cz',
+  '.hlidacstatu.cz',
   '.idatabaze.cz',
+  '.industrycontact.cz',
+  '.info-cechy.cz',
+  '.info-vysocina.cz',
   '.info-morava.cz',
   '.instagram.com',
+  '.ispis.com',
+  '.ispis.cz',
   '.jenfirmy.cz',
   '.justice.cz',
   '.kompass.com',
   '.kurzy.cz',
   '.linkedin.com',
+  '.bloomberg.com',
+  '.northdata.com',
+  '.nzip.cz',
+  '.medicusindex.cz',
   '.mapy.com',
   '.mapy.cz',
   '.mesec.cz',
   '.penize.cz',
+  '.orsr.sk',
+  '.obchodiste.cz',
+  '.ov.gov.cz',
   '.podnikatel.cz',
   '.pracesemily.cz',
+  '.qoobus.com',
   '.rocketreach.co',
+  '.search.seznam.cz',
+  '.seznamremeslniku.cz',
+  '.sluzby.cz',
+  '.telefonny.zoznam.sk',
+  '.transparex.sk',
+  '.usteckyinfo.cz',
+  '.wikidata.org',
+  '.zlatestranky.cz',
+  '.hradeckralove.org',
+  '.ceska-trebova.cz',
+  '.ratajpolska.pl',
   '.x.com',
   '.youtube.com',
   '.zivefirmy.cz',
@@ -132,6 +200,10 @@ export type BraveOfficialWebsiteDiagnostic = {
   candidates: BraveOfficialWebsiteCandidate[]
 }
 
+export type BraveOfficialWebsiteV2Diagnostic = Omit<BraveOfficialWebsiteDiagnostic, 'queryContract'> & {
+  queryContract: 'complete-contact-official-website-search-v3'
+}
+
 function normalizeIco(value: string) {
   const digits = value.replace(/\D/g, '')
   return /^\d{8}$/.test(digits) ? digits : null
@@ -146,6 +218,12 @@ function escapeSearchPhrase(value: string) {
   return value.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+const V2_SEARCH_EXCLUSIONS = [
+  'ispis.cz', 'qoobus.com', 'northdata.com', 'industrycontact.cz',
+  'firmyvdosahu.cz', 'chytryrejstrik.cz', 'wikidata.org', 'nzip.cz',
+  'ov.gov.cz', 'obchodiste.cz', 'sluzby.cz', 'zlatestranky.cz',
+]
+
 export function buildBraveOfficialWebsiteQuery(
   companyName: string,
   ico: string,
@@ -157,6 +235,15 @@ export function buildBraveOfficialWebsiteQuery(
   return variant === 'name_ico'
     ? `"${escapeSearchPhrase(safeName)}" "${safeIco}"`
     : `"${escapeSearchPhrase(safeName)}" kontakt`
+}
+
+function buildBraveOfficialWebsiteV2Query(
+  companyName: string,
+  ico: string,
+  variant: BraveOfficialWebsiteCandidate['queryVariant'],
+) {
+  const base = buildBraveOfficialWebsiteQuery(companyName, ico, variant)
+  return `${base} ${V2_SEARCH_EXCLUSIONS.map((host) => `-site:${host}`).join(' ')}`
 }
 
 function isBlockedHostname(hostname: string) {
@@ -196,14 +283,18 @@ async function braveSearch(input: {
   companyName: string
   ico: string
   variant: BraveOfficialWebsiteCandidate['queryVariant']
+  queryContract?: 'v2' | 'v3'
+  resultLimit?: number
 }) {
   const apiKey = process.env.BRAVE_SEARCH_API_KEY?.trim()
   if (!apiKey) throw new Error('Na serveru chybí BRAVE_SEARCH_API_KEY.')
 
-  const query = buildBraveOfficialWebsiteQuery(input.companyName, input.ico, input.variant)
+  const query = input.queryContract === 'v3'
+    ? buildBraveOfficialWebsiteV2Query(input.companyName, input.ico, input.variant)
+    : buildBraveOfficialWebsiteQuery(input.companyName, input.ico, input.variant)
   const endpoint = new URL(BRAVE_WEB_SEARCH_ENDPOINT)
   endpoint.searchParams.set('q', query)
-  endpoint.searchParams.set('count', String(BRAVE_RESULT_LIMIT))
+  endpoint.searchParams.set('count', String(input.resultLimit ?? BRAVE_RESULT_LIMIT))
   endpoint.searchParams.set('result_filter', 'web')
   endpoint.searchParams.set('safesearch', 'strict')
   endpoint.searchParams.set('spellcheck', 'false')
@@ -288,6 +379,46 @@ export async function diagnoseOfficialWebsiteWithBrave(input: {
   return {
     provider: 'brave',
     queryContract: 'complete-contact-official-website-search-v2',
+    searchedAt: new Date().toISOString(),
+    queryCount,
+    resultCount,
+    acceptedCandidateCount: candidates.length,
+    rejectedResultCount: Math.max(0, resultCount - candidates.length),
+    candidates,
+  }
+}
+
+export async function diagnoseOfficialWebsiteV2WithBrave(input: {
+  companyName: string
+  ico: string
+}): Promise<BraveOfficialWebsiteV2Diagnostic> {
+  const variants: BraveOfficialWebsiteCandidate['queryVariant'][] = ['name_ico', 'name_contact']
+  const candidates: BraveOfficialWebsiteCandidate[] = []
+  const seenHosts = new Set<string>()
+  let resultCount = 0
+  let queryCount = 0
+
+  for (const variant of variants) {
+    const results = await braveSearch({
+      ...input,
+      variant,
+      queryContract: 'v3',
+      resultLimit: BRAVE_V2_RESULT_LIMIT,
+    })
+    queryCount += 1
+    resultCount += results.length
+    for (const candidate of results) {
+      if (!candidate || seenHosts.has(candidate.hostname)) continue
+      seenHosts.add(candidate.hostname)
+      candidates.push(candidate)
+      if (candidates.length >= BRAVE_V2_CANDIDATE_LIMIT) break
+    }
+    if (candidates.length >= BRAVE_V2_CANDIDATE_LIMIT) break
+  }
+
+  return {
+    provider: 'brave',
+    queryContract: 'complete-contact-official-website-search-v3',
     searchedAt: new Date().toISOString(),
     queryCount,
     resultCount,

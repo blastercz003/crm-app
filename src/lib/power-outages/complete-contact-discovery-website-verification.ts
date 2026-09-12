@@ -22,8 +22,30 @@ export type WebsiteVerificationPage = {
   status: number | null
   matchedIco: boolean
   matchedName: boolean
+  matchedDomainEmail?: boolean
   errorCode: 'fetch_failed' | 'non_html' | null
 }
+
+export type OfficialWebsiteVerificationV2 = {
+  status: 'verified_company' | 'verified_group' | 'needs_review' | 'rejected'
+  normalizedDomain: string
+  verifiedUrl: string | null
+  confidence: number
+  verificationMethods: string[]
+  reasonCodes: string[]
+  checkedPages: WebsiteVerificationPage[]
+}
+
+const V2_BLOCKED_DOMAINS = new Set([
+  'sluzby.cz',
+  'hradeckralove.org',
+  'ceska-trebova.cz',
+  'ratajpolska.pl',
+])
+
+const V2_FOREIGN_COUNTRY_SUFFIXES = [
+  '.sk', '.pl', '.de', '.at', '.hu', '.ro', '.bg', '.si', '.hr', '.rs', '.ua', '.ru',
+]
 
 export type OfficialWebsiteVerification = {
   status: 'verified' | 'needs_review' | 'rejected'
@@ -235,6 +257,46 @@ function hasCompanyTokenInDomain(hostname: string, companyName: string) {
     .some((token) => domainText.includes(token))
 }
 
+function hasDistinctiveCompanyTokenInDomain(hostname: string, companyName: string) {
+  const ignored = new Set([
+    'ceska', 'ceske', 'czech', 'republic', 'company', 'group', 'holding',
+    'technicke', 'technicky', 'sluzby', 'service', 'servis', 'vyroba', 'vyrobni',
+    'obchodni', 'spolecnost', 'druzstvo', 'organizace', 'firma',
+  ])
+  const domainText = normalizeEvidenceText(hostname.split('.').slice(0, -1).join(' ')).replace(/\s+/g, '')
+  const tokens = companyNameTokens(companyName).filter((token) => token.length >= 4 && !ignored.has(token))
+  if (tokens.some((token) => domainText.includes(token))) return true
+  const initials = companyNameTokens(companyName)
+    .filter((token) => token.length >= 3)
+    .map((token) => token[0])
+    .join('')
+  return initials.length >= 3 && domainText.includes(initials)
+}
+
+function registrableDomainApproximation(hostname: string) {
+  const labels = hostname.replace(/^www\./, '').split('.').filter(Boolean)
+  if (labels.length <= 2) return labels.join('.')
+  const compoundSuffix = labels.slice(-2).join('.')
+  if (new Set(['co.uk', 'com.pl', 'com.de', 'com.sk']).has(compoundSuffix) && labels.length >= 3) {
+    return labels.slice(-3).join('.')
+  }
+  return labels.slice(-2).join('.')
+}
+
+function hasSameDomainEmail(html: string, hostname: string) {
+  const rootDomain = registrableDomainApproximation(hostname)
+  const decoded = decodeBasicHtmlEntities(html)
+  const matches = decoded.match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@([a-z0-9.-]+\.[a-z]{2,})/gi) ?? []
+  return matches.some((email) => {
+    const emailDomain = email.slice(email.lastIndexOf('@') + 1).toLowerCase().replace(/\.$/, '')
+    return emailDomain === rootDomain || emailDomain.endsWith(`.${rootDomain}`)
+  })
+}
+
+function isForeignCountryDomain(hostname: string) {
+  return V2_FOREIGN_COUNTRY_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+}
+
 function contactLinks(html: string, baseUrl: string) {
   const base = new URL(baseUrl)
   const results: string[] = []
@@ -345,6 +407,137 @@ export async function verifyOfficialWebsiteCandidate(input: {
     reasonCodes: anyIcoMatch
       ? ['official_domain_context_missing']
       : anyNameMatch ? ['exact_ico_missing'] : ['company_identity_not_confirmed'],
+    checkedPages,
+  }
+}
+
+export async function verifyOfficialWebsiteCandidateV2(input: {
+  candidateUrl: string
+  companyName: string
+  ico: string
+}): Promise<OfficialWebsiteVerificationV2> {
+  const initialUrl = assertSafeUrl(input.candidateUrl)
+  const normalizedDomain = initialUrl.hostname.replace(/^www\./, '')
+  const rootUrl = new URL('/', initialUrl).toString()
+
+  if (V2_BLOCKED_DOMAINS.has(normalizedDomain)
+    || [...V2_BLOCKED_DOMAINS].some((domain) => normalizedDomain.endsWith(`.${domain}`))) {
+    return {
+      status: 'rejected',
+      normalizedDomain,
+      verifiedUrl: null,
+      confidence: 0,
+      verificationMethods: [],
+      reasonCodes: ['blocked_non_first_party_domain'],
+      checkedPages: [],
+    }
+  }
+
+  const urls = initialUrl.toString() === rootUrl ? [rootUrl] : [initialUrl.toString(), rootUrl]
+  const queued = new Set(urls)
+  const checkedPages: WebsiteVerificationPage[] = []
+  let anyNameMatch = false
+  let anyIcoMatch = false
+  let homepageNameMatch = false
+  let anyDomainEmailMatch = false
+  const distinctiveDomainMatch = hasDistinctiveCompanyTokenInDomain(normalizedDomain, input.companyName)
+
+  for (let index = 0; index < urls.length && index < MAX_PAGES_PER_CANDIDATE; index += 1) {
+    const url = urls[index]
+    try {
+      const response = await requestSafeHtml(url)
+      const evidenceText = htmlToEvidenceText(response.html)
+      const matchedIco = hasIcoEvidence(evidenceText, input.ico)
+      const matchedName = hasCompanyNameEvidence(evidenceText, input.companyName)
+      const matchedDomainEmail = hasSameDomainEmail(response.html, normalizedDomain)
+      anyIcoMatch ||= matchedIco
+      anyNameMatch ||= matchedName
+      anyDomainEmailMatch ||= matchedDomainEmail
+      if (new URL(response.url).pathname.replace(/\/+$/, '') === '') homepageNameMatch ||= matchedName
+      checkedPages.push({
+        url: response.url,
+        status: response.status,
+        matchedIco,
+        matchedName,
+        matchedDomainEmail,
+        errorCode: null,
+      })
+
+      if (urls.length < MAX_PAGES_PER_CANDIDATE) {
+        for (const contactUrl of contactLinks(response.html, response.url)) {
+          if (!queued.has(contactUrl)) {
+            queued.add(contactUrl)
+            urls.push(contactUrl)
+            break
+          }
+        }
+      }
+    } catch (error) {
+      checkedPages.push({
+        url,
+        status: null,
+        matchedIco: false,
+        matchedName: false,
+        matchedDomainEmail: false,
+        errorCode: publicErrorCode(error),
+      })
+    }
+  }
+
+  const foreignCountryDomain = isForeignCountryDomain(normalizedDomain)
+  if (!foreignCountryDomain && anyDomainEmailMatch && anyIcoMatch && anyNameMatch) {
+    return {
+      status: 'verified_company',
+      normalizedDomain,
+      verifiedUrl: rootUrl,
+      confidence: 1,
+      verificationMethods: ['exact_ico_on_website', 'company_name_on_website', 'same_domain_email'],
+      reasonCodes: [],
+      checkedPages,
+    }
+  }
+  if (!foreignCountryDomain && anyDomainEmailMatch && anyIcoMatch && distinctiveDomainMatch) {
+    return {
+      status: 'verified_company',
+      normalizedDomain,
+      verifiedUrl: rootUrl,
+      confidence: 0.98,
+      verificationMethods: ['exact_ico_on_website', 'distinctive_company_token_in_domain', 'same_domain_email'],
+      reasonCodes: [],
+      checkedPages,
+    }
+  }
+  if (!foreignCountryDomain && anyDomainEmailMatch && homepageNameMatch && distinctiveDomainMatch) {
+    return {
+      status: 'verified_company',
+      normalizedDomain,
+      verifiedUrl: rootUrl,
+      confidence: 0.9,
+      verificationMethods: ['company_name_on_homepage', 'distinctive_company_token_in_domain', 'same_domain_email'],
+      reasonCodes: ['exact_ico_missing_but_first_party_evidence_complete'],
+      checkedPages,
+    }
+  }
+
+  const hasIdentityEvidence = anyIcoMatch || anyNameMatch || distinctiveDomainMatch
+  return {
+    status: hasIdentityEvidence ? 'needs_review' : 'rejected',
+    normalizedDomain,
+    verifiedUrl: null,
+    confidence: foreignCountryDomain ? 0.4 : anyIcoMatch ? 0.7 : anyNameMatch ? 0.55 : 0,
+    verificationMethods: [
+      ...(anyIcoMatch ? ['exact_ico_on_website'] : []),
+      ...(anyNameMatch ? ['company_name_on_website'] : []),
+      ...(distinctiveDomainMatch ? ['distinctive_company_token_in_domain'] : []),
+      ...(anyDomainEmailMatch ? ['same_domain_email'] : []),
+    ],
+    reasonCodes: foreignCountryDomain
+      ? ['foreign_country_domain_requires_review']
+      : !anyDomainEmailMatch
+        ? ['same_domain_email_missing']
+        : !anyIcoMatch
+          ? ['exact_ico_missing']
+          : ['first_party_identity_incomplete'],
     checkedPages,
   }
 }
