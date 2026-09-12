@@ -5,9 +5,9 @@ import { isPowerOutageAutomationAuthorized } from './automation-auth'
 
 export async function isPowerOutageRequestAuthorized(
   request: Request,
-  options: { adminOnly?: boolean; marketsOnly?: boolean } = {},
+  options: { adminOnly?: boolean; marketsOnly?: boolean; allowAutomation?: boolean } = {},
 ) {
-  if (isPowerOutageAutomationAuthorized(request)) return true
+  if (options.allowAutomation !== false && isPowerOutageAutomationAuthorized(request)) return true
 
   const supabase = await createClient()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
