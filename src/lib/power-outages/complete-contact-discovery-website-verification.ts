@@ -37,6 +37,25 @@ export type OfficialWebsiteVerificationV2 = {
   checkedPages: WebsiteVerificationPage[]
 }
 
+export type ShadowWebsiteContact = {
+  type: 'email' | 'phone'
+  value: string
+  normalizedValue: string
+  sourceUrl: string
+  scope: 'company'
+  role: 'general' | 'operations' | 'customer_service' | 'personal' | 'unknown'
+  isPersonal: boolean
+  confidence: number
+  extractionMethods: string[]
+  reviewFlags: string[]
+}
+
+export type ShadowWebsiteContactExtraction = {
+  normalizedDomain: string
+  checkedPages: Array<{ url: string; status: number | null; errorCode: 'fetch_failed' | 'non_html' | null }>
+  contacts: ShadowWebsiteContact[]
+}
+
 const V2_BLOCKED_DOMAINS = new Set([
   'sluzby.cz',
   'hradeckralove.org',
@@ -576,4 +595,145 @@ export async function verifyOfficialWebsiteCandidateV2(input: {
           : ['first_party_identity_incomplete'],
     checkedPages,
   }
+}
+
+const GENERIC_EMAIL_LOCAL_PARTS = new Set([
+  'info', 'kontakt', 'contact', 'office', 'recepce', 'reception', 'sekretariat',
+  'podatelna', 'obchod', 'sales', 'servis', 'service', 'provoz', 'dispecink',
+  'zakaznici', 'support', 'podpora', 'firma', 'company',
+])
+
+function emailRole(localPart: string): ShadowWebsiteContact['role'] {
+  if (/^(?:provoz|dispecink|servis|service|technika|operations)/.test(localPart)) return 'operations'
+  if (/^(?:zakaznici|support|podpora|reklamace)/.test(localPart)) return 'customer_service'
+  if (GENERIC_EMAIL_LOCAL_PARTS.has(localPart) || /^(?:info|kontakt|office|obchod|sales)[._-]/.test(localPart)) {
+    return 'general'
+  }
+  return 'personal'
+}
+
+function normalizePublicEmail(value: string, hostname: string) {
+  const email = value.trim().toLowerCase().replace(/^mailto:/, '').split(/[?\s]/, 1)[0]
+  if (email.length > 254 || !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)) return null
+  const domain = email.slice(email.lastIndexOf('@') + 1)
+  const websiteDomain = registrableDomainApproximation(hostname)
+  if (domain !== websiteDomain && !domain.endsWith(`.${websiteDomain}`)) return null
+  if (/^(?:noreply|no-reply|donotreply|example|test)@/.test(email)) return null
+  return email
+}
+
+function normalizeCzechPhone(value: string) {
+  const extensionRemoved = value.replace(/(?:kl\.?|linka|ext\.?)\s*\d+.*$/i, '')
+  let digits = extensionRemoved.replace(/\D/g, '')
+  if (digits.startsWith('00420')) digits = digits.slice(2)
+  if (digits.length === 9) digits = `420${digits}`
+  if (!/^420[1-9][0-9]{8}$/.test(digits)) return null
+  return `+${digits}`
+}
+
+function extractContactsFromHtml(html: string, sourceUrl: string, hostname: string) {
+  const decoded = decodeBasicHtmlEntities(html)
+  const contacts = new Map<string, ShadowWebsiteContact>()
+  const emailCandidates = [
+    ...decoded.matchAll(/mailto:([^"'<>\s?]+)/gi),
+    ...decoded.matchAll(/([a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,})/gi),
+  ]
+  for (const match of emailCandidates) {
+    const normalized = normalizePublicEmail(match[1], hostname)
+    if (!normalized) continue
+    const localPart = normalized.slice(0, normalized.indexOf('@'))
+    const role = emailRole(localPart)
+    contacts.set(`email:${normalized}`, {
+      type: 'email',
+      value: normalized,
+      normalizedValue: normalized,
+      sourceUrl,
+      scope: 'company',
+      role,
+      isPersonal: role === 'personal',
+      confidence: role === 'personal' ? 0.8 : 0.95,
+      extractionMethods: ['public_html', 'same_domain_email'],
+      reviewFlags: role === 'personal' ? ['possible_personal_contact'] : [],
+    })
+  }
+
+  const phoneCandidates: Array<{ value: string; method: string; context: string }> = []
+  for (const match of decoded.matchAll(/href\s*=\s*(["'])tel:([^"']+)\1/gi)) {
+    phoneCandidates.push({ value: match[2], method: 'tel_link', context: match[0] })
+  }
+  for (const match of htmlToEvidenceText(decoded).matchAll(
+    /(?:tel(?:efon)?|mobil|ústředna|ustredna|recepce|kontakt)\s*[:.]?\s*((?:\+|00)?420[\s./-]*)?([1-9](?:[\s./-]*\d){8})/giu,
+  )) {
+    phoneCandidates.push({ value: `${match[1] ?? ''}${match[2]}`, method: 'labelled_phone', context: match[0] })
+  }
+  for (const candidate of phoneCandidates) {
+    const normalized = normalizeCzechPhone(candidate.value)
+    if (!normalized) continue
+    const general = /ústředna|ustredna|recepce|kontakt/i.test(candidate.context)
+    contacts.set(`phone:${normalized}`, {
+      type: 'phone',
+      value: normalized,
+      normalizedValue: normalized,
+      sourceUrl,
+      scope: 'company',
+      role: general ? 'general' : 'unknown',
+      isPersonal: false,
+      confidence: candidate.method === 'tel_link' ? 0.9 : 0.8,
+      extractionMethods: ['public_html', candidate.method],
+      reviewFlags: general ? [] : ['phone_role_unconfirmed'],
+    })
+  }
+  return [...contacts.values()]
+}
+
+export async function extractContactsFromVerifiedOfficialWebsite(input: {
+  websiteUrl: string
+  expectedDomain: string
+  deadlineAt: number
+  maxPages?: number
+}): Promise<ShadowWebsiteContactExtraction> {
+  const initialUrl = assertSafeUrl(input.websiteUrl)
+  const normalizedDomain = initialUrl.hostname.replace(/^www\./, '')
+  if (normalizedDomain !== input.expectedDomain.toLowerCase().replace(/^www\./, '')) {
+    throw new Error('CONTACT_EXTRACTION_DOMAIN_MISMATCH')
+  }
+  const rootUrl = new URL('/', initialUrl).toString()
+  const urls = initialUrl.toString() === rootUrl ? [rootUrl] : [initialUrl.toString(), rootUrl]
+  const queued = new Set(urls)
+  const checkedPages: ShadowWebsiteContactExtraction['checkedPages'] = []
+  const contacts = new Map<string, ShadowWebsiteContact>()
+  const maxPages = Math.max(1, Math.min(3, input.maxPages ?? 3))
+
+  for (let index = 0; index < urls.length && index < maxPages; index += 1) {
+    const url = urls[index]
+    try {
+      remainingBudgetMs(input.deadlineAt)
+      const response = await requestSafeHtml(url, 0, input.deadlineAt)
+      const responseDomain = registrableDomainApproximation(new URL(response.url).hostname)
+      if (responseDomain !== registrableDomainApproximation(normalizedDomain)) {
+        throw new Error('CONTACT_EXTRACTION_CROSS_DOMAIN_REDIRECT_BLOCKED')
+      }
+      checkedPages.push({ url: response.url, status: response.status, errorCode: null })
+      if (response.status >= 200 && response.status < 300) {
+        for (const contact of extractContactsFromHtml(response.html, response.url, normalizedDomain)) {
+          const key = `${contact.type}:${contact.normalizedValue}`
+          const previous = contacts.get(key)
+          if (!previous || contact.confidence > previous.confidence) contacts.set(key, contact)
+        }
+        if (urls.length < maxPages) {
+          for (const contactUrl of contactLinks(response.html, response.url)) {
+            if (!queued.has(contactUrl)) {
+              queued.add(contactUrl)
+              urls.push(contactUrl)
+              if (urls.length >= maxPages) break
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === WEBSITE_VERIFICATION_BUDGET_EXCEEDED) throw error
+      checkedPages.push({ url, status: null, errorCode: publicErrorCode(error) })
+    }
+  }
+  return { normalizedDomain, checkedPages, contacts: [...contacts.values()] }
 }
