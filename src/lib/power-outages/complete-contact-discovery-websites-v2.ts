@@ -158,10 +158,22 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
   const claim = claims[0]
   const itemDeadlineAt = Date.now() + ITEM_BUDGET_MS
   try {
+    const { data: localPass, error: localPassError } = await client
+      .from('complete_power_outage_contact_local_discovery_v2_shadow')
+      .select('queue_status,eligible_email_count')
+      .eq('ico', claim.ico)
+      .maybeSingle<{ queue_status: string; eligible_email_count: number }>()
+    if (localPassError) throw localPassError
+    const localFallbackAuthorized = localPass?.queue_status === 'no_eligible_contact'
+      && Number(localPass.eligible_email_count) === 0
+    if (!localFallbackAuthorized) {
+      throw new Error('BRAVE_FALLBACK_WITHOUT_LOCAL_NO_EMAIL_RESULT')
+    }
+
     const checkedCandidates: CheckedCandidateV2[] = []
     const seenHosts = new Set<string>()
 
-    if (claim.prior_website_url) {
+    if (claim.prior_website_url && !localFallbackAuthorized) {
       const prior = await checkCandidate({
         claim,
         url: claim.prior_website_url,
@@ -174,7 +186,7 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
     }
 
     let accepted = checkedCandidates.find(isVerifiedCandidate)
-    for (const localUrl of accepted ? [] : localWebsiteCandidates(claim.company_name)) {
+    for (const localUrl of accepted || localFallbackAuthorized ? [] : localWebsiteCandidates(claim.company_name)) {
       if (Date.now() >= itemDeadlineAt - COMPLETION_RESERVE_MS) break
       const hostname = new URL(localUrl).hostname
       if (seenHosts.has(hostname)) continue
@@ -240,10 +252,13 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
     const reviewCandidate = checkedCandidates.find((candidate) => candidate.verification.status === 'needs_review')
     const evidence = {
       contract: 'complete-contact-official-website-v2-shadow',
-      v1CandidateRechecked: Boolean(claim.prior_website_url),
+      v1CandidateRechecked: false,
       localFirstEnabled: true,
+      localFirstRelease: true,
       localCandidateCount: checkedCandidates.filter((candidate) => candidate.queryVariant === 'local_guess').length,
       braveFallbackEnabled: state.brave_fallback_enabled,
+      localFallbackAuthorized,
+      localDiscoveryResult: localPass?.queue_status ?? null,
       search: searchSummary,
       checkedCandidates,
       rawSearchPayloadStored: false,
@@ -289,6 +304,7 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
         result: 'error',
         evidence: {
           contract: 'complete-contact-official-website-v2-shadow',
+          localFirstRelease: true,
           rawPayloadStored: false,
           contactsPersisted: false,
         },

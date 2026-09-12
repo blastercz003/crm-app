@@ -65,6 +65,7 @@ function mapContactManagementSummary(value: unknown): CompleteContactManagementS
     runtimeEnabled: row.runtimeEnabled === true,
     braveFallbackEnabled: row.braveFallbackEnabled === true,
     localFirstEnabled: row.localFirstEnabled !== false,
+    localDiscoveryEnabled: row.localDiscoveryEnabled === true,
     selectedSelectorKey: typeof row.selectedSelectorKey === 'string' ? row.selectedSelectorKey : 'top_v1',
     selectedSelectorName: typeof row.selectedSelectorName === 'string' ? row.selectedSelectorName : 'TOP VÝBĚR',
     targetCompanyCount: Number(row.targetCompanyCount) || 0,
@@ -78,6 +79,14 @@ function mapContactManagementSummary(value: unknown): CompleteContactManagementS
     pendingCount: Number(row.pendingCount) || 0,
     processingCount: Number(row.processingCount) || 0,
     errorCount: Number(row.errorCount) || 0,
+    localPendingCount: Number(row.localPendingCount) || 0,
+    localProcessingCount: Number(row.localProcessingCount) || 0,
+    localContactFoundCount: Number(row.localContactFoundCount) || 0,
+    localNoEligibleCount: Number(row.localNoEligibleCount) || 0,
+    bravePendingCount: Number(row.bravePendingCount) || 0,
+    braveProcessingCount: Number(row.braveProcessingCount) || 0,
+    braveFinishedCount: Number(row.braveFinishedCount) || 0,
+    braveQueryCount: Number(row.braveQueryCount) || 0,
     lastActivityAt: typeof row.lastActivityAt === 'string' ? row.lastActivityAt : null,
     lastErrorCode: typeof row.lastErrorCode === 'string' ? row.lastErrorCode : null,
     lastErrorMessage: typeof row.lastErrorMessage === 'string' ? row.lastErrorMessage : null,
@@ -1419,7 +1428,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled,metadata').eq('singleton', true).maybeSingle(),
     supabase.from('complete_power_outage_commercial_selection_progress_snapshot').select('status,stage,evaluation_pending_count,enrichment_pending_count,scoring_pending_count,remaining_count,attention_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
     profile.role === 'admin'
-      ? supabase.rpc('get_complete_power_outage_contact_management_summary_v2')
+      ? supabase.rpc('get_complete_power_outage_contact_management_summary_v3')
       : Promise.resolve({ data: null, error: null }),
     profile.role === 'admin'
       ? supabase.rpc('get_cpo_notification_email_management_v1', { requested_limit: 100 })
@@ -1588,7 +1597,7 @@ export async function getCompletePowerOutageContactManagementWorkspace(): Promis
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
   const [{ data, error }, runtimeResult] = await Promise.all([
     supabase.rpc('get_complete_power_outage_contact_management_workspace_v1'),
-    supabase.rpc('get_complete_power_outage_contact_runtime_v1'),
+    supabase.rpc('get_complete_power_outage_contact_runtime_v2'),
   ])
   if (error) throw new Error(`Správu dohledávání kontaktů se nepodařilo načíst: ${error.message}`)
   if (runtimeResult.error) throw new Error(`Stav dohledávání kontaktů se nepodařilo načíst: ${runtimeResult.error.message}`)

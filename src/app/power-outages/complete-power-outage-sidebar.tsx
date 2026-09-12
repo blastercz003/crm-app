@@ -1101,7 +1101,7 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
   }
   const setRuntime = async (enabled: boolean, braveFallbackEnabled: boolean) => {
     if (braveFallbackEnabled && !workspace?.summary.braveFallbackEnabled
-      && !window.confirm('Povolit placený Brave fallback pouze pro firmy bez ověřené domény?')) return
+      && !window.confirm('Povolit placený Brave fallback pouze pro firmy, u kterých lokální fáze nenajde použitelný e-mail?')) return
     setPendingKey('runtime')
     setError(null)
     const result = await setCompletePowerOutageContactRuntimeAction({ enabled, braveFallbackEnabled })
@@ -1137,6 +1137,20 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
       </section>
 
       <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4"><div className="flex items-center justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Průběh zpracování</small><strong className="mt-1 block text-[11px] text-[var(--text-primary)]">{completedCompanyCount.toLocaleString('cs-CZ')} z {summary.targetCompanyCount.toLocaleString('cs-CZ')} firem</strong></span><strong className="text-2xl tabular-nums text-[var(--accent)]">{progressPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-500" style={{ width: `${progressPercent}%` }} /></div><div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Cílové firmy" value={summary.targetCompanyCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ověřené weby" value={summary.verifiedWebsiteCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Použitelný e-mail" value={summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ke kontrole" value={(summary.actionableReviewCompanyCount + summary.domainReviewCount).toLocaleString('cs-CZ')} /></div><p className="mt-3 text-[8px] text-[var(--text-secondary)]">Čeká {summary.pendingCount.toLocaleString('cs-CZ')} · zpracovává se {summary.processingCount.toLocaleString('cs-CZ')} · bez webu {summary.noWebsiteCount.toLocaleString('cs-CZ')} · chyby {summary.errorCount.toLocaleString('cs-CZ')}</p></section>
+
+      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Local-first tok</small><strong className="mt-1 block text-[11px] text-[var(--text-primary)]">Nejdříve vlastní data a web firmy, potom Brave</strong></span>
+          <span className="rounded-full border border-sky-400/25 bg-sky-500/8 px-2.5 py-1 text-[8px] font-bold uppercase text-[var(--accent)]">Bez duplicitních placených hledání</span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <PowerOutageDetailRow label="Lokálně nalezeno" value={summary.localContactFoundCount.toLocaleString('cs-CZ')} />
+          <PowerOutageDetailRow label="Lokálně čeká" value={(summary.localPendingCount + summary.localProcessingCount).toLocaleString('cs-CZ')} />
+          <PowerOutageDetailRow label="Bez použitelného e-mailu" value={summary.localNoEligibleCount.toLocaleString('cs-CZ')} />
+          <PowerOutageDetailRow label="Brave čeká" value={(summary.bravePendingCount + summary.braveProcessingCount).toLocaleString('cs-CZ')} />
+        </div>
+        <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Brave dokončeno {summary.braveFinishedCount.toLocaleString('cs-CZ')} · placené dotazy {summary.braveQueryCount.toLocaleString('cs-CZ')}. Firma se do Brave uvolní pouze po dokončené lokální fázi bez použitelného e-mailu; dříve auditovaný placený výsledek se neopakuje.</p>
+      </section>
 
       <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-1"><SlidingTwoTabSwitch value={reviewTab} options={[{ value: 'emails', label: `E-maily · ${actionableReviews.length}` }, { value: 'domains', label: `Domény · ${workspace.domainReviews.length}` }]} onValueChange={setReviewTab} ariaLabel="Kontakty vyžadující kontrolu" /></section>
 

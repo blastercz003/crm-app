@@ -184,6 +184,7 @@ export type CompleteContactManagementSummary = {
   runtimeEnabled: boolean
   braveFallbackEnabled: boolean
   localFirstEnabled: boolean
+  localDiscoveryEnabled: boolean
   selectedSelectorKey: string
   selectedSelectorName: string
   targetCompanyCount: number
@@ -197,6 +198,14 @@ export type CompleteContactManagementSummary = {
   pendingCount: number
   processingCount: number
   errorCount: number
+  localPendingCount: number
+  localProcessingCount: number
+  localContactFoundCount: number
+  localNoEligibleCount: number
+  bravePendingCount: number
+  braveProcessingCount: number
+  braveFinishedCount: number
+  braveQueryCount: number
   lastActivityAt: string | null
   lastErrorCode: string | null
   lastErrorMessage: string | null
