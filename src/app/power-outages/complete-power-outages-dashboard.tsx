@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, CircleAlert, LoaderCircle, RefreshCw } from 'lucide-react'
+import { Activity, AtSign, CircleAlert, LoaderCircle, Mail, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompletePowerOutageCurrentUser, CompletePowerOutageSidebarWorkspace, CompletePowerOutageStatistics } from '@/lib/power-outages/complete-types'
 import { getCompletePowerOutageOwnersAction, getCompletePowerOutageSidebarAction, getCompletePowerOutageStatisticsAction } from './actions'
@@ -10,7 +10,7 @@ import { CompletePanelStatusBadge } from './complete-panel-status-badge'
 import { CompletePowerOutageSidebar } from './complete-power-outage-sidebar'
 import { PowerOutageSummaryStats, type PowerOutageSummaryCard } from './power-outage-summary-stats'
 
-function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: () => void }) {
+function SidebarSkeleton({ error, isAdmin, onRetry }: { error?: string | null; isAdmin: boolean; onRetry?: () => void }) {
   const panelClass = 'activities-page__panel flex h-[440px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] backdrop-blur-[10px] sm:p-5 lg:h-auto lg:min-h-[210px] lg:p-4'
   const header = (eyebrow: string, title: string) => <div className="flex items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 ${error ? 'text-red-500' : 'text-[var(--accent)]'}`}>{error ? <CircleAlert aria-hidden size={18} /> : <LoaderCircle aria-label={`Načítám panel ${title}`} size={19} className="animate-spin" />}</span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{eyebrow}</small><h3 className="text-base font-semibold text-[var(--text-primary)]">{title}</h3></span></div>
   const loadingBadge = <CompletePanelStatusBadge label="Načítám" badgeClassName="border-sky-400/30 bg-sky-500/10 text-[var(--accent)]" icon={<LoaderCircle aria-hidden size={11} className="animate-spin" />} />
@@ -28,6 +28,15 @@ function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: 
     <div className="mt-1"><div className="flex items-center justify-between text-[6px] font-semibold text-[var(--text-secondary)]"><span>PROVĚŘENO —/—</span><span>— %</span></div><div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full w-2/5 animate-pulse rounded-full bg-sky-500/70" /></div></div>
     <p className="mt-1 hidden text-center text-[7px] leading-3 text-[var(--text-secondary)] lg:block">Načítám dostupnou kapacitu…</p>
   </div>
+  const managementSkeleton = (kind: 'contacts' | 'emails') => {
+    const contacts = kind === 'contacts'
+    return <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
+      <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${contacts ? 'bg-cyan-500/10 text-cyan-500' : 'bg-sky-500/10 text-sky-500'}`}>{contacts ? <AtSign aria-hidden size={19} /> : <Mail aria-hidden size={19} />}</span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{contacts ? 'DOHLEDÁVÁNÍ A OVĚŘENÍ' : 'AUTOMATICKÁ OZNÁMENÍ'}</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">{contacts ? 'Kontakty firem' : 'Upozornění firmám'}</h3></span></div>{loadingBadge}</div>
+      <div className="mt-3 grid grid-cols-3 gap-2">{(contacts ? ['Cílové firmy', 'S e-mailem', 'Ke kontrole'] : ['Připraveno', 'Dnes odesláno', 'Doručeno']).map((label) => <div key={label} className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">{label}</small><span className="mx-auto mt-1 block h-3 w-8 animate-pulse rounded-full bg-[var(--surface-border)]" /></div>)}</div>
+      <div className="mt-2 flex h-4 items-center justify-center"><span className="h-1.5 w-40 animate-pulse rounded-full bg-[var(--surface-border)]" /></div>
+      <div className={`mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-xl border ${contacts ? 'border-cyan-400/25 bg-cyan-500/8' : 'border-sky-400/25 bg-sky-500/8'}`}><LoaderCircle aria-hidden size={12} className="animate-spin text-[var(--accent)]" /><span className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Načítám správu</span></div>
+    </section></div>
+  }
   return <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
     <p className="mb-2 flex items-center justify-center text-center text-[10px] text-[var(--text-secondary)] lg:hidden">{error ? 'Provozní data vyžadují opakované načtení.' : 'Načítám provozní panely…'}</p>
     <aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none">
@@ -38,6 +47,8 @@ function SidebarSkeleton({ error, onRetry }: { error?: string | null; onRetry?: 
         <div className="mt-3"><small className="block text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Řazení tabulky</small><div className="mt-1.5 grid h-9 grid-cols-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-0.5"><span className="animate-pulse rounded-[9px] bg-[var(--surface-strong)]" /><span className="animate-pulse rounded-[9px]" /></div></div>
         <p className="mt-3 flex items-center justify-center gap-2 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><LoaderCircle aria-hidden size={13} className="shrink-0 animate-spin text-emerald-500" /> Načítám nastavení obchodního výběru.</p>
       </section></div>
+      {isAdmin ? managementSkeleton('contacts') : null}
+      {isAdmin ? managementSkeleton('emails') : null}
       <div className="min-w-0 snap-start snap-always lg:snap-none"><section className={panelClass}>
         <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-[var(--accent)]"><Activity aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">KOMPLETNÍ ANALÝZA</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Celkové zpracování</h3></span></div>{loadingBadge}</div>
         <div className="mt-4 rounded-2xl border border-sky-400/25 bg-sky-500/8 p-3.5"><div className="flex items-end justify-between gap-3"><span><small className="block text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Všechny aktivní fronty</small><strong className="mt-1 flex items-center gap-1.5 text-[11px] leading-4 text-[var(--text-primary)]"><LoaderCircle aria-hidden size={11} className="animate-spin text-[var(--accent)]" /> Připravuji časový odhad</strong></span><strong className="shrink-0 text-3xl leading-none text-[var(--text-secondary)]">— %</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><i className="block h-full w-2/5 animate-pulse rounded-full bg-sky-500/70" /></div></div>
@@ -147,7 +158,7 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
     <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />
     <div className="grid items-start gap-5 xl:grid-cols-4 xl:items-stretch xl:gap-3">
       <CompletePowerOutageRecords currentUser={currentUser} owners={owners} commercialSelection={commercialSelection} commercialSort={commercialSort} clientsOnly={clientsOnly} commercialCountsEnabled={sidebar?.commercialSelection.countsAndSortingEnabled === true} onCommercialSelectionChange={setCommercialSelection} onClientsOnlyChange={setClientsOnly} onCommercialSelectionCountsChange={setCommercialSelectionCounts} />
-      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} sourceRefreshWarning={sidebarError} commercialSelection={commercialSelection} commercialSort={commercialSort} clientsOnly={clientsOnly} commercialSelectionCounts={commercialSelectionCounts} onCommercialSelectionChange={setCommercialSelection} onCommercialSortChange={setCommercialSort} onClientsOnlyChange={setClientsOnly} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} onRetry={() => void loadSidebar()} />}
+      {sidebar ? <CompletePowerOutageSidebar workspace={sidebar} sourceRefreshWarning={sidebarError} commercialSelection={commercialSelection} commercialSort={commercialSort} clientsOnly={clientsOnly} commercialSelectionCounts={commercialSelectionCounts} onCommercialSelectionChange={setCommercialSelection} onCommercialSortChange={setCommercialSort} onClientsOnlyChange={setClientsOnly} onRetry={() => void loadSidebar()} /> : <SidebarSkeleton error={sidebarError} isAdmin={currentUser.isAdmin} onRetry={() => void loadSidebar()} />}
     </div>
   </>
 }
