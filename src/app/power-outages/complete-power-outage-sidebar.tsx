@@ -1,12 +1,12 @@
 'use client'
 
-import { Activity, AtSign, Check, CircleAlert, CircleCheck, DatabaseZap, ExternalLink, History, Info, LoaderCircle, Mail, MapPinned, RefreshCw, Route, SearchCheck, ShieldCheck, Sparkles, TimerReset, X } from 'lucide-react'
+import { Activity, ArrowLeft, AtSign, Check, ChevronDown, CircleAlert, CircleCheck, DatabaseZap, ExternalLink, History, Info, LoaderCircle, Mail, MapPinned, RefreshCw, Route, SearchCheck, ShieldCheck, Sparkles, TimerReset, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
-import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteContactManagementSummary, CompleteContactManagementWorkspace, CompleteGlobalProgress, CompleteNotificationEmailManagementWorkspace, CompleteNotificationEmailPlanItem, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
+import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteContactManagementSummary, CompleteContactManagementWorkspace, CompleteGlobalProgress, CompleteNotificationEmailDeliveryHistory, CompleteNotificationEmailDeliveryStatus, CompleteNotificationEmailManagementWorkspace, CompleteNotificationEmailPlanItem, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
-import { acknowledgeCompleteNotificationEmailPilotPauseAction, activateCompleteNotificationEmailLivePilotAction, decideCompleteNotificationEmailPilotReviewAction, decideCompletePowerOutageContactReviewAction, decideCompletePowerOutageDomainReviewAction, getCompleteNotificationEmailManagementAction, getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageContactManagementAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction, pauseCompleteNotificationEmailLivePilotAction, prepareCompletePowerOutageContactSelectorAction, setCompleteNotificationEmailPilotAllowlistAction } from './actions'
+import { acknowledgeCompleteNotificationEmailPilotPauseAction, decideCompleteNotificationEmailPilotReviewAction, decideCompletePowerOutageContactReviewAction, decideCompletePowerOutageDomainReviewAction, getCompleteNotificationEmailDeliveryHistoryAction, getCompleteNotificationEmailManagementAction, getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageContactManagementAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction, pauseCompleteNotificationEmailLivePilotAction, prepareCompletePowerOutageContactSelectorAction, setCompleteNotificationEmailPilotAllowlistAction, setCompletePowerOutageContactRuntimeAction } from './actions'
 import { CommercialSelectionStatusBadge } from './complete-commercial-selection-status-badge'
 import { CompletePanelStatusBadge } from './complete-panel-status-badge'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
@@ -1007,6 +1007,11 @@ function contactManagementPresentation(summary: CompleteContactManagementSummary
     badge: 'border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300',
     dot: 'bg-red-500',
   }
+  if (!summary.runtimeEnabled) return {
+    label: 'POZASTAVENO',
+    badge: 'border-slate-400/35 bg-slate-400/10 text-slate-700 [html[data-theme=dark]_&]:text-slate-300',
+    dot: 'bg-slate-400',
+  }
   if (summary.pendingCount > 0 || summary.processingCount > 0) return {
     label: 'ZPRACOVÁNÍ',
     badge: 'border-sky-400/35 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300',
@@ -1035,6 +1040,7 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [selectorKey, setSelectorKey] = useState(initialSummary.selectedSelectorKey)
   const [confirmSelector, setConfirmSelector] = useState(false)
+  const [reviewTab, setReviewTab] = useState<'emails' | 'domains'>('emails')
 
   const applyWorkspace = (next: CompleteContactManagementWorkspace) => {
     setWorkspace(next)
@@ -1093,31 +1099,48 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
     } else setError(result.error)
     setPendingKey(null)
   }
+  const setRuntime = async (enabled: boolean, braveFallbackEnabled: boolean) => {
+    if (braveFallbackEnabled && !workspace?.summary.braveFallbackEnabled
+      && !window.confirm('Povolit placený Brave fallback pouze pro firmy bez ověřené domény?')) return
+    setPendingKey('runtime')
+    setError(null)
+    const result = await setCompletePowerOutageContactRuntimeAction({ enabled, braveFallbackEnabled })
+    if (result.success) applyWorkspace(result.workspace)
+    else setError(result.error)
+    setPendingKey(null)
+  }
 
   const summary = workspace?.summary ?? initialSummary
   const actionableReviews = workspace?.contactReviews.filter((contact) => contact.actionable) ?? []
   const secondaryReviews = workspace?.contactReviews.filter((contact) => !contact.actionable) ?? []
   const selectedOption = workspace?.selectors.find((selector) => selector.key === selectorKey)
+  const completedCompanyCount = Math.max(0, summary.targetCompanyCount - summary.pendingCount - summary.processingCount)
+  const progressPercent = summary.targetCompanyCount > 0
+    ? Math.min(100, Math.round((completedCompanyCount / summary.targetCompanyCount) * 1000) / 10)
+    : 100
   const actionButton = 'inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-50'
 
-  return <PowerOutagePopupShell titleId="complete-contact-management" eyebrow="KOMPLETNÍ · ADMINISTRACE" title="Dohledávání kontaktů" icon={<AtSign aria-hidden size={21} />} onClose={onClose}>
+  return <PowerOutagePopupShell titleId="complete-contact-management" eyebrow="DOHLEDÁVÁNÍ A OVĚŘENÍ" title="Kontakty firem" icon={<AtSign aria-hidden size={21} />} onClose={onClose}>
     {loading ? <div className="flex min-h-[360px] items-center justify-center"><LoaderCircle aria-hidden size={28} className="animate-spin text-[var(--accent)]" /></div> : error && !workspace ? <div className="m-5"><PanelLoadError message={error} onRetry={() => void load()} /></div> : workspace ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
       {error ? <p className="mb-3 rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{error}</p> : null}
 
-      <section className="rounded-2xl border border-sky-400/25 bg-sky-500/8 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><div><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Aktivní výběr</small><h3 className="mt-0.5 text-lg font-semibold text-[var(--text-primary)]">{summary.selectedSelectorName}</h3></div><span className="text-[9px] font-semibold text-[var(--text-secondary)]">Poslední aktivita {formatRelativeDate(summary.lastActivityAt)}</span></div>
-        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Cílové firmy" value={summary.targetCompanyCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ověřené weby" value={summary.verifiedWebsiteCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Primární e-mail" value={summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Firmy ke kontrole" value={summary.actionableReviewCompanyCount.toLocaleString('cs-CZ')} /></div>
-        <p className="mt-3 flex items-center gap-2 text-[9px] text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Odesílání e-mailů i Resend zůstávají vypnuté.</p>
-      </section>
+      <section className={`rounded-2xl border p-4 ${summary.runtimeEnabled ? 'border-sky-400/25 bg-sky-500/8' : 'border-[var(--surface-border)] bg-[var(--surface-muted)]'}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Celkový provozní stav</small><h3 className="mt-0.5 text-lg font-semibold text-[var(--text-primary)]">{summary.runtimeEnabled ? 'Dohledávání kontaktů je zapnuté' : 'Dohledávání kontaktů je pozastavené'}</h3><p className="mt-1 text-[9px] text-[var(--text-secondary)]">Poslední aktivita {formatRelativeDate(summary.lastActivityAt)}</p></div><CompletePanelStatusBadge label={contactManagementPresentation(summary).label} badgeClassName={contactManagementPresentation(summary).badge} dotClassName={contactManagementPresentation(summary).dot} /></div>
 
-      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
-        <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdrojový výběr AI SELECT</h3>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row"><select value={selectorKey} onChange={(event) => { setSelectorKey(event.target.value); setConfirmSelector(false) }} className="h-10 min-w-0 flex-1 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[10px] font-semibold text-[var(--text-primary)] outline-none focus:border-sky-400">{workspace.selectors.map((selector) => <option key={selector.key} value={selector.key}>{selector.name} · {selector.companyCount.toLocaleString('cs-CZ')} firem</option>)}</select><button type="button" disabled={selectorKey === summary.selectedSelectorKey || pendingKey !== null} onClick={() => setConfirmSelector(true)} className={`${actionButton} border-sky-400/30 bg-sky-500/10 text-[var(--accent)] sm:h-10`}>Připravit výběr</button></div>
-        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Příprava zachytí neměnný seznam {selectedOption?.companyCount.toLocaleString('cs-CZ') ?? 0} IČO. Placené vyhledávání se tím nespustí.</p>
+        <div className={`mt-4 grid gap-3 lg:grid-cols-2 ${pendingKey === 'runtime' ? 'pointer-events-none opacity-60' : ''}`}>
+          <div><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Dohledávání</small><SlidingTwoTabSwitch value={summary.runtimeEnabled ? 'enabled' : 'paused'} options={[{ value: 'paused', label: 'Pozastaveno' }, { value: 'enabled', label: 'Zapnuto' }]} onValueChange={(value) => void setRuntime(value === 'enabled', value === 'enabled' && summary.braveFallbackEnabled)} ariaLabel="Stav dohledávání kontaktů" className="mt-2 rounded-xl bg-[var(--surface-strong)] p-1" compact /></div>
+          <div><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Brave fallback</small><SlidingTwoTabSwitch value={summary.braveFallbackEnabled ? 'enabled' : 'disabled'} options={[{ value: 'disabled', label: 'Vypnutý' }, { value: 'enabled', label: 'Povolený' }]} onValueChange={(value) => void setRuntime(summary.runtimeEnabled, value === 'enabled')} ariaLabel="Placený Brave fallback" className={`mt-2 rounded-xl bg-[var(--surface-strong)] p-1 ${!summary.runtimeEnabled ? 'pointer-events-none opacity-45' : ''}`} compact /></div>
+        </div>
+
+        <div className="mt-4"><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Zdrojový výběr AI SELECT</small><div className="mt-2 flex flex-col gap-2 sm:flex-row"><div className="relative min-w-0 flex-1 overflow-hidden rounded-xl"><select value={selectorKey} disabled={summary.runtimeEnabled || pendingKey !== null} onChange={(event) => { setSelectorKey(event.target.value); setConfirmSelector(false) }} className="block h-10 w-full appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 pr-9 text-[10px] font-semibold text-[var(--text-primary)] outline-none [-webkit-appearance:none] focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50">{workspace.selectors.map((selector) => <option key={selector.key} value={selector.key}>{selector.name} · {selector.companyCount.toLocaleString('cs-CZ')} firem</option>)}</select><ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /></div><button type="button" disabled={selectorKey === summary.selectedSelectorKey || pendingKey !== null || summary.runtimeEnabled} onClick={() => setConfirmSelector(true)} className={`${actionButton} border-sky-400/30 bg-sky-500/10 text-[var(--accent)] sm:h-10`}>Připravit výběr</button></div><p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Výběr lze bezpečně změnit jen při pozastaveném dohledávání. Příprava {selectedOption?.companyCount.toLocaleString('cs-CZ') ?? 0} IČO sama nespustí Brave.</p></div>
         {confirmSelector ? <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/8 p-3"><p className="text-[9px] leading-4 text-[var(--text-primary)]">Potvrďte přípravu výběru <strong>{selectedOption?.name}</strong>. Existující výsledky zůstanou zachované.</p><div className="mt-2 flex gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void prepareSelector()} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === 'selector' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit přípravu</button><button type="button" disabled={pendingKey !== null} onClick={() => setConfirmSelector(false)} className={`${actionButton} border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]`}>Zrušit</button></div></div> : null}
       </section>
 
-      <section className="mt-4">
+      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4"><div className="flex items-center justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Průběh zpracování</small><strong className="mt-1 block text-[11px] text-[var(--text-primary)]">{completedCompanyCount.toLocaleString('cs-CZ')} z {summary.targetCompanyCount.toLocaleString('cs-CZ')} firem</strong></span><strong className="text-2xl tabular-nums text-[var(--accent)]">{progressPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-500" style={{ width: `${progressPercent}%` }} /></div><div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Cílové firmy" value={summary.targetCompanyCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ověřené weby" value={summary.verifiedWebsiteCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Použitelný e-mail" value={summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ke kontrole" value={(summary.actionableReviewCompanyCount + summary.domainReviewCount).toLocaleString('cs-CZ')} /></div><p className="mt-3 text-[8px] text-[var(--text-secondary)]">Čeká {summary.pendingCount.toLocaleString('cs-CZ')} · zpracovává se {summary.processingCount.toLocaleString('cs-CZ')} · bez webu {summary.noWebsiteCount.toLocaleString('cs-CZ')} · chyby {summary.errorCount.toLocaleString('cs-CZ')}</p></section>
+
+      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-1"><SlidingTwoTabSwitch value={reviewTab} options={[{ value: 'emails', label: `E-maily · ${actionableReviews.length}` }, { value: 'domains', label: `Domény · ${workspace.domainReviews.length}` }]} onValueChange={setReviewTab} ariaLabel="Kontakty vyžadující kontrolu" /></section>
+
+      {reviewTab === 'emails' ? <section className="mt-4">
         <div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">E-maily vyžadující rozhodnutí</h3><span className="text-[9px] font-bold text-amber-600">{actionableReviews.length}</span></div>
         <p className="mt-1 text-[9px] text-[var(--text-secondary)]">Prioritně firmy, které nemají jiný automaticky použitelný e-mail.</p>
         <div className="mt-2 space-y-2">{actionableReviews.length ? actionableReviews.map((contact) => {
@@ -1128,17 +1151,17 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
           const key = `contact-${contact.contactId}`
           return <div key={contact.contactId} className="flex flex-col gap-2 rounded-xl bg-[var(--surface-strong)]/70 p-2.5 sm:flex-row sm:items-center"><span className="min-w-0 flex-1"><strong className="block truncate text-[9px] text-[var(--text-primary)]">{contact.companyName}</strong><small className="block truncate text-[8px] text-[var(--text-secondary)]">{contact.email}</small></span><div className="flex gap-1.5"><button type="button" disabled={pendingKey !== null} onClick={() => void decideContact(contact.contactId, 'approved')} className={`${actionButton} border-emerald-400/30 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === key ? <LoaderCircle aria-hidden size={10} className="animate-spin" /> : <Check aria-hidden size={10} />}Schválit</button><button type="button" disabled={pendingKey !== null} onClick={() => void decideContact(contact.contactId, 'rejected')} className={`${actionButton} border-red-400/25 text-red-700 [html[data-theme=dark]_&]:text-red-300`}><X aria-hidden size={10} />Zamítnout</button></div></div>
         })}</div></details> : null}
-      </section>
+      </section> : null}
 
-      <section className="mt-4">
+      {reviewTab === 'domains' ? <section className="mt-4">
         <div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Domény ke kontrole</h3><span className="text-[9px] font-bold text-amber-600">{workspace.domainReviews.length}</span></div>
         <div className="mt-2 space-y-2">{workspace.domainReviews.length ? workspace.domainReviews.map((domain) => {
           const key = `domain-${domain.ico}-${domain.domain}`
           return <article key={key} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-start justify-between gap-3"><span className="min-w-0"><strong className="block truncate text-[10px] text-[var(--text-primary)]">{domain.companyName}</strong><small className="text-[8px] text-[var(--text-secondary)]">IČO {domain.ico}</small></span><strong className="shrink-0 text-[9px] tabular-nums text-[var(--accent)]">{Math.round(domain.confidence * 100)} %</strong></div><a href={domain.url} target="_blank" rel="noreferrer" className="mt-2 flex min-w-0 items-center gap-1.5 text-[9px] text-[var(--accent)]"><span className="truncate">{domain.domain}</span><ExternalLink aria-hidden size={10} /></a>{domain.decisionCodes.length ? <p className="mt-1 text-[7px] text-[var(--text-secondary)]">{domain.decisionCodes.join(' · ')}</p> : null}<div className="mt-2 flex gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void decideDomain(domain.ico, domain.domain, 'approved')} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === key ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Schválit doménu</button><button type="button" disabled={pendingKey !== null} onClick={() => void decideDomain(domain.ico, domain.domain, 'rejected')} className={`${actionButton} border-red-400/30 bg-red-400/8 text-red-700 [html[data-theme=dark]_&]:text-red-300`}><X aria-hidden size={11} />Zamítnout</button></div></article>
         }) : <p className="rounded-xl border border-emerald-400/25 bg-emerald-400/8 px-3 py-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">Žádná doména nyní nečeká na kontrolu.</p>}</div>
-      </section>
+      </section> : null}
 
-      <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Poslední dávky</h3><div className="mt-2 space-y-2">{workspace.recentBatches.map((batch) => <div key={batch.id} className="grid grid-cols-[1fr_auto] gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2"><span><strong className="block text-[9px] text-[var(--text-primary)]">{workspace.selectors.find((selector) => selector.key === batch.selectorKey)?.name ?? batch.selectorKey}</strong><small className="text-[7px] text-[var(--text-secondary)]">{formatDate(batch.capturedAt)}</small></span><span className="text-right"><strong className="block text-[8px] uppercase text-[var(--accent)]">{batch.status}</strong><small className="text-[7px] tabular-nums text-[var(--text-secondary)]">{batch.targetCount.toLocaleString('cs-CZ')} IČO</small></span></div>)}</div></section>
+      <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Historie zpracování · {workspace.recentBatches.length}</summary><div className="space-y-2 border-t border-[var(--surface-border)] p-3">{workspace.recentBatches.map((batch) => <div key={batch.id} className="grid grid-cols-[1fr_auto] gap-2 rounded-xl bg-[var(--surface-strong)] px-3 py-2"><span><strong className="block text-[9px] text-[var(--text-primary)]">{workspace.selectors.find((selector) => selector.key === batch.selectorKey)?.name ?? batch.selectorKey}</strong><small className="text-[7px] text-[var(--text-secondary)]">{formatDate(batch.capturedAt)}</small></span><span className="text-right"><strong className="block text-[8px] uppercase text-[var(--accent)]">{batch.status}</strong><small className="text-[7px] tabular-nums text-[var(--text-secondary)]">{batch.targetCount.toLocaleString('cs-CZ')} IČO</small></span></div>)}</div></details>
     </div> : null}
   </PowerOutagePopupShell>
 }
@@ -1148,36 +1171,57 @@ function ContactManagementPanel({ workspace, onRetry }: { workspace: CompletePow
   const [showDetail, setShowDetail] = useState(false)
   const summary = updatedSummary ?? workspace.contactManagement
   if (!workspace.currentUser.isAdmin) return null
-  if (!summary) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><AtSign aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Administrace</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Dohledávání kontaktů</h3></span></div><PanelLoadError message={workspace.loadErrors.contactManagement || 'Souhrn kontaktů zatím není dostupný.'} onRetry={onRetry} /></PanelShell>
+  if (!summary) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><AtSign aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Dohledávání a ověření</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Kontakty firem</h3></span></div><PanelLoadError message={workspace.loadErrors.contactManagement || 'Souhrn kontaktů zatím není dostupný.'} onRetry={onRetry} /></PanelShell>
   const presentation = contactManagementPresentation(summary)
   return <PanelShell>
-    <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 [html[data-theme=dark]_&]:text-cyan-300"><AtSign aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Administrace</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Dohledávání kontaktů</h3></span></div><CompletePanelStatusBadge label={presentation.label} badgeClassName={presentation.badge} dotClassName={presentation.dot} /></div>
-    <p className="mt-3 text-[9px] text-[var(--text-secondary)]">Zdrojový výběr <strong className="text-[var(--text-primary)]">{summary.selectedSelectorName}</strong></p>
+    <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 [html[data-theme=dark]_&]:text-cyan-300"><AtSign aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Dohledávání a ověření</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Kontakty firem</h3></span></div><CompletePanelStatusBadge label={presentation.label} badgeClassName={presentation.badge} dotClassName={presentation.dot} /></div>
     <div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Cílové firmy</small><strong className="mt-0.5 block text-[12px] tabular-nums text-[var(--text-primary)]">{summary.targetCompanyCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">S e-mailem</small><strong className="mt-0.5 block text-[12px] tabular-nums text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300">{summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Ke kontrole</small><strong className="mt-0.5 block text-[12px] tabular-nums text-amber-600">{(summary.actionableReviewCompanyCount + summary.domainReviewCount).toLocaleString('cs-CZ')}</strong></div></div>
-    <button type="button" onClick={() => setShowDetail(true)} className="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[8px] font-bold uppercase tracking-[0.06em] text-cyan-700 transition hover:-translate-y-px hover:border-cyan-400/50 [html[data-theme=dark]_&]:text-cyan-300"><SearchCheck aria-hidden size={13} />Otevřít správu kontaktů</button>
-    <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[8px] text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={11} className="text-emerald-500" /> Pouze administrátor · odesílání vypnuto</p>
+    <p className="mt-2 truncate text-center text-[8px] text-[var(--text-secondary)]">Zdroj: {summary.selectedSelectorName} · poslední aktivita {formatRelativeDate(summary.lastActivityAt)}</p>
+    <button type="button" onClick={() => setShowDetail(true)} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[8px] font-bold uppercase tracking-[0.06em] text-cyan-700 transition hover:-translate-y-px hover:border-cyan-400/50 [html[data-theme=dark]_&]:text-cyan-300"><SearchCheck aria-hidden size={13} />Spravovat kontakty</button>
     {showDetail && typeof document !== 'undefined' ? createPortal(<ContactManagementPopup initialSummary={summary} onSummaryChange={setUpdatedSummary} onClose={() => setShowDetail(false)} />, document.body) : null}
   </PanelShell>
 }
 
 function emailManagementPresentation(workspace: CompleteNotificationEmailManagementWorkspace) {
   if (workspace.safety.isPaused) return {
-    label: 'ZASTAVENO',
+    label: 'CHYBA',
     badge: 'border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300',
     dot: 'bg-red-500',
   }
   if (workspace.review.liveDispatchEnabled || workspace.allowlist.liveDispatchEnabled || workspace.rateLimit.liveDispatchEnabled || workspace.safety.dispatchEnabled) return {
-    label: 'LIVE',
-    badge: 'border-amber-400/35 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300',
-    dot: 'bg-amber-500',
+    label: 'AKTIVNÍ',
+    badge: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300',
+    dot: 'bg-emerald-500',
   }
   return {
-    label: workspace.review.pendingCount > 0 ? 'KE KONTROLE' : 'PŘÍPRAVA',
-    badge: workspace.review.pendingCount > 0
+    label: workspace.operations.runtimeMode === 'paused' ? 'POZASTAVENO' : 'PŘIPRAVENO',
+    badge: workspace.operations.runtimeMode === 'paused'
       ? 'border-amber-400/35 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
       : 'border-sky-400/35 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300',
-    dot: workspace.review.pendingCount > 0 ? 'bg-amber-500' : 'bg-sky-500',
+    dot: workspace.operations.runtimeMode === 'paused' ? 'bg-amber-500' : 'bg-sky-500',
   }
+}
+
+function contactSelectorLabel(value: string) {
+  if (value === 'top_v1') return 'TOP VÝBĚR'
+  if (value === 'grade_a') return 'POUZE A'
+  if (value === 'grade_b') return 'POUZE B'
+  if (value === 'all_confirmed') return 'VŠECHNY POTVRZENÉ'
+  return value.toUpperCase()
+}
+
+function deliveryPresentation(status: CompleteNotificationEmailManagementWorkspace['operations']['recentDeliveries'][number]['deliveryStatus']) {
+  if (status === 'delivered') return { label: 'DORUČENO', className: 'text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300' }
+  if (status === 'bounced') return { label: 'NEDORUČENO', className: 'text-red-700 [html[data-theme=dark]_&]:text-red-300' }
+  if (status === 'complaint') return { label: 'STÍŽNOST', className: 'text-red-700 [html[data-theme=dark]_&]:text-red-300' }
+  if (status === 'error') return { label: 'CHYBA', className: 'text-red-700 [html[data-theme=dark]_&]:text-red-300' }
+  return { label: 'ODESLÁNO', className: 'text-sky-700 [html[data-theme=dark]_&]:text-sky-300' }
+}
+
+function pragueDateDaysAgo(daysAgo: number) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(Date.now() - daysAgo * 86_400_000))
 }
 
 function formatPilotAddress(item: CompleteNotificationEmailPlanItem) {
@@ -1197,8 +1241,15 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [incidentNote, setIncidentNote] = useState('Incident zkontrolován administrátorem.')
-  const [activationConfirmation, setActivationConfirmation] = useState('')
   const [pauseReason, setPauseReason] = useState('Ruční pozastavení administrátorem.')
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [history, setHistory] = useState<CompleteNotificationEmailDeliveryHistory | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [historyStatus, setHistoryStatus] = useState<'all' | CompleteNotificationEmailDeliveryStatus>('all')
+  const [historyPeriod, setHistoryPeriod] = useState<'all' | '7' | '30' | '90'>('all')
+  const [historySearch, setHistorySearch] = useState('')
+  const [historyAppliedSearch, setHistoryAppliedSearch] = useState('')
 
   const applyWorkspace = (next: CompleteNotificationEmailManagementWorkspace) => {
     setWorkspace(next)
@@ -1236,16 +1287,6 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
     else setError(result.error)
     setPendingKey(null)
   }
-  const activateLivePilot = async () => {
-    setPendingKey('activate-live')
-    setError(null)
-    const result = await activateCompleteNotificationEmailLivePilotAction(activationConfirmation)
-    if (result.success) {
-      applyWorkspace(result.workspace)
-      setActivationConfirmation('')
-    } else setError(result.error)
-    setPendingKey(null)
-  }
   const pauseLivePilot = async () => {
     setPendingKey('pause-live')
     setError(null)
@@ -1254,17 +1295,46 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
     else setError(result.error)
     setPendingKey(null)
   }
+  const loadHistory = async (options?: { append?: boolean; search?: string }) => {
+    const append = options?.append === true
+    const search = options?.search ?? historyAppliedSearch
+    const offset = append ? history?.items.length ?? 0 : 0
+    setHistoryLoading(true)
+    setHistoryError(null)
+    const result = await getCompleteNotificationEmailDeliveryHistoryAction({
+      offset,
+      status: historyStatus,
+      search,
+      dateFrom: historyPeriod === 'all' ? null : pragueDateDaysAgo(Number(historyPeriod) - 1),
+      dateTo: historyPeriod === 'all' ? null : pragueDateDaysAgo(0),
+    })
+    if (result.success) {
+      setHistory(append && history
+        ? { ...result.history, items: [...history.items, ...result.history.items] }
+        : result.history)
+      setHistoryAppliedSearch(search)
+    } else setHistoryError(result.error)
+    setHistoryLoading(false)
+  }
+  const openHistory = () => {
+    setHistoryOpen(true)
+    if (!history) void loadHistory()
+  }
 
   const activePlanIds = new Set(workspace.allowlist.activeItems.map((item) => item.planId))
-  const pendingItems = workspace.review.items.filter((item) => item.reviewStatus === 'pending')
+  const pendingItems = workspace.review.items.filter((item) => item.reviewStatus === 'pending').slice(0, 10)
   const approvedItems = workspace.review.items.filter((item) => item.reviewStatus === 'approved' && item.approvedAndEligibleNow)
   const inactiveItems = workspace.review.items.filter((item) => item.reviewStatus === 'rejected' || item.reviewStatus === 'stale')
   const allowlistFull = workspace.allowlist.activeCompanyCount >= workspace.allowlist.configuredMaximumCompanyCount
   const minimumIntervalMinutes = Math.ceil(workspace.rateLimit.minimumIntervalSeconds / 60)
   const liveDispatchEnabled = workspace.review.liveDispatchEnabled || workspace.allowlist.liveDispatchEnabled || workspace.rateLimit.liveDispatchEnabled || workspace.safety.dispatchEnabled
-  const activationPhrase = 'AKTIVOVAT PILOT KOMPLETNÍ'
-  const activationSelectionReady = workspace.allowlist.activeCompanyCount > 0
-    && workspace.allowlist.activeCompanyCount <= workspace.allowlist.configuredMaximumCompanyCount
+  const operationalProblemCount = workspace.safety.recentSignals.filter((signal) => signal.signalType !== 'delivery_success').length
+  const attentionCount = workspace.review.pendingCount + operationalProblemCount
+  const operationalTitle = workspace.safety.isPaused
+    ? 'Odesílání bylo bezpečnostně zastaveno'
+    : liveDispatchEnabled
+      ? 'Automatické odesílání je aktivní'
+      : 'Automatické odesílání je připravené'
   const actionButton = 'inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-45'
 
   const renderNotice = (item: CompleteNotificationEmailPlanItem, mode: 'pending' | 'approved' | 'inactive') => {
@@ -1279,28 +1349,58 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
     </article>
   }
 
-  return <PowerOutagePopupShell titleId="complete-email-management" eyebrow="KOMPLETNÍ · ADMINISTRACE" title="E-maily" icon={<Mail aria-hidden size={21} />} onClose={onClose}>
+  const renderPreparedNotice = (item: CompleteNotificationEmailManagementWorkspace['operations']['preparedItems'][number]) => <article key={item.planId} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3">
+    <div className="flex items-start justify-between gap-3"><span className="min-w-0"><strong className="block truncate text-[11px] text-[var(--text-primary)]">{item.companyName}</strong><small className="block truncate text-[8px] text-[var(--text-secondary)]">{item.recipientEmail}</small></span><span className="shrink-0 rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-[7px] font-bold uppercase text-sky-700 [html[data-theme=dark]_&]:text-sky-300">Připraveno</span></div>
+    <div className="mt-2 grid gap-1 text-[8px] leading-4 text-[var(--text-secondary)] sm:grid-cols-2"><span><strong className="text-[var(--text-primary)]">{sourceLabel(item.source)}</strong> · {formatDate(item.startsAt)}–{new Intl.DateTimeFormat('cs-CZ', { timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit' }).format(new Date(item.endsAt))}</span><span className="truncate sm:text-right">{formatPilotAddress({ ...item, reviewStatus: 'pending', approvedAndEligibleNow: false, ico: '', reason: null, decidedAt: null })}</span></div>
+  </article>
+
+  const renderDelivery = (delivery: CompleteNotificationEmailManagementWorkspace['operations']['recentDeliveries'][number], index: number, expandable = false) => {
+    const status = deliveryPresentation(delivery.deliveryStatus)
+    const content = <><span className="min-w-0"><strong className="block truncate text-[10px] text-[var(--text-primary)]">{delivery.companyName}</strong><small className="block truncate text-[8px] text-[var(--text-secondary)]">{delivery.recipientEmail} · {formatDate(delivery.sentAt)}</small></span><strong className={`shrink-0 text-[8px] ${status.className}`}>{status.label}</strong></>
+    if (!expandable) return <div key={`${delivery.companyName}-${delivery.sentAt}`} className={`flex items-center justify-between gap-3 px-3 py-2.5 ${index ? 'border-t border-[var(--surface-border)]' : ''}`}>{content}</div>
+    return <details key={`${delivery.companyName}-${delivery.sentAt}`} className={`group ${index ? 'border-t border-[var(--surface-border)]' : ''}`}><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">{content}</summary><div className="grid gap-1 border-t border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2 text-[8px] leading-4 text-[var(--text-secondary)] sm:grid-cols-2"><span>Odstávka: <strong className="text-[var(--text-primary)]">{formatDate(delivery.startsAt)}{delivery.endsAt ? `–${new Intl.DateTimeFormat('cs-CZ', { timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit' }).format(new Date(delivery.endsAt))}` : ''}</strong></span><span className="sm:text-right">{delivery.municipality || sourceLabel(delivery.source)}</span>{delivery.errorCode ? <span className="text-red-600 sm:col-span-2">Chyba: {delivery.errorCode}</span> : null}</div></details>
+  }
+
+  return <PowerOutagePopupShell titleId="complete-email-management" eyebrow="AUTOMATICKÁ OZNÁMENÍ" title="Upozornění firmám" icon={<Mail aria-hidden size={21} />} onClose={onClose}>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
       {error ? <p className="mb-3 rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{error}</p> : null}
-      <section className={`rounded-2xl border p-4 ${workspace.safety.isPaused ? 'border-red-400/30 bg-red-400/8' : 'border-sky-400/25 bg-sky-500/8'}`}>
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Pilotní režim KOMPLETNÍ</small><h3 className="mt-0.5 text-lg font-semibold text-[var(--text-primary)]">{workspace.safety.isPaused ? 'Automaticky zastaveno' : liveDispatchEnabled ? 'Pilotní odesílání je aktivní' : 'Příprava bez odesílání'}</h3></div><button type="button" onClick={() => void reload()} disabled={loading || pendingKey !== null} className={`${actionButton} border-sky-400/30 bg-[var(--surface-strong)] text-[var(--accent)]`}>{loading ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <RefreshCw aria-hidden size={11} />}Obnovit</button></div>
-        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Čeká na schválení" value={workspace.review.pendingCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Platně schváleno" value={workspace.review.approvedAndEligibleNowCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Pilotní seznam" value={`${workspace.allowlist.activeCompanyCount} / ${workspace.allowlist.configuredMaximumCompanyCount}`} /><PowerOutageDetailRow label="Dnes odesláno" value={`${workspace.rateLimit.sentTodayCount} / ${workspace.rateLimit.dailySendLimit}`} /></div>
-        <p className="mt-3 flex items-center gap-2 text-[9px] text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className={`shrink-0 ${liveDispatchEnabled ? 'text-amber-500' : 'text-emerald-500'}`} />{liveDispatchEnabled ? `LIVE pilot je aktivní: nejvýše ${workspace.rateLimit.dailySendLimit} zprávy denně, vždy s rozestupem alespoň ${minimumIntervalMinutes} minut.` : 'LIVE odesílání a rezervace odesílacích slotů jsou vypnuté.'}</p>
+      {historyOpen ? <section>
+        <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" onClick={() => setHistoryOpen(false)} className={`${actionButton} border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-primary)]`}><ArrowLeft aria-hidden size={12} />Zpět na přehled</button><span className="text-[9px] font-semibold text-[var(--text-secondary)]">{history?.totalCount.toLocaleString('cs-CZ') ?? '—'} záznamů</span></div>
+        <div className="mt-4"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Historie odesílání</small><h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Odeslaná upozornění firmám</h3><p className="mt-1 text-[9px] text-[var(--text-secondary)]">Výsledky se načítají ze serveru po 20 záznamech.</p></div>
+        <form onSubmit={(event) => { event.preventDefault(); void loadHistory({ search: historySearch.trim() }) }} className="mt-4 grid gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 sm:grid-cols-[1fr_130px_130px_auto]">
+          <input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} maxLength={120} placeholder="Firma nebo e-mail" className="h-9 min-w-0 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[9px] text-[var(--text-primary)] outline-none focus:border-sky-400" />
+          <select value={historyStatus} onChange={(event) => { setHistoryStatus(event.target.value as typeof historyStatus); setHistory(null) }} className="h-9 appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[9px] font-semibold text-[var(--text-primary)] outline-none [-webkit-appearance:none] focus:border-sky-400"><option value="all">Všechny stavy</option><option value="delivered">Doručeno</option><option value="sent">Odesláno</option><option value="bounced">Nedoručeno</option><option value="complaint">Stížnost</option><option value="error">Chyba</option></select>
+          <select value={historyPeriod} onChange={(event) => { setHistoryPeriod(event.target.value as typeof historyPeriod); setHistory(null) }} className="h-9 appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[9px] font-semibold text-[var(--text-primary)] outline-none [-webkit-appearance:none] focus:border-sky-400"><option value="all">Celé období</option><option value="7">Posledních 7 dní</option><option value="30">Posledních 30 dní</option><option value="90">Posledních 90 dní</option></select>
+          <button type="submit" disabled={historyLoading} className={`${actionButton} h-9 border-sky-400/30 bg-sky-500/10 text-[var(--accent)]`}>{historyLoading ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <SearchCheck aria-hidden size={11} />}Filtrovat</button>
+        </form>
+        {historyError ? <p className="mt-3 rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-[9px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{historyError}</p> : null}
+        <div className="mt-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]">{history?.items.length ? history.items.map((delivery, index) => renderDelivery(delivery, index, true)) : historyLoading ? <div className="flex min-h-28 items-center justify-center"><LoaderCircle aria-label="Načítání historie" size={20} className="animate-spin text-[var(--accent)]" /></div> : <p className="px-3 py-5 text-center text-[9px] text-[var(--text-secondary)]">Pro zvolené filtry nebyl nalezen žádný e-mail.</p>}</div>
+        {history?.hasMore ? <button type="button" disabled={historyLoading} onClick={() => void loadHistory({ append: true })} className={`${actionButton} mt-3 w-full border-sky-400/30 bg-sky-500/10 text-[var(--accent)]`}>{historyLoading ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <ChevronDown aria-hidden size={12} />}Načíst dalších 20</button> : null}
+      </section> : <>
+      <section className={`rounded-2xl border p-4 ${workspace.safety.isPaused ? 'border-red-400/30 bg-red-400/8' : liveDispatchEnabled ? 'border-emerald-400/30 bg-emerald-400/8' : 'border-sky-400/25 bg-sky-500/8'}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Celkový provozní stav</small><h3 className="mt-0.5 text-lg font-semibold text-[var(--text-primary)]">{operationalTitle}</h3><p className="mt-1 text-[9px] text-[var(--text-secondary)]">Zdroj firem: <strong className="text-[var(--text-primary)]">{contactSelectorLabel(workspace.operations.selectedSelectorKey)}</strong></p></div><div className="flex items-center gap-2"><CompletePanelStatusBadge label={emailManagementPresentation(workspace).label} badgeClassName={emailManagementPresentation(workspace).badge} dotClassName={emailManagementPresentation(workspace).dot} /><button type="button" onClick={() => void reload()} disabled={loading || pendingKey !== null} className={`${actionButton} border-sky-400/30 bg-[var(--surface-strong)] text-[var(--accent)]`}>{loading ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <RefreshCw aria-hidden size={11} />}Obnovit</button></div></div>
+        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Připraveno" value={workspace.operations.preparedCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Dnes odesláno" value={workspace.operations.sentTodayCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Dnes doručeno" value={workspace.operations.deliveredTodayCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Vyžaduje pozornost" value={attentionCount.toLocaleString('cs-CZ')} /></div>
+        <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[8px] text-[var(--text-secondary)]"><span>Poslední odeslání: <strong className="text-[var(--text-primary)]">{formatDate(workspace.operations.lastSentAt)}</strong></span><span>Poslední doručení: <strong className="text-[var(--text-primary)]">{formatDate(workspace.operations.lastDeliveredAt)}</strong></span></p>
       </section>
 
-      {workspace.liveActivationAvailable && !liveDispatchEnabled && !workspace.safety.isPaused ? <section className="mt-4 rounded-2xl border border-amber-400/35 bg-amber-400/8 p-4"><h3 className="text-[10px] font-bold uppercase tracking-[0.08em] text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Ruční aktivace prvního LIVE pilotu</h3><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Aktivací začnou skutečné e-maily odcházet firmám zařazeným do pilotu. Databáze před aktivací znovu ověří bezpečnostní audit, platnost všech vybraných oznámení a limit 1–{workspace.allowlist.configuredMaximumCompanyCount} firem.</p><label className="mt-3 block text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]" htmlFor="complete-live-confirmation">Pro potvrzení napište přesně: {activationPhrase}</label><input id="complete-live-confirmation" value={activationConfirmation} onChange={(event) => setActivationConfirmation(event.target.value)} autoComplete="off" spellCheck={false} className="mt-2 h-10 w-full rounded-xl border border-amber-400/30 bg-[var(--surface-strong)] px-3 text-[10px] font-semibold text-[var(--text-primary)] outline-none focus:border-amber-400" /><button type="button" disabled={pendingKey !== null || activationConfirmation !== activationPhrase || !activationSelectionReady} onClick={() => void activateLivePilot()} className={`${actionButton} mt-3 border-amber-500/40 bg-amber-500/12 text-amber-800 [html[data-theme=dark]_&]:text-amber-200`}>{pendingKey === 'activate-live' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <CircleAlert aria-hidden size={11} />}Aktivovat první LIVE pilot</button>{!activationSelectionReady ? <p className="mt-2 text-[8px] text-red-600 [html[data-theme=dark]_&]:text-red-300">Pilotní seznam musí obsahovat 1 až {workspace.allowlist.configuredMaximumCompanyCount} platné firmy.</p> : null}</section> : null}
+      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Tok e-mailových upozornění</h3><div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr]"><PowerOutageDetailRow label="Připraveno" value={workspace.operations.preparedCount.toLocaleString('cs-CZ')} /><span className="hidden self-center text-[var(--text-secondary)] sm:block">→</span><PowerOutageDetailRow label="Odesláno dnes" value={workspace.operations.sentTodayCount.toLocaleString('cs-CZ')} /><span className="hidden self-center text-[var(--text-secondary)] sm:block">→</span><PowerOutageDetailRow label="Doručeno dnes" value={workspace.operations.deliveredTodayCount.toLocaleString('cs-CZ')} /></div></section>
 
-      {liveDispatchEnabled ? <section className="mt-4 rounded-2xl border border-red-400/30 bg-red-400/8 p-4"><h3 className="text-[10px] font-bold uppercase tracking-[0.08em] text-red-700 [html[data-theme=dark]_&]:text-red-300">Ruční nouzové pozastavení</h3><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Pozastavení okamžitě vypne plánování, odesílání i rezervaci dalších slotů pouze pro KOMPLETNÍ. Odesílání MARKETY zůstane beze změny.</p><textarea value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || pauseReason.trim().length < 3} onClick={() => void pauseLivePilot()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'pause-live' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <X aria-hidden size={11} />}Pozastavit LIVE pilot</button></section> : null}
+      <section className="mt-4"><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Připravená oznámení</h3><span className="text-[9px] font-bold text-sky-600">{workspace.operations.preparedCount}</span></div><p className="mt-1 text-[9px] text-[var(--text-secondary)]">Budoucí platná oznámení s použitelným firemním kontaktem. V režimu PŘIPRAVENO se neodesílají.</p><div className="mt-2 space-y-2">{workspace.operations.preparedItems.length ? workspace.operations.preparedItems.map(renderPreparedNotice) : <p className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 text-[9px] text-[var(--text-secondary)]">Žádné další oznámení nyní nečeká.</p>}</div></section>
+
+      <section className="mt-4"><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Poslední odeslané e-maily</h3><span className="text-[9px] font-bold text-emerald-600">{workspace.operations.sentTotalCount.toLocaleString('cs-CZ')}</span></div><div className="mt-2 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]">{workspace.operations.recentDeliveries.length ? workspace.operations.recentDeliveries.slice(0, 5).map((delivery, index) => renderDelivery(delivery, index)) : <p className="px-3 py-3 text-[9px] text-[var(--text-secondary)]">Zatím nebyl odeslán žádný e-mail.</p>}</div>{workspace.operations.sentTotalCount > 0 ? <button type="button" onClick={openHistory} className={`${actionButton} mt-2 w-full border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-primary)]`}><History aria-hidden size={12} />Zobrazit celou historii · celkem {workspace.operations.sentTotalCount.toLocaleString('cs-CZ')}</button> : null}</section>
 
       {workspace.safety.isPaused ? <section className="mt-4 rounded-2xl border border-red-400/30 bg-red-400/8 p-4"><h3 className="text-[10px] font-bold uppercase tracking-[0.08em] text-red-700 [html[data-theme=dark]_&]:text-red-300">Bezpečnostní incident vyžaduje kontrolu</h3><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">{workspace.safety.lastErrorMessage || workspace.safety.pauseReasonCode || 'Pilot byl automaticky pozastaven.'}</p><textarea value={incidentNote} onChange={(event) => setIncidentNote(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || incidentNote.trim().length < 3} onClick={() => void acknowledgePause()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'acknowledge' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit kontrolu incidentu</button><p className="mt-2 text-[8px] text-[var(--text-secondary)]">Potvrzení incidentu samo o sobě odesílání znovu nezapne.</p></section> : null}
 
-      <section className="mt-4"><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Čeká na ruční schválení</h3><span className="text-[9px] font-bold text-amber-600">{workspace.review.pendingCount}</span></div><p className="mt-1 text-[9px] text-[var(--text-secondary)]">Schválení potvrzuje konkrétní firmu, odstávku a příjemce. Ještě nic neodesílá.</p><div className="mt-2 space-y-2">{pendingItems.length ? pendingItems.map((item) => renderNotice(item, 'pending')) : <p className="rounded-xl border border-emerald-400/25 bg-emerald-400/8 px-3 py-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">Žádné oznámení nyní nečeká na schválení.</p>}</div></section>
+      <section className={`mt-4 rounded-2xl border p-4 ${attentionCount ? 'border-amber-400/30 bg-amber-400/8' : 'border-emerald-400/25 bg-emerald-400/8'}`}><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyžaduje pozornost</h3><span className={`text-[9px] font-bold ${attentionCount ? 'text-amber-600' : 'text-emerald-600'}`}>{attentionCount}</span></div>{attentionCount ? <div className="mt-2 space-y-2">{pendingItems.map((item) => renderNotice(item, 'pending'))}{workspace.safety.recentSignals.filter((signal) => signal.signalType !== 'delivery_success').map((signal) => <p key={`${signal.signalType}-${signal.createdAt}`} className="rounded-xl border border-red-400/25 bg-red-400/8 px-3 py-2 text-[9px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{signal.signalType} · {signal.errorCode || 'bez kódu'} · {formatDate(signal.createdAt)}</p>)}</div> : <p className="mt-2 flex items-center gap-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><CircleCheck aria-hidden size={13} />Žádný problém nevyžaduje zásah.</p>}</section>
 
-      <section className="mt-4"><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Schválená oznámení</h3><span className="text-[9px] font-bold text-emerald-600">{workspace.review.approvedAndEligibleNowCount}</span></div><p className="mt-1 text-[9px] text-[var(--text-secondary)]">Do pilotu lze zařadit nejvýše {workspace.allowlist.configuredMaximumCompanyCount} firmy; pevný bezpečnostní strop je {workspace.allowlist.hardMaximumCompanyCount}.</p><div className="mt-2 space-y-2">{approvedItems.length ? approvedItems.map((item) => renderNotice(item, 'approved')) : <p className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 text-[9px] text-[var(--text-secondary)]">Zatím není připravené žádné platně schválené oznámení.</p>}</div></section>
+      <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Nastavení rozesílání</summary><div className="border-t border-[var(--surface-border)] p-4"><div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Výběr firem" value={contactSelectorLabel(workspace.operations.selectedSelectorKey)} /><PowerOutageDetailRow label="Denní limit" value={`${workspace.rateLimit.dailySendLimit} e-maily`} /><PowerOutageDetailRow label="Minimální rozestup" value={`${minimumIntervalMinutes} min`} /><PowerOutageDetailRow label="Odhlášené kontakty" value={workspace.operations.suppressedRecipientCount.toLocaleString('cs-CZ')} /></div><p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Resend a webhook jsou oddělené od panelu MARKETY. Změna režimu nebo limitů bude vždy vyžadovat samostatné potvrzení administrátorem.</p></div></details>
 
-      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Provozní pojistky pilotu</h3><div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Denní limit" value={`${workspace.rateLimit.dailySendLimit} e-maily`} /><PowerOutageDetailRow label="Minimální rozestup" value={`${minimumIntervalMinutes} min`} /><PowerOutageDetailRow label="Série chyb" value={`${workspace.safety.consecutiveTransientFailureCount} / ${workspace.safety.transientFailureThreshold}`} /><PowerOutageDetailRow label="Aktivní rezervace" value={workspace.rateLimit.activeReservationCount.toLocaleString('cs-CZ')} /></div><p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Complaint, hard bounce nebo chyba konfigurace zastaví pilot okamžitě. Tři navazující přechodné chyby jej zastaví také. Limity se počítají podle časového pásma {workspace.rateLimit.accountingTimezone}.</p></section>
+      <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Bezpečnost a pozastavení</summary><div className="border-t border-[var(--surface-border)] p-4"><div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Série chyb" value={`${workspace.safety.consecutiveTransientFailureCount} / ${workspace.safety.transientFailureThreshold}`} /><PowerOutageDetailRow label="Aktivní rezervace" value={workspace.rateLimit.activeReservationCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Webhook" value={workspace.safety.liveSignalIngestionEnabled ? 'AKTIVNÍ' : 'PŘIPRAVEN'} /><PowerOutageDetailRow label="Režim" value={workspace.operations.runtimeMode.toUpperCase()} /></div><p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Complaint, hard bounce nebo chyba konfigurace zastaví odesílání okamžitě. Tři navazující přechodné chyby jej zastaví také.</p>{liveDispatchEnabled ? <div className="mt-4 border-t border-red-400/20 pt-4"><p className="text-[9px] leading-4 text-[var(--text-secondary)]">Nouzové pozastavení vypne pouze rozesílání KOMPLETNÍ. Panel MARKETY zůstane beze změny.</p><textarea value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || pauseReason.trim().length < 3} onClick={() => void pauseLivePilot()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'pause-live' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <X aria-hidden size={11} />}Pozastavit odesílání</button></div> : null}</div></details>
+
+      {approvedItems.length ? <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Historie pilotního výběru · {approvedItems.length}</summary><div className="space-y-2 border-t border-[var(--surface-border)] p-3">{approvedItems.map((item) => renderNotice(item, 'approved'))}</div></details> : null}
 
       {inactiveItems.length ? <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Zamítnutá a neaktuální oznámení · {inactiveItems.length}</summary><div className="space-y-2 border-t border-[var(--surface-border)] p-3">{inactiveItems.map((item) => renderNotice(item, 'inactive'))}</div></details> : null}
+      </>}
     </div>
   </PowerOutagePopupShell>
 }
@@ -1310,14 +1410,13 @@ function EmailManagementPanel({ workspace, onRetry }: { workspace: CompletePower
   const [showDetail, setShowDetail] = useState(false)
   const emailWorkspace = updatedWorkspace ?? workspace.emailManagement
   if (!workspace.currentUser.isAdmin) return null
-  if (!emailWorkspace) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><Mail aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Administrace</small><h3 className="text-base font-semibold text-[var(--text-primary)]">E-maily</h3></span></div><PanelLoadError message={workspace.loadErrors.emailManagement || 'Správa e-mailových upozornění zatím není dostupná.'} onRetry={onRetry} /></PanelShell>
+  if (!emailWorkspace) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><Mail aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Automatická oznámení</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Upozornění firmám</h3></span></div><PanelLoadError message={workspace.loadErrors.emailManagement || 'Správa e-mailových upozornění zatím není dostupná.'} onRetry={onRetry} /></PanelShell>
   const presentation = emailManagementPresentation(emailWorkspace)
   return <PanelShell>
-    <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 [html[data-theme=dark]_&]:text-sky-300"><Mail aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Administrace</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">E-maily</h3></span></div><CompletePanelStatusBadge label={presentation.label} badgeClassName={presentation.badge} dotClassName={presentation.dot} /></div>
-    <p className="mt-3 text-[9px] text-[var(--text-secondary)]">Ruční příprava bezpečného pilotu pro tab <strong className="text-[var(--text-primary)]">KOMPLETNÍ</strong>.</p>
-    <div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Ke schválení</small><strong className="mt-0.5 block text-[12px] tabular-nums text-amber-600">{emailWorkspace.review.pendingCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Schváleno</small><strong className="mt-0.5 block text-[12px] tabular-nums text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300">{emailWorkspace.review.approvedAndEligibleNowCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">V pilotu</small><strong className="mt-0.5 block text-[12px] tabular-nums text-[var(--text-primary)]">{emailWorkspace.allowlist.activeCompanyCount} / {emailWorkspace.allowlist.configuredMaximumCompanyCount}</strong></div></div>
-    <button type="button" onClick={() => setShowDetail(true)} className="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-500/10 text-[8px] font-bold uppercase tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:border-sky-400/50 [html[data-theme=dark]_&]:text-sky-300"><Mail aria-hidden size={13} />Otevřít správu e-mailů</button>
-    <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[8px] text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={11} className={emailWorkspace.safety.dispatchEnabled ? 'text-amber-500' : 'text-emerald-500'} />{emailWorkspace.safety.dispatchEnabled ? `Pouze administrátor · LIVE pilot aktivní · max. ${emailWorkspace.rateLimit.dailySendLimit} denně` : 'Pouze administrátor · LIVE odesílání vypnuto'}</p>
+    <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 [html[data-theme=dark]_&]:text-sky-300"><Mail aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Automatická oznámení</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Upozornění firmám</h3></span></div><CompletePanelStatusBadge label={presentation.label} badgeClassName={presentation.badge} dotClassName={presentation.dot} /></div>
+    <div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Připraveno</small><strong className="mt-0.5 block text-[12px] tabular-nums text-sky-600">{emailWorkspace.operations.preparedCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Dnes odesláno</small><strong className="mt-0.5 block text-[12px] tabular-nums text-[var(--text-primary)]">{emailWorkspace.operations.sentTodayCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Doručeno</small><strong className="mt-0.5 block text-[12px] tabular-nums text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300">{emailWorkspace.operations.deliveredTodayCount.toLocaleString('cs-CZ')}</strong></div></div>
+    <p className="mt-2 truncate text-center text-[8px] text-[var(--text-secondary)]">Poslední doručení: {formatDate(emailWorkspace.operations.lastDeliveredAt)}</p>
+    <button type="button" onClick={() => setShowDetail(true)} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-500/10 text-[8px] font-bold uppercase tracking-[0.06em] text-sky-700 transition hover:-translate-y-px hover:border-sky-400/50 [html[data-theme=dark]_&]:text-sky-300"><Mail aria-hidden size={13} />Spravovat e-maily</button>
     {showDetail && typeof document !== 'undefined' ? createPortal(<EmailManagementPopup initialWorkspace={emailWorkspace} onWorkspaceChange={setUpdatedWorkspace} onClose={() => setShowDetail(false)} />, document.body) : null}
   </PanelShell>
 }

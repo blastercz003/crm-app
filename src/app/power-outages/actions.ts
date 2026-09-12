@@ -14,10 +14,11 @@ import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-r
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getCompleteNotificationResendConfiguration } from '@/lib/power-outages/complete-notification-email-resend-config'
-import { acknowledgeCompleteNotificationEmailPilotPause, activateCompleteNotificationEmailLivePilot, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist } from '@/lib/power-outages/complete-service'
+import { acknowledgeCompleteNotificationEmailPilotPause, activateCompleteNotificationEmailLivePilot, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteContactManagementWorkspace,
+  CompleteNotificationEmailDeliveryHistory,
   CompleteNotificationEmailManagementWorkspace,
   CompleteCommercialSelectionCounts,
   CompleteAddressCoverageDiagnostic,
@@ -78,6 +79,10 @@ type CompleteContactManagementActionResult =
 type CompleteNotificationEmailManagementActionResult =
   | { success: true; workspace: CompleteNotificationEmailManagementWorkspace; error: null }
   | { success: false; workspace: null; error: string }
+
+type CompleteNotificationEmailDeliveryHistoryActionResult =
+  | { success: true; history: CompleteNotificationEmailDeliveryHistory; error: null }
+  | { success: false; history: null; error: string }
 
 type CompleteAssignmentActionResult =
   | { success: true; assignment: CompletePowerOutageAssignment | null; error: null }
@@ -275,11 +280,50 @@ export async function prepareCompletePowerOutageContactSelectorAction(
   }
 }
 
+export async function setCompletePowerOutageContactRuntimeAction(input: {
+  enabled: boolean
+  braveFallbackEnabled: boolean
+}): Promise<CompleteContactManagementActionResult> {
+  try {
+    if (typeof input.enabled !== 'boolean' || typeof input.braveFallbackEnabled !== 'boolean') {
+      throw new Error('Neplatné nastavení dohledávání kontaktů.')
+    }
+    if (!input.enabled && input.braveFallbackEnabled) throw new Error('Brave fallback vyžaduje zapnuté dohledávání.')
+    return {
+      success: true,
+      workspace: await setCompletePowerOutageContactRuntime(input.enabled, input.braveFallbackEnabled),
+      error: null,
+    }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
 export async function getCompleteNotificationEmailManagementAction(): Promise<CompleteNotificationEmailManagementActionResult> {
   try {
     return { success: true, workspace: await getCompleteNotificationEmailManagementWorkspace(), error: null }
   } catch (error) {
     return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompleteNotificationEmailDeliveryHistoryAction(input: {
+  offset: number
+  status: 'all' | 'sent' | 'delivered' | 'bounced' | 'complaint' | 'error'
+  search: string
+  dateFrom: string | null
+  dateTo: string | null
+}): Promise<CompleteNotificationEmailDeliveryHistoryActionResult> {
+  try {
+    if (!Number.isInteger(input.offset) || input.offset < 0 || input.offset > 1_000_000) throw new Error('Neplatná stránka historie.')
+    if (!['all', 'sent', 'delivered', 'bounced', 'complaint', 'error'].includes(input.status)) throw new Error('Neplatný filtr historie.')
+    if (input.search.length > 120) throw new Error('Vyhledávaný text je příliš dlouhý.')
+    const isoDate = /^\d{4}-\d{2}-\d{2}$/
+    if (input.dateFrom && !isoDate.test(input.dateFrom)) throw new Error('Neplatné počáteční datum.')
+    if (input.dateTo && !isoDate.test(input.dateTo)) throw new Error('Neplatné koncové datum.')
+    return { success: true, history: await getCompleteNotificationEmailDeliveryHistory(input), error: null }
+  } catch (error) {
+    return { success: false, history: null, error: errorMessage(error) }
   }
 }
 

@@ -85,7 +85,7 @@ begin
     select 1 from cron.job job
     where job.jobname = 'complete_notification_email_live_pilot_every_minute'
       and job.schedule = '* * * * *'
-      and job.command like '%/api/power-outages/complete/notification-emails/pilot/send%'
+      and job.command like '%request_cpo_notification_email_live_pilot_v1%'
   ) then
     raise exception 'Omezeny LIVE worker KOMPLETNI neni spravne naplanovan.';
   end if;
@@ -120,6 +120,43 @@ begin
   values ('activated', selected_count, auth.uid(), 'Rucne potvrzen prvni omezeny LIVE pilot.',
     jsonb_build_object('contract', 'complete-notification-email-live-pilot-v1', 'dailyLimit', 3, 'minimumIntervalSeconds', 600));
   return jsonb_build_object('status', 'activated', 'selectedCompanyCount', selected_count, 'automaticSendingStarted', true);
+end;
+$$;
+
+-- Samostatny HTTP requester zachovava oddeleni od whitelistu a automatiky MARKETY.
+create or replace function public.request_cpo_notification_email_live_pilot_v1()
+returns bigint language plpgsql security definer set search_path = '' as $$
+declare app_url text; automation_token text; request_id bigint;
+begin
+  if not coalesce((
+    select state_row.runtime_mode = 'live' and state_row.dispatch_enabled
+    from public.complete_power_outage_notification_email_state state_row
+    where state_row.singleton
+  ), false) then return null; end if;
+
+  select trim(trailing '/' from decrypted_secret) into app_url
+  from vault.decrypted_secrets where name = 'weather_alerts_app_url'
+  order by created_at desc limit 1;
+  select decrypted_secret into automation_token
+  from vault.decrypted_secrets where name = 'weather_alerts_automation_token'
+  order by created_at desc limit 1;
+  if app_url is null or app_url !~ '^https://[^/]+$' then
+    raise exception 'Vault secret weather_alerts_app_url neni platny.';
+  end if;
+  if automation_token is null or length(automation_token) < 32 then
+    raise exception 'Vault secret weather_alerts_automation_token chybi.';
+  end if;
+
+  select net.http_get(
+    url := app_url || '/api/power-outages/complete/notification-emails/pilot/send',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || automation_token,
+      'Accept', 'application/json',
+      'User-Agent', 'B-Energy-Complete-Notification-Live-Pilot/1.0'
+    ),
+    timeout_milliseconds := 60000
+  ) into request_id;
+  return request_id;
 end;
 $$;
 
@@ -265,11 +302,13 @@ revoke all on function public.activate_cpo_notification_email_live_pilot_v1(text
 revoke all on function public.pause_cpo_notification_email_live_pilot_v1(text) from public, anon;
 revoke all on function public.claim_cpo_notification_email_live_pilot_v1() from public, anon, authenticated;
 revoke all on function public.record_cpo_notification_email_live_resend_event_v1(text,text,text,jsonb) from public, anon, authenticated;
+revoke all on function public.request_cpo_notification_email_live_pilot_v1() from public, anon, authenticated;
 grant execute on function public.prevent_cpo_notification_email_pilot_activation_mutation() to service_role;
 grant execute on function public.activate_cpo_notification_email_live_pilot_v1(text) to authenticated, service_role;
 grant execute on function public.pause_cpo_notification_email_live_pilot_v1(text) to authenticated, service_role;
 grant execute on function public.claim_cpo_notification_email_live_pilot_v1() to service_role;
 grant execute on function public.record_cpo_notification_email_live_resend_event_v1(text,text,text,jsonb) to service_role;
+grant execute on function public.request_cpo_notification_email_live_pilot_v1() to service_role;
 
 -- Panel zobrazi moznost rucni aktivace, ale instalace zachova SHADOW stav.
 create or replace function public.get_cpo_notification_email_management_v1(requested_limit integer default 100)
@@ -304,7 +343,7 @@ begin
   loop perform cron.unschedule(existing_job.jobid); end loop;
   perform cron.schedule(
     'complete_notification_email_live_pilot_every_minute', '* * * * *',
-    $job$select public.request_power_outages_endpoint('/api/power-outages/complete/notification-emails/pilot/send');$job$
+    $job$select public.request_cpo_notification_email_live_pilot_v1();$job$
   );
 end $$;
 

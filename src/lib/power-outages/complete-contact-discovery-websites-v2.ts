@@ -21,7 +21,7 @@ type WebsiteV2Claim = {
 
 type CheckedCandidateV2 = {
   rank: number
-  queryVariant: BraveOfficialWebsiteCandidate['queryVariant'] | 'v1_verified'
+  queryVariant: BraveOfficialWebsiteCandidate['queryVariant'] | 'v1_verified' | 'local_guess'
   url: string
   hostname: string
   verification: OfficialWebsiteVerificationV2
@@ -31,6 +31,25 @@ const ITEM_BUDGET_MS = 210_000
 const CANDIDATE_BUDGET_MS = 35_000
 const COMPLETION_RESERVE_MS = 15_000
 const VERIFICATION_BUDGET_ERROR = 'WEBSITE_VERIFICATION_BUDGET_EXCEEDED'
+
+const COMPANY_NAME_STOP_WORDS = new Set([
+  'a', 'as', 'cz', 'czech', 'druzstvo', 'firma', 'group', 'holding', 'k', 'komanditni',
+  'o', 'podnik', 'r', 's', 'se', 'spol', 'spolecnost', 'sro', 'statni', 'v', 'vos',
+])
+
+function localWebsiteCandidates(companyName: string) {
+  const tokens = companyName.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/)
+    .filter((token) => token.length >= 2 && !COMPANY_NAME_STOP_WORDS.has(token))
+    .slice(0, 4)
+  if (tokens.length === 0) return []
+  const labels = [tokens.join(''), tokens.join('-')]
+  if (tokens[0].length >= 4) labels.push(tokens[0])
+  return [...new Set(labels)]
+    .filter((label) => label.length >= 3 && label.length <= 63)
+    .slice(0, 3)
+    .map((label) => `https://${label}.cz`)
+}
 
 function isVerifiedCandidate(candidate: CheckedCandidateV2): candidate is CheckedCandidateV2 & {
   verification: OfficialWebsiteVerificationV2 & { status: 'verified_company' | 'verified_group' }
@@ -73,6 +92,13 @@ async function finishWebsiteV2Claim(client: ServiceClient, claim: WebsiteV2Claim
   })
   if (error) throw error
   if (data !== true) throw new Error(`Lease v2 pro ověření webu IČO ${claim.ico} již není platný.`)
+}
+
+async function refreshVerifiedContactPipeline(client: ServiceClient) {
+  const { error: verificationError } = await client.rpc('refresh_complete_power_outage_contact_discovery_website_v3')
+  if (verificationError) throw verificationError
+  const { error: captureError } = await client.rpc('capture_complete_power_outage_contact_extraction_shadow')
+  if (captureError) throw captureError
 }
 
 async function checkCandidate(input: {
@@ -123,10 +149,11 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
 
   const { data: state, error: stateError } = await client
     .from('complete_power_outage_contact_discovery_state')
-    .select('website_verification_v2_enabled,contact_extraction_enabled,email_planning_enabled,email_dispatch_enabled')
+    .select('website_verification_v2_enabled,brave_fallback_enabled,contact_extraction_enabled,email_planning_enabled,email_dispatch_enabled')
     .eq('singleton', true)
     .maybeSingle<{
       website_verification_v2_enabled: boolean
+      brave_fallback_enabled: boolean
       contact_extraction_enabled: boolean
       email_planning_enabled: boolean
       email_dispatch_enabled: boolean
@@ -165,8 +192,27 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
     }
 
     let accepted = checkedCandidates.find(isVerifiedCandidate)
+    for (const localUrl of accepted ? [] : localWebsiteCandidates(claim.company_name)) {
+      if (Date.now() >= itemDeadlineAt - COMPLETION_RESERVE_MS) break
+      const hostname = new URL(localUrl).hostname
+      if (seenHosts.has(hostname)) continue
+      seenHosts.add(hostname)
+      const checked = await checkCandidate({
+        claim,
+        url: localUrl,
+        rank: checkedCandidates.length + 1,
+        queryVariant: 'local_guess',
+        itemDeadlineAt,
+      })
+      checkedCandidates.push(checked)
+      if (isVerifiedCandidate(checked)) {
+        accepted = checked
+        break
+      }
+    }
+
     let searchSummary: Record<string, unknown> | null = null
-    if (!accepted) {
+    if (!accepted && state.brave_fallback_enabled) {
       const search = await diagnoseOfficialWebsiteV2WithBrave({
         companyName: claim.company_name,
         ico: claim.ico,
@@ -213,6 +259,9 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
     const evidence = {
       contract: 'complete-contact-official-website-v2-shadow',
       v1CandidateRechecked: Boolean(claim.prior_website_url),
+      localFirstEnabled: true,
+      localCandidateCount: checkedCandidates.filter((candidate) => candidate.queryVariant === 'local_guess').length,
+      braveFallbackEnabled: state.brave_fallback_enabled,
       search: searchSummary,
       checkedCandidates,
       rawSearchPayloadStored: false,
@@ -237,6 +286,7 @@ export async function processCompleteContactDiscoveryWebsitesV2() {
         reasonCodes: accepted.verification.reasonCodes,
         evidence,
       })
+      await refreshVerifiedContactPipeline(client)
       return { status: 'succeeded' as const, claimed: 1, verified: 1, needsReview: 0, noWebsite: 0, failed: 0 }
     }
     if (reviewCandidate) {

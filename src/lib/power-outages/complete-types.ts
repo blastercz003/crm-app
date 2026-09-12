@@ -181,6 +181,9 @@ export type CompleteDiscoveredContacts = {
 
 export type CompleteContactManagementSummary = {
   enabled: boolean
+  runtimeEnabled: boolean
+  braveFallbackEnabled: boolean
+  localFirstEnabled: boolean
   selectedSelectorKey: string
   selectedSelectorName: string
   targetCompanyCount: number
@@ -254,10 +257,58 @@ export type CompleteNotificationEmailPlanItem = {
   decidedAt: string | null
 }
 
+export type CompleteNotificationEmailDeliveryStatus = 'sent' | 'delivered' | 'bounced' | 'complaint' | 'error'
+
+export type CompleteNotificationEmailDeliveryItem = {
+  companyName: string
+  recipientEmail: string
+  source: PowerOutageSource
+  startsAt: string
+  endsAt: string
+  municipality: string | null
+  sentAt: string
+  deliveryStatus: CompleteNotificationEmailDeliveryStatus
+  deliveredAt: string | null
+  errorCode: string | null
+}
+
+export type CompleteNotificationEmailDeliveryHistory = {
+  totalCount: number
+  offset: number
+  pageSize: number
+  hasMore: boolean
+  items: CompleteNotificationEmailDeliveryItem[]
+}
+
 export type CompleteNotificationEmailManagementWorkspace = {
   contract: string
   adminOnly: boolean
   liveActivationAvailable: boolean
+  operations: {
+    runtimeMode: 'disabled' | 'shadow' | 'paused' | 'test' | 'live'
+    planningEnabled: boolean
+    dispatchEnabled: boolean
+    selectedSelectorKey: string
+    preparedCount: number
+    sentTodayCount: number
+    deliveredTodayCount: number
+    lastSentAt: string | null
+    lastDeliveredAt: string | null
+    suppressedRecipientCount: number
+    sentTotalCount: number
+    preparedItems: Array<{
+      planId: string
+      companyName: string
+      recipientEmail: string
+      source: PowerOutageSource
+      startsAt: string
+      endsAt: string
+      municipality: string | null
+      addresses: Array<Record<string, unknown>>
+      notBeforeAt: string
+    }>
+    recentDeliveries: CompleteNotificationEmailDeliveryItem[]
+  }
   review: {
     reviewEnabled: boolean
     reviewUiEnabled: boolean

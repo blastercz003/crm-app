@@ -32,7 +32,7 @@ with definitions as (
       select 1 from cron.job job
       where job.jobname = 'complete_notification_email_live_pilot_every_minute'
         and job.schedule = '* * * * *'
-        and job.command like '%/api/power-outages/complete/notification-emails/pilot/send%'
+        and job.command like '%request_cpo_notification_email_live_pilot_v1%'
     )
   union all
   select 'GRANT', 'authenticated cannot claim or record COMPLETE LIVE delivery',

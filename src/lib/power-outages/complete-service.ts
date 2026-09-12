@@ -6,6 +6,8 @@ import type {
   CompleteCompanyEnrichment,
   CompleteContactManagementSummary,
   CompleteContactManagementWorkspace,
+  CompleteNotificationEmailDeliveryHistory,
+  CompleteNotificationEmailDeliveryItem,
   CompleteNotificationEmailManagementWorkspace,
   CompleteDiscoveredContact,
   CompleteDiscoveredContacts,
@@ -60,6 +62,9 @@ function mapContactManagementSummary(value: unknown): CompleteContactManagementS
   const row = objectValue(value)
   return {
     enabled: row.enabled === true,
+    runtimeEnabled: row.runtimeEnabled === true,
+    braveFallbackEnabled: row.braveFallbackEnabled === true,
+    localFirstEnabled: row.localFirstEnabled !== false,
     selectedSelectorKey: typeof row.selectedSelectorKey === 'string' ? row.selectedSelectorKey : 'top_v1',
     selectedSelectorName: typeof row.selectedSelectorName === 'string' ? row.selectedSelectorName : 'TOP VÝBĚR',
     targetCompanyCount: Number(row.targetCompanyCount) || 0,
@@ -145,16 +150,62 @@ function mapNotificationEmailPlanItem(value: unknown): CompleteNotificationEmail
   }
 }
 
+function mapNotificationEmailDeliveryItem(value: unknown): CompleteNotificationEmailDeliveryItem {
+  const item = objectValue(value)
+  const deliveryStatus = String(item.deliveryStatus ?? 'sent')
+  return {
+    companyName: String(item.companyName ?? ''),
+    recipientEmail: String(item.recipientEmail ?? ''),
+    source: (['cez', 'egd', 'pre'].includes(String(item.source)) ? item.source : 'cez') as PowerOutageSource,
+    startsAt: String(item.startsAt ?? ''),
+    endsAt: String(item.endsAt ?? ''),
+    municipality: typeof item.municipality === 'string' ? item.municipality : null,
+    sentAt: String(item.sentAt ?? ''),
+    deliveryStatus: (['sent', 'delivered', 'bounced', 'complaint', 'error'].includes(deliveryStatus) ? deliveryStatus : 'sent') as CompleteNotificationEmailDeliveryItem['deliveryStatus'],
+    deliveredAt: typeof item.deliveredAt === 'string' ? item.deliveredAt : null,
+    errorCode: typeof item.errorCode === 'string' ? item.errorCode : null,
+  }
+}
+
 function mapNotificationEmailManagementWorkspace(value: unknown): CompleteNotificationEmailManagementWorkspace {
   const row = objectValue(value)
   const review = objectValue(row.review)
   const allowlist = objectValue(row.allowlist)
   const rateLimit = objectValue(row.rateLimit)
   const safety = objectValue(row.safety)
+  const operations = objectValue(row.operations)
+  const runtimeMode = String(operations.runtimeMode ?? 'shadow')
   return {
     contract: String(row.contract ?? ''),
     adminOnly: row.adminOnly === true,
     liveActivationAvailable: row.liveActivationAvailable === true,
+    operations: {
+      runtimeMode: (['disabled', 'shadow', 'paused', 'test', 'live'].includes(runtimeMode) ? runtimeMode : 'shadow') as CompleteNotificationEmailManagementWorkspace['operations']['runtimeMode'],
+      planningEnabled: operations.planningEnabled === true,
+      dispatchEnabled: operations.dispatchEnabled === true,
+      selectedSelectorKey: String(operations.selectedSelectorKey ?? 'top_v1'),
+      preparedCount: Number(operations.preparedCount) || 0,
+      sentTodayCount: Number(operations.sentTodayCount) || 0,
+      deliveredTodayCount: Number(operations.deliveredTodayCount) || 0,
+      lastSentAt: typeof operations.lastSentAt === 'string' ? operations.lastSentAt : null,
+      lastDeliveredAt: typeof operations.lastDeliveredAt === 'string' ? operations.lastDeliveredAt : null,
+      suppressedRecipientCount: Number(operations.suppressedRecipientCount) || 0,
+      sentTotalCount: Number(operations.sentTotalCount) || 0,
+      preparedItems: objectArray(operations.preparedItems).map((item) => ({
+        planId: String(item.planId ?? ''),
+        companyName: String(item.companyName ?? ''),
+        recipientEmail: String(item.recipientEmail ?? ''),
+        source: (['cez', 'egd', 'pre'].includes(String(item.source)) ? item.source : 'cez') as PowerOutageSource,
+        startsAt: String(item.startsAt ?? ''),
+        endsAt: String(item.endsAt ?? ''),
+        municipality: typeof item.municipality === 'string' ? item.municipality : null,
+        addresses: objectArray(item.addresses),
+        notBeforeAt: String(item.notBeforeAt ?? ''),
+      })).filter((item) => item.planId),
+      recentDeliveries: objectArray(operations.recentDeliveries)
+        .map(mapNotificationEmailDeliveryItem)
+        .filter((item) => item.companyName && item.sentAt),
+    },
     review: {
       reviewEnabled: review.reviewEnabled === true,
       reviewUiEnabled: review.reviewUiEnabled === true,
@@ -1368,7 +1419,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled,metadata').eq('singleton', true).maybeSingle(),
     supabase.from('complete_power_outage_commercial_selection_progress_snapshot').select('status,stage,evaluation_pending_count,enrichment_pending_count,scoring_pending_count,remaining_count,attention_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
     profile.role === 'admin'
-      ? supabase.rpc('get_complete_power_outage_contact_management_summary_v1')
+      ? supabase.rpc('get_complete_power_outage_contact_management_summary_v2')
       : Promise.resolve({ data: null, error: null }),
     profile.role === 'admin'
       ? supabase.rpc('get_cpo_notification_email_management_v1', { requested_limit: 100 })
@@ -1535,9 +1586,30 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
 
 export async function getCompletePowerOutageContactManagementWorkspace(): Promise<CompleteContactManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const { data, error } = await supabase.rpc('get_complete_power_outage_contact_management_workspace_v1')
+  const [{ data, error }, runtimeResult] = await Promise.all([
+    supabase.rpc('get_complete_power_outage_contact_management_workspace_v1'),
+    supabase.rpc('get_complete_power_outage_contact_runtime_v1'),
+  ])
   if (error) throw new Error(`Správu dohledávání kontaktů se nepodařilo načíst: ${error.message}`)
-  return mapContactManagementWorkspace(data)
+  if (runtimeResult.error) throw new Error(`Stav dohledávání kontaktů se nepodařilo načíst: ${runtimeResult.error.message}`)
+  const rawWorkspace = objectValue(data)
+  return mapContactManagementWorkspace({
+    ...rawWorkspace,
+    summary: { ...objectValue(rawWorkspace.summary), ...objectValue(runtimeResult.data) },
+  })
+}
+
+export async function setCompletePowerOutageContactRuntime(
+  enabled: boolean,
+  braveFallbackEnabled: boolean,
+): Promise<CompleteContactManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('set_complete_power_outage_contact_runtime_v1', {
+    requested_enabled: enabled,
+    requested_brave_fallback_enabled: braveFallbackEnabled,
+  })
+  if (error) throw new Error(`Režim dohledávání kontaktů se nepodařilo změnit: ${error.message}`)
+  return getCompletePowerOutageContactManagementWorkspace()
 }
 
 export async function getCompleteNotificationEmailManagementWorkspace(): Promise<CompleteNotificationEmailManagementWorkspace> {
@@ -1545,6 +1617,34 @@ export async function getCompleteNotificationEmailManagementWorkspace(): Promise
   const { data, error } = await supabase.rpc('get_cpo_notification_email_management_v1', { requested_limit: 100 })
   if (error) throw new Error(`Správu e-mailových upozornění se nepodařilo načíst: ${error.message}`)
   return mapNotificationEmailManagementWorkspace(data)
+}
+
+export async function getCompleteNotificationEmailDeliveryHistory(input: {
+  offset: number
+  status: 'all' | 'sent' | 'delivered' | 'bounced' | 'complaint' | 'error'
+  search: string
+  dateFrom: string | null
+  dateTo: string | null
+}): Promise<CompleteNotificationEmailDeliveryHistory> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const pageSize = 20
+  const { data, error } = await supabase.rpc('get_cpo_notification_email_delivery_history_v1', {
+    requested_limit: pageSize,
+    requested_offset: input.offset,
+    requested_status: input.status,
+    requested_search: input.search || null,
+    requested_date_from: input.dateFrom,
+    requested_date_to: input.dateTo,
+  })
+  if (error) throw new Error(`Historii odesílání se nepodařilo načíst: ${error.message}`)
+  const row = objectValue(data)
+  return {
+    totalCount: Number(row.totalCount) || 0,
+    offset: Number(row.offset) || 0,
+    pageSize: Number(row.pageSize) || pageSize,
+    hasMore: row.hasMore === true,
+    items: objectArray(row.items).map(mapNotificationEmailDeliveryItem).filter((item) => item.companyName && item.sentAt),
+  }
 }
 
 export async function decideCompleteNotificationEmailPilotReview(
