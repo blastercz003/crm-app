@@ -7,6 +7,7 @@ import {
   type OfficialWebsiteVerificationV2,
 } from './complete-contact-discovery-website-verification'
 import { powerOutageErrorMessage } from './error-message'
+import { localWebsiteCandidates } from './complete-contact-local-candidates'
 
 type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
@@ -31,25 +32,6 @@ const ITEM_BUDGET_MS = 210_000
 const CANDIDATE_BUDGET_MS = 35_000
 const COMPLETION_RESERVE_MS = 15_000
 const VERIFICATION_BUDGET_ERROR = 'WEBSITE_VERIFICATION_BUDGET_EXCEEDED'
-
-const COMPANY_NAME_STOP_WORDS = new Set([
-  'a', 'as', 'cz', 'czech', 'druzstvo', 'firma', 'group', 'holding', 'k', 'komanditni',
-  'o', 'podnik', 'r', 's', 'se', 'spol', 'spolecnost', 'sro', 'statni', 'v', 'vos',
-])
-
-function localWebsiteCandidates(companyName: string) {
-  const tokens = companyName.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/)
-    .filter((token) => token.length >= 2 && !COMPANY_NAME_STOP_WORDS.has(token))
-    .slice(0, 4)
-  if (tokens.length === 0) return []
-  const labels = [tokens.join(''), tokens.join('-')]
-  if (tokens[0].length >= 4) labels.push(tokens[0])
-  return [...new Set(labels)]
-    .filter((label) => label.length >= 3 && label.length <= 63)
-    .slice(0, 3)
-    .map((label) => `https://${label}.cz`)
-}
 
 function isVerifiedCandidate(candidate: CheckedCandidateV2): candidate is CheckedCandidateV2 & {
   verification: OfficialWebsiteVerificationV2 & { status: 'verified_company' | 'verified_group' }
