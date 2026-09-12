@@ -4,6 +4,8 @@ import { getPowerOutageRuntimeContext } from './access'
 import type {
   CompleteEvidenceProvider,
   CompleteCompanyEnrichment,
+  CompleteContactManagementSummary,
+  CompleteContactManagementWorkspace,
   CompleteDiscoveredContact,
   CompleteDiscoveredContacts,
   CompleteGlobalProgress,
@@ -41,6 +43,83 @@ function progressPercent(completed: number, total: number, emptyValue = 100) {
   if (total <= 0) return emptyValue
   const rounded = Math.round((Math.max(0, completed) / total) * 1000) / 10
   return completed < total ? Math.min(99.9, rounded) : 100
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function objectArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map(objectValue) : []
+}
+
+function mapContactManagementSummary(value: unknown): CompleteContactManagementSummary {
+  const row = objectValue(value)
+  return {
+    enabled: row.enabled === true,
+    selectedSelectorKey: typeof row.selectedSelectorKey === 'string' ? row.selectedSelectorKey : 'top_v1',
+    selectedSelectorName: typeof row.selectedSelectorName === 'string' ? row.selectedSelectorName : 'TOP VÝBĚR',
+    targetCompanyCount: Number(row.targetCompanyCount) || 0,
+    verifiedWebsiteCount: Number(row.verifiedWebsiteCount) || 0,
+    companyWithPrimaryEmailCount: Number(row.companyWithPrimaryEmailCount) || 0,
+    companyWithPhoneCount: Number(row.companyWithPhoneCount) || 0,
+    actionableReviewCompanyCount: Number(row.actionableReviewCompanyCount) || 0,
+    contactReviewCount: Number(row.contactReviewCount) || 0,
+    domainReviewCount: Number(row.domainReviewCount) || 0,
+    noWebsiteCount: Number(row.noWebsiteCount) || 0,
+    pendingCount: Number(row.pendingCount) || 0,
+    processingCount: Number(row.processingCount) || 0,
+    errorCount: Number(row.errorCount) || 0,
+    lastActivityAt: typeof row.lastActivityAt === 'string' ? row.lastActivityAt : null,
+    lastErrorCode: typeof row.lastErrorCode === 'string' ? row.lastErrorCode : null,
+    lastErrorMessage: typeof row.lastErrorMessage === 'string' ? row.lastErrorMessage : null,
+    emailPlanningEnabled: row.emailPlanningEnabled === true,
+    emailDispatchEnabled: row.emailDispatchEnabled === true,
+  }
+}
+
+function mapContactManagementWorkspace(value: unknown): CompleteContactManagementWorkspace {
+  const row = objectValue(value)
+  return {
+    summary: mapContactManagementSummary(row.summary),
+    selectors: objectArray(row.selectors).map((selector) => ({
+      key: String(selector.key ?? ''),
+      name: String(selector.name ?? ''),
+      companyCount: Number(selector.companyCount) || 0,
+      profileReadyCount: Number(selector.profileReadyCount) || 0,
+    })).filter((selector) => selector.key && selector.name),
+    contactReviews: objectArray(row.contactReviews).map((contact) => ({
+      contactId: String(contact.contactId ?? ''),
+      companyName: String(contact.companyName ?? ''),
+      ico: String(contact.ico ?? ''),
+      domain: String(contact.domain ?? ''),
+      email: String(contact.email ?? ''),
+      contactClass: String(contact.contactClass ?? 'unknown') as CompleteContactManagementWorkspace['contactReviews'][number]['contactClass'],
+      sourceUrl: String(contact.sourceUrl ?? ''),
+      transportSecurity: (contact.transportSecurity === 'http' ? 'http' : 'https') as 'http' | 'https',
+      actionable: contact.actionable === true,
+    })).filter((contact) => contact.contactId && contact.email),
+    domainReviews: objectArray(row.domainReviews).map((domain) => ({
+      ico: String(domain.ico ?? ''),
+      companyName: String(domain.companyName ?? ''),
+      domain: String(domain.domain ?? ''),
+      url: String(domain.url ?? ''),
+      confidence: Number(domain.confidence) || 0,
+      decisionCodes: Array.isArray(domain.decisionCodes)
+        ? domain.decisionCodes.filter((code): code is string => typeof code === 'string')
+        : [],
+    })).filter((domain) => domain.ico && domain.domain && domain.url),
+    recentBatches: objectArray(row.recentBatches).map((batch) => ({
+      id: String(batch.id ?? ''),
+      selectorKey: String(batch.selectorKey ?? ''),
+      status: String(batch.status ?? ''),
+      targetCount: Number(batch.targetCount) || 0,
+      capturedAt: typeof batch.capturedAt === 'string' ? batch.capturedAt : null,
+      finishedAt: typeof batch.finishedAt === 'string' ? batch.finishedAt : null,
+    })).filter((batch) => batch.id),
+  }
 }
 
 type OverviewRow = {
@@ -145,6 +224,7 @@ type DiscoveredContactRow = {
   normalized_domain: string
   source_url: string
   transport_security: CompleteDiscoveredContact['transportSecurity']
+  review_decision: CompleteDiscoveredContact['reviewDecision']
 }
 
 type PagedOverviewRow = OverviewRow & Partial<Omit<AssignmentRow, 'candidate_id'>> & {
@@ -1181,7 +1261,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const [
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
     cezNewResult, cezCompletedCycleResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
-    commercialSelectionResult, commercialSelectionProgressResult,
+    commercialSelectionResult, commercialSelectionProgressResult, contactManagementResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
@@ -1195,6 +1275,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_global_progress_snapshot').select('status,progress_percent,remaining_seconds,estimated_finish_at,active_queue_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
     supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled,metadata').eq('singleton', true).maybeSingle(),
     supabase.from('complete_power_outage_commercial_selection_progress_snapshot').select('status,stage,evaluation_pending_count,enrichment_pending_count,scoring_pending_count,remaining_count,attention_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
+    profile.role === 'admin'
+      ? supabase.rpc('get_complete_power_outage_contact_management_summary_v1')
+      : Promise.resolve({ data: null, error: null }),
   ])
 
   const tasks = taskResult.data ?? []
@@ -1258,6 +1341,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const commercialSelectionLoadError = commercialSelectionResult.error
     ? `Obchodní výběr se nepodařilo načíst: ${commercialSelectionResult.error.message}`
     : null
+  const contactManagementLoadError = profile.role === 'admin' && contactManagementResult.error
+    ? `Dohledávání kontaktů se nepodařilo načíst: ${contactManagementResult.error.message}`
+    : null
   const globalProgress = globalProgressResult.data ? {
     status: globalProgressResult.data.status,
     progressPercent: Number(globalProgressResult.data.progress_percent) || 0,
@@ -1311,6 +1397,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   return {
     currentUser: { id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' },
     globalProgress,
+    contactManagement: profile.role === 'admin' && !contactManagementResult.error
+      ? mapContactManagementSummary(contactManagementResult.data)
+      : null,
     commercialSelection: {
       enabled: commercialSelectionResult.data?.ui_enabled === true,
       scoringEnabled: commercialSelectionResult.data?.scoring_enabled === true,
@@ -1337,8 +1426,55 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       providers: providerLoadError,
       addressCoverage: coverageLoadError,
       commercialSelection: commercialSelectionLoadError,
+      contactManagement: contactManagementLoadError,
     },
   }
+}
+
+export async function getCompletePowerOutageContactManagementWorkspace(): Promise<CompleteContactManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { data, error } = await supabase.rpc('get_complete_power_outage_contact_management_workspace_v1')
+  if (error) throw new Error(`Správu dohledávání kontaktů se nepodařilo načíst: ${error.message}`)
+  return mapContactManagementWorkspace(data)
+}
+
+export async function decideCompletePowerOutageContactReview(
+  contactId: string,
+  decision: 'approved' | 'rejected',
+): Promise<CompleteContactManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('decide_complete_power_outage_contact_review_v1', {
+    requested_contact_id: contactId,
+    requested_decision: decision,
+  })
+  if (error) throw new Error(`Rozhodnutí o kontaktu se nepodařilo uložit: ${error.message}`)
+  return getCompletePowerOutageContactManagementWorkspace()
+}
+
+export async function decideCompletePowerOutageDomainReview(
+  ico: string,
+  domain: string,
+  decision: 'approved' | 'rejected',
+): Promise<CompleteContactManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('decide_complete_power_outage_domain_review_v1', {
+    requested_ico: ico,
+    requested_domain: domain,
+    requested_decision: decision,
+  })
+  if (error) throw new Error(`Rozhodnutí o doméně se nepodařilo uložit: ${error.message}`)
+  return getCompletePowerOutageContactManagementWorkspace()
+}
+
+export async function prepareCompletePowerOutageContactSelector(
+  selectorKey: string,
+): Promise<CompleteContactManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('prepare_complete_power_outage_contact_selector_v1', {
+    requested_selector_key: selectorKey,
+  })
+  if (error) throw new Error(`Výběr firem se nepodařilo připravit: ${error.message}`)
+  return getCompletePowerOutageContactManagementWorkspace()
 }
 
 export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOutageWorkspace> {
@@ -2071,6 +2207,7 @@ async function loadCompleteDiscoveredContacts(
     normalizedDomain: row.normalized_domain,
     sourceUrl: row.source_url,
     transportSecurity: row.transport_security,
+    reviewDecision: row.review_decision,
   }))
   return {
     status: contacts.length ? 'available' : 'not_found',

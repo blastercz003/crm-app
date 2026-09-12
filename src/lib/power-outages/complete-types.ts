@@ -164,18 +164,78 @@ export type CompleteDiscoveredContact = {
   type: 'email' | 'phone'
   value: string
   contactClass: 'operations' | 'general' | 'commercial' | 'personal' | 'administrative' | 'sensitive' | 'unknown' | 'phone_general' | 'phone_unknown'
-  classificationStatus: 'automatic' | 'needs_review' | 'informational'
+  classificationStatus: 'automatic' | 'needs_review' | 'informational' | 'manual_approved' | 'manual_rejected'
   notificationEligible: boolean
   isPrimary: boolean
   normalizedDomain: string
   sourceUrl: string
   transportSecurity: 'https' | 'http'
+  reviewDecision: 'approved' | 'rejected' | 'revoked' | null
 }
 
 export type CompleteDiscoveredContacts = {
   status: 'available' | 'not_found' | 'not_eligible' | 'unavailable'
   contacts: CompleteDiscoveredContact[]
   message: string
+}
+
+export type CompleteContactManagementSummary = {
+  enabled: boolean
+  selectedSelectorKey: string
+  selectedSelectorName: string
+  targetCompanyCount: number
+  verifiedWebsiteCount: number
+  companyWithPrimaryEmailCount: number
+  companyWithPhoneCount: number
+  actionableReviewCompanyCount: number
+  contactReviewCount: number
+  domainReviewCount: number
+  noWebsiteCount: number
+  pendingCount: number
+  processingCount: number
+  errorCount: number
+  lastActivityAt: string | null
+  lastErrorCode: string | null
+  lastErrorMessage: string | null
+  emailPlanningEnabled: boolean
+  emailDispatchEnabled: boolean
+}
+
+export type CompleteContactManagementWorkspace = {
+  summary: CompleteContactManagementSummary
+  selectors: Array<{
+    key: string
+    name: string
+    companyCount: number
+    profileReadyCount: number
+  }>
+  contactReviews: Array<{
+    contactId: string
+    companyName: string
+    ico: string
+    domain: string
+    email: string
+    contactClass: CompleteDiscoveredContact['contactClass']
+    sourceUrl: string
+    transportSecurity: 'https' | 'http'
+    actionable: boolean
+  }>
+  domainReviews: Array<{
+    ico: string
+    companyName: string
+    domain: string
+    url: string
+    confidence: number
+    decisionCodes: string[]
+  }>
+  recentBatches: Array<{
+    id: string
+    selectorKey: string
+    status: string
+    targetCount: number
+    capturedAt: string | null
+    finishedAt: string | null
+  }>
 }
 
 export type CompletePowerOutageDetail = CompletePowerOutageListItem & {
@@ -613,6 +673,7 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
   'currentUser' | 'sources' | 'cezNew' | 'providers' | 'runtime' | 'addressCoverage'
 > & {
   globalProgress: CompleteGlobalProgress | null
+  contactManagement: CompleteContactManagementSummary | null
   commercialSelection: {
     enabled: boolean
     scoringEnabled: boolean
@@ -637,5 +698,6 @@ export type CompletePowerOutageSidebarWorkspace = Pick<
     providers: string | null
     addressCoverage: string | null
     commercialSelection: string | null
+    contactManagement: string | null
   }
 }

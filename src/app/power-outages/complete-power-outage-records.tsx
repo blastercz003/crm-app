@@ -287,7 +287,7 @@ function DiscoveredContactsSummary({ discoveredContacts }: { discoveredContacts:
       {primaryEmail ? <a href={`mailto:${primaryEmail.value}`} className="mt-2 flex min-w-0 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2.5 text-emerald-700 transition hover:border-emerald-400/55 [html[data-theme=dark]_&]:text-emerald-300">
         <Mail aria-hidden size={13} className="shrink-0" />
         <span className="min-w-0 truncate text-[11px] font-semibold">{primaryEmail.value}</span>
-        <small className="ml-auto shrink-0 text-[7px] font-bold uppercase tracking-[0.06em]">HLAVNÍ · {discoveredContactClassLabel(primaryEmail.contactClass)}</small>
+        <small className="ml-auto shrink-0 text-[7px] font-bold uppercase tracking-[0.06em]">HLAVNÍ · {primaryEmail.classificationStatus === 'manual_approved' ? 'RUČNĚ SCHVÁLENÝ' : discoveredContactClassLabel(primaryEmail.contactClass)}</small>
       </a> : null}
 
       {otherAutomaticEmails.length || phones.length ? <div className="mt-2 grid gap-2 sm:grid-cols-2">

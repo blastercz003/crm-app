@@ -13,9 +13,10 @@ import { planMarketClientEmailCandidates } from '@/lib/power-outages/client-emai
 import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-resend-config'
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
-import { getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics } from '@/lib/power-outages/complete-service'
+import { decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, prepareCompletePowerOutageContactSelector } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
+  CompleteContactManagementWorkspace,
   CompleteCommercialSelectionCounts,
   CompleteAddressCoverageDiagnostic,
   CompletePowerOutageAssignment,
@@ -66,6 +67,10 @@ type CompleteStatisticsActionResult =
 
 type CompleteSidebarActionResult =
   | { success: true; workspace: CompletePowerOutageSidebarWorkspace; error: null }
+  | { success: false; workspace: null; error: string }
+
+type CompleteContactManagementActionResult =
+  | { success: true; workspace: CompleteContactManagementWorkspace; error: null }
   | { success: false; workspace: null; error: string }
 
 type CompleteAssignmentActionResult =
@@ -212,6 +217,53 @@ export async function getCompletePowerOutageStatisticsAction(): Promise<Complete
 export async function getCompletePowerOutageSidebarAction(): Promise<CompleteSidebarActionResult> {
   try {
     return { success: true, workspace: await getCompletePowerOutageSidebarWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageContactManagementAction(): Promise<CompleteContactManagementActionResult> {
+  try {
+    return { success: true, workspace: await getCompletePowerOutageContactManagementWorkspace(), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function decideCompletePowerOutageContactReviewAction(input: {
+  contactId: string
+  decision: 'approved' | 'rejected'
+}): Promise<CompleteContactManagementActionResult> {
+  try {
+    if (!validUuid(input.contactId)) throw new Error('Neplatné technické ID kontaktu.')
+    if (!['approved', 'rejected'].includes(input.decision)) throw new Error('Neplatné rozhodnutí o kontaktu.')
+    return { success: true, workspace: await decideCompletePowerOutageContactReview(input.contactId, input.decision), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function decideCompletePowerOutageDomainReviewAction(input: {
+  ico: string
+  domain: string
+  decision: 'approved' | 'rejected'
+}): Promise<CompleteContactManagementActionResult> {
+  try {
+    if (!/^\d{8}$/.test(input.ico)) throw new Error('Neplatné IČO firmy.')
+    if (!/^[a-z0-9.-]+$/.test(input.domain) || input.domain.length > 253) throw new Error('Neplatná doména firmy.')
+    if (!['approved', 'rejected'].includes(input.decision)) throw new Error('Neplatné rozhodnutí o doméně.')
+    return { success: true, workspace: await decideCompletePowerOutageDomainReview(input.ico, input.domain, input.decision), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function prepareCompletePowerOutageContactSelectorAction(
+  selectorKey: string,
+): Promise<CompleteContactManagementActionResult> {
+  try {
+    if (!/^[a-z0-9_]{2,64}$/.test(selectorKey)) throw new Error('Neplatný klíč výběru.')
+    return { success: true, workspace: await prepareCompletePowerOutageContactSelector(selectorKey), error: null }
   } catch (error) {
     return { success: false, workspace: null, error: errorMessage(error) }
   }

@@ -1,12 +1,12 @@
 'use client'
 
-import { Activity, CircleAlert, CircleCheck, DatabaseZap, History, Info, LoaderCircle, MapPinned, RefreshCw, Route, SearchCheck, ShieldCheck, Sparkles, TimerReset } from 'lucide-react'
+import { Activity, AtSign, Check, CircleAlert, CircleCheck, DatabaseZap, ExternalLink, History, Info, LoaderCircle, Mail, MapPinned, RefreshCw, Route, SearchCheck, ShieldCheck, Sparkles, TimerReset, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
-import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteGlobalProgress, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
+import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteContactManagementSummary, CompleteContactManagementWorkspace, CompleteGlobalProgress, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
-import { getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction } from './actions'
+import { decideCompletePowerOutageContactReviewAction, decideCompletePowerOutageDomainReviewAction, getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageContactManagementAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction, prepareCompletePowerOutageContactSelectorAction } from './actions'
 import { CommercialSelectionStatusBadge } from './complete-commercial-selection-status-badge'
 import { CompletePanelStatusBadge } from './complete-panel-status-badge'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
@@ -1001,6 +1001,165 @@ function CoveragePanel({ workspace, onRetry }: { workspace: CompletePowerOutageS
   </PanelShell>
 }
 
+function contactManagementPresentation(summary: CompleteContactManagementSummary) {
+  if (summary.errorCount > 0 || summary.lastErrorMessage) return {
+    label: 'CHYBA',
+    badge: 'border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300',
+    dot: 'bg-red-500',
+  }
+  if (summary.pendingCount > 0 || summary.processingCount > 0) return {
+    label: 'ZPRACOVÁNÍ',
+    badge: 'border-sky-400/35 bg-sky-400/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300',
+    dot: 'animate-pulse bg-sky-500 motion-reduce:animate-none',
+  }
+  if (summary.actionableReviewCompanyCount > 0 || summary.domainReviewCount > 0) return {
+    label: 'KE KONTROLE',
+    badge: 'border-amber-400/35 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300',
+    dot: 'bg-amber-500',
+  }
+  return {
+    label: 'AKTUÁLNÍ',
+    badge: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300',
+    dot: 'bg-emerald-500',
+  }
+}
+
+function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
+  initialSummary: CompleteContactManagementSummary
+  onSummaryChange: (summary: CompleteContactManagementSummary) => void
+  onClose: () => void
+}) {
+  const [workspace, setWorkspace] = useState<CompleteContactManagementWorkspace | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
+  const [selectorKey, setSelectorKey] = useState(initialSummary.selectedSelectorKey)
+  const [confirmSelector, setConfirmSelector] = useState(false)
+
+  const applyWorkspace = (next: CompleteContactManagementWorkspace) => {
+    setWorkspace(next)
+    setSelectorKey(next.summary.selectedSelectorKey)
+    onSummaryChange(next.summary)
+  }
+  const load = async () => {
+    setLoading(true)
+    setError(null)
+    const result = await getCompletePowerOutageContactManagementAction()
+    if (result.success) applyWorkspace(result.workspace)
+    else setError(result.error)
+    setLoading(false)
+  }
+  useEffect(() => {
+    let active = true
+    void getCompletePowerOutageContactManagementAction().then((result) => {
+      if (!active) return
+      if (result.success) {
+        setWorkspace(result.workspace)
+        setSelectorKey(result.workspace.summary.selectedSelectorKey)
+        onSummaryChange(result.workspace.summary)
+      } else {
+        setError(result.error)
+      }
+      setLoading(false)
+    })
+    return () => { active = false }
+  }, [onSummaryChange])
+
+  const decideContact = async (contactId: string, decision: 'approved' | 'rejected') => {
+    const key = `contact-${contactId}`
+    setPendingKey(key)
+    setError(null)
+    const result = await decideCompletePowerOutageContactReviewAction({ contactId, decision })
+    if (result.success) applyWorkspace(result.workspace)
+    else setError(result.error)
+    setPendingKey(null)
+  }
+  const decideDomain = async (ico: string, domain: string, decision: 'approved' | 'rejected') => {
+    const key = `domain-${ico}-${domain}`
+    setPendingKey(key)
+    setError(null)
+    const result = await decideCompletePowerOutageDomainReviewAction({ ico, domain, decision })
+    if (result.success) applyWorkspace(result.workspace)
+    else setError(result.error)
+    setPendingKey(null)
+  }
+  const prepareSelector = async () => {
+    setPendingKey('selector')
+    setError(null)
+    const result = await prepareCompletePowerOutageContactSelectorAction(selectorKey)
+    if (result.success) {
+      applyWorkspace(result.workspace)
+      setConfirmSelector(false)
+    } else setError(result.error)
+    setPendingKey(null)
+  }
+
+  const summary = workspace?.summary ?? initialSummary
+  const actionableReviews = workspace?.contactReviews.filter((contact) => contact.actionable) ?? []
+  const secondaryReviews = workspace?.contactReviews.filter((contact) => !contact.actionable) ?? []
+  const selectedOption = workspace?.selectors.find((selector) => selector.key === selectorKey)
+  const actionButton = 'inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[8px] font-bold uppercase transition disabled:cursor-not-allowed disabled:opacity-50'
+
+  return <PowerOutagePopupShell titleId="complete-contact-management" eyebrow="KOMPLETNÍ · ADMINISTRACE" title="Dohledávání kontaktů" icon={<AtSign aria-hidden size={21} />} onClose={onClose}>
+    {loading ? <div className="flex min-h-[360px] items-center justify-center"><LoaderCircle aria-hidden size={28} className="animate-spin text-[var(--accent)]" /></div> : error && !workspace ? <div className="m-5"><PanelLoadError message={error} onRetry={() => void load()} /></div> : workspace ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
+      {error ? <p className="mb-3 rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{error}</p> : null}
+
+      <section className="rounded-2xl border border-sky-400/25 bg-sky-500/8 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Aktivní výběr</small><h3 className="mt-0.5 text-lg font-semibold text-[var(--text-primary)]">{summary.selectedSelectorName}</h3></div><span className="text-[9px] font-semibold text-[var(--text-secondary)]">Poslední aktivita {formatRelativeDate(summary.lastActivityAt)}</span></div>
+        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Cílové firmy" value={summary.targetCompanyCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ověřené weby" value={summary.verifiedWebsiteCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Primární e-mail" value={summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Firmy ke kontrole" value={summary.actionableReviewCompanyCount.toLocaleString('cs-CZ')} /></div>
+        <p className="mt-3 flex items-center gap-2 text-[9px] text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Odesílání e-mailů i Resend zůstávají vypnuté.</p>
+      </section>
+
+      <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
+        <h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdrojový výběr AI SELECT</h3>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row"><select value={selectorKey} onChange={(event) => { setSelectorKey(event.target.value); setConfirmSelector(false) }} className="h-10 min-w-0 flex-1 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[10px] font-semibold text-[var(--text-primary)] outline-none focus:border-sky-400">{workspace.selectors.map((selector) => <option key={selector.key} value={selector.key}>{selector.name} · {selector.companyCount.toLocaleString('cs-CZ')} firem</option>)}</select><button type="button" disabled={selectorKey === summary.selectedSelectorKey || pendingKey !== null} onClick={() => setConfirmSelector(true)} className={`${actionButton} border-sky-400/30 bg-sky-500/10 text-[var(--accent)] sm:h-10`}>Připravit výběr</button></div>
+        <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Příprava zachytí neměnný seznam {selectedOption?.companyCount.toLocaleString('cs-CZ') ?? 0} IČO. Placené vyhledávání se tím nespustí.</p>
+        {confirmSelector ? <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/8 p-3"><p className="text-[9px] leading-4 text-[var(--text-primary)]">Potvrďte přípravu výběru <strong>{selectedOption?.name}</strong>. Existující výsledky zůstanou zachované.</p><div className="mt-2 flex gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void prepareSelector()} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === 'selector' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit přípravu</button><button type="button" disabled={pendingKey !== null} onClick={() => setConfirmSelector(false)} className={`${actionButton} border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]`}>Zrušit</button></div></div> : null}
+      </section>
+
+      <section className="mt-4">
+        <div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">E-maily vyžadující rozhodnutí</h3><span className="text-[9px] font-bold text-amber-600">{actionableReviews.length}</span></div>
+        <p className="mt-1 text-[9px] text-[var(--text-secondary)]">Prioritně firmy, které nemají jiný automaticky použitelný e-mail.</p>
+        <div className="mt-2 space-y-2">{actionableReviews.length ? actionableReviews.map((contact) => {
+          const key = `contact-${contact.contactId}`
+          return <article key={contact.contactId} className="rounded-2xl border border-amber-400/25 bg-amber-400/6 p-3"><div className="flex items-start justify-between gap-3"><span className="min-w-0"><strong className="block truncate text-[11px] text-[var(--text-primary)]">{contact.companyName}</strong><small className="text-[8px] text-[var(--text-secondary)]">IČO {contact.ico} · {contact.domain}</small></span><a href={contact.sourceUrl} target="_blank" rel="noreferrer" title="Otevřít zdroj" className="shrink-0 text-[var(--accent)]"><ExternalLink aria-hidden size={13} /></a></div><p className="mt-2 flex min-w-0 items-center gap-2 text-[10px] text-[var(--text-primary)]"><Mail aria-hidden size={12} className="shrink-0 text-[var(--accent)]" /><span className="truncate">{contact.email}</span></p><div className="mt-2 flex flex-wrap gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void decideContact(contact.contactId, 'approved')} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === key ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Schválit</button><button type="button" disabled={pendingKey !== null} onClick={() => void decideContact(contact.contactId, 'rejected')} className={`${actionButton} border-red-400/30 bg-red-400/8 text-red-700 [html[data-theme=dark]_&]:text-red-300`}><X aria-hidden size={11} />Zamítnout</button></div></article>
+        }) : <p className="rounded-xl border border-emerald-400/25 bg-emerald-400/8 px-3 py-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">Žádná firma bez použitelného e-mailu nyní nečeká na rozhodnutí.</p>}</div>
+        {secondaryReviews.length ? <details className="mt-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-3 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Další nalezené kontakty · {secondaryReviews.length}</summary><div className="space-y-2 border-t border-[var(--surface-border)] p-2">{secondaryReviews.map((contact) => {
+          const key = `contact-${contact.contactId}`
+          return <div key={contact.contactId} className="flex flex-col gap-2 rounded-xl bg-[var(--surface-strong)]/70 p-2.5 sm:flex-row sm:items-center"><span className="min-w-0 flex-1"><strong className="block truncate text-[9px] text-[var(--text-primary)]">{contact.companyName}</strong><small className="block truncate text-[8px] text-[var(--text-secondary)]">{contact.email}</small></span><div className="flex gap-1.5"><button type="button" disabled={pendingKey !== null} onClick={() => void decideContact(contact.contactId, 'approved')} className={`${actionButton} border-emerald-400/30 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === key ? <LoaderCircle aria-hidden size={10} className="animate-spin" /> : <Check aria-hidden size={10} />}Schválit</button><button type="button" disabled={pendingKey !== null} onClick={() => void decideContact(contact.contactId, 'rejected')} className={`${actionButton} border-red-400/25 text-red-700 [html[data-theme=dark]_&]:text-red-300`}><X aria-hidden size={10} />Zamítnout</button></div></div>
+        })}</div></details> : null}
+      </section>
+
+      <section className="mt-4">
+        <div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Domény ke kontrole</h3><span className="text-[9px] font-bold text-amber-600">{workspace.domainReviews.length}</span></div>
+        <div className="mt-2 space-y-2">{workspace.domainReviews.length ? workspace.domainReviews.map((domain) => {
+          const key = `domain-${domain.ico}-${domain.domain}`
+          return <article key={key} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-start justify-between gap-3"><span className="min-w-0"><strong className="block truncate text-[10px] text-[var(--text-primary)]">{domain.companyName}</strong><small className="text-[8px] text-[var(--text-secondary)]">IČO {domain.ico}</small></span><strong className="shrink-0 text-[9px] tabular-nums text-[var(--accent)]">{Math.round(domain.confidence * 100)} %</strong></div><a href={domain.url} target="_blank" rel="noreferrer" className="mt-2 flex min-w-0 items-center gap-1.5 text-[9px] text-[var(--accent)]"><span className="truncate">{domain.domain}</span><ExternalLink aria-hidden size={10} /></a>{domain.decisionCodes.length ? <p className="mt-1 text-[7px] text-[var(--text-secondary)]">{domain.decisionCodes.join(' · ')}</p> : null}<div className="mt-2 flex gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void decideDomain(domain.ico, domain.domain, 'approved')} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === key ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Schválit doménu</button><button type="button" disabled={pendingKey !== null} onClick={() => void decideDomain(domain.ico, domain.domain, 'rejected')} className={`${actionButton} border-red-400/30 bg-red-400/8 text-red-700 [html[data-theme=dark]_&]:text-red-300`}><X aria-hidden size={11} />Zamítnout</button></div></article>
+        }) : <p className="rounded-xl border border-emerald-400/25 bg-emerald-400/8 px-3 py-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">Žádná doména nyní nečeká na kontrolu.</p>}</div>
+      </section>
+
+      <section className="mt-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Poslední dávky</h3><div className="mt-2 space-y-2">{workspace.recentBatches.map((batch) => <div key={batch.id} className="grid grid-cols-[1fr_auto] gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2"><span><strong className="block text-[9px] text-[var(--text-primary)]">{workspace.selectors.find((selector) => selector.key === batch.selectorKey)?.name ?? batch.selectorKey}</strong><small className="text-[7px] text-[var(--text-secondary)]">{formatDate(batch.capturedAt)}</small></span><span className="text-right"><strong className="block text-[8px] uppercase text-[var(--accent)]">{batch.status}</strong><small className="text-[7px] tabular-nums text-[var(--text-secondary)]">{batch.targetCount.toLocaleString('cs-CZ')} IČO</small></span></div>)}</div></section>
+    </div> : null}
+  </PowerOutagePopupShell>
+}
+
+function ContactManagementPanel({ workspace, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; onRetry?: () => void }) {
+  const [updatedSummary, setUpdatedSummary] = useState<CompleteContactManagementSummary | null>(null)
+  const [showDetail, setShowDetail] = useState(false)
+  const summary = updatedSummary ?? workspace.contactManagement
+  if (!workspace.currentUser.isAdmin) return null
+  if (!summary) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><AtSign aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Administrace</small><h3 className="text-base font-semibold text-[var(--text-primary)]">Dohledávání kontaktů</h3></span></div><PanelLoadError message={workspace.loadErrors.contactManagement || 'Souhrn kontaktů zatím není dostupný.'} onRetry={onRetry} /></PanelShell>
+  const presentation = contactManagementPresentation(summary)
+  return <PanelShell>
+    <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 [html[data-theme=dark]_&]:text-cyan-300"><AtSign aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Administrace</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Dohledávání kontaktů</h3></span></div><CompletePanelStatusBadge label={presentation.label} badgeClassName={presentation.badge} dotClassName={presentation.dot} /></div>
+    <p className="mt-3 text-[9px] text-[var(--text-secondary)]">Zdrojový výběr <strong className="text-[var(--text-primary)]">{summary.selectedSelectorName}</strong></p>
+    <div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Cílové firmy</small><strong className="mt-0.5 block text-[12px] tabular-nums text-[var(--text-primary)]">{summary.targetCompanyCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">S e-mailem</small><strong className="mt-0.5 block text-[12px] tabular-nums text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300">{summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Ke kontrole</small><strong className="mt-0.5 block text-[12px] tabular-nums text-amber-600">{(summary.actionableReviewCompanyCount + summary.domainReviewCount).toLocaleString('cs-CZ')}</strong></div></div>
+    <button type="button" onClick={() => setShowDetail(true)} className="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[8px] font-bold uppercase tracking-[0.06em] text-cyan-700 transition hover:-translate-y-px hover:border-cyan-400/50 [html[data-theme=dark]_&]:text-cyan-300"><SearchCheck aria-hidden size={13} />Otevřít správu kontaktů</button>
+    <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[8px] text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={11} className="text-emerald-500" /> Pouze administrátor · odesílání vypnuto</p>
+    {showDetail && typeof document !== 'undefined' ? createPortal(<ContactManagementPopup initialSummary={summary} onSummaryChange={setUpdatedSummary} onClose={() => setShowDetail(false)} />, document.body) : null}
+  </PanelShell>
+}
+
 const COMMERCIAL_SELECTION_OPTIONS: Array<{ value: CompleteCommercialSelectionFilter; label: string; description: string }> = [
   { value: 'top', label: 'TOP VÝBĚR', description: '' },
   { value: 'grade_a', label: 'POUZE A', description: 'Nejvyšší bodové hodnocení' },
@@ -1040,6 +1199,7 @@ export function CompletePowerOutageSidebar({ workspace, sourceRefreshWarning, co
     <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-[10px] text-[var(--text-secondary)] lg:hidden"><Info aria-hidden size={12} /><span>Přejetím do strany zobrazíte další část.</span></p>
     <aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Stav kompletního sběru a vyhledávání firem">
       {workspace.commercialSelection.enabled ? <div className="min-w-0 snap-start snap-always lg:snap-none"><CommercialSelectionPanel workspace={workspace} value={commercialSelection} sort={commercialSort} clientsOnly={clientsOnly} counts={commercialSelectionCounts} onChange={onCommercialSelectionChange} onSortChange={onCommercialSortChange} onClientsOnlyChange={onClientsOnlyChange} onRetry={onRetry} /></div> : null}
+      {workspace.currentUser.isAdmin ? <div className="min-w-0 snap-start snap-always lg:snap-none"><ContactManagementPanel workspace={workspace} onRetry={onRetry} /></div> : null}
       <div className="min-w-0 snap-start snap-always lg:snap-none"><GlobalProgressPanel workspace={workspace} onRetry={operationalRetry} /></div>
       <div className="min-w-0 snap-start snap-always lg:snap-none"><SourcesPanel workspace={workspace} refreshWarning={sourceRefreshWarning} onRetry={operationalRetry} /></div>
       <div className="min-w-0 snap-start snap-always lg:snap-none"><DiscoveryPanel workspace={workspace} onRetry={operationalRetry} /></div>
