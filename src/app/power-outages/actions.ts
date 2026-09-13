@@ -14,9 +14,13 @@ import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-r
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getCompleteNotificationResendConfiguration } from '@/lib/power-outages/complete-notification-email-resend-config'
-import { acknowledgeCompleteNotificationEmailPilotPause, acknowledgeCompleteNotificationEmailProductionPause, activateCompleteNotificationEmailLivePilot, activateCompleteNotificationEmailProduction, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, pauseCompleteNotificationEmailProduction, prepareCompleteNotificationEmailProductionActivation, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist, setCompleteNotificationEmailProductionConfig, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
+import { acknowledgeCompleteNotificationEmailPilotPause, acknowledgeCompleteNotificationEmailProductionPause, activateCompleteNotificationEmailLivePilot, activateCompleteNotificationEmailProduction, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, finishCompletePowerOutageCommunicationFollowUp, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCommunicationWorkspace, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, pauseCompleteNotificationEmailProduction, prepareCompleteNotificationEmailProductionActivation, prepareCompletePowerOutageContactSelector, recordCompletePowerOutageCommunication, saveCompletePowerOutageCommunicationFollowUp, setCompleteNotificationEmailPilotAllowlist, setCompleteNotificationEmailProductionConfig, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
+  CompleteCommunicationChannel,
+  CompleteCommunicationFollowUp,
+  CompleteCommunicationWorkflowStatus,
+  CompleteCommunicationWorkspace,
   CompleteContactManagementWorkspace,
   CompleteNotificationEmailDeliveryHistory,
   CompleteNotificationEmailActivationConfirmation,
@@ -96,6 +100,10 @@ type CompleteAssignmentActionResult =
 type CompleteCommunicationNotesActionResult =
   | { success: true; notes: CompletePowerOutageCommunicationNote[]; error: null }
   | { success: false; notes: []; error: string }
+
+type CompleteCommunicationWorkspaceActionResult =
+  | { success: true; workspace: CompleteCommunicationWorkspace; error: null }
+  | { success: false; workspace: null; error: string }
 
 type SourceDiagnosticActionResult =
   | { success: true; diagnostic: PowerOutageSourceDiagnostic; error: null }
@@ -489,6 +497,77 @@ export async function getCompletePowerOutageCommunicationNotesAction(
     return { success: true, notes: await getCompletePowerOutageCommunicationNotes(candidateId), error: null }
   } catch (error) {
     return { success: false, notes: [], error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageCommunicationWorkspaceAction(
+  candidateId: string,
+): Promise<CompleteCommunicationWorkspaceActionResult> {
+  try {
+    if (!validUuid(candidateId)) throw new Error('Neplatné technické ID firmy.')
+    return { success: true, workspace: await getCompletePowerOutageCommunicationWorkspace(candidateId), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function recordCompletePowerOutageCommunicationAction(input: {
+  candidateId: string
+  channel: CompleteCommunicationChannel
+  status: Exclude<CompleteCommunicationWorkflowStatus, 'not_contacted'>
+  contactPerson: string
+  note: string
+  occurredAt: string
+}): Promise<CompleteCommunicationWorkspaceActionResult> {
+  try {
+    if (!validUuid(input.candidateId)) throw new Error('Neplatné technické ID firmy.')
+    if (!['phone', 'email', 'in_person', 'other'].includes(input.channel)) throw new Error('Vyberte způsob komunikace.')
+    if (!['contacted', 'unreachable', 'interested', 'offer_sent', 'job_won', 'closed_no_job'].includes(input.status)) throw new Error('Vyberte stav komunikace.')
+    if (!input.note.trim() || input.note.trim().length > 10_000) throw new Error('Zápis musí mít 1 až 10 000 znaků.')
+    if (input.contactPerson.trim().length > 200) throw new Error('Kontaktní osoba může mít nejvýše 200 znaků.')
+    if (!Number.isFinite(Date.parse(input.occurredAt))) throw new Error('Vyberte platný čas komunikace.')
+    const workspace = await recordCompletePowerOutageCommunication({ ...input, note: input.note.trim(), contactPerson: input.contactPerson.trim() })
+    revalidatePath('/power-outages')
+    return { success: true, workspace, error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function saveCompletePowerOutageCommunicationFollowUpAction(input: {
+  candidateId: string
+  activityType: CompleteCommunicationFollowUp['activityType']
+  title: string
+  description: string
+  scheduledFor: string
+  reminderEnabled: boolean
+}): Promise<CompleteCommunicationWorkspaceActionResult> {
+  try {
+    if (!validUuid(input.candidateId)) throw new Error('Neplatné technické ID firmy.')
+    if (!['phone_call', 'email', 'in_person_meeting', 'work_log', 'other'].includes(input.activityType)) throw new Error('Vyberte typ dalšího kroku.')
+    if (!input.title.trim() || input.title.trim().length > 240) throw new Error('Název dalšího kroku musí mít 1 až 240 znaků.')
+    if (input.description.trim().length > 5_000) throw new Error('Poznámka může mít nejvýše 5 000 znaků.')
+    if (!Number.isFinite(Date.parse(input.scheduledFor))) throw new Error('Vyberte platný termín dalšího kroku.')
+    const workspace = await saveCompletePowerOutageCommunicationFollowUp({ ...input, title: input.title.trim(), description: input.description.trim() })
+    revalidatePath('/power-outages'); revalidatePath('/activities'); revalidatePath('/dashboard')
+    return { success: true, workspace, error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function finishCompletePowerOutageCommunicationFollowUpAction(
+  candidateId: string,
+  result: string,
+): Promise<CompleteCommunicationWorkspaceActionResult> {
+  try {
+    if (!validUuid(candidateId)) throw new Error('Neplatné technické ID firmy.')
+    if (result.trim().length > 5_000) throw new Error('Výsledek může mít nejvýše 5 000 znaků.')
+    const workspace = await finishCompletePowerOutageCommunicationFollowUp(candidateId, result.trim())
+    revalidatePath('/power-outages'); revalidatePath('/activities'); revalidatePath('/dashboard')
+    return { success: true, workspace, error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
   }
 }
 

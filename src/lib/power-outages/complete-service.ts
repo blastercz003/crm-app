@@ -18,6 +18,12 @@ import type {
   CompleteAddressCoverageRun,
   CompleteCezNewState,
   CompleteCommercialSelectionCounts,
+  CompleteCommunicationChannel,
+  CompleteCommunicationFollowUp,
+  CompleteCommunicationTimelineItem,
+  CompleteCommunicationTimelineKind,
+  CompleteCommunicationWorkflowStatus,
+  CompleteCommunicationWorkspace,
   CompletePowerOutageAssignment,
   CompletePowerOutageCommunicationNote,
   CompletePowerOutageDetail,
@@ -2734,4 +2740,127 @@ export async function getCompletePowerOutageCommunicationNotes(
     body: String(row.body),
     createdAt: String(row.created_at),
   }))
+}
+
+const WORKFLOW_STATUSES = new Set<CompleteCommunicationWorkflowStatus>([
+  'not_contacted', 'contacted', 'unreachable', 'interested', 'offer_sent',
+  'job_won', 'closed_no_job',
+])
+const COMMUNICATION_CHANNELS = new Set<CompleteCommunicationChannel>([
+  'phone', 'email', 'in_person', 'other',
+])
+
+function mapCommunicationWorkspace(value: unknown): CompleteCommunicationWorkspace {
+  const row = objectValue(value)
+  const status = String(row.communicationStatus ?? 'not_contacted') as CompleteCommunicationWorkflowStatus
+  if (!WORKFLOW_STATUSES.has(status)) throw new Error('Server vrátil neplatný stav komunikace.')
+  const assignmentRow = row.assignment ? objectValue(row.assignment) : null
+  const followUpRow = row.followUp ? objectValue(row.followUp) : null
+  const timeline = objectArray(row.timeline).map((entry): CompleteCommunicationTimelineItem => {
+    const channel = entry.channel == null ? null : String(entry.channel) as CompleteCommunicationChannel
+    const previousStatus = entry.previousStatus == null ? null : String(entry.previousStatus) as CompleteCommunicationWorkflowStatus
+    const newStatus = entry.newStatus == null ? null : String(entry.newStatus) as CompleteCommunicationWorkflowStatus
+    return {
+      id: String(entry.id),
+      kind: String(entry.kind) as CompleteCommunicationTimelineKind,
+      actorName: entry.actorName == null ? null : String(entry.actorName),
+      channel: channel && COMMUNICATION_CHANNELS.has(channel) ? channel : null,
+      previousStatus: previousStatus && WORKFLOW_STATUSES.has(previousStatus) ? previousStatus : null,
+      newStatus: newStatus && WORKFLOW_STATUSES.has(newStatus) ? newStatus : null,
+      contactPerson: entry.contactPerson == null ? null : String(entry.contactPerson),
+      body: entry.body == null ? null : String(entry.body),
+      occurredAt: String(entry.occurredAt),
+      metadata: objectValue(entry.metadata),
+    }
+  })
+  const assignment = assignmentRow ? {
+    ownerId: String(assignmentRow.ownerId),
+    ownerName: String(assignmentRow.ownerName),
+    communicationStatus: String(assignmentRow.communicationStatus) as CompletePowerOutageAssignment['communicationStatus'],
+    notes: String(assignmentRow.notes ?? ''),
+    claimedAt: String(assignmentRow.claimedAt),
+    updatedAt: String(assignmentRow.updatedAt),
+  } : null
+  const followUp: CompleteCommunicationFollowUp | null = followUpRow ? {
+    activityId: String(followUpRow.activityId),
+    activityType: String(followUpRow.activityType) as CompleteCommunicationFollowUp['activityType'],
+    title: String(followUpRow.title),
+    description: followUpRow.description == null ? null : String(followUpRow.description),
+    scheduledFor: String(followUpRow.scheduledFor),
+    reminderEnabled: Boolean(followUpRow.reminderEnabled),
+    reminderSentAt: followUpRow.reminderSentAt == null ? null : String(followUpRow.reminderSentAt),
+    createdAt: String(followUpRow.createdAt),
+    updatedAt: String(followUpRow.updatedAt),
+  } : null
+  return {
+    candidateId: String(row.candidateId),
+    communicationStatus: status,
+    isJobWon: Boolean(row.isJobWon),
+    assignment,
+    canEdit: Boolean(row.canEdit),
+    canRelease: Boolean(row.canRelease),
+    followUp,
+    timeline,
+  }
+}
+
+export async function getCompletePowerOutageCommunicationWorkspace(candidateId: string) {
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const { data, error } = await supabase.rpc('get_complete_power_outage_communication_workspace_v1', {
+    requested_candidate_id: candidateId,
+  })
+  if (error) throw new Error(`Správu komunikace se nepodařilo načíst: ${error.message}`)
+  return mapCommunicationWorkspace(data)
+}
+
+export async function recordCompletePowerOutageCommunication(input: {
+  candidateId: string
+  channel: CompleteCommunicationChannel
+  status: Exclude<CompleteCommunicationWorkflowStatus, 'not_contacted'>
+  contactPerson: string
+  note: string
+  occurredAt: string
+}) {
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const { error } = await supabase.rpc('record_complete_power_outage_communication_v1', {
+    requested_candidate_id: input.candidateId,
+    requested_channel: input.channel,
+    requested_status: input.status,
+    requested_contact_person: input.contactPerson,
+    requested_note: input.note,
+    requested_occurred_at: input.occurredAt,
+  })
+  if (error) throw new Error(`Komunikaci se nepodařilo uložit: ${error.message}`)
+  return getCompletePowerOutageCommunicationWorkspace(input.candidateId)
+}
+
+export async function saveCompletePowerOutageCommunicationFollowUp(input: {
+  candidateId: string
+  activityType: CompleteCommunicationFollowUp['activityType']
+  title: string
+  description: string
+  scheduledFor: string
+  reminderEnabled: boolean
+}) {
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const { error } = await supabase.rpc('save_complete_power_outage_communication_follow_up_v1', {
+    requested_candidate_id: input.candidateId,
+    requested_activity_type: input.activityType,
+    requested_title: input.title,
+    requested_description: input.description,
+    requested_scheduled_for: input.scheduledFor,
+    requested_reminder_enabled: input.reminderEnabled,
+  })
+  if (error) throw new Error(`Další krok se nepodařilo uložit: ${error.message}`)
+  return getCompletePowerOutageCommunicationWorkspace(input.candidateId)
+}
+
+export async function finishCompletePowerOutageCommunicationFollowUp(candidateId: string, result: string) {
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const { error } = await supabase.rpc('finish_complete_power_outage_communication_follow_up_v1', {
+    requested_candidate_id: candidateId,
+    requested_completion_result: result,
+  })
+  if (error) throw new Error(`Další krok se nepodařilo dokončit: ${error.message}`)
+  return getCompletePowerOutageCommunicationWorkspace(candidateId)
 }

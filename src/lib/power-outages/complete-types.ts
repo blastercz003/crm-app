@@ -4,6 +4,27 @@ export type CompleteCandidateStatus = 'new' | 'confirmed' | 'needs_review' | 'di
 export type CompleteEntityKind = 'registered_office' | 'establishment' | 'mixed'
 export type CompleteEvidenceProvider = 'ares' | 'res' | 'mapy' | 'google'
 export type CompleteCommunicationStatus = 'not_contacted' | 'contacted' | 'follow_up' | 'closed'
+export type CompleteCommunicationWorkflowStatus =
+  | 'not_contacted'
+  | 'contacted'
+  | 'unreachable'
+  | 'interested'
+  | 'offer_sent'
+  | 'job_won'
+  | 'closed_no_job'
+export type CompleteCommunicationChannel = 'phone' | 'email' | 'in_person' | 'other'
+export type CompleteCommunicationTimelineKind =
+  | 'legacy_note'
+  | 'manual_contact'
+  | 'status_changed'
+  | 'job_won'
+  | 'job_reopened'
+  | 'follow_up_created'
+  | 'follow_up_rescheduled'
+  | 'follow_up_completed'
+  | 'follow_up_cancelled'
+  | 'automatic_email_sent'
+  | 'automatic_email_delivered'
 export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'large_companies' | 'grade_a' | 'grade_b'
 export type CompleteCommercialSort = 'date' | 'score'
 export type CompleteCommercialSelectionCounts = {
@@ -29,6 +50,42 @@ export type CompletePowerOutageCommunicationNote = {
   authorName: string
   body: string
   createdAt: string
+}
+
+export type CompleteCommunicationTimelineItem = {
+  id: string
+  kind: CompleteCommunicationTimelineKind
+  actorName: string | null
+  channel: CompleteCommunicationChannel | null
+  previousStatus: CompleteCommunicationWorkflowStatus | null
+  newStatus: CompleteCommunicationWorkflowStatus | null
+  contactPerson: string | null
+  body: string | null
+  occurredAt: string
+  metadata: Record<string, unknown>
+}
+
+export type CompleteCommunicationFollowUp = {
+  activityId: string
+  activityType: 'phone_call' | 'email' | 'in_person_meeting' | 'work_log' | 'other'
+  title: string
+  description: string | null
+  scheduledFor: string
+  reminderEnabled: boolean
+  reminderSentAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type CompleteCommunicationWorkspace = {
+  candidateId: string
+  communicationStatus: CompleteCommunicationWorkflowStatus
+  isJobWon: boolean
+  assignment: CompletePowerOutageAssignment | null
+  canEdit: boolean
+  canRelease: boolean
+  followUp: CompleteCommunicationFollowUp | null
+  timeline: CompleteCommunicationTimelineItem[]
 }
 
 export type CompletePowerOutageListItem = {
