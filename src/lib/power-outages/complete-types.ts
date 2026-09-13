@@ -187,6 +187,9 @@ export type CompleteContactManagementSummary = {
   localDiscoveryEnabled: boolean
   selectedSelectorKey: string
   selectedSelectorName: string
+  selectorLockedByEmailDispatch: boolean
+  selectorLockReason: string | null
+  productionEmailSelectorKey: string
   targetCompanyCount: number
   verifiedWebsiteCount: number
   companyWithPrimaryEmailCount: number

@@ -68,6 +68,11 @@ function mapContactManagementSummary(value: unknown): CompleteContactManagementS
     localDiscoveryEnabled: row.localDiscoveryEnabled === true,
     selectedSelectorKey: typeof row.selectedSelectorKey === 'string' ? row.selectedSelectorKey : 'top_v1',
     selectedSelectorName: typeof row.selectedSelectorName === 'string' ? row.selectedSelectorName : 'TOP VÝBĚR',
+    selectorLockedByEmailDispatch: row.selectorLockedByEmailDispatch === true,
+    selectorLockReason: typeof row.selectorLockReason === 'string' ? row.selectorLockReason : null,
+    productionEmailSelectorKey: typeof row.productionEmailSelectorKey === 'string'
+      ? row.productionEmailSelectorKey
+      : (typeof row.selectedSelectorKey === 'string' ? row.selectedSelectorKey : 'top_v1'),
     targetCompanyCount: Number(row.targetCompanyCount) || 0,
     verifiedWebsiteCount: Number(row.verifiedWebsiteCount) || 0,
     companyWithPrimaryEmailCount: Number(row.companyWithPrimaryEmailCount) || 0,
@@ -1625,16 +1630,22 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
 
 export async function getCompletePowerOutageContactManagementWorkspace(): Promise<CompleteContactManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const [{ data, error }, runtimeResult] = await Promise.all([
+  const [{ data, error }, runtimeResult, selectorLockResult] = await Promise.all([
     supabase.rpc('get_complete_power_outage_contact_management_workspace_v1'),
     supabase.rpc('get_complete_power_outage_contact_runtime_v2'),
+    supabase.rpc('get_cpo_contact_selector_lock_v1'),
   ])
   if (error) throw new Error(`Správu dohledávání kontaktů se nepodařilo načíst: ${error.message}`)
   if (runtimeResult.error) throw new Error(`Stav dohledávání kontaktů se nepodařilo načíst: ${runtimeResult.error.message}`)
+  if (selectorLockResult.error) throw new Error(`Zámek zdrojového výběru se nepodařilo načíst: ${selectorLockResult.error.message}`)
   const rawWorkspace = objectValue(data)
   return mapContactManagementWorkspace({
     ...rawWorkspace,
-    summary: { ...objectValue(rawWorkspace.summary), ...objectValue(runtimeResult.data) },
+    summary: {
+      ...objectValue(rawWorkspace.summary),
+      ...objectValue(runtimeResult.data),
+      ...objectValue(selectorLockResult.data),
+    },
   })
 }
 
@@ -1806,7 +1817,7 @@ export async function prepareCompletePowerOutageContactSelector(
   selectorKey: string,
 ): Promise<CompleteContactManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const { error } = await supabase.rpc('prepare_complete_power_outage_contact_selector_v1', {
+  const { error } = await supabase.rpc('prepare_complete_power_outage_contact_selector_v2', {
     requested_selector_key: selectorKey,
   })
   if (error) throw new Error(`Výběr firem se nepodařilo připravit: ${error.message}`)
