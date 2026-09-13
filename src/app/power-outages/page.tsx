@@ -5,6 +5,7 @@ import { PresenceSectionTracker } from '@/components/presence/presence-section-t
 import { getPowerOutageRuntimeContext } from '@/lib/power-outages/access'
 import { getPowerOutageWorkspace } from '@/lib/power-outages/service'
 import { CompletePowerOutagesDashboard } from './complete-power-outages-dashboard'
+import { CompleteTeamOverviewButton } from './complete-team-overview'
 import { PowerOutageModeSwitch, type PowerOutageMode } from './power-outage-mode-switch'
 import { PowerOutagesDashboard } from './power-outages-dashboard'
 import { PowerOutagesRealtimeRefresh } from './power-outages-realtime-refresh'
@@ -43,7 +44,12 @@ export default async function PowerOutagesPage({
               <span className="lg:hidden">Monitoring odstávek</span>
               <span className="hidden lg:inline">Monitoring plánovaných odstávek</span>
             </h1>
-            <Link href="/dashboard" className="offers-page__back-button clients-page__back-button inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">ZPĚT NA DASHBOARD</Link>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {mode === 'complete' && profile.role === 'admin'
+                ? <CompleteTeamOverviewButton currentUser={{ id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: true }} />
+                : null}
+              <Link href="/dashboard" className="offers-page__back-button clients-page__back-button inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_rgba(24,24,27,0.24)] transition duration-200 hover:-translate-y-[1px] hover:bg-gray-800">ZPĚT NA DASHBOARD</Link>
+            </div>
           </div>
         </header>
 

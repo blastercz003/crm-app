@@ -14,7 +14,7 @@ import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-r
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getCompleteNotificationResendConfiguration } from '@/lib/power-outages/complete-notification-email-resend-config'
-import { acknowledgeCompleteNotificationEmailPilotPause, acknowledgeCompleteNotificationEmailProductionPause, activateCompleteNotificationEmailLivePilot, activateCompleteNotificationEmailProduction, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, finishCompletePowerOutageCommunicationFollowUp, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCommunicationWorkspace, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, pauseCompleteNotificationEmailProduction, prepareCompleteNotificationEmailProductionActivation, prepareCompletePowerOutageContactSelector, recordCompletePowerOutageCommunication, saveCompletePowerOutageCommunicationFollowUp, setCompleteNotificationEmailPilotAllowlist, setCompleteNotificationEmailProductionConfig, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
+import { acknowledgeCompleteNotificationEmailPilotPause, acknowledgeCompleteNotificationEmailProductionPause, activateCompleteNotificationEmailLivePilot, activateCompleteNotificationEmailProduction, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, finishCompletePowerOutageCommunicationFollowUp, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageCommunicationWorkspace, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, getCompletePowerOutageTeamOverview, pauseCompleteNotificationEmailLivePilot, pauseCompleteNotificationEmailProduction, prepareCompleteNotificationEmailProductionActivation, prepareCompletePowerOutageContactSelector, recordCompletePowerOutageCommunication, saveCompletePowerOutageCommunicationFollowUp, setCompleteNotificationEmailPilotAllowlist, setCompleteNotificationEmailProductionConfig, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteCommunicationChannel,
@@ -35,6 +35,8 @@ import type {
   CompletePowerOutagePageFilters,
   CompletePowerOutageSidebarWorkspace,
   CompletePowerOutageStatistics,
+  CompleteTeamOverview,
+  CompleteTeamOverviewFilters,
   CompleteProviderDiagnostic,
   CompleteProviderState,
   CompleteSourceDiagnostic,
@@ -72,6 +74,10 @@ type CompleteOwnersActionResult =
 type CompleteStatisticsActionResult =
   | { success: true; statistics: CompletePowerOutageStatistics; error: null }
   | { success: false; statistics: null; error: string }
+
+type CompleteTeamOverviewActionResult =
+  | { success: true; overview: CompleteTeamOverview; error: null }
+  | { success: false; overview: null; error: string }
 
 type CompleteSidebarActionResult =
   | { success: true; workspace: CompletePowerOutageSidebarWorkspace; error: null }
@@ -235,6 +241,16 @@ export async function getCompletePowerOutageStatisticsAction(): Promise<Complete
     return { success: true, statistics: await getCompletePowerOutageStatistics(), error: null }
   } catch (error) {
     return { success: false, statistics: null, error: errorMessage(error) }
+  }
+}
+
+export async function getCompletePowerOutageTeamOverviewAction(
+  filters: CompleteTeamOverviewFilters,
+): Promise<CompleteTeamOverviewActionResult> {
+  try {
+    return { success: true, overview: await getCompletePowerOutageTeamOverview(filters), error: null }
+  } catch (error) {
+    return { success: false, overview: null, error: errorMessage(error) }
   }
 }
 

@@ -177,6 +177,56 @@ export type CompletePowerOutageCurrentUser = {
   isAdmin: boolean
 }
 
+export type CompleteTeamOverviewPeriodBasis = 'activity' | 'outage'
+export type CompleteTeamOverviewSelectorKey = 'all_confirmed' | 'top_v1' | 'large_companies' | 'grade_a' | 'grade_b'
+
+export type CompleteTeamOverviewFilters = {
+  periodFrom: string
+  periodTo: string
+  periodBasis: CompleteTeamOverviewPeriodBasis
+  ownerId: string | null
+  selectorKey: CompleteTeamOverviewSelectorKey
+  source: 'all' | PowerOutageSource
+}
+
+export type CompleteTeamOverviewUserMetric = {
+  userId: string
+  userName: string
+  activeCount: number
+  contactedCount: number
+  interestedCount: number
+  offerSentCount: number
+  jobWonCount: number
+  conversionPercent: number
+  overdueCount: number
+  lastActivityAt: string | null
+}
+
+export type CompleteTeamOverview = {
+  generatedAt: string
+  filters: CompleteTeamOverviewFilters
+  summary: {
+    recordCount: number
+    uniqueCompanyCount: number
+    activeAssignmentCount: number
+    assignedUserCount: number
+    contactedCount: number
+    jobWonCount: number
+    plannedFollowUpCount: number
+    overdueFollowUpCount: number
+    completedFollowUpCount: number
+  }
+  funnel: {
+    contacted: number
+    unreachable: number
+    interested: number
+    offerSent: number
+    jobWon: number
+    closedNoJob: number
+  }
+  users: CompleteTeamOverviewUserMetric[]
+}
+
 export type CompletePowerOutageStatistics = {
   currentOutageCount: number
   currentCompanyCount: number

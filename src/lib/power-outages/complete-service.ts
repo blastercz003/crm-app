@@ -34,6 +34,8 @@ import type {
   CompletePowerOutagePageFilters,
   CompletePowerOutageSidebarWorkspace,
   CompletePowerOutageStatistics,
+  CompleteTeamOverview,
+  CompleteTeamOverviewFilters,
   CompletePowerOutageWorkspace,
   CompleteProviderDiagnostic,
   CompleteProviderRun,
@@ -1488,6 +1490,70 @@ export async function getCompletePowerOutageOwners() {
     id: String(owner.id ?? ''),
     name: String(owner.name ?? ''),
   })).filter((owner) => owner.id && owner.name)
+}
+
+export async function getCompletePowerOutageTeamOverview(
+  filters: CompleteTeamOverviewFilters,
+): Promise<CompleteTeamOverview> {
+  const { supabase, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  if (profile.role !== 'admin') throw new Error('Přehled týmu je dostupný pouze administrátorovi.')
+
+  const { data, error } = await supabase.rpc('get_complete_power_outage_team_overview_v1', {
+    requested_period_from: filters.periodFrom,
+    requested_period_to: filters.periodTo,
+    requested_period_basis: filters.periodBasis,
+    requested_owner_id: filters.ownerId,
+    requested_selector_key: filters.selectorKey,
+    requested_source: filters.source,
+  })
+  if (error) throw new Error(`Přehled týmu se nepodařilo načíst: ${error.message}`)
+
+  const row = objectValue(data)
+  const summary = objectValue(row.summary)
+  const funnel = objectValue(row.funnel)
+  const returnedFilters = objectValue(row.filters)
+  return {
+    generatedAt: typeof row.generatedAt === 'string' ? row.generatedAt : new Date().toISOString(),
+    filters: {
+      periodFrom: typeof returnedFilters.periodFrom === 'string' ? returnedFilters.periodFrom : filters.periodFrom,
+      periodTo: typeof returnedFilters.periodTo === 'string' ? returnedFilters.periodTo : filters.periodTo,
+      periodBasis: returnedFilters.periodBasis === 'outage' ? 'outage' : 'activity',
+      ownerId: typeof returnedFilters.ownerId === 'string' ? returnedFilters.ownerId : null,
+      selectorKey: (typeof returnedFilters.selectorKey === 'string' ? returnedFilters.selectorKey : filters.selectorKey) as CompleteTeamOverviewFilters['selectorKey'],
+      source: (typeof returnedFilters.source === 'string' ? returnedFilters.source : filters.source) as CompleteTeamOverviewFilters['source'],
+    },
+    summary: {
+      recordCount: Number(summary.recordCount) || 0,
+      uniqueCompanyCount: Number(summary.uniqueCompanyCount) || 0,
+      activeAssignmentCount: Number(summary.activeAssignmentCount) || 0,
+      assignedUserCount: Number(summary.assignedUserCount) || 0,
+      contactedCount: Number(summary.contactedCount) || 0,
+      jobWonCount: Number(summary.jobWonCount) || 0,
+      plannedFollowUpCount: Number(summary.plannedFollowUpCount) || 0,
+      overdueFollowUpCount: Number(summary.overdueFollowUpCount) || 0,
+      completedFollowUpCount: Number(summary.completedFollowUpCount) || 0,
+    },
+    funnel: {
+      contacted: Number(funnel.contacted) || 0,
+      unreachable: Number(funnel.unreachable) || 0,
+      interested: Number(funnel.interested) || 0,
+      offerSent: Number(funnel.offerSent) || 0,
+      jobWon: Number(funnel.jobWon) || 0,
+      closedNoJob: Number(funnel.closedNoJob) || 0,
+    },
+    users: objectArray(row.users).map((user) => ({
+      userId: String(user.userId ?? ''),
+      userName: String(user.userName ?? 'Uživatel'),
+      activeCount: Number(user.activeCount) || 0,
+      contactedCount: Number(user.contactedCount) || 0,
+      interestedCount: Number(user.interestedCount) || 0,
+      offerSentCount: Number(user.offerSentCount) || 0,
+      jobWonCount: Number(user.jobWonCount) || 0,
+      conversionPercent: Number(user.conversionPercent) || 0,
+      overdueCount: Number(user.overdueCount) || 0,
+      lastActivityAt: typeof user.lastActivityAt === 'string' ? user.lastActivityAt : null,
+    })).filter((user) => user.userId),
+  }
 }
 
 async function countRows(query: PromiseLike<{ count: number | null; error: { message: string } | null }>, label: string) {
