@@ -112,6 +112,7 @@ export function PowerOutagePopupShell({
   onClose,
   children,
   compact = false,
+  wide = false,
 }: {
   titleId: string
   icon: React.ReactNode
@@ -120,6 +121,7 @@ export function PowerOutagePopupShell({
   onClose: () => void
   children: React.ReactNode
   compact?: boolean
+  wide?: boolean
 }) {
   const shellRef = useRef<HTMLElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -153,7 +155,7 @@ export function PowerOutagePopupShell({
 
   return (
     <div data-modal-motion-root className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/42 p-2.5 backdrop-blur-[4px] sm:p-6" onPointerDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
-      <section ref={shellRef} data-modal-motion-surface role="dialog" aria-modal="true" aria-labelledby={titleId} className={`weather-alerts-popup weather-alerts__surface activities-manual-preview activities-manual-preview--mobile flex max-h-[calc(100dvh-20px)] min-h-0 w-full flex-col overflow-hidden rounded-[26px] border border-[var(--surface-border)] bg-[var(--surface-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.68),0_28px_70px_rgba(15,23,42,0.34)] sm:max-h-[calc(100dvh-48px)] ${compact ? 'max-w-[620px]' : 'max-w-[760px]'}`}>
+      <section ref={shellRef} data-modal-motion-surface role="dialog" aria-modal="true" aria-labelledby={titleId} className={`weather-alerts-popup weather-alerts__surface activities-manual-preview activities-manual-preview--mobile flex max-h-[calc(100dvh-20px)] min-h-0 w-full flex-col overflow-hidden rounded-[26px] border border-[var(--surface-border)] bg-[var(--surface-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.68),0_28px_70px_rgba(15,23,42,0.34)] sm:max-h-[calc(100dvh-48px)] ${compact ? 'max-w-[620px]' : wide ? 'max-w-[1080px]' : 'max-w-[760px]'}`}>
         <header className="flex shrink-0 items-start gap-3 border-b border-[var(--surface-border)] p-4 sm:p-5">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-400/30 bg-sky-500/10 text-[var(--accent)]">{icon}</span>
           <div className="min-w-0 flex-1">

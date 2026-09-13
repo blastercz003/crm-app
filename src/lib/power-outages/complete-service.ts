@@ -2879,7 +2879,7 @@ export async function saveCompletePowerOutageCommunicationFollowUp(input: {
   reminderEnabled: boolean
 }) {
   const { supabase } = await getPowerOutageRuntimeContext()
-  const { error } = await supabase.rpc('save_complete_power_outage_communication_follow_up_v1', {
+  const { error } = await supabase.rpc('save_complete_power_outage_communication_follow_up_v2', {
     requested_candidate_id: input.candidateId,
     requested_activity_type: input.activityType,
     requested_title: input.title,
