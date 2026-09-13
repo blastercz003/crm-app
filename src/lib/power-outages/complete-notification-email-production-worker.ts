@@ -49,6 +49,32 @@ function retryable(error: ErrorResponse) {
     || RETRYABLE_ERRORS.has(error.name)
 }
 
+async function recordSafetySignal(input: {
+  sourceId: string
+  signalType: 'transient_error' | 'configuration_error'
+  planId: string
+  providerMessageId?: string
+  errorCode: string
+  errorMessage: string
+}) {
+  const service = getServiceRoleClient()
+  if (!service) throw new Error('Chybí serverové připojení pro bezpečnostní stav KOMPLETNÍ.')
+  const { error } = await service.rpc(
+    'record_cpo_notification_email_production_safety_event_v1',
+    {
+      requested_source: 'complete_production_worker',
+      requested_external_event_id: input.sourceId,
+      requested_signal_type: input.signalType,
+      requested_plan_id: input.planId,
+      requested_provider_message_id: input.providerMessageId ?? null,
+      requested_error_code: input.errorCode,
+      requested_error_message: input.errorMessage,
+      requested_payload: {},
+    },
+  )
+  if (error) throw new Error(`Bezpečnostní signál KOMPLETNÍ se nepodařilo uložit: ${error.message}`)
+}
+
 export async function sendOneCompleteNotificationProduction(publicBaseUrl: string) {
   const service = getServiceRoleClient()
   if (!service) throw new Error('Chybí serverové připojení pro produkční upozornění KOMPLETNÍ.')
@@ -69,6 +95,13 @@ export async function sendOneCompleteNotificationProduction(publicBaseUrl: strin
       requested_provider_message_id: null,
       requested_reason_code: 'complete_resend_configuration',
     })
+    await recordSafetySignal({
+      sourceId: `production-worker-config-${claim.slotId}`,
+      signalType: 'configuration_error',
+      planId: claim.delivery.planId,
+      errorCode: 'COMPLETE_RESEND_CONFIGURATION',
+      errorMessage: configuration.issues.join(' '),
+    })
     throw new Error(`Resend LIVE KOMPLETNÍ není připraven: ${configuration.issues.join(' ')}`)
   }
 
@@ -76,6 +109,7 @@ export async function sendOneCompleteNotificationProduction(publicBaseUrl: strin
   const resend = new Resend(configuration.apiKey)
   let providerMessageId: string | undefined
   let slotReleased = false
+  let safetySignalRecorded = false
   try {
     const unsubscribeUrl = buildCompleteNotificationUnsubscribeUrl(
       publicBaseUrl,
@@ -114,6 +148,14 @@ export async function sendOneCompleteNotificationProduction(publicBaseUrl: strin
         requested_reason_code: `${retryable(response.error) ? 'retryable' : 'terminal'}_${response.error.name}`,
       })
       slotReleased = true
+      safetySignalRecorded = true
+      await recordSafetySignal({
+        sourceId: `production-worker-provider-${claim.slotId}`,
+        signalType: retryable(response.error) ? 'transient_error' : 'configuration_error',
+        planId: delivery.planId,
+        errorCode: response.error.name.toUpperCase(),
+        errorMessage: response.error.message,
+      })
       throw new Error(response.error.message)
     }
 
@@ -150,6 +192,17 @@ export async function sendOneCompleteNotificationProduction(publicBaseUrl: strin
       } catch {
         // Expirace rezervace zabrani trvalemu zablokovani fronty.
       }
+    }
+    if (!safetySignalRecorded) {
+      const message = error instanceof Error ? error.message : 'Neznámá chyba produkčního workeru.'
+      await recordSafetySignal({
+        sourceId: `production-worker-runtime-${claim.slotId}`,
+        signalType: providerMessageId ? 'configuration_error' : 'transient_error',
+        planId: delivery.planId,
+        providerMessageId,
+        errorCode: providerMessageId ? 'DELIVERY_RECORDING_FAILED' : 'PRODUCTION_WORKER_ERROR',
+        errorMessage: message,
+      })
     }
     throw error
   }

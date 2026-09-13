@@ -5,6 +5,7 @@ import {
   verifyCompleteNotificationTestWebhook,
 } from '@/lib/power-outages/complete-notification-email-test-webhook'
 import { recordCompleteNotificationLiveWebhook } from '@/lib/power-outages/complete-notification-email-live-webhook'
+import { recordCompleteNotificationProductionWebhook } from '@/lib/power-outages/complete-notification-email-production-webhook'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
   try {
     const testResult = await recordCompleteNotificationTestWebhook(id, event)
     const liveResult = await recordCompleteNotificationLiveWebhook(id, event)
-    return NextResponse.json({ ok: true, testResult, liveResult })
+    const productionResult = await recordCompleteNotificationProductionWebhook(id, event)
+    return NextResponse.json({ ok: true, testResult, liveResult, productionResult })
   } catch (error) {
     await reportRouteError({
       error,
