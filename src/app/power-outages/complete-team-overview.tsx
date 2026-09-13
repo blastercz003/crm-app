@@ -6,6 +6,10 @@ import {
   CalendarClock,
   ChevronDown,
   CircleAlert,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Eye,
   RefreshCw,
   Target,
   UserRoundCheck,
@@ -18,9 +22,12 @@ import type {
   CompleteTeamOverview,
   CompleteTeamOverviewFilters,
   CompleteTeamOverviewPeriodBasis,
+  CompleteTeamOverviewRecord,
+  CompleteTeamOverviewRecordPage,
+  CompleteTeamOverviewSection,
   CompleteTeamOverviewSelectorKey,
 } from '@/lib/power-outages/complete-types'
-import { getCompletePowerOutageOwnersAction, getCompletePowerOutageTeamOverviewAction } from './actions'
+import { getCompletePowerOutageOwnersAction, getCompletePowerOutageTeamOverviewAction, getCompletePowerOutageTeamRecordsAction } from './actions'
 import { PowerOutagePopupShell } from './power-outage-popups'
 
 const selectorOptions: Array<{ value: CompleteTeamOverviewSelectorKey; label: string }> = [
@@ -55,6 +62,24 @@ function toIsoRange(from: string, to: string) {
 function formatTimestamp(value: string | null) {
   if (!value) return 'Bez aktivity'
   return new Intl.DateTimeFormat('cs-CZ', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+}
+
+function communicationLabel(status: CompleteTeamOverviewRecord['communicationStatus']) {
+  return ({
+    not_contacted: 'NEOSLOVENO', contacted: 'OSLOVENO', unreachable: 'NEZASTIŽENO',
+    interested: 'PROJEVEN ZÁJEM', offer_sent: 'NABÍDKA ODESLÁNA',
+    job_won: 'ZAKÁZKA VZNIKLA', closed_no_job: 'UZAVŘENO BEZ ZAKÁZKY',
+  } as const)[status]
+}
+
+function attentionLabel(reason: CompleteTeamOverviewRecord['attentionReason']) {
+  return ({
+    overdue_follow_up: 'Připomínka je po termínu',
+    past_outage_open: 'Odstávka skončila, komunikace zůstala otevřená',
+    missing_follow_up: 'Zájem nebo nabídka nemá naplánovaný další krok',
+    approaching_uncontacted: 'Odstávka začíná do 72 hodin a firma nebyla oslovena',
+    stale_communication: 'Komunikace je déle než 7 dní bez aktivity',
+  } as const)[reason ?? 'stale_communication']
 }
 
 function MetricCard({ label, value, detail, tone, icon: Icon }: {
@@ -93,6 +118,11 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
   const [source, setSource] = useState<CompleteTeamOverviewFilters['source']>('all')
   const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([{ id: currentUser.id, name: currentUser.name }])
   const [overview, setOverview] = useState<CompleteTeamOverview | null>(null)
+  const [section, setSection] = useState<CompleteTeamOverviewSection>('attention')
+  const [recordPage, setRecordPage] = useState<CompleteTeamOverviewRecordPage | null>(null)
+  const [recordOffset, setRecordOffset] = useState(0)
+  const [recordsLoading, setRecordsLoading] = useState(true)
+  const [recordsError, setRecordsError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -112,6 +142,23 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
     setLoading(false)
   }, [dateFrom, dateTo, ownerId, periodBasis, selectorKey, source])
 
+  const currentFilters = useMemo<CompleteTeamOverviewFilters>(() => ({
+    ...toIsoRange(dateFrom, dateTo),
+    periodBasis,
+    ownerId: ownerId === 'all' ? null : ownerId,
+    selectorKey,
+    source,
+  }), [dateFrom, dateTo, ownerId, periodBasis, selectorKey, source])
+
+  const loadRecords = useCallback(async () => {
+    setRecordsLoading(true)
+    setRecordsError(null)
+    const result = await getCompletePowerOutageTeamRecordsAction({ filters: currentFilters, section, limit: 10, offset: recordOffset })
+    if (result.success) setRecordPage(result.records)
+    else setRecordsError(result.error)
+    setRecordsLoading(false)
+  }, [currentFilters, recordOffset, section])
+
   useEffect(() => {
     void getCompletePowerOutageOwnersAction().then((result) => {
       if (!result.success) return
@@ -125,6 +172,11 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
     return () => window.clearTimeout(timer)
   }, [load])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadRecords() }, 0)
+    return () => window.clearTimeout(timer)
+  }, [loadRecords])
+
   const inputClass = 'h-10 w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[10px] font-semibold text-[var(--text-primary)] outline-none focus:border-sky-400'
   const funnel = overview ? [
     { label: 'OSLOVENO', value: overview.funnel.contacted, color: 'bg-sky-500' },
@@ -133,19 +185,31 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
     { label: 'ZAKÁZKA VZNIKLA', value: overview.funnel.jobWon, color: 'bg-emerald-500' },
   ] : []
   const funnelMaximum = Math.max(1, ...funnel.map((item) => item.value))
+  const openCandidate = (candidateId: string, mode: 'detail' | 'assignment') => {
+    onClose()
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent('complete-power-outage:open-candidate', {
+      detail: { candidateId, mode },
+    })), 180)
+  }
+  const sections: Array<{ value: CompleteTeamOverviewSection; label: string; count: number | null }> = [
+    { value: 'attention', label: 'VYŽADUJE POZORNOST', count: overview?.summary.overdueFollowUpCount ?? null },
+    { value: 'active', label: 'ROZPRACOVANÉ', count: overview?.summary.activeAssignmentCount ?? null },
+    { value: 'reminders', label: 'PŘIPOMÍNKY', count: overview?.summary.plannedFollowUpCount ?? null },
+    { value: 'outcomes', label: 'VZNIKLÉ ZAKÁZKY', count: overview?.summary.jobWonCount ?? null },
+  ]
 
   return <PowerOutagePopupShell wide titleId="complete-team-overview" eyebrow="KOMPLETNÍ · ADMINISTRÁTORSKÝ PŘEHLED" title="Přehled týmu" icon={<UsersRound aria-hidden size={21} />} onClose={onClose}>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
       <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Rozsah přehledu</small><strong className="mt-1 block text-[12px] text-[var(--text-primary)]">Výsledky, práce a návazné kroky týmu</strong></span><button type="button" disabled={loading} onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sky-400/30 bg-sky-500/10 px-2.5 text-[8px] font-bold uppercase text-sky-700 transition hover:-translate-y-px disabled:opacity-50 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={11} className={loading ? 'animate-spin' : ''} />Obnovit</button></div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Od<input type="date" value={dateFrom} max={dateTo} onChange={(event) => setDateFrom(event.target.value)} className={`${inputClass} mt-1.5`} /></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Do<input type="date" value={dateTo} min={dateFrom} onChange={(event) => setDateTo(event.target.value)} className={`${inputClass} mt-1.5`} /></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Uživatel<span className="relative mt-1.5 block"><select value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">CELÝ TÝM</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">AI SELECT<span className="relative mt-1.5 block"><select value={selectorKey} onChange={(event) => setSelectorKey(event.target.value as CompleteTeamOverviewSelectorKey)} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}>{selectorOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Distributor<span className="relative mt-1.5 block"><select value={source} onChange={(event) => setSource(event.target.value as CompleteTeamOverviewFilters['source'])} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">VŠICHNI</option><option value="cez">ČEZ</option><option value="egd">EG.D</option><option value="pre">PRE</option></select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Od<input type="date" value={dateFrom} max={dateTo} onChange={(event) => { setDateFrom(event.target.value); setRecordOffset(0) }} className={`${inputClass} mt-1.5`} /></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Do<input type="date" value={dateTo} min={dateFrom} onChange={(event) => { setDateTo(event.target.value); setRecordOffset(0) }} className={`${inputClass} mt-1.5`} /></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Uživatel<span className="relative mt-1.5 block"><select value={ownerId} onChange={(event) => { setOwnerId(event.target.value); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">CELÝ TÝM</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">AI SELECT<span className="relative mt-1.5 block"><select value={selectorKey} onChange={(event) => { setSelectorKey(event.target.value as CompleteTeamOverviewSelectorKey); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}>{selectorOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
+          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Distributor<span className="relative mt-1.5 block"><select value={source} onChange={(event) => { setSource(event.target.value as CompleteTeamOverviewFilters['source']); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">VŠICHNI</option><option value="cez">ČEZ</option><option value="egd">EG.D</option><option value="pre">PRE</option></select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
         </div>
-        <div className="mt-3 grid grid-cols-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1 sm:w-[360px]">{([{ value: 'activity', label: 'PODLE AKTIVITY' }, { value: 'outage', label: 'PODLE ODSTÁVKY' }] as const).map((option) => <button key={option.value} type="button" onClick={() => setPeriodBasis(option.value)} className={`h-8 rounded-lg text-[8px] font-bold uppercase transition ${periodBasis === option.value ? 'bg-sky-500 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{option.label}</button>)}</div>
+        <div className="mt-3 grid grid-cols-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1 sm:w-[360px]">{([{ value: 'activity', label: 'PODLE AKTIVITY' }, { value: 'outage', label: 'PODLE ODSTÁVKY' }] as const).map((option) => <button key={option.value} type="button" onClick={() => { setPeriodBasis(option.value); setRecordOffset(0) }} className={`h-8 rounded-lg text-[8px] font-bold uppercase transition ${periodBasis === option.value ? 'bg-sky-500 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{option.label}</button>)}</div>
       </section>
 
       {error ? <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-400/10 p-4"><p className="flex items-center gap-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={15} />{error}</p><button type="button" onClick={() => void load()} className="mt-3 text-[8px] font-bold uppercase text-red-700 underline [html[data-theme=dark]_&]:text-red-300">Zkusit znovu</button></div> : loading || !overview ? <div className="mt-4"><OverviewSkeleton /></div> : <>
@@ -168,6 +232,18 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
             <div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3 text-center"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nezastiženo</small><strong className="mt-1 block text-base tabular-nums text-amber-600">{overview.funnel.unreachable}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3 text-center"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Bez zakázky</small><strong className="mt-1 block text-base tabular-nums text-[var(--text-primary)]">{overview.funnel.closedNoJob}</strong></div></div>
           </section>
         </div>
+
+        <section className="mt-4 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--surface-border)] px-4 py-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Pracovní seznamy</small><strong className="mt-0.5 block text-[11px] text-[var(--text-primary)]">Konkrétní záznamy navazující na souhrn</strong></span><ClipboardList aria-hidden size={16} className="text-[var(--accent)]" /></div>
+          <div className="grid grid-cols-2 gap-1 border-b border-[var(--surface-border)] p-2 lg:grid-cols-4">{sections.map((option) => <button key={option.value} type="button" onClick={() => { setSection(option.value); setRecordOffset(0) }} className={`min-h-9 rounded-xl px-2 text-[7px] font-bold uppercase transition ${section === option.value ? 'bg-sky-500 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--surface-strong)] hover:text-[var(--text-primary)]'}`}>{option.label}{option.count !== null ? ` · ${option.count}` : ''}</button>)}</div>
+          {recordsError ? <div className="m-3 rounded-xl border border-red-400/25 bg-red-400/8 px-3 py-3 text-[9px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{recordsError}<button type="button" onClick={() => void loadRecords()} className="ml-2 font-bold underline">Zkusit znovu</button></div> : recordsLoading || !recordPage ? <div className="space-y-2 p-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-[74px] animate-pulse rounded-xl bg-[var(--surface-strong)]" />)}</div> : <>
+            <div className="divide-y divide-[var(--surface-border)]">{recordPage.items.length ? recordPage.items.map((item) => <article key={item.candidateId} className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="truncate text-[11px] text-[var(--text-primary)]">{item.companyName}</strong><span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 py-0.5 text-[7px] font-bold text-[var(--accent)]">{item.source === 'cez' ? 'ČEZ' : item.source === 'egd' ? 'EG.D' : 'PRE'}</span><span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] px-2 py-0.5 text-[7px] font-bold text-[var(--text-secondary)]">{communicationLabel(item.communicationStatus)}</span></div><p className="mt-1 text-[8px] text-[var(--text-secondary)]">{item.ico ? `IČO ${item.ico} · ` : ''}odstávka {formatTimestamp(item.outageStartsAt)}{item.ownerName ? ` · řeší ${item.ownerName}` : ' · nepřiřazeno'}</p>{section === 'attention' && item.attentionReason ? <p className="mt-1.5 text-[8px] font-semibold text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{attentionLabel(item.attentionReason)}</p> : null}{section === 'reminders' ? <p className={`mt-1.5 text-[8px] font-semibold ${item.followUpStatus === 'planned' && item.scheduledFor && new Date(item.scheduledFor) < new Date() ? 'text-red-600 [html[data-theme=dark]_&]:text-red-300' : 'text-sky-700 [html[data-theme=dark]_&]:text-sky-300'}`}>{item.followUpStatus === 'completed' ? `Dokončeno ${formatTimestamp(item.completedAt)}` : `Naplánováno ${formatTimestamp(item.scheduledFor)}${item.followUpOwnerName ? ` · ${item.followUpOwnerName}` : ''}`}</p> : null}{section === 'outcomes' ? <p className="mt-1.5 text-[8px] font-semibold text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">Zakázku zaznamenal {item.jobWonByName ?? 'uživatel'} · {formatTimestamp(item.jobWonAt)}</p> : null}</div>
+              <div className="flex gap-2"><button type="button" onClick={() => openCandidate(item.candidateId, 'assignment')} className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-sky-400/30 bg-sky-500/10 px-2.5 text-[7px] font-bold uppercase text-sky-700 transition hover:-translate-y-px sm:flex-none [html[data-theme=dark]_&]:text-sky-300"><ClipboardList aria-hidden size={11} />Komunikace</button><button type="button" onClick={() => openCandidate(item.candidateId, 'detail')} aria-label={`Otevřít detail ${item.companyName}`} title="Detail firmy a odstávky" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--accent)] transition hover:-translate-y-px"><Eye aria-hidden size={12} /></button></div>
+            </article>) : <p className="px-4 py-8 text-center text-[9px] text-[var(--text-secondary)]">Ve zvoleném rozsahu nejsou žádné odpovídající záznamy.</p>}</div>
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--surface-border)] px-4 py-3"><span className="text-[8px] text-[var(--text-secondary)]">{recordPage.totalCount ? `${recordPage.offset + 1}–${Math.min(recordPage.offset + recordPage.items.length, recordPage.totalCount)} z ${recordPage.totalCount}` : '0 záznamů'}</span><div className="flex gap-1.5"><button type="button" disabled={recordPage.offset === 0} onClick={() => setRecordOffset(Math.max(0, recordPage.offset - recordPage.limit))} aria-label="Předchozí stránka" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)] disabled:opacity-35"><ChevronLeft aria-hidden size={13} /></button><button type="button" disabled={!recordPage.hasMore} onClick={() => setRecordOffset(recordPage.offset + recordPage.limit)} aria-label="Další stránka" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)] disabled:opacity-35"><ChevronRight aria-hidden size={13} /></button></div></div>
+          </>}
+        </section>
         <p className="mt-3 text-right text-[7px] text-[var(--text-secondary)]">Aktualizováno {formatTimestamp(overview.generatedAt)}</p>
       </>}
     </div>

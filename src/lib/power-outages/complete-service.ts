@@ -36,6 +36,8 @@ import type {
   CompletePowerOutageStatistics,
   CompleteTeamOverview,
   CompleteTeamOverviewFilters,
+  CompleteTeamOverviewRecordPage,
+  CompleteTeamOverviewSection,
   CompletePowerOutageWorkspace,
   CompleteProviderDiagnostic,
   CompleteProviderRun,
@@ -1553,6 +1555,64 @@ export async function getCompletePowerOutageTeamOverview(
       overdueCount: Number(user.overdueCount) || 0,
       lastActivityAt: typeof user.lastActivityAt === 'string' ? user.lastActivityAt : null,
     })).filter((user) => user.userId),
+  }
+}
+
+export async function getCompletePowerOutageTeamRecords(input: {
+  filters: CompleteTeamOverviewFilters
+  section: CompleteTeamOverviewSection
+  limit?: number
+  offset?: number
+}): Promise<CompleteTeamOverviewRecordPage> {
+  const { supabase, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  if (profile.role !== 'admin') throw new Error('Přehled týmu je dostupný pouze administrátorovi.')
+
+  const { filters } = input
+  const { data, error } = await supabase.rpc('get_complete_power_outage_team_records_v1', {
+    requested_period_from: filters.periodFrom,
+    requested_period_to: filters.periodTo,
+    requested_period_basis: filters.periodBasis,
+    requested_owner_id: filters.ownerId,
+    requested_selector_key: filters.selectorKey,
+    requested_source: filters.source,
+    requested_section: input.section,
+    requested_limit: input.limit ?? 10,
+    requested_offset: input.offset ?? 0,
+  })
+  if (error) throw new Error(`Pracovní seznam týmu se nepodařilo načíst: ${error.message}`)
+
+  const row = objectValue(data)
+  return {
+    section: (typeof row.section === 'string' ? row.section : input.section) as CompleteTeamOverviewSection,
+    totalCount: Number(row.totalCount) || 0,
+    limit: Number(row.limit) || input.limit || 10,
+    offset: Number(row.offset) || 0,
+    hasMore: row.hasMore === true,
+    items: objectArray(row.items).map((item) => ({
+      candidateId: String(item.candidateId ?? ''),
+      outageId: String(item.outageId ?? ''),
+      companyName: String(item.companyName ?? 'Firma'),
+      ico: typeof item.ico === 'string' ? item.ico : null,
+      source: (typeof item.source === 'string' ? item.source : 'cez') as PowerOutageSource,
+      outageStartsAt: String(item.outageStartsAt ?? ''),
+      outageEndsAt: String(item.outageEndsAt ?? ''),
+      ownerId: typeof item.ownerId === 'string' ? item.ownerId : null,
+      ownerName: typeof item.ownerName === 'string' ? item.ownerName : null,
+      communicationStatus: (typeof item.communicationStatus === 'string' ? item.communicationStatus : 'not_contacted') as CompleteCommunicationWorkflowStatus,
+      lastCommunicationAt: typeof item.lastCommunicationAt === 'string' ? item.lastCommunicationAt : null,
+      followUpActivityId: typeof item.followUpActivityId === 'string' ? item.followUpActivityId : null,
+      followUpStatus: typeof item.followUpStatus === 'string' ? item.followUpStatus as 'planned' | 'completed' | 'cancelled' | 'logged' : null,
+      scheduledFor: typeof item.scheduledFor === 'string' ? item.scheduledFor : null,
+      completedAt: typeof item.completedAt === 'string' ? item.completedAt : null,
+      followUpOwnerId: typeof item.followUpOwnerId === 'string' ? item.followUpOwnerId : null,
+      followUpOwnerName: typeof item.followUpOwnerName === 'string' ? item.followUpOwnerName : null,
+      jobWonAt: typeof item.jobWonAt === 'string' ? item.jobWonAt : null,
+      jobWonBy: typeof item.jobWonBy === 'string' ? item.jobWonBy : null,
+      jobWonByName: typeof item.jobWonByName === 'string' ? item.jobWonByName : null,
+      attentionReason: typeof item.attentionReason === 'string'
+        ? item.attentionReason as 'overdue_follow_up' | 'past_outage_open' | 'missing_follow_up' | 'approaching_uncontacted' | 'stale_communication'
+        : null,
+    })).filter((item) => item.candidateId && item.outageId),
   }
 }
 

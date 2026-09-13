@@ -227,6 +227,41 @@ export type CompleteTeamOverview = {
   users: CompleteTeamOverviewUserMetric[]
 }
 
+export type CompleteTeamOverviewSection = 'active' | 'attention' | 'reminders' | 'outcomes'
+
+export type CompleteTeamOverviewRecord = {
+  candidateId: string
+  outageId: string
+  companyName: string
+  ico: string | null
+  source: PowerOutageSource
+  outageStartsAt: string
+  outageEndsAt: string
+  ownerId: string | null
+  ownerName: string | null
+  communicationStatus: CompleteCommunicationWorkflowStatus
+  lastCommunicationAt: string | null
+  followUpActivityId: string | null
+  followUpStatus: 'planned' | 'completed' | 'cancelled' | 'logged' | null
+  scheduledFor: string | null
+  completedAt: string | null
+  followUpOwnerId: string | null
+  followUpOwnerName: string | null
+  jobWonAt: string | null
+  jobWonBy: string | null
+  jobWonByName: string | null
+  attentionReason: 'overdue_follow_up' | 'past_outage_open' | 'missing_follow_up' | 'approaching_uncontacted' | 'stale_communication' | null
+}
+
+export type CompleteTeamOverviewRecordPage = {
+  section: CompleteTeamOverviewSection
+  totalCount: number
+  limit: number
+  offset: number
+  hasMore: boolean
+  items: CompleteTeamOverviewRecord[]
+}
+
 export type CompletePowerOutageStatistics = {
   currentOutageCount: number
   currentCompanyCount: number

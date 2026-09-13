@@ -648,6 +648,27 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     return () => window.clearTimeout(timeout)
   }, [query])
 
+  useEffect(() => {
+    const openCandidate = (event: Event) => {
+      const detail = (event as CustomEvent<{ candidateId?: string; mode?: 'detail' | 'assignment' }>).detail
+      if (!detail?.candidateId) return
+      void getCompletePowerOutageDetailAction(detail.candidateId).then((result) => {
+        if (!result.success) {
+          setPageError(result.error)
+          return
+        }
+        setSelected(result.detail)
+        setPopupMode(detail.mode === 'detail' ? 'detail' : 'assignment')
+        setDetail(detail.mode === 'detail' ? result.detail : null)
+        setDetailError(null)
+        setDetailLoading(false)
+        document.getElementById('complete-power-outage-records')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+    window.addEventListener('complete-power-outage:open-candidate', openCandidate)
+    return () => window.removeEventListener('complete-power-outage:open-candidate', openCandidate)
+  }, [])
+
   const pageFilters = useMemo<CompletePowerOutagePageFilters>(() => ({
     mode: tab,
     clientsOnly,
@@ -771,7 +792,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
   }
   const closePopup = () => { setSelected(null); setPopupMode(null); setDetail(null); setDetailError(null); setDetailLoading(false) }
   const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('all'); onCommercialSelectionChange('top'); onClientsOnlyChange(false) }
-  return <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:flex xl:h-0 xl:min-h-full xl:flex-col xl:overflow-hidden">
+  return <section id="complete-power-outage-records" className="activities-page__panel min-w-0 scroll-mt-4 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:flex xl:h-0 xl:min-h-full xl:flex-col xl:overflow-hidden">
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center xl:grid-cols-[175px_minmax(0,1fr)_160px] xl:gap-2">
       <div className="min-w-0 lg:contents">
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">
