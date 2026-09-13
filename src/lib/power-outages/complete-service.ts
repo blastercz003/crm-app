@@ -382,6 +382,9 @@ type OverviewRow = {
   is_accessible_client?: boolean | null
   accessible_client_match_count?: number | string | null
   accessible_client_match_method?: 'ico_exact' | 'name_exact' | 'name_fuzzy' | null
+  notification_email_status?: 'sent' | 'delivered' | null
+  notification_email_sent_at?: string | null
+  notification_email_delivered_at?: string | null
   metadata: Record<string, unknown> | null
 }
 
@@ -1217,6 +1220,13 @@ function mapOverview(row: OverviewRow, assignment?: AssignmentRow): CompletePowe
     isAccessibleClient: row.is_accessible_client === true,
     accessibleClientMatchCount: Math.max(0, Number(row.accessible_client_match_count) || 0),
     accessibleClientMatchMethod: row.accessible_client_match_method ?? null,
+    notificationEmail: row.notification_email_status && row.notification_email_sent_at
+      ? {
+          status: row.notification_email_status,
+          sentAt: row.notification_email_sent_at,
+          deliveredAt: row.notification_email_delivered_at ?? null,
+        }
+      : null,
   }
 }
 
@@ -1259,10 +1269,18 @@ export async function getCompletePowerOutagePage(
     ...baseArgs,
     p_cursor_client_priority: cursor?.clientPriority ?? null,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v8', {
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v9', {
     ...priorityArgs,
     p_clients_only: filters.clientsOnly,
   })
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v9')) {
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v8', {
+      ...priorityArgs,
+      p_clients_only: filters.clientsOnly,
+    })
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v8')) {
     const current = await supabase.rpc('get_complete_power_outage_company_page_v7', priorityArgs)
     data = current.data

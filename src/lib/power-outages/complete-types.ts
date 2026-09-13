@@ -80,6 +80,11 @@ export type CompletePowerOutageListItem = {
   isAccessibleClient: boolean
   accessibleClientMatchCount: number
   accessibleClientMatchMethod: 'ico_exact' | 'name_exact' | 'name_fuzzy' | null
+  notificationEmail: {
+    status: 'sent' | 'delivered'
+    sentAt: string
+    deliveredAt: string | null
+  } | null
 }
 
 export type CompletePowerOutagePageCursor = {
