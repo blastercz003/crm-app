@@ -14,6 +14,7 @@ import {
   MessageSquareText,
   UsersRound,
   Wrench,
+  Zap,
 } from 'lucide-react'
 import { PresenceSectionTracker } from '@/components/presence/presence-section-tracker'
 import {
@@ -36,6 +37,7 @@ import { WorkspaceOfferList } from './workspace-offer-list'
 import { WorkspaceOfferStatusFilter } from './workspace-offer-status-filter'
 import { WorkspaceJobFilter } from './workspace-job-filter'
 import { WorkspaceJobList } from './workspace-job-list'
+import { WorkspacePowerOutageList } from './workspace-power-outage-list'
 import { WorkspaceUserSwitcher } from './workspace-user-switcher'
 import { StickyNotesWorkspace } from './sticky-notes-workspace'
 import { WorkspaceNotificationFocus, WorkspaceRealtimeRefresh } from './workspace-realtime-refresh'
@@ -44,7 +46,6 @@ import { WorkspaceSummaryNavigation } from './workspace-summary-navigation'
 import { MobileWorkspaceCarousel, type MobileWorkspacePanel } from './mobile-workspace-carousel'
 import { ManualActivityList } from './manual-activity-list'
 import { ManualActivityCarousel } from './manual-activity-carousel'
-import { ActivitiesHelpLauncher } from './activities-help-launcher'
 
 export const metadata: Metadata = { title: 'Obchodní aktivita' }
 export const dynamic = 'force-dynamic'
@@ -221,7 +222,6 @@ export default async function ActivitiesPage({
       <PresenceSectionTracker section="Aktivity" route="/activities" />
       <WorkspaceRealtimeRefresh />
       <WorkspaceNotificationFocus activityId={focusedActivityId} stickyNoteId={focusedStickyNoteId} />
-      <ActivitiesHelpLauncher />
       <div aria-hidden className="activities-page__glow activities-page__glow--right pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-[#9dc7e5]/25 blur-3xl" />
       <div aria-hidden className="activities-page__glow activities-page__glow--left pointer-events-none absolute -left-24 bottom-20 h-80 w-80 rounded-full bg-white/55 blur-3xl" />
 
@@ -282,6 +282,7 @@ export default async function ActivitiesPage({
             { value: 'tasks', label: 'Úkoly' },
             { value: 'meetings', label: 'Schůzky' },
             { value: 'offers', label: 'Nabídky' },
+            { value: 'powerOutages', label: 'Odstávky' },
             { value: 'jobs', label: 'Zakázky' },
           ]}
         >
@@ -300,6 +301,13 @@ export default async function ActivitiesPage({
             <CardHeader eyebrow={offerEyebrow} title="Nabídky" count={workspace.offers.total} icon={FileText} action={<>{workspace.offers.available ? <WorkspaceOfferStatusFilter options={workspace.offers.statusOptions} selectedStatus={workspace.offers.selectedStatus} /> : null}<SmallAction href="/offers">Všechny</SmallAction>{workspace.offers.available ? <NewOfferButton label="NOVÁ" className={WORKSPACE_NEW_BUTTON_CLASS} /> : null}</>} />
             <div className="activities-workspace__panel-scroll -mx-3 mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 pb-4 pt-2" role="region" aria-label={`Seznam nabídek: ${workspace.offers.selectedStatusLabel}`} tabIndex={0}><WorkspaceOfferList items={workspace.offers.items} />{workspace.offers.available && workspace.offers.items.length === 0 ? <EmptyState>Žádné nabídky ve zvoleném stavu.</EmptyState> : null}{!workspace.offers.available ? <EmptyState>Pro tuto sekci nemáte oprávnění.</EmptyState> : null}</div>
           </article>
+          <section id="pracovni-odstavky" data-workspace-card="powerOutages" className="activities-page__panel activities-workspace__scroll-target relative flex h-[400px] flex-col overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:col-span-2 lg:h-[520px] xl:col-span-12">
+            <CardHeader eyebrow="MONITORING ODSTÁVEK" title="Rozpracované odstávky" count={workspace.powerOutages.total} icon={Zap} action={workspace.powerOutages.available ? <SmallAction href="/power-outages?mode=complete">Monitoring</SmallAction> : null} />
+            <div className="activities-workspace__panel-scroll -mx-3 mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-4 pt-2" role="region" aria-label="Seznam přidělených odstávek" tabIndex={0}>
+              {workspace.powerOutages.available ? <WorkspacePowerOutageList items={workspace.powerOutages.items} /> : null}
+              {!workspace.powerOutages.available ? <EmptyState>Pro tuto sekci nemáte oprávnění.</EmptyState> : null}
+            </div>
+          </section>
         <section id="pracovni-zakazky" data-workspace-card="jobs" className="activities-page__panel activities-workspace__scroll-target relative flex h-[400px] flex-col overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] lg:col-span-2 lg:h-[520px] xl:col-span-12">
           <header className="flex min-h-11 flex-row items-start justify-between gap-1 sm:gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><span className="activities-workspace__card-icon relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--accent)] sm:h-10 sm:w-10 sm:rounded-2xl"><Wrench aria-hidden size={18} /><span className={WORKSPACE_ICON_COUNT_BADGE_CLASS}>{workspace.jobs.total}</span></span><div className="min-w-0 flex-1"><p className="truncate whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)] sm:text-[10px] sm:tracking-[0.14em]">REALIZACE A VÝJEZDY</p><div className="mt-0.5 flex items-center gap-2"><h2 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">Zakázky</h2></div></div></div>

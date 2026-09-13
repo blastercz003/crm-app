@@ -11,6 +11,7 @@ const SCOPE_CARDS: Record<string, readonly string[]> = {
   meetings: ['kpis', 'meetings', 'system'],
   offers: ['kpis', 'offers', 'system'],
   jobs: ['jobs', 'system'],
+  complete_power_outages: ['powerOutages', 'manual', 'system'],
 }
 
 function interactionBlocksRefresh() {

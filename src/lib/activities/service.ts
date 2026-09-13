@@ -49,19 +49,36 @@ function uniqueValues(values: Array<string | null>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))]
 }
 
+function completePowerOutageCandidateId(row: Pick<ActivityRow, 'metadata'>) {
+  const value = row.metadata?.completePowerOutageCandidateId
+  return typeof value === 'string' ? normalizeUuid(value) : null
+}
+
+function completePowerOutageCompanyName(row: Pick<ActivityRow, 'metadata'>) {
+  const value = row.metadata?.completePowerOutageCompanyName
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
 async function hydrateActivityRows(
   supabase: Awaited<ReturnType<typeof getActivityRuntimeContext>>['supabase'],
   rows: ActivityRow[],
 ) {
   const userIds = uniqueValues(rows.map((row) => row.user_id))
   const clientIds = uniqueValues(rows.map((row) => row.client_id))
+  const outageCandidateIds = uniqueValues(rows.map(completePowerOutageCandidateId))
 
-  const [profilesResponse, clientsResponse] = await Promise.all([
+  const [profilesResponse, clientsResponse, outageCompaniesResponse] = await Promise.all([
     userIds.length
       ? supabase.from('profiles').select('id, name').in('id', userIds)
       : Promise.resolve({ data: [], error: null }),
     clientIds.length
       ? supabase.from('clients').select('id, name').in('id', clientIds)
+      : Promise.resolve({ data: [], error: null }),
+    outageCandidateIds.length
+      ? supabase
+          .from('complete_power_outage_companies')
+          .select('id, company_name')
+          .in('id', outageCandidateIds)
       : Promise.resolve({ data: [], error: null }),
   ])
 
@@ -71,6 +88,10 @@ async function hydrateActivityRows(
 
   if (clientsResponse.error) {
     throw new Error(`Klienty aktivit se nepodařilo načíst: ${clientsResponse.error.message}`)
+  }
+
+  if (outageCompaniesResponse.error) {
+    throw new Error(`Firmy z odstávek se nepodařilo načíst: ${outageCompaniesResponse.error.message}`)
   }
 
   const userNameById = new Map(
@@ -85,12 +106,25 @@ async function hydrateActivityRows(
       row.name,
     ]),
   )
+  const outageCompanyNameById = new Map(
+    ((outageCompaniesResponse.data ?? []) as Array<{ id: string; company_name: string }>).map((row) => [
+      row.id,
+      row.company_name,
+    ]),
+  )
 
-  return rows.map<ActivityListItem>((row) => ({
-    ...row,
-    user_name: userNameById.get(row.user_id) ?? null,
-    client_name: row.client_id ? clientNameById.get(row.client_id) ?? null : null,
-  }))
+  return rows.map<ActivityListItem>((row) => {
+    const outageCandidateId = completePowerOutageCandidateId(row)
+    return {
+      ...row,
+      user_name: userNameById.get(row.user_id) ?? null,
+      client_name: row.client_id
+        ? clientNameById.get(row.client_id) ?? null
+        : outageCandidateId
+          ? outageCompanyNameById.get(outageCandidateId) ?? completePowerOutageCompanyName(row)
+          : null,
+    }
+  })
 }
 
 export async function getActivities(

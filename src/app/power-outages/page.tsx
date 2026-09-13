@@ -44,7 +44,7 @@ export default async function PowerOutagesPage({
               <span className="lg:hidden">Monitoring odstávek</span>
               <span className="hidden lg:inline">Monitoring plánovaných odstávek</span>
             </h1>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               {mode === 'complete' && profile.role === 'admin'
                 ? <CompleteTeamOverviewButton currentUser={{ id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: true }} />
                 : null}

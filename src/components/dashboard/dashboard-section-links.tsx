@@ -15,6 +15,42 @@ type SectionLink = {
   alertBadge?: boolean
 }
 
+function DashboardSectionLinkItem({
+  item,
+  style,
+}: {
+  item: SectionLink
+  style?: React.CSSProperties
+}) {
+  return (
+    <Link
+      href={item.href}
+      className="dashboard-section-link group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-2.5 overflow-visible rounded-2xl px-2 py-3 text-center text-[#0b1d2c] transition"
+      style={style}
+    >
+      <span className="dashboard-section-link__icon relative inline-flex h-[74px] w-[74px] items-center justify-center rounded-[18px] border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.35),0_10px_22px_rgba(9,48,82,0.28)] backdrop-blur-xl transition-all duration-200 ease-out lg:h-[82px] lg:w-[82px] lg:group-hover:-translate-y-[2px]">
+        {item.icon}
+        {item.badgeCount && item.badgeCount > 0 ? (
+          <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-red-600 bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
+            {item.badgeCount > 99 ? '99+' : item.badgeCount}
+          </span>
+        ) : null}
+        {item.alertBadge ? (
+          <span
+            aria-label="Aktivní výstraha"
+            className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-amber-500 bg-yellow-400 px-1.5 text-[13px] font-black leading-none text-amber-950 shadow-[0_4px_12px_rgba(234,179,8,0.38)]"
+          >
+            !
+          </span>
+        ) : null}
+      </span>
+      <span className="dashboard-section-link__label truncate text-[13px] font-semibold uppercase tracking-[0.01em] leading-tight lg:text-[15px]">
+        {item.label}
+      </span>
+    </Link>
+  )
+}
+
 function IconClients() {
   return (
     <div className="relative h-11 w-11 overflow-hidden">
@@ -203,21 +239,16 @@ function IconWeatherAlerts() {
 
 function IconPowerOutages() {
   return (
-    <svg
-      viewBox="0 0 32 32"
-      className="h-10 w-10"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M16 4.2 8.5 27.8M16 4.2l7.5 23.6" />
-      <path d="M10.4 21.7h11.2M12.2 15.9h7.6M8.1 10.2h15.8" />
-      <path d="m11.2 10.2-4 4.1M20.8 10.2l4 4.1" />
-      <path d="M5.1 18.2h4.5M22.4 18.2h4.5" />
-    </svg>
+    <div className="relative h-11 w-11 overflow-hidden">
+      <Image
+        src="/power-outages-icon.png"
+        alt="Odstávky"
+        fill
+        sizes="44px"
+        className="object-contain"
+        priority={false}
+      />
+    </div>
   )
 }
 
@@ -405,42 +436,60 @@ export function DashboardSectionLinks({
     ]
   )
 
+  const totalItemCount = items.length + (canViewHandoverProtocolUpload ? 1 : 0)
+  const desktopColumnCount = totalItemCount > 14 ? 8 : 7
+  const desktopItemBasis =
+    desktopColumnCount === 8
+      ? 'calc(12.5% - 10.5px)'
+      : 'calc(14.285714% - 10.285714px)'
+  const desktopEntries: Array<SectionLink | null> = canViewHandoverProtocolUpload
+    ? [...items, null]
+    : items
+  const desktopRows = Array.from(
+    { length: Math.ceil(desktopEntries.length / desktopColumnCount) },
+    (_, rowIndex) =>
+      desktopEntries.slice(
+        rowIndex * desktopColumnCount,
+        (rowIndex + 1) * desktopColumnCount
+      )
+  )
+  const desktopItemStyle: React.CSSProperties = {
+    flex: `0 0 ${desktopItemBasis}`,
+    width: desktopItemBasis,
+  }
+
   return (
     <section className="px-1 py-1 sm:px-2">
-      <div className="grid grid-cols-3 gap-3 lg:mx-auto lg:max-w-[1160px] lg:grid-cols-7 lg:gap-x-3 lg:gap-y-7">
+      <div className="grid grid-cols-3 gap-3 lg:hidden">
         {items.map((item) => (
-          <Link
-            key={item.key}
-            href={item.href}
-            className="dashboard-section-link group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-2.5 overflow-visible rounded-2xl px-2 py-3 text-center text-[#0b1d2c] transition lg:w-full"
-          >
-            <span
-              className="dashboard-section-link__icon relative inline-flex h-[74px] w-[74px] items-center justify-center rounded-[18px] border border-[#2b6f9f]/95 bg-[linear-gradient(160deg,rgba(60,132,186,0.95)_0%,rgba(41,117,174,0.96)_45%,rgba(26,92,146,0.98)_100%)] text-white shadow-[inset_0_1px_0_rgba(170,217,247,0.35),0_10px_22px_rgba(9,48,82,0.28)] backdrop-blur-xl transition-all duration-200 ease-out lg:h-[82px] lg:w-[82px] lg:group-hover:-translate-y-[2px]"
-            >
-              {item.icon}
-              {item.badgeCount && item.badgeCount > 0 ? (
-                <span className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-red-600 bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white">
-                  {item.badgeCount > 99 ? '99+' : item.badgeCount}
-                </span>
-              ) : null}
-              {item.alertBadge ? (
-                <span
-                  aria-label="Aktivní výstraha"
-                  className="absolute -right-2 -top-2 z-20 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-amber-500 bg-yellow-400 px-1.5 text-[13px] font-black leading-none text-amber-950 shadow-[0_4px_12px_rgba(234,179,8,0.38)]"
-                >
-                  !
-                </span>
-              ) : null}
-            </span>
-            <span className="dashboard-section-link__label truncate text-[13px] font-semibold uppercase tracking-[0.01em] leading-tight lg:text-[15px]">
-              {item.label}
-            </span>
-          </Link>
+          <DashboardSectionLinkItem key={item.key} item={item} />
         ))}
 
-        {canViewHandoverProtocolUpload ? (
-          <DashboardHandoverProtocolUploadLauncher />
-        ) : null}
+        {canViewHandoverProtocolUpload ? <DashboardHandoverProtocolUploadLauncher /> : null}
+      </div>
+
+      <div className="mx-auto hidden max-w-[1160px] space-y-7 lg:block">
+        {desktopRows.map((row, rowIndex) => (
+          <div key={`desktop-row-${rowIndex}`} className="flex justify-center gap-x-3">
+            {row.map((item, itemIndex) =>
+              item ? (
+                <DashboardSectionLinkItem
+                  key={item.key}
+                  item={item}
+                  style={desktopItemStyle}
+                />
+              ) : (
+                <div
+                  key={`handover-${rowIndex}-${itemIndex}`}
+                  className="min-w-0"
+                  style={desktopItemStyle}
+                >
+                  <DashboardHandoverProtocolUploadLauncher />
+                </div>
+              )
+            )}
+          </div>
+        ))}
       </div>
     </section>
   )

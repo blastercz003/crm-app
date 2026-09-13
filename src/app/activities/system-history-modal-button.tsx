@@ -11,6 +11,7 @@ import {
   ListTodo,
   LoaderCircle,
   MessageSquareText,
+  Zap,
   X,
 } from 'lucide-react'
 import { ModalHeading } from '@/components/ui/modal-heading'
@@ -42,6 +43,9 @@ function presentation(item: ActivityListItem) {
   }
   if (item.activity_type.startsWith('meeting_')) {
     return { label: 'Schůzka', icon: CalendarDays, tone: 'violet' }
+  }
+  if (item.source_type === 'power_outage') {
+    return { label: 'Odstávky', icon: Zap, tone: 'sky' }
   }
   return { label: 'Systém', icon: ClipboardList, tone: 'slate' }
 }

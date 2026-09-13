@@ -19,6 +19,7 @@ import type {
   ActivityWorkspaceJob,
   ActivityWorkspaceJobPeriod,
   ActivityWorkspaceJobStatus,
+  ActivityWorkspacePowerOutage,
   ActivityWorkspaceTask,
   ActivityWorkspaceUser,
   ActivityWorkspaceFormOptions,
@@ -33,7 +34,20 @@ const WORKSPACE_LIMITS = {
   tasks: 50,
   meetings: 6,
   jobs: 50,
+  powerOutages: 100,
 } as const
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function completePowerOutageCandidateId(row: Pick<ActivityRow, 'metadata'>) {
+  const value = row.metadata?.completePowerOutageCandidateId
+  return typeof value === 'string' && UUID_PATTERN.test(value) ? value : null
+}
+
+function completePowerOutageCompanyName(row: Pick<ActivityRow, 'metadata'>) {
+  const value = row.metadata?.completePowerOutageCompanyName
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
 
 const APPROVAL_OFFER_STATUSES = [
   { value: 'submitted', label: 'Ke schválení', tone: 'blue' },
@@ -55,6 +69,7 @@ type WorkspaceProfileRow = {
   name: string | null
   role: string | null
   can_view_activities: boolean | null
+  can_view_power_outages: boolean | null
   can_view_offers: boolean | null
   can_view_jobs: boolean | null
   can_view_jobs_portal: boolean | null
@@ -138,6 +153,16 @@ function normalizeUserName(name: string | null) {
   return name?.trim() || 'Uživatel'
 }
 
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function objectArray(value: unknown) {
+  return Array.isArray(value) ? value.map(objectValue) : []
+}
+
 const JOB_PERIODS: ActivityWorkspaceJobPeriod[] = ['today', 'this_week', 'next_week', 'next_30_days', 'all']
 const JOB_STATUSES: Array<ActivityWorkspaceJobStatus | 'active' | 'all'> = ['active', 'all', 'nova', 'k_reseni', 'realizace', 'ukoncena', 'storno']
 
@@ -156,11 +181,17 @@ function activityItem(
   row: ActivityRow,
   userName: string,
   clientNames: Map<string, string | null>,
+  outageCompanyNames: Map<string, string>,
 ): ActivityListItem {
+  const outageCandidateId = completePowerOutageCandidateId(row)
   return {
     ...row,
     user_name: userName,
-    client_name: row.client_id ? clientNames.get(row.client_id) ?? null : null,
+    client_name: row.client_id
+      ? clientNames.get(row.client_id) ?? null
+      : outageCandidateId
+        ? outageCompanyNames.get(outageCandidateId) ?? completePowerOutageCompanyName(row)
+        : null,
   }
 }
 
@@ -180,17 +211,17 @@ export async function getActivitiesWorkspace(input: {
   const [viewerProfileResponse, usersResponse] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, name, role, can_view_activities, can_view_offers, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
+      .select('id, name, role, can_view_activities, can_view_power_outages, can_view_offers, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
       .eq('id', profile.id)
       .single<WorkspaceProfileRow>(),
     isAdmin
       ? profilesClient!
           .from('profiles')
-          .select('id, name, role, can_view_activities, can_view_offers, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
+          .select('id, name, role, can_view_activities, can_view_power_outages, can_view_offers, can_view_jobs, can_view_jobs_portal, jobs_sales_scope')
           .or('role.eq.admin,can_view_activities.eq.true')
           .order('name', { ascending: true })
       : Promise.resolve({
-          data: [{ ...profile, can_view_offers: null, can_view_jobs: true, can_view_jobs_portal: false, jobs_sales_scope: null } as WorkspaceProfileRow],
+          data: [{ ...profile, can_view_power_outages: null, can_view_offers: null, can_view_jobs: true, can_view_jobs_portal: false, jobs_sales_scope: null } as WorkspaceProfileRow],
           error: null,
         }),
   ])
@@ -424,6 +455,13 @@ export async function getActivitiesWorkspace(input: {
     jobsTotalRequest = jobsTotalRequest.eq('sales_owner', jobSalesOwner)
   }
   const canLoadSelectedJobs = canViewJobs && (isAdmin && viewingOwnProfile || Boolean(jobSalesOwner))
+  const canViewPowerOutages = isAdmin || Boolean(viewerProfile.can_view_power_outages)
+  const powerOutagesRequest = canViewPowerOutages
+    ? supabase.rpc('get_activity_complete_power_outage_assignments_v1', {
+        requested_owner_id: selectedUser.id,
+        requested_limit: WORKSPACE_LIMITS.powerOutages,
+      })
+    : Promise.resolve({ data: { totalCount: 0, items: [] }, error: null })
 
   const [
     manualPlannedResponse,
@@ -444,6 +482,7 @@ export async function getActivitiesWorkspace(input: {
     jobsResponse,
     jobsThisWeekResponse,
     jobsTotalResponse,
+    powerOutagesResponse,
     stickyNotes,
     stickyCounts,
   ] = await Promise.all([
@@ -512,6 +551,7 @@ export async function getActivitiesWorkspace(input: {
       : Promise.resolve(emptyJobsResponse),
     canLoadSelectedJobs ? jobsThisWeekRequest : Promise.resolve(emptyJobsCountResponse),
     canLoadSelectedJobs ? jobsTotalRequest : Promise.resolve(emptyJobsCountResponse),
+    powerOutagesRequest,
     getStickyNotes({ view: 'active', limit: WORKSPACE_LIMITS.stickyNotes }),
     getStickyNoteCounts(),
   ])
@@ -534,6 +574,7 @@ export async function getActivitiesWorkspace(input: {
     [jobsResponse, 'Zakázky se nepodařilo načíst'],
     [jobsThisWeekResponse, 'Zakázky v tomto týdnu se nepodařilo spočítat'],
     [jobsTotalResponse, 'Celkový počet zakázek se nepodařilo spočítat'],
+    [powerOutagesResponse, 'Přidělené odstávky se nepodařilo načíst'],
   ] as const
   for (const [response, label] of responsesToCheck) assertResponse(response, label)
   offerStatusCountsResponse.forEach((response) => assertResponse(response, 'Počty stavů nabídek se nepodařilo načíst'))
@@ -554,6 +595,11 @@ export async function getActivitiesWorkspace(input: {
     ...meetingRows.map((item) => item.client_id),
     ...offerRows.map((item) => item.client_id),
   ].filter(Boolean))] as string[]
+  const outageCandidateIds = [...new Set([
+    ...manualPlannedRows.map(completePowerOutageCandidateId),
+    ...manualLoggedRows.map(completePowerOutageCandidateId),
+    ...systemRows.map(completePowerOutageCandidateId),
+  ].filter(Boolean))] as string[]
   const systemUserIds = [...new Set(systemRows.map((item) => item.user_id))]
   const taskNotificationsRequest = taskIds.length
     ? (isAdmin ? profilesClient! : supabase)
@@ -564,9 +610,20 @@ export async function getActivitiesWorkspace(input: {
         .in('entity_id', taskIds)
     : Promise.resolve({ data: [], error: null })
 
-  const [clientsResponse, systemProfilesResponse, taskNotificationsResponse] = await Promise.all([
+  const [
+    clientsResponse,
+    outageCompaniesResponse,
+    systemProfilesResponse,
+    taskNotificationsResponse,
+  ] = await Promise.all([
     clientIds.length
       ? supabase.from('clients').select('id, name').in('id', clientIds)
+      : Promise.resolve({ data: [], error: null }),
+    outageCandidateIds.length
+      ? supabase
+          .from('complete_power_outage_companies')
+          .select('id, company_name')
+          .in('id', outageCandidateIds)
       : Promise.resolve({ data: [], error: null }),
     isAdmin && systemUserIds.length
       ? profilesClient!.from('profiles').select('id, name').in('id', systemUserIds)
@@ -577,12 +634,19 @@ export async function getActivitiesWorkspace(input: {
     taskNotificationsRequest,
   ])
   assertResponse(clientsResponse, 'Názvy klientů pracovního přehledu se nepodařilo načíst')
+  assertResponse(outageCompaniesResponse, 'Názvy firem z odstávek se nepodařilo načíst')
   assertResponse(systemProfilesResponse, 'Autoři posledních událostí se nepodařili načíst')
   assertResponse(taskNotificationsResponse, 'Notifikace úkolů se nepodařilo načíst')
   const clientNames = new Map(
     ((clientsResponse.data ?? []) as Array<{ id: string; name: string | null }>).map((item) => [
       item.id,
       item.name,
+    ]),
+  )
+  const outageCompanyNames = new Map(
+    ((outageCompaniesResponse.data ?? []) as Array<{ id: string; company_name: string }>).map((item) => [
+      item.id,
+      item.company_name,
     ]),
   )
   const systemUserNames = new Map(
@@ -652,6 +716,29 @@ export async function getActivitiesWorkspace(input: {
     pohotovost: Boolean(item.pohotovost),
     hasInfo: Boolean(item.info_note?.trim()),
   }))
+  const powerOutagesPayload = objectValue(powerOutagesResponse.data)
+  const powerOutages: ActivityWorkspacePowerOutage[] = objectArray(powerOutagesPayload.items)
+    .map((item): ActivityWorkspacePowerOutage => ({
+      candidateId: typeof item.candidateId === 'string' ? item.candidateId : '',
+      companyName: typeof item.companyName === 'string' && item.companyName.trim() ? item.companyName : 'Firma',
+      municipality: typeof item.municipality === 'string' ? item.municipality : '',
+      displayAddress: typeof item.displayAddress === 'string' ? item.displayAddress : null,
+      street: typeof item.street === 'string' ? item.street : '',
+      houseNumber: typeof item.houseNumber === 'string' ? item.houseNumber : null,
+      orientationNumber: typeof item.orientationNumber === 'string' ? item.orientationNumber : null,
+      townPart: typeof item.townPart === 'string' ? item.townPart : null,
+      rawAddress: typeof item.rawAddress === 'string' ? item.rawAddress : '',
+      startsAt: typeof item.startsAt === 'string' ? item.startsAt : '',
+      endsAt: typeof item.endsAt === 'string' ? item.endsAt : '',
+      source: item.source === 'egd' || item.source === 'pre' ? item.source : 'cez',
+      communicationStatus: item.communicationStatus === 'contacted'
+        || item.communicationStatus === 'unreachable'
+        || item.communicationStatus === 'interested'
+        || item.communicationStatus === 'offer_sent'
+        ? item.communicationStatus
+        : 'not_contacted',
+    }))
+    .filter((item) => UUID_PATTERN.test(item.candidateId) && item.startsAt && item.endsAt)
 
   const manualLoggedToday = countOf(manualLoggedTodayResponse)
   const systemToday = countOf(systemTodayResponse)
@@ -690,8 +777,8 @@ export async function getActivitiesWorkspace(input: {
       jobsTotal: countOf(jobsTotalResponse),
     },
     manualActivities: {
-      planned: manualPlannedRows.map((item) => activityItem(item, selectedUser.name, clientNames)),
-      logged: manualLoggedRows.map((item) => activityItem(item, selectedUser.name, clientNames)),
+      planned: manualPlannedRows.map((item) => activityItem(item, selectedUser.name, clientNames, outageCompanyNames)),
+      logged: manualLoggedRows.map((item) => activityItem(item, selectedUser.name, clientNames, outageCompanyNames)),
       plannedTotal: countOf(manualPlannedResponse),
       loggedTotal: countOf(manualLoggedResponse),
     },
@@ -700,6 +787,7 @@ export async function getActivitiesWorkspace(input: {
         item,
         systemUserNames.get(item.user_id) ?? 'Uživatel',
         clientNames,
+        outageCompanyNames,
       )),
       total: countOf(systemHistoryResponse),
       today: countOf(systemTodayResponse),
@@ -731,6 +819,11 @@ export async function getActivitiesWorkspace(input: {
       selectedStatus: selectedJobStatus,
       items: jobs,
       total: countOf(jobsResponse),
+    },
+    powerOutages: {
+      available: canViewPowerOutages,
+      items: powerOutages,
+      total: Number(powerOutagesPayload.totalCount) || 0,
     },
     stickyNotes: {
       items: stickyNotes.items,

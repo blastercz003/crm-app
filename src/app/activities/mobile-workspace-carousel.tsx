@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 
-export type MobileWorkspacePanel = 'tasks' | 'meetings' | 'offers' | 'jobs'
+export type MobileWorkspacePanel = 'tasks' | 'meetings' | 'offers' | 'powerOutages' | 'jobs'
 
 type CarouselTab = {
   value: MobileWorkspacePanel
@@ -22,6 +22,7 @@ const PANEL_TARGETS: Record<string, MobileWorkspacePanel> = {
   'pracovni-ukoly': 'tasks',
   'pracovni-schuzky': 'meetings',
   'pracovni-nabidky': 'offers',
+  'pracovni-odstavky': 'powerOutages',
   'pracovni-zakazky': 'jobs',
 }
 
@@ -107,11 +108,11 @@ export function MobileWorkspaceCarousel({
         aria-label="Přepnout pracovní panel"
         role="tablist"
       >
-        <div className="relative grid h-9 grid-cols-4">
+        <div className="relative grid h-9" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 w-1/4 rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(41,128,185,0.2)] transition-transform duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none [html[data-theme='dark']_&]:border-[rgba(92,167,219,0.32)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(45,97,142,0.98)_0%,rgba(28,76,118,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
-            style={{ transform: `translateX(${activeIndex * 100}%)` }}
+            className="pointer-events-none absolute inset-y-0 left-0 rounded-2xl border border-[#6fa9d1] bg-[linear-gradient(155deg,#4d90c5_0%,#2f77af_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(41,128,185,0.2)] transition-transform duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none [html[data-theme='dark']_&]:border-[rgba(92,167,219,0.32)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(45,97,142,0.98)_0%,rgba(28,76,118,0.96)_100%)] [html[data-theme='dark']_&]:shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
+            style={{ width: `${100 / tabs.length}%`, transform: `translateX(${activeIndex * 100}%)` }}
           />
           {tabs.map((tab, index) => {
             const active = index === activeIndex

@@ -173,6 +173,22 @@ export type ActivityWorkspaceJobDetailResult = {
   job: ActivityWorkspaceJobDetail | null
 }
 
+export type ActivityWorkspacePowerOutage = {
+  candidateId: string
+  companyName: string
+  municipality: string
+  displayAddress: string | null
+  street: string
+  houseNumber: string | null
+  orientationNumber: string | null
+  townPart: string | null
+  rawAddress: string
+  startsAt: string
+  endsAt: string
+  source: 'cez' | 'egd' | 'pre'
+  communicationStatus: 'not_contacted' | 'contacted' | 'unreachable' | 'interested' | 'offer_sent'
+}
+
 export type ActivityWorkspaceData = {
   viewer: {
     id: string
@@ -228,6 +244,11 @@ export type ActivityWorkspaceData = {
     selectedPeriod: ActivityWorkspaceJobPeriod
     selectedStatus: ActivityWorkspaceJobStatus | 'active' | 'all'
     items: ActivityWorkspaceJob[]
+    total: number
+  }
+  powerOutages: {
+    available: boolean
+    items: ActivityWorkspacePowerOutage[]
     total: number
   }
   stickyNotes: {

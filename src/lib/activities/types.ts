@@ -8,7 +8,7 @@ export const MANUAL_ACTIVITY_TYPES = [
 
 export const ACTIVITY_ORIGINS = ['manual', 'automatic'] as const
 export const ACTIVITY_STATUSES = ['logged', 'planned', 'completed', 'cancelled'] as const
-export const ACTIVITY_SOURCE_TYPES = ['meeting', 'task', 'offer'] as const
+export const ACTIVITY_SOURCE_TYPES = ['meeting', 'task', 'offer', 'power_outage'] as const
 
 export type ManualActivityType = (typeof MANUAL_ACTIVITY_TYPES)[number]
 export type ActivityOrigin = (typeof ACTIVITY_ORIGINS)[number]
