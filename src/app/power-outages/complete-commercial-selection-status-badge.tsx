@@ -13,27 +13,27 @@ const PRESENTATION: Record<OrbitalStatus, {
 }> = {
   loading: {
     label: 'NAČÍTÁM',
-    ring: 'border-violet-400/45', core: 'bg-violet-400', satellite: 'bg-cyan-400', speed: '1.5s',
+    ring: 'border-violet-400/45', core: 'bg-violet-400', satellite: 'bg-cyan-400 text-cyan-400', speed: '1.5s',
   },
   unavailable: {
     label: 'NEDOSTUPNÉ',
-    ring: 'border-amber-400/50', core: 'bg-amber-400', satellite: 'bg-violet-400', speed: '7s',
+    ring: 'border-amber-400/50', core: 'bg-amber-400', satellite: 'bg-violet-400 text-violet-400', speed: '7s',
   },
   inactive: {
     label: 'NEAKTIVNÍ',
-    ring: 'border-slate-400/45', core: 'bg-slate-400', satellite: 'bg-slate-300', speed: '8s',
+    ring: 'border-slate-400/45', core: 'bg-slate-400', satellite: 'bg-slate-300 text-slate-300', speed: '8s',
   },
   current: {
     label: 'AKTUÁLNÍ',
-    ring: 'border-cyan-400/50', core: 'bg-emerald-400', satellite: 'bg-cyan-300', speed: '6s',
+    ring: 'border-cyan-400/50', core: 'bg-emerald-400', satellite: 'bg-cyan-300 text-cyan-300', speed: '6s',
   },
   processing: {
     label: 'ZPRACOVÁNÍ',
-    ring: 'border-violet-400/55', core: 'bg-violet-400', satellite: 'bg-cyan-300', speed: '2.4s',
+    ring: 'border-violet-400/55', core: 'bg-violet-400', satellite: 'bg-cyan-300 text-cyan-300', speed: '2.4s',
   },
   attention: {
     label: 'POZORNOST',
-    ring: 'border-amber-400/60', core: 'bg-amber-400', satellite: 'bg-fuchsia-400', speed: '1.8s',
+    ring: 'border-amber-400/60', core: 'bg-amber-400', satellite: 'bg-fuchsia-400 text-fuchsia-400', speed: '1.8s',
   },
 }
 

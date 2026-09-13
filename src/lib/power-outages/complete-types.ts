@@ -296,6 +296,24 @@ export type CompleteNotificationEmailManagementWorkspace = {
   contract: string
   adminOnly: boolean
   liveActivationAvailable: boolean
+  productionActivation: {
+    confirmationPending: boolean
+    confirmationExpiresAt: string | null
+    doubleConfirmationRequired: boolean
+    typedPhraseRequired: boolean
+  }
+  productionSafety: {
+    monitoringEnabled: boolean
+    liveSignalIngestionEnabled: boolean
+    autoPauseEnabled: boolean
+    transientFailureThreshold: number
+    consecutiveTransientFailureCount: number
+    isPaused: boolean
+    pauseReasonCode: string | null
+    lastSignalAt: string | null
+    lastErrorCode: string | null
+    lastErrorMessage: string | null
+  }
   productionConfiguration: {
     configurationStatus: 'draft' | 'ready' | 'paused' | 'live'
     settingsUiEnabled: boolean
@@ -398,6 +416,20 @@ export type CompleteNotificationEmailManagementWorkspace = {
     dispatchEnabled: boolean
     rateReservationEnabled: boolean
   }
+}
+
+export type CompleteNotificationEmailActivationConfirmation = {
+  confirmationToken: string
+  expiresAt: string
+  selectorKey: string
+  dispatchablePlanCount: number
+  configurationVersion: number
+  dailySendLimit: number
+  monthlySendLimit: number
+  minimumIntervalSeconds: number
+  sendWindowStart: string
+  sendWindowEnd: string
+  sendWeekdays: number[]
 }
 
 export type CompletePowerOutageDetail = CompletePowerOutageListItem & {

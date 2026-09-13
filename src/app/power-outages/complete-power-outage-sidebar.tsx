@@ -4,9 +4,9 @@ import { Activity, ArrowLeft, AtSign, Check, ChevronDown, CircleAlert, CircleChe
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SlidingTwoTabSwitch } from '@/components/ui/sliding-two-tab-switch'
-import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteContactManagementSummary, CompleteContactManagementWorkspace, CompleteGlobalProgress, CompleteNotificationEmailDeliveryHistory, CompleteNotificationEmailDeliveryStatus, CompleteNotificationEmailManagementWorkspace, CompleteNotificationEmailPlanItem, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
+import type { CompleteAddressCoverage, CompleteAddressCoverageDiagnostic, CompleteCezNewState, CompleteCommercialSelectionCounts, CompleteCommercialSelectionFilter, CompleteCommercialSort, CompleteContactManagementSummary, CompleteContactManagementWorkspace, CompleteGlobalProgress, CompleteNotificationEmailActivationConfirmation, CompleteNotificationEmailDeliveryHistory, CompleteNotificationEmailDeliveryStatus, CompleteNotificationEmailManagementWorkspace, CompleteNotificationEmailPlanItem, CompletePowerOutageSidebarWorkspace, CompleteProviderDiagnostic, CompleteProviderState, CompleteSourceDiagnostic, CompleteSourceState } from '@/lib/power-outages/complete-types'
 import type { PowerOutageSource } from '@/lib/power-outages/types'
-import { acknowledgeCompleteNotificationEmailPilotPauseAction, decideCompleteNotificationEmailPilotReviewAction, decideCompletePowerOutageContactReviewAction, decideCompletePowerOutageDomainReviewAction, getCompleteNotificationEmailDeliveryHistoryAction, getCompleteNotificationEmailManagementAction, getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageContactManagementAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction, pauseCompleteNotificationEmailLivePilotAction, prepareCompletePowerOutageContactSelectorAction, setCompleteNotificationEmailPilotAllowlistAction, setCompleteNotificationEmailProductionConfigAction, setCompletePowerOutageContactRuntimeAction } from './actions'
+import { acknowledgeCompleteNotificationEmailPilotPauseAction, acknowledgeCompleteNotificationEmailProductionPauseAction, activateCompleteNotificationEmailProductionAction, decideCompleteNotificationEmailPilotReviewAction, decideCompletePowerOutageContactReviewAction, decideCompletePowerOutageDomainReviewAction, getCompleteNotificationEmailDeliveryHistoryAction, getCompleteNotificationEmailManagementAction, getCompletePowerOutageAddressCoverageDiagnosticAction, getCompletePowerOutageContactManagementAction, getCompletePowerOutageProviderDiagnosticAction, getCompletePowerOutageSourceDiagnosticAction, pauseCompleteNotificationEmailProductionAction, prepareCompleteNotificationEmailProductionActivationAction, prepareCompletePowerOutageContactSelectorAction, setCompleteNotificationEmailPilotAllowlistAction, setCompleteNotificationEmailProductionConfigAction, setCompletePowerOutageContactRuntimeAction } from './actions'
 import { CommercialSelectionStatusBadge } from './complete-commercial-selection-status-badge'
 import { CompletePanelStatusBadge } from './complete-panel-status-badge'
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
@@ -1198,12 +1198,12 @@ function ContactManagementPanel({ workspace, onRetry }: { workspace: CompletePow
 }
 
 function emailManagementPresentation(workspace: CompleteNotificationEmailManagementWorkspace) {
-  if (workspace.safety.isPaused) return {
+  if (workspace.productionSafety.isPaused) return {
     label: 'CHYBA',
     badge: 'border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300',
     dot: 'bg-red-500',
   }
-  if (workspace.review.liveDispatchEnabled || workspace.allowlist.liveDispatchEnabled || workspace.rateLimit.liveDispatchEnabled || workspace.safety.dispatchEnabled) return {
+  if (workspace.productionConfiguration.configurationStatus === 'live' && workspace.productionConfiguration.continuousDispatchEnabled && workspace.operations.dispatchEnabled) return {
     label: 'AKTIVNÍ',
     badge: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300',
     dot: 'bg-emerald-500',
@@ -1274,6 +1274,7 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
   const [maximumHorizonDays, setMaximumHorizonDays] = useState(String(initialWorkspace.productionConfiguration.maximumOutageHorizonDays))
   const [minimumLeadHours, setMinimumLeadHours] = useState(String(initialWorkspace.productionConfiguration.minimumOutageLeadMinutes / 60))
   const [configurationReason, setConfigurationReason] = useState('Úprava provozního nastavení administrátorem.')
+  const [activationConfirmation, setActivationConfirmation] = useState<CompleteNotificationEmailActivationConfirmation | null>(null)
 
   const syncProductionSettings = (next: CompleteNotificationEmailManagementWorkspace) => {
     const config = next.productionConfiguration
@@ -1319,17 +1320,41 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
   const acknowledgePause = async () => {
     setPendingKey('acknowledge')
     setError(null)
-    const result = await acknowledgeCompleteNotificationEmailPilotPauseAction(incidentNote)
+    const result = workspace.productionSafety.isPaused
+      ? await acknowledgeCompleteNotificationEmailProductionPauseAction(incidentNote)
+      : await acknowledgeCompleteNotificationEmailPilotPauseAction(incidentNote)
     if (result.success) applyWorkspace(result.workspace)
     else setError(result.error)
     setPendingKey(null)
   }
-  const pauseLivePilot = async () => {
+  const pauseProduction = async () => {
     setPendingKey('pause-live')
     setError(null)
-    const result = await pauseCompleteNotificationEmailLivePilotAction(pauseReason)
+    const result = await pauseCompleteNotificationEmailProductionAction(pauseReason)
     if (result.success) applyWorkspace(result.workspace)
     else setError(result.error)
+    setPendingKey(null)
+  }
+  const prepareProductionActivation = async () => {
+    setPendingKey('prepare-production-activation')
+    setError(null)
+    const result = await prepareCompleteNotificationEmailProductionActivationAction()
+    if (result.success) setActivationConfirmation(result.confirmation)
+    else setError(result.error)
+    setPendingKey(null)
+  }
+  const activateProduction = async () => {
+    if (!activationConfirmation) return
+    setPendingKey('activate-production')
+    setError(null)
+    const result = await activateCompleteNotificationEmailProductionAction(activationConfirmation.confirmationToken)
+    if (result.success) {
+      setActivationConfirmation(null)
+      applyWorkspace(result.workspace)
+    } else {
+      setActivationConfirmation(null)
+      setError(result.error)
+    }
     setPendingKey(null)
   }
   const saveProductionSettings = async () => {
@@ -1382,10 +1407,13 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
   const inactiveItems = workspace.review.items.filter((item) => item.reviewStatus === 'rejected' || item.reviewStatus === 'stale')
   const allowlistFull = workspace.allowlist.activeCompanyCount >= workspace.allowlist.configuredMaximumCompanyCount
   const productionConfig = workspace.productionConfiguration
-  const liveDispatchEnabled = workspace.review.liveDispatchEnabled || workspace.allowlist.liveDispatchEnabled || workspace.rateLimit.liveDispatchEnabled || workspace.safety.dispatchEnabled
-  const operationalProblemCount = workspace.safety.recentSignals.filter((signal) => signal.signalType !== 'delivery_success').length
+  const liveDispatchEnabled = productionConfig.configurationStatus === 'live'
+    && productionConfig.productionActivationEnabled
+    && productionConfig.continuousDispatchEnabled
+    && workspace.operations.dispatchEnabled
+  const operationalProblemCount = workspace.productionSafety.isPaused ? 1 : 0
   const attentionCount = workspace.review.pendingCount + operationalProblemCount
-  const operationalTitle = workspace.safety.isPaused
+  const operationalTitle = workspace.productionSafety.isPaused
     ? 'Odesílání bylo bezpečnostně zastaveno'
     : liveDispatchEnabled
       ? 'Automatické odesílání je aktivní'
@@ -1439,11 +1467,27 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
         <div className="mt-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]">{history?.items.length ? history.items.map((delivery, index) => renderDelivery(delivery, index, true)) : historyLoading ? <div className="flex min-h-28 items-center justify-center"><LoaderCircle aria-label="Načítání historie" size={20} className="animate-spin text-[var(--accent)]" /></div> : <p className="px-3 py-5 text-center text-[9px] text-[var(--text-secondary)]">Pro zvolené filtry nebyl nalezen žádný e-mail.</p>}</div>
         {history?.hasMore ? <button type="button" disabled={historyLoading} onClick={() => void loadHistory({ append: true })} className={`${actionButton} mt-3 w-full border-sky-400/30 bg-sky-500/10 text-[var(--accent)]`}>{historyLoading ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <ChevronDown aria-hidden size={12} />}Načíst dalších 20</button> : null}
       </section> : <>
-      <section className={`rounded-2xl border p-4 ${workspace.safety.isPaused ? 'border-red-400/30 bg-red-400/8' : liveDispatchEnabled ? 'border-emerald-400/30 bg-emerald-400/8' : 'border-sky-400/25 bg-sky-500/8'}`}>
+      <section className={`rounded-2xl border p-4 ${workspace.productionSafety.isPaused ? 'border-red-400/30 bg-red-400/8' : liveDispatchEnabled ? 'border-emerald-400/30 bg-emerald-400/8' : 'border-sky-400/25 bg-sky-500/8'}`}>
         <div className="flex flex-wrap items-start justify-between gap-3"><div><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Celkový provozní stav</small><h3 className="mt-0.5 text-lg font-semibold text-[var(--text-primary)]">{operationalTitle}</h3><p className="mt-1 text-[9px] text-[var(--text-secondary)]">Zdroj firem: <strong className="text-[var(--text-primary)]">{contactSelectorLabel(workspace.operations.selectedSelectorKey)}</strong></p></div><div className="flex items-center gap-2"><CompletePanelStatusBadge label={emailManagementPresentation(workspace).label} badgeClassName={emailManagementPresentation(workspace).badge} dotClassName={emailManagementPresentation(workspace).dot} /><button type="button" onClick={() => void reload()} disabled={loading || pendingKey !== null} className={`${actionButton} border-sky-400/30 bg-[var(--surface-strong)] text-[var(--accent)]`}>{loading ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <RefreshCw aria-hidden size={11} />}Obnovit</button></div></div>
         <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Připraveno" value={workspace.operations.preparedCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Dnes odesláno" value={workspace.operations.sentTodayCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Dnes doručeno" value={workspace.operations.deliveredTodayCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Vyžaduje pozornost" value={attentionCount.toLocaleString('cs-CZ')} /></div>
         <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[8px] text-[var(--text-secondary)]"><span>Poslední odeslání: <strong className="text-[var(--text-primary)]">{formatDate(workspace.operations.lastSentAt)}</strong></span><span>Poslední doručení: <strong className="text-[var(--text-primary)]">{formatDate(workspace.operations.lastDeliveredAt)}</strong></span></p>
       </section>
+
+      {!liveDispatchEnabled && !workspace.productionSafety.isPaused && workspace.liveActivationAvailable ? <section className={`mt-4 rounded-2xl border p-4 ${activationConfirmation ? 'border-amber-400/35 bg-amber-400/8' : 'border-sky-400/30 bg-sky-500/8'}`}>
+        {!activationConfirmation ? <>
+          <small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-sky-700 [html[data-theme=dark]_&]:text-sky-300">Ruční aktivace ostrého provozu</small>
+          <h3 className="mt-1 text-base font-semibold text-[var(--text-primary)]">První potvrzení</h3>
+          <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">První kliknutí znovu provede bezpečnostní SHADOW audit a připraví krátkodobé potvrzení. Samo o sobě žádný e-mail neodešle ani odesílání nezapne.</p>
+          <button type="button" disabled={pendingKey !== null} onClick={() => void prepareProductionActivation()} className={`${actionButton} mt-3 w-full border-sky-400/40 bg-sky-500/12 text-sky-700 [html[data-theme=dark]_&]:text-sky-300`}>{pendingKey === 'prepare-production-activation' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Aktivovat odesílání</button>
+        </> : <>
+          <small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-amber-700 [html[data-theme=dark]_&]:text-amber-300">Druhé a finální potvrzení</small>
+          <h3 className="mt-1 text-base font-semibold text-[var(--text-primary)]">Potvrďte spuštění ostrého provozu</h3>
+          <p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">Následující kliknutí odesílání skutečně zapne. První zpráva může odejít při nejbližším běhu workeru podle nastaveného času, rozestupu a limitů.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Zdroj firem" value={contactSelectorLabel(activationConfirmation.selectorKey)} /><PowerOutageDetailRow label="Připraveno k odeslání" value={activationConfirmation.dispatchablePlanCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Denní / měsíční limit" value={`${activationConfirmation.dailySendLimit} / ${activationConfirmation.monthlySendLimit}`} /><PowerOutageDetailRow label="Minimální rozestup" value={`${Math.ceil(activationConfirmation.minimumIntervalSeconds / 60)} min`} /></div>
+          <p className="mt-2 text-[8px] text-[var(--text-secondary)]">Odesílací okno {activationConfirmation.sendWindowStart}–{activationConfirmation.sendWindowEnd} · potvrzení platí do {formatDate(activationConfirmation.expiresAt)}.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2"><button type="button" disabled={pendingKey !== null} onClick={() => setActivationConfirmation(null)} className={`${actionButton} border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]`}><X aria-hidden size={11} />Zrušit</button><button type="button" disabled={pendingKey !== null} onClick={() => void activateProduction()} className={`${actionButton} border-amber-400/45 bg-amber-500/12 text-amber-800 [html[data-theme=dark]_&]:text-amber-200`}>{pendingKey === 'activate-production' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit a aktivovat</button></div>
+        </>}
+      </section> : null}
 
       <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Tok e-mailových upozornění</h3><div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr]"><PowerOutageDetailRow label="Připraveno" value={workspace.operations.preparedCount.toLocaleString('cs-CZ')} /><span className="hidden self-center text-[var(--text-secondary)] sm:block">→</span><PowerOutageDetailRow label="Odesláno dnes" value={workspace.operations.sentTodayCount.toLocaleString('cs-CZ')} /><span className="hidden self-center text-[var(--text-secondary)] sm:block">→</span><PowerOutageDetailRow label="Doručeno dnes" value={workspace.operations.deliveredTodayCount.toLocaleString('cs-CZ')} /></div></section>
 
@@ -1451,7 +1495,7 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
 
       <section className="mt-4"><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Poslední odeslané e-maily</h3><span className="text-[9px] font-bold text-emerald-600">{workspace.operations.sentTotalCount.toLocaleString('cs-CZ')}</span></div><div className="mt-2 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]">{workspace.operations.recentDeliveries.length ? workspace.operations.recentDeliveries.slice(0, 5).map((delivery, index) => renderDelivery(delivery, index)) : <p className="px-3 py-3 text-[9px] text-[var(--text-secondary)]">Zatím nebyl odeslán žádný e-mail.</p>}</div>{workspace.operations.sentTotalCount > 0 ? <button type="button" onClick={openHistory} className={`${actionButton} mt-2 w-full border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-primary)]`}><History aria-hidden size={12} />Zobrazit celou historii · celkem {workspace.operations.sentTotalCount.toLocaleString('cs-CZ')}</button> : null}</section>
 
-      {workspace.safety.isPaused ? <section className="mt-4 rounded-2xl border border-red-400/30 bg-red-400/8 p-4"><h3 className="text-[10px] font-bold uppercase tracking-[0.08em] text-red-700 [html[data-theme=dark]_&]:text-red-300">Bezpečnostní incident vyžaduje kontrolu</h3><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">{workspace.safety.lastErrorMessage || workspace.safety.pauseReasonCode || 'Pilot byl automaticky pozastaven.'}</p><textarea value={incidentNote} onChange={(event) => setIncidentNote(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || incidentNote.trim().length < 3} onClick={() => void acknowledgePause()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'acknowledge' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit kontrolu incidentu</button><p className="mt-2 text-[8px] text-[var(--text-secondary)]">Potvrzení incidentu samo o sobě odesílání znovu nezapne.</p></section> : null}
+      {workspace.productionSafety.isPaused ? <section className="mt-4 rounded-2xl border border-red-400/30 bg-red-400/8 p-4"><h3 className="text-[10px] font-bold uppercase tracking-[0.08em] text-red-700 [html[data-theme=dark]_&]:text-red-300">Bezpečnostní incident vyžaduje kontrolu</h3><p className="mt-2 text-[9px] leading-4 text-[var(--text-secondary)]">{workspace.productionSafety.lastErrorMessage || workspace.productionSafety.pauseReasonCode || 'Odesílání bylo automaticky pozastaveno.'}</p><textarea value={incidentNote} onChange={(event) => setIncidentNote(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || incidentNote.trim().length < 3} onClick={() => void acknowledgePause()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'acknowledge' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit kontrolu incidentu</button><p className="mt-2 text-[8px] text-[var(--text-secondary)]">Potvrzení incidentu samo o sobě odesílání znovu nezapne.</p></section> : null}
 
       <section className={`mt-4 rounded-2xl border p-4 ${attentionCount ? 'border-amber-400/30 bg-amber-400/8' : 'border-emerald-400/25 bg-emerald-400/8'}`}><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyžaduje pozornost</h3><span className={`text-[9px] font-bold ${attentionCount ? 'text-amber-600' : 'text-emerald-600'}`}>{attentionCount}</span></div>{attentionCount ? <div className="mt-2 space-y-2">{pendingItems.map((item) => renderNotice(item, 'pending'))}{workspace.safety.recentSignals.filter((signal) => signal.signalType !== 'delivery_success').map((signal) => <p key={`${signal.signalType}-${signal.createdAt}`} className="rounded-xl border border-red-400/25 bg-red-400/8 px-3 py-2 text-[9px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{signal.signalType} · {signal.errorCode || 'bez kódu'} · {formatDate(signal.createdAt)}</p>)}</div> : <p className="mt-2 flex items-center gap-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><CircleCheck aria-hidden size={13} />Žádný problém nevyžaduje zásah.</p>}</section>
 
@@ -1472,7 +1516,14 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
         <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Nastavení lze měnit pouze při vypnutém odesílání. Tento krok nezpřístupňuje ostrou aktivaci ani neposílá e-maily. Každá změna se zapisuje do neměnné auditní historie; Resend pro KOMPLETNÍ zůstává oddělený od panelu MARKETY.</p>
       </div></details>
 
-      <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Bezpečnost a pozastavení</summary><div className="border-t border-[var(--surface-border)] p-4"><div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Série chyb" value={`${workspace.safety.consecutiveTransientFailureCount} / ${workspace.safety.transientFailureThreshold}`} /><PowerOutageDetailRow label="Aktivní rezervace" value={workspace.rateLimit.activeReservationCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Webhook" value={workspace.safety.liveSignalIngestionEnabled ? 'AKTIVNÍ' : 'PŘIPRAVEN'} /><PowerOutageDetailRow label="Režim" value={workspace.operations.runtimeMode.toUpperCase()} /></div><p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Complaint, hard bounce nebo chyba konfigurace zastaví odesílání okamžitě. Tři navazující přechodné chyby jej zastaví také.</p>{liveDispatchEnabled ? <div className="mt-4 border-t border-red-400/20 pt-4"><p className="text-[9px] leading-4 text-[var(--text-secondary)]">Nouzové pozastavení vypne pouze rozesílání KOMPLETNÍ. Panel MARKETY zůstane beze změny.</p><textarea value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || pauseReason.trim().length < 3} onClick={() => void pauseLivePilot()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'pause-live' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <X aria-hidden size={11} />}Pozastavit odesílání</button></div> : null}</div></details>
+      <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]">
+        <summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Bezpečnost a pozastavení</summary>
+        <div className="border-t border-[var(--surface-border)] p-4">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Série chyb" value={`${workspace.productionSafety.consecutiveTransientFailureCount} / ${workspace.productionSafety.transientFailureThreshold}`} /><PowerOutageDetailRow label="Aktivní rezervace" value={workspace.rateLimit.activeReservationCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Webhook" value={workspace.productionSafety.liveSignalIngestionEnabled ? 'AKTIVNÍ' : 'PŘIPRAVEN'} /><PowerOutageDetailRow label="Režim" value={workspace.operations.runtimeMode.toUpperCase()} /></div>
+          <p className="mt-3 text-[8px] leading-4 text-[var(--text-secondary)]">Complaint, hard bounce nebo chyba konfigurace zastaví odesílání okamžitě. Tři navazující přechodné chyby jej zastaví také.</p>
+          {liveDispatchEnabled ? <div className="mt-4 border-t border-red-400/20 pt-4"><p className="text-[9px] leading-4 text-[var(--text-secondary)]">Nouzové pozastavení vypne pouze rozesílání KOMPLETNÍ. Panel MARKETY zůstane beze změny.</p><textarea value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} rows={2} className="mt-3 w-full resize-none rounded-xl border border-red-400/25 bg-[var(--surface-strong)] px-3 py-2 text-[9px] text-[var(--text-primary)] outline-none focus:border-red-400" /><button type="button" disabled={pendingKey !== null || pauseReason.trim().length < 3} onClick={() => void pauseProduction()} className={`${actionButton} mt-2 border-red-400/35 bg-red-400/10 text-red-700 [html[data-theme=dark]_&]:text-red-300`}>{pendingKey === 'pause-live' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <X aria-hidden size={11} />}Pozastavit odesílání</button></div> : null}
+        </div>
+      </details>
 
       {approvedItems.length ? <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Historie pilotního výběru · {approvedItems.length}</summary><div className="space-y-2 border-t border-[var(--surface-border)] p-3">{approvedItems.map((item) => renderNotice(item, 'approved'))}</div></details> : null}
 

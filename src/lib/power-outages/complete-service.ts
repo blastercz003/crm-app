@@ -7,6 +7,7 @@ import type {
   CompleteContactManagementSummary,
   CompleteContactManagementWorkspace,
   CompleteNotificationEmailDeliveryHistory,
+  CompleteNotificationEmailActivationConfirmation,
   CompleteNotificationEmailDeliveryItem,
   CompleteNotificationEmailManagementWorkspace,
   CompleteDiscoveredContact,
@@ -189,11 +190,31 @@ function mapNotificationEmailManagementWorkspace(value: unknown): CompleteNotifi
   const safety = objectValue(row.safety)
   const operations = objectValue(row.operations)
   const productionConfiguration = objectValue(row.productionConfiguration)
+  const productionActivation = objectValue(row.productionActivation)
+  const productionSafety = objectValue(row.productionSafety)
   const runtimeMode = String(operations.runtimeMode ?? 'shadow')
   return {
     contract: String(row.contract ?? ''),
     adminOnly: row.adminOnly === true,
     liveActivationAvailable: row.liveActivationAvailable === true,
+    productionActivation: {
+      confirmationPending: productionActivation.confirmationPending === true,
+      confirmationExpiresAt: typeof productionActivation.confirmationExpiresAt === 'string' ? productionActivation.confirmationExpiresAt : null,
+      doubleConfirmationRequired: productionActivation.doubleConfirmationRequired === true,
+      typedPhraseRequired: productionActivation.typedPhraseRequired === true,
+    },
+    productionSafety: {
+      monitoringEnabled: productionSafety.monitoringEnabled === true,
+      liveSignalIngestionEnabled: productionSafety.liveSignalIngestionEnabled === true,
+      autoPauseEnabled: productionSafety.autoPauseEnabled === true,
+      transientFailureThreshold: Number(productionSafety.transientFailureThreshold) || 3,
+      consecutiveTransientFailureCount: Number(productionSafety.consecutiveTransientFailureCount) || 0,
+      isPaused: productionSafety.isPaused === true,
+      pauseReasonCode: typeof productionSafety.pauseReasonCode === 'string' ? productionSafety.pauseReasonCode : null,
+      lastSignalAt: typeof productionSafety.lastSignalAt === 'string' ? productionSafety.lastSignalAt : null,
+      lastErrorCode: typeof productionSafety.lastErrorCode === 'string' ? productionSafety.lastErrorCode : null,
+      lastErrorMessage: typeof productionSafety.lastErrorMessage === 'string' ? productionSafety.lastErrorMessage : null,
+    },
     productionConfiguration: {
       configurationStatus: (['draft', 'ready', 'paused', 'live'].includes(String(productionConfiguration.configurationStatus))
         ? productionConfiguration.configurationStatus
@@ -1466,7 +1487,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       ? supabase.rpc('get_complete_power_outage_contact_management_summary_v3')
       : Promise.resolve({ data: null, error: null }),
     profile.role === 'admin'
-      ? supabase.rpc('get_cpo_notification_email_management_v2', { requested_limit: 100 })
+      ? supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 })
       : Promise.resolve({ data: null, error: null }),
   ])
 
@@ -1664,9 +1685,67 @@ export async function setCompletePowerOutageContactRuntime(
 
 export async function getCompleteNotificationEmailManagementWorkspace(): Promise<CompleteNotificationEmailManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const { data, error } = await supabase.rpc('get_cpo_notification_email_management_v2', { requested_limit: 100 })
+  const { data, error } = await supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 })
   if (error) throw new Error(`Správu e-mailových upozornění se nepodařilo načíst: ${error.message}`)
   return mapNotificationEmailManagementWorkspace(data)
+}
+
+export async function prepareCompleteNotificationEmailProductionActivation(): Promise<CompleteNotificationEmailActivationConfirmation> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { data, error } = await supabase.rpc('prepare_cpo_notification_email_production_activation_v1')
+  if (error) throw new Error(`Aktivaci se nepodařilo připravit: ${error.message}`)
+  const row = objectValue(data)
+  if (row.status !== 'confirmation_required' || typeof row.confirmationToken !== 'string') {
+    throw new Error('Databáze nevrátila platné druhé potvrzení aktivace.')
+  }
+  return {
+    confirmationToken: row.confirmationToken,
+    expiresAt: String(row.expiresAt ?? ''),
+    selectorKey: String(row.selectorKey ?? ''),
+    dispatchablePlanCount: Number(row.dispatchablePlanCount) || 0,
+    configurationVersion: Number(row.configurationVersion) || 0,
+    dailySendLimit: Number(row.dailySendLimit) || 0,
+    monthlySendLimit: Number(row.monthlySendLimit) || 0,
+    minimumIntervalSeconds: Number(row.minimumIntervalSeconds) || 0,
+    sendWindowStart: String(row.sendWindowStart ?? ''),
+    sendWindowEnd: String(row.sendWindowEnd ?? ''),
+    sendWeekdays: Array.isArray(row.sendWeekdays) ? row.sendWeekdays.map(Number) : [],
+  }
+}
+
+export async function activateCompleteNotificationEmailProduction(
+  confirmationToken: string,
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { data, error } = await supabase.rpc('activate_cpo_notification_email_production_v1', {
+    requested_confirmation_token: confirmationToken,
+  })
+  if (error) throw new Error(`Ostré odesílání se nepodařilo aktivovat: ${error.message}`)
+  const row = objectValue(data)
+  if (row.activated !== true) throw new Error('Připravená data se změnila. Proveďte obě potvrzení znovu.')
+  return getCompleteNotificationEmailManagementWorkspace()
+}
+
+export async function pauseCompleteNotificationEmailProduction(
+  reason: string,
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('pause_cpo_notification_email_production_v1', {
+    requested_reason: reason,
+  })
+  if (error) throw new Error(`Ostré odesílání se nepodařilo pozastavit: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
+}
+
+export async function acknowledgeCompleteNotificationEmailProductionPause(
+  note: string,
+): Promise<CompleteNotificationEmailManagementWorkspace> {
+  const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const { error } = await supabase.rpc('acknowledge_cpo_notification_email_production_pause_v1', {
+    requested_note: note,
+  })
+  if (error) throw new Error(`Produkční incident se nepodařilo potvrdit: ${error.message}`)
+  return getCompleteNotificationEmailManagementWorkspace()
 }
 
 export async function setCompleteNotificationEmailProductionConfig(input: {
@@ -1705,7 +1784,7 @@ export async function getCompleteNotificationEmailDeliveryHistory(input: {
 }): Promise<CompleteNotificationEmailDeliveryHistory> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
   const pageSize = 20
-  const { data, error } = await supabase.rpc('get_cpo_notification_email_delivery_history_v1', {
+  const { data, error } = await supabase.rpc('get_cpo_notification_email_delivery_history_v2', {
     requested_limit: pageSize,
     requested_offset: input.offset,
     requested_status: input.status,

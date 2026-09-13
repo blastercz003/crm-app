@@ -14,11 +14,12 @@ import { getResendConfigurationStatus } from '@/lib/power-outages/client-email-r
 import { dispatchMarketClientEmails } from '@/lib/power-outages/client-email-worker'
 import { getServiceRoleClient } from '@/lib/supabase/service'
 import { getCompleteNotificationResendConfiguration } from '@/lib/power-outages/complete-notification-email-resend-config'
-import { acknowledgeCompleteNotificationEmailPilotPause, activateCompleteNotificationEmailLivePilot, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist, setCompleteNotificationEmailProductionConfig, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
+import { acknowledgeCompleteNotificationEmailPilotPause, acknowledgeCompleteNotificationEmailProductionPause, activateCompleteNotificationEmailLivePilot, activateCompleteNotificationEmailProduction, decideCompleteNotificationEmailPilotReview, decideCompletePowerOutageContactReview, decideCompletePowerOutageDomainReview, getCompleteNotificationEmailDeliveryHistory, getCompleteNotificationEmailManagementWorkspace, getCompletePowerOutageAddressCoverageDiagnostic, getCompletePowerOutageCommercialSelectionCounts, getCompletePowerOutageCommunicationNotes, getCompletePowerOutageContactManagementWorkspace, getCompletePowerOutageCount, getCompletePowerOutageDetail, getCompletePowerOutageOwners, getCompletePowerOutagePage, getCompletePowerOutageProviderDiagnostic, getCompletePowerOutageSidebarWorkspace, getCompletePowerOutageSourceDiagnostic, getCompletePowerOutageStatistics, pauseCompleteNotificationEmailLivePilot, pauseCompleteNotificationEmailProduction, prepareCompleteNotificationEmailProductionActivation, prepareCompletePowerOutageContactSelector, setCompleteNotificationEmailPilotAllowlist, setCompleteNotificationEmailProductionConfig, setCompletePowerOutageContactRuntime } from '@/lib/power-outages/complete-service'
 import type {
   CompleteCommunicationStatus,
   CompleteContactManagementWorkspace,
   CompleteNotificationEmailDeliveryHistory,
+  CompleteNotificationEmailActivationConfirmation,
   CompleteNotificationEmailManagementWorkspace,
   CompleteCommercialSelectionCounts,
   CompleteAddressCoverageDiagnostic,
@@ -79,6 +80,10 @@ type CompleteContactManagementActionResult =
 type CompleteNotificationEmailManagementActionResult =
   | { success: true; workspace: CompleteNotificationEmailManagementWorkspace; error: null }
   | { success: false; workspace: null; error: string }
+
+type CompleteNotificationEmailActivationPreparationActionResult =
+  | { success: true; confirmation: CompleteNotificationEmailActivationConfirmation; error: null }
+  | { success: false; confirmation: null; error: string }
 
 type CompleteNotificationEmailDeliveryHistoryActionResult =
   | { success: true; history: CompleteNotificationEmailDeliveryHistory; error: null }
@@ -339,6 +344,57 @@ export async function setCompleteNotificationEmailProductionConfigAction(input: 
       }),
       error: null,
     }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function prepareCompleteNotificationEmailProductionActivationAction(): Promise<CompleteNotificationEmailActivationPreparationActionResult> {
+  try {
+    const configuration = getCompleteNotificationResendConfiguration()
+    if (!configuration.liveReady) throw new Error(`Resend LIVE není připraven: ${configuration.issues.join(' ')}`)
+    return {
+      success: true,
+      confirmation: await prepareCompleteNotificationEmailProductionActivation(),
+      error: null,
+    }
+  } catch (error) {
+    return { success: false, confirmation: null, error: errorMessage(error) }
+  }
+}
+
+export async function activateCompleteNotificationEmailProductionAction(
+  confirmationToken: string,
+): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    if (!validUuid(confirmationToken)) throw new Error('Druhé potvrzení aktivace není platné.')
+    const configuration = getCompleteNotificationResendConfiguration()
+    if (!configuration.liveReady) throw new Error(`Resend LIVE není připraven: ${configuration.issues.join(' ')}`)
+    return { success: true, workspace: await activateCompleteNotificationEmailProduction(confirmationToken), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function pauseCompleteNotificationEmailProductionAction(
+  reason: string,
+): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    const normalizedReason = reason.trim()
+    if (normalizedReason.length < 3 || normalizedReason.length > 500) throw new Error('Důvod musí mít 3 až 500 znaků.')
+    return { success: true, workspace: await pauseCompleteNotificationEmailProduction(normalizedReason), error: null }
+  } catch (error) {
+    return { success: false, workspace: null, error: errorMessage(error) }
+  }
+}
+
+export async function acknowledgeCompleteNotificationEmailProductionPauseAction(
+  note: string,
+): Promise<CompleteNotificationEmailManagementActionResult> {
+  try {
+    const normalizedNote = note.trim()
+    if (normalizedNote.length < 3 || normalizedNote.length > 500) throw new Error('Poznámka musí mít 3 až 500 znaků.')
+    return { success: true, workspace: await acknowledgeCompleteNotificationEmailProductionPause(normalizedNote), error: null }
   } catch (error) {
     return { success: false, workspace: null, error: errorMessage(error) }
   }
