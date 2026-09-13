@@ -1359,6 +1359,7 @@ export async function getCompletePowerOutageCommercialSelectionCounts(
   return {
     all: Number(payload.all) || 0,
     top: Number(payload.top) || 0,
+    largeCompanies: Number(payload.largeCompanies) || 0,
     gradeA: Number(payload.gradeA) || 0,
     gradeB: Number(payload.gradeB) || 0,
   }

@@ -4,11 +4,12 @@ export type CompleteCandidateStatus = 'new' | 'confirmed' | 'needs_review' | 'di
 export type CompleteEntityKind = 'registered_office' | 'establishment' | 'mixed'
 export type CompleteEvidenceProvider = 'ares' | 'res' | 'mapy' | 'google'
 export type CompleteCommunicationStatus = 'not_contacted' | 'contacted' | 'follow_up' | 'closed'
-export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'grade_a' | 'grade_b'
+export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'large_companies' | 'grade_a' | 'grade_b'
 export type CompleteCommercialSort = 'date' | 'score'
 export type CompleteCommercialSelectionCounts = {
   all: number
   top: number
+  largeCompanies: number
   gradeA: number
   gradeB: number
 }

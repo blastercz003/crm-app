@@ -190,7 +190,7 @@ function addressCoveragePercent(coverage: Pick<CompleteAddressCoverage, 'searcha
 }
 
 function PanelShell({ children }: { children: React.ReactNode }) {
-  return <section className="activities-page__panel flex h-[440px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto lg:min-h-[210px] lg:p-4">{children}</section>
+  return <section className="activities-page__panel flex h-[528px] min-w-0 flex-col rounded-[24px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_36px_rgba(15,23,42,0.1)] sm:p-5 lg:h-auto lg:min-h-[210px] lg:p-4">{children}</section>
 }
 
 function PanelLoadError({ message, onRetry }: { message: string; onRetry?: () => void }) {
@@ -1133,7 +1133,7 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
           <div><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Brave fallback</small><SlidingTwoTabSwitch value={summary.braveFallbackEnabled ? 'enabled' : 'disabled'} options={[{ value: 'disabled', label: 'Vypnutý' }, { value: 'enabled', label: 'Povolený' }]} onValueChange={(value) => void setRuntime(summary.runtimeEnabled, value === 'enabled')} ariaLabel="Placený Brave fallback" className={`mt-2 rounded-xl bg-[var(--surface-strong)] p-1 ${!summary.runtimeEnabled ? 'pointer-events-none opacity-45' : ''}`} compact /></div>
         </div>
 
-        <div className="mt-4"><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Zdrojový výběr AI SELECT</small><div className="mt-2 flex flex-col gap-2 sm:flex-row"><div className="relative min-w-0 flex-1 overflow-hidden rounded-xl"><select value={selectorKey} disabled={summary.runtimeEnabled || selectorLocked || pendingKey !== null} onChange={(event) => { setSelectorKey(event.target.value); setConfirmSelector(false) }} className="block h-10 w-full appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 pr-9 text-[10px] font-semibold text-[var(--text-primary)] outline-none [-webkit-appearance:none] focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50">{workspace.selectors.map((selector) => <option key={selector.key} value={selector.key}>{selector.name} · {selector.companyCount.toLocaleString('cs-CZ')} firem</option>)}</select><ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /></div><button type="button" disabled={selectorKey === summary.selectedSelectorKey || pendingKey !== null || summary.runtimeEnabled || selectorLocked} onClick={() => setConfirmSelector(true)} className={`${actionButton} border-sky-400/30 bg-sky-500/10 text-[var(--accent)] sm:h-10`}>Připravit výběr</button></div>{selectorLocked ? <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/8 px-2.5 py-2 text-[8px] leading-4 text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{summary.selectorLockReason ?? 'Zdrojový výběr je uzamčen během aktivního odesílání. Nejprve pozastavte Upozornění firmám.'}</p> : <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Výběr lze bezpečně změnit jen při pozastaveném dohledávání. Příprava {selectedOption?.companyCount.toLocaleString('cs-CZ') ?? 0} IČO sama nespustí Brave.</p>}</div>
+        <div className="mt-4"><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Zdrojový výběr AI SELECT</small><div className="mt-2 flex flex-col gap-2 sm:flex-row"><div className="relative min-w-0 flex-1 overflow-hidden rounded-xl"><select value={selectorKey} disabled={summary.runtimeEnabled || selectorLocked || pendingKey !== null} onChange={(event) => { setSelectorKey(event.target.value); setConfirmSelector(false) }} className="block h-10 w-full appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 pr-9 text-[10px] font-semibold text-[var(--text-primary)] outline-none [-webkit-appearance:none] focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50">{[...workspace.selectors].sort((left, right) => contactSelectorOrder(left.key) - contactSelectorOrder(right.key)).map((selector) => <option key={selector.key} value={selector.key}>{selector.name} · {selector.companyCount.toLocaleString('cs-CZ')} firem</option>)}</select><ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /></div><button type="button" disabled={selectorKey === summary.selectedSelectorKey || pendingKey !== null || summary.runtimeEnabled || selectorLocked} onClick={() => setConfirmSelector(true)} className={`${actionButton} border-sky-400/30 bg-sky-500/10 text-[var(--accent)] sm:h-10`}>Připravit výběr</button></div>{selectorLocked ? <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/8 px-2.5 py-2 text-[8px] leading-4 text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{summary.selectorLockReason ?? 'Zdrojový výběr je uzamčen během aktivního odesílání. Nejprve pozastavte Upozornění firmám.'}</p> : <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Výběr lze bezpečně změnit jen při pozastaveném dohledávání. Příprava {selectedOption?.companyCount.toLocaleString('cs-CZ') ?? 0} IČO sama nespustí Brave.</p>}</div>
         {confirmSelector ? <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/8 p-3"><p className="text-[9px] leading-4 text-[var(--text-primary)]">Potvrďte přípravu výběru <strong>{selectedOption?.name}</strong>. Existující výsledky zůstanou zachované.</p><div className="mt-2 flex gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void prepareSelector()} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === 'selector' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit přípravu</button><button type="button" disabled={pendingKey !== null} onClick={() => setConfirmSelector(false)} className={`${actionButton} border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]`}>Zrušit</button></div></div> : null}
       </section>
 
@@ -1219,10 +1219,20 @@ function emailManagementPresentation(workspace: CompleteNotificationEmailManagem
 
 function contactSelectorLabel(value: string) {
   if (value === 'top_v1') return 'TOP VÝBĚR'
+  if (value === 'large_companies_v1') return 'VELKÉ FIRMY'
   if (value === 'grade_a') return 'POUZE A'
   if (value === 'grade_b') return 'POUZE B'
   if (value === 'all_confirmed') return 'VŠECHNY POTVRZENÉ'
   return value.toUpperCase()
+}
+
+function contactSelectorOrder(value: string) {
+  if (value === 'top_v1') return 1
+  if (value === 'large_companies_v1') return 2
+  if (value === 'grade_a') return 3
+  if (value === 'grade_b') return 4
+  if (value === 'all_confirmed') return 5
+  return 99
 }
 
 function deliveryPresentation(status: CompleteNotificationEmailManagementWorkspace['operations']['recentDeliveries'][number]['deliveryStatus']) {
@@ -1551,6 +1561,7 @@ function EmailManagementPanel({ workspace, onRetry }: { workspace: CompletePower
 
 const COMMERCIAL_SELECTION_OPTIONS: Array<{ value: CompleteCommercialSelectionFilter; label: string; description: string }> = [
   { value: 'top', label: 'TOP VÝBĚR', description: '' },
+  { value: 'large_companies', label: 'VELKÉ FIRMY', description: 'Aktivní podniky od 50 zaměstnanců' },
   { value: 'grade_a', label: 'POUZE A', description: 'Nejvyšší bodové hodnocení' },
   { value: 'grade_b', label: 'POUZE B', description: 'Střední bodové hodnocení' },
   { value: 'all', label: 'VŠECHNY', description: 'Beze změny dnešního výpisu' },
@@ -1572,7 +1583,7 @@ function CommercialSelectionPanel({ workspace, value, sort, clientsOnly, counts,
   return <PanelShell>
     <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 [html[data-theme=dark]_&]:text-violet-300"><Sparkles aria-hidden size={18} /></span><span className="min-w-0"><small className="block whitespace-nowrap text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Obchodní výběr</small><h3 className="whitespace-nowrap text-base font-semibold text-[var(--text-primary)]">AI SELECT<sup className="relative top-px ml-0.5 align-super text-[9px] font-bold leading-none">™</sup></h3></span></div><CommercialSelectionStatusBadge progress={workspace.commercialSelection.progress} /></div>
     <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Obchodní výběr firem">{COMMERCIAL_SELECTION_OPTIONS.map((option) => {
-      const count = option.value === 'all' ? counts?.all : option.value === 'top' ? counts?.top : option.value === 'grade_a' ? counts?.gradeA : counts?.gradeB
+      const count = option.value === 'all' ? counts?.all : option.value === 'top' ? counts?.top : option.value === 'large_companies' ? counts?.largeCompanies : option.value === 'grade_a' ? counts?.gradeA : counts?.gradeB
       const description = option.value === 'top' ? workspace.commercialSelection.versionLabel : option.description
       return <button key={option.value} type="button" onClick={() => onChange(option.value)} aria-pressed={value === option.value} title={description} className={`flex h-[58px] flex-col items-center justify-center rounded-xl border px-2 text-center transition hover:-translate-y-px ${value === option.value ? 'border-violet-400/45 bg-violet-500/12 text-violet-700 shadow-sm [html[data-theme=dark]_&]:text-violet-200' : 'border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:border-violet-400/30 hover:text-[var(--text-primary)]'}`}><strong className="text-[8px] font-extrabold uppercase tracking-[0.055em]">{option.label}</strong><small className="mt-0.5 line-clamp-1 text-[6px] font-medium normal-case tracking-normal opacity-80">{description}</small>{workspace.commercialSelection.countsAndSortingEnabled ? <small className="mt-0.5 text-[7px] font-extrabold tabular-nums text-[var(--text-primary)]">{count == null ? 'Načítám…' : `${count.toLocaleString('cs-CZ')} záznamů`}</small> : null}</button>
     })}</div>
