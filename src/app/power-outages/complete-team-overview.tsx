@@ -38,18 +38,71 @@ const selectorOptions: Array<{ value: CompleteTeamOverviewSelectorKey; label: st
   { value: 'grade_b', label: 'POUZE B' },
 ]
 
-function localDateInput(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
+type OverviewPeriodView = 'week' | 'month' | 'year'
+
+const periodViewOptions: Array<{ value: OverviewPeriodView; label: string }> = [
+  { value: 'week', label: 'TÝDEN' },
+  { value: 'month', label: 'MĚSÍC' },
+  { value: 'year', label: 'ROK' },
+]
+
+function calendarDateValue(date: Date) {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
-function initialDateRange() {
-  const to = new Date()
-  const from = new Date(to)
-  from.setDate(from.getDate() - 29)
-  return { from: localDateInput(from), to: localDateInput(to) }
+function getPragueToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+}
+
+function parseCalendarDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day))
+}
+
+function calendarPeriod(view: OverviewPeriodView, anchorValue: string) {
+  const anchor = parseCalendarDate(anchorValue)
+  if (view === 'year') {
+    return {
+      from: calendarDateValue(new Date(Date.UTC(anchor.getUTCFullYear(), 0, 1))),
+      to: calendarDateValue(new Date(Date.UTC(anchor.getUTCFullYear(), 11, 31))),
+    }
+  }
+  if (view === 'month') {
+    return {
+      from: calendarDateValue(new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), 1))),
+      to: calendarDateValue(new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + 1, 0))),
+    }
+  }
+  const weekday = anchor.getUTCDay() || 7
+  const from = new Date(anchor)
+  from.setUTCDate(anchor.getUTCDate() - weekday + 1)
+  const to = new Date(from)
+  to.setUTCDate(from.getUTCDate() + 6)
+  return { from: calendarDateValue(from), to: calendarDateValue(to) }
+}
+
+function shiftedPeriodAnchor(view: OverviewPeriodView, anchorValue: string, direction: -1 | 1) {
+  const current = calendarPeriod(view, anchorValue)
+  const anchor = parseCalendarDate(current.from)
+  if (view === 'week') anchor.setUTCDate(anchor.getUTCDate() + direction * 7)
+  else if (view === 'month') anchor.setUTCMonth(anchor.getUTCMonth() + direction)
+  else anchor.setUTCFullYear(anchor.getUTCFullYear() + direction)
+  return calendarDateValue(anchor)
+}
+
+function formatCalendarPeriod(view: OverviewPeriodView, range: { from: string; to: string }) {
+  const from = parseCalendarDate(range.from)
+  const to = parseCalendarDate(range.to)
+  if (view === 'year') return new Intl.DateTimeFormat('cs-CZ', { year: 'numeric', timeZone: 'UTC' }).format(from)
+  if (view === 'month') return new Intl.DateTimeFormat('cs-CZ', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(from)
+  const fromLabel = new Intl.DateTimeFormat('cs-CZ', { day: 'numeric', month: 'numeric', timeZone: 'UTC' }).format(from)
+  const toLabel = new Intl.DateTimeFormat('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(to)
+  return `${fromLabel} – ${toLabel}`
 }
 
 function toIsoRange(from: string, to: string) {
@@ -109,9 +162,9 @@ function OverviewSkeleton() {
 }
 
 function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: CompletePowerOutageCurrentUser; onClose: () => void }) {
-  const initial = useMemo(() => initialDateRange(), [])
-  const [dateFrom, setDateFrom] = useState(initial.from)
-  const [dateTo, setDateTo] = useState(initial.to)
+  const [periodView, setPeriodView] = useState<OverviewPeriodView>('month')
+  const [periodAnchor, setPeriodAnchor] = useState(getPragueToday)
+  const dateRange = useMemo(() => calendarPeriod(periodView, periodAnchor), [periodAnchor, periodView])
   const [periodBasis, setPeriodBasis] = useState<CompleteTeamOverviewPeriodBasis>('activity')
   const [ownerId, setOwnerId] = useState('all')
   const [selectorKey, setSelectorKey] = useState<CompleteTeamOverviewSelectorKey>('all_confirmed')
@@ -129,7 +182,7 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const range = toIsoRange(dateFrom, dateTo)
+    const range = toIsoRange(dateRange.from, dateRange.to)
     const result = await getCompletePowerOutageTeamOverviewAction({
       ...range,
       periodBasis,
@@ -140,15 +193,15 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
     if (result.success) setOverview(result.overview)
     else setError(result.error)
     setLoading(false)
-  }, [dateFrom, dateTo, ownerId, periodBasis, selectorKey, source])
+  }, [dateRange.from, dateRange.to, ownerId, periodBasis, selectorKey, source])
 
   const currentFilters = useMemo<CompleteTeamOverviewFilters>(() => ({
-    ...toIsoRange(dateFrom, dateTo),
+    ...toIsoRange(dateRange.from, dateRange.to),
     periodBasis,
     ownerId: ownerId === 'all' ? null : ownerId,
     selectorKey,
     source,
-  }), [dateFrom, dateTo, ownerId, periodBasis, selectorKey, source])
+  }), [dateRange.from, dateRange.to, ownerId, periodBasis, selectorKey, source])
 
   const loadRecords = useCallback(async () => {
     setRecordsLoading(true)
@@ -184,7 +237,11 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
     { label: 'NABÍDKA ODESLÁNA', value: overview.funnel.offerSent, color: 'bg-violet-500' },
     { label: 'ZAKÁZKA VZNIKLA', value: overview.funnel.jobWon, color: 'bg-emerald-500' },
   ] : []
-  const funnelMaximum = Math.max(1, ...funnel.map((item) => item.value))
+  const otherResults = overview ? [
+    { label: 'NEZASTIŽENO', value: overview.funnel.unreachable, color: 'bg-amber-500' },
+    { label: 'BEZ ZAKÁZKY', value: overview.funnel.closedNoJob, color: 'bg-slate-500' },
+  ] : []
+  const funnelMaximum = Math.max(1, ...funnel.map((item) => item.value), ...otherResults.map((item) => item.value))
   const openCandidate = (candidateId: string, mode: 'detail' | 'assignment') => {
     onClose()
     window.setTimeout(() => window.dispatchEvent(new CustomEvent('complete-power-outage:open-candidate', {
@@ -192,7 +249,7 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
     })), 180)
   }
   const sections: Array<{ value: CompleteTeamOverviewSection; label: string; count: number | null }> = [
-    { value: 'attention', label: 'VYŽADUJE POZORNOST', count: overview?.summary.overdueFollowUpCount ?? null },
+    { value: 'attention', label: 'VYŽADUJE POZORNOST', count: section === 'attention' && recordPage ? recordPage.totalCount : null },
     { value: 'active', label: 'ROZPRACOVANÉ', count: overview?.summary.activeAssignmentCount ?? null },
     { value: 'reminders', label: 'PŘIPOMÍNKY', count: overview?.summary.plannedFollowUpCount ?? null },
     { value: 'outcomes', label: 'VZNIKLÉ ZAKÁZKY', count: overview?.summary.jobWonCount ?? null },
@@ -202,14 +259,23 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
       <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Rozsah přehledu</small><strong className="mt-1 block text-[12px] text-[var(--text-primary)]">Výsledky, práce a návazné kroky týmu</strong></span><button type="button" disabled={loading} onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sky-400/30 bg-sky-500/10 px-2.5 text-[8px] font-bold uppercase text-sky-700 transition hover:-translate-y-px disabled:opacity-50 [html[data-theme=dark]_&]:text-sky-300"><RefreshCw aria-hidden size={11} className={loading ? 'animate-spin' : ''} />Obnovit</button></div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Od<input type="date" value={dateFrom} max={dateTo} onChange={(event) => { setDateFrom(event.target.value); setRecordOffset(0) }} className={`${inputClass} mt-1.5`} /></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Do<input type="date" value={dateTo} min={dateFrom} onChange={(event) => { setDateTo(event.target.value); setRecordOffset(0) }} className={`${inputClass} mt-1.5`} /></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Uživatel<span className="relative mt-1.5 block"><select value={ownerId} onChange={(event) => { setOwnerId(event.target.value); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">CELÝ TÝM</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">AI SELECT<span className="relative mt-1.5 block"><select value={selectorKey} onChange={(event) => { setSelectorKey(event.target.value as CompleteTeamOverviewSelectorKey); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}>{selectorOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
-          <label className="text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]">Distributor<span className="relative mt-1.5 block"><select value={source} onChange={(event) => { setSource(event.target.value as CompleteTeamOverviewFilters['source']); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">VŠICHNI</option><option value="cez">ČEZ</option><option value="egd">EG.D</option><option value="pre">PRE</option></select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
+        <div className="mt-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1.5 sm:p-2">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div className="grid grid-cols-3 rounded-lg bg-[var(--surface-muted)] p-1 lg:w-[300px]">{periodViewOptions.map((option) => <button key={option.value} type="button" aria-pressed={periodView === option.value} onClick={() => { setPeriodView(option.value); setRecordOffset(0) }} className={`h-8 rounded-md px-2 text-[8px] font-bold uppercase tracking-[0.06em] transition ${periodView === option.value ? 'bg-sky-500 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{option.label}</button>)}</div>
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              <button type="button" onClick={() => { setPeriodAnchor((current) => shiftedPeriodAnchor(periodView, current, -1)); setRecordOffset(0) }} aria-label="Předchozí období" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:-translate-y-px hover:text-[var(--text-primary)]"><ChevronLeft aria-hidden size={13} /></button>
+              <strong className="min-w-0 flex-1 text-center text-[10px] font-semibold capitalize text-[var(--text-primary)] sm:min-w-[180px] sm:flex-none">{formatCalendarPeriod(periodView, dateRange)}</strong>
+              <button type="button" onClick={() => { setPeriodAnchor((current) => shiftedPeriodAnchor(periodView, current, 1)); setRecordOffset(0) }} aria-label="Následující období" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:-translate-y-px hover:text-[var(--text-primary)]"><ChevronRight aria-hidden size={13} /></button>
+              <button type="button" onClick={() => { setPeriodAnchor(getPragueToday()); setRecordOffset(0) }} className="h-8 shrink-0 rounded-lg border border-sky-400/30 bg-sky-500/10 px-2.5 text-[8px] font-bold uppercase text-sky-700 transition hover:-translate-y-px [html[data-theme=dark]_&]:text-sky-300">Dnes</button>
+            </div>
+          </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1 sm:w-[360px]">{([{ value: 'activity', label: 'PODLE AKTIVITY' }, { value: 'outage', label: 'PODLE ODSTÁVKY' }] as const).map((option) => <button key={option.value} type="button" onClick={() => { setPeriodBasis(option.value); setRecordOffset(0) }} className={`h-8 rounded-lg text-[8px] font-bold uppercase transition ${periodBasis === option.value ? 'bg-sky-500 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{option.label}</button>)}</div>
+        <div className="mt-3 grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]"><span className="h-2.5 leading-none">Uživatel</span><span className="relative mt-1.5 block"><select value={ownerId} onChange={(event) => { setOwnerId(event.target.value); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">CELÝ TÝM</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
+          <label className="flex flex-col text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]"><span className="h-2.5 leading-none">AI SELECT</span><span className="relative mt-1.5 block"><select value={selectorKey} onChange={(event) => { setSelectorKey(event.target.value as CompleteTeamOverviewSelectorKey); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}>{selectorOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
+          <label className="flex flex-col text-[8px] font-bold uppercase tracking-[0.07em] text-[var(--text-secondary)]"><span className="h-2.5 leading-none">Distributor</span><span className="relative mt-1.5 block"><select value={source} onChange={(event) => { setSource(event.target.value as CompleteTeamOverviewFilters['source']); setRecordOffset(0) }} className={`${inputClass} appearance-none pr-8 [-webkit-appearance:none]`}><option value="all">VŠICHNI</option><option value="cez">ČEZ</option><option value="egd">EG.D</option><option value="pre">PRE</option></select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" /></span></label>
+          <div className="flex flex-col"><span className="h-2.5 text-[8px] font-bold uppercase leading-none tracking-[0.07em] text-[var(--text-secondary)]">Časový základ</span><div className="mt-1.5 grid h-10 grid-cols-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1">{([{ value: 'activity', label: 'AKTIVITY TÝMU' }, { value: 'outage', label: 'TERMÍN ODSTÁVKY' }] as const).map((option) => <button key={option.value} type="button" onClick={() => { setPeriodBasis(option.value); setRecordOffset(0) }} className={`rounded-lg px-1 text-[7px] font-bold uppercase transition ${periodBasis === option.value ? 'bg-sky-500 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{option.label}</button>)}</div></div>
+        </div>
       </section>
 
       {error ? <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-400/10 p-4"><p className="flex items-center gap-2 text-[10px] text-red-700 [html[data-theme=dark]_&]:text-red-300"><CircleAlert aria-hidden size={15} />{error}</p><button type="button" onClick={() => void load()} className="mt-3 text-[8px] font-bold uppercase text-red-700 underline [html[data-theme=dark]_&]:text-red-300">Zkusit znovu</button></div> : loading || !overview ? <div className="mt-4"><OverviewSkeleton /></div> : <>
@@ -223,13 +289,18 @@ function CompleteTeamOverviewPopup({ currentUser, onClose }: { currentUser: Comp
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
           <section className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]">
             <div className="flex items-center justify-between gap-3 border-b border-[var(--surface-border)] px-4 py-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Výsledky podle uživatele</small><strong className="mt-0.5 block text-[11px] text-[var(--text-primary)]">Aktuální práce a výsledky za období</strong></span><UsersRound aria-hidden size={16} className="text-[var(--accent)]" /></div>
-            <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left"><thead><tr className="text-[7px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]"><th className="px-4 py-2.5">Uživatel</th><th className="px-2 py-2.5 text-right">Rozprac.</th><th className="px-2 py-2.5 text-right">Osloveno</th><th className="px-2 py-2.5 text-right">Zájem</th><th className="px-2 py-2.5 text-right">Nabídky</th><th className="px-2 py-2.5 text-right">Zakázky</th><th className="px-4 py-2.5 text-right">Konverze</th></tr></thead><tbody>{overview.users.length ? overview.users.map((user) => <tr key={user.userId} className="border-t border-[var(--surface-border)] text-[10px] text-[var(--text-primary)]"><td className="px-4 py-3"><strong className="block">{user.userName}</strong><small className="mt-0.5 block text-[7px] text-[var(--text-secondary)]">{formatTimestamp(user.lastActivityAt)}{user.overdueCount ? ` · ${user.overdueCount} po termínu` : ''}</small></td><td className="px-2 py-3 text-right tabular-nums">{user.activeCount}</td><td className="px-2 py-3 text-right tabular-nums">{user.contactedCount}</td><td className="px-2 py-3 text-right tabular-nums">{user.interestedCount}</td><td className="px-2 py-3 text-right tabular-nums">{user.offerSentCount}</td><td className="px-2 py-3 text-right font-bold tabular-nums text-emerald-600">{user.jobWonCount}</td><td className="px-4 py-3 text-right font-bold tabular-nums">{user.conversionPercent.toLocaleString('cs-CZ')} %</td></tr>) : <tr><td colSpan={7} className="px-4 py-8 text-center text-[9px] text-[var(--text-secondary)]">Ve zvoleném období zatím není evidována aktivita týmu.</td></tr>}</tbody></table></div>
+            <div className="hidden overflow-hidden sm:block"><table className="w-full table-fixed text-left"><colgroup><col className="w-[27%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col className="w-[15%]" /></colgroup><thead><tr className="text-[6.5px] font-bold uppercase tracking-[0.035em] text-[var(--text-secondary)]"><th className="px-3 py-2.5">Uživatel</th><th className="px-1 py-2.5 text-right">Rozprac.</th><th className="px-1 py-2.5 text-right">Osloveno</th><th className="px-1 py-2.5 text-right">Zájem</th><th className="px-1 py-2.5 text-right">Nabídky</th><th className="px-1 py-2.5 text-right">Zakázky</th><th className="px-3 py-2.5 text-right">Konverze</th></tr></thead><tbody>{overview.users.length ? overview.users.map((user) => <tr key={user.userId} className="border-t border-[var(--surface-border)] text-[9px] text-[var(--text-primary)]"><td className="min-w-0 px-3 py-3"><strong className="block truncate">{user.userName}</strong><small className="mt-0.5 block truncate text-[6.5px] text-[var(--text-secondary)]">{formatTimestamp(user.lastActivityAt)}{user.overdueCount ? ` · ${user.overdueCount} po termínu` : ''}</small></td><td className="px-1 py-3 text-right tabular-nums">{user.activeCount}</td><td className="px-1 py-3 text-right tabular-nums">{user.contactedCount}</td><td className="px-1 py-3 text-right tabular-nums">{user.interestedCount}</td><td className="px-1 py-3 text-right tabular-nums">{user.offerSentCount}</td><td className="px-1 py-3 text-right font-bold tabular-nums text-emerald-600">{user.jobWonCount}</td><td className="px-3 py-3 text-right font-bold tabular-nums">{user.conversionPercent.toLocaleString('cs-CZ')} %</td></tr>) : <tr><td colSpan={7} className="px-4 py-8 text-center text-[9px] text-[var(--text-secondary)]">Ve zvoleném období zatím není evidována aktivita týmu.</td></tr>}</tbody></table></div>
+            <div className="divide-y divide-[var(--surface-border)] sm:hidden">{overview.users.length ? overview.users.map((user) => <article key={user.userId} className="p-3"><div className="min-w-0"><strong className="block truncate text-[10px] text-[var(--text-primary)]">{user.userName}</strong><small className="mt-0.5 block truncate text-[7px] text-[var(--text-secondary)]">{formatTimestamp(user.lastActivityAt)}{user.overdueCount ? ` · ${user.overdueCount} po termínu` : ''}</small></div><div className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2">{[
+              ['ROZPRAC.', user.activeCount], ['OSLOVENO', user.contactedCount], ['ZÁJEM', user.interestedCount],
+              ['NABÍDKY', user.offerSentCount], ['ZAKÁZKY', user.jobWonCount], ['KONVERZE', `${user.conversionPercent.toLocaleString('cs-CZ')} %`],
+            ].map(([label, value]) => <span key={label} className="min-w-0"><small className="block truncate text-[6px] font-bold uppercase tracking-[0.04em] text-[var(--text-secondary)]">{label}</small><strong className={`mt-0.5 block text-[10px] tabular-nums ${label === 'ZAKÁZKY' ? 'text-emerald-600' : 'text-[var(--text-primary)]'}`}>{value}</strong></span>)}</div></article>) : <p className="px-4 py-8 text-center text-[9px] text-[var(--text-secondary)]">Ve zvoleném období zatím není evidována aktivita týmu.</p>}</div>
           </section>
 
           <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
             <div className="flex items-start justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Komunikační funnel</small><strong className="mt-0.5 block text-[11px] text-[var(--text-primary)]">Postup obchodní komunikace</strong></span><BarChart3 aria-hidden size={16} className="text-[var(--accent)]" /></div>
             <div className="mt-4 space-y-4">{funnel.map((item) => <div key={item.label}><div className="flex items-center justify-between gap-3"><small className="text-[7px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">{item.label}</small><strong className="text-[11px] tabular-nums text-[var(--text-primary)]">{item.value.toLocaleString('cs-CZ')}</strong></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><span className={`block h-full min-w-[3px] rounded-full ${item.color}`} style={{ width: `${item.value === 0 ? 0 : Math.max(4, item.value / funnelMaximum * 100)}%` }} /></div></div>)}</div>
-            <div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3 text-center"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Nezastiženo</small><strong className="mt-1 block text-base tabular-nums text-amber-600">{overview.funnel.unreachable}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3 text-center"><small className="block text-[7px] font-bold uppercase text-[var(--text-secondary)]">Bez zakázky</small><strong className="mt-1 block text-base tabular-nums text-[var(--text-primary)]">{overview.funnel.closedNoJob}</strong></div></div>
+            <div className="my-4 flex items-center gap-3"><span className="h-px flex-1 bg-[var(--surface-border)]" /><small className="shrink-0 text-[7px] font-bold uppercase tracking-[0.09em] text-[var(--text-secondary)]">Ostatní výsledky</small><span className="h-px flex-1 bg-[var(--surface-border)]" /></div>
+            <div className="space-y-4">{otherResults.map((item) => <div key={item.label}><div className="flex items-center justify-between gap-3"><small className="text-[7px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">{item.label}</small><strong className="text-[11px] tabular-nums text-[var(--text-primary)]">{item.value.toLocaleString('cs-CZ')}</strong></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><span className={`block h-full min-w-[3px] rounded-full ${item.color}`} style={{ width: `${item.value === 0 ? 0 : Math.max(4, item.value / funnelMaximum * 100)}%` }} /></div></div>)}</div>
           </section>
         </div>
 
@@ -254,7 +325,7 @@ export function CompleteTeamOverviewButton({ currentUser }: { currentUser: Compl
   const [open, setOpen] = useState(false)
   if (!currentUser.isAdmin) return null
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-sky-400/35 bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_8px_18px_rgba(14,165,233,0.12)] transition hover:-translate-y-[1px] hover:border-sky-400/55 [html[data-theme=dark]_&]:text-sky-300"><UsersRound aria-hidden size={16} />PŘEHLED TÝMU</button>
+    <button type="button" onClick={() => setOpen(true)} className="faktury-page__statistics-button inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-[#76a9d3]/85 bg-[linear-gradient(155deg,#4f92cb_0%,#3a7eb8_55%,#2b679a_100%)] px-4 py-2.5 text-sm font-medium uppercase text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_rgba(24,78,129,0.28)] transition duration-200 hover:-translate-y-[1px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_14px_28px_rgba(24,78,129,0.34)] [html[data-theme='dark']_&]:border-[rgba(84,170,232,0.38)] [html[data-theme='dark']_&]:bg-[linear-gradient(155deg,rgba(38,91,140,0.92)_0%,rgba(25,63,103,0.94)_100%)] [html[data-theme='dark']_&]:text-[#f5fbff] [html[data-theme='dark']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_22px_rgba(0,0,0,0.24)]">PŘEHLED TÝMU</button>
     {open && typeof document !== 'undefined' ? createPortal(<CompleteTeamOverviewPopup currentUser={currentUser} onClose={() => setOpen(false)} />, document.body) : null}
   </>
 }

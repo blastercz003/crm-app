@@ -16,7 +16,6 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -140,16 +139,16 @@ function LinkedJobBadge({ item, mobileOverlay = false }: { item: PowerOutageList
     : `Zakázka ${item.linkedJob.jobNumber} vytvořena`
 
   return (
-    <Link
-      href={`/jobs?q=${encodeURIComponent(item.linkedJob.jobNumber)}`}
+    <span
+      role="img"
       aria-label={title}
       title={title}
       className={mobileOverlay
-        ? 'absolute -bottom-1 -right-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-emerald-400/55 bg-emerald-100 text-emerald-700 shadow-sm transition hover:scale-105 [html[data-theme=dark]_&]:bg-emerald-950 [html[data-theme=dark]_&]:text-emerald-300'
-        : 'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-400/45 bg-emerald-400/12 text-emerald-700 transition hover:-translate-y-px hover:bg-emerald-400/20 lg:h-6 lg:w-6 [html[data-theme=dark]_&]:text-emerald-300'}
+        ? 'absolute -bottom-1 -right-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-emerald-400/55 bg-emerald-100 text-emerald-700 shadow-sm [html[data-theme=dark]_&]:bg-emerald-950 [html[data-theme=dark]_&]:text-emerald-300'
+        : 'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-400/45 bg-emerald-400/12 text-emerald-700 lg:h-6 lg:w-6 [html[data-theme=dark]_&]:text-emerald-300'}
     >
       <Check aria-hidden size={mobileOverlay ? 8 : 13} strokeWidth={3} />
-    </Link>
+    </span>
   )
 }
 
