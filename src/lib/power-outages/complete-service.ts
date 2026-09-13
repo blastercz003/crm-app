@@ -1482,18 +1482,12 @@ export async function getCompletePowerOutageCount(
 
 export async function getCompletePowerOutageOwners() {
   const { supabase } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
-  const { data, error } = await supabase
-    .from('complete_power_outage_company_assignments')
-    .select('owner_id,owner_name')
-    .order('owner_name')
-    .limit(1_000)
-  if (error) {
-    if (ownershipSchemaMissing(error)) return []
-    throw new Error(`Seznam vlastníků se nepodařilo načíst: ${error.message}`)
-  }
-  return [...new Map((data ?? []).map((row) => [row.owner_id, row.owner_name] as const)).entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'cs'))
+  const { data, error } = await supabase.rpc('get_complete_power_outage_owner_filter_options_v1')
+  if (error) throw new Error(`Seznam vlastníků se nepodařilo načíst: ${error.message}`)
+  return objectArray(data).map((owner) => ({
+    id: String(owner.id ?? ''),
+    name: String(owner.name ?? ''),
+  })).filter((owner) => owner.id && owner.name)
 }
 
 async function countRows(query: PromiseLike<{ count: number | null; error: { message: string } | null }>, label: string) {

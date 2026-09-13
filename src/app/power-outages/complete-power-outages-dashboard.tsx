@@ -133,14 +133,16 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
     // jednotlivé části pracovního prostoru zbytečně nečekaly.
     void loadStatistics()
     void loadSidebar()
-    const ownersTimer = window.setTimeout(() => { void getCompletePowerOutageOwnersAction().then((result) => { if (result.success) setOwners(result.owners) }) }, 250)
+    const ownersTimer = currentUser.isAdmin
+      ? window.setTimeout(() => { void getCompletePowerOutageOwnersAction().then((result) => { if (result.success) setOwners(result.owners) }) }, 250)
+      : null
     const statisticsInterval = window.setInterval(() => { void loadStatistics() }, 90_000)
     const sidebarInterval = window.setInterval(() => { void loadSidebar() }, 60_000)
     return () => {
-      window.clearTimeout(ownersTimer)
+      if (ownersTimer !== null) window.clearTimeout(ownersTimer)
       window.clearInterval(statisticsInterval); window.clearInterval(sidebarInterval)
     }
-  }, [loadSidebar, loadStatistics])
+  }, [currentUser.isAdmin, loadSidebar, loadStatistics])
 
   useEffect(() => {
     if (sidebar && !sidebar.commercialSelection.enabled) setCommercialSelection('all')
