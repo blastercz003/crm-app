@@ -131,6 +131,7 @@ export type CompletePowerOutageListItem = {
   commercialSelectionEligible: boolean
   commercialScoreStatus: 'pending' | 'complete' | 'preliminary' | 'stale' | 'error' | null
   assignment: CompletePowerOutageAssignment | null
+  communicationWorkflowStatus: CompleteCommunicationWorkflowStatus | null
   linkedJob: {
     matchCount: number
   } | null

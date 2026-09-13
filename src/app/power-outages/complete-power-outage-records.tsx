@@ -23,6 +23,8 @@ import {
   Send,
   SlidersHorizontal,
   Phone,
+  PhoneOff,
+  Sparkles,
   UserRound,
   X,
 } from 'lucide-react'
@@ -187,6 +189,20 @@ function LinkedJobBadge({ item, mobileOverlay = false }: { item: CompletePowerOu
   >
     <Check aria-hidden size={mobileOverlay ? 8 : 13} strokeWidth={3} />
   </span>
+}
+
+function CommunicationMiniBadge({ status }: { status: CompleteCommunicationWorkflowStatus | null }) {
+  if (!status || status === 'not_contacted') return null
+  const config = {
+    contacted: { label: 'Osloveno', tone: 'border-sky-500 bg-sky-500', icon: <MessageSquareText aria-hidden size={8} strokeWidth={2.8} /> },
+    unreachable: { label: 'Nezastiženo', tone: 'border-amber-500 bg-amber-500', icon: <PhoneOff aria-hidden size={8} strokeWidth={2.8} /> },
+    interested: { label: 'Projeven zájem', tone: 'border-violet-500 bg-violet-500', icon: <Sparkles aria-hidden size={8} strokeWidth={2.8} /> },
+    offer_sent: { label: 'Nabídka odeslána', tone: 'border-cyan-500 bg-cyan-500', icon: <Send aria-hidden size={8} strokeWidth={2.8} /> },
+    job_won: { label: 'Zakázka vznikla', tone: 'border-emerald-500 bg-emerald-500', icon: <Check aria-hidden size={9} strokeWidth={3.2} /> },
+    closed_no_job: { label: 'Uzavřeno bez zakázky', tone: 'border-slate-500 bg-slate-500', icon: <X aria-hidden size={8} strokeWidth={2.8} /> },
+  }[status]
+  if (!config) return null
+  return <span aria-label={config.label} title={config.label} className={`absolute -left-1 -top-1 z-[2] inline-flex h-4 w-4 items-center justify-center rounded-full border text-white shadow-sm ${config.tone}`}>{config.icon}</span>
 }
 
 function addressLabel(item: CompletePowerOutageListItem) {
@@ -436,7 +452,7 @@ function CompleteAssignmentPopup({
   item: CompletePowerOutageListItem
   currentUser: CompletePowerOutageCurrentUser
   onClose: () => void
-  onChanged: (assignment: CompletePowerOutageAssignment | null) => void
+  onChanged: (assignment: CompletePowerOutageAssignment | null, status: CompleteCommunicationWorkflowStatus) => void
 }) {
   const [workspace, setWorkspace] = useState<CompleteCommunicationWorkspace | null>(null)
   const [loading, setLoading] = useState(true)
@@ -480,7 +496,7 @@ function CompleteAssignmentPopup({
 
   const applyWorkspace = (next: CompleteCommunicationWorkspace) => {
     setWorkspace(next)
-    onChanged(next.assignment)
+    onChanged(next.assignment, next.communicationStatus)
   }
 
   const saveCommunication = async () => {
@@ -518,7 +534,7 @@ function CompleteAssignmentPopup({
     const result = await releaseCompletePowerOutageAssignmentAction(item.candidateId)
     setSaving(false)
     if (!result.success) { setError(result.error); return }
-    onChanged(null); onClose()
+    onChanged(null, workspace?.communicationStatus ?? 'not_contacted'); onClose()
   }
 
   const canEdit = workspace?.canEdit ?? false
@@ -560,7 +576,7 @@ function CompleteAssignmentPopup({
 
 function MobileCard({ item, showClientIndicator, onDetail, onAnnouncement, onAssignment }: { item: CompletePowerOutageListItem; showClientIndicator: boolean; onDetail: () => void; onAnnouncement: () => void; onAssignment: () => void }) {
   const actionClass = 'inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-sky-400/20 bg-sky-500/10 px-2 text-[7px] font-bold uppercase tracking-[0.035em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20'
-  return <article className={`power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5 ${showClientIndicator && item.isAccessibleClient ? 'border-teal-400/45 bg-teal-500/10 shadow-[inset_3px_0_0_rgba(20,184,166,0.65)]' : ''}`}><div className="flex min-w-0 items-start justify-between gap-2"><span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} />{showClientIndicator ? <AccessibleClientBadge item={item} placement="mobile" /> : null}<LinkedJobBadge item={item} mobileOverlay /></span><div className="flex min-w-0 flex-nowrap justify-end gap-1"><CommercialScoreBadge item={item} compact /><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} notificationEmail={item.notificationEmail} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={actionClass}><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
+  return <article className={`power-outages-mobile-card weather-alerts__record-surface min-w-0 rounded-[18px] border px-3 py-2.5 ${showClientIndicator && item.isAccessibleClient ? 'border-teal-400/45 bg-teal-500/10 shadow-[inset_3px_0_0_rgba(20,184,166,0.65)]' : ''}`}><div className="flex min-w-0 items-start justify-between gap-2"><span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-[var(--accent)]"><Building2 aria-hidden size={14} />{showClientIndicator ? <AccessibleClientBadge item={item} placement="mobile" /> : null}<LinkedJobBadge item={item} mobileOverlay /></span><div className="flex min-w-0 flex-nowrap justify-end gap-1"><CommercialScoreBadge item={item} compact /><SourceBadge source={item.source} /><StatusBadge status={item.candidateStatus} assignment={item.assignment} notificationEmail={item.notificationEmail} /></div></div><div className="mt-1.5 flex min-w-0 items-baseline gap-2"><strong className="min-w-0 truncate text-[13px] text-[var(--text-primary)]">{item.companyName}</strong>{item.ico ? <small className="shrink-0 text-[8px] font-semibold text-[var(--text-secondary)]">IČO {item.ico}</small> : null}</div><p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]"><MapPin aria-hidden size={11} className="shrink-0 text-[var(--text-secondary)]" /><strong className="shrink-0 text-[var(--text-primary)]">{item.municipality}</strong><span className="truncate text-[var(--text-secondary)]">· {addressLabel(item)}</span></p><strong className="mt-1.5 block min-w-0 truncate text-[10.5px] font-bold tabular-nums text-[var(--text-primary)]">{formatMobilePeriod(item.startsAt, item.endsAt)}</strong><div className="mt-2 grid min-w-0 grid-cols-3 gap-1.5"><button type="button" onClick={onAssignment} aria-label="Správa komunikace" title="Správa komunikace" className={`${actionClass} relative`}><CommunicationMiniBadge status={item.communicationWorkflowStatus} /><MessageSquareText aria-hidden size={11} className="shrink-0" /><span className="truncate">Komunikace</span></button><button type="button" onClick={onDetail} aria-label="Detail odstávky" title="Detail odstávky" className={actionClass}><Eye aria-hidden size={12} className="shrink-0" /><span>Detail</span></button><button type="button" onClick={onAnnouncement} aria-label="Oznámení o odstávce" title="Oznámení o odstávce" className={actionClass}><Send aria-hidden size={11} className="shrink-0" /><span className="truncate">Oznámení</span></button></div></article>
 }
 
 function RecordsLoadingState() {
@@ -595,6 +611,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
   const [selected, setSelected] = useState<CompletePowerOutageListItem | null>(null)
   const [popupMode, setPopupMode] = useState<'detail' | 'announcement' | 'assignment' | null>(null)
   const [assignmentOverrides, setAssignmentOverrides] = useState<Record<string, CompletePowerOutageAssignment | null>>({})
+  const [communicationOverrides, setCommunicationOverrides] = useState<Record<string, CompleteCommunicationWorkflowStatus>>({})
   const [detail, setDetail] = useState<CompletePowerOutageDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
@@ -710,11 +727,15 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     return () => observer.disconnect()
   }, [hasMore, loadPage, pageError, pageLoading])
 
-  const records = useMemo(() => pageItems.map((item) => (
-    Object.hasOwn(assignmentOverrides, item.candidateId)
-      ? { ...item, assignment: assignmentOverrides[item.candidateId] }
-      : item
-  )), [assignmentOverrides, pageItems])
+  const records = useMemo(() => pageItems.map((item) => ({
+    ...item,
+    assignment: Object.hasOwn(assignmentOverrides, item.candidateId)
+      ? assignmentOverrides[item.candidateId]
+      : item.assignment,
+    communicationWorkflowStatus: Object.hasOwn(communicationOverrides, item.candidateId)
+      ? communicationOverrides[item.candidateId]
+      : item.communicationWorkflowStatus,
+  })), [assignmentOverrides, communicationOverrides, pageItems])
   const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'visible', commercialSelection !== 'top', clientsOnly].filter(Boolean).length
   const openDetail = async (item: CompletePowerOutageListItem) => {
     setSelected(item); setPopupMode('detail'); setDetail(null); setDetailError(null); setDetailLoading(true)
@@ -728,8 +749,9 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
   const openAssignment = (item: CompletePowerOutageListItem) => {
     setSelected(item); setPopupMode('assignment'); setDetail(null); setDetailError(null); setDetailLoading(false)
   }
-  const updateAssignment = (candidateId: string, assignment: CompletePowerOutageAssignment | null) => {
+  const updateAssignment = (candidateId: string, assignment: CompletePowerOutageAssignment | null, communicationStatus: CompleteCommunicationWorkflowStatus) => {
     setAssignmentOverrides((current) => ({ ...current, [candidateId]: assignment }))
+    setCommunicationOverrides((current) => ({ ...current, [candidateId]: communicationStatus }))
   }
   const closePopup = () => { setSelected(null); setPopupMode(null); setDetail(null); setDetailError(null); setDetailLoading(false) }
   const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('visible'); onCommercialSelectionChange('top'); onClientsOnlyChange(false) }
@@ -775,7 +797,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
             <td className="px-3 py-3 align-middle text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{formatDateTime(item.endsAt)}</td>
             <td className="px-3 py-3 align-middle"><div className="flex flex-nowrap items-center gap-1"><StatusBadge status={item.candidateStatus} assignment={item.assignment} notificationEmail={item.notificationEmail} desktop /><LinkedJobBadge item={item} /></div></td>
             <td className="px-2 py-3 text-center align-middle"><CommercialScoreBadge item={item} /></td>
-            <td className="py-3 pl-1.5 pr-3 align-middle"><div className="flex justify-end gap-1.5"><button type="button" onClick={() => openAssignment(item)} aria-label={`Správa komunikace pro firmu ${item.companyName}`} title="Správa komunikace" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><MessageSquareText aria-hidden size={13} /></button><button type="button" onClick={() => void openDetail(item)} aria-label={`Otevřít detail odstávky pro firmu ${item.companyName}`} title="Detail odstávky" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Eye aria-hidden size={14} /></button><button type="button" onClick={() => openAnnouncement(item)} aria-label={`Vytvořit oznámení o odstávce pro firmu ${item.companyName}`} title="Oznámení o odstávce" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Send aria-hidden size={13} /></button></div></td>
+            <td className="py-3 pl-1.5 pr-3 align-middle"><div className="flex justify-end gap-1.5"><button type="button" onClick={() => openAssignment(item)} aria-label={`Správa komunikace pro firmu ${item.companyName}`} title="Správa komunikace" className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><CommunicationMiniBadge status={item.communicationWorkflowStatus} /><MessageSquareText aria-hidden size={13} /></button><button type="button" onClick={() => void openDetail(item)} aria-label={`Otevřít detail odstávky pro firmu ${item.companyName}`} title="Detail odstávky" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Eye aria-hidden size={14} /></button><button type="button" onClick={() => openAnnouncement(item)} aria-label={`Vytvořit oznámení o odstávce pro firmu ${item.companyName}`} title="Oznámení o odstávce" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10 text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35 hover:bg-sky-500/20"><Send aria-hidden size={13} /></button></div></td>
           </tr>)}</tbody>
         </table></div>
         <div className="grid gap-2.5 lg:hidden">{records.map((item) => <MobileCard key={item.candidateId} item={item} showClientIndicator={clientsOnly} onDetail={() => void openDetail(item)} onAnnouncement={() => openAnnouncement(item)} onAssignment={() => openAssignment(item)} />)}</div>
@@ -789,7 +811,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
         ? <CompleteDetailPopup item={selected} detail={detail} loading={detailLoading} error={detailError} archived={tab === 'archive'} onClose={closePopup} />
         : popupMode === 'announcement'
           ? <CompleteAnnouncementPopup item={selected} onClose={closePopup} />
-          : <CompleteAssignmentPopup item={selected} currentUser={currentUser} onClose={closePopup} onChanged={(assignment) => updateAssignment(selected.candidateId, assignment)} />,
+          : <CompleteAssignmentPopup item={selected} currentUser={currentUser} onClose={closePopup} onChanged={(assignment, communicationStatus) => updateAssignment(selected.candidateId, assignment, communicationStatus)} />,
       document.body,
     ) : null}
   </section>

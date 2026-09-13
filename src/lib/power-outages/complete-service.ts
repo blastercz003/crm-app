@@ -391,6 +391,7 @@ type OverviewRow = {
   notification_email_status?: 'sent' | 'delivered' | null
   notification_email_sent_at?: string | null
   notification_email_delivered_at?: string | null
+  communication_workflow_status?: CompleteCommunicationWorkflowStatus | null
   metadata: Record<string, unknown> | null
 }
 
@@ -1218,6 +1219,10 @@ function mapOverview(row: OverviewRow, assignment?: AssignmentRow): CompletePowe
     commercialSelectionEligible: row.commercial_selection_eligible === true,
     commercialScoreStatus: row.commercial_score_status ?? null,
     assignment: mapAssignment(assignment),
+    communicationWorkflowStatus: row.communication_workflow_status
+      && WORKFLOW_STATUSES.has(row.communication_workflow_status)
+      ? row.communication_workflow_status
+      : null,
     linkedJob: row.has_linked_job === true || Boolean(row.linked_job_id && row.linked_job_number)
       ? {
           matchCount: Math.max(1, Number(row.linked_job_count) || 1),
@@ -1275,10 +1280,18 @@ export async function getCompletePowerOutagePage(
     ...baseArgs,
     p_cursor_client_priority: cursor?.clientPriority ?? null,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v9', {
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v10', {
     ...priorityArgs,
     p_clients_only: filters.clientsOnly,
   })
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v10')) {
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v9', {
+      ...priorityArgs,
+      p_clients_only: filters.clientsOnly,
+    })
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v9')) {
     const current = await supabase.rpc('get_complete_power_outage_company_page_v8', {
       ...priorityArgs,
