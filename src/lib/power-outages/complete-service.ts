@@ -1272,7 +1272,6 @@ export async function getCompletePowerOutagePage(
     p_owner_filter: filters.owner,
     p_source: filters.source,
     p_entity_kind: filters.entityKind,
-    p_candidate_status: filters.candidateStatus,
     p_commercial_filter: filters.commercialSelection,
     p_sort: filters.commercialSort,
   }
@@ -1280,14 +1279,25 @@ export async function getCompletePowerOutagePage(
     ...baseArgs,
     p_cursor_client_priority: cursor?.clientPriority ?? null,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v10', {
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v11', {
     ...priorityArgs,
     p_clients_only: filters.clientsOnly,
+    p_communication_status: filters.communicationStatus,
   })
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v11')) {
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v10', {
+      ...priorityArgs,
+      p_clients_only: filters.clientsOnly,
+      p_candidate_status: 'visible',
+    })
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v10')) {
     const current = await supabase.rpc('get_complete_power_outage_company_page_v9', {
       ...priorityArgs,
       p_clients_only: filters.clientsOnly,
+      p_candidate_status: 'visible',
     })
     data = current.data
     error = current.error
@@ -1296,27 +1306,28 @@ export async function getCompletePowerOutagePage(
     const current = await supabase.rpc('get_complete_power_outage_company_page_v8', {
       ...priorityArgs,
       p_clients_only: filters.clientsOnly,
+      p_candidate_status: 'visible',
     })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v8')) {
-    const current = await supabase.rpc('get_complete_power_outage_company_page_v7', priorityArgs)
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v7', { ...priorityArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v7')) {
-    const current = await supabase.rpc('get_complete_power_outage_company_page_v6', baseArgs)
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v6', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v6')) {
-    const current = await supabase.rpc('get_complete_power_outage_company_page_v5', baseArgs)
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v5', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v5')) {
-    const current = await supabase.rpc('get_complete_power_outage_company_page_v4', baseArgs)
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v4', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
@@ -1330,7 +1341,7 @@ export async function getCompletePowerOutagePage(
       p_owner_filter: baseArgs.p_owner_filter,
       p_source: baseArgs.p_source,
       p_entity_kind: baseArgs.p_entity_kind,
-      p_candidate_status: baseArgs.p_candidate_status,
+      p_candidate_status: 'visible',
       p_commercial_filter: baseArgs.p_commercial_filter,
     }
     const fallback = await supabase.rpc('get_complete_power_outage_company_page_v3', legacyArgs)
@@ -1370,24 +1381,33 @@ export async function getCompletePowerOutageCommercialSelectionCounts(
     p_owner_filter: filters.owner,
     p_source: filters.source,
     p_entity_kind: filters.entityKind,
-    p_candidate_status: filters.candidateStatus,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v4', {
+  let { data, error } = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v5', {
     ...baseArgs,
     p_clients_only: filters.clientsOnly,
+    p_communication_status: filters.communicationStatus,
   })
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v5')) {
+    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v4', {
+      ...baseArgs,
+      p_clients_only: filters.clientsOnly,
+      p_candidate_status: 'visible',
+    })
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v4')) {
-    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v3', baseArgs)
+    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v3', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v3')) {
-    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v2', baseArgs)
+    const current = await supabase.rpc('get_complete_power_outage_commercial_selection_counts_v2', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_commercial_selection_counts_v2')) {
-    const fallback = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', baseArgs)
+    const fallback = await supabase.rpc('get_complete_power_outage_commercial_selection_counts', { ...baseArgs, p_candidate_status: 'visible' })
     data = fallback.data
     error = fallback.error
   }
@@ -1412,25 +1432,34 @@ export async function getCompletePowerOutageCount(
     p_owner_filter: filters.owner,
     p_source: filters.source,
     p_entity_kind: filters.entityKind,
-    p_candidate_status: filters.candidateStatus,
     p_commercial_filter: filters.commercialSelection,
   }
-  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v5', {
+  let { data, error } = await supabase.rpc('count_complete_power_outage_companies_v6', {
     ...baseArgs,
     p_clients_only: filters.clientsOnly,
+    p_communication_status: filters.communicationStatus,
   })
+  if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v6')) {
+    const current = await supabase.rpc('count_complete_power_outage_companies_v5', {
+      ...baseArgs,
+      p_clients_only: filters.clientsOnly,
+      p_candidate_status: 'visible',
+    })
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v5')) {
-    const current = await supabase.rpc('count_complete_power_outage_companies_v4', baseArgs)
+    const current = await supabase.rpc('count_complete_power_outage_companies_v4', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v4')) {
-    const current = await supabase.rpc('count_complete_power_outage_companies_v3', baseArgs)
+    const current = await supabase.rpc('count_complete_power_outage_companies_v3', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
   if (error?.code === 'PGRST202' || error?.message?.includes('count_complete_power_outage_companies_v3')) {
-    const current = await supabase.rpc('count_complete_power_outage_companies_v2', baseArgs)
+    const current = await supabase.rpc('count_complete_power_outage_companies_v2', { ...baseArgs, p_candidate_status: 'visible' })
     data = current.data
     error = current.error
   }
@@ -1441,7 +1470,7 @@ export async function getCompletePowerOutageCount(
       p_owner_filter: baseArgs.p_owner_filter,
       p_source: baseArgs.p_source,
       p_entity_kind: baseArgs.p_entity_kind,
-      p_candidate_status: baseArgs.p_candidate_status,
+      p_candidate_status: 'visible',
     }
     const fallback = await supabase.rpc('count_complete_power_outage_companies', legacyArgs)
     data = fallback.data
@@ -1961,7 +1990,7 @@ export async function getCompletePowerOutageWorkspace(): Promise<CompletePowerOu
     ownerResult,
     commercialSelectionCountsResult,
   ] = await Promise.all([
-    getCompletePowerOutagePage({ mode: 'current', clientsOnly: false, query: '', owner: 'all', source: 'all', entityKind: 'all', candidateStatus: 'visible', commercialSelection: 'all', commercialSort: 'date' })
+    getCompletePowerOutagePage({ mode: 'current', clientsOnly: false, query: '', owner: 'all', source: 'all', entityKind: 'all', communicationStatus: 'all', commercialSelection: 'all', commercialSort: 'date' })
       .then((page) => ({ page, error: null as string | null }))
       .catch((error: unknown) => ({
         page: { items: [], totalCount: 0, hasMore: false, nextCursor: null } satisfies CompletePowerOutagePage,

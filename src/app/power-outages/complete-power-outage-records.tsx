@@ -66,7 +66,7 @@ import { copyPowerOutageAnnouncement, PowerOutageAnnouncementPreview, type Power
 import { PowerOutageDetailRow, PowerOutagePopupShell } from './power-outage-popups'
 
 type Tab = 'current' | 'archive'
-type StatusFilter = CompletePowerOutagePageFilters['candidateStatus']
+type StatusFilter = CompletePowerOutagePageFilters['communicationStatus']
 
 const DATE_TIME = new Intl.DateTimeFormat('cs-CZ', {
   timeZone: 'Europe/Prague', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -606,7 +606,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
   const [owner, setOwner] = useState('all')
   const [source, setSource] = useState<'all' | PowerOutageSource>('all')
   const [entity, setEntity] = useState<'all' | CompleteEntityKind>('all')
-  const [status, setStatus] = useState<StatusFilter>('visible')
+  const [status, setStatus] = useState<StatusFilter>('all')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [selected, setSelected] = useState<CompletePowerOutageListItem | null>(null)
   const [popupMode, setPopupMode] = useState<'detail' | 'announcement' | 'assignment' | null>(null)
@@ -639,7 +639,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     owner,
     source,
     entityKind: entity,
-    candidateStatus: status,
+    communicationStatus: status,
     commercialSelection,
     commercialSort,
   }), [clientsOnly, commercialSelection, commercialSort, debouncedQuery, entity, owner, source, status, tab])
@@ -736,7 +736,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
       ? communicationOverrides[item.candidateId]
       : item.communicationWorkflowStatus,
   })), [assignmentOverrides, communicationOverrides, pageItems])
-  const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'visible', commercialSelection !== 'top', clientsOnly].filter(Boolean).length
+  const activeFilterCount = [query.trim(), owner !== 'all', source !== 'all', entity !== 'all', status !== 'all', commercialSelection !== 'top', clientsOnly].filter(Boolean).length
   const openDetail = async (item: CompletePowerOutageListItem) => {
     setSelected(item); setPopupMode('detail'); setDetail(null); setDetailError(null); setDetailLoading(true)
     const result = await getCompletePowerOutageDetailAction(item.candidateId)
@@ -754,7 +754,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
     setCommunicationOverrides((current) => ({ ...current, [candidateId]: communicationStatus }))
   }
   const closePopup = () => { setSelected(null); setPopupMode(null); setDetail(null); setDetailError(null); setDetailLoading(false) }
-  const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('visible'); onCommercialSelectionChange('top'); onClientsOnlyChange(false) }
+  const clear = () => { setQuery(''); setOwner('all'); setSource('all'); setEntity('all'); setStatus('all'); onCommercialSelectionChange('top'); onClientsOnlyChange(false) }
   return <section className="activities-page__panel min-w-0 rounded-[28px] border border-white/70 bg-[linear-gradient(155deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.92)_48%,rgba(241,245,249,0.88)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-[10px] sm:p-5 xl:col-span-3 xl:flex xl:h-0 xl:min-h-full xl:flex-col xl:overflow-hidden">
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center xl:grid-cols-[175px_minmax(0,1fr)_160px] xl:gap-2">
       <div className="min-w-0 lg:contents">
@@ -780,7 +780,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
           <SelectControl label="Vlastník" value={owner} onChange={setOwner}><option value="all">Všichni vlastníci</option><option value="mine">Moje záznamy</option><option value="unassigned">Nepřiřazené</option>{owners.filter((value) => value.id !== currentUser.id).map((value) => <option key={value.id} value={`user:${value.id}`}>{value.name}</option>)}</SelectControl>
           <SelectControl label="Distributor" value={source} onChange={(value) => setSource(value as typeof source)}><option value="all">Všichni distributoři</option><option value="cez">ČEZ</option><option value="egd">EG.D</option><option value="pre">PRE</option></SelectControl>
           <SelectControl label="Typ" value={entity} onChange={(value) => setEntity(value as typeof entity)}><option value="all">Všechny typy</option><option value="registered_office">Sídla</option><option value="establishment">Provozovny</option><option value="mixed">Sídla + provozovny</option></SelectControl>
-          <SelectControl label="Stav" value={status} onChange={(value) => setStatus(value as StatusFilter)}><option value="visible">Běžné výsledky</option><option value="confirmed">Potvrzené</option><option value="needs_review">K ověření</option><option value="dismissed">Zamítnuté</option></SelectControl>
+          <SelectControl label="Stav komunikace" value={status} onChange={(value) => setStatus(value as StatusFilter)}><option value="all">Všechny stavy</option><option value="not_contacted">Neosloveno</option><option value="contacted">Osloveno</option><option value="unreachable">Nezastiženo</option><option value="interested">Projeven zájem</option><option value="offer_sent">Nabídka odeslána</option><option value="job_won">Zakázka vznikla</option><option value="closed_no_job">Uzavřeno bez zakázky</option></SelectControl>
         </div>
         {activeFilterCount ? <button type="button" onClick={clear} className={`${filtersOpen ? 'inline-flex' : 'hidden'} mb-1 ml-1 mt-2 h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] lg:hidden`}><X aria-hidden size={12} /> Zrušit filtry</button> : null}
       </div>

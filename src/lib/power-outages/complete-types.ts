@@ -159,7 +159,7 @@ export type CompletePowerOutagePageFilters = {
   owner: string
   source: 'all' | PowerOutageSource
   entityKind: 'all' | CompleteEntityKind
-  candidateStatus: 'visible' | 'confirmed' | 'needs_review' | 'dismissed'
+  communicationStatus: 'all' | CompleteCommunicationWorkflowStatus
   commercialSelection: CompleteCommercialSelectionFilter
   commercialSort: CompleteCommercialSort
 }
