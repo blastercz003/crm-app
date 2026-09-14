@@ -104,16 +104,29 @@ export function NewOfferModal({
   clients,
   contacts,
   onClose: closeImmediately,
+  onSuccess,
+  initialClientId = '',
+  initialTitle = '',
+  initialRealizationAddress = '',
+  stayOnPageOnSuccess = false,
+  nested = false,
 }: {
   clients: ClientOption[]
   contacts: ClientContactOption[]
   onClose: () => void
+  onSuccess?: (state: OfferFormActionState) => void
+  initialClientId?: string
+  initialTitle?: string
+  initialRealizationAddress?: string
+  stayOnPageOnSuccess?: boolean
+  nested?: boolean
 }) {
   const onClose = useModalMotionClose(closeImmediately)
   const router = useRouter()
   const [state, formAction] = useActionState(createOfferModalAction, initialState)
-  const [companyName, setCompanyName] = useState('')
-  const [selectedClientId, setSelectedClientId] = useState('')
+  const initialClient = clients.find((client) => client.id === initialClientId) ?? null
+  const [companyName, setCompanyName] = useState(initialClient?.name ?? '')
+  const [selectedClientId, setSelectedClientId] = useState(initialClient?.id ?? '')
   const [selectedContactId, setSelectedContactId] = useState('')
   const [contactPerson, setContactPerson] = useState('')
   const [companyTouched, setCompanyTouched] = useState(false)
@@ -228,14 +241,15 @@ export function NewOfferModal({
   useBodyScrollLock(true)
 
   useModalActionSuccess(state.success && Boolean(state.offerId), () => {
+    onSuccess?.(state)
     onClose()
-    router.push(`/offers/${state.offerId}`)
+    if (!stayOnPageOnSuccess) router.push(`/offers/${state.offerId}`)
   })
 
   const modalContent = (
     <div
       data-modal-motion-root
-      className="fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
+      className={`fixed inset-0 ${nested ? 'z-[220]' : 'z-[100]'} overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]`}
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -317,6 +331,7 @@ export function NewOfferModal({
                         id="title"
                         name="title"
                         required
+                        defaultValue={initialTitle}
                         placeholder="Např. Pronájem DA 250kVA / 200kW"
                         className="clients-modal__input offers-page__new-modal__input h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />
@@ -427,6 +442,7 @@ export function NewOfferModal({
                       <input
                         id="realization_address"
                         name="realization_address"
+                        defaultValue={initialRealizationAddress}
                         placeholder="Místo realizace"
                         className="clients-modal__input offers-page__new-modal__input h-10 w-full rounded-xl border border-zinc-200/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.95)_100%)] px-3 text-sm text-gray-900 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition placeholder:text-gray-400 focus:border-[#9dc7e5] focus:ring-2 focus:ring-[#b9d8ef]"
                       />

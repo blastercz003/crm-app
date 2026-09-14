@@ -9,6 +9,7 @@ export type ClientFormActionState = {
   success: boolean
   error: string | null
   clientName?: string
+  clientId?: string
 }
 
 export type CreateClientActionState = ClientFormActionState
@@ -592,6 +593,7 @@ async function insertClientRecord(formData: FormData) {
   revalidatePath('/clients')
 
   return {
+    clientId: createdClient.id,
     clientName: name,
   }
 }
@@ -673,6 +675,7 @@ export async function createClientModalAction(
     return {
       success: true,
       error: null,
+      clientId: result.clientId,
       clientName: result.clientName,
     }
   } catch (error) {

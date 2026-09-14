@@ -6,7 +6,7 @@ import {
   createMeetingModalAction,
   type CreateMeetingActionState,
 } from './actions'
-import { MeetingForm } from '@/components/meetings/meeting-form'
+import { MeetingForm, type MeetingFormValues } from '@/components/meetings/meeting-form'
 import { buildErrorToast, buildMeetingCreatedToast } from '@/components/ui/action-feedback-messages'
 import {
   ActionFeedbackToast,
@@ -107,6 +107,8 @@ export function CreateMeetingModal({
   onToast,
   onSuccess,
   suppressSuccessToast = false,
+  initialValues,
+  nested = false,
 }: {
   clients: ClientOption[]
   contacts: ClientContactOption[]
@@ -114,6 +116,8 @@ export function CreateMeetingModal({
   onToast: (toast: MeetingToast) => void
   onSuccess?: (state: CreateMeetingActionState) => void
   suppressSuccessToast?: boolean
+  initialValues?: MeetingFormValues
+  nested?: boolean
 }) {
   const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(
@@ -146,7 +150,7 @@ export function CreateMeetingModal({
   const modalContent = (
     <div
       data-modal-motion-root
-      className="meetings-modal__overlay fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
+      className={`meetings-modal__overlay fixed inset-0 ${nested ? 'z-[220]' : 'z-[100]'} overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]`}
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -197,6 +201,7 @@ export function CreateMeetingModal({
               cancelLabel="ZRUŠIT"
               clients={clients}
               contacts={contacts}
+              initialValues={initialValues}
               error={state.error}
               modalMode
               showModalCancel={false}

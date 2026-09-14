@@ -90,11 +90,19 @@ export function CreateClientModal({
   onToast,
   onSuccess,
   suppressSuccessToast = false,
+  initialValues,
+  nested = false,
 }: {
   onClose: () => void
   onToast: (toast: ClientToast) => void
   onSuccess?: (state: CreateClientActionState) => void
   suppressSuccessToast?: boolean
+  initialValues?: {
+    name?: string | null
+    ico?: string | null
+    address?: string | null
+  }
+  nested?: boolean
 }) {
   const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(
@@ -127,7 +135,7 @@ export function CreateClientModal({
   const modalContent = (
       <div
         data-modal-motion-root
-        className="clients-modal fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
+        className={`clients-modal fixed inset-0 ${nested ? 'z-[220]' : 'z-[100]'} overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]`}
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {
@@ -186,6 +194,7 @@ export function CreateClientModal({
                     type="text"
                     required
                     placeholder="Např. Když Vypadne Proud s.r.o."
+                    defaultValue={initialValues?.name ?? ''}
                     className={glassInputClass}
                   />
                 </div>
@@ -202,6 +211,7 @@ export function CreateClientModal({
                     name="ico"
                     type="text"
                     placeholder="Např. 12345678"
+                    defaultValue={initialValues?.ico ?? ''}
                     className={glassInputClass}
                   />
                 </div>
@@ -218,6 +228,7 @@ export function CreateClientModal({
                     name="address"
                     type="text"
                     placeholder="Např. Bezvýpadková 1"
+                    defaultValue={initialValues?.address ?? ''}
                     className={glassInputClass}
                   />
                 </div>

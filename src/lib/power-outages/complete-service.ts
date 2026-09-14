@@ -24,6 +24,9 @@ import type {
   CompleteCommunicationTimelineKind,
   CompleteCommunicationWorkflowStatus,
   CompleteCommunicationWorkspace,
+  CompletePowerOutageActionWorkspace,
+  CompletePowerOutageWorkItemFormOptions,
+  CompletePowerOutageWorkItemKind,
   CompletePowerOutageAssignment,
   CompletePowerOutageCommunicationNote,
   CompletePowerOutageDetail,
@@ -2973,6 +2976,145 @@ export async function getCompletePowerOutageCommunicationWorkspace(candidateId: 
   })
   if (error) throw new Error(`Správu komunikace se nepodařilo načíst: ${error.message}`)
   return mapCommunicationWorkspace(data)
+}
+
+function mapActionWorkspace(value: unknown): CompletePowerOutageActionWorkspace {
+  const row = objectValue(value)
+  const prefill = objectValue(row.prefill)
+  const ownership = objectValue(row.ownership)
+  const capabilities = objectValue(row.capabilities)
+
+  return {
+    contractVersion: Number(row.contractVersion) || 1,
+    uiEnabled: row.uiEnabled === true,
+    candidateId: String(row.candidateId),
+    prefill: {
+      companyName: String(prefill.companyName ?? ''),
+      ico: prefill.ico == null ? null : String(prefill.ico),
+      legalForm: prefill.legalForm == null ? null : String(prefill.legalForm),
+      address: String(prefill.address ?? ''),
+      municipality: String(prefill.municipality ?? ''),
+      townPart: prefill.townPart == null ? null : String(prefill.townPart),
+      street: String(prefill.street ?? ''),
+      houseNumber: prefill.houseNumber == null ? null : String(prefill.houseNumber),
+      orientationNumber: prefill.orientationNumber == null ? null : String(prefill.orientationNumber),
+      postalCode: prefill.postalCode == null ? null : String(prefill.postalCode),
+      outageId: String(prefill.outageId),
+      outageAddressId: String(prefill.outageAddressId),
+      source: String(prefill.source) as PowerOutageSource,
+      startsAt: String(prefill.startsAt),
+      endsAt: String(prefill.endsAt),
+    },
+    ownership: {
+      ownerId: ownership.ownerId == null ? null : String(ownership.ownerId),
+      isUnassigned: ownership.isUnassigned === true,
+      canEdit: ownership.canEdit === true,
+    },
+    capabilities: {
+      canCreateClient: capabilities.canCreateClient === true,
+      canCreateTask: capabilities.canCreateTask === true,
+      canCreateMeeting: capabilities.canCreateMeeting === true,
+      canCreateOffer: capabilities.canCreateOffer === true,
+      canManageReminder: capabilities.canManageReminder === true,
+      canCreateJob: capabilities.canCreateJob === true,
+      canViewInternalJobs: capabilities.canViewInternalJobs === true,
+      canViewPortalJobs: capabilities.canViewPortalJobs === true,
+      directEmailEnabled: false,
+    },
+    clients: objectArray(row.clients).map((client) => ({
+      id: String(client.id),
+      name: String(client.name),
+      ico: client.ico == null ? null : String(client.ico),
+      address: client.address == null ? null : String(client.address),
+      matchMethod: String(client.matchMethod) as CompletePowerOutageActionWorkspace['clients'][number]['matchMethod'],
+      nameSimilarity: Number(client.nameSimilarity) || 0,
+    })),
+    workItems: objectArray(row.workItems).map((item) => ({
+      id: String(item.id),
+      kind: String(item.kind) as CompletePowerOutageActionWorkspace['workItems'][number]['kind'],
+      title: String(item.title),
+      reference: item.reference == null ? null : String(item.reference),
+      actorName: String(item.actorName),
+      createdAt: String(item.createdAt),
+    })),
+    jobs: objectArray(row.jobs).map((job) => ({
+      id: String(job.id),
+      jobNumber: String(job.jobNumber),
+      destination: String(job.destination) as CompletePowerOutageActionWorkspace['jobs'][number]['destination'],
+    })),
+  }
+}
+
+export async function getCompletePowerOutageActionWorkspace(candidateId: string) {
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const { data, error } = await supabase.rpc('get_complete_power_outage_action_workspace_v1', {
+    requested_candidate_id: candidateId,
+  })
+  if (error) throw new Error(`Pracovní nástroje se nepodařilo načíst: ${error.message}`)
+  return mapActionWorkspace(data)
+}
+
+export async function getCompletePowerOutageWorkItemFormOptions(
+  candidateId: string,
+): Promise<CompletePowerOutageWorkItemFormOptions> {
+  const workspace = await getCompletePowerOutageActionWorkspace(candidateId)
+  if (!workspace.ownership.canEdit) {
+    throw new Error('Pracovní akce může provádět pouze vlastník tohoto záznamu.')
+  }
+
+  const { supabase, user, profile } = await getPowerOutageRuntimeContext()
+  const [usersResponse, clientsResponse, contactsResponse] = await Promise.all([
+    supabase.from('profiles').select('id, name, role').order('name', { ascending: true }),
+    supabase.from('clients').select('id, name, created_by').order('name', { ascending: true }),
+    supabase
+      .from('client_contacts')
+      .select('id, client_id, name, phone, email, is_primary')
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true }),
+  ])
+
+  if (usersResponse.error || clientsResponse.error || contactsResponse.error) {
+    throw new Error('Podklady pro pracovní akci se nepodařilo načíst.')
+  }
+
+  return {
+    currentUserId: user.id,
+    offerClientIds: (clientsResponse.data ?? [])
+      .filter((client) => profile.role === 'admin' || client.created_by === user.id)
+      .map((client) => String(client.id)),
+    users: (usersResponse.data ?? []).map((profile) => ({
+      id: String(profile.id),
+      name: profile.name == null ? null : String(profile.name),
+      role: profile.role == null ? null : String(profile.role),
+    })),
+    clients: (clientsResponse.data ?? []).map((client) => ({
+      id: String(client.id),
+      name: String(client.name),
+    })),
+    contacts: (contactsResponse.data ?? []).map((contact) => ({
+      id: String(contact.id),
+      client_id: String(contact.client_id),
+      name: String(contact.name),
+      phone: contact.phone == null ? null : String(contact.phone),
+      email: contact.email == null ? null : String(contact.email),
+      is_primary: contact.is_primary === true,
+    })),
+  }
+}
+
+export async function linkCompletePowerOutageWorkItem(input: {
+  candidateId: string
+  itemKind: CompletePowerOutageWorkItemKind
+  itemId: string
+}) {
+  const { supabase } = await getPowerOutageRuntimeContext()
+  const { data, error } = await supabase.rpc('link_complete_power_outage_work_item_v1', {
+    requested_candidate_id: input.candidateId,
+    requested_item_kind: input.itemKind,
+    requested_item_id: input.itemId,
+  })
+  if (error) throw new Error(`Pracovní položku se nepodařilo propojit: ${error.message}`)
+  return mapActionWorkspace(data)
 }
 
 export async function recordCompletePowerOutageCommunication(input: {

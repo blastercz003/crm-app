@@ -120,6 +120,7 @@ export function CreateTaskModal({
   onSuccess,
   suppressSuccessToast = false,
   initialValues,
+  nested = false,
 }: {
   users: UserOption[]
   clients: ClientOption[]
@@ -129,6 +130,7 @@ export function CreateTaskModal({
   onSuccess?: (state: CreateTaskActionState) => void
   suppressSuccessToast?: boolean
   initialValues?: TaskFormValues
+  nested?: boolean
 }) {
   const onClose = useModalMotionClose(closeImmediately)
   const [state, formAction] = useActionState(
@@ -161,7 +163,7 @@ export function CreateTaskModal({
   return (
     <div
       data-modal-motion-root
-      className="fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]"
+      className={`fixed inset-0 ${nested ? 'z-[220]' : 'z-[100]'} overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]`}
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {

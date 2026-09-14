@@ -19,6 +19,7 @@ import { logUserActivity } from '@/lib/activity-log/logUserActivity'
 export type MeetingFormActionState = {
   success: boolean
   error: string | null
+  meetingId?: string
   companyName?: string
   meetingDateTime?: string
 }
@@ -968,6 +969,7 @@ export async function createMeetingModalAction(
     return {
       success: true,
       error: null,
+      meetingId: result.id,
       companyName: result.companyName ?? undefined,
       meetingDateTime: result.meetingDateTime ?? undefined,
     }

@@ -20812,10 +20812,41 @@ html[data-theme='dark'] [data-workspace-card]:not([data-workspace-card='kpis'])[
   animation-duration: 140ms;
 }
 
+@keyframes app-side-panel-enter {
+  from { opacity: 0; transform: translate3d(28px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes app-side-panel-exit {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translate3d(22px, 0, 0); }
+}
+
+[data-modal-motion-root][data-modal-motion-profile='side-panel'] [data-modal-motion-surface] {
+  animation-name: app-side-panel-enter;
+  animation-duration: 260ms;
+  transform-origin: right center;
+}
+
+[data-modal-motion-root][data-modal-motion-profile='side-panel'][data-modal-motion-state='closing'] [data-modal-motion-surface] {
+  animation-name: app-side-panel-exit;
+  animation-duration: 170ms;
+}
+
 @media (max-width: 639px) {
   @keyframes app-modal-surface-enter {
     from { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.99); }
     to { opacity: 1; transform: none; }
+  }
+
+  @keyframes app-side-panel-enter {
+    from { opacity: 0; transform: translate3d(0, 28px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes app-side-panel-exit {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translate3d(0, 22px, 0); }
   }
 }
 

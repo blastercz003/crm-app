@@ -22,7 +22,7 @@ type ClientContactOption = {
   is_primary: boolean
 }
 
-type MeetingFormValues = {
+export type MeetingFormValues = {
   id?: string
   client_id?: string | null
   client_contact_id?: string | null

@@ -25,6 +25,10 @@ export type CompleteCommunicationTimelineKind =
   | 'follow_up_cancelled'
   | 'automatic_email_sent'
   | 'automatic_email_delivered'
+  | 'client_linked'
+  | 'task_created'
+  | 'meeting_created'
+  | 'offer_created'
 export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'large_companies' | 'grade_a' | 'grade_b'
 export type CompleteCommercialSort = 'date' | 'score'
 export type CompleteCommercialSelectionCounts = {
@@ -86,6 +90,90 @@ export type CompleteCommunicationWorkspace = {
   canRelease: boolean
   followUp: CompleteCommunicationFollowUp | null
   timeline: CompleteCommunicationTimelineItem[]
+}
+
+export type CompletePowerOutageActionWorkspace = {
+  contractVersion: number
+  uiEnabled: boolean
+  candidateId: string
+  prefill: {
+    companyName: string
+    ico: string | null
+    legalForm: string | null
+    address: string
+    municipality: string
+    townPart: string | null
+    street: string
+    houseNumber: string | null
+    orientationNumber: string | null
+    postalCode: string | null
+    outageId: string
+    outageAddressId: string
+    source: PowerOutageSource
+    startsAt: string
+    endsAt: string
+  }
+  ownership: {
+    ownerId: string | null
+    isUnassigned: boolean
+    canEdit: boolean
+  }
+  capabilities: {
+    canCreateClient: boolean
+    canCreateTask: boolean
+    canCreateMeeting: boolean
+    canCreateOffer: boolean
+    canManageReminder: boolean
+    canCreateJob: boolean
+    canViewInternalJobs: boolean
+    canViewPortalJobs: boolean
+    directEmailEnabled: false
+  }
+  clients: Array<{
+    id: string
+    name: string
+    ico: string | null
+    address: string | null
+    matchMethod: 'manual' | 'ico_exact' | 'name_exact' | 'name_fuzzy'
+    nameSimilarity: number
+  }>
+  workItems: Array<{
+    id: string
+    kind: 'client' | 'task' | 'meeting' | 'offer'
+    title: string
+    reference: string | null
+    actorName: string
+    createdAt: string
+  }>
+  jobs: Array<{
+    id: string
+    jobNumber: string
+    destination: 'jobs' | 'jobs_portal'
+  }>
+}
+
+export type CompletePowerOutageWorkItemKind = 'client' | 'task' | 'meeting' | 'offer'
+
+export type CompletePowerOutageWorkItemFormOptions = {
+  currentUserId: string
+  offerClientIds: string[]
+  users: Array<{
+    id: string
+    name: string | null
+    role: string | null
+  }>
+  clients: Array<{
+    id: string
+    name: string
+  }>
+  contacts: Array<{
+    id: string
+    client_id: string
+    name: string
+    phone: string | null
+    email: string | null
+    is_primary: boolean
+  }>
 }
 
 export type CompletePowerOutageListItem = {
