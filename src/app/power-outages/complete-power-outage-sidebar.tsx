@@ -1220,6 +1220,7 @@ function emailManagementPresentation(workspace: CompleteNotificationEmailManagem
 function contactSelectorLabel(value: string) {
   if (value === 'top_v1') return 'TOP VÝBĚR'
   if (value === 'large_companies_v1') return 'VELKÉ FIRMY'
+  if (value === 'operationally_sensitive_v3') return 'PROVOZNĚ CITLIVÉ'
   if (value === 'grade_a') return 'POUZE A'
   if (value === 'grade_b') return 'POUZE B'
   if (value === 'all_confirmed') return 'VŠECHNY POTVRZENÉ'
@@ -1232,6 +1233,7 @@ function contactSelectorOrder(value: string) {
   if (value === 'grade_a') return 3
   if (value === 'grade_b') return 4
   if (value === 'all_confirmed') return 5
+  if (value === 'operationally_sensitive_v3') return 6
   return 99
 }
 
@@ -1565,6 +1567,7 @@ const COMMERCIAL_SELECTION_OPTIONS: Array<{ value: CompleteCommercialSelectionFi
   { value: 'grade_a', label: 'POUZE A', description: 'Nejvyšší bodové hodnocení' },
   { value: 'grade_b', label: 'POUZE B', description: 'Střední bodové hodnocení' },
   { value: 'all', label: 'VŠECHNY', description: 'Beze změny dnešního výpisu' },
+  { value: 'operationally_sensitive', label: 'PROVOZNĚ CITLIVÉ', description: 'Provozy citlivé na výpadek elektřiny' },
 ]
 
 const COMMERCIAL_CLIENT_SCOPE_OPTIONS = [
@@ -1583,13 +1586,13 @@ function CommercialSelectionPanel({ workspace, value, sort, clientsOnly, counts,
   return <PanelShell>
     <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 [html[data-theme=dark]_&]:text-violet-300"><Sparkles aria-hidden size={18} /></span><span className="min-w-0"><small className="block whitespace-nowrap text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Obchodní výběr</small><h3 className="whitespace-nowrap text-base font-semibold text-[var(--text-primary)]">AI SELECT<sup className="relative top-px ml-0.5 align-super text-[9px] font-bold leading-none">™</sup></h3></span></div><CommercialSelectionStatusBadge progress={workspace.commercialSelection.progress} /></div>
     <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Obchodní výběr firem">{COMMERCIAL_SELECTION_OPTIONS.map((option) => {
-      const count = option.value === 'all' ? counts?.all : option.value === 'top' ? counts?.top : option.value === 'large_companies' ? counts?.largeCompanies : option.value === 'grade_a' ? counts?.gradeA : counts?.gradeB
+      const count = option.value === 'all' ? counts?.all : option.value === 'top' ? counts?.top : option.value === 'large_companies' ? counts?.largeCompanies : option.value === 'operationally_sensitive' ? counts?.operationallySensitive : option.value === 'grade_a' ? counts?.gradeA : counts?.gradeB
       const description = option.value === 'top' ? workspace.commercialSelection.versionLabel : option.description
       return <button key={option.value} type="button" onClick={() => { if (clientsOnly) onClientsOnlyChange(false); onChange(option.value) }} aria-pressed={!clientsOnly && value === option.value} title={description} className={`flex h-[58px] flex-col items-center justify-center rounded-xl border px-2 text-center transition hover:-translate-y-px ${!clientsOnly && value === option.value ? 'border-violet-400/45 bg-violet-500/12 text-violet-700 shadow-sm [html[data-theme=dark]_&]:text-violet-200' : 'border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)] hover:border-violet-400/30 hover:text-[var(--text-primary)]'}`}><strong className="text-[8px] font-extrabold uppercase tracking-[0.055em]">{option.label}</strong><small className="mt-0.5 line-clamp-1 text-[6px] font-medium normal-case tracking-normal opacity-80">{description}</small>{workspace.commercialSelection.countsAndSortingEnabled ? <small className="mt-0.5 text-[7px] font-extrabold tabular-nums text-[var(--text-primary)]">{count == null ? 'Načítám…' : `${count.toLocaleString('cs-CZ')} záznamů`}</small> : null}</button>
     })}</div>
     <div className="mt-3"><small className="block text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Rozsah záznamů</small><SlidingTwoTabSwitch value={clientsOnly ? 'clients' : 'all'} options={COMMERCIAL_CLIENT_SCOPE_OPTIONS} onValueChange={(nextValue) => onClientsOnlyChange(nextValue === 'clients')} ariaLabel="Rozsah zobrazených záznamů" compact className="mt-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-0.5" /></div>
     {workspace.commercialSelection.countsAndSortingEnabled ? <div className="mt-3"><small className="block text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Řazení tabulky</small><SlidingTwoTabSwitch value={sort} options={COMMERCIAL_SORT_OPTIONS} onValueChange={onSortChange} ariaLabel="Řazení tabulky" compact className="mt-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-0.5" /></div> : null}
-    <p className="mt-3 flex items-center justify-center gap-2 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Výběr pracuje lokálně nad vypočteným skóre. Filtry tabulky zůstávají dostupné.</p>
+    <p className="mt-3 flex items-center justify-center gap-2 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Výběr pracuje lokálně nad ověřenými daty a pravidly. Filtry tabulky zůstávají dostupné.</p>
   </PanelShell>
 }
 

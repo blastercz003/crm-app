@@ -30,12 +30,13 @@ export type CompleteCommunicationTimelineKind =
   | 'meeting_created'
   | 'offer_created'
   | 'job_created'
-export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'large_companies' | 'grade_a' | 'grade_b'
+export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'large_companies' | 'grade_a' | 'grade_b' | 'operationally_sensitive'
 export type CompleteCommercialSort = 'date' | 'score'
 export type CompleteCommercialSelectionCounts = {
   all: number
   top: number
   largeCompanies: number
+  operationallySensitive: number
   gradeA: number
   gradeB: number
 }

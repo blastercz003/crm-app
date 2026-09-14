@@ -214,7 +214,7 @@ export async function getCompletePowerOutagePageAction(input: {
     if (!['all', 'registered_office', 'establishment', 'mixed'].includes(filters.entityKind)) throw new Error('Neplatný typ firmy.')
     if (!['all', 'not_contacted', 'contacted', 'unreachable', 'interested', 'offer_sent', 'job_won', 'closed_no_job'].includes(filters.communicationStatus)) throw new Error('Neplatný stav komunikace.')
     if (typeof filters.clientsOnly !== 'boolean') throw new Error('Neplatný filtr klientských odstávek.')
-    if (!['all', 'top', 'large_companies', 'grade_a', 'grade_b'].includes(filters.commercialSelection)) throw new Error('Neplatný obchodní výběr.')
+    if (!['all', 'top', 'large_companies', 'grade_a', 'grade_b', 'operationally_sensitive'].includes(filters.commercialSelection)) throw new Error('Neplatný obchodní výběr.')
     if (!['date', 'score'].includes(filters.commercialSort)) throw new Error('Neplatné řazení obchodního výběru.')
     if (filters.query.length > 200) throw new Error('Hledaný text je příliš dlouhý.')
     if (cursor && (!validUuid(cursor.id) || Number.isNaN(new Date(cursor.at).getTime()))) throw new Error('Neplatný kurzor stránky.')
