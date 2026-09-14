@@ -1029,6 +1029,38 @@ function contactManagementPresentation(summary: CompleteContactManagementSummary
   }
 }
 
+function SelectorMultiPicker({ options, value, disabled, onChange }: {
+  options: Array<{ key: string; name: string; companyCount: number }>
+  value: string[]
+  disabled?: boolean
+  onChange: (keys: string[]) => void
+}) {
+  const sortedOptions = [...options]
+    .filter((option) => option.key !== 'multi_select_v1')
+    .sort((left, right) => contactSelectorOrder(left.key) - contactSelectorOrder(right.key))
+  const toggle = (key: string) => {
+    if (disabled) return
+    if (key === 'all_confirmed') {
+      onChange(['all_confirmed'])
+      return
+    }
+    const withoutAll = value.filter((current) => current !== 'all_confirmed')
+    const next = withoutAll.includes(key)
+      ? withoutAll.filter((current) => current !== key)
+      : [...withoutAll, key]
+    if (next.length) onChange(next)
+  }
+  return <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+    {sortedOptions.map((option) => {
+      const selected = value.includes(option.key)
+      return <button key={option.key} type="button" aria-pressed={selected} disabled={disabled} onClick={() => toggle(option.key)} className={`flex min-h-10 min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${selected ? 'border-sky-400/50 bg-sky-500/12 text-sky-700 [html[data-theme=dark]_&]:text-sky-300' : 'border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]'}`}>
+        <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? 'border-sky-500 bg-sky-500 text-white' : 'border-[var(--surface-border)]'}`}>{selected ? <Check aria-hidden size={10} /> : null}</span>
+        <span className="min-w-0"><strong className="block truncate text-[8px] font-bold uppercase">{option.name}</strong><small className="block text-[7px] tabular-nums opacity-75">{option.companyCount.toLocaleString('cs-CZ')} firem</small></span>
+      </button>
+    })}
+  </div>
+}
+
 function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
   initialSummary: CompleteContactManagementSummary
   onSummaryChange: (summary: CompleteContactManagementSummary) => void
@@ -1038,13 +1070,13 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
-  const [selectorKey, setSelectorKey] = useState(initialSummary.selectedSelectorKey)
+  const [selectorKeys, setSelectorKeys] = useState(initialSummary.selectedSelectorKeys)
   const [confirmSelector, setConfirmSelector] = useState(false)
   const [reviewTab, setReviewTab] = useState<'emails' | 'domains'>('emails')
 
   const applyWorkspace = (next: CompleteContactManagementWorkspace) => {
     setWorkspace(next)
-    setSelectorKey(next.summary.selectedSelectorKey)
+    setSelectorKeys(next.summary.selectedSelectorKeys)
     onSummaryChange(next.summary)
   }
   const load = async () => {
@@ -1061,7 +1093,7 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
       if (!active) return
       if (result.success) {
         setWorkspace(result.workspace)
-        setSelectorKey(result.workspace.summary.selectedSelectorKey)
+        setSelectorKeys(result.workspace.summary.selectedSelectorKeys)
         onSummaryChange(result.workspace.summary)
       } else {
         setError(result.error)
@@ -1092,7 +1124,7 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
   const prepareSelector = async () => {
     setPendingKey('selector')
     setError(null)
-    const result = await prepareCompletePowerOutageContactSelectorAction(selectorKey)
+    const result = await prepareCompletePowerOutageContactSelectorAction(selectorKeys)
     if (result.success) {
       applyWorkspace(result.workspace)
       setConfirmSelector(false)
@@ -1113,7 +1145,8 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
   const summary = workspace?.summary ?? initialSummary
   const actionableReviews = workspace?.contactReviews.filter((contact) => contact.actionable) ?? []
   const secondaryReviews = workspace?.contactReviews.filter((contact) => !contact.actionable) ?? []
-  const selectedOption = workspace?.selectors.find((selector) => selector.key === selectorKey)
+  const selectedOptions = workspace?.selectors.filter((selector) => selectorKeys.includes(selector.key)) ?? []
+  const selectorSelectionChanged = [...selectorKeys].sort().join('|') !== [...summary.selectedSelectorKeys].sort().join('|')
   const selectorLocked = summary.selectorLockedByEmailDispatch
   const completedCompanyCount = Math.max(0, summary.targetCompanyCount - summary.pendingCount - summary.processingCount)
   const progressPercent = summary.targetCompanyCount > 0
@@ -1133,8 +1166,8 @@ function ContactManagementPopup({ initialSummary, onSummaryChange, onClose }: {
           <div><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Brave fallback</small><SlidingTwoTabSwitch value={summary.braveFallbackEnabled ? 'enabled' : 'disabled'} options={[{ value: 'disabled', label: 'Vypnutý' }, { value: 'enabled', label: 'Povolený' }]} onValueChange={(value) => void setRuntime(summary.runtimeEnabled, value === 'enabled')} ariaLabel="Placený Brave fallback" className={`mt-2 rounded-xl bg-[var(--surface-strong)] p-1 ${!summary.runtimeEnabled ? 'pointer-events-none opacity-45' : ''}`} compact /></div>
         </div>
 
-        <div className="mt-4"><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Zdrojový výběr AI SELECT</small><div className="mt-2 flex flex-col gap-2 sm:flex-row"><div className="relative min-w-0 flex-1 overflow-hidden rounded-xl"><select value={selectorKey} disabled={summary.runtimeEnabled || selectorLocked || pendingKey !== null} onChange={(event) => { setSelectorKey(event.target.value); setConfirmSelector(false) }} className="block h-10 w-full appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 pr-9 text-[10px] font-semibold text-[var(--text-primary)] outline-none [-webkit-appearance:none] focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50">{[...workspace.selectors].sort((left, right) => contactSelectorOrder(left.key) - contactSelectorOrder(right.key)).map((selector) => <option key={selector.key} value={selector.key}>{selector.name} · {selector.companyCount.toLocaleString('cs-CZ')} firem</option>)}</select><ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /></div><button type="button" disabled={selectorKey === summary.selectedSelectorKey || pendingKey !== null || summary.runtimeEnabled || selectorLocked} onClick={() => setConfirmSelector(true)} className={`${actionButton} border-sky-400/30 bg-sky-500/10 text-[var(--accent)] sm:h-10`}>Připravit výběr</button></div>{selectorLocked ? <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/8 px-2.5 py-2 text-[8px] leading-4 text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{summary.selectorLockReason ?? 'Zdrojový výběr je uzamčen během aktivního odesílání. Nejprve pozastavte Upozornění firmám.'}</p> : <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Výběr lze bezpečně změnit jen při pozastaveném dohledávání. Příprava {selectedOption?.companyCount.toLocaleString('cs-CZ') ?? 0} IČO sama nespustí Brave.</p>}</div>
-        {confirmSelector ? <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/8 p-3"><p className="text-[9px] leading-4 text-[var(--text-primary)]">Potvrďte přípravu výběru <strong>{selectedOption?.name}</strong>. Existující výsledky zůstanou zachované.</p><div className="mt-2 flex gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void prepareSelector()} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === 'selector' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit přípravu</button><button type="button" disabled={pendingKey !== null} onClick={() => setConfirmSelector(false)} className={`${actionButton} border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]`}>Zrušit</button></div></div> : null}
+        <div className="mt-4"><small className="block text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Zdrojové výběry AI SELECT</small><SelectorMultiPicker options={workspace.selectors} value={selectorKeys} disabled={summary.runtimeEnabled || selectorLocked || pendingKey !== null} onChange={(keys) => { setSelectorKeys(keys); setConfirmSelector(false) }} /><button type="button" disabled={!selectorSelectionChanged || pendingKey !== null || summary.runtimeEnabled || selectorLocked} onClick={() => setConfirmSelector(true)} className={`${actionButton} mt-2 w-full border-sky-400/30 bg-sky-500/10 text-[var(--accent)] sm:h-10`}>Připravit sjednocený výběr</button>{selectorLocked ? <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/8 px-2.5 py-2 text-[8px] leading-4 text-amber-700 [html[data-theme=dark]_&]:text-amber-300">{summary.selectorLockReason ?? 'Zdrojový výběr je uzamčen během aktivního odesílání. Nejprve pozastavte Upozornění firmám.'}</p> : <p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Filtry se sjednotí. Firma obsažená ve více výběrech se zpracuje pouze jednou; uvedené dílčí počty se proto nesčítají.</p>}</div>
+        {confirmSelector ? <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/8 p-3"><p className="text-[9px] leading-4 text-[var(--text-primary)]">Potvrďte přípravu výběrů <strong>{selectedOptions.map((option) => option.name).join(' + ')}</strong>. Existující výsledky zůstanou zachované.</p><div className="mt-2 flex gap-2"><button type="button" disabled={pendingKey !== null} onClick={() => void prepareSelector()} className={`${actionButton} border-emerald-400/35 bg-emerald-400/10 text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300`}>{pendingKey === 'selector' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Potvrdit přípravu</button><button type="button" disabled={pendingKey !== null} onClick={() => setConfirmSelector(false)} className={`${actionButton} border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]`}>Zrušit</button></div></div> : null}
       </section>
 
       <section className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4"><div className="flex items-center justify-between gap-3"><span><small className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Průběh zpracování</small><strong className="mt-1 block text-[11px] text-[var(--text-primary)]">{completedCompanyCount.toLocaleString('cs-CZ')} z {summary.targetCompanyCount.toLocaleString('cs-CZ')} firem</strong></span><strong className="text-2xl tabular-nums text-[var(--accent)]">{progressPercent.toLocaleString('cs-CZ')} %</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-border)]"><div className="h-full rounded-full bg-sky-500 transition-[width] duration-500" style={{ width: `${progressPercent}%` }} /></div><div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Cílové firmy" value={summary.targetCompanyCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ověřené weby" value={summary.verifiedWebsiteCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Použitelný e-mail" value={summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')} /><PowerOutageDetailRow label="Ke kontrole" value={(summary.actionableReviewCompanyCount + summary.domainReviewCount).toLocaleString('cs-CZ')} /></div><p className="mt-3 text-[8px] text-[var(--text-secondary)]">Čeká {summary.pendingCount.toLocaleString('cs-CZ')} · zpracovává se {summary.processingCount.toLocaleString('cs-CZ')} · bez webu {summary.noWebsiteCount.toLocaleString('cs-CZ')} · chyby {summary.errorCount.toLocaleString('cs-CZ')}</p></section>
@@ -1191,7 +1224,7 @@ function ContactManagementPanel({ workspace, onRetry }: { workspace: CompletePow
   return <PanelShell>
     <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 [html[data-theme=dark]_&]:text-cyan-300"><AtSign aria-hidden size={19} /></span><span className="min-w-0"><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Dohledávání a ověření</small><h3 className="truncate text-base font-semibold text-[var(--text-primary)]">Kontakty firem</h3></span></div><CompletePanelStatusBadge label={presentation.label} badgeClassName={presentation.badge} dotClassName={presentation.dot} /></div>
     <div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Cílové firmy</small><strong className="mt-0.5 block text-[12px] tabular-nums text-[var(--text-primary)]">{summary.targetCompanyCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">S e-mailem</small><strong className="mt-0.5 block text-[12px] tabular-nums text-emerald-600 [html[data-theme=dark]_&]:text-emerald-300">{summary.companyWithPrimaryEmailCount.toLocaleString('cs-CZ')}</strong></div><div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-2 text-center"><small className="block text-[6.5px] font-bold uppercase text-[var(--text-secondary)]">Ke kontrole</small><strong className="mt-0.5 block text-[12px] tabular-nums text-amber-600">{(summary.actionableReviewCompanyCount + summary.domainReviewCount).toLocaleString('cs-CZ')}</strong></div></div>
-    <p className="mt-2 truncate text-center text-[8px] text-[var(--text-secondary)]">Zdroj: {summary.selectedSelectorName} · poslední aktivita {formatRelativeDate(summary.lastActivityAt)}</p>
+    <p className="mt-2 truncate text-center text-[8px] text-[var(--text-secondary)]">Zdroj: {summary.selectedSelectorNames.join(' + ')} · poslední aktivita {formatRelativeDate(summary.lastActivityAt)}</p>
     <button type="button" onClick={() => setShowDetail(true)} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-[8px] font-bold uppercase tracking-[0.06em] text-cyan-700 transition hover:-translate-y-px hover:border-cyan-400/50 [html[data-theme=dark]_&]:text-cyan-300"><SearchCheck aria-hidden size={13} />Spravovat kontakty</button>
     {showDetail && typeof document !== 'undefined' ? createPortal(<ContactManagementPopup initialSummary={summary} onSummaryChange={setUpdatedSummary} onClose={() => setShowDetail(false)} />, document.body) : null}
   </PanelShell>
@@ -1224,16 +1257,17 @@ function contactSelectorLabel(value: string) {
   if (value === 'grade_a') return 'POUZE A'
   if (value === 'grade_b') return 'POUZE B'
   if (value === 'all_confirmed') return 'VŠECHNY POTVRZENÉ'
+  if (value === 'multi_select_v1') return 'VYBRANÉ FILTRY'
   return value.toUpperCase()
 }
 
 function contactSelectorOrder(value: string) {
   if (value === 'top_v1') return 1
   if (value === 'large_companies_v1') return 2
-  if (value === 'grade_a') return 3
-  if (value === 'grade_b') return 4
-  if (value === 'all_confirmed') return 5
-  if (value === 'operationally_sensitive_v3') return 6
+  if (value === 'operationally_sensitive_v3') return 3
+  if (value === 'grade_a') return 4
+  if (value === 'grade_b') return 5
+  if (value === 'all_confirmed') return 6
   return 99
 }
 
@@ -1285,6 +1319,7 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
   const [sendWeekdays, setSendWeekdays] = useState(initialWorkspace.productionConfiguration.sendWeekdays)
   const [maximumHorizonDays, setMaximumHorizonDays] = useState(String(initialWorkspace.productionConfiguration.maximumOutageHorizonDays))
   const [minimumLeadHours, setMinimumLeadHours] = useState(String(initialWorkspace.productionConfiguration.minimumOutageLeadMinutes / 60))
+  const [selectorKeys, setSelectorKeys] = useState(initialWorkspace.productionConfiguration.activeSelectorKeys)
   const [configurationReason, setConfigurationReason] = useState('Úprava provozního nastavení administrátorem.')
   const [activationConfirmation, setActivationConfirmation] = useState<CompleteNotificationEmailActivationConfirmation | null>(null)
 
@@ -1298,6 +1333,7 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
     setSendWeekdays(config.sendWeekdays)
     setMaximumHorizonDays(String(config.maximumOutageHorizonDays))
     setMinimumLeadHours(String(config.minimumOutageLeadMinutes / 60))
+    setSelectorKeys(config.activeSelectorKeys)
   }
 
   const applyWorkspace = (next: CompleteNotificationEmailManagementWorkspace) => {
@@ -1384,6 +1420,14 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
       reason: configurationReason,
     })
     if (result.success) applyWorkspace(result.workspace)
+    else setError(result.error)
+    setPendingKey(null)
+  }
+  const saveSelectorSet = async () => {
+    setPendingKey('selector-set')
+    setError(null)
+    const result = await prepareCompletePowerOutageContactSelectorAction(selectorKeys)
+    if (result.success) await reload()
     else setError(result.error)
     setPendingKey(null)
   }
@@ -1512,7 +1556,8 @@ function EmailManagementPopup({ initialWorkspace, onWorkspaceChange, onClose }: 
       <section className={`mt-4 rounded-2xl border p-4 ${attentionCount ? 'border-amber-400/30 bg-amber-400/8' : 'border-emerald-400/25 bg-emerald-400/8'}`}><div className="flex items-center justify-between gap-2"><h3 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyžaduje pozornost</h3><span className={`text-[9px] font-bold ${attentionCount ? 'text-amber-600' : 'text-emerald-600'}`}>{attentionCount}</span></div>{attentionCount ? <div className="mt-2 space-y-2">{pendingItems.map((item) => renderNotice(item, 'pending'))}{workspace.safety.recentSignals.filter((signal) => signal.signalType !== 'delivery_success').map((signal) => <p key={`${signal.signalType}-${signal.createdAt}`} className="rounded-xl border border-red-400/25 bg-red-400/8 px-3 py-2 text-[9px] text-red-700 [html[data-theme=dark]_&]:text-red-300">{signal.signalType} · {signal.errorCode || 'bez kódu'} · {formatDate(signal.createdAt)}</p>)}</div> : <p className="mt-2 flex items-center gap-2 text-[9px] text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300"><CircleCheck aria-hidden size={13} />Žádný problém nevyžaduje zásah.</p>}</section>
 
       <details className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Nastavení rozesílání</summary><div className="border-t border-[var(--surface-border)] p-4">
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Výběr firem" value={contactSelectorLabel(productionConfig.activeSelectorKey)} /><PowerOutageDetailRow label="Verze nastavení" value={`v${productionConfig.configurationVersion}`} /><PowerOutageDetailRow label="Časové pásmo" value="Europe/Prague" /><PowerOutageDetailRow label="Odhlášené kontakty" value={workspace.operations.suppressedRecipientCount.toLocaleString('cs-CZ')} /></div>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4"><PowerOutageDetailRow label="Výběr firem" value={productionConfig.activeSelectorKeys.map((key) => workspace.selectors.find((selector) => selector.key === key)?.name ?? contactSelectorLabel(key)).join(' + ')} /><PowerOutageDetailRow label="Verze nastavení" value={`v${productionConfig.configurationVersion}`} /><PowerOutageDetailRow label="Časové pásmo" value="Europe/Prague" /><PowerOutageDetailRow label="Odhlášené kontakty" value={workspace.operations.suppressedRecipientCount.toLocaleString('cs-CZ')} /></div>
+        <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3"><small className="block text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">AI SELECT pro kontakty a upozornění</small><SelectorMultiPicker options={workspace.selectors} value={selectorKeys} disabled={!settingsEditable || pendingKey !== null} onChange={setSelectorKeys} /><button type="button" disabled={!settingsEditable || pendingKey !== null || [...selectorKeys].sort().join('|') === [...productionConfig.activeSelectorKeys].sort().join('|')} onClick={() => void saveSelectorSet()} className={`${actionButton} mt-2 w-full border-sky-400/35 bg-sky-500/10 text-sky-700 [html[data-theme=dark]_&]:text-sky-300`}>{pendingKey === 'selector-set' ? <LoaderCircle aria-hidden size={11} className="animate-spin" /> : <Check aria-hidden size={11} />}Použít sjednocený výběr</button><p className="mt-2 text-[8px] leading-4 text-[var(--text-secondary)]">Překryvy filtrů se sloučí podle firmy a odstávky. Jeden příjemce proto nedostane stejné oznámení vícekrát.</p></div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Denní limit<input type="number" min={1} max={productionConfig.hardDailySendLimit} value={dailyLimit} disabled={!settingsEditable} onChange={(event) => setDailyLimit(event.target.value)} className={settingsInput} /><small className="mt-1 block font-medium normal-case tracking-normal">Pevné maximum {productionConfig.hardDailySendLimit}</small></label>
           <label className="text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">Měsíční limit<input type="number" min={1} max={productionConfig.hardMonthlySendLimit} value={monthlyLimit} disabled={!settingsEditable} onChange={(event) => setMonthlyLimit(event.target.value)} className={settingsInput} /><small className="mt-1 block font-medium normal-case tracking-normal">Pevné maximum {productionConfig.hardMonthlySendLimit}</small></label>
@@ -1564,10 +1609,10 @@ function EmailManagementPanel({ workspace, onRetry }: { workspace: CompletePower
 const COMMERCIAL_SELECTION_OPTIONS: Array<{ value: CompleteCommercialSelectionFilter; label: string; description: string }> = [
   { value: 'top', label: 'TOP VÝBĚR', description: '' },
   { value: 'large_companies', label: 'VELKÉ FIRMY', description: 'Aktivní podniky od 50 zaměstnanců' },
+  { value: 'operationally_sensitive', label: 'PROVOZNĚ CITLIVÉ', description: 'Provozy citlivé na výpadek elektřiny' },
   { value: 'grade_a', label: 'POUZE A', description: 'Nejvyšší bodové hodnocení' },
   { value: 'grade_b', label: 'POUZE B', description: 'Střední bodové hodnocení' },
   { value: 'all', label: 'VŠECHNY', description: 'Beze změny dnešního výpisu' },
-  { value: 'operationally_sensitive', label: 'PROVOZNĚ CITLIVÉ', description: 'Provozy citlivé na výpadek elektřiny' },
 ]
 
 const COMMERCIAL_CLIENT_SCOPE_OPTIONS = [
@@ -1580,7 +1625,7 @@ const COMMERCIAL_SORT_OPTIONS = [
   { value: 'score', label: 'Nejvyšší skóre' },
 ] as const
 
-function CommercialSelectionPanel({ workspace, value, sort, clientsOnly, counts, onChange, onSortChange, onClientsOnlyChange, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; value: CompleteCommercialSelectionFilter; sort: CompleteCommercialSort; clientsOnly: boolean; counts: CompleteCommercialSelectionCounts | null; onChange: (value: CompleteCommercialSelectionFilter) => void; onSortChange: (value: CompleteCommercialSort) => void; onClientsOnlyChange: (value: boolean) => void; onRetry?: () => void }) {
+function CommercialSelectionPanel({ workspace, value, sort, clientsOnly, counts, countsError, onChange, onSortChange, onClientsOnlyChange, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; value: CompleteCommercialSelectionFilter; sort: CompleteCommercialSort; clientsOnly: boolean; counts: CompleteCommercialSelectionCounts | null; countsError: string | null; onChange: (value: CompleteCommercialSelectionFilter) => void; onSortChange: (value: CompleteCommercialSort) => void; onClientsOnlyChange: (value: boolean) => void; onRetry?: () => void }) {
   if (workspace.loadErrors.commercialSelection) return <PanelShell><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><CircleAlert aria-hidden size={18} /></span><span><small className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Obchodní výběr</small><h3 className="text-base font-semibold text-[var(--text-primary)]">AI SELECT<sup className="relative top-px ml-0.5 align-super text-[9px] font-bold leading-none">™</sup></h3></span></div><PanelLoadError message={workspace.loadErrors.commercialSelection} onRetry={onRetry} /></PanelShell>
 
   return <PanelShell>
@@ -1592,16 +1637,16 @@ function CommercialSelectionPanel({ workspace, value, sort, clientsOnly, counts,
     })}</div>
     <div className="mt-3"><small className="block text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Rozsah záznamů</small><SlidingTwoTabSwitch value={clientsOnly ? 'clients' : 'all'} options={COMMERCIAL_CLIENT_SCOPE_OPTIONS} onValueChange={(nextValue) => onClientsOnlyChange(nextValue === 'clients')} ariaLabel="Rozsah zobrazených záznamů" compact className="mt-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-0.5" /></div>
     {workspace.commercialSelection.countsAndSortingEnabled ? <div className="mt-3"><small className="block text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Řazení tabulky</small><SlidingTwoTabSwitch value={sort} options={COMMERCIAL_SORT_OPTIONS} onValueChange={onSortChange} ariaLabel="Řazení tabulky" compact className="mt-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-0.5" /></div> : null}
-    <p className="mt-3 flex items-center justify-center gap-2 text-center text-[8px] leading-4 text-[var(--text-secondary)]"><ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" /> Výběr pracuje lokálně nad ověřenými daty a pravidly. Filtry tabulky zůstávají dostupné.</p>
+    <p className={`mt-3 flex items-center justify-center gap-2 text-center text-[8px] leading-4 ${countsError ? 'text-red-600 [html[data-theme=dark]_&]:text-red-300' : 'text-[var(--text-secondary)]'}`}>{countsError ? <CircleAlert aria-hidden size={13} className="shrink-0" /> : <ShieldCheck aria-hidden size={13} className="shrink-0 text-emerald-500" />} {countsError ? 'Počty filtrů se nepodařilo načíst. Zkuste stránku obnovit.' : 'Výběr pracuje lokálně nad ověřenými daty a pravidly. Filtry tabulky zůstávají dostupné.'}</p>
   </PanelShell>
 }
 
-export function CompletePowerOutageSidebar({ workspace, sourceRefreshWarning, commercialSelection, commercialSort, clientsOnly, commercialSelectionCounts, onCommercialSelectionChange, onCommercialSortChange, onClientsOnlyChange, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; sourceRefreshWarning?: string | null; commercialSelection: CompleteCommercialSelectionFilter; commercialSort: CompleteCommercialSort; clientsOnly: boolean; commercialSelectionCounts: CompleteCommercialSelectionCounts | null; onCommercialSelectionChange: (value: CompleteCommercialSelectionFilter) => void; onCommercialSortChange: (value: CompleteCommercialSort) => void; onClientsOnlyChange: (value: boolean) => void; onRetry?: () => void }) {
+export function CompletePowerOutageSidebar({ workspace, sourceRefreshWarning, commercialSelection, commercialSort, clientsOnly, commercialSelectionCounts, commercialSelectionCountsError, onCommercialSelectionChange, onCommercialSortChange, onClientsOnlyChange, onRetry }: { workspace: CompletePowerOutageSidebarWorkspace; sourceRefreshWarning?: string | null; commercialSelection: CompleteCommercialSelectionFilter; commercialSort: CompleteCommercialSort; clientsOnly: boolean; commercialSelectionCounts: CompleteCommercialSelectionCounts | null; commercialSelectionCountsError: string | null; onCommercialSelectionChange: (value: CompleteCommercialSelectionFilter) => void; onCommercialSortChange: (value: CompleteCommercialSort) => void; onClientsOnlyChange: (value: boolean) => void; onRetry?: () => void }) {
   const operationalRetry = workspace.currentUser.isAdmin ? onRetry : undefined
   return <div className="-mt-2 min-w-0 lg:mt-0 xl:h-full">
     <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-[10px] text-[var(--text-secondary)] lg:hidden"><Info aria-hidden size={12} /><span>Přejetím do strany zobrazíte další část.</span></p>
     <aside className="power-outages-mobile-aside-carousel grid min-w-0 auto-cols-[100%] grid-flow-col items-stretch gap-3 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[24px] lg:block lg:space-y-4 lg:overflow-visible lg:rounded-none" aria-label="Stav kompletního sběru a vyhledávání firem">
-      {workspace.commercialSelection.enabled ? <div className="min-w-0 snap-start snap-always lg:snap-none"><CommercialSelectionPanel workspace={workspace} value={commercialSelection} sort={commercialSort} clientsOnly={clientsOnly} counts={commercialSelectionCounts} onChange={onCommercialSelectionChange} onSortChange={onCommercialSortChange} onClientsOnlyChange={onClientsOnlyChange} onRetry={onRetry} /></div> : null}
+      {workspace.commercialSelection.enabled ? <div className="min-w-0 snap-start snap-always lg:snap-none"><CommercialSelectionPanel workspace={workspace} value={commercialSelection} sort={commercialSort} clientsOnly={clientsOnly} counts={commercialSelectionCounts} countsError={commercialSelectionCountsError} onChange={onCommercialSelectionChange} onSortChange={onCommercialSortChange} onClientsOnlyChange={onClientsOnlyChange} onRetry={onRetry} /></div> : null}
       {workspace.currentUser.isAdmin ? <div className="min-w-0 snap-start snap-always lg:snap-none"><ContactManagementPanel workspace={workspace} onRetry={onRetry} /></div> : null}
       {workspace.currentUser.isAdmin ? <div className="min-w-0 snap-start snap-always lg:snap-none"><EmailManagementPanel workspace={workspace} onRetry={onRetry} /></div> : null}
       <div className="min-w-0 snap-start snap-always lg:snap-none"><GlobalProgressPanel workspace={workspace} onRetry={operationalRetry} /></div>

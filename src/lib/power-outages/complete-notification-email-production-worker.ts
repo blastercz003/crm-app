@@ -79,7 +79,7 @@ export async function sendOneCompleteNotificationProduction(publicBaseUrl: strin
   const service = getServiceRoleClient()
   if (!service) throw new Error('Chybí serverové připojení pro produkční upozornění KOMPLETNÍ.')
 
-  const { data, error } = await service.rpc('claim_cpo_notification_email_production_v1')
+  const { data, error } = await service.rpc('claim_cpo_notification_email_production_v2')
   if (error) throw new Error(`Produkční zprávu se nepodařilo převzít: ${error.message}`)
   const claim = data as ProductionClaim
   if (claim.status !== 'claimed' || !claim.slotId || !claim.claimToken || !claim.delivery) {

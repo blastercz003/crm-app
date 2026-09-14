@@ -329,11 +329,14 @@ export async function decideCompletePowerOutageDomainReviewAction(input: {
 }
 
 export async function prepareCompletePowerOutageContactSelectorAction(
-  selectorKey: string,
+  selectorKeys: string[],
 ): Promise<CompleteContactManagementActionResult> {
   try {
-    if (!/^[a-z0-9_]{2,64}$/.test(selectorKey)) throw new Error('Neplatný klíč výběru.')
-    return { success: true, workspace: await prepareCompletePowerOutageContactSelector(selectorKey), error: null }
+    const normalizedKeys = [...new Set(selectorKeys)]
+    if (normalizedKeys.length < 1 || normalizedKeys.length > 6 || normalizedKeys.some((key) => !/^[a-z0-9_]{2,64}$/.test(key))) {
+      throw new Error('Vyberte jeden až šest platných filtrů.')
+    }
+    return { success: true, workspace: await prepareCompletePowerOutageContactSelector(normalizedKeys), error: null }
   } catch (error) {
     return { success: false, workspace: null, error: errorMessage(error) }
   }

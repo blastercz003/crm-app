@@ -82,6 +82,12 @@ function mapContactManagementSummary(value: unknown): CompleteContactManagementS
     localDiscoveryEnabled: row.localDiscoveryEnabled === true,
     selectedSelectorKey: typeof row.selectedSelectorKey === 'string' ? row.selectedSelectorKey : 'top_v1',
     selectedSelectorName: typeof row.selectedSelectorName === 'string' ? row.selectedSelectorName : 'TOP VÝBĚR',
+    selectedSelectorKeys: Array.isArray(row.selectedSelectorKeys)
+      ? row.selectedSelectorKeys.filter((key): key is string => typeof key === 'string')
+      : [typeof row.selectedSelectorKey === 'string' ? row.selectedSelectorKey : 'top_v1'],
+    selectedSelectorNames: Array.isArray(row.selectedSelectorNames)
+      ? row.selectedSelectorNames.filter((name): name is string => typeof name === 'string')
+      : [typeof row.selectedSelectorName === 'string' ? row.selectedSelectorName : 'TOP VÝBĚR'],
     selectorLockedByEmailDispatch: row.selectorLockedByEmailDispatch === true,
     selectorLockReason: typeof row.selectorLockReason === 'string' ? row.selectorLockReason : null,
     productionEmailSelectorKey: typeof row.productionEmailSelectorKey === 'string'
@@ -237,6 +243,9 @@ function mapNotificationEmailManagementWorkspace(value: unknown): CompleteNotifi
       continuousPlanningEnabled: productionConfiguration.continuousPlanningEnabled === true,
       continuousDispatchEnabled: productionConfiguration.continuousDispatchEnabled === true,
       activeSelectorKey: String(productionConfiguration.activeSelectorKey ?? operations.selectedSelectorKey ?? 'top_v1'),
+      activeSelectorKeys: Array.isArray(productionConfiguration.activeSelectorKeys)
+        ? productionConfiguration.activeSelectorKeys.filter((key): key is string => typeof key === 'string')
+        : [String(productionConfiguration.activeSelectorKey ?? operations.selectedSelectorKey ?? 'top_v1')],
       selectorChangeRequiresPausedDispatch: productionConfiguration.selectorChangeRequiresPausedDispatch !== false,
       recipientMode: 'automatic_eligible_primary',
       dailySendLimit: Number(productionConfiguration.dailySendLimit) || 10,
@@ -284,6 +293,11 @@ function mapNotificationEmailManagementWorkspace(value: unknown): CompleteNotifi
         .map(mapNotificationEmailDeliveryItem)
         .filter((item) => item.companyName && item.sentAt),
     },
+    selectors: objectArray(row.selectors).map((selector) => ({
+      key: String(selector.key ?? ''),
+      name: String(selector.name ?? ''),
+      companyCount: Number(selector.companyCount) || 0,
+    })).filter((selector) => selector.key && selector.name),
     review: {
       reviewEnabled: review.reviewEnabled === true,
       reviewUiEnabled: review.reviewUiEnabled === true,
@@ -1661,6 +1675,7 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
     cezNewResult, cezCompletedCycleResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
     commercialSelectionResult, commercialSelectionProgressResult, contactManagementResult, emailManagementResult,
+    multiSelectorResult,
   ] = await Promise.all([
     supabase.from('complete_power_outage_address_coverage').select('*').order('source'),
     supabase.from('complete_power_outage_source_state').select('source,coverage_status,last_attempt_at,last_success_at,last_complete_at,last_change_at,horizon_from,horizon_to,latest_source_ref,latest_payload_sha256,data_version,published_outage_count,published_address_count,future_outage_count,active_outage_count,coverage_processed_count,coverage_total_count,last_error_message,metadata').order('source'),
@@ -1679,6 +1694,9 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
       : Promise.resolve({ data: null, error: null }),
     profile.role === 'admin'
       ? supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 })
+      : Promise.resolve({ data: null, error: null }),
+    profile.role === 'admin'
+      ? supabase.rpc('get_cpo_multi_selector_options_v1')
       : Promise.resolve({ data: null, error: null }),
   ])
 
@@ -1743,11 +1761,11 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const commercialSelectionLoadError = commercialSelectionResult.error
     ? `Obchodní výběr se nepodařilo načíst: ${commercialSelectionResult.error.message}`
     : null
-  const contactManagementLoadError = profile.role === 'admin' && contactManagementResult.error
-    ? `Dohledávání kontaktů se nepodařilo načíst: ${contactManagementResult.error.message}`
+  const contactManagementLoadError = profile.role === 'admin' && (contactManagementResult.error || multiSelectorResult.error)
+    ? `Dohledávání kontaktů se nepodařilo načíst: ${contactManagementResult.error?.message ?? multiSelectorResult.error?.message}`
     : null
-  const emailManagementLoadError = profile.role === 'admin' && emailManagementResult.error
-    ? `Správu e-mailových upozornění se nepodařilo načíst: ${emailManagementResult.error.message}`
+  const emailManagementLoadError = profile.role === 'admin' && (emailManagementResult.error || multiSelectorResult.error)
+    ? `Správu e-mailových upozornění se nepodařilo načíst: ${emailManagementResult.error?.message ?? multiSelectorResult.error?.message}`
     : null
   const globalProgress = globalProgressResult.data ? {
     status: globalProgressResult.data.status,
@@ -1802,11 +1820,21 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   return {
     currentUser: { id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' },
     globalProgress,
-    contactManagement: profile.role === 'admin' && !contactManagementResult.error
-      ? mapContactManagementSummary(contactManagementResult.data)
+    contactManagement: profile.role === 'admin' && !contactManagementResult.error && !multiSelectorResult.error
+      ? mapContactManagementSummary({
+          ...objectValue(contactManagementResult.data),
+          ...objectValue(multiSelectorResult.data),
+        })
       : null,
-    emailManagement: profile.role === 'admin' && !emailManagementResult.error
-      ? mapNotificationEmailManagementWorkspace(emailManagementResult.data)
+    emailManagement: profile.role === 'admin' && !emailManagementResult.error && !multiSelectorResult.error
+      ? mapNotificationEmailManagementWorkspace({
+          ...objectValue(emailManagementResult.data),
+          selectors: objectValue(multiSelectorResult.data).selectors,
+          productionConfiguration: {
+            ...objectValue(objectValue(emailManagementResult.data).productionConfiguration),
+            activeSelectorKeys: objectValue(multiSelectorResult.data).activeSelectorKeys,
+          },
+        })
       : null,
     commercialSelection: {
       enabled: commercialSelectionResult.data?.ui_enabled === true,
@@ -1876,9 +1904,22 @@ export async function setCompletePowerOutageContactRuntime(
 
 export async function getCompleteNotificationEmailManagementWorkspace(): Promise<CompleteNotificationEmailManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const { data, error } = await supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 })
+  const [{ data, error }, selectorResult] = await Promise.all([
+    supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 }),
+    supabase.rpc('get_cpo_multi_selector_options_v1'),
+  ])
   if (error) throw new Error(`Správu e-mailových upozornění se nepodařilo načíst: ${error.message}`)
-  return mapNotificationEmailManagementWorkspace(data)
+  if (selectorResult.error) throw new Error(`Výběry AI SELECT se nepodařilo načíst: ${selectorResult.error.message}`)
+  const selectorWorkspace = objectValue(selectorResult.data)
+  const rawWorkspace = objectValue(data)
+  return mapNotificationEmailManagementWorkspace({
+    ...rawWorkspace,
+    selectors: selectorWorkspace.selectors,
+    productionConfiguration: {
+      ...objectValue(rawWorkspace.productionConfiguration),
+      activeSelectorKeys: selectorWorkspace.activeSelectorKeys,
+    },
+  })
 }
 
 export async function prepareCompleteNotificationEmailProductionActivation(): Promise<CompleteNotificationEmailActivationConfirmation> {
@@ -2084,11 +2125,11 @@ export async function decideCompletePowerOutageDomainReview(
 }
 
 export async function prepareCompletePowerOutageContactSelector(
-  selectorKey: string,
+  selectorKeys: string[],
 ): Promise<CompleteContactManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
-  const { error } = await supabase.rpc('prepare_complete_power_outage_contact_selector_v2', {
-    requested_selector_key: selectorKey,
+  const { error } = await supabase.rpc('prepare_complete_power_outage_contact_selector_set_v1', {
+    requested_selector_keys: selectorKeys,
   })
   if (error) throw new Error(`Výběr firem se nepodařilo připravit: ${error.message}`)
   return getCompletePowerOutageContactManagementWorkspace()

@@ -426,6 +426,8 @@ export type CompleteContactManagementSummary = {
   localDiscoveryEnabled: boolean
   selectedSelectorKey: string
   selectedSelectorName: string
+  selectedSelectorKeys: string[]
+  selectedSelectorNames: string[]
   selectorLockedByEmailDispatch: boolean
   selectorLockReason: string | null
   productionEmailSelectorKey: string
@@ -560,6 +562,7 @@ export type CompleteNotificationEmailManagementWorkspace = {
     continuousPlanningEnabled: boolean
     continuousDispatchEnabled: boolean
     activeSelectorKey: string
+    activeSelectorKeys: string[]
     selectorChangeRequiresPausedDispatch: boolean
     recipientMode: 'automatic_eligible_primary'
     dailySendLimit: number
@@ -603,6 +606,11 @@ export type CompleteNotificationEmailManagementWorkspace = {
     }>
     recentDeliveries: CompleteNotificationEmailDeliveryItem[]
   }
+  selectors: Array<{
+    key: string
+    name: string
+    companyCount: number
+  }>
   review: {
     reviewEnabled: boolean
     reviewUiEnabled: boolean

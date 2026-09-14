@@ -1013,7 +1013,7 @@ function RecordsLoadingState() {
   </div>
 }
 
-export function CompletePowerOutageRecords({ currentUser, owners, commercialSelection, commercialSort, clientsOnly, commercialCountsEnabled, onCommercialSelectionChange, onClientsOnlyChange, onCommercialSelectionCountsChange, onInitialLoad }: {
+export function CompletePowerOutageRecords({ currentUser, owners, commercialSelection, commercialSort, clientsOnly, commercialCountsEnabled, onCommercialSelectionChange, onClientsOnlyChange, onCommercialSelectionCountsChange, onCommercialSelectionCountsError, onInitialLoad }: {
   currentUser: CompletePowerOutageCurrentUser
   owners: Array<{ id: string; name: string }>
   commercialSelection: CompleteCommercialSelectionFilter
@@ -1023,6 +1023,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
   onCommercialSelectionChange: (value: CompleteCommercialSelectionFilter) => void
   onClientsOnlyChange: (value: boolean) => void
   onCommercialSelectionCountsChange: (value: CompleteCommercialSelectionCounts | null) => void
+  onCommercialSelectionCountsError: (value: string | null) => void
   onInitialLoad?: () => void
 }) {
   const [tab, setTab] = useState<Tab>('current')
@@ -1146,12 +1147,15 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
   useEffect(() => {
     if (!commercialCountsEnabled) {
       onCommercialSelectionCountsChange(null)
+      onCommercialSelectionCountsError(null)
       return
     }
     let active = true
     const refreshCounts = () => {
       void getCompletePowerOutageCommercialSelectionCountsAction(pageFilters).then((result) => {
-        if (active) onCommercialSelectionCountsChange(result.success ? result.counts : null)
+        if (!active) return
+        onCommercialSelectionCountsChange(result.success ? result.counts : null)
+        onCommercialSelectionCountsError(result.success ? null : result.error)
       })
     }
     refreshCounts()
@@ -1160,7 +1164,7 @@ export function CompletePowerOutageRecords({ currentUser, owners, commercialSele
       active = false
       window.clearInterval(interval)
     }
-  }, [commercialCountsEnabled, filterKey, onCommercialSelectionCountsChange, pageFilters])
+  }, [commercialCountsEnabled, filterKey, onCommercialSelectionCountsChange, onCommercialSelectionCountsError, pageFilters])
 
   useEffect(() => {
     const target = loadMoreRef.current
