@@ -45,7 +45,7 @@ where max_attempt_count <> cardinality(provider_plan) * 3;
 alter table public.complete_power_outage_address_revalidation_v4_queue
   add constraint cpo_address_revalidation_v4_queue_attempt_check check (
     attempt_count between 0 and max_attempt_count
-    and max_attempt_count = cardinality(provider_plan) * 3
+    and max_attempt_count between cardinality(provider_plan) * 3 and 9
   );
 
 create or replace function public.enforce_complete_power_outage_address_revalidation_v4_retry_limit()
@@ -55,7 +55,16 @@ security definer
 set search_path = ''
 as $$
 begin
-  new.max_attempt_count := cardinality(new.provider_plan) * 3;
+  if not (new.candidate_snapshot ? 'ruianAddressId') then
+    new.provider_plan := array_remove(new.provider_plan, 'ruian');
+    if new.next_provider = 'ruian' then
+      new.next_provider := 'mapy';
+    end if;
+  end if;
+  new.max_attempt_count := least(
+    9,
+    greatest(new.attempt_count + 3, cardinality(new.provider_plan) * 3)
+  );
   return new;
 end;
 $$;

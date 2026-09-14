@@ -80,13 +80,31 @@ create table if not exists public.complete_power_outage_address_revalidation_v4_
   ),
   constraint cpo_address_revalidation_v4_queue_name_check check (btrim(company_name) <> ''),
   constraint cpo_address_revalidation_v4_queue_provider_plan_check check (
-    cardinality(provider_plan) between 2 and 3
+    cardinality(provider_plan) between 1 and 3
     and provider_plan <@ array['ares', 'ruian', 'mapy']::text[]
     and array_position(provider_plan, null) is null
     and next_provider = any(provider_plan)
     and (
-      (company_ico is not null and provider_plan = array['ares', 'ruian', 'mapy']::text[])
-      or (company_ico is null and provider_plan = array['ruian', 'mapy']::text[])
+      (
+        company_ico is not null
+        and candidate_snapshot ? 'ruianAddressId'
+        and provider_plan = array['ares', 'ruian', 'mapy']::text[]
+      )
+      or (
+        company_ico is not null
+        and not (candidate_snapshot ? 'ruianAddressId')
+        and provider_plan = array['ares', 'mapy']::text[]
+      )
+      or (
+        company_ico is null
+        and candidate_snapshot ? 'ruianAddressId'
+        and provider_plan = array['ruian', 'mapy']::text[]
+      )
+      or (
+        company_ico is null
+        and not (candidate_snapshot ? 'ruianAddressId')
+        and provider_plan = array['mapy']::text[]
+      )
     )
   ),
   constraint cpo_address_revalidation_v4_queue_status_check check (
@@ -345,10 +363,17 @@ begin
     case when eligible.ico ~ '^[0-9]{8}$' then eligible.ico else null end,
     eligible.company_name,
     case
-      when eligible.ico ~ '^[0-9]{8}$' then array['ares', 'ruian', 'mapy']::text[]
-      else array['ruian', 'mapy']::text[]
+      when eligible.ico ~ '^[0-9]{8}$' and eligible.company_ruian_address_id is not null
+        then array['ares', 'ruian', 'mapy']::text[]
+      when eligible.ico ~ '^[0-9]{8}$' then array['ares', 'mapy']::text[]
+      when eligible.company_ruian_address_id is not null then array['ruian', 'mapy']::text[]
+      else array['mapy']::text[]
     end,
-    case when eligible.ico ~ '^[0-9]{8}$' then 'ares' else 'ruian' end,
+    case
+      when eligible.ico ~ '^[0-9]{8}$' then 'ares'
+      when eligible.company_ruian_address_id is not null then 'ruian'
+      else 'mapy'
+    end,
     'prepared',
     case
       when eligible.protected_record then 0
@@ -357,7 +382,11 @@ begin
       else 30
     end,
     eligible.protected_record,
-    case when eligible.ico ~ '^[0-9]{8}$' then 9 else 6 end,
+    case
+      when eligible.ico ~ '^[0-9]{8}$' and eligible.company_ruian_address_id is not null then 9
+      when eligible.ico ~ '^[0-9]{8}$' or eligible.company_ruian_address_id is not null then 6
+      else 3
+    end,
     jsonb_strip_nulls(jsonb_build_object(
       'municipality', eligible.municipality,
       'municipalityCode', eligible.municipality_code,

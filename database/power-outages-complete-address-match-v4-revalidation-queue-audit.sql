@@ -123,27 +123,38 @@ with state_row as (
     ),
     (
       'LOGIC',
-      'ARES backed companies use ARES RUIAN Mapy provider order',
+      'ARES backed companies use only applicable provider order',
       not exists (
         select 1 from public.complete_power_outage_address_revalidation_v4_queue queue_row
         where queue_row.queue_status <> 'cancelled'
           and queue_row.company_ico is not null
           and (
-            queue_row.provider_plan <> array['ares', 'ruian', 'mapy']::text[]
+            queue_row.provider_plan <> case
+              when queue_row.candidate_snapshot ? 'ruianAddressId'
+                then array['ares', 'ruian', 'mapy']::text[]
+              else array['ares', 'mapy']::text[]
+            end
             or queue_row.next_provider <> 'ares'
           )
       )
     ),
     (
       'LOGIC',
-      'companies without ICO use RUIAN then Mapy provider order',
+      'companies without ICO skip unusable RUIAN lookup',
       not exists (
         select 1 from public.complete_power_outage_address_revalidation_v4_queue queue_row
         where queue_row.queue_status <> 'cancelled'
           and queue_row.company_ico is null
           and (
-            queue_row.provider_plan <> array['ruian', 'mapy']::text[]
-            or queue_row.next_provider <> 'ruian'
+            queue_row.provider_plan <> case
+              when queue_row.candidate_snapshot ? 'ruianAddressId'
+                then array['ruian', 'mapy']::text[]
+              else array['mapy']::text[]
+            end
+            or queue_row.next_provider <> case
+              when queue_row.candidate_snapshot ? 'ruianAddressId' then 'ruian'
+              else 'mapy'
+            end
           )
       )
     ),

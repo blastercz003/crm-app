@@ -227,6 +227,13 @@ export function evaluateCompleteAddressMatchV4(input: {
   const hasStrongLocalityIdentity = Boolean(
     targetPostalCode && candidatePostalCode && targetPostalCode === candidatePostalCode,
   ) || (distance !== null && distance <= 150)
+    || Boolean(
+      targetPostalCode
+      && !candidatePostalCode
+      && numberMatch === 'exact'
+      && distance !== null
+      && distance <= 500,
+    )
   if (!hasStrongLocalityIdentity) {
     return result('needs_external_verification', [
       targetPostalCode ? 'candidate_postal_code_missing' : 'strong_locality_identity_missing',
@@ -236,13 +243,29 @@ export function evaluateCompleteAddressMatchV4(input: {
   if (!street) {
     return result(
       numberMatch === 'same_building' ? 'same_building' : 'exact_address',
-      ['numbered_locality_match', targetPostalCode ? 'postal_code_match' : 'coordinate_match'],
+      [
+        'numbered_locality_match',
+        targetPostalCode && candidatePostalCode
+          ? 'postal_code_match'
+          : distance !== null && distance <= 150
+            ? 'coordinate_match'
+            : 'coordinate_supported_number_match',
+      ],
       context,
     )
   }
   return result(
     numberMatch === 'same_building' ? 'same_building' : 'exact_address',
-    ['municipality_match', 'street_match', 'building_number_match', targetPostalCode ? 'postal_code_match' : 'coordinate_match'],
+    [
+      'municipality_match',
+      'street_match',
+      'building_number_match',
+      targetPostalCode && candidatePostalCode
+        ? 'postal_code_match'
+        : distance !== null && distance <= 150
+          ? 'coordinate_match'
+          : 'coordinate_supported_number_match',
+    ],
     context,
   )
 }

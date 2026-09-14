@@ -88,7 +88,9 @@ with state_row as (
       not exists (
         select 1
         from public.complete_power_outage_address_revalidation_v4_queue queue_row
-        where queue_row.max_attempt_count <> cardinality(queue_row.provider_plan) * 3
+        where queue_row.max_attempt_count < cardinality(queue_row.provider_plan) * 3
+           or queue_row.max_attempt_count > 9
+           or queue_row.max_attempt_count < queue_row.attempt_count
       )
       and exists (
         select 1

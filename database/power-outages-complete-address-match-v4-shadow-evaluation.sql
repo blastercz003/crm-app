@@ -315,7 +315,14 @@ begin
     target_postal is not null
     and candidate_postal is not null
     and target_postal = candidate_postal
-  ) or (calculated_distance is not null and calculated_distance <= 150);
+  ) or (calculated_distance is not null and calculated_distance <= 150)
+    or (
+      target_postal is not null
+      and candidate_postal is null
+      and building_result = 'exact'
+      and calculated_distance is not null
+      and calculated_distance <= 500
+    );
 
   if not has_strong_locality then
     classification := 'needs_external_verification';
@@ -337,13 +344,21 @@ begin
   reason_codes := case
     when meaningful_street is null then array_remove(array[
       'numbered_locality_match',
-      case when target_postal is not null then 'postal_code_match' else 'coordinate_match' end
+      case
+        when target_postal is not null and candidate_postal is not null then 'postal_code_match'
+        when calculated_distance is not null and calculated_distance <= 150 then 'coordinate_match'
+        else 'coordinate_supported_number_match'
+      end
     ], null)::text[]
     else array_remove(array[
       'municipality_match',
       'street_match',
       'building_number_match',
-      case when target_postal is not null then 'postal_code_match' else 'coordinate_match' end
+      case
+        when target_postal is not null and candidate_postal is not null then 'postal_code_match'
+        when calculated_distance is not null and calculated_distance <= 150 then 'coordinate_match'
+        else 'coordinate_supported_number_match'
+      end
     ], null)::text[]
   end;
   return next;

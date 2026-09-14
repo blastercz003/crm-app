@@ -51,6 +51,7 @@ const mapySchema = z.object({
   items: z.array(z.object({
     name: z.string().nullish(),
     location: z.string().nullish(),
+    zip: z.union([z.string(), z.number()]).nullish(),
     type: z.string().nullish(),
     position: z.object({
       lon: z.coerce.number().finite().nullish(),
@@ -227,6 +228,7 @@ async function revalidateWithMapy(row: ClaimRow): Promise<ProviderResult> {
   }
   return normalizedResult('mapy', {
     displayAddress: address,
+    postalCode: cleanText(item.zip) || null,
     latitude: item.position?.lat ?? null,
     longitude: item.position?.lon ?? null,
   }, target)
