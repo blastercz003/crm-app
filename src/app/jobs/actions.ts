@@ -45,6 +45,7 @@ export type CreateJobActionState = {
   success: boolean
   error: string | null
   warning?: string | null
+  jobId?: string
   jobNumber?: string | null
   companyName?: string | null
 }
@@ -2366,6 +2367,7 @@ export async function createJobAction(
     success: true,
     error: null,
     warning: offerSyncWarning,
+    jobId: createdJobId,
     jobNumber: createdJob.job_number ?? null,
     companyName: createdJob.company_name ?? null,
   }

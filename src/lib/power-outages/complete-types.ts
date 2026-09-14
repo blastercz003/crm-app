@@ -29,6 +29,7 @@ export type CompleteCommunicationTimelineKind =
   | 'task_created'
   | 'meeting_created'
   | 'offer_created'
+  | 'job_created'
 export type CompleteCommercialSelectionFilter = 'all' | 'top' | 'large_companies' | 'grade_a' | 'grade_b'
 export type CompleteCommercialSort = 'date' | 'score'
 export type CompleteCommercialSelectionCounts = {
@@ -139,7 +140,7 @@ export type CompletePowerOutageActionWorkspace = {
   }>
   workItems: Array<{
     id: string
-    kind: 'client' | 'task' | 'meeting' | 'offer'
+    kind: 'client' | 'task' | 'meeting' | 'offer' | 'job'
     title: string
     reference: string | null
     actorName: string
@@ -152,7 +153,7 @@ export type CompletePowerOutageActionWorkspace = {
   }>
 }
 
-export type CompletePowerOutageWorkItemKind = 'client' | 'task' | 'meeting' | 'offer'
+export type CompletePowerOutageWorkItemKind = 'client' | 'task' | 'meeting' | 'offer' | 'job'
 
 export type CompletePowerOutageWorkItemFormOptions = {
   currentUserId: string

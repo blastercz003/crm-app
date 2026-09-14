@@ -66,6 +66,8 @@ import type { CreateMeetingActionState } from '@/app/meetings/actions'
 import type { MeetingFormValues } from '@/components/meetings/meeting-form'
 import { NewOfferModal } from '@/app/offers/new-offer-button'
 import type { OfferFormActionState } from '@/app/offers/actions'
+import { CreateJobModal, type JobFormValues, type SalesOwner } from '@/app/jobs/new-job-button'
+import { getJobFormSuggestionsAction, type CreateJobActionState, type JobFormSuggestions } from '@/app/jobs/actions'
 import {
   getCompletePowerOutageDetailAction,
   finishCompletePowerOutageCommunicationFollowUpAction,
@@ -470,6 +472,7 @@ function timelineTitle(entry: CompleteCommunicationTimelineItem) {
   if (entry.kind === 'task_created') return 'Vytvořen navazující úkol'
   if (entry.kind === 'meeting_created') return 'Naplánována schůzka'
   if (entry.kind === 'offer_created') return 'Vytvořena nabídka'
+  if (entry.kind === 'job_created') return 'Vytvořena zakázka'
   if (entry.kind === 'follow_up_created') return 'Další krok naplánován'
   if (entry.kind === 'follow_up_rescheduled') return 'Další krok upraven'
   if (entry.kind === 'follow_up_completed') return 'Další krok splněn'
@@ -521,6 +524,7 @@ export function CompletePowerOutageCommunicationPopup({
   const [actionsOpen, setActionsOpen] = useState(false)
   const [workItemModal, setWorkItemModal] = useState<CompletePowerOutageWorkItemKind | null>(null)
   const [workItemOptions, setWorkItemOptions] = useState<CompletePowerOutageWorkItemFormOptions | null>(null)
+  const [jobFormSuggestions, setJobFormSuggestions] = useState<JobFormSuggestions | null>(null)
   const [workItemLoading, setWorkItemLoading] = useState(false)
   const [workItemNotice, setWorkItemNotice] = useState<string | null>(null)
   const [completionResult, setCompletionResult] = useState('')
@@ -631,6 +635,45 @@ export function CompletePowerOutageCommunicationPopup({
       return
     }
 
+    if (kind === 'job') {
+      if (
+        !actionWorkspace?.capabilities.canCreateJob
+        || actionWorkspace.contractVersion < 3
+      ) {
+        setError('Zakázku může z tohoto místa vytvořit pouze administrátor.')
+        return
+      }
+      if (!linkedClientId) {
+        setError('Před vytvořením zakázky nejprve založte nebo propojte klienta.')
+        return
+      }
+      setWorkItemLoading(true)
+      setError(null)
+      setWorkItemNotice(null)
+      const [result, optionsResult] = await Promise.all([
+        getJobFormSuggestionsAction(),
+        getCompletePowerOutageWorkItemFormOptionsAction(item.candidateId),
+      ])
+      setWorkItemLoading(false)
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      if (!optionsResult.success) {
+        setError(optionsResult.error)
+        return
+      }
+      if (!result.data.clientSuggestions.some((client) => client.id === linkedClientId)) {
+        setError('Propojený klient není dostupný ve formuláři zakázky.')
+        return
+      }
+      setJobFormSuggestions(result.data)
+      setWorkItemOptions(optionsResult.options)
+      setActionsOpen(false)
+      setWorkItemModal(kind)
+      return
+    }
+
     setWorkItemLoading(true)
     setError(null)
     setWorkItemNotice(null)
@@ -689,13 +732,13 @@ export function CompletePowerOutageCommunicationPopup({
       task: 'Úkol byl vytvořen a propojen s odstávkou.',
       meeting: 'Schůzka byla vytvořena a propojena s odstávkou.',
       offer: 'Nabídka byla vytvořena a propojena s odstávkou.',
+      job: 'Zakázka byla vytvořena a bezpečně propojena s odstávkou.',
     } as const)[kind])
   }
 
   const canEdit = workspace?.canEdit ?? false
   const canRelease = workspace?.canRelease ?? false
   const isJobWon = communicationStatus === 'job_won'
-  const latestTimeline = workspace?.timeline[0] ?? null
   const reminderPresentation = workspace?.followUp ? followUpPresentation(workspace.followUp.scheduledFor) : null
   const linkedClientId = actionWorkspace?.clients[0]?.id ?? null
   const taskInitialValues: TaskFormValues | undefined = actionWorkspace && workItemOptions ? {
@@ -714,8 +757,30 @@ export function CompletePowerOutageCommunicationPopup({
     title: 'Jednání k plánované odstávce',
     status: 'planned',
   } : undefined
+  const currentJobSalesOwner: SalesOwner = (() => {
+    const currentName = workItemOptions?.users
+      .find((user) => user.id === workItemOptions.currentUserId)?.name
+      ?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+    if (currentName?.includes('MICHAL')) return 'MICHAL'
+    if (currentName?.includes('LIDA')) return 'LÍDA'
+    return 'JIŘÍ'
+  })()
+  const jobInitialValues: Partial<JobFormValues> | undefined = actionWorkspace && linkedClientId ? {
+    company_name: actionWorkspace.prefill.companyName,
+    client_id: linkedClientId,
+    contact_person: null,
+    sales_owner: currentJobSalesOwner,
+    start_at: actionWorkspace.prefill.startsAt,
+    end_at: actionWorkspace.prefill.endsAt,
+    site_address: actionWorkspace.prefill.address,
+    store_number: null,
+    technician_name: null,
+    generator_name: null,
+    info_note: `Plánovaná odstávka elektřiny · ${actionWorkspace.prefill.municipality}`,
+    pp_required: true,
+  } : undefined
   const actionTiles: Array<{
-    key: CompletePowerOutageWorkItemKind | 'job'
+    key: CompletePowerOutageWorkItemKind
     label: string
     description: string
     icon: ReactNode
@@ -753,9 +818,11 @@ export function CompletePowerOutageCommunicationPopup({
       status: linkedClientId ? 'Otevřít' : 'Čeká na klienta',
     },
     {
-      key: 'job', label: 'Nová zakázka', description: 'Pouze administrátor · další etapa',
+      key: 'job', label: 'Nová zakázka', description: linkedClientId ? 'Založit z údajů odstávky' : 'Nejprve založte klienta',
       icon: <BriefcaseBusiness aria-hidden size={16} />,
-      allowed: actionWorkspace.capabilities.canCreateJob, disabled: true, status: 'Další etapa',
+      allowed: actionWorkspace.capabilities.canCreateJob && actionWorkspace.contractVersion >= 3,
+      disabled: !linkedClientId,
+      status: linkedClientId ? 'Otevřít' : 'Čeká na klienta',
     },
   ] : []
 
@@ -800,7 +867,8 @@ export function CompletePowerOutageCommunicationPopup({
       {loading ? <div className="flex min-h-48 items-center justify-center rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><LoaderCircle aria-label="Načítání komunikace" size={20} className="animate-spin text-[var(--accent)]" /></div> : <div className="space-y-4">
         {!canEdit ? <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] leading-5 text-amber-800 [html[data-theme=dark]_&]:text-amber-200">Záznam může měnit pouze jeho vlastník. Administrátor jej může uvolnit.</div> : null}
 
-        {canEdit ? <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
+        <div className={`grid min-w-0 max-w-full items-start gap-4 ${canEdit ? 'lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)]' : ''}`}>
+        {canEdit ? <section className="min-w-0 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
           <div className="flex items-center gap-2"><MessageSquareText aria-hidden size={15} className="text-[var(--accent)]" /><h4 className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Zapsat komunikaci</h4></div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{CHANNEL_OPTIONS.map((option) => <button key={option.value} type="button" disabled={saving} onClick={() => setChannel(option.value)} className={`h-10 rounded-xl border text-[9px] font-bold transition ${channel === option.value ? 'border-sky-400/50 bg-sky-500/15 text-[var(--accent)]' : 'border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--text-secondary)]'}`}>{option.label}</button>)}</div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2"><label><span className="text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Stav komunikace</span><span className="relative mt-1.5 block h-11 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)]"><select disabled={saving} value={communicationStatus} onChange={(event) => { const next = event.target.value as Exclude<CompleteCommunicationWorkflowStatus, 'not_contacted'>; setCommunicationStatus(next); if (next !== 'job_won') setLastNonJobStatus(next) }} className="h-full w-full appearance-none rounded-2xl border-0 bg-transparent pl-3 pr-9 text-[10px] font-bold text-[var(--text-primary)] outline-none">{WORKFLOW_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown aria-hidden size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /></span></label><label><span className="text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Kdy komunikace proběhla</span><input disabled={saving} type="datetime-local" value={occurredAt} onChange={(event) => setOccurredAt(event.target.value)} className="mt-1.5 h-11 w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[10px] text-[var(--text-primary)] outline-none focus:border-sky-500" /></label></div>
@@ -809,30 +877,34 @@ export function CompletePowerOutageCommunicationPopup({
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><label className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 ${isJobWon ? 'border-emerald-400/40 bg-emerald-400/10' : 'border-[var(--surface-border)] bg-[var(--surface-strong)]'}`}><input type="checkbox" checked={isJobWon} disabled={saving} onChange={(event) => setCommunicationStatus(event.target.checked ? 'job_won' : lastNonJobStatus)} className="h-4 w-4 accent-emerald-500" /><BriefcaseBusiness aria-hidden size={15} className={isJobWon ? 'text-emerald-500' : 'text-[var(--text-secondary)]'} /><span className="text-[9px] font-bold text-[var(--text-primary)]">Vznikla zakázka</span></label><button type="button" disabled={saving || !note.trim()} onClick={() => void saveCommunication()} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 text-[9px] font-bold uppercase text-white transition hover:-translate-y-px disabled:opacity-50">{saving ? <LoaderCircle aria-hidden size={15} className="animate-spin" /> : <Save aria-hidden size={15} />}{workspace?.assignment ? 'Uložit záznam' : 'Převzít a uložit'}</button></div>
         </section> : null}
 
-        <section className="flex min-h-[74px] flex-col gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-400/25 bg-sky-500/10 text-[var(--accent)]"><History aria-hidden size={17} /></span>
-            <div className="min-w-0">
-              <span className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Poslední událost</span>
-              {latestTimeline ? <><strong className="mt-0.5 block truncate text-[10px] text-[var(--text-primary)]">{timelineTitle(latestTimeline)}</strong><span className="mt-0.5 block truncate text-[8px] text-[var(--text-secondary)]">{[latestTimeline.actorName, formatDateTime(latestTimeline.occurredAt)].filter(Boolean).join(' · ')}</span></> : <span className="mt-1 block text-[9px] text-[var(--text-secondary)]">Zatím bez historie komunikace.</span>}
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 sm:p-4">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-400/25 bg-sky-500/10 text-[var(--accent)]"><History aria-hidden size={17} /></span>
+              <div className="min-w-0">
+                <span className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Přehled historie</span>
+                <strong className="mt-0.5 block text-[10px] text-[var(--text-primary)]">{workspace?.timeline.length ? `${workspace.timeline.length} záznamů` : 'Zatím bez záznamu'}</strong>
+              </div>
             </div>
+            <button type="button" onClick={() => { setActionsOpen(false); setHistoryOpen(true) }} className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35"><History aria-hidden size={13} /><span className="hidden sm:inline">Celá historie</span></button>
           </div>
-          <button type="button" onClick={() => { setActionsOpen(false); setHistoryOpen(true) }} className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[8px] font-bold uppercase tracking-[0.06em] text-[var(--accent)] transition hover:-translate-y-px hover:border-sky-400/35"><History aria-hidden size={13} />Historie{workspace?.timeline.length ? ` (${workspace.timeline.length})` : ''}</button>
+          {workspace?.timeline.length ? <div className="mt-3 space-y-2">{workspace.timeline.slice(0, 3).map((entry) => <article key={entry.id} className="min-w-0 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2.5"><div className="flex min-w-0 items-start justify-between gap-2"><strong className="min-w-0 truncate text-[9px] text-[var(--text-primary)]">{timelineTitle(entry)}</strong><time dateTime={entry.occurredAt} className="shrink-0 text-[7px] tabular-nums text-[var(--text-secondary)]">{formatDateTime(entry.occurredAt)}</time></div><span className="mt-0.5 block truncate text-[6.5px] font-normal leading-3 text-[var(--text-secondary)] opacity-80">{[entry.actorName, entry.channel ? CHANNEL_OPTIONS.find((option) => option.value === entry.channel)?.label : null].filter(Boolean).join(' · ')}</span></article>)}</div> : <p className="mt-3 rounded-xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-strong)] p-4 text-center text-[9px] text-[var(--text-secondary)]">Zatím zde není žádná komunikace.</p>}
         </section>
+        </div>
       </div>}
       {workItemNotice ? <p className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-[10px] font-medium text-emerald-700 [html[data-theme=dark]_&]:text-emerald-300">{workItemNotice}</p> : null}
       {error ? <p className="mt-3 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-[10px] font-medium text-red-700 [html[data-theme=dark]_&]:text-red-300">{error}</p> : null}
     </div>
     <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--surface-border)] p-4 sm:p-5"><span className="text-[8px] text-[var(--text-secondary)]">Změny se ukládají do společné časové osy.</span>{canRelease ? <button type="button" disabled={saving} onClick={() => void release()} className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-4 text-[9px] font-bold uppercase text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-60">Uvolnit záznam</button> : null}</footer>
-    {actionsOpen ? <div data-modal-motion-root data-modal-motion-profile="side-panel" className="fixed inset-0 z-[185] flex items-end justify-end bg-slate-950/42 backdrop-blur-[3px] sm:items-stretch" onPointerDown={(event) => { if (event.target === event.currentTarget) requestActionsClose() }}>
-      <aside data-modal-motion-surface role="dialog" aria-modal="true" aria-labelledby={`complete-actions-${item.candidateId}`} className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-[26px] border border-[var(--surface-border)] bg-[var(--surface-strong)] shadow-[-22px_0_60px_rgba(15,23,42,0.28)] sm:max-h-none sm:max-w-[430px] sm:rounded-none sm:rounded-l-[28px]">
-        <header className="flex shrink-0 items-center gap-3 border-b border-[var(--surface-border)] p-4 sm:p-5"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-400/30 bg-sky-500/10 text-[var(--accent)]"><Sparkles aria-hidden size={17} /></span><div className="min-w-0 flex-1"><span className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Práce bez odcházení</span><h3 id={`complete-actions-${item.candidateId}`} className="mt-0.5 text-base font-semibold text-[var(--text-primary)]">Akce se záznamem</h3></div><button type="button" onClick={requestActionsClose} aria-label="Zavřít akce" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]"><X aria-hidden size={16} /></button></header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-          <p className="text-[10px] leading-5 text-[var(--text-secondary)]">Vytvořte navazující položku bez opuštění záznamu. Úspěšná akce se automaticky propojí s touto firmou a odstávkou.</p>
-          <button type="button" disabled={!canEdit} onClick={() => { setActionsOpen(false); openFollowUpEditor() }} className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-violet-400/30 bg-violet-400/8 p-3.5 text-left transition hover:-translate-y-px hover:bg-violet-400/12 disabled:cursor-not-allowed disabled:opacity-45"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-white"><Bell aria-hidden size={17} /></span><span className="min-w-0 flex-1"><strong className="block text-[10px] text-[var(--text-primary)]">{workspace?.followUp ? 'Upravit připomínku' : 'Naplánovat připomínku'}</strong><span className="mt-0.5 block text-[8px] leading-4 text-[var(--text-secondary)]">Společný záznam s Pracovní agendou</span></span><span className="text-[7px] font-bold uppercase text-violet-600 [html[data-theme=dark]_&]:text-violet-300">Dostupné</span></button>
-          {actionWorkspace ? <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {actionTiles.filter((action) => action.allowed).map((action) => <button key={action.key} type="button" disabled={workItemLoading || action.disabled} onClick={() => { if (action.key !== 'job') void openWorkItemModal(action.key) }} className="flex min-h-[82px] items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 text-left transition hover:-translate-y-px hover:border-sky-400/35 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--accent)]">{workItemLoading && action.key !== 'client' && action.key !== 'job' ? <LoaderCircle aria-hidden size={15} className="animate-spin" /> : action.icon}</span><span className="min-w-0"><strong className="block text-[9px] text-[var(--text-primary)]">{action.label}</strong><span className="mt-0.5 block text-[7.5px] leading-4 text-[var(--text-secondary)]">{action.description}</span><span className="mt-1 block text-[6.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent)]">{action.status}</span></span></button>)}
-          </div> : <div className="mt-4 flex min-h-24 items-center justify-center rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><LoaderCircle aria-label="Načítání dostupných akcí" size={18} className="animate-spin text-[var(--accent)]" /></div>}
+    {actionsOpen ? <div data-modal-motion-root data-modal-motion-profile="side-panel" className="absolute inset-0 z-[185] flex items-end justify-end overflow-hidden rounded-[25px] bg-slate-950/38 backdrop-blur-[4px] sm:items-stretch" onPointerDown={(event) => { if (event.target === event.currentTarget) requestActionsClose() }}>
+      <aside data-modal-motion-surface role="dialog" aria-modal="true" aria-labelledby={`complete-actions-${item.candidateId}`} className="flex max-h-[82dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-[var(--surface-border)] bg-[var(--surface-strong)] shadow-[-18px_0_48px_rgba(15,23,42,0.3)] sm:max-h-none sm:max-w-[360px] sm:rounded-none sm:rounded-l-[24px]">
+        <header className="flex shrink-0 items-center gap-3 border-b border-[var(--surface-border)] p-4"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/30 bg-sky-500/10 text-[var(--accent)]"><Sparkles aria-hidden size={15} /></span><div className="min-w-0 flex-1"><span className="block text-[7px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Další akce</span><h3 id={`complete-actions-${item.candidateId}`} className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">Akce se záznamem</h3></div><button type="button" onClick={requestActionsClose} aria-label="Zavřít akce" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]"><X aria-hidden size={14} /></button></header>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <p className="text-[8px] leading-4 text-[var(--text-secondary)]">Navazující položka se automaticky propojí s touto firmou a odstávkou.</p>
+          {actionWorkspace ? <div className="mt-3 space-y-2">
+            {actionTiles.filter((action) => action.allowed).map((action) => <button key={action.key} type="button" disabled={workItemLoading || action.disabled} onClick={() => void openWorkItemModal(action.key)} className="group flex min-h-[60px] w-full items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5 text-left transition hover:-translate-y-px hover:border-sky-400/35 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] text-[var(--accent)]">{workItemLoading && action.key !== 'client' ? <LoaderCircle aria-hidden size={15} className="animate-spin" /> : action.icon}</span><span className="min-w-0 flex-1"><strong className="block text-[9px] text-[var(--text-primary)]">{action.label}</strong><span className="mt-0.5 block truncate text-[7px] text-[var(--text-secondary)]">{action.description}</span></span><span className="shrink-0 text-[6.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent)]">{action.status}</span></button>)}
+          </div> : <div className="mt-3 flex min-h-20 items-center justify-center rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><LoaderCircle aria-label="Načítání dostupných akcí" size={18} className="animate-spin text-[var(--accent)]" /></div>}
+          {actionWorkspace?.jobs.length ? <div className="mt-4 border-t border-[var(--surface-border)] pt-4"><span className="block text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Související zakázky</span><div className="mt-2 grid gap-2">{actionWorkspace.jobs.map((job) => <a key={job.id} href={`/${job.destination === 'jobs' ? 'jobs' : 'jobs-portal'}?q=${encodeURIComponent(job.jobNumber)}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5 text-[9px] font-semibold text-[var(--text-primary)] transition hover:border-sky-400/35"><span className="min-w-0 truncate">Zakázka {job.jobNumber}</span><ExternalLink aria-hidden size={13} className="shrink-0 text-[var(--accent)]" /></a>)}</div></div> : null}
           {!canEdit ? <p className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-[9px] leading-4 text-amber-800 [html[data-theme=dark]_&]:text-amber-200">Pracovní akce může provádět vlastník tohoto záznamu.</p> : null}
         </div>
       </aside>
@@ -840,7 +912,7 @@ export function CompletePowerOutageCommunicationPopup({
     {historyOpen ? <div data-modal-motion-root data-modal-motion-profile="side-panel" className="fixed inset-0 z-[185] flex items-end justify-end bg-slate-950/42 backdrop-blur-[3px] sm:items-stretch" onPointerDown={(event) => { if (event.target === event.currentTarget) requestHistoryClose() }}>
       <aside data-modal-motion-surface role="dialog" aria-modal="true" aria-labelledby={`complete-history-${item.candidateId}`} className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-[26px] border border-[var(--surface-border)] bg-[var(--surface-strong)] shadow-[-22px_0_60px_rgba(15,23,42,0.28)] sm:max-h-none sm:max-w-[480px] sm:rounded-none sm:rounded-l-[28px]">
         <header className="flex shrink-0 items-center gap-3 border-b border-[var(--surface-border)] p-4 sm:p-5"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-400/30 bg-sky-500/10 text-[var(--accent)]"><History aria-hidden size={17} /></span><div className="min-w-0 flex-1"><span className="block text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{workspace?.timeline.length ?? 0} záznamů</span><h3 id={`complete-history-${item.candidateId}`} className="mt-0.5 text-base font-semibold text-[var(--text-primary)]">Historie komunikace</h3></div><button type="button" onClick={requestHistoryClose} aria-label="Zavřít historii" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]"><X aria-hidden size={16} /></button></header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">{workspace?.timeline.length ? <div className="space-y-2.5">{workspace.timeline.map((entry) => <article key={entry.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><strong className="block text-[10px] text-[var(--text-primary)]">{timelineTitle(entry)}</strong><span className="mt-0.5 block truncate text-[8px] text-[var(--text-secondary)]">{[entry.actorName, entry.channel ? CHANNEL_OPTIONS.find((option) => option.value === entry.channel)?.label : null, entry.contactPerson].filter(Boolean).join(' · ')}</span></div><time dateTime={entry.occurredAt} className="shrink-0 text-[8px] tabular-nums text-[var(--text-secondary)]">{formatDateTime(entry.occurredAt)}</time></div>{entry.body ? <p className="mt-2 whitespace-pre-wrap text-[10px] leading-5 text-[var(--text-primary)]">{entry.body}</p> : null}</article>)}</div> : <p className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] p-5 text-center text-[10px] text-[var(--text-secondary)]">Zatím zde není žádná komunikace.</p>}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">{workspace?.timeline.length ? <div className="space-y-2.5">{workspace.timeline.map((entry) => <article key={entry.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3.5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><strong className="block text-[10px] text-[var(--text-primary)]">{timelineTitle(entry)}</strong><span className="mt-0.5 block truncate text-[7px] font-normal text-[var(--text-secondary)] opacity-80">{[entry.actorName, entry.channel ? CHANNEL_OPTIONS.find((option) => option.value === entry.channel)?.label : null, entry.contactPerson].filter(Boolean).join(' · ')}</span></div><time dateTime={entry.occurredAt} className="shrink-0 text-[8px] tabular-nums text-[var(--text-secondary)]">{formatDateTime(entry.occurredAt)}</time></div>{entry.body ? <p className="mt-2 whitespace-pre-wrap text-[10px] leading-5 text-[var(--text-primary)]">{entry.body}</p> : null}</article>)}</div> : <p className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] p-5 text-center text-[10px] text-[var(--text-secondary)]">Zatím zde není žádná komunikace.</p>}</div>
       </aside>
     </div> : null}
     {followUpEditing ? <div data-modal-motion-root className="fixed inset-0 z-[190] flex items-center justify-center bg-slate-950/48 p-3 backdrop-blur-[5px] sm:p-6" onPointerDown={(event) => { if (event.target === event.currentTarget && !saving) requestFollowUpClose() }}>
@@ -900,6 +972,16 @@ export function CompletePowerOutageCommunicationPopup({
       stayOnPageOnSuccess
       onClose={() => setWorkItemModal(null)}
       onSuccess={(state: OfferFormActionState) => void finishWorkItemCreation('offer', state.offerId)}
+    /> : null}
+    {workItemModal === 'job' && actionWorkspace && jobFormSuggestions && jobInitialValues ? <CreateJobModal
+      nested
+      clientSuggestions={jobFormSuggestions.clientSuggestions}
+      clientContacts={jobFormSuggestions.clientContacts}
+      offerSuggestions={jobFormSuggestions.offerSuggestions}
+      technicianSuggestions={jobFormSuggestions.technicianSuggestions}
+      initialValues={jobInitialValues}
+      onClose={() => setWorkItemModal(null)}
+      onSuccess={(state: CreateJobActionState) => void finishWorkItemCreation('job', state.jobId)}
     /> : null}
   </PowerOutagePopupShell>
 }

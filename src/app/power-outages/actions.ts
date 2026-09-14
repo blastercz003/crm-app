@@ -592,7 +592,7 @@ export async function linkCompletePowerOutageWorkItemAction(input: {
     if (!validUuid(input.candidateId) || !validUuid(input.itemId)) {
       throw new Error('Neplatné technické ID pracovní položky.')
     }
-    if (!['client', 'task', 'meeting', 'offer'].includes(input.itemKind)) {
+    if (!['client', 'task', 'meeting', 'offer', 'job'].includes(input.itemKind)) {
       throw new Error('Neplatný druh pracovní položky.')
     }
     const workspace = await linkCompletePowerOutageWorkItem(input)

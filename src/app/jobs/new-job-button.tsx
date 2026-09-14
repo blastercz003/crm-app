@@ -23,7 +23,7 @@ import {
 import { useBodyScrollLock } from '@/components/ui/use-body-scroll-lock'
 import { TechnicianNamesInput } from './technician-names-input'
 
-type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
+export type SalesOwner = 'JIŘÍ' | 'MICHAL' | 'LÍDA'
 
 type ClientOption = {
   id: string
@@ -48,7 +48,7 @@ type OfferOption = {
   realization_address: string | null
 }
 
-type JobFormValues = {
+export type JobFormValues = {
   id: string
   company_name: string
   client_id?: string | null
@@ -193,6 +193,8 @@ export function CreateJobModal({
   clientContacts,
   offerSuggestions,
   technicianSuggestions,
+  initialValues,
+  nested = false,
   onClose: closeImmediately,
   onSuccess,
 }: {
@@ -200,6 +202,8 @@ export function CreateJobModal({
   clientContacts: ClientContactOption[]
   offerSuggestions: OfferOption[]
   technicianSuggestions: string[]
+  initialValues?: Partial<JobFormValues>
+  nested?: boolean
   onClose: () => void
   onSuccess?: (state: CreateJobActionState) => void
 }) {
@@ -218,6 +222,8 @@ export function CreateJobModal({
       clientContacts={clientContacts}
       offerSuggestions={offerSuggestions}
       technicianSuggestions={technicianSuggestions}
+      job={initialValues}
+      nested={nested}
       onClose={onClose}
       error={state.error}
       formAction={formAction}
@@ -235,6 +241,7 @@ function JobFormShell({
   error,
   formAction,
   job,
+  nested = false,
 }: {
   mode: 'create'
   clientSuggestions: ClientOption[]
@@ -244,7 +251,8 @@ function JobFormShell({
   onClose: () => void
   error: string | null
   formAction: (payload: FormData) => void
-  job?: JobFormValues
+  job?: Partial<JobFormValues>
+  nested?: boolean
 }) {
   const companyOptions = useMemo(() => {
     const map = new Map<string, ClientOption>()
@@ -476,7 +484,7 @@ function JobFormShell({
   const modalContent = (
     <div
       data-modal-motion-root
-      className="fixed inset-0 z-[100] overflow-hidden overscroll-none bg-zinc-950/38 p-4 backdrop-blur-[5px] lg:backdrop-blur-[6px]"
+      className={`fixed inset-0 ${nested ? 'z-[220]' : 'z-[100]'} overflow-hidden overscroll-none bg-zinc-950/38 p-3 backdrop-blur-[5px] sm:p-4 lg:backdrop-blur-[6px]`}
       role="dialog"
       aria-modal="true"
       onMouseDown={(event) => {

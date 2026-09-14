@@ -3047,9 +3047,19 @@ function mapActionWorkspace(value: unknown): CompletePowerOutageActionWorkspace 
 
 export async function getCompletePowerOutageActionWorkspace(candidateId: string) {
   const { supabase } = await getPowerOutageRuntimeContext()
-  const { data, error } = await supabase.rpc('get_complete_power_outage_action_workspace_v1', {
+  let response = await supabase.rpc('get_complete_power_outage_action_workspace_v2', {
     requested_candidate_id: candidateId,
   })
+  if (response.error && (
+    response.error.code === 'PGRST202'
+    || response.error.code === '42883'
+    || response.error.message.includes('get_complete_power_outage_action_workspace_v2')
+  )) {
+    response = await supabase.rpc('get_complete_power_outage_action_workspace_v1', {
+      requested_candidate_id: candidateId,
+    })
+  }
+  const { data, error } = response
   if (error) throw new Error(`Pracovní nástroje se nepodařilo načíst: ${error.message}`)
   return mapActionWorkspace(data)
 }
@@ -3108,11 +3118,23 @@ export async function linkCompletePowerOutageWorkItem(input: {
   itemId: string
 }) {
   const { supabase } = await getPowerOutageRuntimeContext()
-  const { data, error } = await supabase.rpc('link_complete_power_outage_work_item_v1', {
+  let response = await supabase.rpc('link_complete_power_outage_work_item_v2', {
     requested_candidate_id: input.candidateId,
     requested_item_kind: input.itemKind,
     requested_item_id: input.itemId,
   })
+  if (input.itemKind !== 'job' && response.error && (
+    response.error.code === 'PGRST202'
+    || response.error.code === '42883'
+    || response.error.message.includes('link_complete_power_outage_work_item_v2')
+  )) {
+    response = await supabase.rpc('link_complete_power_outage_work_item_v1', {
+      requested_candidate_id: input.candidateId,
+      requested_item_kind: input.itemKind,
+      requested_item_id: input.itemId,
+    })
+  }
+  const { data, error } = response
   if (error) throw new Error(`Pracovní položku se nepodařilo propojit: ${error.message}`)
   return mapActionWorkspace(data)
 }
