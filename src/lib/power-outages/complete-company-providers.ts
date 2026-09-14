@@ -2,6 +2,10 @@ import 'server-only'
 
 import { z } from 'zod'
 import { normalizePowerOutageText, powerOutageSha256 } from './normalization'
+import {
+  evaluateCompleteAddressMatchV5,
+  type CompleteAddressMatchV5Result,
+} from './complete-address-match-v5'
 
 export type CompleteDiscoveryProvider = 'ares' | 'mapy' | 'google'
 
@@ -14,6 +18,10 @@ export type CompleteCompanyCandidate = {
   naceCodes: string[]
   latitude: number | null
   longitude: number | null
+  postalCode?: string | null
+  ruianAddressId?: string | number | null
+  houseNumber?: string | number | null
+  orientationNumber?: string | number | null
   sourceUrl: string | null
   entityKind: 'registered_office' | 'establishment'
   confidence: number
@@ -21,12 +29,17 @@ export type CompleteCompanyCandidate = {
 }
 
 export type CompleteDiscoveryTarget = {
+  source?: 'cez' | 'egd' | 'pre' | null
   targetKind: 'exact_number' | 'street' | 'municipality'
   queryText: string
   municipality: string
   townPart: string | null
   street: string
   numberToken: string | null
+  postalCode?: string | null
+  ruianAddressId?: string | number | null
+  houseNumber?: string | null
+  orientationNumber?: string | null
   latitude: number | null
   longitude: number | null
 }
@@ -56,6 +69,10 @@ const aresResponseSchema = z.object({
     sidlo: z.object({
       textovaAdresa: z.string().nullish(),
       kodAdresnihoMista: z.union([z.string(), z.number()]).nullish(),
+      psc: z.union([z.string(), z.number()]).nullish(),
+      cisloDomovni: z.union([z.string(), z.number()]).nullish(),
+      cisloOrientacni: z.union([z.string(), z.number()]).nullish(),
+      cisloOrientacniPismeno: z.string().nullish(),
     }).passthrough().nullish(),
   }).passthrough()).nullish(),
 }).passthrough()
@@ -100,6 +117,13 @@ function normalizedIco(value: unknown) {
   return digits.length > 0 && digits.length <= 8 ? digits.padStart(8, '0') : null
 }
 
+function aresOrientationNumber(number: unknown, suffix: unknown) {
+  const numeric = String(number ?? '').trim()
+  if (!numeric) return null
+  const letter = String(suffix ?? '').trim().toLocaleLowerCase('cs-CZ')
+  return `${numeric}${letter}`
+}
+
 function addressNumberTokens(value: string) {
   return new Set(
     [...value.toLocaleLowerCase('cs-CZ').matchAll(/(?:^|[^\p{L}\d])0*(\d+)([a-z]?)(?=$|[^\p{L}\d])/giu)]
@@ -127,7 +151,79 @@ export function candidateMatchesDiscoveryTarget(
   candidate: CompleteCompanyCandidate,
   target: CompleteDiscoveryTarget,
 ) {
-  return Boolean(candidate.displayAddress && addressMatchesTarget(candidate.displayAddress, target))
+  return evaluateCandidateDiscoveryMatch(candidate, target).accepted
+}
+
+export type CandidateDiscoveryMatch = {
+  accepted: boolean
+  matchLevel: 'exact_address' | 'same_building' | 'nearby' | 'unresolved'
+  confidenceCeiling: number
+  evaluation: CompleteAddressMatchV5Result | null
+  egdV5Applied: boolean
+}
+
+/**
+ * Přísný v5 matcher je záměrně omezený jen na přesné adresní cíle EG.D
+ * v katalogu KOMPLETNÍ. ČEZ a PRE touto změnou dál procházejí původní
+ * validací beze změny výsledku i confidence.
+ */
+export function evaluateCandidateDiscoveryMatch(
+  candidate: CompleteCompanyCandidate,
+  target: CompleteDiscoveryTarget,
+): CandidateDiscoveryMatch {
+  const legacyAccepted = Boolean(
+    candidate.displayAddress && addressMatchesTarget(candidate.displayAddress, target),
+  )
+  if (target.source !== 'egd' || target.targetKind !== 'exact_number') {
+    return {
+      accepted: legacyAccepted,
+      matchLevel: target.targetKind === 'exact_number' ? 'exact_address' : 'nearby',
+      confidenceCeiling: candidate.confidence,
+      evaluation: null,
+      egdV5Applied: false,
+    }
+  }
+  if (!candidate.displayAddress) {
+    return {
+      accepted: false,
+      matchLevel: 'unresolved',
+      confidenceCeiling: 0.2,
+      evaluation: null,
+      egdV5Applied: true,
+    }
+  }
+
+  const evaluation = evaluateCompleteAddressMatchV5({
+    target: {
+      municipality: target.municipality,
+      townPart: target.townPart,
+      street: target.street,
+      houseNumber: target.houseNumber,
+      orientationNumber: target.orientationNumber,
+      postalCode: target.postalCode,
+      ruianAddressId: target.ruianAddressId,
+      latitude: target.latitude,
+      longitude: target.longitude,
+    },
+    candidate: {
+      displayAddress: candidate.displayAddress,
+      postalCode: candidate.postalCode,
+      ruianAddressId: candidate.ruianAddressId,
+      houseNumber: candidate.houseNumber,
+      orientationNumber: candidate.orientationNumber,
+      latitude: candidate.latitude,
+      longitude: candidate.longitude,
+    },
+  })
+  return {
+    accepted: evaluation.classification !== 'address_conflict',
+    matchLevel: evaluation.automaticConfirmationAllowed
+      ? evaluation.classification === 'same_building' ? 'same_building' : 'exact_address'
+      : 'unresolved',
+    confidenceCeiling: evaluation.confidenceCeiling,
+    evaluation,
+    egdV5Applied: true,
+  }
 }
 
 async function responseJson(response: Response, provider: string) {
@@ -159,8 +255,8 @@ async function discoverAres(target: CompleteDiscoveryTarget) {
     const ico = normalizedIco(item.ico)
     const name = cleanText(item.obchodniJmeno)
     const address = cleanText(item.sidlo?.textovaAdresa)
-    if (!ico || !name || !addressMatchesTarget(address, target)) return []
-    return [{
+    if (!ico || !name) return []
+    const candidate: CompleteCompanyCandidate = {
       providerEntityId: ico,
       displayName: name,
       displayAddress: address,
@@ -169,14 +265,30 @@ async function discoverAres(target: CompleteDiscoveryTarget) {
       naceCodes: (item.czNace ?? []).map(String).map((value) => value.trim()).filter(Boolean),
       latitude: null,
       longitude: null,
+      postalCode: String(item.sidlo?.psc ?? '').trim() || null,
+      ruianAddressId: item.sidlo?.kodAdresnihoMista ?? null,
+      houseNumber: item.sidlo?.cisloDomovni ?? null,
+      orientationNumber: aresOrientationNumber(
+        item.sidlo?.cisloOrientacni,
+        item.sidlo?.cisloOrientacniPismeno,
+      ),
       sourceUrl: `https://ares.gov.cz/ekonomicke-subjekty?ico=${ico}`,
       entityKind: 'registered_office',
       confidence: 0.98,
       metadata: {
         contract: 'ares-public-rest-v1',
         ruianAddressId: cleanText(item.sidlo?.kodAdresnihoMista) || null,
+        structuredAddress: {
+          postalCode: String(item.sidlo?.psc ?? '').trim() || null,
+          houseNumber: String(item.sidlo?.cisloDomovni ?? '').trim() || null,
+          orientationNumber: aresOrientationNumber(
+            item.sidlo?.cisloOrientacni,
+            item.sidlo?.cisloOrientacniPismeno,
+          ),
+        },
       },
-    }]
+    }
+    return candidateMatchesDiscoveryTarget(candidate, target) ? [candidate] : []
   })
 }
 
@@ -212,7 +324,6 @@ async function discoverMapy(target: CompleteDiscoveryTarget) {
     const name = cleanText(item.name)
     if (!name || item.type !== 'poi') return []
     const address = mapyRegionalAddress(item) || cleanText(item.location) || target.queryText
-    if (!addressMatchesTarget(address, target)) return []
     const latitude = item.position?.lat ?? null
     const longitude = item.position?.lon ?? null
     const providerEntityId = powerOutageSha256({
@@ -221,7 +332,7 @@ async function discoverMapy(target: CompleteDiscoveryTarget) {
       latitude,
       longitude,
     })
-    return [{
+    const candidate: CompleteCompanyCandidate = {
       providerEntityId,
       displayName: name,
       displayAddress: address,
@@ -234,7 +345,8 @@ async function discoverMapy(target: CompleteDiscoveryTarget) {
       entityKind: 'establishment',
       confidence: target.targetKind === 'exact_number' ? 0.88 : 0.62,
       metadata: { contract: 'mapy-geocode-poi-v1', label: cleanText(item.label) || null },
-    }]
+    }
+    return candidateMatchesDiscoveryTarget(candidate, target) ? [candidate] : []
   })
 }
 
@@ -263,8 +375,7 @@ async function discoverGoogle(target: CompleteDiscoveryTarget) {
   const payload = googleResponseSchema.parse(await responseJson(response, 'Google Places'))
   return (payload.places ?? []).flatMap((place): CompleteCompanyCandidate[] => {
     const address = cleanText(place.formattedAddress)
-    if (!addressMatchesTarget(address, target)) return []
-    return [{
+    const candidate: CompleteCompanyCandidate = {
       providerEntityId: place.id,
       displayName: cleanText(place.displayName?.text) || null,
       displayAddress: address,
@@ -277,7 +388,8 @@ async function discoverGoogle(target: CompleteDiscoveryTarget) {
       entityKind: 'establishment',
       confidence: target.targetKind === 'exact_number' ? 0.84 : 0.58,
       metadata: { contract: 'google-places-text-search-v1', types: place.types ?? [] },
-    }]
+    }
+    return candidateMatchesDiscoveryTarget(candidate, target) ? [candidate] : []
   })
 }
 

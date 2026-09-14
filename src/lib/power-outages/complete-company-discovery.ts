@@ -9,6 +9,7 @@ import {
   cacheSafeCandidates,
   candidateMatchesDiscoveryTarget,
   discoverCompanies,
+  evaluateCandidateDiscoveryMatch,
   providerAcceptsTarget,
   providerConfigured,
   providerLookupKind,
@@ -32,6 +33,21 @@ type TargetRow = {
   latitude: number | string | null
   longitude: number | string | null
   lookup_status: 'error' | null
+  metadata?: Record<string, unknown> | null
+  source?: 'cez' | 'egd' | 'pre' | null
+  postal_code?: string | null
+  ruian_address_id?: string | number | null
+  address_latitude?: number | string | null
+  address_longitude?: number | string | null
+}
+
+type TargetAddressContext = {
+  id: string
+  outage_id: string
+  postal_code: string | null
+  ruian_address_id: string | number | null
+  latitude: number | string | null
+  longitude: number | string | null
 }
 
 type CacheRow = {
@@ -74,16 +90,37 @@ function taskKey(provider: CompleteDiscoveryProvider) {
 }
 
 function targetInput(row: TargetRow): CompleteDiscoveryTarget {
+  const metadata = row.metadata ?? {}
+  const metadataNumber = (value: unknown) => (
+    typeof value === 'string' || typeof value === 'number'
+      ? String(value).trim() || null
+      : null
+  )
+  const houseNumber = metadataNumber(metadata.houseNumber)
+  const orientationNumber = metadataNumber(metadata.orientationNumber)
   return {
+    source: row.source ?? null,
     targetKind: row.target_kind,
     queryText: row.query_text,
     municipality: row.municipality,
     townPart: row.town_part,
     street: row.street,
     numberToken: row.number_token,
-    latitude: finiteNumber(row.latitude),
-    longitude: finiteNumber(row.longitude),
+    postalCode: row.postal_code ?? null,
+    ruianAddressId: row.ruian_address_id ?? null,
+    houseNumber: houseNumber ?? (orientationNumber ? null : row.number_token),
+    orientationNumber,
+    latitude: finiteNumber(row.latitude) ?? finiteNumber(row.address_latitude),
+    longitude: finiteNumber(row.longitude) ?? finiteNumber(row.address_longitude),
   }
+}
+
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = []
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size))
+  }
+  return result
 }
 
 function lookupIdentity(provider: CompleteDiscoveryProvider, target: TargetRow) {
@@ -128,7 +165,64 @@ async function loadTargets(client: ServiceClient, provider: CompleteDiscoveryPro
     requested_limit: scanLimit,
   })
   if (error) throw error
-  return (data ?? []) as TargetRow[]
+  const targets = (data ?? []) as TargetRow[]
+  if (targets.length === 0) return targets
+
+  // RPC zůstává zpětně kompatibilní. Kontext nutný pro přísný matcher se
+  // doplní pouze v aplikační vrstvě katalogu KOMPLETNÍ.
+  const targetMetadata = new Map<string, Record<string, unknown>>()
+  for (const ids of chunks(targets.map((target) => target.id), 300)) {
+    const { data: rows, error: rowsError } = await client
+      .from('complete_power_outage_address_targets')
+      .select('id,metadata')
+      .in('id', ids)
+    if (rowsError) throw rowsError
+    for (const row of rows ?? []) {
+      targetMetadata.set(String(row.id), (row.metadata ?? {}) as Record<string, unknown>)
+    }
+  }
+
+  const addresses = new Map<string, TargetAddressContext>()
+  for (const ids of chunks([...new Set(targets.map((target) => target.outage_address_id))], 300)) {
+    const { data: rows, error: rowsError } = await client
+      .from('complete_power_outage_addresses')
+      .select('id,outage_id,postal_code,ruian_address_id,latitude,longitude')
+      .in('id', ids)
+    if (rowsError) throw rowsError
+    for (const row of rows ?? []) addresses.set(String(row.id), row as TargetAddressContext)
+  }
+
+  const outageSources = new Map<string, 'cez' | 'egd' | 'pre'>()
+  const outageIds = [...new Set([...addresses.values()].map((address) => address.outage_id))]
+  for (const ids of chunks(outageIds, 300)) {
+    const { data: rows, error: rowsError } = await client
+      .from('complete_power_outages')
+      .select('id,source')
+      .in('id', ids)
+    if (rowsError) throw rowsError
+    for (const row of rows ?? []) {
+      if (row.source === 'cez' || row.source === 'egd' || row.source === 'pre') {
+        outageSources.set(String(row.id), row.source)
+      }
+    }
+  }
+
+  return targets.map((target) => {
+    const address = addresses.get(target.outage_address_id)
+    const source = address ? outageSources.get(address.outage_id) : null
+    if (!address || !source) {
+      throw new Error(`Cíl ${target.id} nemá úplný zdrojový kontext katalogu KOMPLETNÍ.`)
+    }
+    return {
+      ...target,
+      metadata: targetMetadata.get(target.id) ?? {},
+      source,
+      postal_code: address?.postal_code ?? null,
+      ruian_address_id: address?.ruian_address_id ?? null,
+      address_latitude: address?.latitude ?? null,
+      address_longitude: address?.longitude ?? null,
+    }
+  })
 }
 
 async function loadCache(
@@ -306,6 +400,23 @@ async function materializeCandidates(input: {
   let companyCount = 0
   let evidenceCount = 0
   for (const candidate of input.candidates) {
+    const addressMatch = evaluateCandidateDiscoveryMatch(candidate, targetInput(input.target))
+    if (!addressMatch.accepted) continue
+    const candidateConfidence = Math.min(candidate.confidence, addressMatch.confidenceCeiling)
+    const evidenceMetadata = addressMatch.evaluation
+      ? {
+          ...candidate.metadata,
+          addressMatch: {
+            contract: addressMatch.evaluation.contract,
+            version: addressMatch.evaluation.version,
+            classification: addressMatch.evaluation.classification,
+            automaticConfirmationAllowed: addressMatch.evaluation.automaticConfirmationAllowed,
+            reasonCodes: addressMatch.evaluation.reasonCodes,
+            distanceMeters: addressMatch.evaluation.distanceMeters,
+          },
+          sourceScope: 'complete_egd',
+        }
+      : candidate.metadata
     // Výsledek ARES zůstává v providerové cache pro audit, ale samotné sídlo
     // podnikající fyzické osoby už nevytváří kandidáta navázaného na odstávku.
     // Mapy.com a Google mohou na stejné adrese nezávisle potvrdit provozovnu.
@@ -329,13 +440,16 @@ async function materializeCandidates(input: {
           provider: input.provider,
           provider_entity_id: candidate.providerEntityId,
           evidence_kind: candidate.entityKind,
-          match_level: input.target.target_kind === 'exact_number' ? 'exact_address' : 'nearby',
+          match_level: addressMatch.matchLevel,
           display_name: current.company_name,
           display_address: null,
           source_url: `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(candidate.providerEntityId)}`,
-          confidence: candidate.confidence,
+          confidence: candidateConfidence,
           payload_sha256: powerOutageSha256({ provider: input.provider, id: candidate.providerEntityId }),
-          metadata: { contract: 'google-place-id-corroboration-v1' },
+          metadata: {
+            contract: 'google-place-id-corroboration-v1',
+            ...(addressMatch.evaluation ? { addressMatch: evidenceMetadata.addressMatch, sourceScope: 'complete_egd' } : {}),
+          },
         }, { onConflict: 'company_id,provider,provider_entity_id' })
       if (googleEvidenceError) throw googleEvidenceError
       const { error: resetError } = await input.client
@@ -368,7 +482,7 @@ async function materializeCandidates(input: {
         display_address: current?.display_address ?? candidate.displayAddress,
         latitude: finiteNumber(current?.latitude) ?? candidate.latitude,
         longitude: finiteNumber(current?.longitude) ?? candidate.longitude,
-        confidence: Math.max(finiteNumber(current?.confidence) ?? 0, candidate.confidence),
+        confidence: Math.max(finiteNumber(current?.confidence) ?? 0, candidateConfidence),
         candidate_status: current?.resolved_by ? current.candidate_status : 'new',
         evaluation_version: 0,
         evaluation_reasons: [],
@@ -393,7 +507,7 @@ async function materializeCandidates(input: {
         display_address: candidate.displayAddress,
         latitude: candidate.latitude,
         longitude: candidate.longitude,
-        confidence: candidate.confidence,
+        confidence: candidateConfidence,
         candidate_status: 'new',
         normalized_company_name: normalizedName,
         resolved_by: null,
@@ -408,13 +522,13 @@ async function materializeCandidates(input: {
       provider: input.provider,
       provider_entity_id: candidate.providerEntityId,
       evidence_kind: candidate.entityKind,
-      match_level: input.target.target_kind === 'exact_number' ? 'exact_address' : 'nearby',
+      match_level: addressMatch.matchLevel,
       display_name: candidate.displayName,
       display_address: candidate.displayAddress,
       source_url: candidate.sourceUrl,
-      confidence: candidate.confidence,
+      confidence: candidateConfidence,
       payload_sha256: powerOutageSha256({ provider: input.provider, id: candidate.providerEntityId }),
-      metadata: candidate.metadata,
+      metadata: evidenceMetadata,
     }, { onConflict: 'company_id,provider,provider_entity_id' })
     if (evidenceError) throw evidenceError
     await refreshSourceCount(company.id)
@@ -493,7 +607,8 @@ export async function discoverCompletePowerOutageCompanies(
         // Cache Mapy.com mohla vzniknout před zpřísněním kontroly písmene
         // orientačního čísla. Validaci proto vždy zopakujeme i při cache hitu.
         const candidates = cachedCandidates(cache.normalized_results).filter((candidate) => (
-          provider !== 'mapy' || candidateMatchesDiscoveryTarget(candidate, targetInput(target))
+          (target.source !== 'egd' && provider !== 'mapy')
+          || candidateMatchesDiscoveryTarget(candidate, targetInput(target))
         ))
         const materialized = await materializeCandidates({ client, provider, target, candidates })
         companyCount += materialized.companyCount
