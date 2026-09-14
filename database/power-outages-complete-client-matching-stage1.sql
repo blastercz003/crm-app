@@ -89,15 +89,15 @@ as $$
 $$;
 
 revoke all on function public.complete_power_outage_normalize_client_ico(text)
-  from public, anon, authenticated;
+  from public, anon;
 revoke all on function public.complete_power_outage_normalize_client_name(text)
-  from public, anon, authenticated;
+  from public, anon;
 revoke all on function public.complete_power_outage_client_name_similarity(text, text)
   from public, anon, authenticated;
 grant execute on function public.complete_power_outage_normalize_client_ico(text)
-  to service_role;
+  to authenticated, service_role;
 grant execute on function public.complete_power_outage_normalize_client_name(text)
-  to service_role;
+  to authenticated, service_role;
 grant execute on function public.complete_power_outage_client_name_similarity(text, text)
   to service_role;
 

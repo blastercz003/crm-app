@@ -47,9 +47,9 @@ as $$
 $$;
 
 revoke all on function public.complete_power_outage_normalize_client_name(text)
-  from public, anon, authenticated;
+  from public, anon;
 grant execute on function public.complete_power_outage_normalize_client_name(text)
-  to service_role;
+  to authenticated, service_role;
 
 -- Audit nadále sbírá širší pásmo od 0,68 pro kontrolu, ale fuzzy návrh smí
 -- vzniknout až od přísné hranice 0,92. Ani návrh není produkční vazbou.

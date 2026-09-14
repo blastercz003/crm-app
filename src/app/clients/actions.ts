@@ -554,6 +554,14 @@ async function insertClientRecord(formData: FormData) {
     .single<{ id: string }>()
 
   if (error || !createdClient) {
+    if (error) {
+      console.error('[clients:create] Database insert failed.', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      })
+    }
     throw new Error('Nepodařilo se vytvořit klienta.')
   }
 
