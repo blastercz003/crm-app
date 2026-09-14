@@ -1,10 +1,10 @@
-import { CircleCheckBig, Database, SearchCheck, TriangleAlert } from 'lucide-react'
+import { CircleCheckBig, Database, SearchCheck, Sparkles } from 'lucide-react'
 
 const SUMMARY = [
   { label: 'AKTUÁLNÍ ODSTÁVKY', icon: Database, tone: 'blue' },
-  { label: 'NALEZENÉ SHODY', icon: SearchCheck, tone: 'violet' },
-  { label: 'POTVRZENÉ SHODY', icon: CircleCheckBig, tone: 'emerald' },
-  { label: 'K OVĚŘENÍ', icon: TriangleAlert, tone: 'amber' },
+  { label: 'AKTUÁLNÍ FIREMNÍ SHODY', icon: SearchCheck, tone: 'amber' },
+  { label: 'POTVRZENÉ FIREMNÍ SHODY', icon: CircleCheckBig, tone: 'emerald' },
+  { label: 'SHODY SE SKÓRE A', icon: Sparkles, tone: 'violet' },
 ] as const
 
 export function CompletePowerOutagesScaffold() {

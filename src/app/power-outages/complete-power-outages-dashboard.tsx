@@ -152,9 +152,9 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   const confirmedMatchCount = statistics ? Math.max(0, statistics.currentCompanyCount - statistics.needsReviewCount) : 0
   const cards: PowerOutageSummaryCard[] = [
     { label: 'AKTUÁLNÍ ODSTÁVKY', value: statistics?.currentOutageCount ?? null, tone: 'blue' },
-    { label: 'NALEZENÉ SHODY', value: statistics?.currentCompanyCount ?? null, tone: 'amber', icon: 'search' },
-    { label: 'POTVRZENÉ SHODY', value: statistics ? confirmedMatchCount : null, tone: 'emerald', icon: 'check' },
-    { label: 'AI SELECT', value: statistics?.gradeACompanyCount ?? null, tone: 'violet', icon: 'sparkles' },
+    { label: 'AKTUÁLNÍ FIREMNÍ SHODY', value: statistics?.currentCompanyCount ?? null, tone: 'amber', icon: 'search' },
+    { label: 'POTVRZENÉ FIREMNÍ SHODY', value: statistics ? confirmedMatchCount : null, tone: 'emerald', icon: 'check' },
+    { label: 'SHODY SE SKÓRE A', value: statistics?.gradeACompanyCount ?? null, tone: 'violet', icon: 'sparkles' },
   ]
   return <>
     <PowerOutageSummaryStats cards={cards} error={statisticsError} onRetry={() => void loadStatistics()} />

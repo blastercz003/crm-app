@@ -3046,7 +3046,7 @@ function mapActionWorkspace(value: unknown): CompletePowerOutageActionWorkspace 
 }
 
 export async function getCompletePowerOutageActionWorkspace(candidateId: string) {
-  const { supabase } = await getPowerOutageRuntimeContext()
+  const { supabase, profile } = await getPowerOutageRuntimeContext()
   let response = await supabase.rpc('get_complete_power_outage_action_workspace_v2', {
     requested_candidate_id: candidateId,
   })
@@ -3061,18 +3061,25 @@ export async function getCompletePowerOutageActionWorkspace(candidateId: string)
   }
   const { data, error } = response
   if (error) throw new Error(`Pracovní nástroje se nepodařilo načíst: ${error.message}`)
-  return mapActionWorkspace(data)
+  const workspace = mapActionWorkspace(data)
+  return {
+    ...workspace,
+    capabilities: {
+      ...workspace.capabilities,
+      canCreateJob: profile.role === 'admin' && workspace.contractVersion >= 3,
+    },
+  }
 }
 
 export async function getCompletePowerOutageWorkItemFormOptions(
   candidateId: string,
 ): Promise<CompletePowerOutageWorkItemFormOptions> {
   const workspace = await getCompletePowerOutageActionWorkspace(candidateId)
-  if (!workspace.ownership.canEdit) {
+  const { supabase, user, profile } = await getPowerOutageRuntimeContext()
+  if (!workspace.ownership.canEdit && profile.role !== 'admin') {
     throw new Error('Pracovní akce může provádět pouze vlastník tohoto záznamu.')
   }
 
-  const { supabase, user, profile } = await getPowerOutageRuntimeContext()
   const [usersResponse, clientsResponse, contactsResponse] = await Promise.all([
     supabase.from('profiles').select('id, name, role').order('name', { ascending: true }),
     supabase.from('clients').select('id, name, created_by').order('name', { ascending: true }),

@@ -44,17 +44,20 @@ with function_definitions as (
       and not has_table_privilege('authenticated',
         'public.complete_power_outage_work_item_links', 'SELECT,INSERT,UPDATE,DELETE')),
     ('LOGIC', 'Jobs creation is available only to administrators',
-      (select linking_definition ilike $$%current_role <> 'admin'%$$
+      (select linking_definition ilike $$%not public.current_user_is_admin()%$$
         from function_definitions)
-      and (select foundation_definition ilike $$%'canCreateJob', can_edit_record and current_role = 'admin'%$$
+      and (select workspace_definition ilike $$%'{capabilities,canCreateJob}'%$$
+        and workspace_definition ilike $$%is_admin boolean := public.current_user_is_admin()%$$
+        and workspace_definition ilike $$%to_jsonb(is_admin)%$$
         from function_definitions)),
     ('LOGIC', 'unassigned record is claimed only during final Job linking',
       (select linking_definition ilike '%insert into public.complete_power_outage_company_assignments%'
         and linking_definition ilike '%on conflict%do nothing%'
         from function_definitions)),
-    ('LOGIC', 'current owner can link a Job and another owner is rejected',
+    ('LOGIC', 'administrator can link a Job without replacing current owner',
       (select linking_definition ilike '%for update%'
-        and linking_definition ilike '%assignment_owner_id <> current_user_id%'
+        and linking_definition not ilike '%assignment_owner_id <> current_user_id%'
+        and linking_definition not ilike '%update public.complete_power_outage_company_assignments%'
         from function_definitions)),
     ('LOGIC', 'Job must belong to the client linked with the outage',
       (select linking_definition ilike '%job_client_id%'
@@ -62,7 +65,7 @@ with function_definitions as (
         and linking_definition ilike '%Zakazka nepatri propojenemu klientovi%'
         from function_definitions)),
     ('LOGIC', 'ordinary users receive no internal Jobs data',
-      (select workspace_definition ilike $$%current_role = 'admin' and can_view_jobs%$$
+      (select workspace_definition ilike $$%is_admin and can_view_jobs%$$
         from function_definitions)),
     ('LOGIC', 'Portal Jobs are visible only inside the users sales scope',
       (select workspace_definition ilike '%can_view_jobs_portal%'
@@ -70,7 +73,7 @@ with function_definitions as (
         and workspace_definition ilike '%job.sales_owner = jobs_sales_scope%'
         from function_definitions)),
     ('LOGIC', 'user without Jobs or Portal scope receives no Job records',
-      (select workspace_definition ilike '%where (current_role = ''admin'' and can_view_jobs)%'
+      (select workspace_definition ilike '%where (is_admin and can_view_jobs)%'
         and workspace_definition ilike '%or (can_view_jobs_portal and jobs_sales_scope is not null%'
         from function_definitions)),
     ('LOGIC', 'actual Job creation stays independent from communication outcome',

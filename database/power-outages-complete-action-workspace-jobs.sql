@@ -86,6 +86,7 @@ as $$
 declare
   current_user_id uuid := auth.uid();
   current_role text;
+  is_admin boolean := public.current_user_is_admin();
   can_view_jobs boolean := false;
   can_view_jobs_portal boolean := false;
   jobs_sales_scope text;
@@ -114,11 +115,11 @@ begin
       and manual_link.job_id is not null
   ), accessible_jobs as (
     select job.id, job.job_number,
-      case when current_role = 'admin' and can_view_jobs
+      case when is_admin and can_view_jobs
         then 'jobs' else 'jobs_portal' end as destination
     from candidate_job_ids link
     join public.jobs job on job.id = link.job_id
-    where (current_role = 'admin' and can_view_jobs)
+    where (is_admin and can_view_jobs)
        or (can_view_jobs_portal and jobs_sales_scope is not null
          and job.sales_owner = jobs_sales_scope)
     order by job.job_number desc, job.id
@@ -133,7 +134,12 @@ begin
   from accessible_jobs job;
 
   return jsonb_set(
-    jsonb_set(base_workspace, '{contractVersion}', '3'::jsonb, true),
+    jsonb_set(
+      jsonb_set(base_workspace, '{contractVersion}', '3'::jsonb, true),
+      '{capabilities,canCreateJob}',
+      to_jsonb(is_admin),
+      true
+    ),
     '{jobs}', visible_jobs, true
   );
 end;
@@ -186,7 +192,7 @@ begin
     raise exception 'Profil prihlaseneho uzivatele nebyl nalezen.' using errcode = 'P0002';
   end if;
 
-  if current_role <> 'admin' then
+  if not public.current_user_is_admin() then
     raise exception 'Zakazku muze vytvorit a propojit pouze administrator.' using errcode = '42501';
   end if;
 
@@ -219,9 +225,9 @@ begin
   where assignment.candidate_id = requested_candidate_id
   for update;
 
-  if assignment_owner_id <> current_user_id then
-    raise exception 'Zaznam uz spravuje uzivatel %.', assignment_owner_name using errcode = '42501';
-  end if;
+  -- Vytvoření zakázky je výhradně administrátorská akce. Administrátor ji
+  -- může provést i u záznamu svěřeného jinému uživateli; vlastnictví přitom
+  -- zůstává beze změny.
 
   select job.client_id, job.job_number
   into job_client_id, job_number
@@ -303,7 +309,7 @@ set contract_version = greatest(workspace_state.contract_version, 3),
       'stage', 'jobs-and-final-audit',
       'newWorkItemMutationsEnabled', true,
       'jobsCreationEnabled', true,
-      'jobsCreationPolicy', 'admin-only-owned-or-unassigned-record',
+      'jobsCreationPolicy', 'admin-only-any-record',
       'portalVisibilityPolicy', 'jobs-sales-scope',
       'communicationStatusIndependent', true,
       'directEmailEnabled', false,
