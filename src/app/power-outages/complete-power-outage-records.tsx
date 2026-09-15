@@ -100,6 +100,10 @@ const MOBILE_TIME = new Intl.DateTimeFormat('cs-CZ', {
   timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit',
 })
 
+const DETAIL_SHORT_DATE = new Intl.DateTimeFormat('cs-CZ', {
+  timeZone: 'Europe/Prague', day: 'numeric', month: 'numeric',
+})
+
 function formatDateTime(value: string | null) {
   if (!value) return 'Neuvedeno'
   const date = new Date(value)
@@ -119,6 +123,20 @@ function formatMobilePeriod(startsAt: string, endsAt: string) {
     : `${endDate} ${MOBILE_TIME.format(ends)}`
 
   return `${start} → ${end}`
+}
+
+function formatDetailPeriod(startsAt: string, endsAt: string) {
+  const starts = new Date(startsAt)
+  const ends = new Date(endsAt)
+  if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) {
+    return 'Termín neuveden'
+  }
+
+  const startDate = MOBILE_DATE.format(starts)
+  const endDate = MOBILE_DATE.format(ends)
+  return startDate === endDate
+    ? `${DETAIL_SHORT_DATE.format(starts)} ${MOBILE_TIME.format(starts)} – ${MOBILE_TIME.format(ends)}`
+    : `${DETAIL_SHORT_DATE.format(starts)} ${MOBILE_TIME.format(starts)} – ${DETAIL_SHORT_DATE.format(ends)} ${MOBILE_TIME.format(ends)}`
 }
 
 function sourceLabel(source: PowerOutageSource) {
@@ -246,6 +264,58 @@ function addressLabel(item: CompletePowerOutageCommunicationTarget) {
   return [item.street && `${item.street}${number ? ` ${number}` : ''}`, item.townPart].filter(Boolean).join(', ') || item.rawAddress
 }
 
+function outageAddressLabel(item: CompletePowerOutageListItem) {
+  const number = [item.houseNumber, item.orientationNumber].filter(Boolean).join('/')
+  const streetAndNumber = item.street
+    ? `${item.street}${number ? ` ${number}` : ''}`
+    : number ? `č.p. ${number}` : null
+  const uniqueParts: string[] = []
+  for (const part of [streetAndNumber, item.townPart, item.municipality, item.postalCode]) {
+    const value = part?.trim()
+    if (!value) continue
+    const normalized = value.toLocaleLowerCase('cs-CZ')
+    if (uniqueParts.some((current) => current.toLocaleLowerCase('cs-CZ') === normalized)) continue
+    uniqueParts.push(value)
+  }
+  return uniqueParts.join(', ') || item.rawAddress || item.municipality
+}
+
+function addressPrecisionLabel(item: CompletePowerOutageListItem) {
+  if (item.houseNumber?.trim() || item.orientationNumber?.trim()) return 'PŘESNÁ ADRESA'
+  const street = item.street.trim().toLocaleLowerCase('cs-CZ')
+  const municipality = item.municipality.trim().toLocaleLowerCase('cs-CZ')
+  const townPart = item.townPart?.trim().toLocaleLowerCase('cs-CZ') ?? ''
+  if (street && street !== municipality && street !== townPart) return 'ULICE'
+  if (municipality) return 'OBEC'
+  return 'PŘIBLIŽNÁ POLOHA'
+}
+
+function mapyUrl(item: CompletePowerOutageDetail) {
+  if (item.addressLatitude != null && item.addressLongitude != null) {
+    return `https://mapy.com/cs/zakladni?x=${encodeURIComponent(item.addressLongitude)}&y=${encodeURIComponent(item.addressLatitude)}&z=17`
+  }
+  return `https://mapy.com/cs/zakladni?q=${encodeURIComponent(outageAddressLabel(item))}`
+}
+
+function googleMapsUrl(item: CompletePowerOutageDetail) {
+  const query = item.addressLatitude != null && item.addressLongitude != null
+    ? `${item.addressLatitude},${item.addressLongitude}`
+    : outageAddressLabel(item)
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}
+
+function openStreetMapEmbedUrl(latitude: number, longitude: number) {
+  const latitudeDelta = 0.025
+  const longitudeDelta = 0.04
+  const bbox = [
+    longitude - longitudeDelta,
+    latitude - latitudeDelta,
+    longitude + longitudeDelta,
+    latitude + latitudeDelta,
+  ].join(',')
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${latitude},${longitude}`)}`
+}
+
 function SelectControl({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
   return <label className="relative min-w-0"><span className="sr-only">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full appearance-none rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] pl-3 pr-8 text-[11px] font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)]">{children}</select><ChevronDown aria-hidden size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" /></label>
 }
@@ -276,7 +346,7 @@ function CompanyEnrichmentSummary({ enrichment }: { enrichment: CompleteCompanyE
         : 'border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]'
   const emails = enrichment.contacts.filter((contact) => contact.type === 'email')
   const phones = enrichment.contacts.filter((contact) => contact.type === 'phone')
-  return <div className="mt-4 border-t border-sky-400/20 pt-3">
+  return <div>
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Doplňkové údaje ARES/RES</span>
       <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[7px] font-bold uppercase tracking-[0.06em] ${tone}`}>{enrichmentStatusLabel(enrichment.status)}</span>
@@ -331,7 +401,7 @@ function DiscoveredContactsSummary({ discoveredContacts }: { discoveredContacts:
       ? 'border-amber-400/40 bg-amber-400/10 text-amber-700 [html[data-theme=dark]_&]:text-amber-300'
       : 'border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]'
 
-  return <section className="mt-4 rounded-2xl border border-sky-400/20 bg-[var(--surface-muted)] p-4">
+  return <div className="mt-4 border-t border-[var(--surface-border)] pt-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Kontakty z webu firmy</h4>
@@ -372,26 +442,71 @@ function DiscoveredContactsSummary({ discoveredContacts }: { discoveredContacts:
 
       {domainContact ? <a href={domainContact.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[8px] font-semibold text-[var(--accent)]">Zdroj: {domainContact.normalizedDomain}<ExternalLink aria-hidden size={10} /></a> : null}
     </> : <p className="mt-3 text-[10px] leading-4 text-[var(--text-secondary)]">{discoveredContacts.message}</p>}
-  </section>
+  </div>
+}
+
+function CompleteOutageMapCard({ detail }: { detail: CompletePowerOutageDetail }) {
+  const hasCoordinates = detail.addressLatitude != null && detail.addressLongitude != null
+  const primaryUrl = mapyUrl(detail)
+  const precision = addressPrecisionLabel(detail)
+
+  return <div className="min-w-0 self-start overflow-hidden rounded-2xl border border-sky-400/20 bg-[var(--surface-strong)]/80">
+    <div className="relative h-[190px] overflow-hidden sm:h-[260px]">
+      {hasCoordinates ? <iframe
+        title="Minimapa místa odstávky"
+        src={openStreetMapEmbedUrl(detail.addressLatitude!, detail.addressLongitude!)}
+        loading="lazy"
+        className="h-[153.846%] w-[153.846%] origin-top-left scale-[0.65] border-0 opacity-95"
+      /> : <a href={primaryUrl} target="_blank" rel="noreferrer" aria-label={`Vyhledat místo odstávky ${outageAddressLabel(detail)} na Mapy.com`} className="absolute inset-0 block bg-[radial-gradient(circle_at_58%_42%,rgba(14,165,233,0.22),transparent_22%),linear-gradient(32deg,transparent_46%,rgba(56,189,248,0.12)_47%,rgba(56,189,248,0.12)_50%,transparent_51%),linear-gradient(145deg,var(--surface-muted),var(--surface-strong))]"><span className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-sky-500 text-white shadow-[0_8px_22px_rgba(14,165,233,0.38)]"><MapPin aria-hidden size={20} /></span></a>}
+      <span className="absolute left-3 top-3 inline-flex h-6 items-center rounded-full border border-sky-400/30 bg-[var(--surface-strong)]/90 px-2.5 text-[7px] font-bold uppercase tracking-[0.08em] text-[var(--accent)] shadow-sm backdrop-blur-sm">{precision}</span>
+    </div>
+    <div className="flex items-center justify-between gap-2 border-t border-sky-400/15 px-3 py-2">
+      <span className="min-w-0 truncate text-[8px] text-[var(--text-secondary)]">{hasCoordinates ? 'Bod podle uložené polohy odstávky' : 'Vyhledání podle adresy odstávky'}</span>
+      <div className="flex shrink-0 items-center gap-2 text-[7px] font-bold uppercase tracking-[0.05em]"><a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline">Mapy.com<ExternalLink aria-hidden size={8} /></a><a href={googleMapsUrl(detail)} target="_blank" rel="noreferrer" className="text-[var(--text-secondary)] hover:text-[var(--accent)]">Google</a></div>
+    </div>
+  </div>
 }
 
 function CompleteDetailPopup({ item, detail, loading, error, archived, onClose }: { item: CompletePowerOutageListItem; detail: CompletePowerOutageDetail | null; loading: boolean; error: string | null; archived: boolean; onClose: () => void }) {
   const showCezAnnouncement = detail?.source === 'cez'
     && Boolean(detail.announcementUrl)
     && !archived
-  return <PowerOutagePopupShell titleId="complete-power-outage-detail" eyebrow="KOMPLETNÍ ODSTÁVKY · DETAIL FIRMY" title={item.companyName} icon={<Building2 aria-hidden size={21} />} onClose={onClose}>
+  const period = detail ? formatDetailPeriod(detail.startsAt, detail.endsAt) : null
+  return <PowerOutagePopupShell
+    titleId="complete-power-outage-detail"
+    eyebrow="KOMPLETNÍ ODSTÁVKY · DETAIL FIRMY"
+    title={item.companyName}
+    icon={<Building2 aria-hidden size={21} />}
+    headerActions={<div className="text-right">
+      <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Jistota shody</span>
+      <strong className="mt-1 block whitespace-nowrap text-lg font-semibold leading-6 tabular-nums text-[var(--accent)] sm:text-xl">{Math.round(item.confidence * 100)} %</strong>
+    </div>}
+    onClose={onClose}
+  >
     {loading ? <LoadingDetail /> : error ? <div className="m-5 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-700 [html[data-theme=dark]_&]:text-red-300">{error}</div> : detail ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable] sm:p-5">
-      <section className="rounded-2xl border border-sky-400/25 bg-sky-500/8 p-4">
-        <div className="flex flex-wrap items-center gap-2"><StatusBadge status={detail.candidateStatus} assignment={detail.assignment} /><EntityBadge kind={detail.entityKind} /><strong className="ml-auto text-xl tabular-nums text-[var(--accent)]">{Math.round(detail.confidence * 100)} %</strong></div>
-        <h3 className="mt-3 text-lg font-semibold text-[var(--text-primary)]">{detail.companyName}</h3>
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">{detail.displayAddress || `${addressLabel(detail)}, ${detail.municipality}`}</p>
-        <CompanyEnrichmentSummary enrichment={detail.enrichment} />
+      <section className="grid min-w-0 gap-3 rounded-2xl border border-sky-400/25 bg-sky-500/8 p-3 sm:p-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(250px,0.75fr)]">
+        <div className="flex min-w-0 flex-col">
+          <div className="flex flex-wrap items-center gap-2"><StatusBadge status={detail.candidateStatus} assignment={detail.assignment} /><EntityBadge kind={detail.entityKind} /><SourceBadge source={detail.source} /></div>
+          <div className="mt-4 min-w-0">
+            <span className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Firma</span>
+            <h3 className="mt-0.5 break-words text-lg font-semibold leading-6 text-[var(--text-primary)] sm:text-xl">{detail.companyName}</h3>
+          </div>
+          <div className="mt-3 min-w-0">
+            <span className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Místo odstávky</span>
+            <h3 className="mt-0.5 break-words text-base font-semibold leading-6 text-[var(--text-primary)] sm:text-lg">{outageAddressLabel(detail)}</h3>
+          </div>
+          <div className="mt-3 min-w-0">
+            <span className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Termín odstávky</span>
+            <h3 className="mt-0.5 whitespace-nowrap text-base font-semibold leading-6 tabular-nums text-[var(--text-primary)] sm:text-lg">{period}</h3>
+          </div>
+          <div className="mt-auto flex flex-wrap gap-2 pt-4">{showCezAnnouncement ? <a href={detail.announcementUrl!} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 text-[9px] font-semibold text-[var(--accent)] transition hover:-translate-y-0.5 hover:border-sky-500/50"><FileText aria-hidden size={12} />Oznámení ČEZ (PDF)<ExternalLink aria-hidden size={10} /></a> : null}{detail.sourceUrl ? <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[9px] font-semibold text-[var(--accent)] transition hover:-translate-y-0.5 hover:border-sky-500/40">Zdroj {sourceLabel(detail.source)}<ExternalLink aria-hidden size={11} /></a> : null}</div>
+        </div>
+        <CompleteOutageMapCard detail={detail} />
       </section>
-      <DiscoveredContactsSummary discoveredContacts={detail.discoveredContacts} />
-      <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyhodnocení systému</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="Výsledek" value={statusLabel(detail.candidateStatus)} /><PowerOutageDetailRow label="Jistota" value={`${Math.round(detail.confidence * 100)} %`} /><PowerOutageDetailRow label="Typ" value={entityLabel(detail.entityKind)} /><PowerOutageDetailRow label="Počet důkazů" value={String(detail.evidenceCount)} /></div>{detail.evaluationExplanations.length ? <ul className="mt-3 space-y-2">{detail.evaluationExplanations.map((text) => <li key={text} className="flex gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 text-[10px] leading-4 text-[var(--text-primary)]"><CircleCheck aria-hidden size={13} className="mt-0.5 shrink-0 text-[var(--accent)]" />{text}</li>)}</ul> : <p className="mt-3 text-xs text-[var(--text-secondary)]">Výsledek zatím čeká na první vyhodnocení.</p>}</section>
-      <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Firma a dotčená adresa</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="IČO" value={detail.ico || 'Neuvedeno'} /><PowerOutageDetailRow label="Právní forma" value={detail.legalForm || 'Neuvedena'} /><PowerOutageDetailRow label="Obec" value={detail.municipality} /><PowerOutageDetailRow label="Adresa distributora" value={addressLabel(detail) || detail.rawAddress} /></div></section>
-      <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Termín odstávky</h4><div className="mt-2 grid gap-2 sm:grid-cols-2"><PowerOutageDetailRow label="Distributor" value={sourceLabel(detail.source)} /><PowerOutageDetailRow label="Stav zdroje" value={detail.sourceStatus.toUpperCase()} /><PowerOutageDetailRow label="Termín od" value={formatDateTime(detail.startsAt)} /><PowerOutageDetailRow label="Termín do" value={formatDateTime(detail.endsAt)} /></div><div className="mt-2 flex flex-wrap items-center gap-2">{showCezAnnouncement ? <a href={detail.announcementUrl!} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 text-[10px] font-semibold text-[var(--accent)] transition hover:-translate-y-0.5 hover:border-sky-500/50 hover:bg-sky-500/15"><FileText aria-hidden size={13} />Oznámení ČEZ (PDF)<ExternalLink aria-hidden size={11} /></a> : null}{detail.sourceUrl ? <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[10px] font-semibold text-[var(--accent)] transition hover:-translate-y-0.5 hover:border-sky-500/40">Stránka distributora <ExternalLink aria-hidden size={12} /></a> : null}</div></section>
-      <section className="mt-4"><h4 className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdrojové důkazy</h4><div className="mt-2 space-y-2">{detail.evidence.length ? detail.evidence.map((evidence) => <article key={evidence.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3"><div className="flex items-center justify-between gap-3"><strong className="text-[9px] uppercase tracking-[0.08em] text-[var(--accent)]">{evidence.provider}</strong><span className="text-[10px] font-bold tabular-nums text-[var(--text-primary)]">{Math.round(evidence.confidence * 100)} %</span></div><p className="mt-1 text-[11px] font-semibold text-[var(--text-primary)]">{evidence.displayName}</p>{evidence.displayAddress ? <p className="mt-0.5 text-[9px] text-[var(--text-secondary)]">{evidence.displayAddress}</p> : null}<div className="mt-2 flex items-center justify-between gap-2 text-[8px] uppercase text-[var(--text-secondary)]"><span>{evidence.matchLevel.replaceAll('_', ' ')}</span>{evidence.sourceUrl ? <a href={evidence.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--accent)]">Zdroj <ExternalLink aria-hidden size={10} /></a> : null}</div></article>) : <p className="text-xs text-[var(--text-secondary)]">Důkazy zatím nejsou dostupné.</p>}</div></section>
+      <section className="mt-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4"><CompanyEnrichmentSummary enrichment={detail.enrichment} /><DiscoveredContactsSummary discoveredContacts={detail.discoveredContacts} /></section>
+      <details className="group mt-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Vyhodnocení systému</span><ChevronDown aria-hidden size={15} className="shrink-0 text-[var(--text-secondary)] transition group-open:rotate-180" /></summary><div className="border-t border-[var(--surface-border)] p-4"><div className="grid gap-2 sm:grid-cols-3"><PowerOutageDetailRow label="Výsledek" value={statusLabel(detail.candidateStatus)} /><PowerOutageDetailRow label="Typ" value={entityLabel(detail.entityKind)} /><PowerOutageDetailRow label="Počet důkazů" value={String(detail.evidenceCount)} /></div>{detail.evaluationExplanations.length ? <ul className="mt-3 space-y-2">{detail.evaluationExplanations.map((text) => <li key={text} className="flex gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-strong)] px-3 py-2 text-[10px] leading-4 text-[var(--text-primary)]"><CircleCheck aria-hidden size={13} className="mt-0.5 shrink-0 text-[var(--accent)]" />{text}</li>)}</ul> : <p className="mt-3 text-xs text-[var(--text-secondary)]">Výsledek zatím čeká na první vyhodnocení.</p>}</div></details>
+      <details className="group mt-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Firma a podrobnosti odstávky</span><ChevronDown aria-hidden size={15} className="shrink-0 text-[var(--text-secondary)] transition group-open:rotate-180" /></summary><div className="grid gap-2 border-t border-[var(--surface-border)] p-4 sm:grid-cols-2"><PowerOutageDetailRow label="IČO" value={detail.ico || 'Neuvedeno'} /><PowerOutageDetailRow label="Právní forma" value={detail.legalForm || 'Neuvedena'} /><PowerOutageDetailRow label="Adresa firmy" value={detail.displayAddress || 'Neuvedena'} /><PowerOutageDetailRow label="Adresa odstávky" value={outageAddressLabel(detail)} /><PowerOutageDetailRow label="Distributor" value={sourceLabel(detail.source)} /><PowerOutageDetailRow label="Stav zdroje" value={detail.sourceStatus.toUpperCase()} /><PowerOutageDetailRow label="Termín od" value={formatDateTime(detail.startsAt)} /><PowerOutageDetailRow label="Termín do" value={formatDateTime(detail.endsAt)} /></div></details>
+      <details className="group mt-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)]"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Zdrojové důkazy · {detail.evidence.length}</span><ChevronDown aria-hidden size={15} className="shrink-0 text-[var(--text-secondary)] transition group-open:rotate-180" /></summary><div className="space-y-2 border-t border-[var(--surface-border)] p-4">{detail.evidence.length ? detail.evidence.map((evidence) => <article key={evidence.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-3"><div className="flex items-center justify-between gap-3"><strong className="text-[9px] uppercase tracking-[0.08em] text-[var(--accent)]">{evidence.provider}</strong><span className="text-[10px] font-bold tabular-nums text-[var(--text-primary)]">{Math.round(evidence.confidence * 100)} %</span></div><p className="mt-1 text-[11px] font-semibold text-[var(--text-primary)]">{evidence.displayName}</p>{evidence.displayAddress ? <p className="mt-0.5 text-[9px] text-[var(--text-secondary)]">{evidence.displayAddress}</p> : null}<div className="mt-2 flex items-center justify-between gap-2 text-[8px] uppercase text-[var(--text-secondary)]"><span>{evidence.matchLevel.replaceAll('_', ' ')}</span>{evidence.sourceUrl ? <a href={evidence.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--accent)]">Zdroj <ExternalLink aria-hidden size={10} /></a> : null}</div></article>) : <p className="text-xs text-[var(--text-secondary)]">Důkazy zatím nejsou dostupné.</p>}</div></details>
     </div> : null}
   </PowerOutagePopupShell>
 }

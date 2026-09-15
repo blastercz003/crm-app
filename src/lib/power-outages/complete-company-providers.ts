@@ -3,9 +3,9 @@ import 'server-only'
 import { z } from 'zod'
 import { normalizePowerOutageText, powerOutageSha256 } from './normalization'
 import {
-  evaluateCompleteAddressMatchV5,
-  type CompleteAddressMatchV5Result,
-} from './complete-address-match-v5'
+  evaluateCompleteAddressMatchV6,
+  type CompleteAddressMatchV6Result,
+} from './complete-address-match-v6'
 
 export type CompleteDiscoveryProvider = 'ares' | 'mapy' | 'google'
 
@@ -158,12 +158,12 @@ export type CandidateDiscoveryMatch = {
   accepted: boolean
   matchLevel: 'exact_address' | 'same_building' | 'nearby' | 'unresolved'
   confidenceCeiling: number
-  evaluation: CompleteAddressMatchV5Result | null
-  egdV5Applied: boolean
+  evaluation: CompleteAddressMatchV6Result | null
+  egdV6Applied: boolean
 }
 
 /**
- * Přísný v5 matcher je záměrně omezený jen na přesné adresní cíle EG.D
+ * Přísný v6 matcher je záměrně omezený jen na přesné adresní cíle EG.D
  * v katalogu KOMPLETNÍ. ČEZ a PRE touto změnou dál procházejí původní
  * validací beze změny výsledku i confidence.
  */
@@ -180,7 +180,7 @@ export function evaluateCandidateDiscoveryMatch(
       matchLevel: target.targetKind === 'exact_number' ? 'exact_address' : 'nearby',
       confidenceCeiling: candidate.confidence,
       evaluation: null,
-      egdV5Applied: false,
+      egdV6Applied: false,
     }
   }
   if (!candidate.displayAddress) {
@@ -189,11 +189,11 @@ export function evaluateCandidateDiscoveryMatch(
       matchLevel: 'unresolved',
       confidenceCeiling: 0.2,
       evaluation: null,
-      egdV5Applied: true,
+      egdV6Applied: true,
     }
   }
 
-  const evaluation = evaluateCompleteAddressMatchV5({
+  const evaluation = evaluateCompleteAddressMatchV6({
     target: {
       municipality: target.municipality,
       townPart: target.townPart,
@@ -222,7 +222,7 @@ export function evaluateCandidateDiscoveryMatch(
       : 'unresolved',
     confidenceCeiling: evaluation.confidenceCeiling,
     evaluation,
-    egdV5Applied: true,
+    egdV6Applied: true,
   }
 }
 
