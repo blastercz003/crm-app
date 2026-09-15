@@ -1300,11 +1300,20 @@ export async function getCompletePowerOutagePage(
     ...baseArgs,
     p_cursor_client_priority: cursor?.clientPriority ?? null,
   }
-  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v11', {
+  let { data, error } = await supabase.rpc('get_complete_power_outage_company_page_v12', {
     ...priorityArgs,
     p_clients_only: filters.clientsOnly,
     p_communication_status: filters.communicationStatus,
   })
+  if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v12')) {
+    const current = await supabase.rpc('get_complete_power_outage_company_page_v11', {
+      ...priorityArgs,
+      p_clients_only: filters.clientsOnly,
+      p_communication_status: filters.communicationStatus,
+    })
+    data = current.data
+    error = current.error
+  }
   if (error?.code === 'PGRST202' || error?.message?.includes('get_complete_power_outage_company_page_v11')) {
     const current = await supabase.rpc('get_complete_power_outage_company_page_v10', {
       ...priorityArgs,
@@ -1671,6 +1680,37 @@ export async function getCompletePowerOutageStatistics(): Promise<CompletePowerO
 
 export async function getCompletePowerOutageSidebarWorkspace(): Promise<CompletePowerOutageSidebarWorkspace> {
   const { supabase, user, profile } = await getPowerOutageRuntimeContext({ redirectOnDenied: true })
+  const transientRpcError = (error: unknown) => ({
+    data: null,
+    error: { message: error instanceof Error ? error.message : 'Dočasná chyba databázového připojení.' },
+  })
+  const loadContactManagementSummary = async () => {
+    try {
+      return await supabase.rpc('get_complete_power_outage_contact_management_summary_v3')
+    } catch (error) {
+      return transientRpcError(error)
+    }
+  }
+  const loadNotificationEmailManagement = async () => {
+    try {
+      return await supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 })
+    } catch (error) {
+      return transientRpcError(error)
+    }
+  }
+  const loadMultiSelectorOptions = async () => {
+    try {
+      const firstAttempt = await supabase.rpc('get_cpo_multi_selector_options_v1')
+      if (!firstAttempt.error) return firstAttempt
+      return await supabase.rpc('get_cpo_multi_selector_options_v1')
+    } catch (error) {
+      try {
+        return await supabase.rpc('get_cpo_multi_selector_options_v1')
+      } catch (retryError) {
+        return transientRpcError(retryError ?? error)
+      }
+    }
+  }
   const [
     coverageResult, sourceResult, upstreamSourceResult, sourceDiscoveryResult,
     cezNewResult, cezCompletedCycleResult, providerResult, evaluationProgressResult, taskResult, globalProgressResult,
@@ -1690,13 +1730,13 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
     supabase.from('complete_power_outage_commercial_selection_state').select('ui_enabled,scoring_enabled,metadata').eq('singleton', true).maybeSingle(),
     supabase.from('complete_power_outage_commercial_selection_progress_snapshot').select('status,stage,evaluation_pending_count,enrichment_pending_count,scoring_pending_count,remaining_count,attention_count,status_message,last_progress_at,refreshed_at').eq('singleton', true).maybeSingle(),
     profile.role === 'admin'
-      ? supabase.rpc('get_complete_power_outage_contact_management_summary_v3')
+      ? loadContactManagementSummary()
       : Promise.resolve({ data: null, error: null }),
     profile.role === 'admin'
-      ? supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 })
+      ? loadNotificationEmailManagement()
       : Promise.resolve({ data: null, error: null }),
     profile.role === 'admin'
-      ? supabase.rpc('get_cpo_multi_selector_options_v1')
+      ? loadMultiSelectorOptions()
       : Promise.resolve({ data: null, error: null }),
   ])
 
@@ -1761,11 +1801,11 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   const commercialSelectionLoadError = commercialSelectionResult.error
     ? `Obchodní výběr se nepodařilo načíst: ${commercialSelectionResult.error.message}`
     : null
-  const contactManagementLoadError = profile.role === 'admin' && (contactManagementResult.error || multiSelectorResult.error)
-    ? `Dohledávání kontaktů se nepodařilo načíst: ${contactManagementResult.error?.message ?? multiSelectorResult.error?.message}`
+  const contactManagementLoadError = profile.role === 'admin' && contactManagementResult.error
+    ? `Dohledávání kontaktů se nepodařilo načíst: ${contactManagementResult.error.message}`
     : null
-  const emailManagementLoadError = profile.role === 'admin' && (emailManagementResult.error || multiSelectorResult.error)
-    ? `Správu e-mailových upozornění se nepodařilo načíst: ${emailManagementResult.error?.message ?? multiSelectorResult.error?.message}`
+  const emailManagementLoadError = profile.role === 'admin' && emailManagementResult.error
+    ? `Správu e-mailových upozornění se nepodařilo načíst: ${emailManagementResult.error.message}`
     : null
   const globalProgress = globalProgressResult.data ? {
     status: globalProgressResult.data.status,
@@ -1820,19 +1860,23 @@ export async function getCompletePowerOutageSidebarWorkspace(): Promise<Complete
   return {
     currentUser: { id: user.id, name: profile.name?.trim() || 'Uživatel', isAdmin: profile.role === 'admin' },
     globalProgress,
-    contactManagement: profile.role === 'admin' && !contactManagementResult.error && !multiSelectorResult.error
+    contactManagement: profile.role === 'admin' && !contactManagementResult.error
       ? mapContactManagementSummary({
           ...objectValue(contactManagementResult.data),
-          ...objectValue(multiSelectorResult.data),
+          ...(!multiSelectorResult.error ? objectValue(multiSelectorResult.data) : {}),
         })
       : null,
-    emailManagement: profile.role === 'admin' && !emailManagementResult.error && !multiSelectorResult.error
+    emailManagement: profile.role === 'admin' && !emailManagementResult.error
       ? mapNotificationEmailManagementWorkspace({
           ...objectValue(emailManagementResult.data),
-          selectors: objectValue(multiSelectorResult.data).selectors,
+          ...(!multiSelectorResult.error ? {
+            selectors: objectValue(multiSelectorResult.data).selectors,
+          } : {}),
           productionConfiguration: {
             ...objectValue(objectValue(emailManagementResult.data).productionConfiguration),
-            activeSelectorKeys: objectValue(multiSelectorResult.data).activeSelectorKeys,
+            ...(!multiSelectorResult.error ? {
+              activeSelectorKeys: objectValue(multiSelectorResult.data).activeSelectorKeys,
+            } : {}),
           },
         })
       : null,
@@ -1904,20 +1948,24 @@ export async function setCompletePowerOutageContactRuntime(
 
 export async function getCompleteNotificationEmailManagementWorkspace(): Promise<CompleteNotificationEmailManagementWorkspace> {
   const { supabase } = await getPowerOutageRuntimeContext({ adminOnly: true })
+  const loadMultiSelectorOptions = async () => {
+    const firstAttempt = await supabase.rpc('get_cpo_multi_selector_options_v1')
+    if (!firstAttempt.error) return firstAttempt
+    return supabase.rpc('get_cpo_multi_selector_options_v1')
+  }
   const [{ data, error }, selectorResult] = await Promise.all([
     supabase.rpc('get_cpo_notification_email_management_v3', { requested_limit: 100 }),
-    supabase.rpc('get_cpo_multi_selector_options_v1'),
+    loadMultiSelectorOptions(),
   ])
   if (error) throw new Error(`Správu e-mailových upozornění se nepodařilo načíst: ${error.message}`)
-  if (selectorResult.error) throw new Error(`Výběry AI SELECT se nepodařilo načíst: ${selectorResult.error.message}`)
-  const selectorWorkspace = objectValue(selectorResult.data)
+  const selectorWorkspace = selectorResult.error ? {} : objectValue(selectorResult.data)
   const rawWorkspace = objectValue(data)
   return mapNotificationEmailManagementWorkspace({
     ...rawWorkspace,
-    selectors: selectorWorkspace.selectors,
+    ...(selectorResult.error ? {} : { selectors: selectorWorkspace.selectors }),
     productionConfiguration: {
       ...objectValue(rawWorkspace.productionConfiguration),
-      activeSelectorKeys: selectorWorkspace.activeSelectorKeys,
+      ...(selectorResult.error ? {} : { activeSelectorKeys: selectorWorkspace.activeSelectorKeys }),
     },
   })
 }

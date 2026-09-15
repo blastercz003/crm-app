@@ -87,6 +87,8 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
   const [commercialSelectionCountsError, setCommercialSelectionCountsError] = useState<string | null>(null)
   const statisticsLoading = useRef(false)
   const sidebarLoading = useRef(false)
+  const sidebarAdminRetryCount = useRef(0)
+  const sidebarAdminRetryTimer = useRef<number | null>(null)
 
   const loadStatistics = useCallback(async () => {
     if (statisticsLoading.current) return
@@ -108,25 +110,55 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
       const result = await getCompletePowerOutageSidebarAction()
       if (result.success) {
         const sourceRefreshError = result.workspace.loadErrors.sources
+        const adminPanelsIncomplete = currentUser.isAdmin
+          && (!result.workspace.contactManagement || !result.workspace.emailManagement)
         setSidebar((current) => {
-          if (!current || !sourceRefreshError) return result.workspace
-          return {
+          const nextWorkspace = current ? {
             ...result.workspace,
+            contactManagement: result.workspace.contactManagement ?? current.contactManagement,
+            emailManagement: result.workspace.emailManagement ?? current.emailManagement,
+          } : result.workspace
+          if (!current || !sourceRefreshError) return nextWorkspace
+          return {
+            ...nextWorkspace,
             sources: current.sources,
             cezNew: current.cezNew,
-            loadErrors: { ...result.workspace.loadErrors, sources: null },
+            loadErrors: { ...nextWorkspace.loadErrors, sources: null },
           }
         })
         setSidebarError(sourceRefreshError)
-      } else setSidebarError(result.error)
+        if (adminPanelsIncomplete && sidebarAdminRetryCount.current < 1) {
+          sidebarAdminRetryCount.current += 1
+          sidebarAdminRetryTimer.current = window.setTimeout(() => {
+            sidebarAdminRetryTimer.current = null
+            void loadSidebar()
+          }, 1_200)
+        } else if (!adminPanelsIncomplete) sidebarAdminRetryCount.current = 0
+      } else {
+        setSidebarError(result.error)
+        if (currentUser.isAdmin && sidebarAdminRetryCount.current < 1) {
+          sidebarAdminRetryCount.current += 1
+          sidebarAdminRetryTimer.current = window.setTimeout(() => {
+            sidebarAdminRetryTimer.current = null
+            void loadSidebar()
+          }, 1_200)
+        }
+      }
     } catch (error) {
       setSidebarError(error instanceof Error
         ? error.message
         : 'Data pravého panelu se dočasně nepodařilo obnovit.')
+      if (currentUser.isAdmin && sidebarAdminRetryCount.current < 1) {
+        sidebarAdminRetryCount.current += 1
+        sidebarAdminRetryTimer.current = window.setTimeout(() => {
+          sidebarAdminRetryTimer.current = null
+          void loadSidebar()
+        }, 1_200)
+      }
     } finally {
       sidebarLoading.current = false
     }
-  }, [])
+  }, [currentUser.isAdmin])
 
   useEffect(() => {
     // První stránka tabulky se načítá uvnitř CompletePowerOutageRecords. Souhrn
@@ -141,6 +173,7 @@ export function CompletePowerOutagesDashboard({ currentUser }: { currentUser: Co
     const sidebarInterval = window.setInterval(() => { void loadSidebar() }, 60_000)
     return () => {
       if (ownersTimer !== null) window.clearTimeout(ownersTimer)
+      if (sidebarAdminRetryTimer.current !== null) window.clearTimeout(sidebarAdminRetryTimer.current)
       window.clearInterval(statisticsInterval); window.clearInterval(sidebarInterval)
     }
   }, [currentUser.isAdmin, loadSidebar, loadStatistics])

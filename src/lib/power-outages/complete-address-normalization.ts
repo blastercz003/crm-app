@@ -14,13 +14,22 @@ type ServiceClient = NonNullable<ReturnType<typeof getServiceRoleClient>>
 
 type AddressRow = {
   id: string
+  source: 'cez' | 'egd' | 'pre'
   address_scope: 'exact' | 'street' | 'municipality' | 'unresolved'
   municipality: string
   town_part: string | null
   street: string
   house_number: string | null
   orientation_number: string | null
+  postal_code: string | null
+  ruian_address_id: string | number | null
   metadata: Record<string, unknown> | null
+}
+
+type AddressQueryRow = Omit<AddressRow, 'source'> & {
+  complete_power_outages:
+    | { source: 'cez' | 'egd' | 'pre' }
+    | Array<{ source: 'cez' | 'egd' | 'pre' }>
 }
 
 type TargetState = {
@@ -58,9 +67,19 @@ function queryText(parts: Array<string | null | undefined>) {
   return parts.map((part) => part?.trim()).filter(Boolean).join(', ').slice(0, 300)
 }
 
+function isCezRuianNumberOnlyExact(address: AddressRow, numberCount: number) {
+  return address.source === 'cez'
+    && address.ruian_address_id !== null
+    && address.ruian_address_id !== undefined
+    && address.municipality.trim().length > 0
+    && address.street.trim().length === 0
+    && numberCount > 0
+}
+
 function targetsForAddress(address: AddressRow) {
   const numbers = trustedNumbers(address)
   const limitedNumbers = numbers.slice(0, MAX_TARGETS_PER_ADDRESS)
+  const cezRuianNumberOnlyExact = isCezRuianNumberOnlyExact(address, numbers.length)
   const legacyEvidenceCount = legacyNumberEvidenceCount(address.metadata)
   const baseMetadata = {
     normalizerVersion: NORMALIZER_VERSION,
@@ -70,22 +89,36 @@ function targetsForAddress(address: AddressRow) {
     truncated: numbers.length > MAX_TARGETS_PER_ADDRESS,
   }
 
-  if (address.street.trim() && limitedNumbers.length > 0) {
+  if ((address.street.trim() || cezRuianNumberOnlyExact) && limitedNumbers.length > 0) {
     return limitedNumbers.map(({ pair, display }) => {
-      const query = queryText([
-        `${address.street.trim()} ${display}`,
-        address.town_part,
-        address.municipality,
-      ])
+      const query = address.street.trim()
+        ? queryText([
+            `${address.street.trim()} ${display}`,
+            address.town_part,
+            address.municipality,
+          ])
+        : queryText([
+            display,
+            address.town_part,
+            address.municipality,
+            address.postal_code,
+          ])
       return {
         outage_address_id: address.id,
-        target_key: powerOutageSha256([
-          normalizePowerOutageText(address.municipality),
-          normalizePowerOutageText(address.town_part),
-          normalizePowerOutageText(address.street),
-          pair.houseNumber,
-          pair.orientationNumber,
-        ]),
+        target_key: cezRuianNumberOnlyExact
+          ? powerOutageSha256([
+              'cez-ruian-number-only-v1',
+              String(address.ruian_address_id),
+              pair.houseNumber,
+              pair.orientationNumber,
+            ])
+          : powerOutageSha256([
+              normalizePowerOutageText(address.municipality),
+              normalizePowerOutageText(address.town_part),
+              normalizePowerOutageText(address.street),
+              pair.houseNumber,
+              pair.orientationNumber,
+            ]),
         target_kind: 'exact_number',
         municipality: address.municipality,
         town_part: address.town_part,
@@ -98,6 +131,11 @@ function targetsForAddress(address: AddressRow) {
           ...baseMetadata,
           houseNumber: pair.houseNumber,
           orientationNumber: pair.orientationNumber,
+          targetContractVersion: cezRuianNumberOnlyExact ? 3 : NORMALIZER_VERSION,
+          cezRuianNumberOnlyExact,
+          ...(cezRuianNumberOnlyExact
+            ? { ruianAddressId: String(address.ruian_address_id) }
+            : {}),
         },
       }
     })
@@ -146,7 +184,8 @@ function targetsForAddress(address: AddressRow) {
 
 function normalizedScope(address: AddressRow) {
   const numberCount = trustedNumbers(address).length
-  if (address.street.trim() && numberCount > 0) return 'exact'
+  if ((address.street.trim() || isCezRuianNumberOnlyExact(address, numberCount))
+      && numberCount > 0) return 'exact'
   if (address.street.trim()) return 'street'
   if (address.municipality.trim()) return 'municipality'
   return 'unresolved'
@@ -155,14 +194,24 @@ function normalizedScope(address: AddressRow) {
 async function loadAddresses(client: ServiceClient, limit: number) {
   const { data, error } = await client
     .from('complete_power_outage_addresses')
-    .select('id,address_scope,municipality,town_part,street,house_number,orientation_number,metadata,complete_power_outages!inner(source_status,ends_at)')
+    .select('id,address_scope,municipality,town_part,street,house_number,orientation_number,postal_code,ruian_address_id,metadata,complete_power_outages!inner(source,source_status,ends_at)')
     .lt('normalization_version', NORMALIZER_VERSION)
     .in('complete_power_outages.source_status', ['scheduled', 'active'])
     .gte('complete_power_outages.ends_at', new Date().toISOString())
     .order('id')
     .limit(limit)
   if (error) throw error
-  return (data ?? []) as AddressRow[]
+  return ((data ?? []) as unknown as AddressQueryRow[]).map((row) => {
+    const relation = Array.isArray(row.complete_power_outages)
+      ? row.complete_power_outages[0]
+      : row.complete_power_outages
+    if (!relation || !['cez', 'egd', 'pre'].includes(relation.source)) {
+      throw new Error(`Adresa ${row.id} nemá platný zdroj distributora.`)
+    }
+    const address = { ...row, source: relation.source } as AddressQueryRow & AddressRow
+    Reflect.deleteProperty(address, 'complete_power_outages')
+    return address
+  })
 }
 
 export async function normalizeCompletePowerOutageAddresses(requestedLimit = 1500) {
